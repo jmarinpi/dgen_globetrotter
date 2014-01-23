@@ -1,0 +1,5 @@
+# ignore thumbs.db
+*.db
+
+# ignore compiled python
+*.pyc
