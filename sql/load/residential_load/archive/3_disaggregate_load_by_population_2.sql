@@ -4,26 +4,26 @@
 
 -- sum the total population in each electric service territory
 -- create output table
-DROP TABLE IF EXISTS dg_wind.electric_service_territories_res_pop_sums_us CASCADE;
-CREATE TABLE dg_wind.electric_service_territories_res_pop_sums_us
+DROP TABLE IF EXISTS dg_wind.ventyx_res_pop_sums_us CASCADE;
+CREATE TABLE dg_wind.ventyx_res_pop_sums_us
 (gid integer,
-pop numeric,
-num_tiles integer);
+pop numeric);
 
+-- use dg_wind.ventyx_ests_backfilled_geoms_clipped
 -- run parsel
-select parsel_2('dav-gis','dg_wind.ventyx_ests_2011_sales_data_backfilled','gid',
+select parsel_2('dav-gis','dg_wind.ventyx_ests_backfilled_geoms_clipped_spart','est_gid',
 'WITH tile_stats as (
-	select a.gid,
+	select a.est_gid as gid,
 		ST_SummaryStats(ST_Clip(b.rast, 1, a.the_geom_4326, true)) as stats
-	FROM dg_wind.ventyx_ests_2011_sales_data_backfilled as a
+	FROM dg_wind.ventyx_ests_backfilled_geoms_clipped_spart as a
 	INNER JOIN dg_wind.ls2012_ntime_res_pop_us b
 	ON ST_Intersects(a.the_geom_4326,b.rast)
 )
 	--aggregate the results from each tile
-SELECT gid, sum((stats).sum) as pop, count(gid) as num_tiles
+SELECT gid, sum((stats).sum) as pop
 FROM tile_stats
 GROUP by gid;'
-,'dg_wind.electric_service_territories_res_pop_sums_us','a',16);
+,'dg_wind.ventyx_res_pop_sums_us','a',16);
 -- 426240.450 ms
 
 -- check for service territories that do not have population
@@ -33,7 +33,7 @@ CREATE TABLE dg_wind.ests_w_no_pop AS
 		a.the_geom_4326, 
 		a.total_residential_sales_mwh, c.pop
 	FROM dg_wind.ventyx_ests_2011_sales_data_backfilled a
-	left join dg_wind.electric_service_territories_res_pop_sums_us c
+	left join dg_wind.ventyx_res_pop_sums_us c
 	ON a.gid = c.gid
 	where (c.pop is null or c.pop = 0)
 	and a.state_abbr not in ('AK','HI');
@@ -54,7 +54,7 @@ UNION
 
 SELECT a.gid, a.state_abbr, a.total_residential_sales_mwh, a.the_geom_4326
 FROM dg_wind.ventyx_ests_2011_sales_data_backfilled a
-left join dg_wind.electric_service_territories_res_pop_sums_us c
+left join dg_wind.ventyx_res_pop_sums_us c
 ON a.gid = c.gid
 where NOT (c.pop is null or c.pop = 0)
 and a.state_abbr not in ('AK','HI')
@@ -64,6 +64,13 @@ AND a.total_residential_sales_mwh > 0;
 CREATE INDEX ventyx_ests_2011_res_sales_replace_slivers_w_states_the_geom_4326 
 ON dg_wind.ventyx_ests_2011_res_sales_replace_slivers_w_states 
 USING gist(the_geom_4326);
+
+-- clip boundaries to county geom
+CREATE TABLE dg_wind.county_geoms_clip AS
+SELECT a.gid, a.state_abbr, a.total_residential_sales_mwh, ST_Intersection(a.the_geom_4326, b.the_geom_4326) as the_geom_4326
+FROM dg_wind.ventyx_ests_2011_res_sales_replace_slivers_w_states a
+INNER JOIN dg_wind.county_geom_dissolved b
+ON ST_Intersects(a.the_geom_4326, b.the_geom_4326);
 
 -- recalculate the pops totals
 DROP TABLE IF EXISTS dg_wind.ests_res_no_slivers_pop_sums_us CASCADE;
@@ -116,7 +123,6 @@ ON a.gid = c.gid
 where c.pop >0 and a.total_residential_sales_mwh >= 0) 
 SELECT rid as tile_id, ST_MapAlgebraExpr(rast, ''32BF'', map_alg_expr) as rast
 FROM clip;','dg_wind.disaggregated_load_residential_us','a',16);
---  ** start again here.. this was running on screen, so need to check that it finished
 -- walk through the next few steps to make sure this solved most of the problem, then re load the clipped
 -- res pop rasters and run it all again from the top
 
@@ -166,7 +172,7 @@ SELECT county_id, sum((stats).sum) as total_load_mwh_2011_residential
 FROM tile_stats
 GROUP by county_id;'
 ,'dg_wind.load_by_county_us','a',16);
-
+--  ** start again here.. this was running on screen, so need to check that it finished
 
 -- -- compare to the OLD county level res load data
 -- ALTER TABLE wind_ds.load_by_county_us SET SCHEMA wind_ds_data;
@@ -181,7 +187,7 @@ GROUP by county_id;'
 -- **
 -- do some additional verification
 SELECT sum(total_load_mwh_2011_residential)
-FROM dg_wind.load_by_county_us; -- 1,415,496,286.3013808567986
+FROM dg_wind.load_by_county_us; -- 1,417,440,241.1710798840436
 
 select sum(total_residential_sales_mwh)
 FROM dg_wind.ventyx_ests_2011_sales_data_backfilled
@@ -198,7 +204,7 @@ CREATE TABLE dg_wind.ests_w_no_pop AS
 		a.the_geom_4326, 
 		a.total_residential_sales_mwh, c.pop
 	FROM dg_wind.ventyx_ests_2011_sales_data_backfilled a
-	left join dg_wind.electric_service_territories_res_pop_sums_us c
+	left join dg_wind.ventyx_res_pop_sums_us c
 	ON a.gid = c.gid
 	where (c.pop is null or c.pop = 0)
 	and a.state_abbr not in ('AK','HI');
@@ -275,7 +281,7 @@ FROM dg_wind.ventyx_ests_2011_sales_data_backfilled as a
 INNER JOIN dg_wind.ls2012_ntime_res_pop_us b
 ON ST_Intersects(a.the_geom_4326,b.rast)
 
-LEFT JOIN dg_wind.electric_service_territories_res_pop_sums_us c
+LEFT JOIN dg_wind.ventyx_res_pop_sums_us c
 ON a.gid = c.gid
 
 where c.pop >0 and a.total_residential_sales_mwh >= 0) 
@@ -379,7 +385,7 @@ with d as (
 	FROM dg_wind.electric_service_territories_states_with_rates_backfilled a
 	inner join dg_wind.ls2012_ntime_res_pop_us b
 	ON ST_Intersects(a.the_geom_4326,b.rast)
-	left join dg_wind.electric_service_territories_res_pop_sums_us c
+	left join dg_wind.ventyx_res_pop_sums_us c
 	ON a.gid = c.gid
 	where c.pop > 0)
 select sum(total_residential_sales_mwh)
@@ -393,7 +399,7 @@ with d as (
 	FROM dg_wind.electric_service_territories_states_with_rates_backfilled a
 	inner join dg_wind.ls2012_ntime_res_pop_us b
 	ON ST_Intersects(a.the_geom_4326,b.rast)
-	left join dg_wind.electric_service_territories_res_pop_sums_us c
+	left join dg_wind.ventyx_res_pop_sums_us c
 	ON a.gid = c.gid)
 select gid, total_residential_sales_mwh, pop
 FROm d

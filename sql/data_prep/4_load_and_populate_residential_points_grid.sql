@@ -364,6 +364,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 -- 	VACUUM ANALYZE wind_ds.pt_grid_us_res;
 
 
+
 -- annual average rates (from polygons)
 DROP TABLE IF EXISTS wind_ds_data.pt_grid_us_res_annual_rate_gid_lookup;
 CREATE TABLE wind_ds_data.pt_grid_us_res_annual_rate_gid_lookup (
@@ -375,7 +376,7 @@ SELECT parsel_2('dav-gis','wind_ds.pt_grid_us_res','gid',
 		'SELECT a.gid, b.gid as annual_rate_gid
 		FROM  wind_ds.pt_grid_us_res a
 		INNER JOIN wind_ds.annual_ave_elec_rates_2011 b
-		ON ST_Intersects(a.the_geom_900914,b.the_geom_900914);',
+		ON ST_Intersects(a.the_geom_4326,b.the_geom_4326);',
 	'wind_ds_data.pt_grid_us_res_annual_rate_gid_lookup', 'a',16);
 
 -- join the info back in
@@ -504,6 +505,7 @@ ALTER TABLE wind_ds.dsire_incentives_lookup_res ADD CONSTRAINT wind_incentives_u
 REFERENCES geo_incentives.wind_incentives (uid) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;
 	-- for annual_rate_gid to annual_ave_elec_rates_2011.gid
+-- ALTER TABLE wind_ds.pt_grid_us_res DROP CONSTRAINT annual_rate_gid_fkey;
 ALTER TABLE wind_ds.pt_grid_us_res ADD CONSTRAINT annual_rate_gid_fkey FOREIGN KEY (annual_rate_gid) 
 REFERENCES wind_ds.annual_ave_elec_rates_2011 (gid) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;
