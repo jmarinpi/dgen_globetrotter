@@ -185,7 +185,7 @@ CREATE TABLE wind_ds_datapt_grid_us_com_iiijjjicf_id_lookup (
 	SET maxheight_m_popdens = b.maxheight_m_popdens
 	FROM wind_ds_data.pt_grid_us_com_maxheight_popdens_lookup b
 	where a.gid = b.gid;
-
+-- ** this is running now
 	-- how many are null?
 	CREATE INDEX pt_grid_us_com_maxheight_m_popdens ON wind_ds.pt_grid_us_com USING btree(maxheight_m_popdens) where maxheight_m_popdens is null;
 
@@ -231,7 +231,7 @@ CREATE TABLE wind_ds_datapt_grid_us_com_iiijjjicf_id_lookup (
 	VACUUM ANALYZE wind_ds.pt_grid_us_com;
 
 -- population density and 20 pc canopy cover
-	DROP TABLE IF EXISTS wind_ds_data.pt_grid_us_com_maxheight_popdenscancov20pc_lookup_data;
+	DROP TABLE IF EXISTS wind_ds_data.pt_grid_us_com_maxheight_popdenscancov20pc_lookup;
 	CREATE TABLE wind_ds_data.pt_grid_us_com_maxheight_popdenscancov20pc_lookup (
 		gid integer,
 		maxheight_m_popdenscancov20pc integer);
@@ -245,6 +245,7 @@ CREATE TABLE wind_ds_datapt_grid_us_com_iiijjjicf_id_lookup (
 		'wind_ds_data.pt_grid_us_com_maxheight_popdenscancov20pc_lookup', 'a',16);
 
 	-- join the info back in
+
 	ALTER TABLE wind_ds.pt_grid_us_com ADD COLUMN maxheight_m_popdenscancov20pc integer;
 
 	CREATE INDEX pt_grid_us_com_maxheight_popdenscancov20pc_lookup_gid_btree ON wind_ds_data.pt_grid_us_com_maxheight_popdenscancov20pc_lookup using btree(gid);
@@ -256,8 +257,6 @@ CREATE TABLE wind_ds_datapt_grid_us_com_iiijjjicf_id_lookup (
 
 	-- how many are null?
 	CREATE INDEX pt_grid_us_com_maxheight_m_popdenscancov20pc_btree ON wind_ds.pt_grid_us_com USING btree(maxheight_m_popdenscancov20pc) where maxheight_m_popdenscancov20pc is null;
-
-	VACUUM ANALYZE wind_ds.pt_grid_us_com;
 
 	select count(*)
 	FROM wind_ds.pt_grid_us_com 
@@ -366,7 +365,32 @@ CREATE TABLE wind_ds_datapt_grid_us_com_iiijjjicf_id_lookup (
 	FROM wind_ds.pt_grid_us_com 
 	where maxheight_m_popdenscancov40pc is null;
 
+-- check results are logical
+select count(*)
+FROM wind_ds.pt_grid_us_com
+where maxheight_m_popdenscancov20pc > maxheight_m_popdens;
 
+select count(*)
+FROM wind_ds.pt_grid_us_com
+where maxheight_m_popdenscancov40pc > maxheight_m_popdens;
+
+select count(*)
+FROM wind_ds.pt_grid_us_com
+where maxheight_m_popdenscancov20pc > maxheight_m_popdenscancov40pc;
+
+-- if they are not, it is probably due to NN backfilling
+-- fix as follows
+UPDATE wind_ds.pt_grid_us_com
+SET maxheight_m_popdenscancov20pc = maxheight_m_popdens
+where maxheight_m_popdenscancov20pc > maxheight_m_popdens
+
+UPDATE wind_ds.pt_grid_us_com
+SET maxheight_m_popdenscancov40pc = maxheight_m_popdens
+where maxheight_m_popdenscancov40pc > maxheight_m_popdens
+
+UPDATE wind_ds.pt_grid_us_com
+SET maxheight_m_popdenscancov20pc = maxheight_m_popdenscancov40pc
+where maxheight_m_popdenscancov20pc > maxheight_m_popdenscancov40pc
 
 -- annual average rates (from polygons)
 DROP TABLE IF EXISTS wind_ds_data.pt_grid_us_com_annual_rate_gid_lookup;

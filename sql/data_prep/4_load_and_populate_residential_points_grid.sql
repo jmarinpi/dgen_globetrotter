@@ -166,7 +166,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 			INNER JOIN wind_ds_data.maxheight_popdens_us_100x100 b
 			ON ST_Intersects(b.rast,a.the_geom_900914);',
 		'wind_ds_data.pt_grid_us_res_maxheight_popdens_lookup', 'a',16);
--- **
+
 	-- join the info back in
 	ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN maxheight_m_popdens integer;
 
@@ -362,6 +362,22 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 -- 	where maxheight_m_popdenscancov40pc is null;
 -- 
 -- 	VACUUM ANALYZE wind_ds.pt_grid_us_res;
+
+
+-- check results are logical
+select count(*)
+FROM wind_ds.pt_grid_us_res
+where maxheight_m_popdenscancov20pc > maxheight_m_popdens; -- 0 rows
+
+select count(*)
+FROM wind_ds.pt_grid_us_res
+where maxheight_m_popdenscancov40pc > maxheight_m_popdens; -- 0 rows
+
+select count(*)
+FROM wind_ds.pt_grid_us_res
+where maxheight_m_popdenscancov20pc > maxheight_m_popdenscancov40pc; -- 0 rows
+
+-- if they aren't, it is probably due to areas where i used a NN search to back fill
 
 
 
