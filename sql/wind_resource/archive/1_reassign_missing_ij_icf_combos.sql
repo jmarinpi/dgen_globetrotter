@@ -111,27 +111,31 @@ where b.gid is null and c.gid is null;
 -- 37,273  still have no data (drops to 33,226 for 10 nn) (27704  for 12 nn)
 
 
+
+SELECT distinct ON (a.gid) a.gid, a.the_geom_900914, a.iii, a.jjj, a.icf, a.i, a.j, a.cf_bin, a.maxheight_m_popdens, 
+       a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
+       b.cf_bin as adjusted_cf_bin
+FROM wind_ds_data.remaining_missing_res_points a
+LEFT JOIN aws.ij_icf_lookup_onshore b
+ON a.i = b.i
+and a.j = b.j
+
+order by a.gid asc, @(a.cf_bin-b.cf_bin) asc
+
+
+
+
+
 CREATE INDEX remaining_missing_res_points_the_geom_900914_gist ON wind_ds_data.remaining_missing_res_points using gist(the_geom_900914);
 -- inspect in Q
 -- mostly chicago and then random areas
 
+-- check against exclusions
 select count(*)
 FROM wind_ds_data.remaining_missing_res_points
-where maxheight_m_popdenscancov40pc > 0;
+where maxheight_m_popdens > 0;
 -- only 11728 are nonexcluded (9,952 for 10 nn) (7418 for 12 nn)
 
-select count(*)
-FROM wind_ds.pt_grid_us_res
-where maxheight_m_popdenscancov20pc > maxheight_m_popdens;
-
-select count(*)
-FROM wind_ds.pt_grid_us_res
-where maxheight_m_popdenscancov40pc > 0;
 
 
 
--- check against exclusions
-
-select distinct(icf)
-FROM aws.ij_icf_combos_with_tmy_data
-where i = 173 and j = 124

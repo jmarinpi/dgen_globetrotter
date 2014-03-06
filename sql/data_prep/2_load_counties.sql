@@ -45,9 +45,16 @@ ADD COLUMN the_geom_900916 geometry;
 
 UPDATE wind_ds.county_geom SET the_geom_900916 = ST_Transform(the_geom_4326,900916);
 
+ALTER TABLE  wind_ds.county_geom 
+ADD COLUMN the_geom_96703 geometry;
+
+UPDATE wind_ds.county_geom SET the_geom_96703 = ST_Transform(the_geom_4326,96703);
+
 CREATE INDEX county_geom_the_geom_900914_gist ON wind_ds.county_geom USING gist(the_geom_900914);
 CREATE INDEX county_geom_the_geom_900915_gist ON wind_ds.county_geom USING gist(the_geom_900915);
 CREATE INDEX county_geom_the_geom_900916_gist ON wind_ds.county_geom USING gist(the_geom_900916);
+CREATE INDEX county_geom_the_geom_96703_gist ON wind_ds.county_geom USING gist(the_geom_96703);
+
 
 CLUSTER wind_ds.county_geom USING county_geom_the_geom_4326_gist;
 
@@ -71,4 +78,6 @@ UPDATE wind_ds.county_geom
 SET the_geom_900916 = ST_Buffer(the_geom_900916,0)
 where ST_Isvalid(the_geom_900916) = false;
 
-
+UPDATE wind_ds.county_geom
+SET the_geom_96703 = ST_Buffer(the_geom_96703,0)
+where ST_Isvalid(the_geom_96703) = false;
