@@ -47,3 +47,25 @@ select est_gid, count(distinct(state_id))
 FROM dg_wind.ventyx_backfilled_ests_diced
 group by est_gid
 order by count desc;
+
+-- add 900914 geom
+ALTER TABLE dg_wind.ventyx_backfilled_ests_diced ADD COLUMN the_geom_900914 geometry;
+UPDATE dg_wind.ventyx_backfilled_ests_diced
+SET the_geom_900914 = ST_Transform(the_geom_4326,900914);
+
+-- check for invalid geoms
+select est_gid, ST_IsValidReason(the_geom_900914)
+FROM dg_wind.ventyx_backfilled_ests_diced
+where ST_Isvalid(the_geom_900914) = false;
+-- 583
+-- 2987
+
+-- fix invalid geoms
+UPDATE dg_wind.ventyx_backfilled_ests_diced
+SET the_geom_900914 = ST_BUffer(the_geom_900914,0.0)
+where ST_Isvalid(the_geom_900914) = false;
+-- check in q to make sure nothing got removed (compare to the_geom_4326 for selected est_gids)
+-- all is ok!
+
+-- create index
+CREATE INDEX ventyx_backfilled_ests_diced_the_geom_900914_gist on dg_wind.ventyx_backfilled_ests_diced using gist(the_geom_900914);
