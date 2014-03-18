@@ -1,0 +1,51 @@
+Region,State
+Pacific,AK
+Pacific,WA
+Pacific,OR
+Pacific,CA
+Pacific,HI
+Mountain,MT
+Mountain,ID
+Mountain,WY
+Mountain,NV
+Mountain,UT
+Mountain,CO
+Mountain,AZ
+Mountain,NM
+West North Central,ND
+West North Central,MN
+West North Central,SD
+West North Central,NE
+West North Central,IA
+West North Central,KS
+West North Central,MO
+West South Central,OK
+West South Central,TX
+West South Central,AR
+West South Central,LA
+East North Central,WI
+East North Central,IL
+East North Central,IN
+East North Central,MI
+East North Central,OH
+East South Central,KY
+East South Central,TN
+East South Central,MS
+East South Central,AL
+South Atlantic,WV
+South Atlantic,MD
+South Atlantic,VA
+South Atlantic,NC
+South Atlantic,SC
+South Atlantic,GA
+South Atlantic,FL
+South Atlantic,DE
+Middle Atlantic,PA
+Middle Atlantic,NY
+Middle Atlantic,NJ
+New England,ME
+New England,VT
+New England,NH
+New England,MA
+New England,RI
+New England,CT

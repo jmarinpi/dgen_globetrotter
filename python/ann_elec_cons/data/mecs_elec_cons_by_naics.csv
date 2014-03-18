@@ -1,0 +1,643 @@
+NAICS,Subsector and Industry,Electricity Used (GWh),Region
+311,Food,75407,US
+3112,  Grain and Oilseed Milling,16479,US
+311221,  Wet Corn Milling,7467,US
+31131,  Sugar Manufacturing,1218,US
+3114,  Fruit and Vegetable Preserving and Specialty Foods ,9203,US
+3115,  Dairy Products,9565,US
+3116,  Animal Slaughtering and Processing,20138,US
+312,Beverage and Tobacco Products,8449,US
+3121,  Beverages,7472,US
+3122,  Tobacco ,977,US
+313,Textile Mills,13240,US
+314,Textile Product Mills,2458,US
+315,Apparel,1069,US
+316,Leather and Allied Products,243,US
+321,Wood Products,15323,US
+321113,  Sawmills,4463,US
+3212,"  Veneer, Plywood, and Engineered Woods",6374,US
+321219,  Reconstituted Wood Products,4052,US
+3219,  Other Wood Products,4162,US
+322,Paper,60497,US
+322110,  Pulp Mills,2032,US
+322121,"  Paper Mills, except Newsprint",18146,US
+322122,  Newsprint Mills,11180,US
+322130,  Paperboard Mills,17219,US
+323,Printing and Related Support,13704,US
+324,Petroleum and Coal Products,47014,US
+324110,  Petroleum Refineries,44882,US
+324121,  Asphalt Paving Mixture and Block,1068,US
+324199,  Other Petroleum and Coal Products,-82,US
+325,Chemicals,131932,US
+325110,  Petrochemicals,6543,US
+325120,  Industrial Gases,19401,US
+325181,  Alkalies and Chlorine,9405,US
+325182,  Carbon Black ,234,US
+325188,  Other Basic Inorganic Chemicals,24730,US
+325192,  Cyclic Crudes and Intermediates,2673,US
+325193,  Ethyl Alcohol ,7392,US
+325199,  Other Basic Organic Chemicals,9608,US
+325211,  Plastics Materials and Resins,19606,US
+325212,  Synthetic Rubber,1645,US
+325222,  Noncellulosic Organic Fibers,2791,US
+325311,  Nitrogenous Fertilizers,3388,US
+325312,  Phosphatic Fertilizers,1251,US
+3254,  Pharmaceuticals and Medicines,9170,US
+325412,  Pharmaceutical Preparation,5619,US
+325992,"  Photographic Film, Paper, Plate, and Chemicals",1377,US
+326,Plastics and Rubber Products,45797,US
+327,Nonmetallic Mineral Products,32576,US
+327121,  Brick and Structural Clay Tile,576,US
+327211,  Flat Glass,1660,US
+327212,  Other Pressed and Blown Glass and Glassware,2563,US
+327213,  Glass Containers,3604,US
+327215,  Glass Products from Purchased Glass,2642,US
+327310,  Cements,9205,US
+327410,  Lime,1502,US
+327420,  Gypsum,1384,US
+327993,  Mineral Wool,3419,US
+331,Primary Metals,117284,US
+331111,  Iron and Steel Mills,50360,US
+331112,  Electrometallurgical Ferroalloy Products,3158,US
+3312,  Steel Products from Purchased Steel,5270,US
+3313,  Alumina and Aluminum,34041,US
+331314,  Secondary Smelting and Alloying of Aluminum,2638,US
+331315,"  Aluminum Sheet, Plate and Foils",4134,US
+331316,  Aluminum Extruded Products,1411,US
+3314,"  Nonferrous Metals, except Aluminum",13301,US
+331419,"  Primary Smelting and Refining of Nonferrous Metals, except Copper and Aluminum",7341,US
+3315,  Foundries,11154,US
+331511,  Iron Foundries,5675,US
+331521,  Aluminum Die-Casting Foundries,1285,US
+331524,"  Aluminum Foundries, except Die-Casting",857,US
+332,Fabricated Metal Products,37206,US
+333,Machinery,20386,US
+334,Computer and Electronic Products,29503,US
+334413,  Semiconductors and Related Devices,10808,US
+335,"Electrical Equip., Appliances, and Components",10689,US
+336,Transportation Equipment,38832,US
+336111,  Automobiles,3027,US
+336112,  Light Trucks and Utility Vehicles,3620,US
+3364,  Aerospace Product and Parts,9501,US
+336411,  Aircraft,2630,US
+337,Furniture and Related Products,4960,US
+339,Miscellaneous,7598,US
+311,Food,7147,Northeast
+3112,  Grain and Oilseed Milling,434,Northeast
+311221,  Wet Corn Milling,5,Northeast
+31131,  Sugar Manufacturing,211,Northeast
+3114,  Fruit and Vegetable Preserving and Specialty Foods ,972,Northeast
+3115,  Dairy Products,1172,Northeast
+3116,  Animal Slaughtering and Processing,857,Northeast
+312,Beverage and Tobacco Products,1247,Northeast
+3121,  Beverages,1217,Northeast
+3122,  Tobacco ,30,Northeast
+313,Textile Mills,550,Northeast
+314,Textile Product Mills,Q,Northeast
+315,Apparel,Q,Northeast
+316,Leather and Allied Products,50,Northeast
+321,Wood Products,1010,Northeast
+321113,  Sawmills,332,Northeast
+3212,"  Veneer, Plywood, and Engineered Woods",240,Northeast
+321219,  Reconstituted Wood Products,161,Northeast
+3219,  Other Wood Products,486,Northeast
+322,Paper,4907,Northeast
+322110,  Pulp Mills,432,Northeast
+322121,"  Paper Mills, except Newsprint",543,Northeast
+322122,  Newsprint Mills,880,Northeast
+322130,  Paperboard Mills,1486,Northeast
+323,Printing and Related Support,2447,Northeast
+324,Petroleum and Coal Products,4413,Northeast
+324110,  Petroleum Refineries,4032,Northeast
+324121,  Asphalt Paving Mixture and Block,257,Northeast
+324199,  Other Petroleum and Coal Products,35,Northeast
+325,Chemicals,12122,Northeast
+325110,  Petrochemicals,17,Northeast
+325120,  Industrial Gases,2592,Northeast
+325181,  Alkalies and Chlorine,1468,Northeast
+325182,  Carbon Black ,5,Northeast
+325188,  Other Basic Inorganic Chemicals,838,Northeast
+325192,  Cyclic Crudes and Intermediates,160,Northeast
+325193,  Ethyl Alcohol ,69,Northeast
+325199,  Other Basic Organic Chemicals,667,Northeast
+325211,  Plastics Materials and Resins,1023,Northeast
+325212,  Synthetic Rubber,40,Northeast
+325222,  Noncellulosic Organic Fibers,26,Northeast
+325311,  Nitrogenous Fertilizers,26,Northeast
+325312,  Phosphatic Fertilizers,1,Northeast
+3254,  Pharmaceuticals and Medicines,2450,Northeast
+325412,  Pharmaceutical Preparation,1188,Northeast
+325992,"  Photographic Film, Paper, Plate, and Chemicals",873,Northeast
+326,Plastics and Rubber Products,2679,Northeast
+327,Nonmetallic Mineral Products,4133,Northeast
+327121,  Brick and Structural Clay Tile,44,Northeast
+327211,  Flat Glass,315,Northeast
+327212,  Other Pressed and Blown Glass and Glassware,565,Northeast
+327213,  Glass Containers,587,Northeast
+327215,  Glass Products from Purchased Glass,394,Northeast
+327310,  Cements,1016,Northeast
+327410,  Lime,69,Northeast
+327420,  Gypsum,432,Northeast
+327993,  Mineral Wool,226,Northeast
+331,Primary Metals,12979,Northeast
+331111,  Iron and Steel Mills,5795,Northeast
+331112,  Electrometallurgical Ferroalloy Products,537,Northeast
+3312,  Steel Products from Purchased Steel,800,Northeast
+3313,  Alumina and Aluminum,2992,Northeast
+331314,  Secondary Smelting and Alloying of Aluminum,2110,Northeast
+331315,"  Aluminum Sheet, Plate and Foils",463,Northeast
+331316,  Aluminum Extruded Products,394,Northeast
+3314,"  Nonferrous Metals, except Aluminum",1883,Northeast
+331419,"  Primary Smelting and Refining of Nonferrous Metals, except Copper and Aluminum",149,Northeast
+3315,  Foundries,972,Northeast
+331511,  Iron Foundries,427,Northeast
+331521,  Aluminum Die-Casting Foundries,75,Northeast
+331524,"  Aluminum Foundries, except Die-Casting",63,Northeast
+332,Fabricated Metal Products,4526,Northeast
+333,Machinery,3323,Northeast
+334,Computer and Electronic Products,5236,Northeast
+334413,  Semiconductors and Related Devices,1959,Northeast
+335,"Electrical Equip., Appliances, and Components",1804,Northeast
+336,Transportation Equipment,2861,Northeast
+336111,  Automobiles,1,Northeast
+336112,  Light Trucks and Utility Vehicles,0,Northeast
+3364,  Aerospace Product and Parts,902,Northeast
+336411,  Aircraft,307,Northeast
+337,Furniture and Related Products,707,Northeast
+339,Miscellaneous,1847,Northeast
+311,Food,33034,Midwest
+3112,  Grain and Oilseed Milling,11550,Midwest
+311221,  Wet Corn Milling,6574,Midwest
+31131,  Sugar Manufacturing,558,Midwest
+3114,  Fruit and Vegetable Preserving and Specialty Foods ,2204,Midwest
+3115,  Dairy Products,3305,Midwest
+3116,  Animal Slaughtering and Processing,8561,Midwest
+312,Beverage and Tobacco Products,1369,Midwest
+3121,  Beverages,1354,Midwest
+3122,  Tobacco ,15,Midwest
+313,Textile Mills,394,Midwest
+314,Textile Product Mills,Q,Midwest
+315,Apparel,Q,Midwest
+316,Leather and Allied Products,90,Midwest
+321,Wood Products,2468,Midwest
+321113,  Sawmills,397,Midwest
+3212,"  Veneer, Plywood, and Engineered Woods",557,Midwest
+321219,  Reconstituted Wood Products,340,Midwest
+3219,  Other Wood Products,1472,Midwest
+322,Paper,15068,Midwest
+322110,  Pulp Mills,281,Midwest
+322121,"  Paper Mills, except Newsprint",6885,Midwest
+322122,  Newsprint Mills,1345,Midwest
+322130,  Paperboard Mills,2522,Midwest
+323,Printing and Related Support,4444,Midwest
+324,Petroleum and Coal Products,8596,Midwest
+324110,  Petroleum Refineries,8101,Midwest
+324121,  Asphalt Paving Mixture and Block,259,Midwest
+324199,  Other Petroleum and Coal Products,-156,Midwest
+325,Chemicals,34431,Midwest
+325110,  Petrochemicals,73,Midwest
+325120,  Industrial Gases,8071,Midwest
+325181,  Alkalies and Chlorine,1086,Midwest
+325182,  Carbon Black ,77,Midwest
+325188,  Other Basic Inorganic Chemicals,1389,Midwest
+325192,  Cyclic Crudes and Intermediates,649,Midwest
+325193,  Ethyl Alcohol ,6088,Midwest
+325199,  Other Basic Organic Chemicals,3509,Midwest
+325211,  Plastics Materials and Resins,3272,Midwest
+325212,  Synthetic Rubber,415,Midwest
+325222,  Noncellulosic Organic Fibers,31,Midwest
+325311,  Nitrogenous Fertilizers,1273,Midwest
+325312,  Phosphatic Fertilizers,5,Midwest
+3254,  Pharmaceuticals and Medicines,2802,Midwest
+325412,  Pharmaceutical Preparation,2182,Midwest
+325992,"  Photographic Film, Paper, Plate, and Chemicals",96,Midwest
+326,Plastics and Rubber Products,15451,Midwest
+327,Nonmetallic Mineral Products,8939,Midwest
+327121,  Brick and Structural Clay Tile,106,Midwest
+327211,  Flat Glass,495,Midwest
+327212,  Other Pressed and Blown Glass and Glassware,493,Midwest
+327213,  Glass Containers,879,Midwest
+327215,  Glass Products from Purchased Glass,968,Midwest
+327310,  Cements,2537,Midwest
+327410,  Lime,489,Midwest
+327420,  Gypsum,228,Midwest
+327993,  Mineral Wool,1521,Midwest
+331,Primary Metals,46699,Midwest
+331111,  Iron and Steel Mills,19512,Midwest
+331112,  Electrometallurgical Ferroalloy Products,1174,Midwest
+3312,  Steel Products from Purchased Steel,1507,Midwest
+3313,  Alumina and Aluminum,13265,Midwest
+331314,  Secondary Smelting and Alloying of Aluminum,184,Midwest
+331315,"  Aluminum Sheet, Plate and Foils",1226,Midwest
+331316,  Aluminum Extruded Products,W,Midwest
+3314,"  Nonferrous Metals, except Aluminum",4391,Midwest
+331419,"  Primary Smelting and Refining of Nonferrous Metals, except Copper and Aluminum",2891,Midwest
+3315,  Foundries,6849,Midwest
+331511,  Iron Foundries,3879,Midwest
+331521,  Aluminum Die-Casting Foundries,863,Midwest
+331524,"  Aluminum Foundries, except Die-Casting",492,Midwest
+332,Fabricated Metal Products,16345,Midwest
+333,Machinery,9688,Midwest
+334,Computer and Electronic Products,4551,Midwest
+334413,  Semiconductors and Related Devices,676,Midwest
+335,"Electrical Equip., Appliances, and Components",2827,Midwest
+336,Transportation Equipment,19775,Midwest
+336111,  Automobiles,1765,Midwest
+336112,  Light Trucks and Utility Vehicles,2059,Midwest
+3364,  Aerospace Product and Parts,2012,Midwest
+336411,  Aircraft,505,Midwest
+337,Furniture and Related Products,1665,Midwest
+339,Miscellaneous,1254,Midwest
+311,Food,23271,South
+3112,  Grain and Oilseed Milling,3690,South
+311221,  Wet Corn Milling,824,South
+31131,  Sugar Manufacturing,263,South
+3114,  Fruit and Vegetable Preserving and Specialty Foods ,2394,South
+3115,  Dairy Products,1815,South
+3116,  Animal Slaughtering and Processing,8966,South
+312,Beverage and Tobacco Products,3614,South
+3121,  Beverages,2682,South
+3122,  Tobacco ,932,South
+313,Textile Mills,12007,South
+314,Textile Product Mills,1800,South
+315,Apparel,886,South
+316,Leather and Allied Products,73,South
+321,Wood Products,8775,South
+321113,  Sawmills,2707,South
+3212,"  Veneer, Plywood, and Engineered Woods",4150,South
+321219,  Reconstituted Wood Products,2882,South
+3219,  Other Wood Products,1685,South
+322,Paper,27762,South
+322110,  Pulp Mills,1142,South
+322121,"  Paper Mills, except Newsprint",8433,South
+322122,  Newsprint Mills,3219,South
+322130,  Paperboard Mills,9668,South
+323,Printing and Related Support,4825,South
+324,Petroleum and Coal Products,27233,South
+324110,  Petroleum Refineries,26229,South
+324121,  Asphalt Paving Mixture and Block,332,South
+324199,  Other Petroleum and Coal Products,140,South
+325,Chemicals,76423,South
+325110,  Petrochemicals,6453,South
+325120,  Industrial Gases,6902,South
+325181,  Alkalies and Chlorine,5022,South
+325182,  Carbon Black ,151,South
+325188,  Other Basic Inorganic Chemicals,20178,South
+325192,  Cyclic Crudes and Intermediates,1863,South
+325193,  Ethyl Alcohol ,983,South
+325199,  Other Basic Organic Chemicals,5182,South
+325211,  Plastics Materials and Resins,15133,South
+325212,  Synthetic Rubber,1146,South
+325222,  Noncellulosic Organic Fibers,2732,South
+325311,  Nitrogenous Fertilizers,1919,South
+325312,  Phosphatic Fertilizers,998,South
+3254,  Pharmaceuticals and Medicines,2927,South
+325412,  Pharmaceutical Preparation,1794,South
+325992,"  Photographic Film, Paper, Plate, and Chemicals",167,South
+326,Plastics and Rubber Products,19154,South
+327,Nonmetallic Mineral Products,14180,South
+327121,  Brick and Structural Clay Tile,386,South
+327211,  Flat Glass,665,South
+327212,  Other Pressed and Blown Glass and Glassware,1407,South
+327213,  Glass Containers,1192,South
+327215,  Glass Products from Purchased Glass,989,South
+327310,  Cements,3900,South
+327410,  Lime,697,South
+327420,  Gypsum,520,South
+327993,  Mineral Wool,1205,South
+331,Primary Metals,45397,South
+331111,  Iron and Steel Mills,22133,South
+331112,  Electrometallurgical Ferroalloy Products,1446,South
+3312,  Steel Products from Purchased Steel,2849,South
+3313,  Alumina and Aluminum,12833,South
+331314,  Secondary Smelting and Alloying of Aluminum,316,South
+331315,"  Aluminum Sheet, Plate and Foils",2092,South
+331316,  Aluminum Extruded Products,412,South
+3314,"  Nonferrous Metals, except Aluminum",3523,South
+331419,"  Primary Smelting and Refining of Nonferrous Metals, except Copper and Aluminum",1929,South
+3315,  Foundries,2612,South
+331511,  Iron Foundries,1271,South
+331521,  Aluminum Die-Casting Foundries,311,South
+331524,"  Aluminum Foundries, except Die-Casting",138,South
+332,Fabricated Metal Products,12909,South
+333,Machinery,6103,South
+334,Computer and Electronic Products,10078,South
+334413,  Semiconductors and Related Devices,3192,South
+335,"Electrical Equip., Appliances, and Components",5579,South
+336,Transportation Equipment,11397,South
+336111,  Automobiles,1233,South
+336112,  Light Trucks and Utility Vehicles,1538,South
+3364,  Aerospace Product and Parts,2972,South
+336411,  Aircraft,1163,South
+337,Furniture and Related Products,2180,South
+339,Miscellaneous,2300,South
+311,Food,11955,West
+3112,  Grain and Oilseed Milling,806,West
+311221,  Wet Corn Milling,64,West
+31131,  Sugar Manufacturing,185,West
+3114,  Fruit and Vegetable Preserving and Specialty Foods ,3633,West
+3115,  Dairy Products,3272,West
+3116,  Animal Slaughtering and Processing,1753,West
+312,Beverage and Tobacco Products,2219,West
+3121,  Beverages,2218,West
+3122,  Tobacco ,1,West
+313,Textile Mills,289,West
+314,Textile Product Mills,Q,West
+315,Apparel,90,West
+316,Leather and Allied Products,31,West
+321,Wood Products,3069,West
+321113,  Sawmills,1028,West
+3212,"  Veneer, Plywood, and Engineered Woods",1427,West
+321219,  Reconstituted Wood Products,668,West
+3219,  Other Wood Products,520,West
+322,Paper,12760,West
+322110,  Pulp Mills,178,West
+322121,"  Paper Mills, except Newsprint",2285,West
+322122,  Newsprint Mills,5736,West
+322130,  Paperboard Mills,3543,West
+323,Printing and Related Support,Q,West
+324,Petroleum and Coal Products,6773,West
+324110,  Petroleum Refineries,6520,West
+324121,  Asphalt Paving Mixture and Block,220,West
+324199,  Other Petroleum and Coal Products,-101,West
+325,Chemicals,8957,West
+325110,  Petrochemicals,0,West
+325120,  Industrial Gases,1835,West
+325181,  Alkalies and Chlorine,1830,West
+325182,  Carbon Black ,1,West
+325188,  Other Basic Inorganic Chemicals,2325,West
+325192,  Cyclic Crudes and Intermediates,1,West
+325193,  Ethyl Alcohol ,253,West
+325199,  Other Basic Organic Chemicals,251,West
+325211,  Plastics Materials and Resins,179,West
+325212,  Synthetic Rubber,45,West
+325222,  Noncellulosic Organic Fibers,1,West
+325311,  Nitrogenous Fertilizers,169,West
+325312,  Phosphatic Fertilizers,246,West
+3254,  Pharmaceuticals and Medicines,991,West
+325412,  Pharmaceutical Preparation,456,West
+325992,"  Photographic Film, Paper, Plate, and Chemicals",241,West
+326,Plastics and Rubber Products,8514,West
+327,Nonmetallic Mineral Products,5325,West
+327121,  Brick and Structural Clay Tile,39,West
+327211,  Flat Glass,185,West
+327212,  Other Pressed and Blown Glass and Glassware,97,West
+327213,  Glass Containers,945,West
+327215,  Glass Products from Purchased Glass,291,West
+327310,  Cements,1752,West
+327410,  Lime,246,West
+327420,  Gypsum,205,West
+327993,  Mineral Wool,468,West
+331,Primary Metals,12209,West
+331111,  Iron and Steel Mills,2919,West
+331112,  Electrometallurgical Ferroalloy Products,*,West
+3312,  Steel Products from Purchased Steel,113,West
+3313,  Alumina and Aluminum,4951,West
+331314,  Secondary Smelting and Alloying of Aluminum,27,West
+331315,"  Aluminum Sheet, Plate and Foils",353,West
+331316,  Aluminum Extruded Products,W,West
+3314,"  Nonferrous Metals, except Aluminum",3503,West
+331419,"  Primary Smelting and Refining of Nonferrous Metals, except Copper and Aluminum",2371,West
+3315,  Foundries,722,West
+331511,  Iron Foundries,99,West
+331521,  Aluminum Die-Casting Foundries,36,West
+331524,"  Aluminum Foundries, except Die-Casting",164,West
+332,Fabricated Metal Products,3426,West
+333,Machinery,1271,West
+334,Computer and Electronic Products,9638,West
+334413,  Semiconductors and Related Devices,4981,West
+335,"Electrical Equip., Appliances, and Components",478,West
+336,Transportation Equipment,4799,West
+336111,  Automobiles,28,West
+336112,  Light Trucks and Utility Vehicles,23,West
+3364,  Aerospace Product and Parts,3615,West
+336411,  Aircraft,655,West
+337,Furniture and Related Products,408,West
+339,Miscellaneous,2197,West
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
