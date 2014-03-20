@@ -12,9 +12,9 @@
 
 import openpyxl as xl, traceback, os, glob, sys, psycopg2 as pg,logging, argparse, csv
 import StringIO
-from config import excelAlpha
+#from config import excelAlpha
 
-def makeConn(host='gispgdb',dbname='dav-gis', user='ngrue', password='ngrue', autocommit=True):
+def makeConn(host='localhost',dbname='dav-gis', user='postgres', password='postgres', autocommit=True):
     conn = pg.connect('host=%s dbname=%s user=%s password=%s' % (host, dbname, user, password))
     if autocommit:
         conn.set_isolation_level(pg.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
@@ -49,6 +49,8 @@ def main(wb_loc, conn):
             depSched(curWb,schema,table,conn,cur)
             table = 'scenario_options'
             inpOpts(curWb,schema,table,conn,cur)
+            table = 'manual_incentives'
+            manIncents(curWb,schema,table,conn,cur)
 
 
         if close_conn:
@@ -58,28 +60,31 @@ def main(wb_loc, conn):
         traceback.print_exc()
 
 def windCost(curWb,schema,table,conn,cur):
+    sizes = [['2.5'],['5'],['10'],['20'],['50'],['100'],['250'],['500'],['750'],['1000'],['1500'],['3000']]
     f = StringIO.StringIO()
-    named_range = curWb.get_named_range('Wind_Cost_Projections')
-    if named_range == None:
-        print 'Wind_Cost_Projections named range does not exist'
-        sys.exit(-1)
-    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
-    columns = len(cells[0])
-    rows = len(cells)
-    c = 0
-    while c < columns:
-        r = 0
-        l = []
-        while r < rows:
-            if cells[r][c].value == None:
-                val = '0'
-            else:
-                val = cells[r][c].value
-            l += [val]
-            r += 1
-        f.write(str(l)[1:-1]+'\n')
-        #print l
-        c += 1
+    for item in sizes:
+        rname = 'Wind_Cost_Projections_' + item[0] + '_kw'
+        named_range = curWb.get_named_range(rname)
+        if named_range == None:
+            print rname, 'named range does not exist'
+            sys.exit(-1)
+        cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+        columns = len(cells[0])
+        rows = len(cells)
+        c = 0
+        while c < columns:
+            r = 0
+            l = []
+            while r < rows:
+                if cells[r][c].value == None:
+                    val = '0'
+                else:
+                    val = cells[r][c].value
+                l += [val]
+                r += 1
+            f.write(str(l)[1:-1] + ',' + item[0] + '\n')
+            #print l
+            c += 1
     f.seek(0)
     print 'Exporting wind_cost_projections'
     # use "COPY" to dump the data to the staging table in PG
@@ -117,10 +122,10 @@ def windPerf(curWb,schema,table,conn,cur):
             year = [cells[0][c].value]
             watt = cells[r][0].value
             if 'MW' in str(watt):
-                watt_int = [int(watt.replace('MW','').strip()) * 1000]
+                watt_flt = [float(watt.replace('MW','').strip()) * 1000]
             else:
-                watt_int = [int(watt.replace('kW','').strip())]
-            in_l = year + watt_int + l
+                watt_flt = [float(watt.replace('kW','').strip())]
+            in_l = year + watt_flt + l
             #print str(in_l).replace(" u'","").replace("'","")[1:-1]+'\n'
             f.write(str(in_l).replace(" u'","").replace("'","")[1:-1]+'\n')
             r += 1
@@ -264,7 +269,8 @@ def finParams(curWb,schema,table,conn,cur):
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
     cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
     conn.commit()
-    #Agricultural
+    #Agricultural (REMOVED 3/19/2014)
+    """
     named_range = curWb.get_named_range('Inputs_Agricultural')
     if named_range == None:
         print 'Inputs_Agricultural named range does not exist'
@@ -295,6 +301,7 @@ def finParams(curWb,schema,table,conn,cur):
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
     cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
     conn.commit()
+    """
     f.close()
 
 def depSched(curWb,schema,table,conn,cur):
@@ -348,6 +355,19 @@ def inpOpts(curWb,schema,table,conn,cur):
         sys.exit(-1)
     ann_inf = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
 
+    input_named_range = 'overwrite_exist_inc'
+    named_range = curWb.get_named_range(input_named_range)
+    if named_range == None:
+        print 'overwrite_exist_inc named range does not exist'
+        sys.exit(-1)
+    overwrite_exist = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
+
+    input_named_range = 'incent_start_year'
+    named_range = curWb.get_named_range(input_named_range)
+    if named_range == None:
+        print 'incent_start_year named range does not exist'
+        sys.exit(-1)
+    incent_startyear = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
 
     named_range = curWb.get_named_range('Input_Scenario_Options')
     if named_range == None:
@@ -367,12 +387,109 @@ def inpOpts(curWb,schema,table,conn,cur):
                 val = cells[r][c].value
             l += [val]
             r += 1
-        in_l = l + ann_inf + sc_name
-        f.write(str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1])
-        #print str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1]
         c += 1
+    named_range = curWb.get_named_range('Incentives_Utility_Type')
+    if named_range == None:
+        print 'Incentives_Utility_Type named range does not exist'
+        sys.exit(-1)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    columns = len(cells[0])
+    rows = len(cells)
+    c = 0
+    while c < columns:
+        r = 0
+        incent_utility = []
+        while r < rows:
+            if cells[r][c].value == None:
+                val = '0'
+            else:
+                val = cells[r][c].value
+            incent_utility += [val]
+            r += 1
+        c += 1
+
+    in_l = l + ann_inf + sc_name + overwrite_exist + incent_startyear + incent_utility
+    f.write(str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1])
+    #print str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1]
     f.seek(0)
-    print 'Exporting market_projections'
+    print 'Exporting scenario_options'
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+
+def manIncents(curWb,schema,table,conn,cur):
+
+    def findIncen(cells,c,incen_type):
+        try:
+            if 'Tax' in cells[0][c].value:
+                return 'Tax Incentives'
+            elif 'Production' in cells[0][c].value:
+                return 'Production Incentives'
+            elif 'Rebate' in cells[0][c].value:
+                return 'Rebate Incentives'
+        except:
+            return incen_type
+
+    def findSector(cells,c,sector_type):
+        if 'Residential' in cells[1][c].value:
+            return 'Residential'
+        elif 'Commercial' in cells[1][c].value:
+            return 'Commercial'
+        elif 'Industrial' in cells[1][c].value:
+            return 'Industrial'
+        else:
+            return sector_type
+
+    f = StringIO.StringIO()
+    named_range = curWb.get_named_range('Incentives_Values')
+    if named_range == None:
+        print 'Incentives_Values named range does not exist'
+        sys.exit(-1)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    columns = len(cells[0]) - 1
+    rows = len(cells)
+    r = 3
+    while r < rows:
+        c = 1
+        region = [cells[r][0].value]
+        budget = [cells[r][columns].value]
+        if budget == [None]:
+            budget = [0]
+        incen_type = ''
+        sector_type = ''
+        while c < columns:
+            l = []
+            parts = 3
+            p = 1
+            while p <= parts:
+                incen_type = findIncen(cells,c,incen_type)
+                sector_type = findSector(cells,c,sector_type)
+                if cells[r][c].value == None:
+                    val = '0'
+                else:
+                    val = cells[r][c].value
+                l += [val]
+                c += 1
+                p += 1
+
+            if l == ['0', '0', '0']:
+                continue
+            else:
+                if [incen_type] == ['Tax Incentives']:
+                    out = region + [incen_type] + [sector_type] + l + [0,0,0] + budget
+                    f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
+                if [incen_type] == ['Production Incentives']:
+                    out = region + [incen_type] + [sector_type] + [0] + [0] + [l[2]] + [l[0]] + [l[1]] + [0] + budget
+                    f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
+                if [incen_type] == ['Rebate Incentives']:
+                    out = region + [incen_type] + [sector_type] + [0] + [l[1]] + [l[2]] + [0] + [0] + [l[0]] + budget
+                    f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
+        r += 1
+    f.seek(0)
+    print 'Exporting manual_incentives'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
@@ -382,6 +499,7 @@ def inpOpts(curWb,schema,table,conn,cur):
 
 
 
-wb_loc = os.chdir(r'G:\140110_python_xl2pg\workbooks') #workbook location
+
+wb_loc = os.chdir(r'C:\ngrue\git\diffusion.git\excel') #workbook location
 main(wb_loc,None)
 
