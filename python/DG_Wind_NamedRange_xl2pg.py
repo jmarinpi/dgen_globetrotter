@@ -51,6 +51,9 @@ def main(wb_loc, conn):
             inpOpts(curWb,schema,table,conn,cur)
             table = 'manual_incentives'
             manIncents(curWb,schema,table,conn,cur)
+            table = 'user_defined_max_market_share'
+            maxMarket(curWb,schema,table,conn,cur)
+
 
 
         if close_conn:
@@ -490,6 +493,45 @@ def manIncents(curWb,schema,table,conn,cur):
         r += 1
     f.seek(0)
     print 'Exporting manual_incentives'
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+
+
+def maxMarket(curWb,schema,table,conn,cur):
+    f = StringIO.StringIO()
+    named_range = curWb.get_named_range('user_defined_max_market_share')
+    if named_range == None:
+        print 'user_defined_max_market_share named range does not exist'
+        sys.exit(-1)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    columns = len(cells[0])
+    rows = len(cells)
+    r = 2
+    while r < rows:
+        c = 1
+        l = []
+        while c < columns:
+            year = [cells[r][0].value]
+            if cells[r][c].value == None:
+                val = '0'
+            else:
+                val = cells[r][c].value
+            l += [val]
+            c += 1
+        sectors = ['Residential','Commercial','Industrial']
+        res_out = year + [sectors[0]] + l[:2]
+        com_out = year + [sectors[1]] + l[2:4]
+        ind_out = year + [sectors[2]] + l[4:]
+        f.write(str(res_out).replace(" '","").replace("'","")[1:-1]+'\n')
+        f.write(str(com_out).replace(" '","").replace("'","")[1:-1]+'\n')
+        f.write(str(ind_out).replace(" '","").replace("'","")[1:-1]+'\n')
+        r += 1
+    f.seek(0)
+    print 'Exporting user_defined_max_market_share'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
