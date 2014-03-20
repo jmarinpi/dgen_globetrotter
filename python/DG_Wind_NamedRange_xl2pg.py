@@ -14,7 +14,7 @@ import openpyxl as xl, traceback, os, glob, sys, psycopg2 as pg,logging, argpars
 import StringIO
 #from config import excelAlpha
 
-def makeConn(host='localhost',dbname='dav-gis', user='postgres', password='postgres', autocommit=True):
+def makeConn(host='gispgdb',dbname='dav-gis', user='ngrue', password='ngrue', autocommit=True):
     conn = pg.connect('host=%s dbname=%s user=%s password=%s' % (host, dbname, user, password))
     if autocommit:
         conn.set_isolation_level(pg.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
