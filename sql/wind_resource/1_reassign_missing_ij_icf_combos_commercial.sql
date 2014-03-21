@@ -188,6 +188,10 @@ ALTER TABLE wind_ds.ij_cfbin_lookup_com_pts_us
   ADD CONSTRAINT pt_gid_fkey FOREIGN KEY (pt_gid)
       REFERENCES wind_ds.pt_grid_us_com (gid) MATCH FULL
       ON UPDATE resTRICT ON DELETE resTRICT;
+-- add indices
+CREATE INDEX ij_cfbin_lookup_com_pts_us_i_btree ON wind_ds.ij_cfbin_lookup_com_pts_us using btree(i);
+CREATE INDEX ij_cfbin_lookup_com_pts_us_j_btree ON wind_ds.ij_cfbin_lookup_com_pts_us using btree(j);
+CREATE INDEX ij_cfbin_lookup_com_pts_us_cf_bin_btree ON wind_ds.ij_cfbin_lookup_com_pts_us using btree(cf_bin);
 
 -- test that everything worked
 SELECT a.gid, b.i, b.j, b.cf_bin, b.aep_scale_factor, c.aep as aep_raw, c.aep*b.aep_scale_factor as aep_adjusted
@@ -202,3 +206,4 @@ where c.height = 50
 and c.turbine_id = 1
 -- limit 100
 and c.aep is null; -- none are returned, so all points are being linked to aep values!!!
+

@@ -72,6 +72,7 @@ CREATE TABLE wind_ds.wind_resource_annual (
 -- add check constraint on turbine_id
 -- add foreign key constraint to wind_ds.turbines table
 -- add primary keys (use combos of i, j, icf, and height for now, 
+-- add indices on height and turbine_id
 	-- but maybe it would be better to link each of these to an iiijjjicf index from iiijjjicf_lookup?)
 
 	--current small
@@ -88,7 +89,6 @@ CREATE TABLE wind_ds.wind_resource_annual (
 	ALTER TABLE wind_ds_data.wind_resource_current_small_turbine
 		ADD CONSTRAINT wind_resource_current_small_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
-
 	--current mid
 	ALTER TABLE wind_ds_data.wind_resource_current_mid_turbine INHERIT wind_ds.wind_resource_annual;
 
@@ -101,7 +101,7 @@ CREATE TABLE wind_ds.wind_resource_annual (
 		ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 	ALTER TABLE wind_ds_data.wind_resource_current_mid_turbine
-		ADD CONSTRAINT wind_resource_current_mid_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
+		ADD CONSTRAINT wind_resource_current_mid_turbine_pkey PRIMARY KEY(i, j, cf_bin, height, turbine_id);
 
 
 	--current large
