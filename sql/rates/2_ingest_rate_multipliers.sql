@@ -3,7 +3,7 @@ DROP TABLE IF EXISTS dg_wind.rate_escalations;
 CREATE TABLE dg_wind.rate_escalations (
 	census_division text,
 	sector text,
-	year text,
+	year integer,
 	escalation_factor numeric);
 
 -- load the data
