@@ -162,6 +162,18 @@ CREATE INDEX annual_ave_elec_rates_2011_the_geom_900914_gist ON wind_ds.annual_a
 CREATE INDEX annual_ave_elec_rates_2011_the_geom_900915_gist ON wind_ds.annual_ave_elec_rates_2011 USING gist(the_geom_900915);
 CREATE INDEX annual_ave_elec_rates_2011_the_geom_900916_gist ON wind_ds.annual_ave_elec_rates_2011 USING gist(the_geom_900916);
 
+CREATE INDEX annual_ave_elec_rates_2011_ind_rates_btree ON wind_ds.annual_ave_elec_rates_2011 USING btree(ind_cents_per_kwh)
+where ind_cents_per_kwh is null;
 
+CREATE INDEX annual_ave_elec_rates_2011_res_rates_btree ON wind_ds.annual_ave_elec_rates_2011 USING btree(res_cents_per_kwh)
+where res_cents_per_kwh is null;
+
+CREATE INDEX annual_ave_elec_rates_2011_comm_rates_btree ON wind_ds.annual_ave_elec_rates_2011 USING btree(comm_cents_per_kwh)
+where comm_cents_per_kwh is null;
 
 VACUUM ANALYZE wind_ds.annual_ave_elec_rates_2011;
+
+-- check that there are no zero rates
+select *
+FROM wind_ds.annual_ave_elec_rates_2011
+where comm_cents_per_kwh = 0

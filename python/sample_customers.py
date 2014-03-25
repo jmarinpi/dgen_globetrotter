@@ -87,6 +87,9 @@ def getNRandomRows(table, N, column_names = None, group_fields = None, weight_fi
 
 customer_bins = 100
 random_generator_seed = 1
+oversize_factor = 1.15
+undersize_factor = 0.5
+
 #sectors = {'res':'residential','com':'commercial','ind':'industrial'}
 sectors = {'res':'residential'}
 
@@ -116,7 +119,7 @@ for sector in sectors.keys():
             AND b.sector = '%s')\
         SELECT a.*, b.ann_cons_kwh, b.prob, b.weight, \
                 a.county_total_customers_2011 * b.weight/sum(weight) OVER (PARTITION BY a.county_id) as customers_in_bin, \
-                a.county_total_load_mwh_2011 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_mwh_in_bin\
+                a.county_total_load_mwh_2011 * 1000* (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin\
         FROM %s a\
         LEFT JOIN weighted_county_sample b\
         ON a.county_id = b.county_id\

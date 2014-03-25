@@ -93,7 +93,7 @@ DROP TABLE IF EXISTS wind_ds_data.no_county_pts_com_closest;
 
 -- iii, jjj, icf (from raster)
 DROP TABLE IF EXISTS wind_ds_data.pt_grid_us_com_iiijjjicf_id_lookup;
-CREATE TABLE wind_ds_datapt_grid_us_com_iiijjjicf_id_lookup (
+CREATE TABLE wind_ds_data.pt_grid_us_com_iiijjjicf_id_lookup (
 	gid integer,
 	iiijjjicf_id integer);
 
@@ -117,10 +117,8 @@ CREATE TABLE wind_ds_datapt_grid_us_com_iiijjjicf_id_lookup (
 
 	CREATE INDEX pt_grid_us_com_iiijjjicf_id_btree ON wind_ds.pt_grid_us_com USING btree(iiijjjicf_id);
 
-	VACUUM ANALYZE wind_ds.pt_grid_us_com;
-
 	-- check for points with no iiijjjicf
-	SELECT *
+	SELECT count(*)
 	FROM wind_ds.pt_grid_us_com
 	where iiijjjicf_id is null;
 	
@@ -156,7 +154,7 @@ CREATE TABLE wind_ds_datapt_grid_us_com_iiijjjicf_id_lookup (
 	and a.iiijjjicf_id is null;
 
 	-- check no nulls remain
-	SELECT *
+	SELECT count(*)
 	FROM wind_ds.pt_grid_us_com
 	where iiijjjicf_id is null; 
 
@@ -403,7 +401,8 @@ SELECT parsel_2('dav-gis','wind_ds.pt_grid_us_com','gid',
 		'SELECT a.gid, b.gid as annual_rate_gid
 		FROM  wind_ds.pt_grid_us_com a
 		INNER JOIN wind_ds.annual_ave_elec_rates_2011 b
-		ON ST_Intersects(a.the_geom_4326,b.the_geom_4326);',
+		ON ST_Intersects(a.the_geom_4326,b.the_geom_4326)
+		WHERE b.comm_cents_per_kwh IS NOT NULL;',
 	'wind_ds_data.pt_grid_us_com_annual_rate_gid_lookup', 'a',16);
 
 -- join the info back in
@@ -434,6 +433,7 @@ where a.gid = b.gid;
 	SELECT a.gid, a.the_geom_900914, 
 		unnest((select array(SELECT b.gid
 		 FROM wind_ds.annual_ave_elec_rates_2011 b
+		 WHERE b.comm_cents_per_kwh IS NOT NULL
 		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914 LIMIT 5))) as rate_gid
 	FROM wind_ds.pt_grid_us_com a
 	where a.annual_rate_gid is null

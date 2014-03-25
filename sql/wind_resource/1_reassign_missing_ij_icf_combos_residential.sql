@@ -12,7 +12,7 @@ and b.jjj = c.jjj
 and b.icf = c.icf
 
 where c.i is null; -- this filters down to the ones for which there is no matching i, j, icf combo with elev and tmy data
--- 871,105  points
+-- 871,114  points
 
 CREATE INDEX missing_ij_icf_res_points_the_geom_900914_gist ON wind_ds_data.missing_ij_icf_res_points using gist(the_geom_900914);
 
@@ -39,7 +39,7 @@ with same_cell as (
 SELECT gid, iii, jjj, i, j, cf_bin, adjusted_cf_bin
 FROM same_cell
 where adjusted_cf_bin is not null;
--- 594,395   rows (about 2/3 of the points)
+-- 594,407   rows (about 2/3 of the points)
 
 
 
@@ -108,7 +108,7 @@ ON a.gid = b.gid
 lEFT JOIN wind_ds_data.res_points_adjusted_1cfbin c
 ON a.gid = c.gid
 where b.gid is null and c.gid is null;
--- 37,273  still have no data
+-- 37,270  still have no data
 
 -- for the remaining points, pick the closest cfbin in the same ij cell
 DROP TABLE IF EXISTS wind_ds_data.res_points_adjusted_multi_cfbins;
@@ -131,7 +131,7 @@ where adjusted_cf_bin is null;
 DROP TABLE IF EXISTS wind_ds.ij_cfbin_lookup_res_pts_us;
 CREATE TABLE wind_ds.ij_cfbin_lookup_res_pts_us AS
 with notmissing as (
-	SELECT a.gid as pt_gid, b.iii::integer as i, b.jjj::integer as j, b.icf::integer/10 as cf_bin, 1::integer as aep_scale_factor
+	SELECT a.gid as pt_gid, b.iii::integer as i, b.jjj::integer as j, b.icf::integer/10 as cf_bin, 1::numeric as aep_scale_factor
 	FROM wind_ds.pt_grid_us_res a
 
 	LEFT JOIN wind_ds.iiijjjicf_lookup b
@@ -144,15 +144,15 @@ with notmissing as (
 
 	where c.i is NOT null),
 adjusted_1cfbin as (
-	SELECT gid as pt_gid, i, j, adjusted_cf_bin as cf_bin, cf_bin/adjusted_cf_bin as aep_scale_factor
+	SELECT gid as pt_gid, i, j, adjusted_cf_bin as cf_bin, cf_bin::numeric/adjusted_cf_bin::numeric as aep_scale_factor
 	FROM wind_ds_data.res_points_adjusted_1cfbin
 ),
 adjusted_ij AS (
-	SELECT gid as pt_gid, near_i as i, near_j as j, adjusted_cf_bin as cf_bin, cf_bin/adjusted_cf_bin as aep_scale_factor
+	SELECT gid as pt_gid, near_i as i, near_j as j, adjusted_cf_bin as cf_bin, cf_bin::numeric/adjusted_cf_bin::numeric as aep_scale_factor
 	FROM wind_ds_data.res_points_adjusted_ij
 	),
 adjusted_multi_cfbins as (
-	SELECT gid as pt_gid, i, j, adjusted_cf_bin as cf_bin, cf_bin/adjusted_cf_bin as aep_scale_factor
+	SELECT gid as pt_gid, i, j, adjusted_cf_bin as cf_bin, cf_bin::numeric/adjusted_cf_bin::numeric as aep_scale_factor
 	FROM wind_ds_data.res_points_adjusted_multi_cfbins
 )
 SELECT *
@@ -176,7 +176,7 @@ FROM adjusted_multi_cfbins;
 -- count should match wind_ds.pt_grid_us_res
 
 SELECT count(*)
-FROM wind_ds.pt_grid_us_res a
+FROM wind_ds.pt_grid_us_res a;
 --6273234 rows (and it does!)
 
 
@@ -191,6 +191,12 @@ ALTER TABLE wind_ds.ij_cfbin_lookup_res_pts_us
 CREATE INDEX ij_cfbin_lookup_res_pts_us_i_btree ON wind_ds.ij_cfbin_lookup_res_pts_us using btree(i);
 CREATE INDEX ij_cfbin_lookup_res_pts_us_j_btree ON wind_ds.ij_cfbin_lookup_res_pts_us using btree(j);
 CREATE INDEX ij_cfbin_lookup_res_pts_us_cf_bin_btree ON wind_ds.ij_cfbin_lookup_res_pts_us using btree(cf_bin);
+
+-- check for scale factors of zero
+select *
+FROM wind_ds.ij_cfbin_lookup_res_pts_us
+where aep_scale_factor = 0;
+-- do any occur? if so, figure out why
 
 -- test that everything worked
 SELECT a.gid, b.i, b.j, b.cf_bin, b.aep_scale_factor, c.aep as aep_raw, c.aep*b.aep_scale_factor as aep_adjusted

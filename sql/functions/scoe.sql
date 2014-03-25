@@ -1,7 +1,7 @@
--- DROP FUNCTION wind_ds.scoe()
+-- DROP FUNCTION wind_ds.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, oversize_factor numeric, undersize_factor numeric);
 SET ROLE 'server-superusers';
-CREATE OR REPLACE FUNCTION wind_ds.scoe(ic numeric, fom numeric, cap numeric, aec numeric, oversize_factor numeric default 1.15, undersize_factor numeric default 0.5)
-  RETURNS numeric[] AS
+CREATE OR REPLACE FUNCTION wind_ds.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, oversize_factor numeric default 1.15, undersize_factor numeric default 0.5)
+  RETURNS float AS
   $BODY$
 
     """ Calculate simple metric for evaluating optimal capacity-height among several
@@ -13,9 +13,9 @@ CREATE OR REPLACE FUNCTION wind_ds.scoe(ic numeric, fom numeric, cap numeric, ae
            ic  - Installed Cost ($/kW)
            fom - Fixed O&M ($/kW-yr)
            vom - Variable O&M ($/kWh)
-           aep - Annual Elec Production (kWh/yr)
+           naep - Annual Elec Production (kWh/kw/yr)
            cap - Proposed capacity (kW)
-           aec - Annual Electricity Consumption (kWh/yr)
+           ann_elec_cons - Annual Electricity Consumption (kWh/customer/yr)
            oversize_factor - Severe penalty for  proposed capacities whose aep exceed
                              annual electricity consumption by 15% (default)
            undersize_factor - Small penalty for proposed capacities whose aep is beneath
@@ -24,16 +24,17 @@ CREATE OR REPLACE FUNCTION wind_ds.scoe(ic numeric, fom numeric, cap numeric, ae
        OUT:
            scoe - numpy array - simple lcoe (lower is better)
     """
-    
-    scoe = (ic + 30 * fom + 30 * aep * vom) / (30 * aep) # $/kWh
-    oversized = (aep * cap / ann_elec_cons) > oversize_factor
-    undersized = (aep * cap / ann_elec_cons) < undersize_factor
-    scoe = scoe + oversized * 10 + undersized * 0.1 # Penalize under/over sizing    
-     
-    return scoe
+    if naep == 0:
+        return float('inf')
+    else:
+        scoe = (ic + 30 * fom + 30 * naep * vom) / (30 * naep) # $/kWh
+        oversized = (naep * cap / ann_elec_cons) > oversize_factor
+        undersized = (naep * cap / ann_elec_cons) < undersize_factor
+        scoe = scoe + oversized * 10 + undersized * 0.1 # Penalize under/over sizing    
+         
+        return scoe
 
   $BODY$
   LANGUAGE plpythonu stable
   COST 100;
 RESET ROLE;
-

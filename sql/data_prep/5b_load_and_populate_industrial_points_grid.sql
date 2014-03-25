@@ -120,7 +120,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_ind_iiijjjicf_id_lookup (
 	CREATE INDEX pt_grid_us_ind_iiijjjicf_id_btree ON wind_ds.pt_grid_us_ind USING btree(iiijjjicf_id);
 
 	-- check for points with no iiijjjicf
-	SELECT *
+	SELECT count(*)
 	FROM wind_ds.pt_grid_us_ind
 	where iiijjjicf_id is null;
 
@@ -399,7 +399,8 @@ SELECT parsel_2('dav-gis','wind_ds.pt_grid_us_ind','gid',
 		'SELECT a.gid, b.gid as annual_rate_gid
 		FROM  wind_ds.pt_grid_us_ind a
 		INNER JOIN wind_ds.annual_ave_elec_rates_2011 b
-		ON ST_Intersects(a.the_geom_4326,b.the_geom_4326);',
+		ON ST_Intersects(a.the_geom_4326,b.the_geom_4326)
+		WHERE b.ind_cents_per_kwh IS NOT NULL;',
 	'wind_ds_data.pt_grid_us_ind_annual_rate_gid_lookup', 'a',16);
 
 -- join the info back in
@@ -430,6 +431,7 @@ where a.gid = b.gid;
 	SELECT a.gid, a.the_geom_900914, 
 		unnest((select array(SELECT b.gid
 		 FROM wind_ds.annual_ave_elec_rates_2011 b
+		 WHERE b.ind_cents_per_kwh IS NOT NULL
 		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914 LIMIT 5))) as rate_gid
 	FROM wind_ds.pt_grid_us_ind a
 	where a.annual_rate_gid is null

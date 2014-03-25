@@ -1,12 +1,13 @@
 -- load iiijjjicf lookup table
 
 -- load temporary table with all columsn
+DROP TABLE IF EXISTS dg_wind.iiijjjicf_temp;
 CREATE TABLE dg_wind.iiijjjicf_temp (
 	row_id integer,
 	value integer,
 	count integer,
-	icf80 character varying(3),
 	ijid integer,
+	icf80 character varying(3),
 	iiijjj character varying(6),
 	iiijjjicf character varying(9));
 SET ROLE "server-superusers";

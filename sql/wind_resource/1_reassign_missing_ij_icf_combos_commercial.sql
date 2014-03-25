@@ -40,7 +40,7 @@ with same_cell as (
 SELECT gid, iii, jjj, i, j, cf_bin, adjusted_cf_bin
 FROM same_cell
 where adjusted_cf_bin is not null;
--- 576,770    rows (about 2/3 of the points)
+-- 576,769    rows (about 2/3 of the points)
 
 
 
@@ -96,10 +96,10 @@ SELECT distinct on (a.gid) a.gid, a.the_geom_900914, a.iii, a.jjj, a.icf, a.i, a
 FROM nn_cfs a
 where adjusted_cf_bin is NOT null
 order by a.gid, nn_rank asc;
--- 255,802 points
+-- 255,803 points
 
 
--- find everything that is still missing wind comource data
+-- find everything that is still missing wind resource data
 DROP TABLE IF EXISTS wind_ds_data.remaining_missing_com_points;
 CREATE TABLE wind_ds_data.remaining_missing_com_points AS
 SELECT a.*
@@ -145,15 +145,15 @@ with notmissing as (
 
 	where c.i is NOT null),
 adjusted_1cfbin as (
-	SELECT gid as pt_gid, i, j, adjusted_cf_bin as cf_bin, cf_bin/adjusted_cf_bin as aep_scale_factor
+	SELECT gid as pt_gid, i, j, adjusted_cf_bin as cf_bin, cf_bin::numeric/adjusted_cf_bin::numeric as aep_scale_factor
 	FROM wind_ds_data.com_points_adjusted_1cfbin
 ),
 adjusted_ij AS (
-	SELECT gid as pt_gid, near_i as i, near_j as j, adjusted_cf_bin as cf_bin, cf_bin/adjusted_cf_bin as aep_scale_factor
+	SELECT gid as pt_gid, near_i as i, near_j as j, adjusted_cf_bin as cf_bin, cf_bin::numeric/adjusted_cf_bin::numeric as aep_scale_factor
 	FROM wind_ds_data.com_points_adjusted_ij
 	),
 adjusted_multi_cfbins as (
-	SELECT gid as pt_gid, i, j, adjusted_cf_bin as cf_bin, cf_bin/adjusted_cf_bin as aep_scale_factor
+	SELECT gid as pt_gid, i, j, adjusted_cf_bin as cf_bin, cf_bin::numeric/adjusted_cf_bin::numeric as aep_scale_factor
 	FROM wind_ds_data.com_points_adjusted_multi_cfbins
 )
 SELECT *
@@ -192,6 +192,13 @@ ALTER TABLE wind_ds.ij_cfbin_lookup_com_pts_us
 CREATE INDEX ij_cfbin_lookup_com_pts_us_i_btree ON wind_ds.ij_cfbin_lookup_com_pts_us using btree(i);
 CREATE INDEX ij_cfbin_lookup_com_pts_us_j_btree ON wind_ds.ij_cfbin_lookup_com_pts_us using btree(j);
 CREATE INDEX ij_cfbin_lookup_com_pts_us_cf_bin_btree ON wind_ds.ij_cfbin_lookup_com_pts_us using btree(cf_bin);
+
+-- check for scale factors of zero
+select *
+FROM wind_ds.ij_cfbin_lookup_com_pts_us
+where aep_scale_factor = 0;
+-- do any occur? if so, figure out why
+
 
 -- test that everything worked
 SELECT a.gid, b.i, b.j, b.cf_bin, b.aep_scale_factor, c.aep as aep_raw, c.aep*b.aep_scale_factor as aep_adjusted

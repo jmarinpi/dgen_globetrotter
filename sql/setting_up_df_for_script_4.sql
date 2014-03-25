@@ -1,7 +1,16 @@
+-- need to account for the following wonkiness in this process:
+	-- naep = 0
+		-- this is handled on input to scoe -- if aep = 0, infinity is returned
+	-- maxheight_m_popdens = 0
+		-- split these out of the analysis and stash them away some where
+	-- load = 0
+		-- could do this from the outset -- just ignore counties where 
+
+
 -- randomly sample  100 points from each county (note: some counties will have fewer)
-DROP TABLE IF EXISTS wind_ds.wind_ds.pt_grid_us_res_sample;
-CREATE TABLE wind_ds.wind_ds.pt_grid_us_res_sample
+DROP TABLE IF EXISTS wind_ds.pt_grid_us_res_sample;
 SET LOCAL SEED TO 1;
+CREATE TABLE wind_ds.pt_grid_us_res_sample AS
 WITH a as (
 	SELECT *, ROW_NUMBER() OVER (PARTITION BY county_id order by random()) as row_number
 	FROM wind_ds.pt_grid_us_res_joined)
@@ -27,7 +36,8 @@ SELECT a.*, b.ann_cons_kwh, b.prob, b.weight,
 FROM wind_ds.pt_grid_us_res_sample a
 LEFT JOIN weighted_county_sample b
 ON a.county_id = b.county_id
-and a.row_number = b.row_number;
+and a.row_number = b.row_number
+where county_total_load_mwh_2011 > 0;
 
 -- these data will stay the same through the rest of the analysis, so its worht the overhead of indexing them
 -- create indices
@@ -107,16 +117,6 @@ where a.maxheight_m_popdens > 0;
 
 
 
--- need to account for the following wonkiness:
-	-- naep = 0
-	-- maxheight_m_popdens = 0
-	-- load = 0
-
-
-
--- could further subset on:
--- and e.turbine_size_kw*1000
---  cf_min * turbine_size_kw *(8760/1000) < oversize_factor * load_mwh
 
 
 
@@ -195,4 +195,10 @@ SELECT distinct on (k.gid) k.gid, k.county_id, k.state_abbr, k.census_division_a
        k.aep_scale_factor, k.naep, k.turbine_size_kw, k.turbine_id, k.turbine_height_m, k.scoe
 FROM k
 order by k.gid, k.scoe asc;
+-- 331143 ms
+-- 273507 rows
 
+-- check row count
+SELECT distinct(gid)
+FROM wind_ds.pt_grid_us_res_sample_load
+where maxheight_m_popdens > 0
