@@ -8,6 +8,7 @@ Created on Wed Mar 19 15:05:55 2014
 import pandas as pd
 import pandas.io.sql as sqlio
 import psycopg2 as pg
+import time
 
 # initialize a string that holds all of the Postgres connection parameters
 pg_params = "dbname=dav-gis user=mgleason password=mgleason host=gispgdb.nrel.gov" 
@@ -18,7 +19,7 @@ conn = pg.connect(pg_params)
 # create cursor
 cur = conn.cursor()
 
-def getNRandomRows(table, N, group_fields = None, weight_field = None, seed = 1, out_table = None):
+def getNRandomRows(table, N, column_names = None, group_fields = None, weight_field = None, seed = 1, out_table = None):
     
     '''
         Function to randomly sample N rows from a table or from partitions of a table, specified by group_fields.
@@ -36,15 +37,20 @@ def getNRandomRows(table, N, group_fields = None, weight_field = None, seed = 1,
     else:
         order_by = 'ORDER BY random()'
     
+
+    if column_names is not None:
+        columns = ','.join(column_names)
+    else:
+        columns = '*'
     
     # this is the main sampling code
     # depending on how the data will be returned (new table or pandas df), it will be inserted into wrapper sql
     sample_query = "WITH a as (\
-                	SELECT *, ROW_NUMBER() OVER (%s %s) as row_number\
+                	SELECT %s, ROW_NUMBER() OVER (%s %s) as row_number\
                 	FROM %s)\
                 SELECT *\
                 FROM a\
-                where row_number <= %s" % (partition_by, order_by, table, N)    
+                where row_number <= %s" % (columns, partition_by, order_by, table, N)    
     
     if out_table is not None:
         # drop the table if it existed
@@ -81,7 +87,12 @@ def getNRandomRows(table, N, group_fields = None, weight_field = None, seed = 1,
 
 customer_bins = 100
 random_generator_seed = 1
-sectors = {'res':'residential','com':'commercial','ind':'industrial'}
+#sectors = {'res':'residential','com':'commercial','ind':'industrial'}
+sectors = {'res':'residential'}
+
+# other vars we need:
+starting_year = 2014
+exclusions = ''
 
 for sector in sectors.keys():
     if sector == 'ind' and customer_bins >= 83:
@@ -94,7 +105,9 @@ for sector in sectors.keys():
     print result
     
     # join to customer bins
+    pts_load = 'wind_ds.pt_grid_us_%s_sample_load' % sector
     sql = "SET LOCAL SEED TO %s;\
+            CREATE TABLE %s AS \
             WITH weighted_county_sample as (\
                 SELECT a.county_id, row_number() OVER (PARTITION BY a.county_id ORDER BY random() * b.prob) as row_number, b.*\
                 FROM wind_ds.county_geom a\
@@ -107,26 +120,14 @@ for sector in sectors.keys():
         FROM %s a\
         LEFT JOIN weighted_county_sample b\
         ON a.county_id = b.county_id\
-        and a.row_number = b.row_number;" % (random_generator_seed, customer_bins, sectors[sector], pts_sample_table)
-    df = sqlio.read_frame(sql, conn)
-    crash
+        and a.row_number = b.row_number;" % (random_generator_seed, pts_load, customer_bins, sectors[sector], pts_sample_table)
+    cur.execute(sql)
+    conn.commit()
     
-    # next step is to:
-        # find counties with sample size>= customer_bins
-            # just use row number
-            # randomly assign to binned_annual_load_bins (just keep load bins in sequential order and join on census region)  
-        # find counties with sample size < customer bins:
-            # randomly sample N (N=sample size in county) from load bins with weighted sampling
-            
-            
-    # think i can just do:
-#        set local seed to 1;
-#        SELECT *, ROW_NUMBER() OVER (PARTITION BY census_region,sector ORDER BY random() * prob) as row_number
-#        FROM wind_ds.binned_annual_load_kwh_50_bins
-
-    # then inner join to sampled points on census_region and row_number
-    # and 
-
+    # join to all combinations of resource values
+    # see code in setting_up_df_for_script_3.sql
+    
+    # looking to return data frame with best turbine only and all related costs
 
 
 

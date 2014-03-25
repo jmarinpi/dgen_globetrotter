@@ -437,11 +437,15 @@ def manIncents(curWb,schema,table,conn,cur):
             return incen_type
 
     def findSector(cells,c,sector_type):
-        if 'Residential' in cells[1][c].value:
+        merged_range = cells[1][c-2:c+1]
+        values = [cell.value for cell in merged_range]
+        
+        if 'Residential' in values:
             return 'Residential'
-        elif 'Commercial' in cells[1][c].value:
+        elif 'Commercial' in values:
             return 'Commercial'
-        elif 'Industrial' in cells[1][c].value:
+        elif 'Industrial' in values:
+            #cells[1][c].value
             return 'Industrial'
         else:
             return sector_type
@@ -542,6 +546,7 @@ def maxMarket(curWb,schema,table,conn,cur):
 
 
 
-wb_loc = os.chdir(r'C:\ngrue\git\diffusion.git\excel') #workbook location
+#wb_loc = os.chdir(r'C:\ngrue\git\diffusion.git\excel') #workbook location
+wb_loc = os.chdir(r'S:\mgleason\DG_Wind\diffusion_repo\excel')
 main(wb_loc,None)
 
