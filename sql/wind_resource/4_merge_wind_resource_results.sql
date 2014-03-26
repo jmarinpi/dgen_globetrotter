@@ -89,6 +89,9 @@ CREATE TABLE wind_ds.wind_resource_annual (
 	ALTER TABLE wind_ds_data.wind_resource_current_small_turbine
 		ADD CONSTRAINT wind_resource_current_small_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
+	CREATE INDEX wind_resource_current_small_turbine_i_j_cf_bin_btree ON wind_ds_data.wind_resource_current_small_turbine using btree(i,j,cf_bin);
+	CREATE INDEX wind_resource_current_small_turbine_height_btree ON wind_ds_data.wind_resource_current_small_turbine using btree(height);
+
 	--current mid
 	ALTER TABLE wind_ds_data.wind_resource_current_mid_turbine INHERIT wind_ds.wind_resource_annual;
 
@@ -101,8 +104,10 @@ CREATE TABLE wind_ds.wind_resource_annual (
 		ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 	ALTER TABLE wind_ds_data.wind_resource_current_mid_turbine
-		ADD CONSTRAINT wind_resource_current_mid_turbine_pkey PRIMARY KEY(i, j, cf_bin, height, turbine_id);
+		ADD CONSTRAINT wind_resource_current_mid_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
+	CREATE INDEX wind_resource_current_mid_turbine_i_j_cf_bin_btree ON wind_ds_data.wind_resource_current_mid_turbine using btree(i,j,cf_bin);
+	CREATE INDEX wind_resource_current_mid_turbine_height_btree ON wind_ds_data.wind_resource_current_mid_turbine using btree(height);
 
 	--current large
 	ALTER TABLE wind_ds_data.wind_resource_current_large_turbine INHERIT wind_ds.wind_resource_annual;
@@ -118,6 +123,8 @@ CREATE TABLE wind_ds.wind_resource_annual (
 	ALTER TABLE wind_ds_data.wind_resource_current_large_turbine
 		ADD CONSTRAINT wind_resource_current_large_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
+	CREATE INDEX wind_resource_current_large_turbine_i_j_cf_bin_btree ON wind_ds_data.wind_resource_current_large_turbine using btree(i,j,cf_bin);
+	CREATE INDEX wind_resource_current_large_turbine_height_btree ON wind_ds_data.wind_resource_current_large_turbine using btree(height);
 
 	--near future small
 	ALTER TABLE wind_ds_data.wind_resource_nearfuture_small_turbine INHERIT wind_ds.wind_resource_annual;
@@ -133,6 +140,9 @@ CREATE TABLE wind_ds.wind_resource_annual (
 	ALTER TABLE wind_ds_data.wind_resource_nearfuture_small_turbine
 		ADD CONSTRAINT wind_resource_nearfuture_small_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
+	CREATE INDEX wind_resource_nearfuture_small_turbine_i_j_cf_bin_btree ON wind_ds_data.wind_resource_nearfuture_small_turbine using btree(i,j,cf_bin);
+	CREATE INDEX wind_resource_nearfuture_small_turbine_height_btree ON wind_ds_data.wind_resource_nearfuture_small_turbine using btree(height);
+
 	--near future mid and large
 	ALTER TABLE wind_ds_data.wind_resource_nearfuture_mid_and_large_turbine INHERIT wind_ds.wind_resource_annual;
 
@@ -146,6 +156,10 @@ CREATE TABLE wind_ds.wind_resource_annual (
 
 	ALTER TABLE wind_ds_data.wind_resource_nearfuture_mid_and_large_turbine
 		ADD CONSTRAINT wind_resource_nearfuture_mid_and_large_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
+
+	CREATE INDEX wind_resource_nearfuture_mid_and_large_turbine_i_j_cf_bin_btree ON wind_ds_data.wind_resource_nearfuture_mid_and_large_turbine using btree(i,j,cf_bin);
+	CREATE INDEX wind_resource_nearfuture_mid_and_large_turbine_height_btree ON wind_ds_data.wind_resource_nearfuture_mid_and_large_turbine using btree(height);
+
 
 	--future small
 	ALTER TABLE wind_ds_data.wind_resource_future_small_turbine INHERIT wind_ds.wind_resource_annual;
@@ -162,6 +176,10 @@ CREATE TABLE wind_ds.wind_resource_annual (
 		ADD CONSTRAINT wind_resource_future_small_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
 
+	CREATE INDEX wind_resource_future_small_turbine_i_j_cf_bin_btree ON wind_ds_data.wind_resource_future_small_turbine using btree(i,j,cf_bin);
+	CREATE INDEX wind_resource_future_small_turbine_height_btree ON wind_ds_data.wind_resource_future_small_turbine using btree(height);
+
+
 	--future mid and large
 	ALTER TABLE wind_ds_data.wind_resource_future_mid_and_large_turbine INHERIT wind_ds.wind_resource_annual;
 
@@ -176,5 +194,7 @@ CREATE TABLE wind_ds.wind_resource_annual (
 	ALTER TABLE wind_ds_data.wind_resource_future_mid_and_large_turbine
 		ADD CONSTRAINT wind_resource_future_mid_and_large_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
+	CREATE INDEX wind_resource_future_mid_and_large_turbine_i_j_cf_bin_btree ON wind_ds_data.wind_resource_future_mid_and_large_turbine using btree(i,j,cf_bin);
+	CREATE INDEX wind_resource_future_mid_and_large_turbine_height_btree ON wind_ds_data.wind_resource_future_mid_and_large_turbine using btree(height);
 
 
