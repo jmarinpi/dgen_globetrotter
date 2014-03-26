@@ -12,7 +12,7 @@ from collections import Iterable
 
 #==============================================================================
 
-def calc_cashflows(df,value_of_incentive, value_of_rebate, deprec_schedule, yrs = 30):
+def calc_cashflows(df,deprec_schedule,value_of_incentive = 0, value_of_rebate = 0,  yrs = 30):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 
@@ -30,7 +30,7 @@ def calc_cashflows(df,value_of_incentive, value_of_rebate, deprec_schedule, yrs 
     
         IN:
             df - pandas dataframe - dataframe containing: [ic ($), loan_rate, 
-                                    loan_term, downpay_frac, vom ($/kWh), fom ($/kW-yr), 
+                                    loan_term, down_payment, vom ($/kWh), fom ($/kW-yr), 
                                     rate_growth, aep (kWh/kW), avg_rate, cap (kW), tax_rt, sector]
             value_of_incentive
             value_of_rebate
@@ -42,23 +42,26 @@ def calc_cashflows(df,value_of_incentive, value_of_rebate, deprec_schedule, yrs 
         
 """                
     # default is 30 year analysis periods
-    shape=(len(df),yrs);  
-    
+    shape=(len(df),yrs); 
+    df['cap'] = df['turbine_size_kw']
+    df['ic'] = df['installed_costs_dollars_per_kw'] * df['turbine_size_kw']
+    df['aep'] = df['naep'] * df['turbine_size_kw']
     ## COSTS    
     
     # 1)  Cost of servicing loan
     loan_cost = np.zeros(shape); 
-    crf = (df.loan_rate*(1 + df.loan_rate)**df.loan_term) / ( (1+df.loan_rate)**df.loan_term - 1);
-    pmt = - (1 - df.downpay_frac)* df.ic * crf    
+    crf = (df.loan_rate*(1 + df.loan_rate)**df.loan_term_yrs) / ( (1+df.loan_rate)**df.loan_term_yrs - 1);
+    pmt = - (1 - df.down_payment)* df.ic * crf    
     
-    for i in range(len(cost)): ## VECTORIZE THIS ##
-        loan_cost[i][:df.loan_term[i]] = [pmt[i]] * df.loan_term[i]
-    loan_cost[:,0] -= ic * df.downpay_frac 
+    for i in range(len(loan_cost)): ## VECTORIZE THIS ##
+        loan_cost[i][:df.loan_term_yrs[i]] = [pmt[i]] * df.loan_term_yrs[i]
+    loan_cost[:,0] -= df.ic * df.down_payment 
 
     # 2) Costs of fixed & variable O&M
     om_cost = np.zeros(shape);
-    om_cost[:] = np.array([-df.vom * aep * df.cap]).T
-    om_cost[:] +=  np.array([-df.fom * df.cap]).T
+    om_cost[:] =   (-df.variable_om_dollars_per_kwh * df.naep * df.cap)[:,np.newaxis]
+    om_cost[:] +=  (-df.fixed_om_dollars_per_kw_per_yr * df.cap)[:,np.newaxis]
+    
     
     ## Revenue
 
@@ -67,14 +70,17 @@ def calc_cashflows(df,value_of_incentive, value_of_rebate, deprec_schedule, yrs 
     
     tmp = np.empty(shape)
     tmp[:,0] = 1
-    tmp[:,1:] = np.array([df.rate_growth]).T
+    tmp[:,1:] = df.cust_expected_rate_growth[:,np.newaxis]
     rate_growth_mult = np.cumprod(tmp, axis = 1)
-    generation_revenue = np.array([df.aep * df.avg_rate * df.cap]).T  * rate_growth_mult
+    generation_revenue = (df.aep * 0.01 * df.elec_rate_cents_per_kwh)[:,np.newaxis] * rate_growth_mult 
     
-    # 4) Revenue from depreciation ### THIS NEEDS MORE WORK ###   
+    # 4) Revenue from depreciation.  ### THIS NEEDS MORE WORK ###  
+    # Depreciable basis is installed cost less tax incentives
+    # Revenue comes from taxable deduction [basis * tax rate * schedule] and cannot be monetized by Residential
     
-    deprec_basis = ic - 0.5 * (value_of_incentive + value_of_rebate) # depreciable basis reduced by half the incentive
-    depreciation_revenue = np.array([(df.sector == 'Industrial') | (df.sector == 'Commercial')]).T * deprec_basis * deprec_schedule * df.tax_rt
+    depreciation_revenue = np.zeros(shape)
+    deprec_basis = (df.ic - 0.5 * (value_of_incentive + value_of_rebate))[:,np.newaxis] # depreciable basis reduced by half the incentive
+    depreciation_revenue[:,:20] = deprec_basis * deprec_schedule.reshape(1,20) * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial'))[:,np.newaxis]   
     
     # 5) Interest paid on loans is tax-deductible for commercial & industrial; 
     # assume can fully monetize
@@ -82,35 +88,31 @@ def calc_cashflows(df,value_of_incentive, value_of_rebate, deprec_schedule, yrs 
     # Calc interest paid
     interest_paid = np.empty(shape)
     for i in range(len(df)):
-        interest_paid[i,:] = (np.ipmt(df.loan_rate[i], [arange(yrs)], df.loan_term[i], -df.ic[i] * (1- df.downpay_frac[i])))    
+        interest_paid[i,:] = (np.ipmt(df.loan_rate[i], [np.arange(yrs)], df.loan_term_yrs[i], -df.ic[i] * (1- df.down_payment[i])))    
     interest_paid[interest_paid < 0] = 0 # Truncate interest payments if loan_term < yrs
-    interest_on_loan_pmts_revenue = np.array([(df.sector == 'Industrial') | (df.sector == 'Commercial')]).T * interest_paid * np.array([df.tax_rt]).T
-    
+    interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial'))[:,np.newaxis]
     
     # 6) Revenue from other incentives
     
     incentive_revenue = np.zeros(shape)
-    #incent_pay=np.zeros(shape); incent_pay[1]=incent_frac*cap_cost + incent_rebate;
-    
     
     revenue = generation_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
     costs = loan_cost + om_cost
     cfs = loan_cost + om_cost + generation_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
-    
-    
-
-    
+        
     return revenue, costs, cfs
     
 #==============================================================================
 
-def calc_fin_metrics(costs, revenue, dr):
+def calc_fin_metrics(costs, revenues, dr):
     cfs = costs + revenues
     
     irr = calc_irr(cfs)
     mirr = calc_mirr(cfs, finance_rate = dr, reinvest_rate = dr + 0.02)
     npv = calc_npv(cfs,dr)
     payback = calc_payback(cfs)
+    ttd = calc_ttd(cfs)
+    returrn
 
 #==============================================================================    
 
@@ -134,7 +136,7 @@ def calc_irr(cfs):
 
 #==============================================================================
     
-def calc_mirr(cfs,finance_rate = dr, reinvest_rate = dr + 0.02):
+def calc_mirr(cfs,finance_rate, reinvest_rate):
     ''' MIRR calculation. ### Vectorize this ###
     
     IN: cfs - numpy array - project cash flows ($/yr)
@@ -145,9 +147,25 @@ def calc_mirr(cfs,finance_rate = dr, reinvest_rate = dr + 0.02):
     
     '''
     if cfs.ndim == 1: 
-        mirr_out = np.array(np.mirr(cfs, finance_rate, reinvest_rate))
+        cfs = np.asarray(cfs, dtype=np.double)
+        n = cfs.size
+        pos = cfs > 0
+        neg = cfs < 0
+        if not (pos.any() and neg.any()):
+            return np.nan
+        numer = np.abs(calc_npv(cfs = cfs*pos, dr = reinvest_rate))*(1 + reinvest_rate)
+        denom = np.abs(calc_npv(cfs = cfs*neg, dr = finance_rate, ))*(1 + finance_rate)
+        mirr_out = (numer/denom)**(1.0/(n - 1))*(1 + reinvest_rate) - 1
     else:
-        mirr_out = np.apply_along_axis(np.mirr,1, cfs, finance_rate, reinvest_rate)
+        cfs = np.asarray(cfs, dtype=np.double)
+        n = cfs.size / finance_rate.size
+        pos = cfs > 0
+        neg = cfs < 0
+        if not (pos.any() and neg.any()):
+            return np.nan
+        numer = np.abs(finfunc.calc_npv(cfs = cfs*pos, dr = reinvest_rate))*(1 + reinvest_rate)
+        denom = np.abs(finfunc.calc_npv(cfs = cfs*neg, dr = finance_rate, ))*(1 + finance_rate)
+        mirr_out = (numer/denom)**(1.0/(n - 1))*(1 + reinvest_rate) - 1
     return mirr_out
 
 #==============================================================================
@@ -177,7 +195,7 @@ def calc_npv(cfs,dr):
     OUT: npv - numpy array - net present value of cash flows ($) 
     
     '''
-    dr = dr.reshape(len(dr),1)
+    dr = dr[:,np.newaxis]
     tmp = np.empty(cfs.shape)
     tmp[:,0] = 1
     tmp[:,1:] = 1/(1+dr)
@@ -208,7 +226,7 @@ def calc_payback(cfs):
             base_year = np.where(np.diff(np.sign(x))>0)[0] 
             if base_year.size > 0:      
                 base_year = base_year.max()
-                frac_year = x[yr]/(x[yr] - x[yr+1])
+                frac_year = x[base_year]/(x[base_year] - x[base_year+1])
                 pp = base_year + frac_year
             else: # If the array is empty i.e. never positive cfs, pp = 30
                 pp = 30
@@ -229,7 +247,7 @@ def calc_payback(cfs):
 #for i1 in range(0, 10000):
 #    t1=time.clock()
 #    cost, principle = cashflow_calc(cap_cost, incent_frac, incent_rebate, tax_rt, 
-#                                downpay_frac, loan_term, loan_rate, disc_rate, 
+#                                down_payment, loan_term, loan_rate, disc_rate, 
 #                                MACRScom) 
 #    t2=time.clock()
 #    tt[i1]=(t2-t1)

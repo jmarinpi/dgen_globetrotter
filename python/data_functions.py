@@ -4,17 +4,25 @@ Functions for pulling data
 Created on Mon Mar 24 08:59:44 2014
 @author: bsigrin
 """
+import psycopg2 as pg
+import pandas.io.sql as sqlio
 
-def get_depreciation_schedule(type = 'all'):
+def make_con(host='gispgdb',dbname='dav-gis', user='bsigrin', password='bsigrin'):
+    con = pg.connect('host=%s dbname=%s user=%s password=%s' % (host, dbname, user, password))
+    return con
+
+def get_depreciation_schedule(con, type = 'all'):
     ''' Pull depreciation schedule from dB
     
         IN: type - string - [all, macrs, standard] 
         OUT: df  - pd dataframe - year, depreciation schedule:
 
     '''
-    
-    pg_params = "dbname=dav-gis user=bsigrin password=bsigrin host=gispgdb.nrel.gov" 
-    con = pg.connect(pg_params)
+    if not con:
+                close_con = True
+                con = make_con()
+    else:
+        close_con = False    
     if type.lower() == 'macrs':
         sql = 'SELECT macrs FROM wind_ds.depreciation_schedule'
     elif type.lower() == 'standard':
@@ -22,10 +30,9 @@ def get_depreciation_schedule(type = 'all'):
     else:
         sql = 'SELECT * FROM wind_ds.depreciation_schedule'
     df = sqlio.read_frame(sql, con)
-    con.close()
     return df
     
-def get_scenario_options():
+def get_scenario_options(con):
     ''' Pull scenario options from dB
     
         IN: none
@@ -56,8 +63,46 @@ def get_scenario_options():
                     'utility_type_allother'
         
     '''
-    pg_params = "dbname=dav-gis user=bsigrin password=bsigrin host=gispgdb.nrel.gov" 
-    con = pg.connect(pg_params)
     df = sqlio.read_frame("SELECT * FROM wind_ds.scenario_options", con)
-    con.close()
+    return df
+    
+def get_main_dataframe(con):
+    ''' Pull main pre-processed dataframe from dB
+    
+        IN: con - pg con object - connection object
+        OUT: df  - pd dataframe - pre-processed resource,bins, rates, etc. for all years:
+
+    '''
+    if not con:
+        close_con = True
+        con = make_con()
+    else:
+        close_con = False
+    sql = 'SELECT * FROM wind_ds.sample_10'
+    df = sqlio.read_frame(sql, con)
+    return df
+    
+def get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned'):
+    ''' Pull financial parameters dataframe from dB. Use passed parameters to subset for new/existing home/leasing/host-owned
+    
+        IN: con - pg con object - connection object
+            res - string - which residential ownership structure to use (assume 100%)
+            com - string - which commercial ownership structure to use (assume 100%)
+            ind - string - which industrial ownership structure to use (assume 100%)
+            
+        OUT: fin_param  - pd dataframe - pre-processed resource,bins, rates, etc. for all years:
+    '''
+    
+    sql = 'SELECT * FROM wind_ds.financial_parameters'
+    df = sqlio.read_frame(sql, con)
+    
+    # Filter based on ownership models selected
+    df['sector'] = ['Residential', 'Residential', 'Residential', 'Commercial', 'Commercial','Industrial','Industrial']
+        
+    
+    df = df[((df['cust_disposition'] == res_model) & (df['cust_id'] == 1)) | 
+      ((df['cust_disposition'] == com_model) & (df['cust_id'] == 2)) |
+      ((df['cust_disposition'] == ind_model) & (df['cust_id'] == 3))]
+      
+    df = df.drop('cust_id',1)
     return df
