@@ -11,7 +11,7 @@ CREATE INDEX county_geom_the_geom_4326_gist
   (the_geom_4326);
 
 -- add in census division
-ALTER TABLE wind_ds.county_geom ADD COLUMN census_division_abbr character varying(3);
+ALTER TABLE wind_ds.county_geom ADD COLUMN census_division_abbr text;
 
 UPDATE wind_ds.county_geom a
 SET census_division_abbr = b.division_abbr

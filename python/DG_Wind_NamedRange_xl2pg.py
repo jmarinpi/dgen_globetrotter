@@ -11,66 +11,85 @@
 
 
 import openpyxl as xl, traceback, os, glob, sys, psycopg2 as pg,logging, argparse, csv
+import sys
 import StringIO
+from config import pg_conn_string
 #from config import excelAlpha
 
-def makeConn(host='gispgdb',dbname='dav-gis', user='ngrue', password='ngrue', autocommit=True):
-    conn = pg.connect('host=%s dbname=%s user=%s password=%s' % (host, dbname, user, password))
+class ExcelError(Exception):
+    pass
+
+def makeConn(connection_string, autocommit=True):
+    conn = pg.connect(pg_conn_string)
     if autocommit:
         conn.set_isolation_level(pg.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
     return conn
 
-def main(wb_loc, conn):
+def main(wb, conn, verbose = False):
     try:
         # check connection to PG
         if not conn:
             close_conn = True
-            conn = makeConn()
+            conn = makeConn(pg_conn_string)
         else:
+            iso_level = conn.isolation_level
+            conn.set_isolation_level(pg.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
             close_conn = False
         # make cursor from conn
         cur = conn.cursor()
+        
+        if os.path.exists(wb) == False:
+            raise ExcelError('The specified input worksheet (%s) does not exist' % wb)
+        
+        # load the data
+        schema = 'wind_ds'
+        # note: to prevent this next line from printing all sorts of junk to the screen,
+        # I had to disable a line in C:\Python27\lib\site-packages\openpyxl\namedrange.py
+        # line #86 in refers_to_range: print range_string, bool(NAMED_RANGE_RE.match(range_string)) 
+        # hopefully this is fixed in more up-to-date version of openpyxl
+        curWb = xl.load_workbook(wb)
 
-        wbs = [g for g in glob.glob('*.xlsm') if not g.startswith("~")]
-        print str(wbs)
-        for wb in wbs:
-            schema = 'wind_ds'
-            curWb = xl.load_workbook(wb)
-
-            table = 'wind_cost_projections'
-            windCost(curWb,schema,table,conn,cur)
-            table = 'wind_performance_improvements'
-            windPerf(curWb,schema,table,conn,cur)
-            table = 'market_projections'
-            marketProj(curWb,schema,table,conn,cur)
-            table = 'financial_parameters'
-            finParams(curWb,schema,table,conn,cur)
-            table = 'depreciation_schedule'
-            depSched(curWb,schema,table,conn,cur)
-            table = 'scenario_options'
-            inpOpts(curWb,schema,table,conn,cur)
-            table = 'manual_incentives'
-            manIncents(curWb,schema,table,conn,cur)
-            table = 'user_defined_max_market_share'
-            maxMarket(curWb,schema,table,conn,cur)
-
+        table = 'wind_cost_projections'
+        windCost(curWb,schema,table,conn,cur,verbose)
+        table = 'wind_performance_improvements'
+        windPerf(curWb,schema,table,conn,cur,verbose)
+        table = 'market_projections'
+        marketProj(curWb,schema,table,conn,cur,verbose)
+        table = 'financial_parameters'
+        finParams(curWb,schema,table,conn,cur,verbose)
+        table = 'depreciation_schedule'
+        depSched(curWb,schema,table,conn,cur,verbose)
+        table = 'scenario_options'
+        inpOpts(curWb,schema,table,conn,cur,verbose)
+        table = 'manual_incentives'
+        manIncents(curWb,schema,table,conn,cur,verbose)
+        table = 'user_defined_max_market_share'
+        maxMarket(curWb,schema,table,conn,cur,verbose)
 
 
         if close_conn:
-            print 'closing conn'
             conn.close()
-    except:
-        traceback.print_exc()
+        else:
+            conn.set_isolation_level(iso_level)
+        
+        if verbose:
+            print "Process completed successfully"
+            
+        return 0
+    
+    except ExcelError, e:
+        print 'blabla'
+        raise ExcelError(e)
+    
 
-def windCost(curWb,schema,table,conn,cur):
+def windCost(curWb,schema,table,conn,cur,verbose=False):
     sizes = [['2.5'],['5'],['10'],['20'],['50'],['100'],['250'],['500'],['750'],['1000'],['1500'],['3000']]
     f = StringIO.StringIO()
     for item in sizes:
         rname = 'Wind_Cost_Projections_' + item[0] + '_kw'
         named_range = curWb.get_named_range(rname)
         if named_range == None:
-            print rname, 'named range does not exist'
-            sys.exit(-1)
+            raise ExcelError('%s named range does not exist.' % rname)
         cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
         columns = len(cells[0])
         rows = len(cells)
@@ -89,7 +108,8 @@ def windCost(curWb,schema,table,conn,cur):
             #print l
             c += 1
     f.seek(0)
-    print 'Exporting wind_cost_projections'
+    if verbose:
+        print 'Exporting wind_cost_projections'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
@@ -98,12 +118,11 @@ def windCost(curWb,schema,table,conn,cur):
     f.close()
 
 
-def windPerf(curWb,schema,table,conn,cur):
+def windPerf(curWb,schema,table,conn,cur,verbose=False):
     f = StringIO.StringIO()
     named_range = curWb.get_named_range('Wind_Performance_Improvements')
     if named_range == None:
-        print 'Wind_Performance_Improvements named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('Wind_Performance_Improvements named range does not exist')
     cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
     columns = len(cells[0])
     rows = len(cells)
@@ -134,7 +153,8 @@ def windPerf(curWb,schema,table,conn,cur):
             r += 1
         c += 1
     f.seek(0)
-    print 'Exporting wind_performance_improvements'
+    if verbose:
+        print 'Exporting wind_performance_improvements'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
@@ -143,12 +163,11 @@ def windPerf(curWb,schema,table,conn,cur):
     f.close()
 
 
-def marketProj(curWb,schema,table,conn,cur):
+def marketProj(curWb,schema,table,conn,cur,verbose=False):
     f = StringIO.StringIO()
     named_range = curWb.get_named_range('Market_Projections')
     if named_range == None:
-        print 'Market_Projections named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('Market_Projections named range does not exist')
     cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
     columns = len(cells[0])
     rows = len(cells)
@@ -167,7 +186,8 @@ def marketProj(curWb,schema,table,conn,cur):
         #print str(l)[1:-1]+'\n'
         c += 1
     f.seek(0)
-    print 'Exporting market_projections'
+    if verbose:
+        print 'Exporting market_projections'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
@@ -176,13 +196,12 @@ def marketProj(curWb,schema,table,conn,cur):
     f.close()
 
 
-def finParams(curWb,schema,table,conn,cur):
+def finParams(curWb,schema,table,conn,cur,verbose=False):
     f = StringIO.StringIO()
     #Residential
     named_range = curWb.get_named_range('Inputs_Residential')
     if named_range == None:
-        print 'Inputs_Residential named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('Inputs_Residential named range does not exist')
     cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
     columns = len(cells[0])
     rows = len(cells)
@@ -204,7 +223,8 @@ def finParams(curWb,schema,table,conn,cur):
         #print str(in_l).replace(" u'","").replace("'","")[1:-1]+'\n'
         c += 1
     f.seek(0)
-    print 'Exporting financial_parameters (residential inputs)'
+    if verbose:
+        print 'Exporting financial_parameters (residential inputs)'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
@@ -213,8 +233,7 @@ def finParams(curWb,schema,table,conn,cur):
     #Commercial
     named_range = curWb.get_named_range('Inputs_Commercial')
     if named_range == None:
-        print 'Inputs_Commercial named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('Inputs_Commercial named range does not exist')
     cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
     columns = len(cells[0])
     rows = len(cells)
@@ -235,7 +254,8 @@ def finParams(curWb,schema,table,conn,cur):
         #print str(in_l).replace(" u'","").replace("'","")[1:-1]+'\n'
         c += 1
     f.seek(0)
-    print 'Exporting financial_parameters (commercial inputs)'
+    if verbose:
+        print 'Exporting financial_parameters (commercial inputs)'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
@@ -244,8 +264,7 @@ def finParams(curWb,schema,table,conn,cur):
     #Industrial
     named_range = curWb.get_named_range('Inputs_Industrial')
     if named_range == None:
-        print 'Inputs_Industrial named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('Inputs_Industrial named range does not exist')
     cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
     columns = len(cells[0])
     rows = len(cells)
@@ -266,7 +285,8 @@ def finParams(curWb,schema,table,conn,cur):
         #print str(in_l).replace(" u'","").replace("'","")[1:-1]+'\n'
         c += 1
     f.seek(0)
-    print 'Exporting financial_parameters (industrial inputs)'
+    if verbose:
+        print 'Exporting financial_parameters (industrial inputs)'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
@@ -307,12 +327,11 @@ def finParams(curWb,schema,table,conn,cur):
     """
     f.close()
 
-def depSched(curWb,schema,table,conn,cur):
+def depSched(curWb,schema,table,conn,cur,verbose=False):
     f = StringIO.StringIO()
     named_range = curWb.get_named_range('Depreciation_Schedule')
     if named_range == None:
-        print 'Depreciation_Schedule named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('Depreciation_Schedule named range does not exist')
     cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
     columns = len(cells[0])
     rows = len(cells)
@@ -331,7 +350,8 @@ def depSched(curWb,schema,table,conn,cur):
         #print l
         r += 1
     f.seek(0)
-    print 'Exporting depreciation_schedule'
+    if verbose:
+        print 'Exporting depreciation_schedule'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
@@ -340,42 +360,37 @@ def depSched(curWb,schema,table,conn,cur):
     f.close()
 
 
-def inpOpts(curWb,schema,table,conn,cur):
+def inpOpts(curWb,schema,table,conn,cur,verbose=False):
     global sc_name
     f = StringIO.StringIO()
 
     input_named_range = 'Input_Scenario_Name'
     named_range = curWb.get_named_range(input_named_range)
     if named_range == None:
-        print 'Input_Scenario_Name named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('Input_Scenario_Name named range does not exist')
     sc_name = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
 
     input_named_range = 'Annual_Inflation'
     named_range = curWb.get_named_range(input_named_range)
     if named_range == None:
-        print 'Annual_Inflation named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('Annual_Inflation named range does not exist')
     ann_inf = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
 
     input_named_range = 'overwrite_exist_inc'
     named_range = curWb.get_named_range(input_named_range)
     if named_range == None:
-        print 'overwrite_exist_inc named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('overwrite_exist_inc named range does not exist')
     overwrite_exist = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
 
     input_named_range = 'incent_start_year'
     named_range = curWb.get_named_range(input_named_range)
     if named_range == None:
-        print 'incent_start_year named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('incent_start_year named range does not exist')
     incent_startyear = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
 
     named_range = curWb.get_named_range('Input_Scenario_Options')
     if named_range == None:
-        print 'Input_Scenario_Options named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('Input_Scenario_Options named range does not exist')
     cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
     columns = len(cells[0])
     rows = len(cells)
@@ -393,8 +408,7 @@ def inpOpts(curWb,schema,table,conn,cur):
         c += 1
     named_range = curWb.get_named_range('Incentives_Utility_Type')
     if named_range == None:
-        print 'Incentives_Utility_Type named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('Incentives_Utility_Type named range does not exist')
     cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
     columns = len(cells[0])
     rows = len(cells)
@@ -415,7 +429,8 @@ def inpOpts(curWb,schema,table,conn,cur):
     f.write(str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1])
     #print str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1]
     f.seek(0)
-    print 'Exporting scenario_options'
+    if verbose:
+        print 'Exporting scenario_options'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
@@ -423,7 +438,7 @@ def inpOpts(curWb,schema,table,conn,cur):
     conn.commit()
     f.close()
 
-def manIncents(curWb,schema,table,conn,cur):
+def manIncents(curWb,schema,table,conn,cur,verbose=False):
 
     def findIncen(cells,c,incen_type):
         try:
@@ -453,8 +468,7 @@ def manIncents(curWb,schema,table,conn,cur):
     f = StringIO.StringIO()
     named_range = curWb.get_named_range('Incentives_Values')
     if named_range == None:
-        print 'Incentives_Values named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('Incentives_Values named range does not exist')
     cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
     columns = len(cells[0]) - 1
     rows = len(cells)
@@ -496,7 +510,8 @@ def manIncents(curWb,schema,table,conn,cur):
                     f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
         r += 1
     f.seek(0)
-    print 'Exporting manual_incentives'
+    if verbose:
+        print 'Exporting manual_incentives'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
@@ -505,12 +520,11 @@ def manIncents(curWb,schema,table,conn,cur):
     f.close()
 
 
-def maxMarket(curWb,schema,table,conn,cur):
+def maxMarket(curWb,schema,table,conn,cur,verbose=False):
     f = StringIO.StringIO()
     named_range = curWb.get_named_range('user_defined_max_market_share')
     if named_range == None:
-        print 'user_defined_max_market_share named range does not exist'
-        sys.exit(-1)
+        raise ExcelError('user_defined_max_market_share named range does not exist')
     cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
     columns = len(cells[0])
     rows = len(cells)
@@ -535,7 +549,8 @@ def maxMarket(curWb,schema,table,conn,cur):
         f.write(str(ind_out).replace(" '","").replace("'","")[1:-1]+'\n')
         r += 1
     f.seek(0)
-    print 'Exporting user_defined_max_market_share'
+    if verbose:
+        print 'Exporting user_defined_max_market_share'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
@@ -544,9 +559,7 @@ def maxMarket(curWb,schema,table,conn,cur):
     f.close()
 
 
-
-
-#wb_loc = os.chdir(r'C:\ngrue\git\diffusion.git\excel') #workbook location
-wb_loc = os.chdir(r'S:\mgleason\DG_Wind\diffusion_repo\excel')
-main(wb_loc,None)
+if __name__ == '__main__':
+    input_xls = '..\excel\DG_wind_01_16_2014_named_ranges.xlsm'
+    main(input_xls,None, True)
 
