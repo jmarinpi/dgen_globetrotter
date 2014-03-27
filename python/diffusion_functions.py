@@ -1,150 +1,101 @@
+"""
+Name: diffusion_functions
+Purpose: Contains functions to calculate diffusion of distributed wind model
+
+    (1) Determine maximum market size as a function of payback time;
+    (2) Parameterize Bass diffusion curve with diffusion rates (p, q) set by 
+        payback time;
+    (3) Determine current stage (equivaluent time) of diffusion based on existing 
+        market and current economics 
+    (3) Calculate new market share by stepping forward on diffusion curve.
+
+
+Author: bsigrin & edrury
+Last Revision: 3/26/14
 
 """
- --- edrury & bsigrin Jan 27 2014
- 
-     Functions used to calculate diffusion
-     
- --- Diffusion calculator - uses: 
-    (1) maximum market size as a function of payback time;
-    (2) Bass diffusion with diffusion rates (p, q) set by payback time;
-    (3) previous diffusion level
 
-    Two methods used:
-    (1) direct calculation
-    (2) look-up table to speed up the calculation
-
-"""
-
-import matplotlib.pyplot as plt
 import numpy as np
-import xlrd
-from scipy.interpolate import interp1d
 import pandas as pd
 
 #=============================================================================
 # ^^^^  Bass Diffusion Calculator  ^^^^
 def bass_diffusion(p, q, t):
-    f=np.e**(-1*(p+q)*t); 
-    adopt=(1-f) / (1 + (q/p)*f); # Bass Diffusion - cumulative adoption
-    return adopt
+    ''' Calculate the fraction of population that diffuse into the max_market_share.
+        Note that this is different than the fraction of population that have/
+        will adopt.
+
+        IN: p,q - numpy arrays - Bass diffusion parameters
+            t - numpy array - Number of years since diffusion began
+            
+            
+        OUT: new_adopt_fraction - numpy array - fraction of overall population 
+                                                that will adopt the technology
+    '''
+    f = np.e**(-1*(p+q)*t); 
+    new_adopt_fraction = (1-f) / (1 + (q/p)*f); # Bass Diffusion - cumulative adoption
+    return new_adopt_fraction
     
 #=============================================================================
 
 #=============================================================================
-# ^^^^ Calculate the 'equivalent time' on a Bass Diffusion curve  ^^^^ 
-def calc_equiv_time(M0, Mt, p, q):
-    ratio=M0/Mt;  # ratio of adoption at t-1 to adoption at t
+def calc_equiv_time(cms, mms, p, q):
+    ''' Calculate the "equivalent time" on the diffusion curve. This defines the
+    gradient of adoption.
+
+        IN: cms - numpy array - current market share as decimal
+            mms - numpy array - maximum market share as decimal
+            p,q - numpy arrays - Bass diffusion parameters
+            
+        OUT: t_eq - numpy array - Equivalent number of years after diffusion 
+                                  started on the diffusion curve
+    '''
+    ratio=cms/mms;  # ratio of adoption at present to adoption at terminal period
     t_eq = np.log( ( 1 - ratio) / (1 + ratio*(q/p))) / (-1*(p+q)); # solve for equivalent time
     return t_eq
     
 #=============================================================================
 
 #=============================================================================
-# ^^^^ Set parameters  ^^^^ 
-def set_param_payback(payback):
+def set_param_payback(payback_period,pval = 0.0015):
+    ''' Set the p & q parameters which define the Bass diffusion curve.
+    p is the coefficient of innovation, external influence or advertising effect. 
+    q is the coefficient of imitation, internal influence or word-of-mouth effect.
+
+        IN: payback_period - numpy array - payback in years
+        OUT: p,q - numpy arrays - Bass diffusion parameters
+    '''
     # set p and q values
-    p=0.0015;
-    if (0<=payback<=3): q=.5;
-    elif (3<payback<=10): q=.4;
-    else: q=.3;
+    p = np.array([pval] * payback_period.size);
+    q = np.where(payback_period <= 3, 0.5, np.where((payback_period <=10) & (payback_period > 3), 0.4, 0.3))
+
     return p, q
     
 #=============================================================================
 
 #==============================================================================
-#  ^^^^  R E A D    E X C E L    D A T A :    ^^^^
-def readEXCEL(filename, sheet_name, r0, c0, rn, cn):
-    
-    # size data output
-    data = np.zeros((rn+1,cn+1))
-    
-    # open workbook & worksheet
-    wb=xlrd.open_workbook(filename)
-    sh=wb.sheet_by_name(sheet_name)
-    
-    # read block of rows and columns
-    curr_row = -1
-    while curr_row < rn:
-        curr_row += 1
-        curr_cell = -1
-        while curr_cell < cn:
-            curr_cell += 1
-            data[curr_row, curr_cell] = sh.cell_value(curr_row+r0, curr_cell+c0)
-    return data		
-#==============================================================================
-
-#==============================================================================
-#  Create max market share table by segment and interpolate for payback x10
-def make_max_market_table(source = 'NAV_NEW'):
-    
-    # ---------------------- DIFFUSION CURVE SOURCES---------------------------
-    # data (31, 6) -> 31 = payback times from 0 - 30 years; 
-    #              ->  6 = diffusion curves: 0 - NEMS / A.D. Little - NEW
-    #                                        1 - NEMS / A.D. Little - RETROFIT
-    #                                        2 - NAVIGANT - NEW
-    #                                        3 - NAVIGANT - RETROFIT
-    #                                        4 - R.W. BECK - NEW
-    #                                        5 - R.W. BECK - RETROFIT
-    #
-    # DEFAULT IS NAVIGANT NEW
-    #--------------------------------------------------------------------------
-    
-    mm_source = {'NEMS_NEW' : 0, 'NEMS_RETRO' : 1, 'NAV_NEW' : 2, 'NAVS_RETRO' : 3, 'RWBECK_NEW' : 4, 'RWBECK_RETRO' : 5, }
-    curve = mm_source[source]
-    
-    # Read the max market table
-    filename = 'MaxMarketShare.xlsx'
-    sheet_name = 'MaxMktCurves'
-    # Read commercial max market share curves
-    r0 = 3;  # --- row offset
-    c0 = 2;  # --- column offset
-    rn = 31; # --- number of rows
-    cn = 6;  # --- number of columns
-    max_market_com = readEXCEL(filename, sheet_name, r0, c0, rn-1, cn-1)
-    # Read residential max market share curves
-    c0 = 10;  # --- column offset
-    max_market_res = readEXCEL(filename, sheet_name, r0, c0, rn-1, cn-1)  
- 
-    # now interpolate data
-    yrs=np.linspace(0,30,31);
-    yrs2=np.linspace(0,30,301);
-    
-    Res_Max_Markt = max_market_res[:,curve];
-    Com_Max_Markt = max_market_com[:,curve];
-    
-    f1 = interp1d(yrs, Res_Max_Markt);
-    f2 = interp1d(yrs, Com_Max_Markt);
-    
-    res_max_market = f1(yrs2);
-    com_max_market = f2(yrs2);
-    
-    max_market = pd.DataFrame({'Year' : range(301), 'Res' : res_max_market, 'Com' : com_max_market})
-    return(max_market)
-#==============================================================================
-
-#==============================================================================
 #  ^^^^ Calculate new diffusion in market segment ^^^^
-def calc_diffusion(payback,current_market_share,segment,max_market):
-    
-    payback = max(min(payback,30),0) # Payback defined [0,30] years
-    new_max_pen=max_market[segment][np.int(np.round(payback*10))]; # find the new Max Market
-    
-    # --- Check that 'equivalent year' will give a real answer, then proceed -----
-    if current_market_share/new_max_pen > 1:
+def calc_diffusion(payback_period,max_market_share, current_market_share):
+    ''' Calculate the fraction of overall population that have adopted the 
+        technology in the current period. Note that this does not specify the 
+        actual new adoption fraction without knowing adoption in the previous period. 
 
-        new_market_share = current_market_share; # new market adoption
-        
-    else:
-        
-        M0 = current_market_share; # calculate the initial market penetration
-        Mt = new_max_pen;      # set the new Max market
-        p,q  = set_param_payback(payback) 
-        teq = calc_equiv_time(M0, Mt, p, q); # find the 'equivalent time' on the newly scaled diffusion curve
-        teq2=teq+2; # now step forward two years from the 'new location'
-        new_adopt_fraction = bass_diffusion(p, q, teq2); # calculate the new diffusion by stepping forward 2 years
-        new_market_share = new_max_pen*new_adopt_fraction; # new market adoption
+        IN: payback_period - numpy array - payback in years
+            max_market_share - numpy array - maximum market share as decimal
+            current_market_share - numpy array - current market share as decimal
+                        
+        OUT: new_market_share - numpy array - fraction of overall population 
+                                                that have adopted the technology
+    '''
+    payback_period = np.maximum(np.minimum(payback_period,30),0) # Payback defined [0,30] years        
+    p,q  = set_param_payback(payback_period) 
+    teq = calc_equiv_time(current_market_share, max_market_share, p, q); # find the 'equivalent time' on the newly scaled diffusion curve
+    teq2 = teq + 2; # now step forward two years from the 'new location'
+    new_adopt_fraction = bass_diffusion(p, q, teq2); # calculate the new diffusion by stepping forward 2 years
+    new_market_share = max_market_share * new_adopt_fraction; # new market adoption    
+    new_market_share = np.where(current_market_share/max_market_share > 1, current_market_share, new_market_share)
     
-    return(new_market_share)
+    return new_market_share
 #==============================================================================    
 
 
@@ -261,3 +212,74 @@ def calc_diffusion(payback,current_market_share,segment,max_market):
 ## check interpolation!
 ##plt.plot(yrs, y, 'o', yrs2, MM_new, '-')
 ##plt.show()
+
+##==============================================================================
+##  Create max market share table by segment and interpolate for payback x10
+#def make_max_market_table(source = 'NAV_NEW'):
+#    
+#    # ---------------------- DIFFUSION CURVE SOURCES---------------------------
+#    # data (31, 6) -> 31 = payback times from 0 - 30 years; 
+#    #              ->  6 = diffusion curves: 0 - NEMS / A.D. Little - NEW
+#    #                                        1 - NEMS / A.D. Little - RETROFIT
+#    #                                        2 - NAVIGANT - NEW
+#    #                                        3 - NAVIGANT - RETROFIT
+#    #                                        4 - R.W. BECK - NEW
+#    #                                        5 - R.W. BECK - RETROFIT
+#    #
+#    # DEFAULT IS NAVIGANT NEW
+#    #--------------------------------------------------------------------------
+#    
+#    mm_source = {'NEMS_NEW' : 0, 'NEMS_RETRO' : 1, 'NAV_NEW' : 2, 'NAVS_RETRO' : 3, 'RWBECK_NEW' : 4, 'RWBECK_RETRO' : 5, }
+#    curve = mm_source[source]
+#    
+#    # Read the max market table
+#    filename = 'MaxMarketShare.xlsx'
+#    sheet_name = 'MaxMktCurves'
+#    # Read commercial max market share curves
+#    r0 = 3;  # --- row offset
+#    c0 = 2;  # --- column offset
+#    rn = 31; # --- number of rows
+#    cn = 6;  # --- number of columns
+#    max_market_com = readEXCEL(filename, sheet_name, r0, c0, rn-1, cn-1)
+#    # Read residential max market share curves
+#    c0 = 10;  # --- column offset
+#    max_market_res = readEXCEL(filename, sheet_name, r0, c0, rn-1, cn-1)  
+# 
+#    # now interpolate data
+#    yrs=np.linspace(0,30,31);
+#    yrs2=np.linspace(0,30,301);
+#    
+#    Res_Max_Markt = max_market_res[:,curve];
+#    Com_Max_Markt = max_market_com[:,curve];
+#    
+#    f1 = interp1d(yrs, Res_Max_Markt);
+#    f2 = interp1d(yrs, Com_Max_Markt);
+#    
+#    res_max_market = f1(yrs2);
+#    com_max_market = f2(yrs2);
+#    
+#    max_market = pd.DataFrame({'Year' : range(301), 'Res' : res_max_market, 'Com' : com_max_market})
+#    return(max_market)
+##==============================================================================
+
+##==============================================================================
+##  ^^^^  R E A D    E X C E L    D A T A :    ^^^^
+#def readEXCEL(filename, sheet_name, r0, c0, rn, cn):
+#    
+#    # size data output
+#    data = np.zeros((rn+1,cn+1))
+#    
+#    # open workbook & worksheet
+#    wb=xlrd.open_workbook(filename)
+#    sh=wb.sheet_by_name(sheet_name)
+#    
+#    # read block of rows and columns
+#    curr_row = -1
+#    while curr_row < rn:
+#        curr_row += 1
+#        curr_cell = -1
+#        while curr_cell < cn:
+#            curr_cell += 1
+#            data[curr_row, curr_cell] = sh.cell_value(curr_row+r0, curr_cell+c0)
+#    return data		
+##==============================================================================

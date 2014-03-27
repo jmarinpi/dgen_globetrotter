@@ -163,8 +163,8 @@ def calc_mirr(cfs,finance_rate, reinvest_rate):
         neg = cfs < 0
         if not (pos.any() and neg.any()):
             return np.nan
-        numer = np.abs(finfunc.calc_npv(cfs = cfs*pos, dr = reinvest_rate))*(1 + reinvest_rate)
-        denom = np.abs(finfunc.calc_npv(cfs = cfs*neg, dr = finance_rate, ))*(1 + finance_rate)
+        numer = np.abs(calc_npv(cfs = cfs*pos, dr = reinvest_rate))*(1 + reinvest_rate)
+        denom = np.abs(calc_npv(cfs = cfs*neg, dr = finance_rate, ))*(1 + finance_rate)
         mirr_out = (numer/denom)**(1.0/(n - 1))*(1 + reinvest_rate) - 1
     return mirr_out
 
@@ -179,9 +179,11 @@ def calc_ttd(cfs):
     
     '''
     irrs = calc_irr(cfs)
+    irrs = np.where(irrs<=0,1e-6,irrs)
     ttd = np.log(2) / np.log(1 + irrs)
-    ttd[ttd<=0] = 30
-    return ttd
+    ttd[ttd <= 0] = 0
+    ttd[ttd > 30] = 30
+    return ttd.round(decimals = 1) # must be rounded to nearest 0.1 to join with max_market_share
 
 #==============================================================================
 
@@ -231,7 +233,9 @@ def calc_payback(cfs):
             else: # If the array is empty i.e. never positive cfs, pp = 30
                 pp = 30
         out.append(pp)
-    return np.array(out)
+    out = decimal.Decimal(out.round(decimals =1))
+    
+    return np.array(out).round(decimals =1) # must be rounded to nearest 0.1 to join with max_market_share
     
 #==============================================================================
 
