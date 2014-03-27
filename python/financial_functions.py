@@ -43,9 +43,9 @@ def calc_cashflows(df,deprec_schedule,value_of_incentive = 0, value_of_rebate = 
 """                
     # default is 30 year analysis periods
     shape=(len(df),yrs); 
-    df['cap'] = df['turbine_size_kw']
-    df['ic'] = df['installed_costs_dollars_per_kw'] * df['turbine_size_kw']
-    df['aep'] = df['naep'] * df['turbine_size_kw']
+    df['cap'] = df['nameplate_capacity_kw']
+    df['ic'] = df['installed_costs_dollars_per_kw'] * df['nameplate_capacity_kw']
+    df['aep'] = df['naep'] * df['nameplate_capacity_kw']
     ## COSTS    
     
     # 1)  Cost of servicing loan
@@ -72,7 +72,8 @@ def calc_cashflows(df,deprec_schedule,value_of_incentive = 0, value_of_rebate = 
     tmp[:,0] = 1
     tmp[:,1:] = df.cust_expected_rate_growth[:,np.newaxis]
     rate_growth_mult = np.cumprod(tmp, axis = 1)
-    generation_revenue = (df.aep * 0.01 * df.elec_rate_cents_per_kwh)[:,np.newaxis] * rate_growth_mult 
+    # Cannot monetize more than you consume
+    generation_revenue = (np.minimum(df.aep,df.ann_cons_kwh) * 0.01 * df.elec_rate_cents_per_kwh)[:,np.newaxis] * rate_growth_mult 
     
     # 4) Revenue from depreciation.  ### THIS NEEDS MORE WORK ###  
     # Depreciable basis is installed cost less tax incentives
@@ -233,7 +234,6 @@ def calc_payback(cfs):
             else: # If the array is empty i.e. never positive cfs, pp = 30
                 pp = 30
         out.append(pp)
-    out = decimal.Decimal(out.round(decimals =1))
     
     return np.array(out).round(decimals =1) # must be rounded to nearest 0.1 to join with max_market_share
     

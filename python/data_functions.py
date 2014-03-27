@@ -80,12 +80,16 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors):
     
     
 
-def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor):
+def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor,preprocess):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
     
     t0 = time.time()    
+    if preprocess == 'TRUE':
+        table_name_dict = {'res': 'wind_ds.pt_res_best_option_each_year', 'com' : 'wind_ds.pt_com_best_option_each_year', 'ind' : 'wind_ds.pt_ind_best_option_each_year'}
+        return table_name_dict[sector_abbr]
+    
     
     #==============================================================================
     #     randomly sample  N points from each county 
@@ -272,8 +276,8 @@ def get_depreciation_schedule(con, type = 'all'):
 
     '''
     if not con:
-                close_con = True
-                con = make_con()
+        close_con = True
+        con = make_con()
     else:
         close_con = False    
     if type.lower() == 'macrs':
@@ -364,7 +368,7 @@ def get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host
  
 #==============================================================================
    
-def get_max_market_share(con, scenario_options, res_type = 'retrofit', com_type = 'retrofit', ind_type = 'retrofit'):
+def get_max_market_share(con, scenario_opts, res_type = 'retrofit', com_type = 'retrofit', ind_type = 'retrofit'):
     ''' Pull max market share from dB, select curve based on scenario_options, and interpolate to tenth of a year. 
         Use passed parameters to determine ownership type
     
@@ -391,9 +395,9 @@ def get_max_market_share(con, scenario_options, res_type = 'retrofit', com_type 
     mm = max_market_share.append(user_defined_max_market_share, ignore_index = 'TRUE')
     
     # Select the max market share curve for each sector
-    max_market_res = mm[(mm['sector'] == 'residential') & (mm['source'] == scenario_options.res_max_market_curve[0])]
-    max_market_com = mm[(mm['sector'] == 'commercial') & (mm['source'] == scenario_options.com_max_market_curve[0])]
-    max_market_ind = mm[(mm['sector'] == 'industrial') & (mm['source'] == scenario_options.ind_max_market_curve[0])]     
+    max_market_res = mm[(mm['sector'] == 'residential') & (mm['source'] == scenario_opts['res_max_market_curve'])]
+    max_market_com = mm[(mm['sector'] == 'commercial') & (mm['source'] == scenario_opts['com_max_market_curve'])]
+    max_market_ind = mm[(mm['sector'] == 'industrial') & (mm['source'] == scenario_opts['ind_max_market_curve'])]     
     
     # Now interpolate each curve
     yrs=np.linspace(0,30,31);
