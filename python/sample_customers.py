@@ -85,6 +85,15 @@ def getNRandomRows(table, N, column_names = None, group_fields = None, weight_fi
 # process
 # create views of 
 
+def getGIDs():
+    pass
+    # get gids from the sample points
+
+def chunkGIDs():
+    pass
+    # chunk GIDs into N chunks for parallel processing
+
+
 customer_bins = 100
 random_generator_seed = 1
 oversize_factor = 1.15

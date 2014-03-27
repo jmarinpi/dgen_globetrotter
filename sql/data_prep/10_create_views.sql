@@ -90,3 +90,32 @@ LEFT JOIN wind_ds.ij_cfbin_lookup_com_pts_us g
 on a.gid = g.pt_gid;
 
 
+-- create view of the valid counties
+CREATE OR REPLACE VIEW wind_ds.counties_to_model AS
+SELECT county_id, census_region
+FROM wind_ds.county_geom a
+INNER JOIN wind_ds.scenario_options b
+ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)
+		else lower(b.region)
+		end
+where a.state not in ('Hawaii','Alaska');
+
+-- create view of sectors to model
+CREATE OR REPLACE VIEW wind_ds.sectors_to_model AS
+SELECT CASE WHEN markets = 'All' THEN 'res=>Residential,com=>Commercial,ind=>Industrial'::hstore
+	    when markets = 'Only Residential' then 'res=>Residential'::hstore
+	    when markets = 'Only Commercial' then 'com=>Commercial'::hstore
+	    when markets = 'Only Industrial' then 'ind=>Industrial'::hstore
+	   end as sectors
+FROM wind_ds.scenario_options;
+
+-- create view of sectors to model
+CREATE OR REPLACE VIEW wind_ds.exclusions_to_model AS
+SELECT CASE WHEN height_exclusions = 'Population Density Only' THEN 'maxheight_m_popdens'
+	    when height_exclusions = 'Population Density & Canopy Cover (40%)' THEN 'maxheight_m_popdenscancov40pc'
+	    when height_exclusions = 'Population Density & Canopy Cover (20%)' THEN 'maxheight_m_popdenscancov20pc'
+	    when height_exclusions = 'No Exclusions' THEN NULL
+       end as exclusions
+FROM wind_ds.scenario_options;
+
+
