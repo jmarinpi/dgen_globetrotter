@@ -64,13 +64,13 @@ def calc_cashflows(df,deprec_schedule,value_of_incentive = 0, value_of_rebate = 
     
     
     ## Revenue
-
+customer_expec_elec_rates
     
     # 3) Revenue from generation  ## REVISIONS NEEDED-- tie to perceived growth rates, not all generation will be offset at avg_rate
     
     tmp = np.empty(shape)
     tmp[:,0] = 1
-    tmp[:,1:] = df.cust_expected_rate_growth[:,np.newaxis]
+    tmp[:,1:] = df.customer_expec_elec_rates[:,np.newaxis]
     rate_growth_mult = np.cumprod(tmp, axis = 1)
     # Cannot monetize more than you consume
     generation_revenue = (np.minimum(df.aep,df.ann_cons_kwh) * 0.01 * df.elec_rate_cents_per_kwh)[:,np.newaxis] * rate_growth_mult 

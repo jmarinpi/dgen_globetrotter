@@ -415,3 +415,11 @@ def get_max_market_share(con, scenario_opts, res_type = 'retrofit', com_type = '
     com_max_market = pd.DataFrame({'max_market_share': f2(yrs2),'sector': 'commercial','payback_key': np.arange(301)})   
     ind_max_market = pd.DataFrame({'max_market_share': f3(yrs2),'sector': 'industrial','payback_key': np.arange(301)}) 
     return res_max_market.append(com_max_market, ignore_index = 'TRUE').append(ind_max_market, ignore_index = 'TRUE')
+    
+def get_market_projections(con):
+    ''' Pull market projections table from dB
+    
+        IN: con - pg con object - connection object
+        OUT: market_projections - numpy array - table containing various market projections
+    '''
+    return sqlio.read_frame('SELECT * FROM wind_ds.market_projections', con)

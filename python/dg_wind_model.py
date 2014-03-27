@@ -58,6 +58,7 @@ model_years = range(start_year,end_year+1,2)
 deprec_schedule = datfunc.get_depreciation_schedule(con, type = 'standard').values
 financial_parameters = datfunc.get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned')
 max_market_share = datfunc.get_max_market_share(con, scenario_opts, res_type = 'retrofit', com_type = 'retrofit', ind_type = 'retrofit')
+market_projections = datfunc.get_market_projections(con)
 # get the sectors to model
 sectors = datfunc.get_sectors(cur)
 
@@ -79,10 +80,10 @@ for sector_abbr, sector in sectors.iteritems():
         print 'Working on %s' %year
         df = datfunc.get_main_dataframe(con, main_table, year)
         df['sector'] = sector.lower()
-        df['cust_expected_rate_growth'] = 1 + 0.025
+        df['customer_expec_elec_rates'] = pd.merge(df,market_projections[['year', 'customer_expec_elec_rates']],how = 'left', on = 'year')
         df = pd.merge(df,financial_parameters, how = 'left', on = 'sector')
         
-        ## INSERT
+        ## Diffusion from previous year ## 
         if year == start_year: 
             market_share_last_year = df[['gid']].copy()
             df['market_share_last_year'] = 0.002
