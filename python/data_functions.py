@@ -207,7 +207,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             	a.power_curve_id, \
             	a.turbine_height_m,\
             	wind_ds.scoe(b.installed_costs_dollars_per_kw, b.fixed_om_dollars_per_kw_per_yr, b.variable_om_dollars_per_kwh, a.naep , b.nameplate_capacity_kw , a.load_kwh_per_customer_in_bin , %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe\
-            FROM wind_ds.sample_all_wind_10 a\
+            FROM wind_ds.pt_%(sector_abbr)s_sample_load_and_wind a\
             INNER JOIN wind_ds.temporal_factors b\
             ON a.turbine_height_m = b.turbine_height_m\
             AND a.power_curve_id = b.power_curve_id\
