@@ -7,9 +7,18 @@ National Renewable Energy Lab
 ### NOTE: THESE SHOULD LATER BE BROKEN INTO SEPARATE SCRIPTS
 
 # 1. # Initialize Model
+print 'Initiating model at %s' %time.ctime()
+
+scen_name = 'test1'
+runpath = '../runs/' + scen_name
+while os.path.exists(runpath): 
+    print 'A scenario folder with that name exists, renaming'
+    runpath = runpath + '1'
+os.makedirs(runpath)
 
 
 # 2. # Import modules and global vars
+print 'Importing Modules'
 import pandas as pd
 import pandas.io.sql as sqlio
 import psycopg2 as pg
@@ -120,18 +129,15 @@ for sector_abbr, sector in sectors.iteritems():
 ## 11. Outputs & Visualization
 
 national_installed_capacity = outputs.groupby(['year'])
-outputs.groupby(['year']).sum()['installed_capacity'].plot()
+
+outputs['installed_capacity_gw'] = outputs['installed_capacity'] / 1e6
 
 
+fig = plt.figure()
+ax1 = fig.add_subplot(1,1,1)
+ax1.set_title('National Installed Capacity (GW)')
+ax1.set_ylabel('Installled Capacity (GW)')
+outputs.groupby(['year']).sum()['installed_capacity_gw'].plot(ax = ax1)
+savefig(runpath + '/National Installed Capacity.png')
 
 # Make scatter plot of adoption over time
-
-
-total_mkt.ix['Year'].plot()
-total_mkt['diff_percent'].plot()
-ax1 = fig.add_subplot(1,2,1)
-ax1.set_xticks(range(len(model_years)))
-ax1.set_xticklabels(model_years)
-plt.plot(total_mkt['diff_percent'], 'k--')
-
-plt.boxplot(mkt['pp'])
