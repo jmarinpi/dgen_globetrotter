@@ -64,7 +64,6 @@ def calc_cashflows(df,deprec_schedule,value_of_incentive = 0, value_of_rebate = 
     
     
     ## Revenue
-customer_expec_elec_rates
     
     # 3) Revenue from generation  ## REVISIONS NEEDED-- tie to perceived growth rates, not all generation will be offset at avg_rate
     
