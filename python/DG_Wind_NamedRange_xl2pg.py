@@ -207,7 +207,7 @@ def finParams(curWb,schema,table,conn,cur,verbose=False):
     rows = len(cells)
     c = 0
     length_irr = [0]
-    cust_id = [1]
+    cust_id = ['Residential']
     while c < columns:
         r = 0
         l = []
@@ -238,7 +238,7 @@ def finParams(curWb,schema,table,conn,cur,verbose=False):
     columns = len(cells[0])
     rows = len(cells)
     c = 0
-    cust_id = [2]
+    cust_id = ['Commercial']
     while c < columns:
         r = 0
         l = []
@@ -269,7 +269,7 @@ def finParams(curWb,schema,table,conn,cur,verbose=False):
     columns = len(cells[0])
     rows = len(cells)
     c = 0
-    cust_id = [3]
+    cust_id = ['Industrial']
     while c < columns:
         r = 0
         l = []
@@ -540,7 +540,7 @@ def maxMarket(curWb,schema,table,conn,cur,verbose=False):
                 val = cells[r][c].value
             l += [val]
             c += 1
-        sectors = ['Residential','Commercial','Industrial']
+        sectors = ['residential','commercial','industrial']
         res_out = year + [sectors[0]] + l[:2]
         com_out = year + [sectors[1]] + l[2:4]
         ind_out = year + [sectors[2]] + l[4:]

@@ -86,7 +86,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     inputs = locals().copy()       
     
     t0 = time.time()    
-    if process_inputs == 'FALSE':
+    if process_inputs == False:
         table_name_dict = {'res': 'wind_ds.pt_res_best_option_each_year', 'com' : 'wind_ds.pt_com_best_option_each_year', 'ind' : 'wind_ds.pt_ind_best_option_each_year'}
         return table_name_dict[sector_abbr]
     
@@ -352,70 +352,65 @@ def get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host
         OUT: fin_param  - pd dataframe - pre-processed resource,bins, rates, etc. for all years:
     '''
     
-    sql = 'SELECT * FROM wind_ds.financial_parameters'
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs = locals().copy()   
+    
+    # Get data, filtering based on ownership models selected
+    sql = "SELECT lower(sector) as sector, ownership_model, loan_term_yrs, loan_rate, down_payment, \
+           discount_rate, tax_rate, length_of_irr_analysis_yrs\
+           FROM wind_ds.financial_parameters\
+           WHERE (lower(sector) = 'residential' AND ownership_model = '%(res_model)s')\
+           OR (lower(sector) = 'commercial' AND ownership_model = '%(com_model)s')\
+           OR (lower(sector) = 'industrial' AND ownership_model = '%(ind_model)s');" % inputs
     df = sqlio.read_frame(sql, con)
     
-    # Filter based on ownership models selected
-    df['sector'] = ['residential', 'residential', 'residential', 'commercial', 'commercial','industrial','industrial']
-        
-    
-    df = df[((df['cust_disposition'] == res_model) & (df['cust_id'] == 1)) | 
-      ((df['cust_disposition'] == com_model) & (df['cust_id'] == 2)) |
-      ((df['cust_disposition'] == ind_model) & (df['cust_id'] == 3))]
-      
-    df = df.drop('cust_id',1)
     return df
  
 #==============================================================================
    
-def get_max_market_share(con, scenario_opts, res_type = 'retrofit', com_type = 'retrofit', ind_type = 'retrofit'):
+def get_max_market_share(con, sectors, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit'):
     ''' Pull max market share from dB, select curve based on scenario_options, and interpolate to tenth of a year. 
         Use passed parameters to determine ownership type
     
         IN: con - pg con object - connection object
-            res_type - string - which residential ownership structure to use (new or retrofit)
-            com_type - string - which commercial ownership structure to use (new or retrofit)
-            ind_type - string - which industrial ownership structure to use (new or retrofit)
+            residential_type - string - which residential ownership structure to use (new or retrofit)
+            commercial_type - string - which commercial ownership structure to use (new or retrofit)
+            industrial_type - string - which industrial ownership structure to use (new or retrofit)
             
         OUT: max_market_share  - pd dataframe - dataframe to join on main df to determine max share 
                                                 keys are sector & payback period 
     '''
-    # Query data    
-    max_market_share = sqlio.read_frame('SELECT * FROM wind_ds.max_market_share', con)
-    user_defined_max_market_share = sqlio.read_frame('SELECT * FROM wind_ds.user_defined_max_market_share', con)
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs = locals().copy()       
+
+    # the max market curves need to be interpolated to a finer temporal resolution of 1/10ths of years
+    # initialize a list for time steps at that inverval for a max 30 year payback period
+    yrs = np.linspace(0,30,301)
     
-    # Rename so the user-defined can be concatenated
-    max_market_share.columns = ['year','new','retrofit','sector','source']
-    max_market_share = max_market_share[['year','sector','new','retrofit','source']]
-    max_market_share['sector']  = [i.lower() for i in max_market_share['sector'].values]
+    # initialize a data frame to hold all of the interpolated max market curves (1 for each sector)
+    max_market_share = pd.DataFrame()
+    # loop through sectors
+    for sector in sectors:
+        # define the ownership type based on the current sector
+        ownership_type = inputs['%s_type' % sector.lower()]
+        # get the data for this sector from postgres (this will handle all of the selection based on scenario inputs)
+        sql = "SELECT *\
+            FROM wind_ds.max_market_curves_to_model\
+            WHERE lower(sector) = '%s';" % sector.lower()
+        mm = sqlio.read_frame(sql, con)
+        # create an interpolation function to interpolate max market share (for either retrofit or new) based on the year
+        interp_func = interp1d(mm['year'], mm[ownership_type]);
+        # create a data frame of max market values for yrs using this interpolation function
+        interpolated_mm = pd.DataFrame({'max_market_share': interp_func(yrs),'payback_key': np.arange(301)})
+        # add in the sector to the data frame
+        interpolated_mm['sector'] = sector.lower()
+        # append to the main data frame
+        max_market_share = max_market_share.append(interpolated_mm, ignore_index = True)
+        
     
-    user_defined_max_market_share['source'] = 'User Defined'
-    user_defined_max_market_share['sector']  = [i.lower() for i in user_defined_max_market_share['sector'].values]
+    return max_market_share
     
-    mm = max_market_share.append(user_defined_max_market_share, ignore_index = 'TRUE')
-    
-    # Select the max market share curve for each sector
-    max_market_res = mm[(mm['sector'] == 'residential') & (mm['source'] == scenario_opts['res_max_market_curve'])]
-    max_market_com = mm[(mm['sector'] == 'commercial') & (mm['source'] == scenario_opts['com_max_market_curve'])]
-    max_market_ind = mm[(mm['sector'] == 'industrial') & (mm['source'] == scenario_opts['ind_max_market_curve'])]     
-    
-    # Now interpolate each curve
-    yrs=np.linspace(0,30,31);
-    yrs2=np.linspace(0,30,301);
-    
-    f1 = interp1d(max_market_res['year'], max_market_res[res_type]);
-    f2 = interp1d(max_market_com['year'], max_market_com[com_type]);
-    f3 = interp1d(max_market_ind['year'], max_market_ind[ind_type]);
-    
-#    res_max_market = pd.DataFrame({'payback_period': yrs2, 'max_market_share': f1(yrs2),'sector': 'residential','payback_key': np.arange(301)})
-#    com_max_market = pd.DataFrame({'payback_period': yrs2, 'max_market_share': f2(yrs2),'sector': 'commercial','payback_key': np.arange(301)})   
-#    ind_max_market = pd.DataFrame({'payback_period': yrs2, 'max_market_share': f3(yrs2),'sector': 'industrial','payback_key': np.arange(301)})
-    
-    res_max_market = pd.DataFrame({'max_market_share': f1(yrs2),'sector': 'residential','payback_key': np.arange(301)})
-    com_max_market = pd.DataFrame({'max_market_share': f2(yrs2),'sector': 'commercial','payback_key': np.arange(301)})   
-    ind_max_market = pd.DataFrame({'max_market_share': f3(yrs2),'sector': 'industrial','payback_key': np.arange(301)}) 
-    return res_max_market.append(com_max_market, ignore_index = 'TRUE').append(ind_max_market, ignore_index = 'TRUE')
-    
+
 def get_market_projections(con):
     ''' Pull market projections table from dB
     

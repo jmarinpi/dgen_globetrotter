@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS wind_ds.max_market_share;
 CREATE TABLE wind_ds.max_market_share (
 	years_to_payback integer,
 	max_market_share_new numeric,
-	max_market_share_refrofit numeric,
+	max_market_share_retrofit numeric,
 	sector text,
 	source text);
 
