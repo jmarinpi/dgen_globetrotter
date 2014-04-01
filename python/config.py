@@ -30,6 +30,9 @@ random_generator_seed = 1
 oversize_turbine_factor = 1.15
 undersize_turbine_factor = 0.5
 
+# model start year
+start_year = 2014
+
 preprocess = 'TRUE'
 
 

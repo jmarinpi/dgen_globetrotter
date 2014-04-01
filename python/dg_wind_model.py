@@ -62,7 +62,7 @@ load_growth_scenario = scenario_opts['load_growth_scenario'] # get financial var
 net_metering = scenario_opts['net_metering_availability']
 inflation = scenario_opts['ann_inflation']
 
-start_year = scenario_opts['starting_year'] # set the range of years to model
+# start year comes from config
 end_year = scenario_opts['end_year']
 model_years = range(start_year,end_year+1,2)
 
