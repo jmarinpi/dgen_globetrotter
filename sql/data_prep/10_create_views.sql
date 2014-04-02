@@ -119,3 +119,31 @@ SELECT CASE WHEN height_exclusions = 'Population Density Only' THEN 'maxheight_m
 FROM wind_ds.scenario_options;
 
 
+-- max market share
+CREATE OR REPLACE VIEW wind_ds.max_market_curves_to_model As
+with user_inputs as (
+	SELECT 'residential' as sector, res_max_market_curve as source
+	FROM wind_ds.scenario_options
+	UNION
+	SELECT 'commercial' as sector, com_max_market_curve as source
+	FROM wind_ds.scenario_options
+	UNION
+	SELECT 'industrial' as sector, ind_max_market_curve as source
+	FROM wind_ds.scenario_options
+),
+all_maxmarket as (
+	SELECT years_to_payback as year, sector, max_market_share_new as new, max_market_share_retrofit as retrofit, source
+	FROM wind_ds.max_market_share
+
+
+	UNION
+
+	SELECT year, sector, new, retrofit, 'User Defined' as source
+	FROM wind_ds.user_defined_max_market_share)
+SELECT a.*
+FROM all_maxmarket a
+INNER JOIN user_inputs b
+ON a.sector = b.sector
+and a.source = b.source
+order by year, sector;
+

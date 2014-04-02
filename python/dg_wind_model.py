@@ -8,6 +8,7 @@ National Renewable Energy Lab
 
 # 1. # Initialize Model
 import time
+import os
 t0 = time.clock()
 print 'Initiating model at %s' %time.ctime()
 
@@ -62,16 +63,18 @@ load_growth_scenario = scenario_opts['load_growth_scenario'] # get financial var
 net_metering = scenario_opts['net_metering_availability']
 inflation = scenario_opts['ann_inflation']
 
-start_year = scenario_opts['starting_year'] # set the range of years to model
+# start year comes from config
 end_year = scenario_opts['end_year']
 model_years = range(start_year,end_year+1,2)
 
-deprec_schedule = datfunc.get_depreciation_schedule(con, type = 'standard').values
-financial_parameters = datfunc.get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned')
-max_market_share = datfunc.get_max_market_share(con, scenario_opts, res_type = 'retrofit', com_type = 'retrofit', ind_type = 'retrofit')
-market_projections = datfunc.get_market_projections(con)
 # get the sectors to model
 sectors = datfunc.get_sectors(cur)
+
+deprec_schedule = datfunc.get_depreciation_schedule(con, type = 'standard').values
+financial_parameters = datfunc.get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned')
+max_market_share = datfunc.get_max_market_share(con, sectors.values(), residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit')
+market_projections = datfunc.get_market_projections(con)
+
 
 # 6. Combine All of the Temporally Varying Data in a new Table in Postgres
 datfunc.combine_temporal_data(cur, con, start_year, end_year, datfunc.pylist_2_pglist(sectors.values()))
@@ -85,14 +88,14 @@ for sector_abbr, sector in sectors.iteritems():
     # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
     main_table = datfunc.generate_customer_bins(cur, con, random_generator_seed, customer_bins, sector_abbr, sector, 
                                    start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
-                                   oversize_turbine_factor, undersize_turbine_factor, process_inputs)
+                                   oversize_turbine_factor, undersize_turbine_factor, preprocess)
     # Pull data from the Main Table to a Data Frame for each year
     
     for year in model_years:
         print 'Working on %s for %s sector' %(year, sector_abbr) 
         df = datfunc.get_main_dataframe(con, main_table, year)
         df['sector'] = sector.lower()
-        df = pd.merge(df,market_projections[['year', 'customer_expec_elec_rates']],how = 'left', on = 'year')
+        df = pd.merge(df,market_projections[['year', 'customer_expec_elec_rates']], how = 'left', on = 'year')
         df = pd.merge(df,financial_parameters, how = 'left', on = 'sector')
         
         ## Diffusion from previous year ## 
