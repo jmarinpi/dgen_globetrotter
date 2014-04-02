@@ -112,8 +112,23 @@ def calc_fin_metrics(costs, revenues, dr):
     npv = calc_npv(cfs,dr)
     payback = calc_payback(cfs)
     ttd = calc_ttd(cfs)
-    returrn
+    return
 
+#==============================================================================    
+def calc_lcoe(costs,aep, dr, yrs = 30):
+    ''' LCOE calculation. LCOE is the net present cost, divided by the net present
+    energy production. Assume that aep is constant over lifetime of system###
+    
+    IN: costs - numpy ndarray - project costs ($/yr) [customer bin x system year]
+        aep   - numpy array - annual energy production of system (kWh/year)
+        dr    - numpy array - annual discount rate (decimal)
+
+    OUT: lcoe - numpy array - Levelized cost of energy (c/kWh) 
+    '''
+    
+    num = -100 * calc_npv(costs, dr)
+    denom = calc_npv(np.repeat(aep[:,np.newaxis],yrs, axis = 1), dr)
+    return num/denom
 #==============================================================================    
 
 def calc_irr(cfs):

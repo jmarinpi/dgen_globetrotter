@@ -117,6 +117,7 @@ for sector_abbr, sector in sectors.iteritems():
         ttd = finfunc.calc_ttd(cfs)  
 
         df['payback_period'] = np.where(df['sector'] == 'residential',payback, ttd)
+        df['lcoe'] = finfunc.calc_lcoe(costs,df.aep.values, df.discount_rate)
         df['payback_key'] = (df['payback_period']*10).astype(int)
         df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'payback_key'])
         
@@ -135,20 +136,5 @@ for sector_abbr, sector in sectors.iteritems():
 ## 11. Outputs & Visualization
 print 'Starting visualization'
 outputs.to_csv(runpath + '/outputs.csv')
+
 print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - t0)
-national_installed_capacity = outputs.groupby(['year'])
-
-outputs['installed_capacity_gw'] = outputs['installed_capacity'] / 1e6
-
-
-fig = plt.figure()
-ax1 = fig.add_subplot(1,1,1)
-ax1.set_title('National Installed Capacity (GW)')
-ax1.set_ylabel('Installled Capacity (GW)')
-outputs.groupby(['year']).sum()['installed_capacity_gw'].plot(ax = ax1)
-savefig(runpath + '/National Installed Capacity.png')
-
-#.sum('installed_capacity_gw')#['installed_capacity_gw'].plot(ax = ax1)
-
-
-# Make scatter plot of adoption over time
