@@ -26,8 +26,8 @@ total_value_by_state_table<-function(df,val){
   rbind(national,by_state)
 }
 
-create_report <- function() {
-  knit2html("plot_outputs.md", output = "plot_outputs.html", title = "DG Wind report", stylesheet = "plot_outputs.css",
+create_report <- function(runpath) {
+  knit2html("../r/graphics/plot_outputs.md", output = "DG Wind report.html", title = "DG Wind report", stylesheet = "plot_outputs.css",
             options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
 }
 

@@ -9,18 +9,20 @@ library(ggthemes)
 library(reshape2)
 library(xtable)
 
-source("output_funcs.R")
+source("../r/graphics/output_funcs.R")
 
-df<- fread('C:/Users/bsigrin/Desktop/diffusion/runs/30per111/outputs.csv', header = T, sep = ',')
-#state_lookup<-read.csv('state_lookup.csv',header = T, sep = ',', stringsAsFactor = F)
+runpath<-commandArgs(TRUE)[1]
+df<- fread(paste0(runpath,'/outputs.csv'), header = T, sep = ',')
 df<-data.frame(df)
 
-create_report()
+opts_knit$set(base.dir = runpath)
+knit2html("../r/graphics/plot_outputs.md", output = paste0(runpath,"/DG Wind report.html"), title = "DG Wind report", stylesheet = "../r/graphics/plot_outputs.css",
+            options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
 
 ###TODO:
 
 # x: CF vs y: installed capacity (binned)
-
+#state_lookup<-read.csv('state_lookup.csv',header = T, sep = ',', stringsAsFactor = F)
 # pp_state<-subset(df, year == min(df$year))
 # 
 # #' Payback period by state - First Year
