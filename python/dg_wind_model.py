@@ -34,6 +34,7 @@ import diffusion_functions as diffunc
 import financial_functions as finfunc
 import data_functions as datfunc
 import DG_Wind_NamedRange_xl2pg as loadXL
+import subprocess
 # load in a bunch of the configuration variables as global vars
 from config import *
 
@@ -134,7 +135,13 @@ for sector_abbr, sector in sectors.iteritems():
         market_share_last_year.columns = ['gid', 'market_share_last_year']
         
 ## 11. Outputs & Visualization
-print 'Starting visualization'
+print 'Writing outputs'
 outputs.to_csv(runpath + '/outputs.csv')
 
+command = ("C:/Program Files/R/R-3.0.2/bin/Rscript.exe "
+           "--vanilla ../r/graphics/plot_outputs.R %s" %(runpath))
+print 'Creating outputs report'            
+proc = subprocess.Popen(command,stdout=subprocess.PIPE)
+messages = proc.communicate()
+returncode = proc.returncode
 print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - t0)
