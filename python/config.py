@@ -35,5 +35,10 @@ start_year = 2014
 
 preprocess = True
 
+# Path to R will vary by user (until we move the script over to run on gispgdb server)
+    # Mike's path
+Rscript_path = 'C:/Users/mgleason/Documents/R/R-3.0.2/bin/Rscript.exe'
+    # Ben's Path
+#Rscript_path = 'C:/Program Files/R/R-3.0.2/bin/Rscript.exe' 
 
 
