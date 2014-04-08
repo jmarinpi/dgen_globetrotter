@@ -53,7 +53,7 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors):
             LEFT JOIN wind_ds.turbine_costs_per_size_and_year c\
             ON a.nameplate_capacity_kw = c.turbine_size_kw\
             AND a.year = c.year\
-            LEFT JOIN wind_ds.rate_escalations d\
+            LEFT JOIN wind_ds.rate_escalations_to_model d\
             ON a.year = d.year\
             LEFT JOIN wind_ds.aeo_load_growth_projections e\
             ON d.census_division_abbr = e.census_division_abbr\
