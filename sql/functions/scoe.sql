@@ -28,7 +28,8 @@ CREATE OR REPLACE FUNCTION wind_ds.scoe(ic numeric, fom numeric, vom numeric, na
         return float('inf')
     else:
         scoe = (ic + 30 * fom + 30 * naep * vom) / (30 * naep) # $/kWh
-        oversized = (naep * cap / ann_elec_cons) > oversize_factor
+        # add in a penalty for oversizing that scales with the degree of oversizing
+        oversized = ((naep * cap / ann_elec_cons) > oversize_factor) * ((naep * cap / ann_elec_cons) / oversize_factor)
         undersized = (naep * cap / ann_elec_cons) < undersize_factor
         scoe = scoe + oversized * 10 + undersized * 0.1 # Penalize under/over sizing    
          
