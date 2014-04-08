@@ -147,3 +147,81 @@ ON a.sector = b.sector
 and a.source = b.source
 order by year, sector;
 
+-- create view for rate escalations
+CREATE OR REPLACE VIEW wind_ds.rate_escalations_to_model AS
+WITH cdas as (
+	SELECT distinct(census_division_abbr) as census_division_abbr
+	FROM wind_ds.county_geom
+	),
+
+esc_combined AS (
+	-- convert user defined rate projections to format consistent with wind_ds.rate_escalations
+	SELECT b.census_division_abbr, a.year, 'Residential'::text as sector, 
+		a.user_defined_res_rate_escalations as escalation_factor,
+		'User Defined'::text as source
+	FROM wind_ds.market_projections a
+	CROSS JOIN cdas b
+
+	UNION
+
+	SELECT b.census_division_abbr, a.year, 'Commercial'::text as sector, 
+		a.user_defined_com_rate_escalations as escalation_factor,
+		'User Defined'::text as source
+	FROM wind_ds.market_projections a
+	CROSS JOIN cdas b
+
+	UNION
+
+	SELECT b.census_division_abbr, a.year, 'Industrial'::text as sector, 
+		a.user_defined_ind_rate_escalations as escalation_factor,
+		'User Defined'::text as source
+	FROM wind_ds.market_projections a
+	CROSS JOIN cdas b
+
+	UNION
+	-- create No Growth projections using the same method
+	SELECT b.census_division_abbr, a.year, 'Residential'::text as sector, 
+		1::numeric as escalation_factor,
+		'No Growth'::text as source
+	FROM wind_ds.market_projections a
+	CROSS JOIN cdas b
+
+	UNION
+
+	SELECT b.census_division_abbr, a.year, 'Commercial'::text as sector, 
+		1::numeric as escalation_factor,
+		'No Growth'::text as source
+	FROM wind_ds.market_projections a
+	CROSS JOIN cdas b
+
+	UNION
+
+	SELECT b.census_division_abbr, a.year, 'Industrial'::text as sector, 
+		1::numeric as escalation_factor,
+		'No Growth'::text as source
+	FROM wind_ds.market_projections a
+	CROSS JOIN cdas b
+
+	UNION
+
+	-- add in the prestaged AEO2014 projections
+	SELECT census_division_abbr, year, sector, escalation_factor, source
+	FROM wind_ds.rate_escalations
+
+	order by year, sector, census_division_abbr, source),
+
+inp_opts AS (
+	SELECT 'Residential'::text as sector, res_rate_escalation as source
+	FROM wind_ds.scenario_options
+	UNION
+	SELECT 'Commercial'::text as sector, com_rate_escalation as source
+	FROM wind_ds.scenario_options
+	UNION
+	SELECT 'Industrial'::text as sector, ind_rate_escalation as source
+	FROM wind_ds.scenario_options)
+
+SELECT a.census_division_abbr, a.year, a.sector, a.escalation_factor, a.source
+FROM esc_combined a
+INNER JOIN inp_opts b
+ON a.sector = b.sector
+and a.source = b.source;
