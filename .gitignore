@@ -3,7 +3,7 @@
 
 # ignore compiled python
 *.pyc
-runs
+
 data_share/WIND_HEIGHTS_COSTS_20140320.xlsx
 r/graphics/.RData
 r/graphics/.Rhistory
