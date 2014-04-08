@@ -9,16 +9,9 @@ National Renewable Energy Lab
 # 1. # Initialize Model
 import time
 import os
+
 t0 = time.clock()
 print 'Initiating model at %s' %time.ctime()
-
-scen_name = 'all_outputs'
-runpath = '../runs/' + scen_name
-while os.path.exists(runpath): 
-    print 'A scenario folder with that name exists, renaming'
-    runpath = runpath + '1'
-os.makedirs(runpath)
-
 
 # 2. # Import modules and global vars
 print 'Importing Modules'
@@ -135,11 +128,21 @@ for sector_abbr, sector in sectors.iteritems():
         market_share_last_year.columns = ['gid', 'market_share_last_year']
         
 ## 11. Outputs & Visualization
+# set output folder
+cdate = time.strftime('%Y%m%d_%H%M%S')
+scen_name = '%s_%s' % (scenario_opts['scenario_name'],cdate)
+runpath = '../runs/' + scen_name
+while os.path.exists(runpath): 
+    print 'Warning: A scenario folder with that name exists. It will be overwritten.'
+    os.remove(runpath)
+os.makedirs(runpath)
+        
+        
+        
 print 'Writing outputs'
 outputs.to_csv(runpath + '/outputs.csv')
 
-command = ("C:/Program Files/R/R-3.0.2/bin/Rscript.exe "
-           "--vanilla ../r/graphics/plot_outputs.R %s" %(runpath))
+command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
 print 'Creating outputs report'            
 proc = subprocess.Popen(command,stdout=subprocess.PIPE)
 messages = proc.communicate()
