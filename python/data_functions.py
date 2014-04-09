@@ -325,10 +325,15 @@ def get_scenario_options(cur):
     results = cur.fetchall()[0]
     return results
 
-def find_incentives_for_customer_bins(cur, con, sector_abbr):
+def get_dsire_incentives(cur, con, sector_abbr):
     # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()     
-    
+    inputs = locals().copy()
+
+    if sector_abbr == 'ind':
+        inputs['incentives_sector'] = 'com'
+    else:
+        inputs['incentives_sector'] = sector_abbr        
+
     sql =   "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_incentives;\
             CREATE TABLE wind_ds.pt_%(sector_abbr)s_incentives AS\
             SELECT a.gid, c.*\
@@ -337,24 +342,15 @@ def find_incentives_for_customer_bins(cur, con, sector_abbr):
             ON a.gid = b.pt_gid\
             LEFT JOIN wind_ds.incentives c\
             ON b.wind_incentives_uid = c.uid\
-            where lower(c.sector) = '%(sector_abbr)s';" % inputs
+            where lower(c.sector) = '%(incentives_sector)s'\
+            and a.year = 2014\
+            order by a.gid;" % inputs         
     cur.execute(sql)
     con.commit()
     
-    # create index on the year field
-    sql = "CREATE INDEX pt_%(sector_abbr)s_incentives_year_btree ON wind_ds.pt_%(sector_abbr)s_incentives USING BTREE(year);" % inputs
-    cur.execute(sql)
-    con.commit()
     
-    table_name = 'wind_ds.pt_%(sector_abbr)s_incentives'
-    return table_name
-
-def get_current_incentives(con, sector_abbr, year):
-    # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()   
-    
-    sql = "SELECT * FROM wind_ds.pt_%(sector_abbr)s_incentives\
-            WHERE year = %(year)s;" % inputs
+    sql =  "SELECT * FROM \
+            wind_ds.pt_%(sector_abbr)s_incentives;" % inputs
     df = sqlio.read_frame(sql, con)
     return df
 
@@ -369,10 +365,10 @@ def get_initial_wind_capacities(cur, con, n_bins, sector_abbr, sector):
             WITH total_county_capacities AS (\
                 SELECT county_id, sum(nameplate_capacity_kw*0.001*customers_in_bin) as total_county_capacity_mw\
                 FROM wind_ds.pt_%(sector_abbr)s_best_option_each_year\
+                WHERE year = 2014\
                 GROUP BY county_id)\
             SELECT a.county_id, a.total_county_capacity_mw, \
-            	b.capacity_mw_%(sector)s/a.total_county_capacity_mw as initial_market_share, \
-            	b.capacity_mw_%(sector)s/a.total_county_capacity_mw/%(n_bins)s as initial_market_share_per_bin\
+            	b.capacity_mw_%(sector)s/a.total_county_capacity_mw as initial_market_share \
             FROM total_county_capacities a\
             LEFT JOIN wind_ds.starting_wind_capacities_mw_2014_us b\
             ON a.county_id = b.county_id;" % inputs
@@ -381,7 +377,7 @@ def get_initial_wind_capacities(cur, con, n_bins, sector_abbr, sector):
 
     # *** NOTE *** : There is no year field in the incentives table, so this will crash
 
-    sql = 'SELECT county_id, initial_market_share_per_bin as market_share_last_year\
+    sql = 'SELECT county_id, initial_market_share as market_share_last_year\
             FROM wind_ds.pt_%(sector_abbr)s_initial_market_shares;' % inputs
     df = sqlio.read_frame(sql, con)
     return df  

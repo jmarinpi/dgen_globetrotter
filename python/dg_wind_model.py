@@ -87,9 +87,8 @@ for sector_abbr, sector in sectors.iteritems():
     main_table = datfunc.generate_customer_bins(cur, con, random_generator_seed, customer_bins, sector_abbr, sector, 
                                    start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
                                    oversize_turbine_factor, undersize_turbine_factor, preprocess)
-    # find the incentives associated with gids in the main table
-    # *** NOTE *** : There is no year field in the incentives table, so this will crash
-#    incentives_table = datfunc.find_incentives_for_customer_bins(cur, con, sector_abbr)
+    # get dsire incentives for the generated customer bins
+    dsire_incentives = datfunc.get_dsire_incentives(cur, con, sector_abbr)
     # Pull data from the Main Table to a Data Frame for each year
     
     for year in model_years:
@@ -98,9 +97,6 @@ for sector_abbr, sector in sectors.iteritems():
         df['sector'] = sector.lower()
         df = pd.merge(df,market_projections[['year', 'customer_expec_elec_rates']], how = 'left', on = 'year')
         df = pd.merge(df,financial_parameters, how = 'left', on = 'sector')
-        # get the current incentives
-        # *** NOTE *** : There is no year field in the incentives table, so this will crash
-#        current_incentives = get_current_incentives(con, sector_abbr, year)
         
         ## Diffusion from previous year ## 
         if year == start_year: 
@@ -108,9 +104,6 @@ for sector_abbr, sector in sectors.iteritems():
             initial_market_shares = datfunc.get_initial_wind_capacities(cur, con, customer_bins, sector_abbr, sector)
             # join this to the df to on county_id
             df = pd.merge(df, initial_market_shares, how = 'left', on = 'county_id')
-            # vestigial code that shouldn't be necessary anymore
-#            market_share_last_year = df[['gid']].copy()
-#            df['market_share_last_year'] = 0.002
         else:
             df = pd.merge(df,market_share_last_year, how = 'left', on = 'gid')
         
