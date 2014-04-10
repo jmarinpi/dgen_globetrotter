@@ -98,4 +98,6 @@ def calc_diffusion(payback_period,max_market_share, market_share_last_year):
     market_share = np.where(market_share_last_year > max_market_share, market_share_last_year, market_share)
     
     return market_share
-#==============================================================================    
+#==============================================================================  
+    
+calc_diffusion(30,0, 0)
