@@ -4,9 +4,9 @@ sector_fil <- c(residential = "#4daf4a", commercial = "#377eb8", industrial = "#
 # ======================= DATA FUNCTIONS =================================================
 mean_value_by_state_table<-function(df,val){
   # Create table of mean value by year and state. value is string of variable to take mean of. 
-  by_state<-ddply(df,.(year,state_abbr), function(d) round(mean(d[[val]]),digits=2))
+  by_state<-ddply(df,.(year,state_abbr), function(d) round(mean(d[[val]],na.rm=T),digits=2))
   names(by_state)<-c('year','State',val)
-  national<-ddply(df,.(year), function(d) round(mean(d[[val]]),digits=2))
+  national<-ddply(df,.(year), function(d) round(mean(d[[val]],na.rm=T),digits=2))
   national$State<-'U.S'
   names(national)<-c('year',val,'State')
   by_state<-dcast(data = by_state,formula= State ~ year, value.var = val)
@@ -16,9 +16,9 @@ mean_value_by_state_table<-function(df,val){
 
 total_value_by_state_table<-function(df,val){
   # Create table of summed value by year and state. value is string of variable to take sum over. 
-  by_state<-ddply(df,.(year,state_abbr), function(d) round(sum(d[[val]]),digits=2))
+  by_state<-ddply(df,.(year,state_abbr), function(d) round(sum(d[[val]],na.rm=T),digits=2))
   names(by_state)<-c('year','State',val)
-  national<-ddply(df,.(year), function(d) round(sum(d[[val]]),digits=2))
+  national<-ddply(df,.(year), function(d) round(sum(d[[val]],na.rm=T),digits=2))
   national$State<-'U.S'
   names(national)<-c('year',val,'State')
   by_state<-dcast(data = by_state,formula= State ~ year, value.var = val)
@@ -38,9 +38,9 @@ create_report <- function(runpath) {
 cf_by_sector_and_year<-function(df){
 # Median and inner-quartile range of CF over sector and year
 data<-ddply(df, .(year,sector), summarise, 
-                tql = quantile(naep, 0.75)/ 8760,
-                median = quantile(naep, 0.5)/ 8760,
-                fql = quantile(naep, 0.25)/ 8760)
+                tql = quantile(naep, 0.75,na.rm=T)/ 8760,
+                median = quantile(naep, 0.5,na.rm=T)/ 8760,
+                fql = quantile(naep, 0.25,na.rm=T)/ 8760)
 
 ggplot(data, aes(x = year, y = median, ymin = fql, ymax = tql, color = sector, fill = sector))+
   geom_smooth(aes(alpha = .1),stat = "identity")+
@@ -92,7 +92,7 @@ ggplot(data,aes(x = rate, y = load, size = 0.75))+
 dist_of_cap_selected<-function(df){
 # What size system are customers selecting in 2014?
 cap_picked<-subset(df, year == 2014)
-cap_picked<-ddply(cap_picked,.(cap,sector),summarise, cust_num = sum(customers_in_bin))
+cap_picked<-ddply(cap_picked,.(cap,sector),summarise, cust_num = sum(customers_in_bin,na.rm=T))
 ggplot(cap_picked, aes(x = factor(cap), weight = cust_num, fill = sector))+
   geom_bar()+
   facet_wrap(~sector,scales="free_y")+
@@ -110,7 +110,7 @@ ggplot(cap_picked, aes(x = factor(cap), weight = cust_num, fill = sector))+
 dist_of_height_selected<-function(df){
 #What heights are prefered?
 height_picked <- subset(df, year == 2014)
-height_picked<-ddply(height_picked,.(cap,turbine_height_m,sector),summarise, load_in_gw = sum(load_kwh_in_bin)/(1e6*8760))
+height_picked<-ddply(height_picked,.(cap,turbine_height_m,sector),summarise, load_in_gw = sum(load_kwh_in_bin,na.rm=T)/(1e6*8760))
 ggplot(height_picked)+
   geom_point(aes(x = factor(cap), y = factor(turbine_height_m), size = load_in_gw, color = sector), aes = 0.2)+
   scale_size_continuous(name = 'Potential Customer Load', range = c(4,12))+
@@ -130,9 +130,9 @@ ggplot(height_picked)+
 national_pp_line<-function(df){
 # Median payback period over time and sector
 data<-ddply(df, .(year, sector), summarise, 
-                uql = quantile(payback_period, 0.95),
-                median = quantile(payback_period, 0.5),
-                lql = quantile(payback_period, 0.05))
+                uql = quantile(payback_period, 0.95,na.rm=T),
+                median = quantile(payback_period, 0.5,na.rm=T),
+                lql = quantile(payback_period, 0.05,na.rm=T))
 
 ggplot(data, aes(x = year, y = median, ymin = lql, ymax = uql, color = sector, fill = sector), size = 0.75)+
   geom_smooth(stat = 'identity')+
@@ -151,10 +151,10 @@ ggplot(data, aes(x = year, y = median, ymin = lql, ymax = uql, color = sector, f
 diffusion_trends<-function(df){
 # Diffusion trends
 data <- ddply(df, .(year, sector), summarise, 
-           installed_capacity  = sum(installed_capacity)/1e6, 
-           market_share = mean(market_share), 
-           max_market_share = mean(max_market_share), 
-           number_of_adopters = sum(number_of_adopters))
+           installed_capacity  = sum(installed_capacity,na.rm=TRUE)/1e6, 
+           market_share = mean(market_share,na.rm=TRUE), 
+           max_market_share = mean(max_market_share,na.rm=TRUE), 
+           number_of_adopters = sum(number_of_adopters,na.rm=TRUE))
 data<-melt(data=data,id.vars=c('year','sector'))
 
 #' National market share trends

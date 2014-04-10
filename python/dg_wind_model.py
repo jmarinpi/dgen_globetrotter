@@ -4,13 +4,12 @@ National Renewable Energy Lab
 
 @author: bsigrin
 """
-### NOTE: THESE SHOULD LATER BE BROKEN INTO SEPARATE SCRIPTS
 
 # 1. # Initialize Model
 import time
 import os
 
-t0 = time.clock()
+t0 = time.time()
 print 'Initiating model at %s' %time.ctime()
 
 # 2. # Import modules and global vars
@@ -104,8 +103,10 @@ for sector_abbr, sector in sectors.iteritems():
             initial_market_shares = datfunc.get_initial_wind_capacities(cur, con, customer_bins, sector_abbr, sector)
             # join this to the df to on county_id
             df = pd.merge(df, initial_market_shares, how = 'left', on = 'county_id')
+            df['number_of_adopters_last_year'] = df['market_share_last_year'] * df['customers_in_bin']
+            df['installed_capacity_last_year'] = df['number_of_adopters_last_year'] * df['nameplate_capacity_kw']
         else:
-            df = pd.merge(df,market_share_last_year, how = 'left', on = 'gid')
+            df = pd.merge(df,market_last_year, how = 'left', on = 'gid')
         
         # 8. Calculate economics        
         revenue, costs, cfs = finfunc.calc_cashflows(df,deprec_schedule, value_of_incentive = 0, value_of_rebate = 0,  yrs = 30)      
@@ -125,15 +126,14 @@ for sector_abbr, sector in sectors.iteritems():
         
         # 9. Calulate diffusion
         df['market_share'] = diffunc.calc_diffusion(df.payback_period.values,df.max_market_share.values, df.market_share_last_year.values)
-        df['number_of_adopters'] = df['market_share'] * df['customers_in_bin']
-        df['installed_capacity'] = df['number_of_adopters'] * df['cap']
-        #outputs_this_year = df[['gid', 'year', 'county_id', 'sector', 'state_abbr', 'number_of_adopters', 'installed_capacity', 'payback_period']]
+        df['number_of_adopters'] = np.maximum(df['market_share'] * df['customers_in_bin'], df['number_of_adopters_last_year'])
+        df['installed_capacity'] = np.maximum(df['number_of_adopters'] * df['cap'], df['installed_capacity_last_year'])
         
         #10. Update parameters for next solve
         # BOS - would like to save entire main dataframe, at lease for diagnostics
         outputs = outputs.append(df, ignore_index = 'True')
-        market_share_last_year = df[['gid','market_share']] # Update dataframe for next solve year
-        market_share_last_year.columns = ['gid', 'market_share_last_year']
+        market_last_year = df[['gid','market_share', 'number_of_adopters', 'installed_capacity']] # Update dataframe for next solve year
+        market_last_year.columns = ['gid', 'market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year']
         
 ## 11. Outputs & Visualization
 # set output folder
@@ -148,6 +148,7 @@ os.makedirs(runpath)
         
         
 print 'Writing outputs'
+outputs = outputs.fillna(0)
 outputs.to_csv(runpath + '/outputs.csv')
 
 command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))

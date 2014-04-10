@@ -13,7 +13,6 @@ source("../r/graphics/output_funcs.R")
 
 runpath<-commandArgs(TRUE)[1]
 df<- read.csv(paste0(runpath,'/outputs.csv'), header = T, sep = ',')
-df<-data.frame(df)
 
 print(str(df))
 

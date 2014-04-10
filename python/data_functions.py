@@ -80,15 +80,15 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors):
     
     
 
-def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor,process_inputs):
+def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor,preprocess):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
     
     t0 = time.time()    
-    if process_inputs == False:
-        table_name_dict = {'res': 'wind_ds.pt_res_best_option_each_year', 'com' : 'wind_ds.pt_com_best_option_each_year', 'ind' : 'wind_ds.pt_ind_best_option_each_year'}
-        return table_name_dict[sector_abbr]
+    #if preprocess == True:
+    #    table_name_dict = {'res': 'wind_ds.pt_res_best_option_each_year', 'com' : 'wind_ds.pt_com_best_option_each_year', 'ind' : 'wind_ds.pt_ind_best_option_each_year'}
+    #    return table_name_dict[sector_abbr]
     
     
     #==============================================================================
