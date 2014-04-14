@@ -12,7 +12,7 @@ from collections import Iterable
 
 #==============================================================================
 
-def calc_cashflows(df,deprec_schedule,value_of_incentive = 0, value_of_rebate = 0,  yrs = 30):
+def calc_cashflows(df,deprec_schedule, yrs = 30):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 
@@ -62,7 +62,6 @@ def calc_cashflows(df,deprec_schedule,value_of_incentive = 0, value_of_rebate = 
     om_cost[:] =   (-df.variable_om_dollars_per_kwh * df.naep * df.cap)[:,np.newaxis]
     om_cost[:] +=  (-df.fixed_om_dollars_per_kw_per_yr * df.cap)[:,np.newaxis]
     
-    
     ## Revenue
     
     # 3) Revenue from generation  ## REVISIONS NEEDED-- tie to perceived growth rates, not all generation will be offset at avg_rate
@@ -79,7 +78,7 @@ def calc_cashflows(df,deprec_schedule,value_of_incentive = 0, value_of_rebate = 
     # Revenue comes from taxable deduction [basis * tax rate * schedule] and cannot be monetized by Residential
     
     depreciation_revenue = np.zeros(shape)
-    deprec_basis = (df.ic - 0.5 * (value_of_incentive + value_of_rebate))[:,np.newaxis] # depreciable basis reduced by half the incentive
+    deprec_basis = (df.ic - 0.5 * (df.value_of_tax_credit_or_deduction  + df.value_of_rebate))[:,np.newaxis] # depreciable basis reduced by half the incentive
     depreciation_revenue[:,:20] = deprec_basis * deprec_schedule.reshape(1,20) * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial'))[:,np.newaxis]   
     
     # 5) Interest paid on loans is tax-deductible for commercial & industrial; 
@@ -95,11 +94,21 @@ def calc_cashflows(df,deprec_schedule,value_of_incentive = 0, value_of_rebate = 
     # 6) Revenue from other incentives
     
     incentive_revenue = np.zeros(shape)
+    incentive_revenue[:, 1] = df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction
+
+    ptc_revenue = np.zeros(shape)
+    for i in range(len(df)):
+        ptc_revenue[i,1:df.ptc_length[i]] = df.value_of_ptc[i]
+    
+    pbi_fit_revenue = np.zeros(shape)
+    for i in range(len(df)):
+        pbi_fit_revenue[i,1:df.pbi_fit_length[i]] = df.value_of_pbi_fit[i]
+    
+    incentive_revenue += ptc_revenue + pbi_fit_revenue
     
     revenue = generation_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
     costs = loan_cost + om_cost
-    cfs = loan_cost + om_cost + generation_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
-        
+    cfs = revenue + costs 
     return revenue, costs, cfs
     
 #==============================================================================

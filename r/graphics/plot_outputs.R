@@ -22,6 +22,38 @@ knit2html("../r/graphics/plot_outputs.md", output = paste0(runpath,"/DG Wind rep
 dbDisconnect(con)
 
 
+
+# ## Under development
+# dr<- 0.1
+# n <- 30
+# d = data.frame()
+# for(cost in c(0,0.1, 0.2, 0.3, 0.4, 0.5, 0.6,0.7)){
+#   tmp<-data.frame(npc = seq(0,10,.01))
+#   tmp$cf <- 1000 * tmp$npc / (cost * 8760 * ((1 - (1 + dr)^-n)/dr))
+#   tmp$cf_max <- 1000 * tmp$npc / (cost * 8760 * ((1 - (1 + dr)^-n)/dr))
+#   tmp$cf_min <- 1000 * tmp$npc / ((cost + 0.1) * 8760 * ((1 - (1 + dr)^-n)/dr))
+#   tmp$lcoe <- cost
+#   d <- rbind(d,tmp)
+# }
+# 
+# d[is.na(d)] <- 0.5
+# d[d$cf_max > 0.5, 'cf_max'] <- 0.5
+# d[d$cf_min > 0.5, 'cf_min'] <- 0.5
+# d[d$lcoe == 0.7 , 'cf_min'] <- 0
+# 
+# ggplot()+
+#   geom_ribbon(data = d, aes(x = npc, y = cf, ymin = cf_min, ymax = cf_max, fill = factor(lcoe), alpha = 0.5))+
+#   theme_few()+
+#   scale_x_continuous(name = 'Net Present Cost ($/W)', limits = c(0,8))+
+#   scale_y_continuous(name = 'Annual Capacity Factor', limits = c(0,.5))+
+#   scale_fill_brewer(name = 'LCOE Range ($/kWh)', 
+#                     labels=c('< 0.1' ,"0.1 - 0.2", "0.2 - 0.3", "0.3 - 0.4", "0.4 - 0.5", "0.5 - 0.6", "0.6 - 0.7", "> 0.7"), 
+#                     palette = 'Spectral')+
+#   geom_point(data = df[sample(nrow(subset(df, year = 2014)), 1000),], aes(x = 0.001 * installed_costs_dollars_per_kw, y = naep/8760), color = 'black', size = 1)
+# 
+# ##
+
+
 ###TODO:
 
 # x: CF vs y: installed capacity (binned)
@@ -63,3 +95,15 @@ dbDisconnect(con)
 #   scale_fill_gradient(low='#EEEEEE', high='darkgreen')+
 #   facet_wrap(~sector)+
 #   ggtitle(paste0('Mean Payback Period by State and Sector in ',max(df$year)))
+
+dol_per_wat <- seq(0,10,.01)
+cf <- seq(0,.5,.001)
+dr<- 0.1
+n <- 30
+pv_gen<- cf * 8760 * ((1 - (1 + dr)^-n)/dr)
+
+lcoe <- dol_per_wat / pv_gen 
+
+0.3 <- seq(0,10,.001) / cf * (8760 * ((1+dr)^n - 1)/dr)
+cf <- 1000 * dol_per_wat / (0.1 * 8760 * ((1 - (1 + dr)^-n)/dr))
+plot(dol_per_wat,cf)

@@ -27,6 +27,7 @@ import financial_functions as finfunc
 import data_functions as datfunc
 import DG_Wind_NamedRange_xl2pg as loadXL
 import subprocess
+import datetime
 # load in a bunch of the configuration variables as global vars
 from config import *
 
@@ -105,11 +106,21 @@ for sector_abbr, sector in sectors.iteritems():
             df = pd.merge(df, initial_market_shares, how = 'left', on = 'county_id')
             df['number_of_adopters_last_year'] = df['market_share_last_year'] * df['customers_in_bin']
             df['installed_capacity_last_year'] = df['number_of_adopters_last_year'] * df['nameplate_capacity_kw']
+            df['market_value_last_year'] = df['number_of_adopters_last_year'] * df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw']
+            
         else:
             df = pd.merge(df,market_last_year, how = 'left', on = 'gid')
+       
+        # 8. Calculate economics including incentives
+        # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years. 
+        if scenario_opts['overwrite_exist_inc']:
+            value_of_incentives = datfunc.calc_manual_incentives(df,con, year)
+        else:
+            inc = pd.merge(df,dsire_incentives,how = 'left', on = 'gid')
+            value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
+        df = pd.merge(df, value_of_incentives, how = 'left', on = 'gid')
         
-        # 8. Calculate economics        
-        revenue, costs, cfs = finfunc.calc_cashflows(df,deprec_schedule, value_of_incentive = 0, value_of_rebate = 0,  yrs = 30)      
+        revenue, costs, cfs = finfunc.calc_cashflows(df,deprec_schedule,  yrs = 30)      
         
         #Disabled at moment because of computation time
         #df['irr'] = finfunc.calc_irr(cfs)
@@ -128,12 +139,12 @@ for sector_abbr, sector in sectors.iteritems():
         df['market_share'] = diffunc.calc_diffusion(df.payback_period.values,df.max_market_share.values, df.market_share_last_year.values)
         df['number_of_adopters'] = np.maximum(df['market_share'] * df['customers_in_bin'], df['number_of_adopters_last_year'])
         df['installed_capacity'] = np.maximum(df['number_of_adopters'] * df['cap'], df['installed_capacity_last_year'])
+        df['market_value'] = np.maximum(df['number_of_adopters'] *df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw'], df['market_value_last_year'])
         
         #10. Update parameters for next solve
-        # BOS - would like to save entire main dataframe, at lease for diagnostics
         outputs = outputs.append(df, ignore_index = 'True')
-        market_last_year = df[['gid','market_share', 'number_of_adopters', 'installed_capacity']] # Update dataframe for next solve year
-        market_last_year.columns = ['gid', 'market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year']
+        market_last_year = df[['gid','market_share', 'number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
+        market_last_year.columns = ['gid', 'market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
         
 ## 11. Outputs & Visualization
 # set output folder
