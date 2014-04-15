@@ -30,7 +30,7 @@ dbDisconnect(con)
 # for(cost in c(0,0.1, 0.2, 0.3, 0.4, 0.5, 0.6,0.7)){
 #   tmp<-data.frame(npc = seq(0,10,.01))
 #   tmp$cf <- 1000 * tmp$npc / (cost * 8760 * ((1 - (1 + dr)^-n)/dr))
-#   tmp$cf_max <- 1000 * tmp$npc / (cost * 8760 * ((1 - (1 + dr)^-n)/dr))
+#   tmp$cf_max <- 1000 * tmp$npc / (cost * 8760 * ((1 - (1 + dr)^-n)/dr))()
 #   tmp$cf_min <- 1000 * tmp$npc / ((cost + 0.1) * 8760 * ((1 - (1 + dr)^-n)/dr))
 #   tmp$lcoe <- cost
 #   d <- rbind(d,tmp)
@@ -96,14 +96,3 @@ dbDisconnect(con)
 #   facet_wrap(~sector)+
 #   ggtitle(paste0('Mean Payback Period by State and Sector in ',max(df$year)))
 
-dol_per_wat <- seq(0,10,.01)
-cf <- seq(0,.5,.001)
-dr<- 0.1
-n <- 30
-pv_gen<- cf * 8760 * ((1 - (1 + dr)^-n)/dr)
-
-lcoe <- dol_per_wat / pv_gen 
-
-0.3 <- seq(0,10,.001) / cf * (8760 * ((1+dr)^n - 1)/dr)
-cf <- 1000 * dol_per_wat / (0.1 * 8760 * ((1 - (1 + dr)^-n)/dr))
-plot(dol_per_wat,cf)

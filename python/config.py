@@ -33,7 +33,7 @@ undersize_turbine_factor = 0.5
 # model start year
 start_year = 2014
 
-preprocess = True
+preprocess = True #True means to use the last-created main table
 
 # Path to R will vary by user (until we move the script over to run on gispgdb server)
     # Mike's path
