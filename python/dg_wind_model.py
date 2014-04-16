@@ -35,6 +35,15 @@ from config import *
 # create connection to Postgres Database
 # (to edit login information, edit config.py)
 con, cur = datfunc.make_con(pg_conn_string)
+# create an empty list to hold asynchronous cursors
+    # this will be ignored if parallelization is turned off
+acur_list = []
+# if parallelization is on, create a set of asynchronous cursors (where the number of cursors is defined by npar)
+if parallelize:    
+    for n in range(npar):    
+        acon, acur = datfunc.make_con(pg_conn_string, True)
+        acur_list.append(acur)
+    
 # register access to hstore in postgres
 pgx.register_hstore(con)
 # configure pandas display options
@@ -87,7 +96,7 @@ for sector_abbr, sector in sectors.iteritems():
     t0 = time.time()
     main_table = datfunc.generate_customer_bins(cur, con, random_generator_seed, customer_bins, sector_abbr, sector, 
                                    start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
-                                   oversize_turbine_factor, undersize_turbine_factor, preprocess)
+                                   oversize_turbine_factor, undersize_turbine_factor, preprocess, parallelize, acur_list)
     print time.time()-t0
     # get dsire incentives for the generated customer bins
     t0 = time.time()
@@ -159,7 +168,8 @@ while os.path.exists(out_path):
     print 'Warning: A scenario folder with that name exists. It will be overwritten.'
     os.remove(out_path)
 os.makedirs(out_path)
-        
+
+# path to the plot_outputs R script        
 plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
         
 print 'Writing outputs'
@@ -167,6 +177,7 @@ outputs = outputs.fillna(0)
 outputs.to_csv(out_path + '/outputs.csv')
 
 #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
+# for linux and mac, this needs to be formatted as a list of args passed to subprocess
 command = [Rscript_path,'--vanilla',plot_outputs_path,out_path]
 print 'Creating outputs report'            
 proc = subprocess.Popen(command,stdout=subprocess.PIPE)

@@ -11,8 +11,8 @@ Created on Wed Mar 26 13:01:56 2014
 
 pg_params = {'host'     : 'gispgdb',
              'dbname'   : 'dav-gis',
-             'user'     : 'bsigrin',
-             'password' : 'bsigrin'
+             'user'     : 'mgleason',
+             'password' : 'mgleason'
                 }
 
 pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s' % pg_params
@@ -43,4 +43,7 @@ Rscript_path = '/usr/bin/Rscript'
     # Ben's Path
 #Rscript_path = 'C:/Program Files/R/R-3.0.2/bin/Rscript.exe' 
 
-
+# set boolean variable for parallelization
+parallelize = False
+# set number of parallel processes to run (this var is ignored if parallelize = F)
+npar = 10
