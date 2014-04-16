@@ -12,6 +12,7 @@ import numpy as np
 from scipy.interpolate import interp1d as interp1d
 import pandas as pd
 import datetime
+from config import npar
 
 
 def pylist_2_pglist(l):
@@ -27,14 +28,17 @@ def make_con(connection_string):
     return con, cur
 
 
-def combine_temporal_data(cur, con, start_year, end_year, sectors):
+def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
-    
+
+    print "Combining Temporal Factors"    
+
     t0 = time.time()    
+    if preprocess:
+        return 1
     
     # combine all of the temporal data (this only needs to be done once for all sectors)
-    print "Combining Temporal Factors"
     sql = "DROP TABLE IF EXISTS wind_ds.temporal_factors;\
             CREATE TABLE wind_ds.temporal_factors as \
             SELECT a.year, a.nameplate_capacity_kw, a.power_curve_id,\
@@ -83,10 +87,12 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors):
 
 def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor,preprocess):
     
+    f = open('cust_bins.sql','w')
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
     
-    t0 = time.time()    
+    print "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
+     
     if preprocess == True:
         table_name_dict = {'res': 'wind_ds.pt_res_best_option_each_year', 'com' : 'wind_ds.pt_com_best_option_each_year', 'ind' : 'wind_ds.pt_ind_best_option_each_year'}
         return table_name_dict[sector_abbr]
@@ -96,6 +102,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     #     randomly sample  N points from each county 
     #==============================================================================
     # (note: some counties will have fewer than N points, in which case, all are returned) 
+    t0 = time.time()    
     print 'Sampling Customer Bins from Each County'
     sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample;\
             SET LOCAL SEED TO %(seed)s;\
@@ -108,6 +115,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             SELECT *\
             FROM a\
             where row_number <= %(n_bins)s;" % inputs
+    f.writelines('\n'.join(sql.split('    ')+['\n\n']))
     cur.execute(sql)
     con.commit()
     print time.time()-t0
@@ -117,6 +125,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     #==============================================================================
     # use random weighted sampling on the load bins to ensure that countyies with <N points
     # have a representative sample of load bins
+    t0 = time.time()    
     print 'Associating Customer Bins with Load and Customer Count'
     sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_load;\
             SET LOCAL SEED TO %(seed)s;\
@@ -141,6 +150,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             	else 0\
             	end as load_kwh_per_customer_in_bin\
             FROM binned a;" % inputs
+    f.writelines('\n'.join(sql.split('    ')+['\n\n']))
     cur.execute(sql)
     con.commit()
     
@@ -148,12 +158,14 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     sql =  "ALTER TABLE wind_ds.pt_%(sector_abbr)s_sample_load ADD PRIMARY Key (gid);\
             CREATE INDEX pt_%(sector_abbr)s_sample_load_census_division_abbr_btree ON wind_ds.pt_%(sector_abbr)s_sample_load USING BTREE(census_division_abbr);\
             CREATE INDEX pt_%(sector_abbr)s_sample_load_i_j_cf_bin ON wind_ds.pt_%(sector_abbr)s_sample_load using BTREE(i,j,cf_bin);" % inputs
+    f.writelines('\n'.join(sql.split('    ')+['\n\n']))
     cur.execute(sql)
     con.commit()
     # add index for exclusions (if they apply)
     if exclusion_type is not None:
         sql =  "CREATE INDEX pt_%(sector_abbr)s_sample_load_%(exclusion_type)s_btree ON wind_ds.pt_%(sector_abbr)s_sample_load USING BTREE(%(exclusion_type)s)\
                 WHERE %(exclusion_type)s > 0;" % inputs
+        f.writelines('\n'.join(sql.split('    ')+['\n\n']))
         cur.execute(sql)
         con.commit()
     
@@ -162,6 +174,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     #==============================================================================
     #     Find All Combinations of Points and Wind Resource
     #==============================================================================
+    t0 = time.time()    
     print "Finding All Wind Resource Combinations for Each Customer Bin"
     sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_load_and_wind;\
             CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_load_and_wind AS\
@@ -176,6 +189,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             	AND a.cf_bin = c.cf_bin\
             	AND a.%(exclusion_type)s >= c.height\
             	WHERE a.%(exclusion_type)s > 0;" % inputs
+    f.writelines('\n'.join(sql.split('    ')+['\n\n']))
     cur.execute(sql)
     con.commit()
     
@@ -188,6 +202,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
     #==============================================================================
+    t0 = time.time()    
     print "Finding All Combination of Cost and Resource for Each Customer Bin and Year"
     # this combines all wind combos with all cost combos and calculates the simple cost of energy under each combination
     sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_all_combinations;\
@@ -220,6 +235,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             WHERE b.sector = '%(sector)s'\
             AND b.rate_escalation_source = '%(rate_escalation_source)s'\
             AND b.load_growth_scenario = '%(load_growth_scenario)s';" % inputs
+    f.writelines('\n'.join(sql.split('    ')+['\n\n']))
     cur.execute(sql)
     con.commit()
     
@@ -228,24 +244,27 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     #==============================================================================
     #    Find the Most Cost-Effective Wind Turbine Configuration for Each Customer Bin
     #==============================================================================
+    t0 = time.time()    
     print "Selecting the most cost-effective wind turbine configuration for each customer bin and year"
     sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_best_option_each_year;\
             CREATE TABLE wind_ds.pt_%(sector_abbr)s_best_option_each_year AS\
             SELECT distinct on (a.gid, a.year) a.*\
             FROM  wind_ds.pt_%(sector_abbr)s_sample_all_combinations a\
             ORDER BY a.gid, a.year, a.scoe ASC;" % inputs
+    f.writelines('\n'.join(sql.split('    ')+['\n\n']))
     cur.execute(sql)
     con.commit()
 
     # create index on the year and county fields
     sql =  "CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_year_btree ON wind_ds.pt_%(sector_abbr)s_best_option_each_year using BTREE(year);\
             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_county_id_btree ON wind_ds.pt_%(sector_abbr)s_best_option_each_year using BTREE(county_id);" % inputs
+    f.writelines('\n'.join(sql.split('    ')+['\n\n']))
     cur.execute(sql)
     con.commit()
     print time.time()-t0
 
     final_table = 'wind_ds.pt_%(sector_abbr)s_best_option_each_year' % inputs
-    
+    f.close()
     return final_table
 
 def get_sectors(cur):
@@ -326,28 +345,30 @@ def get_scenario_options(cur):
     results = cur.fetchall()[0]
     return results
 
-def get_dsire_incentives(cur, con, sector_abbr):
+def get_dsire_incentives(cur, con, sector_abbr, preprocess):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
 
-    if sector_abbr == 'ind':
-        inputs['incentives_sector'] = 'com'
-    else:
-        inputs['incentives_sector'] = sector_abbr        
-
-    sql =   "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_incentives;\
-            CREATE TABLE wind_ds.pt_%(sector_abbr)s_incentives AS\
-            SELECT a.gid, c.*\
-            FROM wind_ds.pt_%(sector_abbr)s_best_option_each_year a\
-            LEFT JOIN wind_ds.dsire_incentives_lookup_%(sector_abbr)s b\
-            ON a.gid = b.pt_gid\
-            LEFT JOIN wind_ds.incentives c\
-            ON b.wind_incentives_uid = c.uid\
-            where lower(c.sector) = '%(incentives_sector)s'\
-            and a.year = 2014\
-            order by a.gid;" % inputs         
-    cur.execute(sql)
-    con.commit()
+    print "Identifying initial incentives for customer bins from DSIRE Database"
+    if not preprocess:
+        if sector_abbr == 'ind':
+            inputs['incentives_sector'] = 'com'
+        else:
+            inputs['incentives_sector'] = sector_abbr        
+    
+        sql =   "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_incentives;\
+                CREATE TABLE wind_ds.pt_%(sector_abbr)s_incentives AS\
+                SELECT a.gid, c.*\
+                FROM wind_ds.pt_%(sector_abbr)s_best_option_each_year a\
+                LEFT JOIN wind_ds.dsire_incentives_lookup_%(sector_abbr)s b\
+                ON a.gid = b.pt_gid\
+                LEFT JOIN wind_ds.incentives c\
+                ON b.wind_incentives_uid = c.uid\
+                where lower(c.sector) = '%(incentives_sector)s'\
+                and a.year = 2014\
+                order by a.gid;" % inputs         
+        cur.execute(sql)
+        con.commit()
     
     
     sql =  "SELECT * FROM \

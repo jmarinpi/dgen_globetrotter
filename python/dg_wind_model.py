@@ -75,7 +75,7 @@ market_projections = datfunc.get_market_projections(con)
 
 
 # 6. Combine All of the Temporally Varying Data in a new Table in Postgres
-datfunc.combine_temporal_data(cur, con, start_year, end_year, datfunc.pylist_2_pglist(sectors.values()))
+datfunc.combine_temporal_data(cur, con, start_year, end_year, datfunc.pylist_2_pglist(sectors.values()), preprocess)
 
 # 7. Set up the Main Data Frame for each sector
 outputs = pd.DataFrame()
@@ -84,11 +84,15 @@ for sector_abbr, sector in sectors.iteritems():
     rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
     max_market_curve = scenario_opts['%s_max_market_curve' % sector_abbr]
     # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
+    t0 = time.time()
     main_table = datfunc.generate_customer_bins(cur, con, random_generator_seed, customer_bins, sector_abbr, sector, 
                                    start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
                                    oversize_turbine_factor, undersize_turbine_factor, preprocess)
+    print time.time()-t0
     # get dsire incentives for the generated customer bins
-    dsire_incentives = datfunc.get_dsire_incentives(cur, con, sector_abbr)
+    t0 = time.time()
+    dsire_incentives = datfunc.get_dsire_incentives(cur, con, sector_abbr, preprocess)
+    print time.time()-t0
     # Pull data from the Main Table to a Data Frame for each year
     
     for year in model_years:
@@ -150,19 +154,20 @@ for sector_abbr, sector in sectors.iteritems():
 # set output folder
 cdate = time.strftime('%Y%m%d_%H%M%S')
 scen_name = '%s_%s' % (scenario_opts['scenario_name'],cdate)
-runpath = '../runs/' + scen_name
-while os.path.exists(runpath): 
+out_path = '%s/runs/%s' %(os.path.dirname(os.getcwd()),scen_name)
+while os.path.exists(out_path): 
     print 'Warning: A scenario folder with that name exists. It will be overwritten.'
-    os.remove(runpath)
-os.makedirs(runpath)
+    os.remove(out_path)
+os.makedirs(out_path)
         
-        
+plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
         
 print 'Writing outputs'
 outputs = outputs.fillna(0)
-outputs.to_csv(runpath + '/outputs.csv')
+outputs.to_csv(out_path + '/outputs.csv')
 
-command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
+#command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
+command = [Rscript_path,'--vanilla',plot_outputs_path,out_path]
 print 'Creating outputs report'            
 proc = subprocess.Popen(command,stdout=subprocess.PIPE)
 messages = proc.communicate()

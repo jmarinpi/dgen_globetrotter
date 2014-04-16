@@ -33,12 +33,14 @@ undersize_turbine_factor = 0.5
 # model start year
 start_year = 2014
 
-preprocess = True #True means to use the last-created main table
+preprocess = False #True means to use the last-created main table
 
 # Path to R will vary by user (until we move the script over to run on gispgdb server)
     # Mike's path
 #Rscript_path = 'C:/Users/mgleason/Documents/R/R-3.0.2/bin/Rscript.exe'
+    # Mike's mac path
+Rscript_path = '/usr/bin/Rscript'
     # Ben's Path
-Rscript_path = 'C:/Program Files/R/R-3.0.2/bin/Rscript.exe' 
+#Rscript_path = 'C:/Program Files/R/R-3.0.2/bin/Rscript.exe' 
 
 
