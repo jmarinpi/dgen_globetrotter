@@ -78,7 +78,6 @@ def main(wb, conn, verbose = False):
         return 0
     
     except ExcelError, e:
-        print 'blabla'
         raise ExcelError(e)
     
 
@@ -560,6 +559,8 @@ def maxMarket(curWb,schema,table,conn,cur,verbose=False):
 
 
 if __name__ == '__main__':
-    input_xls = '..\excel\DG_wind_01_16_2014_named_ranges.xlsm'
+    import os
+    print os.getcwd()
+    input_xls = '../excel/DG_wind_01_16_2014_named_ranges.xlsm'
     main(input_xls,None, True)
 

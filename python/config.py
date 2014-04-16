@@ -18,7 +18,7 @@ pg_params = {'host'     : 'gispgdb',
 pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s' % pg_params
 
 # input spreadsheet location (relative to python folder)
-input_xls = '..\excel\DG_wind_01_16_2014_named_ranges.xlsm'
+input_xls = '../excel/DG_wind_01_16_2014_named_ranges.xlsm'
 
 # number of customer bins to model in each county
 customer_bins = 10

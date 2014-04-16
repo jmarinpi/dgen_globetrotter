@@ -167,4 +167,4 @@ print 'Creating outputs report'
 proc = subprocess.Popen(command,stdout=subprocess.PIPE)
 messages = proc.communicate()
 returncode = proc.returncode
-print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - t0)
+print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - t0)                  
