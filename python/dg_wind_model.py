@@ -25,6 +25,7 @@ import collections
 import diffusion_functions as diffunc
 import financial_functions as finfunc
 import data_functions as datfunc
+reload(datfunc)
 import DG_Wind_NamedRange_xl2pg as loadXL
 import subprocess
 import datetime
@@ -35,15 +36,19 @@ from config import *
 # create connection to Postgres Database
 # (to edit login information, edit config.py)
 con, cur = datfunc.make_con(pg_conn_string)
+
+# ## USING ASYNCHRONOUS CURSORS SEEMS TO CONTRIBUTE TO INCONSISTENT RANDOM SAMPLING
 # create an empty list to hold asynchronous cursors
     # this will be ignored if parallelization is turned off
 acur_list = []
 # if parallelization is on, create a set of asynchronous cursors (where the number of cursors is defined by npar)
-if parallelize:    
-    for n in range(npar):    
-        acon, acur = datfunc.make_con(pg_conn_string, True)
-        acur_list.append(acur)
-    
+#if parallelize:    
+#    for n in range(npar):    
+#        acon, acur = datfunc.make_con(pg_conn_string, True)
+#        acur_list.append(acur)
+#########
+
+
 # register access to hstore in postgres
 pgx.register_hstore(con)
 # configure pandas display options
@@ -53,13 +58,16 @@ pd.set_option('max_rows',10)
 
 
 # 4. Load Input excel spreadsheet to Postgres
-print 'Loading input data from Input Scenario Worksheet'
-try:
-    loadXL.main(input_xls, con, verbose = False)
-except loadXL.ExcelError, e:
-    print 'Loading failed with the following error: %s' % e
-    print 'Model aborted'
-    sys.exit(-1)
+if load_scenario_inputs:
+    print 'Loading input data from Input Scenario Worksheet'
+    try:
+        loadXL.main(input_xls, con, verbose = False)
+    except loadXL.ExcelError, e:
+        print 'Loading failed with the following error: %s' % e
+        print 'Model aborted'
+        sys.exit(-1)
+else:
+    print "Warning: Skipping Import of Input Scenario Worksheet. This should only be done while testing."
 
 
 # 5. Read in scenario option variables 
@@ -98,6 +106,7 @@ for sector_abbr, sector in sectors.iteritems():
                                    start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
                                    oversize_turbine_factor, undersize_turbine_factor, preprocess, parallelize, acur_list)
     print time.time()-t0
+    crash
     # get dsire incentives for the generated customer bins
     t0 = time.time()
     dsire_incentives = datfunc.get_dsire_incentives(cur, con, sector_abbr, preprocess)
@@ -183,4 +192,4 @@ print 'Creating outputs report'
 proc = subprocess.Popen(command,stdout=subprocess.PIPE)
 messages = proc.communicate()
 returncode = proc.returncode
-print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - t0)                  
+print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - t0)             

@@ -43,6 +43,8 @@ def make_con(connection_string, async = False):
     cur.execute('SET ROLE "wind_ds-writers";')    
     if async:
         wait(con)
+    else:
+        con.commit()
     
     return con, cur
 
@@ -106,10 +108,10 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess):
 
 def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor,preprocess, parallelize = False, async_cursors = []):
     
-    f = open('cust_bins.sql','w')
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()  
-    inputs['place_holder'] = '%s'
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['chunk_place_holder'] = '%(county_ids)s'
     
     print "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
      
@@ -125,8 +127,6 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
         cur.execute(sql)
         counties = [row['county_id'] for row in cur.fetchall()]
         county_chunks = map(list,np.array_split(counties, npar))
-        
-    
     
     #==============================================================================
     #     randomly sample  N points from each county 
@@ -134,147 +134,227 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     # (note: some counties will have fewer than N points, in which case, all are returned) 
     print 'Sampling Customer Bins from Each County'
     t0 = time.time() 
-    if parallelize:        
-        # build an empty table to hold the results
-        sql = 'DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample;\
-               CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample AS\
-               SELECT *, 1::integer as row_number\
-               FROM wind_ds.pt_grid_us_%(sector_abbr)s_joined\
-               LIMIT 1;\
-               DELETE FROM wind_ds.pt_%(sector_abbr)s_sample;' % inputs
-        cur.execute(sql)
-        con.commit()
-
-        sql = "SET LOCAL SEED TO %(seed)s;\
-                INSERT INTO wind_ds.pt_%(sector_abbr)s_sample\
-                WITH a as (\
-                	SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id order by random()) as row_number\
-                	FROM wind_ds.pt_grid_us_%(sector_abbr)s_joined a\
+    if parallelize:      
+        sql = "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_%(i_place_holder)s;\
+                CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_%(i_place_holder)s AS\
+                WITH s as (SELECT setseed(%(seed)s)),\
+                    a as (\
+                	SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id order by a.random) as row_number\
+                	FROM s, wind_ds.pt_grid_us_%(sector_abbr)s_joined a\
                 	INNER JOIN wind_ds.counties_to_model b\
                 	ON a.county_id = b.county_id\
-                  WHERE a.county_id in (%(place_holder)s))\
-                  SELECT *\
-                  FROM a\
-                  where row_number <= %(n_bins)s;" % inputs
-        # build sql statements for each chunk of county ids
-        sqls = [sql % pylist_2_pglist(chunk) for chunk in county_chunks]
-        # build kick off each sql statement using a separate cursor
-        for i,acur in enumerate(async_cursors):
-            sql = sqls[i]
-            acur.execute(sql)
+                    WHERE a.county_id IN (%(chunk_place_holder)s))\
+                SELECT *\
+                FROM a\
+                where row_number <= %(n_bins)s;" % inputs
+        
+        # build and kick off each sql statement using a separate cursor
+#        for i in range(npar):
+#            place_holders = {'i': i, 'county_ids': pylist_2_pglist(county_chunks[i])}
+#            isql = sql % place_holders
+#            async_cursors[i].execute(isql)
         # wait for all cursors to finish
-        for acur in async_cursors:
-            wait(acur.connection)
+#        for acur in async_cursors:
+#            wait(acur.connection)
+        
+        for i in range(npar):
+            place_holders = {'i': i, 'county_ids': pylist_2_pglist(county_chunks[i])}
+            isql = sql % place_holders
+            cur.execute(isql)
+            con.commit()
+
     else:  
         sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample;\
-                SET LOCAL SEED TO %(seed)s;\
                 CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample AS\
-                WITH a as (\
-                	SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id order by random()) as row_number\
-                	FROM wind_ds.pt_grid_us_%(sector_abbr)s_joined a\
+                WITH s as (SELECT setseed(%(seed)s)),\
+                    a as (\
+                	SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id order by a.random) as row_number\
+                	FROM s, wind_ds.pt_grid_us_%(sector_abbr)s_joined a\
                 	INNER JOIN wind_ds.counties_to_model b\
                 	ON a.county_id = b.county_id)\
                 SELECT *\
                 FROM a\
                 where row_number <= %(n_bins)s;" % inputs
-        f.writelines('\n'.join(sql.split('    ')+['\n\n']))
         cur.execute(sql)
         con.commit()
     print time.time()-t0
-    
-    
+
     #==============================================================================
     #     link each point to a load bin
     #==============================================================================
     # use random weighted sampling on the load bins to ensure that countyies with <N points
     # have a representative sample of load bins
-    t0 = time.time()    
     print 'Associating Customer Bins with Load and Customer Count'
-    sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_load;\
-            SET LOCAL SEED TO %(seed)s;\
-            CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_load AS\
-            WITH weighted_county_sample as (\
-            	SELECT a.county_id, row_number() OVER (PARTITION BY a.county_id ORDER BY random() * b.prob) as row_number, b.*\
-            	FROM wind_ds.counties_to_model a\
-            	LEFT JOIN wind_ds.binned_annual_load_kwh_%(n_bins)s_bins b\
-            	ON a.census_region = b.census_region\
-            	AND b.sector = 'residential'),\
-            binned as(\
-            SELECT a.*, b.ann_cons_kwh, b.prob, b.weight,\
-            	a.county_total_customers_2011 * b.weight/sum(weight) OVER (PARTITION BY a.county_id) as customers_in_bin, \
-            	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin	\
-            FROM wind_ds.pt_%(sector_abbr)s_sample a\
-            LEFT JOIN weighted_county_sample b\
-            ON a.county_id = b.county_id\
-            and a.row_number = b.row_number\
-            where county_total_load_mwh_2011 > 0)\
-            SELECT a.*,\
-            	case when a.customers_in_bin > 0 THEN a.load_kwh_in_bin/a.customers_in_bin \
-            	else 0\
-            	end as load_kwh_per_customer_in_bin\
-            FROM binned a;" % inputs
-    f.writelines('\n'.join(sql.split('    ')+['\n\n']))
-    cur.execute(sql)
-    con.commit()
+    t0 = time.time()    
+    if parallelize:    
+        sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s;\
+                CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS\
+                WITH s as (SELECT setseed(%(seed)s)),\
+                    weighted_county_sample as (\
+                	SELECT a.county_id, row_number() OVER (PARTITION BY a.county_id ORDER BY random() * b.prob) as row_number, b.*\
+                	FROM s, wind_ds.counties_to_model a\
+                	LEFT JOIN wind_ds.binned_annual_load_kwh_%(n_bins)s_bins b\
+                	ON a.census_region = b.census_region\
+                	AND b.sector = lower('%(sector)s')\
+                  WHERE a.county_id in (%(chunk_place_holder)s)),\
+                binned as(\
+                SELECT a.*, b.ann_cons_kwh, b.prob, b.weight,\
+                	a.county_total_customers_2011 * b.weight/sum(weight) OVER (PARTITION BY a.county_id) as customers_in_bin, \
+                	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin	\
+                FROM s, wind_ds.pt_%(sector_abbr)s_sample_%(i_place_holder)s a\
+                LEFT JOIN weighted_county_sample b\
+                ON a.county_id = b.county_id\
+                and a.row_number = b.row_number\
+                where county_total_load_mwh_2011 > 0)\
+                SELECT a.*,\
+                	case when a.customers_in_bin > 0 THEN a.load_kwh_in_bin/a.customers_in_bin \
+                	else 0\
+                	end as load_kwh_per_customer_in_bin\
+                FROM binned a;" % inputs
     
-    # add primary key and indices to speed up subsequent joins
-    sql =  "ALTER TABLE wind_ds.pt_%(sector_abbr)s_sample_load ADD PRIMARY Key (gid);\
-            CREATE INDEX pt_%(sector_abbr)s_sample_load_census_division_abbr_btree ON wind_ds.pt_%(sector_abbr)s_sample_load USING BTREE(census_division_abbr);\
-            CREATE INDEX pt_%(sector_abbr)s_sample_load_i_j_cf_bin ON wind_ds.pt_%(sector_abbr)s_sample_load USING BTREE(i,j,cf_bin);\
-            CREATE INDEX pt_%(sector_abbr)s_sample_load_county_id_btree ON wind_ds.pt_%(sector_abbr)s_sample_load USING BTREE(county_id);" % inputs
-    f.writelines('\n'.join(sql.split('    ')+['\n\n']))
-    cur.execute(sql)
-    con.commit()
-    # add index for exclusions (if they apply)
-    if exclusion_type is not None:
-        sql =  "CREATE INDEX pt_%(sector_abbr)s_sample_load_%(exclusion_type)s_btree ON wind_ds.pt_%(sector_abbr)s_sample_load USING BTREE(%(exclusion_type)s)\
-                WHERE %(exclusion_type)s > 0;" % inputs
-        f.writelines('\n'.join(sql.split('    ')+['\n\n']))
+        # build kick off each sql statement using a separate cursor
+#        for i in range(npar):
+#            place_holders = {'i': i, 'county_ids': pylist_2_pglist(county_chunks[i])}
+#            isql = sql % place_holders
+#            async_cursors[i].execute(isql)
+#        # wait for all cursors to finish
+#        for acur in async_cursors:
+#            wait(acur.connection)
+    
+        for i in range(npar):
+            place_holders = {'i': i, 'county_ids': pylist_2_pglist(county_chunks[i])}
+            isql = sql % place_holders
+            cur.execute(isql)
+            con.commit()
+
+
+        # query for indices creation
+        sql =  "ALTER TABLE wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s ADD PRIMARY Key (gid);\
+                    CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_census_division_abbr_btree ON wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s USING BTREE(census_division_abbr);\
+                    CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_i_j_cf_bin ON wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s USING BTREE(i,j,cf_bin);" % inputs
+#        for i,acur in enumerate(async_cursors):
+#            # add primary key and indices to speed up subsequent joins
+#            isql = sql % {'i': i}
+#            acur.execute(isql)
+#        # wait for all cursors to finish
+#        for acur in async_cursors:
+#            wait(acur.connection)
+        for i in range(npar):
+            place_holders = {'i': i, 'county_ids': pylist_2_pglist(county_chunks[i])}
+            isql = sql % place_holders
+            cur.execute(isql)
+            con.commit()
+
+
+        # add index for exclusions (if they apply)
+        if exclusion_type is not None:
+            sql =  "CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_%(exclusion_type)s_btree ON wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s USING BTREE(%(exclusion_type)s)\
+                    WHERE %(exclusion_type)s > 0;" % inputs
+#            for i,acur in enumerate(async_cursors):
+#                # add primary key and indices to speed up subsequent joins
+#                isql = sql % {'i': i}
+#                acur.execute(isql)
+#            # wait for all cursors to finish
+#            for acur in async_cursors:
+#                wait(acur.connection)
+            for i in range(npar):
+                place_holders = {'i': i, 'county_ids': pylist_2_pglist(county_chunks[i])}
+                isql = sql % place_holders
+                cur.execute(isql)
+                con.commit()
+
+                                
+    else:
+        sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_load;\
+                CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_load AS\
+                WITH s as (SELECT setseed(%(seed)s)),\
+                    weighted_county_sample as (\
+                	SELECT a.county_id, row_number() OVER (PARTITION BY a.county_id ORDER BY random() * b.prob) as row_number, b.*\
+                	FROM s, wind_ds.counties_to_model a\
+                	LEFT JOIN wind_ds.binned_annual_load_kwh_%(n_bins)s_bins b\
+                	ON a.census_region = b.census_region\
+                	AND b.sector = lower('%(sector)s')),\
+                binned as(\
+                SELECT a.*, b.ann_cons_kwh, b.prob, b.weight,\
+                	a.county_total_customers_2011 * b.weight/sum(weight) OVER (PARTITION BY a.county_id) as customers_in_bin, \
+                	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin	\
+                FROM wind_ds.pt_%(sector_abbr)s_sample a\
+                LEFT JOIN weighted_county_sample b\
+                ON a.county_id = b.county_id\
+                and a.row_number = b.row_number\
+                where county_total_load_mwh_2011 > 0)\
+                SELECT a.*,\
+                	case when a.customers_in_bin > 0 THEN a.load_kwh_in_bin/a.customers_in_bin \
+                	else 0\
+                	end as load_kwh_per_customer_in_bin\
+                FROM binned a;" % inputs
         cur.execute(sql)
         con.commit()
-    
+
+        # add primary key and indices to speed up subsequent joins
+        sql =  "ALTER TABLE wind_ds.pt_%(sector_abbr)s_sample_load ADD PRIMARY Key (gid);\
+                CREATE INDEX pt_%(sector_abbr)s_sample_load_census_division_abbr_btree ON wind_ds.pt_%(sector_abbr)s_sample_load USING BTREE(census_division_abbr);\
+                CREATE INDEX pt_%(sector_abbr)s_sample_load_i_j_cf_bin ON wind_ds.pt_%(sector_abbr)s_sample_load USING BTREE(i,j,cf_bin);" % inputs
+        cur.execute(sql)
+        con.commit()
+        # add index for exclusions (if they apply)
+        if exclusion_type is not None:
+            sql =  "CREATE INDEX pt_%(sector_abbr)s_sample_load_%(exclusion_type)s_btree ON wind_ds.pt_%(sector_abbr)s_sample_load USING BTREE(%(exclusion_type)s)\
+                    WHERE %(exclusion_type)s > 0;" % inputs
+            cur.execute(sql)
+            con.commit()
     print time.time()-t0
-    
+
     #==============================================================================
     #     Find All Combinations of Points and Wind Resource
     #==============================================================================  
     print "Finding All Wind Resource Combinations for Each Customer Bin"
     t0 = time.time() 
     if parallelize:  
-         # build an empty table to hold the results
-        sql = 'DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_load_and_wind;;\
-               CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_load_and_wind AS\
-               SELECT *, 1::NUMERIC as naep, 1::INTEGER as power_curve_id, 1::INTEGER as turbine_height_m\
-               FROM wind_ds.pt_%(sector_abbr)s_sample_load\
-               LIMIT 1;\
-               DELETE FROM wind_ds.pt_%(sector_abbr)s_sample_load_and_wind;' % inputs
-        cur.execute(sql)
-        con.commit()
-
-
-        sql =  "INSERT INTO wind_ds.pt_%(sector_abbr)s_sample_load_and_wind\
-                SELECT a.*,\
-                c.aep*a.aep_scale_factor*a.derate_factor as naep,\
-                c.turbine_id as power_curve_id, \
-                c.height as turbine_height_m\
-                FROM wind_ds.pt_%(sector_abbr)s_sample_load a\
-                LEFT JOIN wind_ds.wind_resource_annual c\
-                ON a.i = c.i\
-                AND a.j = c.j\
-                AND a.cf_bin = c.cf_bin\
-                AND a.%(exclusion_type)s >= c.height\
-                WHERE a.%(exclusion_type)s > 0\
-                AND a.county_id in (%(place_holder)s);" % inputs
-
-        # build sql statements for each chunk of county ids
-        sqls = [sql % pylist_2_pglist(chunk) for chunk in county_chunks]
+        sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s;\
+                    CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s AS\
+                    SELECT a.*,\
+                    c.aep*a.aep_scale_factor*a.derate_factor as naep,\
+                    c.turbine_id as power_curve_id, \
+                    c.height as turbine_height_m\
+                    FROM wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s a\
+                    LEFT JOIN wind_ds.wind_resource_annual c\
+                    ON a.i = c.i\
+                    AND a.j = c.j\
+                    AND a.cf_bin = c.cf_bin\
+                    AND a.%(exclusion_type)s >= c.height\
+                    WHERE a.%(exclusion_type)s > 0;" % inputs
+        
         # build kick off each sql statement using a separate cursor
-        for i,acur in enumerate(async_cursors):
-            sql = sqls[i]
-            acur.execute(sql)
-        # wait for all cursors to finish
-        for acur in async_cursors:
-            wait(acur.connection)         
+#        for i,acur in enumerate(async_cursors):
+#            place_holders = {'i': i}
+#            isql = sql % place_holders
+#            acur.execute(isql)
+#        # wait for all cursors to finish
+#        for acur in async_cursors:
+#            wait(acur.connection)
+        
+        for i in range(npar):
+            place_holders = {'i': i, 'county_ids': pylist_2_pglist(county_chunks[i])}
+            isql = sql % place_holders
+            cur.execute(isql)
+            con.commit()
+
+        # create indices for subsequent joins
+        sql =  "CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s_join_fields_btree ON wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s USING btree(turbine_height_m, census_division_abbr, power_curve_id);" % inputs
+#        for i,acur in enumerate(async_cursors):
+#            # add primary key and indices to speed up subsequent joins
+#            isql = sql % {'i': i}
+#            acur.execute(isql)
+#        # wait for all cursors to finish
+#        for acur in async_cursors:
+#            wait(acur.connection)   
+        
+        for i in range(npar):
+            place_holders = {'i': i, 'county_ids': pylist_2_pglist(county_chunks[i])}
+            isql = sql % place_holders
+            cur.execute(isql)
+            con.commit()
     else:
         sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_load_and_wind;\
                 CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_load_and_wind AS\
@@ -289,61 +369,24 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 	AND a.cf_bin = c.cf_bin\
                 	AND a.%(exclusion_type)s >= c.height\
                 	WHERE a.%(exclusion_type)s > 0;" % inputs
-        f.writelines('\n'.join(sql.split('    ')+['\n\n']))
         cur.execute(sql)
         con.commit()
     
-    # create indices for subsequent joins
-    sql =  "CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_join_fields_btree ON wind_ds.pt_%(sector_abbr)s_sample_load_and_wind USING btree(turbine_height_m, census_division_abbr, power_curve_id);\
-            CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_county_id_btree ON wind_ds.pt_%(sector_abbr)s_sample_load_and_wind USING BTREE(county_id);" % inputs
-    cur.execute(sql)
-    con.commit()
+        # create indices for subsequent joins
+        sql =  "CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_join_fields_btree ON wind_ds.pt_%(sector_abbr)s_sample_load_and_wind USING btree(turbine_height_m, census_division_abbr, power_curve_id);" % inputs
+        cur.execute(sql)
+        con.commit()
+        
     print time.time() - t0
     
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
     #==============================================================================
-    print "Finding All Combination of Cost and Resource for Each Customer Bin and Year"
+    print "Finding All Combinations of Cost and Resource for Each Customer Bin and Year"
     t0 = time.time() 
     if parallelize: 
-        sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_all_combinations;\
-                CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_all_combinations (\
-                gid integer,\
-                year integer,\
-                county_id integer,\
-                state_abbr character varying(2),\
-                census_division_abbr text,\
-                census_region text,\
-                row_number bigint,\
-                max_height integer,\
-                elec_rate_cents_per_kwh numeric,\
-                cap_cost_multiplier numeric,\
-                fixed_om_dollars_per_kw_per_yr numeric,\
-                variable_om_dollars_per_kwh numeric,\
-                installed_costs_dollars_per_kw numeric,\
-                ann_cons_kwh numeric,\
-                prob numeric,\
-                weight numeric,\
-                customers_in_bin numeric,\
-                initial_customers_in_bin numeric,\
-                load_kwh_in_bin numeric,\
-                initial_load_kwh_in_bin numeric,\
-                load_kwh_per_customer_in_bin numeric,\
-                i integer,\
-                j integer,\
-                cf_bin integer,\
-                aep_scale_factor numeric,\
-                derate_factor numeric,\
-                naep numeric,\
-                nameplate_capacity_kw numeric,\
-                power_curve_id integer,\
-                turbine_height_m integer,\
-                scoe double precision)" % inputs
-        cur.execute(sql)
-        con.commit()
-
-
-        sql =  "INSERT INTO wind_ds.pt_%(sector_abbr)s_sample_all_combinations\
+        sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;\
+                CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s AS\
                 SELECT\
                  	a.gid, b.year, a.county_id, a.state_abbr, a.census_division_abbr, a.census_region, a.row_number, \
                  	a.%(exclusion_type)s as max_height, \
@@ -364,24 +407,31 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 	a.power_curve_id, \
                 	a.turbine_height_m,\
                 	wind_ds.scoe(b.installed_costs_dollars_per_kw, b.fixed_om_dollars_per_kw_per_yr, b.variable_om_dollars_per_kwh, a.naep , b.nameplate_capacity_kw , a.load_kwh_per_customer_in_bin , %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe\
-                FROM wind_ds.pt_%(sector_abbr)s_sample_load_and_wind a\
+                FROM wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a\
                 INNER JOIN wind_ds.temporal_factors b\
                 ON a.turbine_height_m = b.turbine_height_m\
                 AND a.power_curve_id = b.power_curve_id\
                 AND a.census_division_abbr = b.census_division_abbr\
                 WHERE b.sector = '%(sector)s'\
                 AND b.rate_escalation_source = '%(rate_escalation_source)s'\
-                AND b.load_growth_scenario = '%(load_growth_scenario)s'\
-                AND a.county_id in (%(place_holder)s);" % inputs
-        # build sql statements for each chunk of county ids
-        sqls = [sql % pylist_2_pglist(chunk) for chunk in county_chunks]
+                AND b.load_growth_scenario = '%(load_growth_scenario)s';" % inputs
+        
         # build kick off each sql statement using a separate cursor
-        for i,acur in enumerate(async_cursors):
-            sql = sqls[i]
-            acur.execute(sql)
-        # wait for all cursors to finish
-        for acur in async_cursors:
-            wait(acur.connection)   
+#        for i,acur in enumerate(async_cursors):
+#            place_holders = {'i': i}
+#            isql = sql % place_holders
+#            acur.execute(isql)
+#        # wait for all cursors to finish
+#        for acur in async_cursors:
+#            wait(acur.connection) 
+        
+        for i in range(npar):
+            place_holders = {'i': i, 'county_ids': pylist_2_pglist(county_chunks[i])}
+            isql = sql % place_holders
+            cur.execute(isql)
+            con.commit()
+            
+                
     else:
         # this combines all wind combos with all cost combos and calculates the simple cost of energy under each combination
         sql =  "DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_all_combinations;\
@@ -414,14 +464,13 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 WHERE b.sector = '%(sector)s'\
                 AND b.rate_escalation_source = '%(rate_escalation_source)s'\
                 AND b.load_growth_scenario = '%(load_growth_scenario)s';" % inputs
-        f.writelines('\n'.join(sql.split('    ')+['\n\n']))
         cur.execute(sql)
         con.commit()
     
-    # create indices for subsequent joins
-    sql =  "CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_county_id_btree ON wind_ds.pt_%(sector_abbr)s_sample_all_combinations USING BTREE(county_id);" % inputs
-    cur.execute(sql)
-    con.commit()    
+        # create indices for subsequent joins
+        sql =  "CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_county_id_btree ON wind_ds.pt_%(sector_abbr)s_sample_all_combinations USING BTREE(county_id);" % inputs
+        cur.execute(sql)
+        con.commit()    
     
     print time.time()-t0
 
@@ -469,18 +518,21 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
         
         sql =  "INSERT INTO wind_ds.pt_%(sector_abbr)s_best_option_each_year\
                 SELECT distinct on (a.gid, a.year) a.*\
-                FROM  wind_ds.pt_%(sector_abbr)s_sample_all_combinations a\
-                WHERE a.county_id in (%(place_holder)s)\
+                FROM  wind_ds.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a\
                 ORDER BY a.gid, a.year, a.scoe ASC;" % inputs
-        # build sql statements for each chunk of county ids
-        sqls = [sql % pylist_2_pglist(chunk) for chunk in county_chunks]
         # build kick off each sql statement using a separate cursor
-        for i,acur in enumerate(async_cursors):
-            sql = sqls[i]
-            acur.execute(sql)
-        # wait for all cursors to finish
-        for acur in async_cursors:
-            wait(acur.connection)   
+#        for i,acur in enumerate(async_cursors):
+#            place_holders = {'i': i}
+#            isql = sql % place_holders
+#            acur.execute(isql)
+#        # wait for all cursors to finish
+#        for acur in async_cursors:
+#            wait(acur.connection) 
+        for i in range(npar):
+            place_holders = {'i': i, 'county_ids': pylist_2_pglist(county_chunks[i])}
+            isql = sql % place_holders
+            cur.execute(isql)
+            con.commit()
         
         
     else:
@@ -494,15 +546,14 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
         con.commit()
 
     # create index on the year and county fields
-    sql =  "CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_year_btree ON wind_ds.pt_%(sector_abbr)s_best_option_each_year using BTREE(year);\
+    sql =  "CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_gid_btree ON wind_ds.pt_%(sector_abbr)s_best_option_each_year USING BTREE(gid);\
+            CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_year_btree ON wind_ds.pt_%(sector_abbr)s_best_option_each_year using BTREE(year);\
             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_county_id_btree ON wind_ds.pt_%(sector_abbr)s_best_option_each_year using BTREE(county_id);" % inputs
-    f.writelines('\n'.join(sql.split('    ')+['\n\n']))
     cur.execute(sql)
     con.commit()
     print time.time()-t0
 
     final_table = 'wind_ds.pt_%(sector_abbr)s_best_option_each_year' % inputs
-    f.close()
     return final_table
 
 def get_sectors(cur):
@@ -635,7 +686,7 @@ def get_initial_wind_capacities(cur, con, n_bins, sector_abbr, sector):
     cur.execute(sql)
     con.commit()
 
-    # *** NOTE *** : There is no year field in the incentives table, so this will crash
+
 
     sql = 'SELECT county_id, initial_market_share as market_share_last_year\
             FROM wind_ds.pt_%(sector_abbr)s_initial_market_shares;' % inputs
@@ -913,4 +964,4 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc['value_of_ptc'] = inc['lifetime_value_of_ptc'] / assumed_duration
     inc['ptc_length'] = assumed_duration
     
-    return inc[['gid', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
+    return inc[['gid', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
