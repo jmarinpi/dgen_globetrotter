@@ -32,22 +32,19 @@ import datetime
 # load in a bunch of the configuration variables as global vars
 from config import *
 
-# 3. Connect to Postgres and configure connection
-# create connection to Postgres Database
+# 3. Connect to Postgres and configure connection(s)
 # (to edit login information, edit config.py)
+
+# create a set of N connections and cursors for parallel processing
+con_cur_list = []
+if parallelize:
+    for n in range(npar):
+        con, cur = datfunc.make_con(pg_conn_string)
+        con.set_isolation_level(pg.extensions.ISOLATION_LEVEL_SERIALIZABLE)
+        con_cur_list.append({'con':con, 'cur':cur})
+
+# create connection to Postgres Database
 con, cur = datfunc.make_con(pg_conn_string)
-
-# ## USING ASYNCHRONOUS CURSORS SEEMS TO CONTRIBUTE TO INCONSISTENT RANDOM SAMPLING
-# create an empty list to hold asynchronous cursors
-    # this will be ignored if parallelization is turned off
-acur_list = []
-# if parallelization is on, create a set of asynchronous cursors (where the number of cursors is defined by npar)
-#if parallelize:    
-#    for n in range(npar):    
-#        acon, acur = datfunc.make_con(pg_conn_string, True)
-#        acur_list.append(acur)
-#########
-
 
 # register access to hstore in postgres
 pgx.register_hstore(con)
@@ -104,7 +101,7 @@ for sector_abbr, sector in sectors.iteritems():
     t0 = time.time()
     main_table = datfunc.generate_customer_bins(cur, con, random_generator_seed, customer_bins, sector_abbr, sector, 
                                    start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
-                                   oversize_turbine_factor, undersize_turbine_factor, preprocess, parallelize, acur_list)
+                                   oversize_turbine_factor, undersize_turbine_factor, preprocess, parallelize, con_cur_list)
     print time.time()-t0
     crash
     # get dsire incentives for the generated customer bins
@@ -192,4 +189,4 @@ print 'Creating outputs report'
 proc = subprocess.Popen(command,stdout=subprocess.PIPE)
 messages = proc.communicate()
 returncode = proc.returncode
-print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - t0)             
+print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - t0)                 
