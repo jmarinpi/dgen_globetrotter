@@ -1,6 +1,19 @@
+﻿
+
+
+-- create view of the valid counties
+CREATE OR REPLACE VIEW wind_ds.counties_to_model AS
+SELECT county_id, census_region
+FROM wind_ds.county_geom a
+INNER JOIN wind_ds.scenario_options b
+ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)
+		else lower(b.region)
+		end
+where a.state not in ('Hawaii','Alaska');
+
+
 
 -- views of point data
-
 -- ind
 DROP VIEW IF EXISTS wind_ds.pt_grid_us_ind_joined;
 CREATE OR REPLACE VIEW wind_ds.pt_grid_us_ind_joined AS
@@ -28,7 +41,10 @@ LEFT JOIN wind_ds.wind_derate_factors_by_state f
 ON e.state_abbr = f.state_abbr
 -- join in i,j,icf lookup
 LEFT JOIN wind_ds.ij_cfbin_lookup_ind_pts_us g
-on a.gid = g.pt_gid;;
+on a.gid = g.pt_gid
+-- subset to counties of interest
+INNER JOIN wind_ds.counties_to_model h 
+ON a.county_id = h.county_id;
 
 
 -- res
@@ -58,7 +74,10 @@ LEFT JOIN wind_ds.wind_derate_factors_by_state f
 ON e.state_abbr = f.state_abbr
 -- join in i,j,icf lookup
 LEFT JOIN wind_ds.ij_cfbin_lookup_res_pts_us g
-on a.gid = g.pt_gid;
+on a.gid = g.pt_gid
+-- subset to counties of interest
+INNER JOIN wind_ds.counties_to_model h 
+ON a.county_id = h.county_id;
 
 -- comm
 DROP VIEW IF EXISTS wind_ds.pt_grid_us_com_joined;
@@ -87,18 +106,31 @@ LEFT JOIN wind_ds.wind_derate_factors_by_state f
 ON e.state_abbr = f.state_abbr
 -- join in i,j,icf lookup
 LEFT JOIN wind_ds.ij_cfbin_lookup_com_pts_us g
-on a.gid = g.pt_gid;
+on a.gid = g.pt_gid
+-- subset to counties of interest
+INNER JOIN wind_ds.counties_to_model h 
+ON a.county_id = h.county_id;
 
 
--- create view of the valid counties
-CREATE OR REPLACE VIEW wind_ds.counties_to_model AS
-SELECT county_id, census_region
-FROM wind_ds.county_geom a
-INNER JOIN wind_ds.scenario_options b
-ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)
-		else lower(b.region)
-		end
-where a.state not in ('Hawaii','Alaska');
+
+-- views of point data gids
+CREATE OR REPLACE VIEW wind_ds.pt_grid_us_res_gids AS
+SELECT a.gid
+FROM wind_ds.pt_grid_us_res a
+INNER JOIN wind_ds.counties_to_model b 
+ON a.county_id = b.county_id;
+
+CREATE OR REPLACE VIEW wind_ds.pt_grid_us_ind_gids AS
+SELECT a.gid
+FROM wind_ds.pt_grid_us_ind a
+INNER JOIN wind_ds.counties_to_model b 
+ON a.county_id = b.county_id;
+
+CREATE OR REPLACE VIEW wind_ds.pt_grid_us_com_gids AS
+SELECT a.gid
+FROM wind_ds.pt_grid_us_com a
+INNER JOIN wind_ds.counties_to_model b 
+ON a.county_id = b.county_id;
 
 -- create view of sectors to model
 CREATE OR REPLACE VIEW wind_ds.sectors_to_model AS

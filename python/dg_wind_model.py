@@ -25,16 +25,27 @@ import collections
 import diffusion_functions as diffunc
 import financial_functions as finfunc
 import data_functions as datfunc
+reload(datfunc)
 import DG_Wind_NamedRange_xl2pg as loadXL
 import subprocess
 import datetime
 # load in a bunch of the configuration variables as global vars
 from config import *
 
-# 3. Connect to Postgres and configure connection
-# create connection to Postgres Database
+# 3. Connect to Postgres and configure connection(s)
 # (to edit login information, edit config.py)
+
+# create a set of N connections and cursors for parallel processing
+con_cur_list = []
+if parallelize:
+    for n in range(npar):
+        con, cur = datfunc.make_con(pg_conn_string)
+        con.set_isolation_level(pg.extensions.ISOLATION_LEVEL_SERIALIZABLE)
+        con_cur_list.append({'con':con, 'cur':cur})
+
+# create connection to Postgres Database
 con, cur = datfunc.make_con(pg_conn_string)
+
 # register access to hstore in postgres
 pgx.register_hstore(con)
 # configure pandas display options
@@ -44,13 +55,16 @@ pd.set_option('max_rows',10)
 
 
 # 4. Load Input excel spreadsheet to Postgres
-print 'Loading input data from Input Scenario Worksheet'
-try:
-    loadXL.main(input_xls, con, verbose = False)
-except loadXL.ExcelError, e:
-    print 'Loading failed with the following error: %s' % e
-    print 'Model aborted'
-    sys.exit(-1)
+if load_scenario_inputs:
+    print 'Loading input data from Input Scenario Worksheet'
+    try:
+        loadXL.main(input_xls, con, verbose = False)
+    except loadXL.ExcelError, e:
+        print 'Loading failed with the following error: %s' % e
+        print 'Model aborted'
+        sys.exit(-1)
+else:
+    print "Warning: Skipping Import of Input Scenario Worksheet. This should only be done while testing."
 
 
 # 5. Read in scenario option variables 
@@ -75,7 +89,7 @@ market_projections = datfunc.get_market_projections(con)
 
 
 # 6. Combine All of the Temporally Varying Data in a new Table in Postgres
-datfunc.combine_temporal_data(cur, con, start_year, end_year, datfunc.pylist_2_pglist(sectors.values()))
+datfunc.combine_temporal_data(cur, con, start_year, end_year, datfunc.pylist_2_pglist(sectors.values()), preprocess)
 
 # 7. Set up the Main Data Frame for each sector
 outputs = pd.DataFrame()
@@ -84,11 +98,16 @@ for sector_abbr, sector in sectors.iteritems():
     rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
     max_market_curve = scenario_opts['%s_max_market_curve' % sector_abbr]
     # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
+    t0 = time.time()
     main_table = datfunc.generate_customer_bins(cur, con, random_generator_seed, customer_bins, sector_abbr, sector, 
                                    start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
-                                   oversize_turbine_factor, undersize_turbine_factor, preprocess)
+                                   oversize_turbine_factor, undersize_turbine_factor, preprocess, parallelize, con_cur_list)
+    print time.time()-t0
+    crash
     # get dsire incentives for the generated customer bins
-    dsire_incentives = datfunc.get_dsire_incentives(cur, con, sector_abbr)
+    t0 = time.time()
+    dsire_incentives = datfunc.get_dsire_incentives(cur, con, sector_abbr, preprocess)
+    print time.time()-t0
     # Pull data from the Main Table to a Data Frame for each year
     
     for year in model_years:
@@ -150,21 +169,24 @@ for sector_abbr, sector in sectors.iteritems():
 # set output folder
 cdate = time.strftime('%Y%m%d_%H%M%S')
 scen_name = '%s_%s' % (scenario_opts['scenario_name'],cdate)
-runpath = '../runs/' + scen_name
-while os.path.exists(runpath): 
+out_path = '%s/runs/%s' %(os.path.dirname(os.getcwd()),scen_name)
+while os.path.exists(out_path): 
     print 'Warning: A scenario folder with that name exists. It will be overwritten.'
-    os.remove(runpath)
-os.makedirs(runpath)
-        
-        
+    os.remove(out_path)
+os.makedirs(out_path)
+
+# path to the plot_outputs R script        
+plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
         
 print 'Writing outputs'
 outputs = outputs.fillna(0)
-outputs.to_csv(runpath + '/outputs.csv')
+outputs.to_csv(out_path + '/outputs.csv')
 
-command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
+#command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
+# for linux and mac, this needs to be formatted as a list of args passed to subprocess
+command = [Rscript_path,'--vanilla',plot_outputs_path,out_path]
 print 'Creating outputs report'            
 proc = subprocess.Popen(command,stdout=subprocess.PIPE)
 messages = proc.communicate()
 returncode = proc.returncode
-print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - t0)
+print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - t0)                 
