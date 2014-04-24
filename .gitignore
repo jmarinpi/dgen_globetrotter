@@ -4,6 +4,9 @@
 # ignore compiled python
 *.pyc
 
+# ignore DS_Stores
+*.DS_Store
+
 data_share/WIND_HEIGHTS_COSTS_20140320.xlsx
 r/graphics/.RData
 r/graphics/.Rhistory
