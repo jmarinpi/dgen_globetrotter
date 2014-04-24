@@ -32,6 +32,12 @@ import datetime
 # load in a bunch of the configuration variables as global vars
 from config import *
 
+
+# check that random generator seed is in the acceptable range
+if random_generator_seed < 0 or random_generator_seed > 1:
+    raise ValueError("""Error: random_generator_seed in config.py is not in the range of acceptable values
+                    Change to a value in the range >= 0 and <= 1.""")
+
 # 3. Connect to Postgres and configure connection(s)
 # (to edit login information, edit config.py)
 
@@ -40,8 +46,9 @@ con_cur_list = []
 if parallelize:
     for n in range(npar):
         con, cur = datfunc.make_con(pg_conn_string)
-        con.set_isolation_level(pg.extensions.ISOLATION_LEVEL_SERIALIZABLE)
         con_cur_list.append({'con':con, 'cur':cur})
+else:
+    npar = 1
 
 # create connection to Postgres Database
 con, cur = datfunc.make_con(pg_conn_string)
@@ -101,7 +108,7 @@ for sector_abbr, sector in sectors.iteritems():
     t0 = time.time()
     main_table = datfunc.generate_customer_bins(cur, con, random_generator_seed, customer_bins, sector_abbr, sector, 
                                    start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
-                                   oversize_turbine_factor, undersize_turbine_factor, preprocess, parallelize, con_cur_list)
+                                   oversize_turbine_factor, undersize_turbine_factor, preprocess, parallelize, npar, con_cur_list)
     print time.time()-t0
     crash
     # get dsire incentives for the generated customer bins

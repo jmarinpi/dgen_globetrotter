@@ -13,7 +13,6 @@ import numpy as np
 from scipy.interpolate import interp1d as interp1d
 import pandas as pd
 import datetime
-from config import npar
 from multiprocessing import Process, Queue, JoinableQueue
 import select
 
@@ -143,12 +142,15 @@ def p_run(con_cur_list, sql, county_chunks, npar):
         job.join()   
 
 
-def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor,preprocess, parallelize = False, con_cur_list = []):
+def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+                           rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor,
+                           preprocess, parallelize = False, npar = 1, con_cur_list = []):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()  
     inputs['i_place_holder'] = '%(i)s'
     inputs['chunk_place_holder'] = '%(county_ids)s'
+    inputs['seed_str'] = str(seed).replace('.','p')
     
     print "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
      
@@ -165,25 +167,45 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
         counties = [row['county_id'] for row in cur.fetchall()]
         county_chunks = map(list,np.array_split(counties, npar))
     
+
     #==============================================================================
-    #     create lookup table with random values for each point    
+    #     check whether seed has been used before
     #==============================================================================
-    print "Setting up random values for sampling"
-    t0 = time.time()
-    sql = """DROP TABLE IF EXISTS wind_ds.pt_us_%(sector_abbr)s_random_lookup;
-             CREATE TABLE wind_ds.pt_us_%(sector_abbr)s_random_lookup AS
-             WITH s as (SELECT setseed(%(seed)s))
-             SELECT a.gid, random() as random
-             FROM s, wind_ds.pt_grid_us_%(sector_abbr)s_gids a;""" % inputs
+    sql = """SELECT seed 
+             FROM wind_ds.prior_seeds_%(sector_abbr)s;""" % inputs
     cur.execute(sql)
-    con.commit()
+    prior_seeds = [float(row['seed']) for row in cur.fetchall()]
+    inputs['random_lookup_table'] = 'random_lookup_%(sector_abbr)s_%(seed_str)s' % inputs
     
-    # add a primary key on the gid field    
-    sql = """ALTER TABLE wind_ds.pt_us_%(sector_abbr)s_random_lookup 
-             ADD PRIMARY KEY (gid);""" % inputs
-    cur.execute(sql)
-    con.commit()
-    print time.time()-t0
+    if seed not in prior_seeds:
+        t0 = time.time()
+        print "Generating Random Values for Sampling"
+        # generate the random lookup table
+        sql = """CREATE TABLE wind_ds.%(random_lookup_table)s AS
+                 WITH 
+                     s as (SELECT setseed(%(seed)s)),
+                     p as (SELECT a.gid FROM wind_ds.pt_grid_us_%(sector_abbr)s a 
+                       ORDER BY a.gid)
+                 SELECT p.gid, random() as random
+                 FROM p, s;""" % inputs
+        cur.execute(sql)
+        con.commit()
+        
+        # add a primary key lookup
+        sql = """ALTER TABLE wind_ds.%(random_lookup_table)s
+                 ADD PRIMARY KEY (gid);""" % inputs
+        cur.execute(sql)
+        con.commit()        
+        
+        # add seed to the prior seeds table
+        sql = """INSERT INTO wind_ds.prior_seeds_%(sector_abbr)s (seed) VALUES (%(seed)s);""" % inputs
+        cur.execute(sql)
+        con.commit()
+        
+        print time.time()-t0
+    else:
+        print "This seed has been used previously. Skipping generation of random values"
+
     
     #==============================================================================
     #     randomly sample  N points from each county 
@@ -195,36 +217,47 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
         sql = """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_%(i_place_holder)s;
                  CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_%(i_place_holder)s AS
                  WITH a as (
-                	SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id order by b.random) as row_number
+                	SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id order by b.random, a.gid) as row_number
                 	FROM wind_ds.pt_grid_us_%(sector_abbr)s_joined a
-                  LEFT JOIN wind_ds.pt_us_%(sector_abbr)s_random_lookup b
+                  LEFT JOIN wind_ds.%(random_lookup_table)s b
                   ON a.gid = b.gid
                   WHERE a.county_id IN (%(chunk_place_holder)s))
                 SELECT *
                 FROM a
-                WHERE row_number <= %(n_bins)s;""" % inputs
-        
+                WHERE row_number <= %(n_bins)s;""" % inputs    
+
         p_run(con_cur_list, sql, county_chunks, npar)
+ 
         
     else:  
-        sql =  """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample;
-                  CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample AS
-                  WITH a as (
-                	  SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY b.random) as row_number
-                    FROM wind_ds.pt_grid_us_%(sector_abbr)s_joined a
-                    LEFT JOIN wind_ds.pt_us_%(sector_abbr)s_random_lookup b
-                    ON a.gid = b.gid)
-                  SELECT *
-                  FROM a
-                  WHERE row_number <= %(n_bins)s;""" % inputs
+        sql = """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample;
+                 CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample AS
+                 WITH a as (
+                	SELECT x, y, the_geom_900914, gid, the_geom_4326, county_id, maxheight_m_popdens, 
+                           maxheight_m_popdenscancov20pc, maxheight_m_popdenscancov40pc, 
+                           annual_rate_gid, iiijjjicf_id, random_array[%(seed)s] as random, elec_rate_cents_per_kwh, 
+                           county_total_customers_2011, county_total_load_mwh_2011, cap_cost_multiplier, 
+                           state_abbr, census_division_abbr, census_region, derate_factor, 
+                           i, j, cf_bin, aep_scale_factor
+                	FROM wind_ds.pt_grid_us_%(sector_abbr)s_joined a
+                  WHERE county_id is not null),
+                  b as (
+                      SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id order by a.random) as row_number    
+                      FROM a
+                  )
+                SELECT *
+                FROM b
+                WHERE row_number <= %(n_bins)s;""" % inputs    
+    
         cur.execute(sql)
         con.commit()
     print time.time()-t0
-   
+
     #==============================================================================
     #    create lookup table with random values for each load bin 
     #==============================================================================
     print "Setting up randomized load bins"
+    t0 = time.time()
     sql =  """DROP TABLE IF EXISTS wind_ds.county_load_bins_random_lookup_%(sector_abbr)s;
              CREATE TABLE wind_ds.county_load_bins_random_lookup_%(sector_abbr)s AS
              WITH s as (SELECT setseed(%(seed)s))
@@ -959,4 +992,4 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc['value_of_ptc'] = inc['lifetime_value_of_ptc'] / assumed_duration
     inc['ptc_length'] = assumed_duration
     
-    return inc[['gid', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
+    return inc[['gid', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     

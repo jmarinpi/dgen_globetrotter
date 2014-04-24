@@ -17,7 +17,9 @@ where a.state not in ('Hawaii','Alaska');
 -- ind
 DROP VIEW IF EXISTS wind_ds.pt_grid_us_ind_joined;
 CREATE OR REPLACE VIEW wind_ds.pt_grid_us_ind_joined AS
-SELECT a.*, c.ind_cents_per_kwh * ind_derate_factor as elec_rate_cents_per_kwh, 
+SELECT a.gid, a.county_id, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
+	a.annual_rate_gid, a.iiijjjicf_id,
+        c.ind_cents_per_kwh * ind_derate_factor as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
@@ -50,7 +52,9 @@ ON a.county_id = h.county_id;
 -- res
 DROP VIEW IF EXISTS wind_ds.pt_grid_us_res_joined;
 CREATE OR REPLACE VIEW wind_ds.pt_grid_us_res_joined AS
-SELECT a.*, c.res_cents_per_kwh as elec_rate_cents_per_kwh, 
+SELECT a.gid, a.county_id, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
+	a.annual_rate_gid, a.iiijjjicf_id,
+	c.res_cents_per_kwh as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_residential as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
@@ -82,7 +86,9 @@ ON a.county_id = h.county_id;
 -- comm
 DROP VIEW IF EXISTS wind_ds.pt_grid_us_com_joined;
 CREATE OR REPLACE VIEW wind_ds.pt_grid_us_com_joined AS
-SELECT a.*, c.comm_cents_per_kwh * comm_derate_factor as elec_rate_cents_per_kwh, 
+SELECT a.gid, a.county_id, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
+	a.annual_rate_gid, a.iiijjjicf_id,
+	c.comm_cents_per_kwh * comm_derate_factor as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
@@ -111,26 +117,6 @@ on a.gid = g.pt_gid
 INNER JOIN wind_ds.counties_to_model h 
 ON a.county_id = h.county_id;
 
-
-
--- views of point data gids
-CREATE OR REPLACE VIEW wind_ds.pt_grid_us_res_gids AS
-SELECT a.gid
-FROM wind_ds.pt_grid_us_res a
-INNER JOIN wind_ds.counties_to_model b 
-ON a.county_id = b.county_id;
-
-CREATE OR REPLACE VIEW wind_ds.pt_grid_us_ind_gids AS
-SELECT a.gid
-FROM wind_ds.pt_grid_us_ind a
-INNER JOIN wind_ds.counties_to_model b 
-ON a.county_id = b.county_id;
-
-CREATE OR REPLACE VIEW wind_ds.pt_grid_us_com_gids AS
-SELECT a.gid
-FROM wind_ds.pt_grid_us_com a
-INNER JOIN wind_ds.counties_to_model b 
-ON a.county_id = b.county_id;
 
 -- create view of sectors to model
 CREATE OR REPLACE VIEW wind_ds.sectors_to_model AS
