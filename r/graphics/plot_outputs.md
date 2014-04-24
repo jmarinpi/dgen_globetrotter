@@ -11,6 +11,7 @@ out$national_market_cap_bar
 out$national_generation_bar
 print_table(mean_value_by_state_table(df,'market_share'), caption = "Mean Adoption Share")
 out$national_adopters_trends_bar
+national_installed_capacity_by_turb_size_bar(df)
 ```
 
 # Economics
