@@ -29,39 +29,44 @@ reload(datfunc)
 import DG_Wind_NamedRange_xl2pg as loadXL
 import subprocess
 import datetime
-# load in a bunch of the configuration variables as global vars
-from config import *
 
+
+# 3. load in a bunch of the configuration variables as global vars and check that values are acceptable
+from config import *
 
 # check that random generator seed is in the acceptable range
 if random_generator_seed < 0 or random_generator_seed > 1:
-    raise ValueError("""Error: random_generator_seed in config.py is not in the range of acceptable values
+    raise ValueError("""Error: random_generator_seed in config.py is not in the range of acceptable values.
                     Change to a value in the range >= 0 and <= 1.""")
+                    
+# check that number of customer bins is in the acceptable range
+if customer_bins not in (10,50,100,500):
+    raise ValueError("""Error: customer_bins in config.py is not in the range of acceptable values.
+                        Change to a value in the set (10,50,100,500).""")
 
-# 3. Connect to Postgres and configure connection(s)
+# 4. Connect to Postgres and configure connection(s)
 # (to edit login information, edit config.py)
 
 # create a set of N connections and cursors for parallel processing
-con_cur_list = []
-if parallelize:
-    for n in range(npar):
-        con, cur = datfunc.make_con(pg_conn_string)
-        con_cur_list.append({'con':con, 'cur':cur})
-else:
+if not parallelize:
     npar = 1
+con_cur_list = []  
+for n in range(npar):
+    con, cur = datfunc.make_con(pg_conn_string)
+    con_cur_list.append({'con':con, 'cur':cur})
 
-# create connection to Postgres Database
+# create a single connection to Postgres Database -- this will serve as the main cursor/connection
 con, cur = datfunc.make_con(pg_conn_string)
-
 # register access to hstore in postgres
 pgx.register_hstore(con)
+
 # configure pandas display options
 pd.set_option('max_columns', 9999)
 pd.set_option('max_rows',10)
 
 
 
-# 4. Load Input excel spreadsheet to Postgres
+# 5. Load Input excel spreadsheet to Postgres
 if load_scenario_inputs:
     print 'Loading input data from Input Scenario Worksheet'
     try:
@@ -74,7 +79,7 @@ else:
     print "Warning: Skipping Import of Input Scenario Worksheet. This should only be done while testing."
 
 
-# 5. Read in scenario option variables 
+# 6. Read in scenario option variables 
 
 scenario_opts = datfunc.get_scenario_options(cur) 
 exclusions = datfunc.get_exclusions(cur) # get exclusions
@@ -95,10 +100,10 @@ max_market_share = datfunc.get_max_market_share(con, sectors.values(), residenti
 market_projections = datfunc.get_market_projections(con)
 
 
-# 6. Combine All of the Temporally Varying Data in a new Table in Postgres
+# 7. Combine All of the Temporally Varying Data in a new Table in Postgres
 datfunc.combine_temporal_data(cur, con, start_year, end_year, datfunc.pylist_2_pglist(sectors.values()), preprocess)
 
-# 7. Set up the Main Data Frame for each sector
+# 8. Set up the Main Data Frame for each sector
 outputs = pd.DataFrame()
 for sector_abbr, sector in sectors.iteritems():
     # define the rate escalation source and max market curve for the current sector
@@ -108,7 +113,7 @@ for sector_abbr, sector in sectors.iteritems():
     t0 = time.time()
     main_table = datfunc.generate_customer_bins(cur, con, random_generator_seed, customer_bins, sector_abbr, sector, 
                                    start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
-                                   oversize_turbine_factor, undersize_turbine_factor, preprocess, parallelize, npar, con_cur_list)
+                                   oversize_turbine_factor, undersize_turbine_factor, preprocess, npar, con_cur_list)
     print time.time()-t0
     crash
     # get dsire incentives for the generated customer bins
@@ -137,7 +142,7 @@ for sector_abbr, sector in sectors.iteritems():
         else:
             df = pd.merge(df,market_last_year, how = 'left', on = 'gid')
        
-        # 8. Calculate economics including incentives
+        # 9. Calculate economics including incentives
         # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years. 
         if scenario_opts['overwrite_exist_inc']:
             value_of_incentives = datfunc.calc_manual_incentives(df,con, year)
@@ -161,18 +166,18 @@ for sector_abbr, sector in sectors.iteritems():
         df['payback_key'] = (df['payback_period']*10).astype(int)
         df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'payback_key'])
         
-        # 9. Calulate diffusion
+        # 10. Calulate diffusion
         df['market_share'] = diffunc.calc_diffusion(df.payback_period.values,df.max_market_share.values, df.market_share_last_year.values)
         df['number_of_adopters'] = np.maximum(df['market_share'] * df['customers_in_bin'], df['number_of_adopters_last_year'])
         df['installed_capacity'] = np.maximum(df['number_of_adopters'] * df['cap'], df['installed_capacity_last_year'])
         df['market_value'] = np.maximum(df['number_of_adopters'] *df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw'], df['market_value_last_year'])
         
-        #10. Update parameters for next solve
+        # 11. Update parameters for next solve
         outputs = outputs.append(df, ignore_index = 'True')
         market_last_year = df[['gid','market_share', 'number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
         market_last_year.columns = ['gid', 'market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
         
-## 11. Outputs & Visualization
+## 12. Outputs & Visualization
 # set output folder
 cdate = time.strftime('%Y%m%d_%H%M%S')
 scen_name = '%s_%s' % (scenario_opts['scenario_name'],cdate)
