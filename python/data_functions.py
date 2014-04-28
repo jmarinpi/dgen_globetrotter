@@ -15,6 +15,7 @@ import pandas as pd
 import datetime
 from multiprocessing import Process, Queue, JoinableQueue
 import select
+from cStringIO import StringIO
 
 
 def wait(conn):
@@ -119,6 +120,35 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess):
     print time.time()-t0    
     
     return 1
+    
+def clear_outputs(con,cur, sector_abbr):
+    """Delete all rows from the output table"""
+    
+    sql = """DELETE FROM wind_ds.outputs_%s""" % sector_abbr
+    cur.execute(sql)
+    con.commit()
+
+def write_outputs(con, cur, outputs_df, sector_abbr):
+    
+    # set fields to write
+#    fields = ['gid','year','value_of_pbi_fit','max_market_share','market_share_last_year','discount_rate','pbi_fit_length','ic','down_payment','payback_period','installed_capacity_last_year','loan_rate','value_of_ptc','market_value','market_share','value_of_tax_credit_or_deduction','number_of_adopters_last_year','payback_key','market_value_last_year','loan_term_yrs','ptc_length','aep','installed_capacity','tax_rate','customer_expec_elec_rates','length_of_irr_analysis_yrs','cap','ownership_model','lcoe','number_of_adopters','value_of_increment','value_of_rebate']
+    # default right now is to use all fields in the df except sector
+    fields = list(outputs_df.columns)
+    fields.remove('sector')
+    # convert formatting of fields list
+    fields_str = pylist_2_pglist(fields).replace("'","")    
+    # open an in memory stringIO file (like an in memory csv)
+    s = StringIO()
+    # write the data to the stringIO
+    outputs_df[fields].to_csv(s, index = False, header = False)
+    # seek back to the beginning of the stringIO file
+    s.seek(0)
+    # copy the data from the stringio file to the postgres table
+    cur.copy_expert('COPY wind_ds.outputs_%s (%s) FROM STDOUT WITH CSV' % (sector_abbr,fields_str), s)
+    # commit the additions and close the stringio file (clears memory)
+    con.commit()    
+    s.close()
+
     
     
 def p_execute(con, cur, sql):
@@ -423,7 +453,19 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
               ORDER BY a.gid, a.year, a.scoe ASC;""" % inputs
     p_run(con_cur_list, sql, county_chunks, npar)
     print time.time()-t0
-
+    
+    # create index on gid and year
+    sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_gid_btree 
+             ON wind_ds.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(gid);
+             
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_year_btree 
+             ON wind_ds.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(year);
+            """ % inputs
+    cur.execute(sql)
+    con.commit()
+    
     #==============================================================================
     #   clean up intermediate tables
     #==============================================================================

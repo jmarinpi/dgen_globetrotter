@@ -106,6 +106,9 @@ datfunc.combine_temporal_data(cur, con, start_year, end_year, datfunc.pylist_2_p
 # 8. Set up the Main Data Frame for each sector
 outputs = pd.DataFrame()
 for sector_abbr, sector in sectors.iteritems():
+    # clear results from previous run    
+    datfunc.clear_outputs(con,cur, sector_abbr)
+    
     # define the rate escalation source and max market curve for the current sector
     rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
     max_market_curve = scenario_opts['%s_max_market_curve' % sector_abbr]
@@ -115,7 +118,7 @@ for sector_abbr, sector in sectors.iteritems():
                                    start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
                                    oversize_turbine_factor, undersize_turbine_factor, preprocess, npar, con_cur_list)
     print time.time()-t0
-    crash
+
     # get dsire incentives for the generated customer bins
     t0 = time.time()
     dsire_incentives = datfunc.get_dsire_incentives(cur, con, sector_abbr, preprocess)
@@ -172,11 +175,17 @@ for sector_abbr, sector in sectors.iteritems():
         df['installed_capacity'] = np.maximum(df['number_of_adopters'] * df['cap'], df['installed_capacity_last_year'])
         df['market_value'] = np.maximum(df['number_of_adopters'] *df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw'], df['market_value_last_year'])
         
-        # 11. Update parameters for next solve
-        outputs = outputs.append(df, ignore_index = 'True')
+        # 11. Save outputs from this year and update parameters for next solve       
+        # Save outputs
+        # original method (memory intensive)
+#        outputs = outputs.append(df, ignore_index = 'True')
+        # postgres method
+        datfunc.write_outputs(con, cur, df, sector_abbr)     
+        
         market_last_year = df[['gid','market_share', 'number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
         market_last_year.columns = ['gid', 'market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
-        
+
+
 ## 12. Outputs & Visualization
 # set output folder
 cdate = time.strftime('%Y%m%d_%H%M%S')
@@ -191,8 +200,15 @@ os.makedirs(out_path)
 plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
         
 print 'Writing outputs'
-outputs = outputs.fillna(0)
-outputs.to_csv(out_path + '/outputs.csv')
+t0 = time.time()
+# original method based on in memory df
+#outputs = outputs.fillna(0)
+#outputs.to_csv(out_path + '/outputs.csv')
+# copy csv from postgres
+f = open(out_path+'/outputs.csv','w')
+cur.copy_expert('COPY (SELECT * FROM wind_ds.outputs_all) TO STDOUT WITH CSV HEADER;', f)
+f.close()
+print time.time() - t0
 
 #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
 # for linux and mac, this needs to be formatted as a list of args passed to subprocess
