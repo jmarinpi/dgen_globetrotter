@@ -572,31 +572,88 @@ def get_scenario_options(cur):
     results = cur.fetchall()[0]
     return results
 
-def get_dsire_incentives(cur, con, sector_abbr, preprocess):
+def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, con_cur_list):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
+    inputs['chunk_place_holder'] = '%(county_ids)s'
 
     print "Identifying initial incentives for customer bins from DSIRE Database"
     if not preprocess:
+        # adjust the name of the sector for incentives table (ind doesn't exist in dsire -- use com)
         if sector_abbr == 'ind':
             inputs['incentives_sector'] = 'com'
         else:
-            inputs['incentives_sector'] = sector_abbr        
-    
-        sql =   """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_incentives;
-                CREATE TABLE wind_ds.pt_%(sector_abbr)s_incentives AS
-                SELECT a.gid, c.*
-                FROM wind_ds.pt_%(sector_abbr)s_best_option_each_year a
-                LEFT JOIN wind_ds.dsire_incentives_lookup_%(sector_abbr)s b
-                ON a.gid = b.pt_gid
-                LEFT JOIN wind_ds.incentives c
-                ON b.wind_incentives_uid = c.uid
-                where lower(c.sector) = '%(incentives_sector)s'
-                and a.year = 2014
-                order by a.gid;""" % inputs         
+            inputs['incentives_sector'] = sector_abbr           
+        
+        #==============================================================================
+        #     break counties into subsets for parallel processing
+        #==============================================================================
+        # get list of counties
+        sql =   """SELECT county_id 
+                   FROM wind_ds.counties_to_model
+                   ORDER BY county_id;"""
+        cur.execute(sql)
+        counties = [row['county_id'] for row in cur.fetchall()]
+        county_chunks = map(list,np.array_split(counties, npar))        
+        
+        # initialize the output table
+        t0 = time.time()  
+        sql = """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_incentives;
+                CREATE TABLE wind_ds.pt_%(sector_abbr)s_incentives
+                    (
+                      gid integer,
+                      uid integer,
+                      incentive_id integer,
+                      increment_1_capacity_kw numeric,
+                      increment_2_capacity_kw numeric,
+                      increment_3_capacity_kw numeric,
+                      pbi_fit_duration_years numeric,
+                      pbi_fit_end_date date,
+                      pbi_fit_max_size_kw numeric,
+                      pbi_fit_min_output_kwh_yr numeric,
+                      pbi_fit_min_size_kw numeric,
+                      ptc_duration_years numeric,
+                      ptc_end_date date,
+                      rating_basis_ac_dc text,
+                      fit_dlrs_kwh numeric,
+                      pbi_dlrs_kwh numeric,
+                      pbi_fit_dlrs_kwh numeric,
+                      increment_1_rebate_dlrs_kw numeric,
+                      increment_2_rebate_dlrs_kw numeric,
+                      increment_3_rebate_dlrs_kw numeric,
+                      max_dlrs_yr numeric,
+                      max_tax_credit_dlrs numeric,
+                      max_tax_deduction_dlrs numeric,
+                      pbi_fit_max_dlrs numeric,
+                      pbi_fit_pcnt_cost_max numeric,
+                      ptc_dlrs_kwh numeric,
+                      rebate_dlrs_kw numeric,
+                      rebate_max_dlrs numeric,
+                      rebate_max_size_kw numeric,
+                      rebate_min_size_kw numeric,
+                      rebate_pcnt_cost_max numeric,
+                      tax_credit_pcnt_cost numeric,
+                      tax_deduction_pcnt_cost numeric,
+                      tax_credit_max_size_kw numeric,
+                      tax_credit_min_size_kw numeric,
+                      sector text)""" % inputs    
         cur.execute(sql)
         con.commit()
-    
+        
+        # set up sql statement to insert data into the table in chunks
+        sql =  """INSERT INTO wind_ds.pt_%(sector_abbr)s_incentives
+                    SELECT a.gid, c.*
+                    FROM wind_ds.pt_%(sector_abbr)s_best_option_each_year a
+                    LEFT JOIN wind_ds.dsire_incentives_lookup_%(sector_abbr)s b
+                    ON a.gid = b.pt_gid
+                    LEFT JOIN wind_ds.incentives c
+                    ON b.wind_incentives_uid = c.uid
+                    WHERE lower(c.sector) = '%(incentives_sector)s'
+                    AND a.county_id IN (%(chunk_place_holder)s)
+                    AND a.year = 2014
+                    ORDER by a.gid;""" % inputs  
+        # run in parallel
+        p_run(con_cur_list, sql, county_chunks, npar) 
     
     sql =  """SELECT * FROM 
             wind_ds.pt_%(sector_abbr)s_incentives;""" % inputs

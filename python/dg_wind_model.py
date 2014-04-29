@@ -121,7 +121,7 @@ for sector_abbr, sector in sectors.iteritems():
 
     # get dsire incentives for the generated customer bins
     t0 = time.time()
-    dsire_incentives = datfunc.get_dsire_incentives(cur, con, sector_abbr, preprocess)
+    dsire_incentives = datfunc.get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, con_cur_list)
     print time.time()-t0
     # Pull data from the Main Table to a Data Frame for each year
     
