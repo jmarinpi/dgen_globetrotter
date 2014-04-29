@@ -55,8 +55,8 @@ CREATE OR REPLACE VIEW wind_ds.pt_grid_us_res_joined AS
 SELECT a.gid, a.county_id, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
 	a.annual_rate_gid, a.iiijjjicf_id,
 	c.res_cents_per_kwh as elec_rate_cents_per_kwh, 
-	b.total_customers_2011_residential as county_total_customers_2011, 
-	b.total_load_mwh_2011_residential as county_total_load_mwh_2011,
+	b.total_customers_2011_residential * k.perc_ooh as county_total_customers_2011, 
+	b.total_load_mwh_2011_residential * k.perc_ooh as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region, f.derate_factor,
 	g.i, g.j, g.cf_bin, g.aep_scale_factor
@@ -64,6 +64,9 @@ FROM wind_ds.pt_grid_us_res a
 -- county_load_and_customers
 LEFT JOIN wind_ds.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
+-- county % owner occ housing
+LEFT JOIN wind_ds.perc_own_occ_housing_by_county k
+ON a.county_id = k.county_id
 -- rates
 LEFT JOIN wind_ds.annual_ave_elec_rates_2011 c
 ON a.annual_rate_gid = c.gid
@@ -82,6 +85,7 @@ on a.gid = g.pt_gid
 -- subset to counties of interest
 INNER JOIN wind_ds.counties_to_model h 
 ON a.county_id = h.county_id;
+
 
 -- comm
 DROP VIEW IF EXISTS wind_ds.pt_grid_us_com_joined;
