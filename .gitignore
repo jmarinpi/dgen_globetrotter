@@ -14,3 +14,6 @@ r/graphics/.Rproj.user*
 r/graphics/figure
 data_share/WIND_HEIGHTS_COSTS_20140320.xlsx
 r/graphics/graphics.Rproj
+python/test_carb_price.py
+python/test_irr.py
+data_share/FTG_2013.pdf
