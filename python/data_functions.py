@@ -73,7 +73,8 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess):
             	d.escalation_factor as rate_escalation_factor,
             	d.source as rate_escalation_source,
             	e.scenario as load_growth_scenario,
-            	e.load_multiplier	
+            	e.load_multiplier,
+            f.carbon_dollars_per_ton
             FROM wind_ds.wind_performance_improvements a
             LEFT JOIN wind_ds.allowable_turbine_sizes b
             ON a.nameplate_capacity_kw = b.turbine_size_kw
@@ -85,6 +86,8 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess):
             LEFT JOIN wind_ds.aeo_load_growth_projections e
             ON d.census_division_abbr = e.census_division_abbr
             AND a.year = e.year
+            LEFT JOIN wind_ds.market_projections f
+            ON a.year = f.year
             WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
             AND d.sector in (%(sectors)s);""" % inputs
     cur.execute(sql)
@@ -136,7 +139,7 @@ def write_outputs(con, cur, outputs_df, sector_abbr):
     fields = list(outputs_df.columns)
     fields.remove('sector')
     # convert formatting of fields list
-    fields_str = pylist_2_pglist(fields).replace("'","")    
+    fields_str = pylist_2_pglist(fields).replace("'","")       
     # open an in memory stringIO file (like an in memory csv)
     s = StringIO()
     # write the data to the stringIO
@@ -376,7 +379,8 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             SELECT
              	a.gid, b.year, a.county_id, a.state_abbr, a.census_division_abbr, a.census_region, a.row_number, 
              	a.%(exclusion_type)s as max_height, 
-            	a.elec_rate_cents_per_kwh * b.rate_escalation_factor as elec_rate_cents_per_kwh, 
+            	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
+            b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
             	a.cap_cost_multiplier,
             	b.fixed_om_dollars_per_kw_per_yr, 
             	b.variable_om_dollars_per_kwh,
@@ -411,39 +415,12 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     #==============================================================================
     print "Selecting the most cost-effective wind turbine configuration for each customer bin and year"
     t0 = time.time()  
+    # create empty table
     sql = """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_best_option_each_year;
-            CREATE TABLE wind_ds.pt_%(sector_abbr)s_best_option_each_year (
-              gid integer,
-              year integer,
-              county_id integer,
-              state_abbr character varying(2),
-              census_division_abbr text,
-              census_region text,
-              row_number bigint,
-              max_height integer,
-              elec_rate_cents_per_kwh numeric,
-              cap_cost_multiplier numeric,
-              fixed_om_dollars_per_kw_per_yr numeric,
-              variable_om_dollars_per_kwh numeric,
-              installed_costs_dollars_per_kw numeric,
-              ann_cons_kwh numeric,
-              prob numeric,
-              weight numeric,
-              customers_in_bin numeric,
-              initial_customers_in_bin numeric,
-              load_kwh_in_bin numeric,
-              initial_load_kwh_in_bin numeric,
-              load_kwh_per_customer_in_bin numeric,
-              i integer,
-              j integer,
-              cf_bin integer,
-              aep_scale_factor numeric,
-              derate_factor numeric,
-              naep numeric,
-              nameplate_capacity_kw numeric,
-              power_curve_id integer,
-              turbine_height_m integer,
-              scoe double precision);""" % inputs    
+            CREATE TABLE wind_ds.pt_%(sector_abbr)s_best_option_each_year AS
+            SELECT *
+            FROM wind_ds.pt_%(sector_abbr)s_sample_all_combinations_0
+            LIMIT 0;""" % inputs    
     cur.execute(sql)
     con.commit()
     

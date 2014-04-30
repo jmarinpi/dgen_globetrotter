@@ -24,7 +24,7 @@ SELECT a.gid, a.county_id, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region, f.derate_factor,
-	g.i, g.j, g.cf_bin, g.aep_scale_factor
+	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh
 FROM wind_ds.pt_grid_us_ind a
 -- county_load_and_customers
 LEFT JOIN wind_ds.load_and_customers_by_county_us b
@@ -46,7 +46,10 @@ LEFT JOIN wind_ds.ij_cfbin_lookup_ind_pts_us g
 on a.gid = g.pt_gid
 -- subset to counties of interest
 INNER JOIN wind_ds.counties_to_model h 
-ON a.county_id = h.county_id;
+ON a.county_id = h.county_id
+-- carbon intensities
+LEFT JOIN wind_ds.carbon_intensities_to_model l
+ON e.state_abbr = l.state_abbr;
 
 
 -- res
@@ -59,7 +62,7 @@ SELECT a.gid, a.county_id, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc
 	b.total_load_mwh_2011_residential * k.perc_ooh as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region, f.derate_factor,
-	g.i, g.j, g.cf_bin, g.aep_scale_factor
+	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh
 FROM wind_ds.pt_grid_us_res a
 -- county_load_and_customers
 LEFT JOIN wind_ds.load_and_customers_by_county_us b
@@ -84,7 +87,10 @@ LEFT JOIN wind_ds.ij_cfbin_lookup_res_pts_us g
 on a.gid = g.pt_gid
 -- subset to counties of interest
 INNER JOIN wind_ds.counties_to_model h 
-ON a.county_id = h.county_id;
+ON a.county_id = h.county_id
+-- carbon intensities
+LEFT JOIN wind_ds.carbon_intensities_to_model l
+ON e.state_abbr = l.state_abbr;
 
 
 -- comm
@@ -97,7 +103,7 @@ SELECT a.gid, a.county_id, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region, f.derate_factor,
-	g.i, g.j, g.cf_bin, g.aep_scale_factor
+	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh
 FROM wind_ds.pt_grid_us_com a
 -- county_load_and_customers
 LEFT JOIN wind_ds.load_and_customers_by_county_us b
@@ -119,7 +125,10 @@ LEFT JOIN wind_ds.ij_cfbin_lookup_com_pts_us g
 on a.gid = g.pt_gid
 -- subset to counties of interest
 INNER JOIN wind_ds.counties_to_model h 
-ON a.county_id = h.county_id;
+ON a.county_id = h.county_id
+-- carbon intensities
+LEFT JOIN wind_ds.carbon_intensities_to_model l
+ON e.state_abbr = l.state_abbr;
 
 
 -- create view of sectors to model
@@ -263,3 +272,15 @@ CREATE OR REPLACE VIEW wind_ds.turbine_costs_per_size_and_year AS
 FROM wind_ds.allowable_turbine_sizes a
 LEFT JOIN wind_ds.wind_cost_projections b  --this join will repeat the cost projections for each turbine height associated with each size
 ON a.turbine_size_kw = b.turbine_size_kw;
+
+
+-- view for carbon intensities
+DROP VIEW IF EXISTS wind_ds.carbon_intensities_to_model;
+CREATE OR REPLACE VIEW wind_ds.carbon_intensities_to_model AS
+SELECT state_abbr,
+	CASE WHEN b.carbon_price = 'No Carbon Price' THEN no_carbon_price_t_per_kwh
+	WHEN b.carbon_price = 'Price Based On State Carbon Intensity' THEN state_carbon_price_t_per_kwh
+	WHEN b.carbon_price = 'Price Based On NG Offset' THEN ng_offset_t_per_kwh
+	END as carbon_intensity_t_per_kwh
+FROM wind_ds.carbon_intensities a
+CROSS JOIN wind_ds.scenario_options b;
