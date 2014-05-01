@@ -63,7 +63,7 @@ CREATE TABLE wind_ds.outputs_res (
 	ownership_model				text,
 	lcoe					numeric,
 	number_of_adopters			numeric,
-	value_of_increment			INTEGER, 
+	value_of_increment			numeric, 
 	value_of_rebate				numeric 
 );
 
@@ -133,7 +133,7 @@ CREATE TABLE wind_ds.outputs_com (
 	ownership_model				text,
 	lcoe					numeric,
 	number_of_adopters			numeric,
-	value_of_increment			INTEGER, 
+	value_of_increment			numeric, 
 	value_of_rebate				numeric 
 );
 
@@ -203,7 +203,7 @@ CREATE TABLE wind_ds.outputs_ind (
 	ownership_model				text,
 	lcoe					numeric,
 	number_of_adopters			numeric,
-	value_of_increment			INTEGER, 
+	value_of_increment			numeric, 
 	value_of_rebate				numeric 
 );
 
