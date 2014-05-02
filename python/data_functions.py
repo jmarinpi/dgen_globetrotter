@@ -154,21 +154,25 @@ def write_outputs(con, cur, outputs_df, sector_abbr):
 
     
     
-def p_execute(con, cur, sql):
+def p_execute(pg_conn_string, sql):
+    # create cursor and connection
+    con, cur = make_con(pg_conn_string)  
+    # execute query
     cur.execute(sql)
+    # commit changes
     con.commit()
+    # close cursor and connection
+    con.close()
+    cur.close()
 
     
-def p_run(con_cur_list, sql, county_chunks, npar):
+def p_run(pg_conn_string, sql, county_chunks, npar):
     
-    q = JoinableQueue()
     jobs = []
     for i in range(npar):
         place_holders = {'i': i, 'county_ids': pylist_2_pglist(county_chunks[i])}
         isql = sql % place_holders
-        icon = con_cur_list[i]['con']
-        icur = con_cur_list[i]['cur']
-        proc = Process(target = p_execute, args = (icon, icur, isql))
+        proc = Process(target = p_execute, args = (pg_conn_string, isql))
         jobs.append(proc)
         proc.start()
     for job in jobs:
@@ -177,7 +181,7 @@ def p_run(con_cur_list, sql, county_chunks, npar):
 
 def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor,
-                           preprocess, npar, con_cur_list):
+                           preprocess, npar, pg_conn_string):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()  
@@ -266,7 +270,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             FROM a
             WHERE row_number <= %(n_bins)s;""" % inputs    
 
-    p_run(con_cur_list, sql, county_chunks, npar)
+    p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
 
     #==============================================================================
@@ -317,7 +321,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             	ELSE 0
             	END AS load_kwh_per_customer_in_bin
             FROM binned a;""" % inputs
-    p_run(con_cur_list, sql, county_chunks, npar)
+    p_run(pg_conn_string, sql, county_chunks, npar)
 
     # query for indices creation
     sql =  """ALTER TABLE wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
@@ -330,7 +334,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
               CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_i_j_cf_bin 
               ON wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
               USING BTREE(i,j,cf_bin);""" % inputs
-    p_run(con_cur_list, sql, county_chunks, npar)
+    p_run(pg_conn_string, sql, county_chunks, npar)
 
 
     # add index for exclusions (if they apply)
@@ -339,7 +343,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                   ON wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
                   USING BTREE(%(exclusion_type)s)
                   WHERE %(exclusion_type)s > 0;""" % inputs
-        p_run(con_cur_list, sql, county_chunks, npar)
+        p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
     
     #==============================================================================
@@ -360,13 +364,13 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 AND a.cf_bin = c.cf_bin
                 AND a.%(exclusion_type)s >= c.height
                 WHERE a.%(exclusion_type)s > 0;""" % inputs       
-    p_run(con_cur_list, sql, county_chunks, npar)
+    p_run(pg_conn_string, sql, county_chunks, npar)
 
     # create indices for subsequent joins
     sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s_join_fields_btree 
               ON wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s 
               USING BTREE(turbine_height_m, census_division_abbr, power_curve_id);""" % inputs
-    p_run(con_cur_list, sql, county_chunks, npar)
+    p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time() - t0
     
     #==============================================================================
@@ -405,7 +409,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             WHERE b.sector = '%(sector)s'
             AND b.rate_escalation_source = '%(rate_escalation_source)s'
             AND b.load_growth_scenario = '%(load_growth_scenario)s';""" % inputs
-    p_run(con_cur_list, sql, county_chunks, npar)
+    p_run(pg_conn_string, sql, county_chunks, npar)
 
     # NOTE: not worth creating indices for this one -- it wil only slow down the processing    
     print time.time()-t0
@@ -428,7 +432,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
               SELECT distinct on (a.gid, a.year) a.*
               FROM  wind_ds.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a
               ORDER BY a.gid, a.year, a.scoe ASC;""" % inputs
-    p_run(con_cur_list, sql, county_chunks, npar)
+    p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
     
     # create index on gid and year
@@ -459,7 +463,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     for intermediate_table in intermediate_tables:
         isql = sql % intermediate_table
         if '%(i)s' in intermediate_table:
-            p_run(con_cur_list, isql, county_chunks, npar)
+            p_run(pg_conn_string, isql, county_chunks, npar)
         else:
             cur.execute(isql)
             con.commit()    
@@ -548,7 +552,7 @@ def get_scenario_options(cur):
     results = cur.fetchall()[0]
     return results
 
-def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, con_cur_list):
+def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, pg_conn_string):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
     inputs['chunk_place_holder'] = '%(county_ids)s'
@@ -629,7 +633,7 @@ def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, con_cur_list):
                     AND a.year = 2014
                     ORDER by a.gid;""" % inputs  
         # run in parallel
-        p_run(con_cur_list, sql, county_chunks, npar) 
+        p_run(pg_conn_string, sql, county_chunks, npar) 
     
     sql =  """SELECT * FROM 
             wind_ds.pt_%(sector_abbr)s_incentives;""" % inputs
