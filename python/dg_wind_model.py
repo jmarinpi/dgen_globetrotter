@@ -88,9 +88,8 @@ def main():
     
     deprec_schedule = datfunc.get_depreciation_schedule(con, type = 'standard').values
     financial_parameters = datfunc.get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned')
-    max_market_share = datfunc.get_max_market_share(con, sectors.values(), residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit')
+    max_market_share = datfunc.get_max_market_share(con, sectors.values(), scenario_opts, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit')
     market_projections = datfunc.get_market_projections(con)
-    
     
     # 7. Combine All of the Temporally Varying Data in a new Table in Postgres
     datfunc.combine_temporal_data(cur, con, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.values()), cfg.preprocess)

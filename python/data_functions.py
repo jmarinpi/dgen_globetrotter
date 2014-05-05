@@ -712,7 +712,7 @@ def get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host
  
 #==============================================================================
    
-def get_max_market_share(con, sectors, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit'):
+def get_max_market_share(con, sectors, scenario_opts, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit'):
     ''' Pull max market share from dB, select curve based on scenario_options, and interpolate to tenth of a year. 
         Use passed parameters to determine ownership type
     
@@ -737,11 +737,20 @@ def get_max_market_share(con, sectors, residential_type = 'retrofit', commercial
     for sector in sectors:
         # define the ownership type based on the current sector
         ownership_type = inputs['%s_type' % sector.lower()]
-        # get the data for this sector from postgres (this will handle all of the selection based on scenario inputs)
-        sql = """SELECT *
-                 FROM wind_ds.max_market_curves_to_model
-                 WHERE lower(sector) = '%s';""" % sector.lower()
-        mm = sqlio.read_frame(sql, con)
+        short_sector = sector[:3].lower()        
+        
+        # Whether to use default or user fit max market share curves
+        if scenario_opts[short_sector + '_max_market_curve'] == 'User Fit':
+            sql = """SELECT * 
+            FROM wind_ds.user_defined_max_market_share
+            WHERE lower(sector) = '%s';""" % sector.lower()
+            mm = sqlio.read_frame(sql, con)
+        else:
+            # get the data for this sector from postgres (this will handle all of the selection based on scenario inputs)
+            sql = """SELECT *
+                     FROM wind_ds.max_market_curves_to_model
+                     WHERE lower(sector) = '%s';""" % sector.lower()
+            mm = sqlio.read_frame(sql, con)
         # create an interpolation function to interpolate max market share (for either retrofit or new) based on the year
         interp_func = interp1d(mm['year'], mm[ownership_type]);
         # create a data frame of max market values for yrs using this interpolation function
@@ -750,8 +759,6 @@ def get_max_market_share(con, sectors, residential_type = 'retrofit', commercial
         interpolated_mm['sector'] = sector.lower()
         # append to the main data frame
         max_market_share = max_market_share.append(interpolated_mm, ignore_index = True)
-        
-    
     return max_market_share
     
 
