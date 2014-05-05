@@ -40,14 +40,14 @@ preprocess = False #True means to use the last-created main table
     # Mike's path
 #Rscript_path = 'C:/Users/mgleason/Documents/R/R-3.0.2/bin/Rscript.exe'
     # Mike's mac path
-Rscript_path = '/usr/bin/Rscript'
+#Rscript_path = '/usr/bin/Rscript'
     # Ben's Path
-#Rscript_path = 'C:/Program Files/R/R-3.0.2/bin/Rscript.exe' 
+Rscript_path = 'C:/Program Files/R/R-3.0.2/bin/Rscript.exe' 
 
 # set boolean variable for parallelization
 parallelize = True
 # set number of parallel processes to run (this is ignored if parallelize = F)
-npar = 14
+npar = 2
 
 # load scenario input sheet?
 load_scenario_inputs = True
