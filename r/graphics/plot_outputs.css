@@ -1,17 +1,37 @@
+#toc {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 200px;
+  height: 100%;
+  overflow:auto;
+  font-size: 14px;
+  
+}
+
 /*body, td {*/
 body, td {
    font-family: sans-serif;
    background-color: white;
    font-size: 12px;
    margin: 8px;
+   margin-left:210px;
    counter-reset: h1counter;
 }
+
+
 
 tt, code, pre {
    font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
 }
 
-h1, #toc_header {
+#toc_header {
+   font-size: 1.8em;
+   font-weight: normal;
+   counter-reset: h2counter;
+}
+
+h1 {
    font-size: 2.2em;
    font-weight: normal;
    counter-reset: h2counter;
@@ -155,3 +175,5 @@ table caption {
       page-break-after: avoid;
    }
 }
+
+

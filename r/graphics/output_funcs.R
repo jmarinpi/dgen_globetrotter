@@ -41,7 +41,7 @@ total_value_by_state_table<-function(df,val){
 
 create_report <- function(runpath) {
   knit2html("../r/graphics/plot_outputs.md", output = "DG Wind report.html", title = "DG Wind report", stylesheet = "plot_outputs.css",
-            options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
+            options = c("hard_wrap", "use_xhtml", "base64_images", "toc = yes"))
 }
 
 

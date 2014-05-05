@@ -22,29 +22,6 @@ knit2html("../r/graphics/plot_outputs.md", output = paste0(runpath,"/DG Wind rep
             options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
 dbDisconnect(con)
 
-national_installed_capacity_by_turb_size_bar<-function(df){
-data<-ddply(df, .(year, sector, nameplate_capacity_kw), summarise, 
-           nat_installed_capacity  = sum(installed_capacity,na.rm=TRUE)/1e6, 
-           nat_market_share = mean(market_share,na.rm=TRUE), 
-           nat_max_market_share = mean(max_market_share,na.rm=TRUE),
-           nat_market_value = sum(ic * number_of_adopters, na.rm = TRUE),
-           nat_generation = sum(number_of_adopters * aep, na.rm = TRUE),
-           nat_number_of_adopters = sum(number_of_adopters,na.rm=TRUE))
-
-colourCount = length(unique(data$nameplate_capacity_kw))
-getPalette = colorRampPalette(brewer.pal(9, "YlOrRd"))
- 
-ggplot(data, aes(x = year, fill = factor(nameplate_capacity_kw), y = nat_installed_capacity), color = 'black')+
-  facet_wrap(~sector,scales="free_y")+
-  geom_area()+
-  geom_line(aes(ymax = nameplate_capacity_kw), position = 'stack')+
-  theme_few()+
-  scale_fill_manual(name = 'Turbine Size', values = getPalette(colourCount))+#, values = sector_fil) +
-  scale_y_continuous(name ='National Installed Capacity (GW)')+#, labels = comma)+
-  theme(strip.text.x = element_text(size = 12, angle = 0))+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-  ggtitle('National Installed Capacity by Turbine Size (GW)')
-}
 
 # ## Under development
 # dr<- 0.1
