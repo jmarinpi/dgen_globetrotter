@@ -28,6 +28,7 @@ import datetime
 import config as cfg
 
 def main():
+    model_init = time.time()
     print 'Initiating model at %s' %time.ctime()
     
     # 3. check that config values are acceptable
@@ -146,14 +147,14 @@ def main():
             df = pd.merge(df, value_of_incentives, how = 'left', on = 'gid')
             
             revenue, costs, cfs = finfunc.calc_cashflows(df,deprec_schedule,  yrs = 30)      
-            
+                            
             #Disabled at moment because of computation time
             #df['irr'] = finfunc.calc_irr(cfs)
             #df['mirr'] = finfunc.calc_mirr(cfs, finance_rate = df.discount_rate, reinvest_rate = df.discount_rate + 0.02)
             #df['npv'] = finfunc.calc_npv(cfs,df.discount_rate)
             
             payback = finfunc.calc_payback(cfs)
-            ttd = finfunc.calc_ttd(cfs)  
+            ttd = finfunc.calc_ttd(cfs, df)  
     
             df['payback_period'] = np.where(df['sector'] == 'residential',payback, ttd)
             df['lcoe'] = finfunc.calc_lcoe(costs,df.aep.values, df.discount_rate)
@@ -169,7 +170,7 @@ def main():
             # 11. Save outputs from this year and update parameters for next solve       
             # Save outputs
             # original method (memory intensive)
-    #        outputs = outputs.append(df, ignore_index = 'True')
+            # outputs = outputs.append(df, ignore_index = 'True')
             # postgres method
             datfunc.write_outputs(con, cur, df, sector_abbr)     
             
@@ -208,7 +209,7 @@ def main():
     proc = subprocess.Popen(command,stdout=subprocess.PIPE)
     messages = proc.communicate()
     returncode = proc.returncode
-    print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - t0)                 
+    print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - model_init)                 
     
 if __name__ == '__main__':
     main()

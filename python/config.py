@@ -47,7 +47,7 @@ Rscript_path = 'C:/Program Files/R/R-3.0.2/bin/Rscript.exe'
 # set boolean variable for parallelization
 parallelize = True
 # set number of parallel processes to run (this is ignored if parallelize = F)
-npar = 2
+npar = 4
 
 # load scenario input sheet?
 load_scenario_inputs = True

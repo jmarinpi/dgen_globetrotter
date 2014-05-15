@@ -46,6 +46,12 @@ def calc_cashflows(df,deprec_schedule, yrs = 30):
     df['cap'] = df['nameplate_capacity_kw']
     df['ic'] = df['installed_costs_dollars_per_kw'] * df['nameplate_capacity_kw']
     df['aep'] = df['naep'] * df['nameplate_capacity_kw']
+    
+    # When the incentive payment in first year is larger than the downpayment, 
+    # it distorts the IRR. This increases the down payment to at least 10%> than
+    # the ITC
+    df = recalc_down_payment(df)
+
     ## COSTS    
     
     # 1)  Cost of servicing loan
@@ -194,8 +200,9 @@ def calc_mirr(cfs,finance_rate, reinvest_rate):
 
 #==============================================================================
 
-def calc_ttd(cfs):
-    ''' Calculate time to double investment.
+def calc_ttd(cfs,df):
+    ''' Calculate time to double investment based on the MIRR. This is used for
+    the commercial and industrial sectors.
     
     IN: cfs - numpy array - project cash flows ($/yr)
 
@@ -262,6 +269,16 @@ def calc_payback(cfs):
     
 #==============================================================================
 
+def recalc_down_payment(df):
+    # Recalculate the down payment s.t. it exceeds the first year incentives
+    value_of_first_yr_incentives = df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction
+    first_yr_incentives_fraction = value_of_first_yr_incentives/ df.ic
+    df.down_payment = np.where(first_yr_incentives_fraction > df.down_payment, first_yr_incentives_fraction + 0.1, df.down_payment)
+    df.down_payment = np.where(df.down_payment < 0, 0,df.down_payment)
+    df.down_payment = np.where(df.down_payment > 1, 1,df.down_payment)
+    return df
+    
+#==============================================================================
 #
 #
 #
