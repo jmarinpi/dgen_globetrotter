@@ -50,7 +50,7 @@ def calc_cashflows(df,deprec_schedule, yrs = 30):
     # When the incentive payment in first year is larger than the downpayment, 
     # it distorts the IRR. This increases the down payment to at least 10%> than
     # the ITC
-    df = recalc_down_payment(df)
+    #df = recalc_down_payment(df)
 
     ## COSTS    
     

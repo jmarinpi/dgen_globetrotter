@@ -27,7 +27,7 @@ import subprocess
 import datetime
 import config as cfg
 
-def main():
+def main(input_path = cfg.input_xls):
     model_init = time.time()
     print 'Initiating model at %s' %time.ctime()
     
@@ -64,7 +64,7 @@ def main():
     if cfg.load_scenario_inputs:
         print 'Loading input data from Input Scenario Worksheet'
         try:
-            loadXL.main(cfg.input_xls, con, verbose = False)
+            loadXL.main(input_path, con, verbose = False)
         except loadXL.ExcelError, e:
             print 'Loading failed with the following error: %s' % e
             print 'Model aborted'
@@ -212,4 +212,8 @@ def main():
     print 'Model completed at %s run took %.1f seconds' %(time.ctime(), time.time() - model_init)                 
     
 if __name__ == '__main__':
-    main()
+    if cfg.batch:
+        for scen in cfg.batch_names:
+            main(input_path = scen)
+    else:
+        main()
