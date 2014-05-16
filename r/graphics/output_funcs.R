@@ -161,7 +161,7 @@ ggplot(data, aes(x = year, y = median, ymin = lql, ymax = uql, color = sector, f
   ggtitle('National Payback Period (Median and Inner-Quartile Range)')
 }
 
-diffusion_trends<-function(df){
+diffusion_trends<-function(df,runpath,scen_name){
 # Diffusion trends
 data <- ddply(df, .(year, sector), summarise, 
            nat_installed_capacity  = sum(installed_capacity,na.rm=TRUE)/1e6, 
@@ -171,6 +171,8 @@ data <- ddply(df, .(year, sector), summarise,
            nat_generation = sum(number_of_adopters * aep, na.rm = TRUE),
            nat_number_of_adopters = sum(number_of_adopters,na.rm=TRUE))
 data<-melt(data=data,id.vars=c('year','sector'))
+data$scenario<-scen_name
+write.csv(data,paste0(runpath,'/diffusion_trends.csv'),row.names = FALSE)
 
 #' National market share trends
 national_adopters_trends_bar<-ggplot(subset(data, variable %in% c('nat_market_share', 'nat_max_market_share')), 
@@ -274,5 +276,50 @@ ggplot(data, aes(x = year, fill = factor(nameplate_capacity_kw), y = nat_install
   ggtitle('National Installed Capacity by Turbine Size (GW)')
 }
 
+###### Functions for the batch-mode scenario analysis ######################
 
+get_diffusion_trends_data<-function(scen_folders){
+  diff_trends<-data.frame()
+  for(p in scen_folders){
+    tmp<-read.csv(paste0(p,'/diffusion_trends.csv'))
+    diff_trends<-rbind(diff_trends,tmp)
+  }
+return(diff_trends)
+}
+
+all_sectors_diff_trends<-function(df){
+df<-ddply(df,.(year,variable, scenario), summarise, value = sum(value))
+ggplot(data=df,aes(x = year, y = value, color = scenario, fill = scenario))+
+  geom_line(size = 1)+
+  facet_wrap(~variable,scales="free_y")+
+  theme_few()+
+  ggtitle('National Diffusion Trends (All Sectors)')
+}
+
+res_diff_trends<-function(df){
+df<-subset(df, sector ==  "residential")
+ggplot(data=df,aes(x = year, y = value, color = scenario, fill = scenario))+
+  geom_line(size = 1)+
+  facet_wrap(~variable,scales="free_y")+
+  theme_few()+
+  ggtitle('National Residential Diffusion Trends')
+}
+
+com_diff_trends<-function(df){
+df<-subset(df, sector ==  "commercial")
+ggplot(data=df,aes(x = year, y = value, color = scenario, fill = scenario))+
+  geom_line(size = 1)+
+  facet_wrap(~variable,scales="free_y")+
+  theme_few()+
+  ggtitle('National Commercial Diffusion Trends')
+}
+
+com_diff_trends<-function(df){
+df<-subset(df, sector ==  "industrial")
+ggplot(data=df,aes(x = year, y = value, color = scenario, fill = scenario))+
+  geom_line(size = 1)+
+  facet_wrap(~variable,scales="free_y")+
+  theme_few()+
+  ggtitle('National Industrial Diffusion Trends')
+}
 

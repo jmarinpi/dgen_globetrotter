@@ -13,6 +13,8 @@ library(RPostgreSQL)
 source("../r/graphics/output_funcs.R")
 
 runpath<-commandArgs(TRUE)[1]
+scen_name<-commandArgs(TRUE)[2]
+
 con<-make_con(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
 sql = 'SELECT * FROM wind_ds.outputs_all'
 df =  dbGetQuery(con,sql)

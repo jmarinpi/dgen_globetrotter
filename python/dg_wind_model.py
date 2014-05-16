@@ -204,7 +204,7 @@ def main(input_path = cfg.input_xls):
     
     #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
     # for linux and mac, this needs to be formatted as a list of args passed to subprocess
-    command = [cfg.Rscript_path,'--vanilla',plot_outputs_path,out_path]
+    command = [cfg.Rscript_path,'--vanilla',plot_outputs_path,out_path,scenario_opts['scenario_name']]
     print 'Creating outputs report'            
     proc = subprocess.Popen(command,stdout=subprocess.PIPE)
     messages = proc.communicate()
@@ -215,5 +215,12 @@ if __name__ == '__main__':
     if cfg.batch:
         for scen in cfg.batch_names:
             main(input_path = scen)
+        #scenario_analysis_path = '%s/r/graphics/scenario_analysis.R' % os.path.dirname(os.getcwd())
+        #global scen_names
+        #command = [cfg.Rscript_path,'--vanilla',scenario_analysis_path,scen_names]
+        #print 'Creating scenario analysis report'            
+        #proc = subprocess.Popen(command,stdout=subprocess.PIPE)
+        #messages = proc.communicate()
+        #returncode = proc.returncode
     else:
         main()

@@ -5,7 +5,7 @@ Created on Wed Mar 26 13:01:56 2014
 @author: mgleason
 """
 
-import os
+import glob
 
 #==============================================================================
 # these are all variables that we can change, but don't want to expose to non-expert users
@@ -55,5 +55,6 @@ npar = 4
 load_scenario_inputs = True
 
 # Run model in batch mode
-batch = True
-batch_names = ['../batch/' + path for path in os.listdir("../batch")]
+batch = False
+batch_names = glob.glob("../batch/*.xls*")
+#batch_names = ['../batch/' + path for path in os.listdir("../batch")]

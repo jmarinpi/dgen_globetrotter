@@ -47,6 +47,18 @@ def calc_cashflows(df,deprec_schedule, yrs = 30):
     df['ic'] = df['installed_costs_dollars_per_kw'] * df['nameplate_capacity_kw']
     df['aep'] = df['naep'] * df['nameplate_capacity_kw']
     
+    # Remove NAs if not rebate are passed in input sheet   
+    df.ptc_length = df.ptc_length.fillna(0)
+    df.ptc_length = df.ptc_length.astype(int)
+    df.value_of_ptc = df.value_of_ptc.fillna(0)
+    df.pbi_fit_length = df.pbi_fit_length.fillna(0)
+    df.pbi_fit_length = df.pbi_fit_length.astype(int)
+    df.value_of_pbi_fit = df.value_of_pbi_fit.fillna(0)
+    df.value_of_tax_credit_or_deduction = df.value_of_tax_credit_or_deduction.fillna(0)
+    df.value_of_rebate = df.value_of_rebate.fillna(0)
+    df.value_of_increment = df.value_of_increment.fillna(0)
+    df.value_of_rebate = df.value_of_rebate.fillna(0)
+    
     # When the incentive payment in first year is larger than the downpayment, 
     # it distorts the IRR. This increases the down payment to at least 10%> than
     # the ITC
@@ -97,18 +109,17 @@ def calc_cashflows(df,deprec_schedule, yrs = 30):
     interest_paid[interest_paid < 0] = 0 # Truncate interest payments if loan_term < yrs
     interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial'))[:,np.newaxis]
     
-    # 6) Revenue from other incentives
-    
+    # 6) Revenue from other incentives    
     incentive_revenue = np.zeros(shape)
     incentive_revenue[:, 1] = df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction
 
     ptc_revenue = np.zeros(shape)
     for i in range(len(df)):
-        ptc_revenue[i,1:df.ptc_length[i]] = df.value_of_ptc[i]
+        ptc_revenue[i,1:1+df.ptc_length[i]] = df.value_of_ptc[i]
     
     pbi_fit_revenue = np.zeros(shape)
     for i in range(len(df)):
-        pbi_fit_revenue[i,1:df.pbi_fit_length[i]] = df.value_of_pbi_fit[i]
+        pbi_fit_revenue[i,1:1+df.pbi_fit_length[i]] = df.value_of_pbi_fit[i]
     
     incentive_revenue += ptc_revenue + pbi_fit_revenue
     

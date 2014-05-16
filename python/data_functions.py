@@ -793,17 +793,24 @@ def calc_manual_incentives(df,con,cur_year):
     # Join manual incentives with main df   
     inc = get_manual_incentives(con)
     d = pd.merge(df,inc,left_on = ['state_abbr','sector'], right_on = ['region','sector'])
-    
+        
     # Calculate value of incentive and rebate, and value and length of PBI
-    d['value_of_tax_credit_or_deduction'] = np.minimum(d['incentive'] * d['installed_costs_dollars_per_kw'] * d['nameplate_capacity_kw'] * (cur_year <= d['expire']),d.cap) 
+    d['value_of_tax_credit_or_deduction'] = d['incentive'] * d['installed_costs_dollars_per_kw'] * d['nameplate_capacity_kw'] * (cur_year <= d['expire'])
+    d['value_of_tax_credit_or_deduction'] = d['value_of_tax_credit_or_deduction'].astype(float)
     d['value_of_pbi_fit'] = 0.01 * d['incentives_c_per_kwh'] * d['naep'] * d['nameplate_capacity_kw'] * (cur_year <= d['expire']) # First year value  
     d['value_of_rebate'] = np.minimum(1000 * d['dol_per_kw'] * d['nameplate_capacity_kw'] * (cur_year <= d['expire']), d.cap)
     d['pbi_fit_length'] = d['no_years']
-    # These values are not used, but necessary for cashflow calculations later    
+    
+    # These values are not used, but necessary for cashflow calculations later
+    # Convert dtype to float s.t. columns are included in groupby calculation.
     d['value_of_increment'] = 0
     d['value_of_ptc'] = 0
     d['ptc_length'] = 0
     
+    d['value_of_tax_credit_or_deduction'] = d['value_of_tax_credit_or_deduction'].astype(float)
+    d['value_of_pbi_fit'] = d['value_of_pbi_fit'].astype(float)
+    d['value_of_rebate'] = d['value_of_rebate'].astype(float)
+    d['pbi_fit_length'] = d['pbi_fit_length'].astype(float)
     '''
     Because a system could potentially qualify for several incentives, the left 
     join above could join on multiple rows. Thus, groupby by gid 

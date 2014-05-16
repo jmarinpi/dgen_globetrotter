@@ -4,7 +4,7 @@
 ```
 # Diffusion
 ```{r Diffusion}
-out<-diffusion_trends(df)
+out<-diffusion_trends(df,runpath,scen_name)
 out$national_installed_capacity_bar
 out$national_num_of_adopters_bar
 out$national_market_cap_bar
