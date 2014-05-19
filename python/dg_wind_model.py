@@ -97,9 +97,10 @@ def main(input_path = cfg.input_xls):
     
     # 8. Set up the Main Data Frame for each sector
     outputs = pd.DataFrame()
+    datfunc.clear_outputs(con,cur) # clear results from previous run 
     for sector_abbr, sector in sectors.iteritems():
-        # clear results from previous run    
-        datfunc.clear_outputs(con,cur, sector_abbr)
+           
+        
         
         # define the rate escalation source and max market curve for the current sector
         rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]

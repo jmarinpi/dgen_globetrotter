@@ -124,12 +124,22 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess):
     
     return 1
     
-def clear_outputs(con,cur, sector_abbr):
-    """Delete all rows from the output table"""
+def clear_outputs(con,cur):
+    """Delete all rows from the res, com, and ind output tables"""
     
-    sql = """DELETE FROM wind_ds.outputs_%s""" % sector_abbr
+    sql = """DELETE FROM wind_ds.outputs_res;
+            DELETE FROM wind_ds.outputs_com;
+            DELETE FROM wind_ds.outputs_ind;""" 
     cur.execute(sql)
     con.commit()
+    
+#def clear_outputs(con,cur, sector_abbr):
+#    """Delete all rows from the output table"""
+#    
+#    sql = """DELETE FROM wind_ds.outputs_%s""" % sector_abbr
+#    cur.execute(sql)
+#    con.commit()
+
 
 def write_outputs(con, cur, outputs_df, sector_abbr):
     
