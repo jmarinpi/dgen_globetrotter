@@ -371,9 +371,12 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 LEFT JOIN wind_ds.wind_resource_annual c
                 ON a.i = c.i
                 AND a.j = c.j
-                AND a.cf_bin = c.cf_bin
-                AND a.%(exclusion_type)s >= c.height
-                WHERE a.%(exclusion_type)s > 0;""" % inputs       
+                AND a.cf_bin = c.cf_bin""" % inputs
+    if exclusion_type is not None:
+        sql += """ AND a.%(exclusion_type)s >= c.height
+                WHERE a.%(exclusion_type)s > 0;""" % inputs 
+    else:
+        sql += ';'
     p_run(pg_conn_string, sql, county_chunks, npar)
 
     # create indices for subsequent joins
@@ -388,11 +391,16 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     #==============================================================================
     print "Finding All Combinations of Cost and Resource for Each Customer Bin and Year"
     t0 = time.time() 
+    if exclusion_type is not None:
+        inputs['exclusions_insert'] = "a.%(exclusion_type)s as max_height," % inputs
+    else:
+        inputs['exclusions_insert'] = ""
+        
     sql =  """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
             CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s AS
             SELECT
              	a.gid, b.year, a.county_id, a.state_abbr, a.census_division_abbr, a.census_region, a.row_number, 
-             	a.%(exclusion_type)s as max_height, 
+                  %(exclusions_insert)s
             	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
             b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
             	a.cap_cost_multiplier,
@@ -419,6 +427,8 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             WHERE b.sector = '%(sector)s'
             AND b.rate_escalation_source = '%(rate_escalation_source)s'
             AND b.load_growth_scenario = '%(load_growth_scenario)s';""" % inputs
+
+        
     p_run(pg_conn_string, sql, county_chunks, npar)
 
     # NOTE: not worth creating indices for this one -- it wil only slow down the processing    
