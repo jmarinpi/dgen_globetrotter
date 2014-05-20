@@ -63,7 +63,7 @@ def main():
     
     # find the input excel spreadsheets
     if cfg.load_scenario_inputs:    
-        input_scenarios = glob.glob("../input_scenarios/*.xls*")
+        input_scenarios = [s for s in glob.glob("../input_scenarios/*.xls*") if not '~$' in s]
         if len(input_scenarios) == 0:
             raise ValueError("""No input scenario spreadsheet were found in the input_scenarios folder.""")
     else:
@@ -73,7 +73,7 @@ def main():
     scenario_names = []
     for i, input_scenario in enumerate(input_scenarios):
         print '\n------------------------------------------------------------------'
-        print "Running Scenario %s of %s" % (i, len(input_scenarios))        
+        print "Running Scenario %s of %s" % (i+1, len(input_scenarios))        
         
         # 5. Load Input excel spreadsheet to Postgres
         if cfg.load_scenario_inputs:

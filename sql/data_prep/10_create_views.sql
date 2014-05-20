@@ -24,7 +24,8 @@ SELECT a.gid, a.county_id, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region, f.derate_factor,
-	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh
+	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
+	m.nem_system_limit_kw
 FROM wind_ds.pt_grid_us_ind a
 -- county_load_and_customers
 LEFT JOIN wind_ds.load_and_customers_by_county_us b
@@ -49,7 +50,12 @@ INNER JOIN wind_ds.counties_to_model h
 ON a.county_id = h.county_id
 -- carbon intensities
 LEFT JOIN wind_ds.carbon_intensities_to_model l
-ON e.state_abbr = l.state_abbr;
+ON e.state_abbr = l.state_abbr
+-- net metering policies
+LEFT JOIN wind_ds.net_metering_to_model m
+ON e.state_abbr = m.state_abbr
+AND m.sector = 'ind'
+AND a.utility_type = m.utility_type;
 
 
 -- res
@@ -62,7 +68,8 @@ SELECT a.gid, a.county_id, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc
 	b.total_load_mwh_2011_residential * k.perc_ooh as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region, f.derate_factor,
-	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh
+	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
+	m.nem_system_limit_kw
 FROM wind_ds.pt_grid_us_res a
 -- county_load_and_customers
 LEFT JOIN wind_ds.load_and_customers_by_county_us b
@@ -90,7 +97,12 @@ INNER JOIN wind_ds.counties_to_model h
 ON a.county_id = h.county_id
 -- carbon intensities
 LEFT JOIN wind_ds.carbon_intensities_to_model l
-ON e.state_abbr = l.state_abbr;
+ON e.state_abbr = l.state_abbr
+-- net metering policies
+LEFT JOIN wind_ds.net_metering_to_model m
+ON e.state_abbr = m.state_abbr
+AND m.sector = 'res'
+AND a.utility_type = m.utility_type;
 
 
 -- comm
@@ -103,7 +115,8 @@ SELECT a.gid, a.county_id, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region, f.derate_factor,
-	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh
+	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
+	m.nem_system_limit_kw
 FROM wind_ds.pt_grid_us_com a
 -- county_load_and_customers
 LEFT JOIN wind_ds.load_and_customers_by_county_us b
@@ -128,7 +141,12 @@ INNER JOIN wind_ds.counties_to_model h
 ON a.county_id = h.county_id
 -- carbon intensities
 LEFT JOIN wind_ds.carbon_intensities_to_model l
-ON e.state_abbr = l.state_abbr;
+ON e.state_abbr = l.state_abbr
+-- net metering policies
+LEFT JOIN wind_ds.net_metering_to_model m
+ON e.state_abbr = m.state_abbr
+AND m.sector = 'com'
+AND a.utility_type = m.utility_type;
 
 
 -- create view of sectors to model
@@ -284,3 +302,30 @@ SELECT state_abbr,
 	END as carbon_intensity_t_per_kwh
 FROM wind_ds.carbon_intensities a
 CROSS JOIN wind_ds.scenario_options b;
+
+-- view for net metering
+DROP VIEW IF EXISTS wind_ds.net_metering_to_model;
+CREATE OR REPLACE VIEW wind_ds.net_metering_to_model AS
+WITH combined as (
+SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr,
+	CASE WHEN b.overwrite_exist_nm = TRUE THEN False
+	ELSE TRUE
+	END as keep, 'ftg' as source
+	
+FROM wind_ds.net_metering_availability_2013 a
+CROSS JOIN wind_ds.scenario_options b
+
+UNION ALL
+
+SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr,
+	CASE WHEN b.overwrite_exist_nm = TRUE THEN TRUE
+	ELSE FALSE
+	END as keep, 'man' as source
+
+
+FROM wind_ds.manual_net_metering_availability a
+CROSS JOIN wind_ds.scenario_options b)
+
+SELECT sector, utility_type, nem_system_limit_kw, state_abbr
+FROM combined
+where keep = True;

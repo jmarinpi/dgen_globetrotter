@@ -23,4 +23,4 @@ dir.create(out_folder)
 opts_knit$set(base.dir = out_folder)
 knit2html("../r/graphics/scenario_analysis.md", output = sprintf("%s/Scenario Analysis Report.html",out_folder), title = "DG Wind Scenario Analysis Report", stylesheet = "../r/graphics/plot_outputs.css",
             options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
-message("Your mother and I are very proud of you")
+

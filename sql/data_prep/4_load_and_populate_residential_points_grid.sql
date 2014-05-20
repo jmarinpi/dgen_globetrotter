@@ -1,4 +1,4 @@
--- DROP TABLE IF EXISTS wind_ds.pt_grid_us_res;
+﻿-- DROP TABLE IF EXISTS wind_ds.pt_grid_us_res;
 CREATE TABLE wind_ds.pt_grid_us_res (
 	x numeric,
 	y numeric,
@@ -83,6 +83,75 @@ and a.gid = b.gid;
 SELECT count(*)
 FROM wind_ds.pt_grid_us_res 
 where county_id is null;
+
+-- utility type
+DROP TABLE IF EXISTS wind_ds_data.pt_grid_us_res_utiltype_lookup;
+CREATE TABLE wind_ds_data.pt_grid_us_res_utiltype_lookup (
+	gid integer,
+	utility_type character varying(9));
+
+	select parsel_2('dav-gis','wind_ds.pt_grid_us_res','gid',
+	'WITH ut_ranks as (
+		SELECT unnest(array[''IOU'',''Muni'',''Coop'',''All Other'']) as utility_type, generate_series(1,4) as rank
+	),
+	isect as (
+		SELECT a.gid, b.company_type_general as utility_type, c.rank
+		FROM wind_ds.pt_grid_us_res a
+		INNER JOIN dg_wind.ventyx_elec_serv_territories_edit_diced b
+		ON ST_Intersects(a.the_geom_4326, b.the_geom_4326)
+		LEFT JOIN ut_ranks c
+		ON b.company_type_general = c.utility_type)
+	SELECT DISTINCT ON (a.gid) a.gid, a.utility_type 
+	FROM isect a
+	ORDER BY a.gid, a.rank ASC;','wind_ds_data.pt_grid_us_res_utiltype_lookup', 'a', 16);
+	
+	-- join the info back in
+	ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN utility_type character varying(9);
+
+	CREATE INDEX pt_grid_us_res_utiltype_lookup_gid_btree ON wind_ds_data.pt_grid_us_res_utiltype_lookup using btree(gid);
+
+	UPDATE wind_ds.pt_grid_us_res a
+	SET utility_type = b.utility_type
+	FROM wind_ds_data.pt_grid_us_res_utiltype_lookup b
+	where a.gid = b.gid;
+	
+	CREATE INDEX pt_grid_us_res_utility_type_btree ON wind_ds.pt_grid_us_res USING btree(utility_type);
+	
+	-- are there any nulls?
+	SELECT count(*) 
+	FROM wind_ds.pt_grid_us_res
+	where utility_type is null;
+
+	-- isolate the unjoined points
+	-- and fix them by assigning value from their nearest neighbor that is not null
+	DROP TABLE IF EXISTS wind_ds_data.pt_grid_us_res_utiltype_missing;
+	CREATE TABLE wind_ds_data.pt_grid_us_res_utiltype_missing AS
+	with a AS(
+		select gid, the_geom_900914
+		FROM wind_ds.pt_grid_us_res
+		where utility_type is null)
+	SELECT a.gid, a.the_geom_900914, 
+		(SELECT b.utility_type 
+		 FROM wind_ds.pt_grid_us_res b
+		 where b.utility_type is not null
+		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914
+		 LIMIT 1) as utility_type
+	FROM a;
+
+	--update the points table
+	UPDATE wind_ds.pt_grid_us_res a
+	SET utility_type = b.utility_type
+	FROM wind_ds_data.pt_grid_us_res_utiltype_missing b
+	where a.gid = b.gid
+	and a.utility_type is null;
+
+	-- any nulls left?
+	SELECT count(*) 
+	FROM wind_ds.pt_grid_us_res
+	where utility_type is null;
+
+
+
 
 -- iii, jjj, icf (from raster)
 DROP TABLE IF EXISTS wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup;

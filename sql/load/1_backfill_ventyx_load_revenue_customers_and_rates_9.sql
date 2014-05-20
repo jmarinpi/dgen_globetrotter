@@ -1,4 +1,4 @@
--- NOTE: need to create a new version of the electric_service_territories_states_with_ids using the ventyx state and province boundaries
+﻿-- NOTE: need to create a new version of the electric_service_territories_states_with_ids using the ventyx state and province boundaries
 -- then proceed with the rest, subbing in the ventyx states and provincs when I get to the erase phase
 
 ------------------------------------------------------------------------------------------------
@@ -29,6 +29,30 @@ FROM merged b
 where (company_id = 1133 and state_abbr = 'CA');
 -- review in Q
 
+-- add company type
+ALTER TABLE dg_wind.ventyx_elec_serv_territories_edit
+ADD COLUMN company_ty text;
+
+	-- join from source data
+UPDATE dg_wind.ventyx_elec_serv_territories_edit a
+SET company_ty = b.company_ty
+FROM ventyx.electric_service_territories_states_split_20140224 b
+where a.company_id = b.company_id;
+
+	-- generalize to 4 broad categories
+ALTER TABLE dg_wind.ventyx_elec_serv_territories_edit
+ADD COLUMN company_type_general text;
+
+UPDATE dg_wind.ventyx_elec_serv_territories_edit
+SET company_type_general =
+	CASE WHEN company_ty in ('IOU','IO') THEN 'IOU'
+	     when company_ty in ('G&TCoop','Coop','DistCoop') then 'Coop'
+	     WHEN company_ty in ('Private','PSubdiv','Federal','Unknown') THEN 'All Other'
+	     WHEN company_ty in ('Muni','State') THEN 'Muni'
+	END;
+
+
+
 -- housekeeping
 ALTER TABLE dg_wind.ventyx_elec_serv_territories_edit ADD primary key (gid);
 
@@ -49,6 +73,17 @@ CREATE INDEX ventyx_elec_serv_territories_edit_the_geom_4326_gist
   (the_geom_4326);
   
 ALTER TABLE dg_wind.ventyx_elec_serv_territories_edit CLUSTER ON ventyx_elec_serv_territories_edit_the_geom_4326_gist;
+
+-- create a  dicedCT CC version
+DROP TABLE IF EXISTS dg_wind.ventyx_elec_serv_territories_edit_diced;
+CREATE TABLE dg_wind.ventyx_elec_serv_territories_edit_diced AS
+SELECT a.company_id, a.company_name, a.state_abbr, a.country, 
+       a.gid, a.company_ty, a.company_type_general, ST_Intersection(a.the_geom_4326, b.the_geom_4326) as the_geom_4326
+FROM dg_wind.ventyx_elec_serv_territories_edit a
+INNER JOIN dg_wind.us_fishnet_p5dd b
+ON ST_Intersects(a.the_geom_4326, b.the_geom_4326);
+
+CREATE INDEX ventyx_elec_serv_territories_edit_diced_the_geom_4326_gist ON dg_wind.ventyx_elec_serv_territories_edit_diced USING gist(the_geom_4326);
 ----------------------------------------------------------------------------------------------------------------
 
 

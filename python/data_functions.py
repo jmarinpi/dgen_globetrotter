@@ -413,12 +413,13 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             	b.load_multiplier * a.load_kwh_in_bin AS load_kwh_in_bin,
             	a.load_kwh_in_bin AS initial_load_kwh_in_bin,
             	a.load_kwh_per_customer_in_bin,
+            a.nem_system_limit_kw,
             	a.i, a.j, a.cf_bin, a.aep_scale_factor, a.derate_factor,
             	a.naep,
             	b.nameplate_capacity_kw,
             	a.power_curve_id, 
             	a.turbine_height_m,
-            	wind_ds.scoe(b.installed_costs_dollars_per_kw, b.fixed_om_dollars_per_kw_per_yr, b.variable_om_dollars_per_kwh, a.naep , b.nameplate_capacity_kw , a.load_kwh_per_customer_in_bin , %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe
+            	wind_ds.scoe(b.installed_costs_dollars_per_kw, b.fixed_om_dollars_per_kw_per_yr, b.variable_om_dollars_per_kwh, a.naep , b.nameplate_capacity_kw , a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe
             FROM wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
             INNER JOIN wind_ds.temporal_factors b
             ON a.turbine_height_m = b.turbine_height_m

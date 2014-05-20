@@ -63,6 +63,8 @@ def main(wb, conn, verbose = False):
         inpOpts(curWb,schema,table,conn,cur,verbose)
         table = 'manual_incentives'
         manIncents(curWb,schema,table,conn,cur,verbose)
+        table = 'manual_net_metering_availability'
+        manNetMetering(curWb,schema,table,conn,cur,verbose)
         table = 'user_defined_max_market_share'
         maxMarket(curWb,schema,table,conn,cur,verbose)
 
@@ -379,7 +381,13 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
     named_range = curWb.get_named_range(input_named_range)
     if named_range == None:
         raise ExcelError('overwrite_exist_inc named range does not exist')
-    overwrite_exist = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
+    overwrite_exist_inc = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
+    
+    input_named_range = 'overwrite_exist_nm'
+    named_range = curWb.get_named_range(input_named_range)
+    if named_range == None:
+        raise ExcelError('overwrite_exist_nm named range does not exist')
+    overwrite_exist_nm = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
 
     input_named_range = 'incent_start_year'
     named_range = curWb.get_named_range(input_named_range)
@@ -424,7 +432,7 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             r += 1
         c += 1
 
-    in_l = l + ann_inf + sc_name + overwrite_exist + incent_startyear + incent_utility
+    in_l = l + ann_inf + sc_name + overwrite_exist_inc + incent_startyear + incent_utility + overwrite_exist_nm
     f.write(str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1])
     #print str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1]
     f.seek(0)
@@ -519,6 +527,54 @@ def manIncents(curWb,schema,table,conn,cur,verbose=False):
     f.close()
 
 
+def manNetMetering(curWb,schema,table,conn,cur,verbose=False):
+
+    def findUtilityTypes():
+        ut_nr = curWb.get_named_range("Incentives_Utility_Type")
+        if ut_nr == None:
+            raise ExcelError('Incentives_Utility_Type named range does not exist')
+        all_utility_types = ['IOU','Muni','Coop', 'All Other']
+        ut_cells =  ut_nr.destinations[0][0].range(ut_nr.destinations[0][1])
+        selected_utility_types = {}
+        for i, ut_cell in enumerate(ut_cells):
+            selected_utility_types[all_utility_types[i]] = ut_cell[0].value
+                
+        return selected_utility_types
+        
+    selected_utility_types = findUtilityTypes()
+    
+    f = StringIO.StringIO()
+    named_range = curWb.get_named_range('Net_Metering')
+    if named_range == None:
+        raise ExcelError('Incentives_Values named range does not exist')
+    state_cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    data_cells = named_range.destinations[1][0].range(named_range.destinations[1][1])
+    
+    sectors = ['res','com','ind']
+    for i, state_cell in enumerate(state_cells):  
+        state_abbr = state_cell[0].value
+        for j, sector in enumerate(sectors):
+            for utility_type in selected_utility_types.keys():
+                if selected_utility_types[utility_type]:
+                    cell_value = data_cells[i][j].value
+                    if cell_value is not None:
+                        nem_limit = cell_value
+                    else:
+                        nem_limit = 0
+                else:
+                    nem_limit = 0
+                row = [sector, utility_type, nem_limit, state_abbr]
+                f.write(str(row).replace("u'","").replace(" '","").replace("'","").replace(', ',',')[1:-1]+'\n')
+    f.seek(0)
+    if verbose:
+        print 'Exporting Manual Net Metering'
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+
 def maxMarket(curWb,schema,table,conn,cur,verbose=False):
     f = StringIO.StringIO()
     named_range = curWb.get_named_range('user_defined_max_market_share')
@@ -559,6 +615,6 @@ def maxMarket(curWb,schema,table,conn,cur,verbose=False):
 
 
 if __name__ == '__main__':
-    input_xls = '../excel/DG_wind_01_16_2014_named_ranges.xlsm'
+    input_xls = '../excel/scenario_inputs.xlsm'
     main(input_xls,None, True)
 
