@@ -307,21 +307,3 @@ res_diff_trends<-function(df){
     theme_few()+
     ggtitle('National Residential Diffusion Trends')
 }
-
-com_diff_trends<-function(df){
-  df<-subset(df, sector ==  "commercial")
-  ggplot(data=df,aes(x = year, y = value, color = scenario, fill = scenario))+
-    geom_line(size = 1)+
-    facet_wrap(~variable,scales="free_y")+
-    theme_few()+
-    ggtitle('National Commercial Diffusion Trends')
-}
-
-com_diff_trends<-function(df){
-  df<-subset(df, sector ==  "industrial")
-  ggplot(data=df,aes(x = year, y = value, color = scenario, fill = scenario))+
-    geom_line(size = 1)+
-    facet_wrap(~variable,scales="free_y")+
-    theme_few()+
-    ggtitle('National Industrial Diffusion Trends')
-}
