@@ -170,7 +170,7 @@ diffusion_trends<-function(df,runpath,scen_name){
                 nat_installed_capacity  = sum(installed_capacity,na.rm=TRUE)/1e6, 
                 nat_market_share = mean(market_share,na.rm=TRUE), 
                 nat_max_market_share = mean(max_market_share,na.rm=TRUE),
-                nat_market_value = sum(ic * number_of_adopters, na.rm = TRUE),
+                nat_market_value = sum(market_value, na.rm = TRUE),
                 nat_new_generation = sum((number_of_adopters-number_of_adopters_initial) * aep, na.rm = TRUE),
                 nat_number_of_adopters = sum(number_of_adopters,na.rm=TRUE))
   data<-melt(data=data,id.vars=c('year','sector'))
