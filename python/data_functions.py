@@ -662,7 +662,7 @@ def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, pg_conn_string
     return df
 
 
-def get_initial_wind_capacities(cur, con, sector_abbr, sector):
+def get_initial_market_shares(cur, con, sector_abbr, sector):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()     

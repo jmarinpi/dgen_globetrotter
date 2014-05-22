@@ -140,11 +140,10 @@ def main():
                 ## Diffusion from previous year ## 
                 if year == cfg.start_year: 
                     # get the initial market share per bin by county
-                    initial_market_shares = datfunc.get_initial_wind_capacities(cur, con, sector_abbr, sector)
+                    initial_market_shares = datfunc.get_initial_market_shares(cur, con, sector_abbr, sector)
                     # join this to the df to on county_id
                     df = pd.merge(df, initial_market_shares, how = 'left', on = 'gid')
-                    df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']                    
-#                    df['market_value_last_year'] = df['number_of_adopters_last_year'] * df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw']                    
+                    df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']        
                 else:
                     df = pd.merge(df,market_last_year, how = 'left', on = 'gid')
                
@@ -173,10 +172,18 @@ def main():
                 df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'payback_key'])
                 
                 # 10. Calulate diffusion
-                df['market_share'] = diffunc.calc_diffusion(df.payback_period.values,df.max_market_share.values, df.market_share_last_year.values)
-                df['number_of_adopters'] = np.maximum(df['market_share'] * df['customers_in_bin'], df['number_of_adopters_last_year'])
-                df['installed_capacity'] = np.maximum(df['number_of_adopters'] * df['cap'], df['installed_capacity_last_year'])
-                df['market_value'] = np.maximum(df['number_of_adopters'] *df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw'], df['market_value_last_year'])
+                # replace above with the following:
+                df['diffusion_market_share'] = diffunc.calc_diffusion(df.payback_period.values,df.max_market_share.values, df.market_share_last_year.values)
+                df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
+                df['new_market_share'] = df['market_share']-df['market_share_last_year']
+                df['new_adopters'] = df['new_market_share'] * df['customers_in_bin']
+                df['new_capacity'] = df['new_adopters'] * df['nameplate_capacity_kw']
+                df['new_market_value'] = df['new_adopters'] * df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw']
+                # then add these values to values from last year to get cumulative values:
+                df['number_of_adopters'] = df['number_of_adopters_last_year'] + df['new_adopters']
+                df['installed_capacity'] = df['installed_capacity_last_year'] + df['new_capacity']
+                df['market_value'] = df['market_value_last_year'] + df['new_market_value']
+
                 
                 # 11. Save outputs from this year and update parameters for next solve       
                 # Save outputs

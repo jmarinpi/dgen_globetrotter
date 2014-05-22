@@ -65,7 +65,12 @@ CREATE TABLE wind_ds.outputs_res (
 	lcoe					numeric,
 	number_of_adopters			numeric,
 	value_of_increment			numeric, 
-	value_of_rebate				numeric 
+	value_of_rebate				numeric,
+	diffusion_market_share			numeric,
+	new_market_share			numeric,
+	new_adopters				numeric,
+	new_capacity				numeric,
+	new_market_value			numeric 
 );
 
 
@@ -136,7 +141,12 @@ CREATE TABLE wind_ds.outputs_com (
 	lcoe					numeric,
 	number_of_adopters			numeric,
 	value_of_increment			numeric, 
-	value_of_rebate				numeric 
+	value_of_rebate				numeric,
+	diffusion_market_share			numeric,
+	new_market_share			numeric,
+	new_adopters				numeric,
+	new_capacity				numeric,
+	new_market_value			numeric 
 );
 
 
@@ -207,7 +217,12 @@ CREATE TABLE wind_ds.outputs_ind (
 	lcoe					numeric,
 	number_of_adopters			numeric,
 	value_of_increment			numeric, 
-	value_of_rebate				numeric 
+	value_of_rebate				numeric,
+	diffusion_market_share			numeric,
+	new_market_share			numeric,
+	new_adopters				numeric,
+	new_capacity				numeric,
+	new_market_value			numeric  
 );
 
 
