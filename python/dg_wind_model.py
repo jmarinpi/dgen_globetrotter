@@ -140,13 +140,11 @@ def main():
                 ## Diffusion from previous year ## 
                 if year == cfg.start_year: 
                     # get the initial market share per bin by county
-                    initial_market_shares = datfunc.get_initial_wind_capacities(cur, con, cfg.customer_bins, sector_abbr, sector)
+                    initial_market_shares = datfunc.get_initial_wind_capacities(cur, con, sector_abbr, sector)
                     # join this to the df to on county_id
-                    df = pd.merge(df, initial_market_shares, how = 'left', on = 'county_id')
-                    df['number_of_adopters_last_year'] = df['market_share_last_year'] * df['customers_in_bin']
-                    df['installed_capacity_last_year'] = df['number_of_adopters_last_year'] * df['nameplate_capacity_kw']
-                    df['market_value_last_year'] = df['number_of_adopters_last_year'] * df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw']
-                    
+                    df = pd.merge(df, initial_market_shares, how = 'left', on = 'gid')
+                    df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']                    
+#                    df['market_value_last_year'] = df['number_of_adopters_last_year'] * df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw']                    
                 else:
                     df = pd.merge(df,market_last_year, how = 'left', on = 'gid')
                

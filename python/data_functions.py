@@ -662,29 +662,29 @@ def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, pg_conn_string
     return df
 
 
-def get_initial_wind_capacities(cur, con, n_bins, sector_abbr, sector):
+def get_initial_wind_capacities(cur, con, sector_abbr, sector):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()     
     
     sql = """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_initial_market_shares;
            CREATE TABLE wind_ds.pt_%(sector_abbr)s_initial_market_shares AS
-            WITH total_county_capacities AS (
-                SELECT county_id, sum(nameplate_capacity_kw*0.001*customers_in_bin) as total_county_capacity_mw
-                FROM wind_ds.pt_%(sector_abbr)s_best_option_each_year
-                WHERE year = 2014
-                GROUP BY county_id)
-            SELECT a.county_id, a.total_county_capacity_mw, 
-            	b.capacity_mw_%(sector)s/a.total_county_capacity_mw as initial_market_share 
-            FROM total_county_capacities a
+            SELECT a.county_id, a.gid, 
+                	(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
+                	(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
+                	b.systems_count_%(sector)s/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id) AS initial_market_share
+            FROM wind_ds.pt_%(sector_abbr)s_best_option_each_year a
             LEFT JOIN wind_ds.starting_wind_capacities_mw_2014_us b
-            ON a.county_id = b.county_id;""" % inputs
+            ON a.county_id = b.county_id
+            where a.year = 2014;""" % inputs          
     cur.execute(sql)
     con.commit()
 
 
-
-    sql = """SELECT county_id, initial_market_share as market_share_last_year
+    sql = """SELECT gid, 
+            initial_market_share AS market_share_last_year,
+            initial_number_of_adopters AS number_of_adopters_last_year,
+            initial_capacity_mw AS installed_capacity_last_year
             FROM wind_ds.pt_%(sector_abbr)s_initial_market_shares;""" % inputs
     df = sqlio.read_frame(sql, con)
     return df  

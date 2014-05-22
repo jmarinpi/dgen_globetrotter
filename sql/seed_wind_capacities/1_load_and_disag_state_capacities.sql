@@ -1,4 +1,4 @@
-CREATE TABLE dg_wind.existing_distributed_wind_capacity_by_state_2014 (
+﻿CREATE TABLE dg_wind.existing_distributed_wind_capacity_by_state_2014 (
 	state text,
 	sector text,
 	capacity_mw numeric);
@@ -92,3 +92,14 @@ select state_abbr, sum(capacity_mw_residential) res, sum(capacity_mw_commercial)
 FROM wind_ds.starting_wind_capacities_mw_2014
 group by state_abbr
 order by state_abbr
+
+-- THIS IS DUMMY DATA!!!!
+-- add columns for initial systems by sector
+ALTER TABLE wind_ds.starting_wind_capacities_mw_2014_us
+ADD COLUMN systems_count_residential numeric,
+ADD COLUMN systems_count_commercial numeric,
+ADD COLUMN systems_count_industrial numeric;
+
+UPDATE wind_ds.starting_wind_capacities_mw_2014_us
+SET (systems_count_residential,systems_count_commercial,systems_count_industrial) = (round(random()::numeric*10,0),round(random()::numeric*10,0),round(random()::numeric*10,0));
+
