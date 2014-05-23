@@ -27,6 +27,7 @@ import DG_Wind_NamedRange_xl2pg as loadXL
 import subprocess
 import datetime
 import config as cfg
+import shutil
 
 def main():
     model_init = time.time()
@@ -69,8 +70,14 @@ def main():
     else:
         input_scenarios = ['']
 
+    # make output results folders
+    cdate = time.strftime('%Y%m%d_%H%M%S')    
+    out_dir = '%s/runs/results_%s' %(os.path.dirname(os.getcwd()),cdate)        
+    os.makedirs(out_dir)
+
     # run the model for each input scenario spreadsheet
     scenario_names = []
+    out_subfolders = []
     for i, input_scenario in enumerate(input_scenarios):
         print '\n------------------------------------------------------------------'
         print "Running Scenario %s of %s" % (i+1, len(input_scenarios))        
@@ -197,14 +204,16 @@ def main():
         
         
         ## 12. Outputs & Visualization
-        # set output folder
-        cdate = time.strftime('%Y%m%d_%H%M%S')
-        scen_name = '%s_%s' % (scenario_opts['scenario_name'],cdate)
+        # set output subfolder
+        scen_name = scenario_opts['scenario_name']
+        dup_n = 1
+        if scen_name in scenario_names:
+            print "Warning: Scenario name %s is a duplicate. Renaming to %s_%s" % (scen_name, scen_name, dup_n)
+            scen_name = "%s_%s" % (scen_name, dup_n)
+            dup_n += 1
         scenario_names.append(scen_name)
-        out_path = '%s/runs/%s' %(os.path.dirname(os.getcwd()),scen_name)
-        while os.path.exists(out_path): 
-            print 'Warning: A scenario folder with that name exists. It will be overwritten.'
-            os.remove(out_path)
+        out_path = os.path.join(out_dir,scen_name)
+        out_subfolders.append(out_path)
         os.makedirs(out_path)
         
         # path to the plot_outputs R script        
@@ -221,9 +230,12 @@ def main():
         f.close()
         print time.time() - t0
         
+        # copy the input scenario spreadsheet
+        shutil.copy(input_scenario, out_path)
+        
         #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
         # for linux and mac, this needs to be formatted as a list of args passed to subprocess
-        command = [cfg.Rscript_path,'--vanilla',plot_outputs_path,out_path,scenario_opts['scenario_name']]
+        command = [cfg.Rscript_path,'--vanilla',plot_outputs_path,out_path,scen_name]
         print 'Creating outputs report'            
         proc = subprocess.Popen(command,stdout=subprocess.PIPE)
         messages = proc.communicate()
@@ -233,8 +245,9 @@ def main():
     # assemble report to compare scenarios
     if len(input_scenarios) > 1:
         scenario_analysis_path = '%s/r/graphics/scenario_analysis.R' % os.path.dirname(os.getcwd())
-        scenario_output_paths = datfunc.pylist_2_pglist(['%s/runs/%s' % (os.path.dirname(os.getcwd()),s) for s in scenario_names]).replace("'","").replace(" ","")
-        command = [cfg.Rscript_path,'--vanilla',scenario_analysis_path,scenario_output_paths]
+        scenario_output_paths = datfunc.pylist_2_pglist(out_subfolders).replace("'","").replace(" ","")
+        scenario_comparison_path = os.path.join(out_dir,'scenario_comparison')
+        command = [cfg.Rscript_path,'--vanilla',scenario_analysis_path,scenario_output_paths,scenario_comparison_path]
         print 'Creating scenario analysis report'            
         proc = subprocess.Popen(command,stdout=subprocess.PIPE)
         messages = proc.communicate()
