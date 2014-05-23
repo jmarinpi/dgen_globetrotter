@@ -450,11 +450,11 @@ def manIncents(curWb,schema,table,conn,cur,verbose=False):
     def findIncen(cells,c,incen_type):
         try:
             if 'Tax' in cells[0][c].value:
-                return 'Tax Incentives'
+                return 'Tax'
             elif 'Production' in cells[0][c].value:
-                return 'Production Incentives'
+                return 'Production'
             elif 'Rebate' in cells[0][c].value:
-                return 'Rebate Incentives'
+                return 'Rebate'
         except:
             return incen_type
 
@@ -471,6 +471,21 @@ def manIncents(curWb,schema,table,conn,cur,verbose=False):
             return 'Industrial'
         else:
             return sector_type
+
+    def findUtilityTypes():
+        ut_nr = curWb.get_named_range("Incentives_Utility_Type")
+        if ut_nr == None:
+            raise ExcelError('Incentives_Utility_Type named range does not exist')
+        all_utility_types = ['IOU','Muni','Coop', 'All Other']
+        ut_cells =  ut_nr.destinations[0][0].range(ut_nr.destinations[0][1])
+        selected_utility_types = {}
+        for i, ut_cell in enumerate(ut_cells):
+            selected_utility_types[all_utility_types[i]] = ut_cell[0].value
+                
+        return selected_utility_types
+        
+    selected_utility_types = findUtilityTypes()
+
 
     f = StringIO.StringIO()
     named_range = curWb.get_named_range('Incentives_Values')
@@ -503,18 +518,22 @@ def manIncents(curWb,schema,table,conn,cur,verbose=False):
                 c += 1
                 p += 1
 
-            if l == ['0', '0', '0']:
-                continue
-            else:
-                if [incen_type] == ['Tax Incentives']:
-                    out = region + [incen_type] + [sector_type] + l + [0,0,0] + budget
-                    f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
-                if [incen_type] == ['Production Incentives']:
-                    out = region + [incen_type] + [sector_type] + [0] + [0] + [l[2]] + [l[0]] + [l[1]] + [0] + budget
-                    f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
-                if [incen_type] == ['Rebate Incentives']:
-                    out = region + [incen_type] + [sector_type] + [0] + [l[1]] + [l[2]] + [0] + [0] + [l[0]] + budget
-                    f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
+            if incen_type == 'Tax':
+                for utility_type in selected_utility_types.keys():
+                    if selected_utility_types[utility_type]:                
+                        out = region + [incen_type] + [sector_type] + l + [0,0,0] + budget + [utility_type]
+                        f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
+            if incen_type == 'Production':
+                for utility_type in selected_utility_types.keys():
+                    if selected_utility_types[utility_type]: 
+                        out = region + [incen_type] + [sector_type] + [0] + [0] + [l[2]] + [l[0]] + [l[1]] + [0] + budget + [utility_type]
+                        f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
+            if incen_type == 'Rebate':
+                for utility_type in selected_utility_types:
+                    for utility_type in selected_utility_types.keys():
+                        if selected_utility_types[utility_type]: 
+                            out = region + [incen_type] + [sector_type] + [0] + [l[1]] + [l[2]] + [0] + [0] + [l[0]] + budget + [utility_type]
+                            f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
         r += 1
     f.seek(0)
     if verbose:
@@ -574,6 +593,7 @@ def manNetMetering(curWb,schema,table,conn,cur,verbose=False):
     cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
     conn.commit()
     f.close()
+
 
 def maxMarket(curWb,schema,table,conn,cur,verbose=False):
     f = StringIO.StringIO()

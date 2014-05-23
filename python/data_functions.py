@@ -399,7 +399,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     sql =  """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
             CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s AS
             SELECT
-             	a.gid, b.year, a.county_id, a.state_abbr, a.census_division_abbr, a.census_region, a.row_number, 
+             	a.gid, b.year, a.county_id, a.state_abbr, a.census_division_abbr, a.utility_type, a.census_region, a.row_number, 
                   %(exclusions_insert)s
             	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
             b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
@@ -813,7 +813,7 @@ def calc_manual_incentives(df,con,cur_year):
     '''
     # Join manual incentives with main df   
     inc = get_manual_incentives(con)
-    d = pd.merge(df,inc,left_on = ['state_abbr','sector'], right_on = ['region','sector'])
+    d = pd.merge(df,inc,left_on = ['state_abbr','sector','utility_type'], right_on = ['region','sector','utility_type'])
         
     # Calculate value of incentive and rebate, and value and length of PBI
     d['value_of_tax_credit_or_deduction'] = d['incentive'] * d['installed_costs_dollars_per_kw'] * d['nameplate_capacity_kw'] * (cur_year <= d['expire'])

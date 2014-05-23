@@ -97,6 +97,7 @@ def main():
         
         # 6. Read in scenario option variables 
         scenario_opts = datfunc.get_scenario_options(cur) 
+        print 'Scenario Name: %s' % scenario_opts['scenario_name']
         exclusions = datfunc.get_exclusions(cur) # get exclusions
         load_growth_scenario = scenario_opts['load_growth_scenario'] # get financial variables
         net_metering = scenario_opts['net_metering_availability']
