@@ -36,7 +36,10 @@ with sums as (
 	SELECT a.state_abbr, 
 		sum(b.total_load_mwh_2011_residential) as state_load_residential, 
 		sum(b.total_load_mwh_2011_commercial) as state_load_commercial, 
-		sum(b.total_load_mwh_2011_industrial) as state_load_industrial
+		sum(b.total_load_mwh_2011_industrial) as state_load_industrial,
+		sum(b.total_customers_2011_residential) as state_customers_residential, 
+		sum(b.total_customers_2011_commercial) as state_customers_commercial, 
+		sum(b.total_customers_2011_industrial) as state_customers_industrial
 	FROM wind_ds.county_geom a
 	LEFT JOIN wind_ds.load_and_customers_by_county_us b
 	ON a.county_id = b.county_id
@@ -47,7 +50,10 @@ counties as (
 	SELECT a.state_abbr, a.county_id,
 		b.total_load_mwh_2011_residential,
 		b.total_load_mwh_2011_commercial,
-		b.total_load_mwh_2011_industrial
+		b.total_load_mwh_2011_industrial,
+		b.total_customers_2011_residential,
+		b.total_customers_2011_commercial,
+		b.total_customers_2011_industrial
 	FROM wind_ds.county_geom a
 	LEFT JOIN wind_ds.load_and_customers_by_county_us b
 	ON a.county_id = b.county_id
@@ -57,7 +63,12 @@ capacities as (
 	SELECT a.state_abbr, 
 		a.capacity_mw as capacity_mw_residential,
 		b.capacity_mw as capacity_mw_commercial,
-		c.capacity_mw as capacity_mw_industrial
+		c.capacity_mw as capacity_mw_industrial,
+
+		a.systems_count as systems_count_residential,
+		b.systems_count as systems_count_commercial,
+		c.systems_count as systems_count_industrial
+				
 	FROM dg_wind.existing_distributed_wind_capacity_by_state_2014 a
 	left join dg_wind.existing_distributed_wind_capacity_by_state_2014 b
 	ON a.state_abbr = b.state_abbr
@@ -70,7 +81,12 @@ capacities as (
 SELECT a.state_abbr, a.county_id, 
 	a.total_load_mwh_2011_residential/b.state_load_residential*c.capacity_mw_residential as capacity_mw_residential,
 	a.total_load_mwh_2011_commercial/b.state_load_commercial*c.capacity_mw_commercial as capacity_mw_commercial,
-	a.total_load_mwh_2011_industrial/b.state_load_industrial*c.capacity_mw_industrial as capacity_mw_industrial
+	a.total_load_mwh_2011_industrial/b.state_load_industrial*c.capacity_mw_industrial as capacity_mw_industrial,
+
+	a.total_customers_2011_residential/b.state_customers_residential*c.systems_count_residential as systems_count_residential,
+	a.total_customers_2011_commercial/b.state_customers_commercial*c.systems_count_commercial as systems_count_commercial,
+	a.total_customers_2011_industrial/b.state_customers_industrial*c.systems_count_industrial as systems_count_industrial
+	
 FROM counties a
 LEFT JOIN sums b
 ON a.state_abbr = b.state_abbr
@@ -88,18 +104,9 @@ ALTER TABLE wind_ds.starting_wind_capacities_mw_2014_us
 
 
 -- check results
-select state_abbr, sum(capacity_mw_residential) res, sum(capacity_mw_commercial) com, sum(capacity_mw_industrial) ind
-FROM wind_ds.starting_wind_capacities_mw_2014
+select state_abbr, 
+	round(sum(capacity_mw_residential),2) as res_cap, round(sum(capacity_mw_commercial),2) com_cap, round(sum(capacity_mw_industrial),2) ind_cap,
+	round(sum(systems_count_residential),2) res_sys, round(sum(systems_count_commercial),2) com_sys, round(sum(systems_count_industrial),2) ind_sys
+FROM wind_ds.starting_wind_capacities_mw_2014_us
 group by state_abbr
-order by state_abbr
-
--- THIS IS DUMMY DATA!!!!
--- add columns for initial systems by sector
-ALTER TABLE wind_ds.starting_wind_capacities_mw_2014_us
-ADD COLUMN systems_count_residential numeric,
-ADD COLUMN systems_count_commercial numeric,
-ADD COLUMN systems_count_industrial numeric;
-
-UPDATE wind_ds.starting_wind_capacities_mw_2014_us
-SET (systems_count_residential,systems_count_commercial,systems_count_industrial) = (round(random()::numeric*10,0),round(random()::numeric*10,0),round(random()::numeric*10,0));
-
+order by state_abbr;
