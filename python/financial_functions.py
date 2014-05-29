@@ -261,7 +261,9 @@ def calc_payback(cfs):
     cum_cfs = cfs.cumsum(axis = 1)
     out = []
     for x in cum_cfs:
-        if all(x<0): # Is positive cashflow every achieved?
+        if x[-1] < 0: # No payback if the cum. cfs are negative in the final year
+            pp = 30
+        elif all(x<0): # Is positive cashflow ever achieved?
             pp = 30
         elif all(x>0): # Is positive cashflow instantly achieved?
             pp = 0
