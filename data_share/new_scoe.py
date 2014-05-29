@@ -35,12 +35,12 @@ print 'optimal turbine is %0.1f kW' %(min(d, key = d.get))
 '''
 
 # new input here is 'nem_system_limit_kw'
-def scoe(ic, fom, vom, naep, cap, ann_elec_cons, nem_system_limit_kw, oversize_factor = 1.15, undersize_factor = 0.5):
+def scoe(ic, fom, vom, naep, cap, ann_elec_cons, nem_system_limit_kw, excess_generation_factor, oversize_factor = 1.15, undersize_factor = 0.5):
     
     if nem_system_limit_kw > cap:
         nem_factor = 1  
     else:
-        nem_factor = undersize_factor
+        nem_factor = excess_generation_factor
         
     if naep == 0:
         return float('inf')
