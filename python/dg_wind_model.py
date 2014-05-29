@@ -196,10 +196,17 @@ def main():
                     df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'payback_key'])
                     
                     # 10. Calulate diffusion
-                    # replace above with the following:
+                    ''' Calculates the market share (ms) added in the solve year. Market share must be less
+                    than max market share (mms) except initial ms is greater than the calculated mms.
+                    For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
+                    decrease if economics deteroriate.
+                    '''             
+                    
                     df['diffusion_market_share'] = diffunc.calc_diffusion(df.payback_period.values,df.max_market_share.values, df.market_share_last_year.values)
                     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
                     df['new_market_share'] = df['market_share']-df['market_share_last_year']
+                    df['new_market_share'] = np.where(df['market_share'] > df['max_market_share'], 0, df['new_market_share'])
+                    
                     df['new_adopters'] = df['new_market_share'] * df['customers_in_bin']
                     df['new_capacity'] = df['new_adopters'] * df['nameplate_capacity_kw']
                     df['new_market_value'] = df['new_adopters'] * df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw']
