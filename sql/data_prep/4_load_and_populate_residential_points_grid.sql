@@ -571,6 +571,14 @@ group by county_id; --10,000 - 13000 ms
 
 
 
+-- add excess_generation_factor
+ALTER TABLE wind_ds.pt_grid_us_res 
+ADD COLUMN excess_generation_factor numeric;
+
+-- ** this is dummy data for now -- eventually it will come from the i,j cell
+UPDATE wind_ds.pt_grid_us_res 
+SET excess_generation_factor = 0.5;
+
 
 -- add foreign keys
 	-- for county_id to county_geom.county id

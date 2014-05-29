@@ -557,6 +557,15 @@ where a.gid = b.gid;
 	ORDER by count desc;	
 
 
+-- add excess_generation_factor
+ALTER TABLE wind_ds.pt_grid_us_com 
+ADD COLUMN excess_generation_factor numeric;
+
+-- ** this is dummy data for now -- eventually it will come from the i,j cell
+UPDATE wind_ds.pt_grid_us_com 
+SET excess_generation_factor = 0.5;
+
+
 -- add foreign keys
 	-- for county_id to county_geom.county id
 ALTER TABLE wind_ds.pt_grid_us_com ADD CONSTRAINT county_id_fkey FOREIGN KEY (county_id) 

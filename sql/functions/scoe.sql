@@ -1,6 +1,6 @@
-﻿DROP FUNCTION wind_ds.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, oversize_factor numeric, undersize_factor numeric);
+﻿DROP FUNCTION wind_ds.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, nem_system_limit_kw float, oversize_factor numeric, undersize_factor numeric);
 SET ROLE 'server-superusers';
-CREATE OR REPLACE FUNCTION wind_ds.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, nem_system_limit_kw float, oversize_factor numeric default 1.15, undersize_factor numeric default 0.5)
+CREATE OR REPLACE FUNCTION wind_ds.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, nem_system_limit_kw float, excess_generation_factor numeric, oversize_factor numeric default 1.15, undersize_factor numeric default 0.5)
   RETURNS float AS
   $BODY$
 
@@ -27,7 +27,7 @@ CREATE OR REPLACE FUNCTION wind_ds.scoe(ic numeric, fom numeric, vom numeric, na
     if nem_system_limit_kw > cap:
         nem_factor = 1  
     else:
-        nem_factor = undersize_factor
+        nem_factor = excess_generation_factor
         
     if naep == 0:
         return float('inf')

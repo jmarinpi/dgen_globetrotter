@@ -18,7 +18,7 @@ where a.state not in ('Hawaii','Alaska');
 DROP VIEW IF EXISTS wind_ds.pt_grid_us_ind_joined;
 CREATE OR REPLACE VIEW wind_ds.pt_grid_us_ind_joined AS
 SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.iiijjjicf_id,
+	a.annual_rate_gid, a.iiijjjicf_id, a.excess_generation_factor,
         c.ind_cents_per_kwh * ind_derate_factor as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
@@ -62,7 +62,7 @@ AND a.utility_type = m.utility_type;
 DROP VIEW IF EXISTS wind_ds.pt_grid_us_res_joined;
 CREATE OR REPLACE VIEW wind_ds.pt_grid_us_res_joined AS
 SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.iiijjjicf_id,
+	a.annual_rate_gid, a.iiijjjicf_id, a.excess_generation_factor,
 	c.res_cents_per_kwh as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_residential * k.perc_ooh as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_ooh as county_total_load_mwh_2011,
@@ -109,7 +109,7 @@ AND a.utility_type = m.utility_type;
 DROP VIEW IF EXISTS wind_ds.pt_grid_us_com_joined;
 CREATE OR REPLACE VIEW wind_ds.pt_grid_us_com_joined AS
 SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.iiijjjicf_id,
+	a.annual_rate_gid, a.iiijjjicf_id, a.excess_generation_factor,
 	c.comm_cents_per_kwh * comm_derate_factor as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,

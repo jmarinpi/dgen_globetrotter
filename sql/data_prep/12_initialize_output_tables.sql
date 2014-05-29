@@ -71,7 +71,8 @@ CREATE TABLE wind_ds.outputs_res (
 	new_adopters				numeric,
 	new_capacity				numeric,
 	new_market_value			numeric,
-	utility_type				character varying(9)
+	utility_type				character varying(9),
+	excess_generation_factor		numeric
 );
 
 
@@ -148,7 +149,8 @@ CREATE TABLE wind_ds.outputs_com (
 	new_adopters				numeric,
 	new_capacity				numeric,
 	new_market_value			numeric,
-	utility_type				character varying(9) 
+	utility_type				character varying(9),
+	excess_generation_factor		numeric 
 );
 
 
@@ -225,7 +227,8 @@ CREATE TABLE wind_ds.outputs_ind (
 	new_adopters				numeric,
 	new_capacity				numeric,
 	new_market_value			numeric,
-	utility_type				character varying(9)  
+	utility_type				character varying(9),
+	excess_generation_factor		numeric  
 );
 
 
