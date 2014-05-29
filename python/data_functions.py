@@ -16,7 +16,40 @@ import datetime
 from multiprocessing import Process, Queue, JoinableQueue
 import select
 from cStringIO import StringIO
+import logging
+reload(logging)
+# note: need to install using pip install git+https://github.com/borntyping/python-colorlog.git#egg=colorlog
+import colorlog
 
+def init_log(log_file_path):
+    
+    logging.basicConfig(filename = log_file_path, filemode = 'w', format='%(levelname)-8s:%(message)s', level = logging.DEBUG)   
+    logger = logging.getLogger(__name__)
+    formatter = colorlog.ColoredFormatter(
+        "%(log_color)s%(levelname)-8s:%(reset)s %(white)s%(message)s",
+        datefmt=None,
+        reset=True,
+        log_colors={
+                'DEBUG':    'cyan',
+                'INFO':     'green',
+                'WARNING':  'yellow',
+                'ERROR':    'red',
+                'CRITICAL': 'red',
+        }
+        )     
+    console = logging.StreamHandler()
+    console.setLevel(logging.DEBUG)
+    console.setFormatter(formatter)
+    logger.addHandler(console)
+    
+    return logger
+
+def shutdown_log(logger):
+    logging.shutdown()
+    for handler in logger.handlers:
+        handler.flush()
+        handler.close()
+        logger.removeHandler(handler)
 
 def wait(conn):
     while 1:
@@ -50,11 +83,12 @@ def make_con(connection_string, async = False):
     return con, cur
 
 
-def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess):
+def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess, logger):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
 
-    print "Combining Temporal Factors"    
+    msg = "Combining Temporal Factors"    
+    logger.info(msg)
 
     t0 = time.time()    
     if preprocess:
@@ -118,9 +152,7 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess):
               ON wind_ds.temporal_factors 
               USING BTREE(turbine_height_m, census_division_abbr, power_curve_id);"""
     cur.execute(sql)
-    con.commit()
-    
-    print time.time()-t0    
+    con.commit()  
     
     return 1
     
@@ -191,7 +223,7 @@ def p_run(pg_conn_string, sql, county_chunks, npar):
 
 def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor,
-                           preprocess, npar, pg_conn_string):
+                           preprocess, npar, pg_conn_string, logger):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()  
@@ -199,7 +231,8 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     inputs['chunk_place_holder'] = '%(county_ids)s'
     inputs['seed_str'] = str(seed).replace('.','p')
     
-    print "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
+    msg = "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
+    logger.info(msg)
      
     if preprocess == True:
         table_name_dict = {'res': 'wind_ds.pt_res_best_option_each_year', 'com' : 'wind_ds.pt_com_best_option_each_year', 'ind' : 'wind_ds.pt_ind_best_option_each_year'}
@@ -227,8 +260,8 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     inputs['random_lookup_table'] = 'random_lookup_%(sector_abbr)s_%(seed_str)s' % inputs
     
     if seed not in prior_seeds:
-        t0 = time.time()
-        print "New Seed: Generating Random Values for Sampling"
+        msg = "New Seed: Generating Random Values for Sampling"
+        logger.info(msg)
         # generate the random lookup table
         sql = """CREATE TABLE wind_ds.%(random_lookup_table)s AS
                  WITH 
@@ -257,16 +290,17 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
         cur.execute(sql)
         con.autocommit = False
         
-        print time.time()-t0
     else:
-        print "This seed has been used previously. Skipping generation of random values"
+        msg = "This seed has been used previously. Skipping generation of random values"
+        logger.warning(msg)
 
     
     #==============================================================================
     #     randomly sample  N points from each county 
     #==============================================================================    
     # (note: some counties will have fewer than N points, in which case, all are returned) 
-    print 'Sampling Customer Bins from Each County'
+    msg = 'Sampling Customer Bins from Each County'
+    logger.info(msg)
     t0 = time.time() 
     sql = """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_%(i_place_holder)s;
              CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_%(i_place_holder)s AS
@@ -281,12 +315,12 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             WHERE row_number <= %(n_bins)s;""" % inputs    
 
     p_run(pg_conn_string, sql, county_chunks, npar)
-    print time.time()-t0
 
     #==============================================================================
     #    create lookup table with random values for each load bin 
     #==============================================================================
-    print "Setting up randomized load bins"
+    msg = "Setting up randomized load bins"
+    logger.info(msg)
     t0 = time.time()
     sql =  """DROP TABLE IF EXISTS wind_ds.county_load_bins_random_lookup_%(sector_abbr)s;
              CREATE TABLE wind_ds.county_load_bins_random_lookup_%(sector_abbr)s AS
@@ -306,15 +340,14 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             ON wind_ds.county_load_bins_random_lookup_%(sector_abbr)s USING BTREE(county_id, row_number);""" % inputs
     cur.execute(sql)
     con.commit()
-    print time.time()-t0
    
     #==============================================================================
     #     link each point to a load bin
     #==============================================================================
     # use random weighted sampling on the load bins to ensure that countyies with <N points
     # have a representative sample of load bins 
-    print 'Associating Customer Bins with Load and Customer Count'
-    t0 = time.time()     
+    msg = 'Associating Customer Bins with Load and Customer Count'    
+    logger.info(msg)
     sql =  """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s;
             CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
             WITH binned as(
@@ -354,13 +387,12 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                   USING BTREE(%(exclusion_type)s)
                   WHERE %(exclusion_type)s > 0;""" % inputs
         p_run(pg_conn_string, sql, county_chunks, npar)
-    print time.time()-t0
     
     #==============================================================================
     #     Find All Combinations of Points and Wind Resource
     #==============================================================================  
-    print "Finding All Wind Resource Combinations for Each Customer Bin"
-    t0 = time.time()   
+    msg = "Finding All Wind Resource Combinations for Each Customer Bin"
+    logger.info(msg)
     sql =  """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s;
                 CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s AS
                 SELECT a.*,
@@ -384,13 +416,12 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
               ON wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s 
               USING BTREE(turbine_height_m, census_division_abbr, power_curve_id);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
-    print time.time() - t0
     
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
     #==============================================================================
-    print "Finding All Combinations of Cost and Resource for Each Customer Bin and Year"
-    t0 = time.time() 
+    msg = "Finding All Combinations of Cost and Resource for Each Customer Bin and Year"
+    logger.info(msg)
     if exclusion_type is not None:
         inputs['exclusions_insert'] = "a.%(exclusion_type)s as max_height," % inputs
     else:
@@ -433,13 +464,12 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     p_run(pg_conn_string, sql, county_chunks, npar)
 
     # NOTE: not worth creating indices for this one -- it wil only slow down the processing    
-    print time.time()-t0
 
     #==============================================================================
     #    Find the Most Cost-Effective Wind Turbine Configuration for Each Customer Bin
     #==============================================================================
-    print "Selecting the most cost-effective wind turbine configuration for each customer bin and year"
-    t0 = time.time()  
+    msg = "Selecting the most cost-effective wind turbine configuration for each customer bin and year"
+    logger.info(msg)
     # create empty table
     sql = """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_best_option_each_year;
             CREATE TABLE wind_ds.pt_%(sector_abbr)s_best_option_each_year AS
@@ -454,7 +484,6 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
               FROM  wind_ds.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a
               ORDER BY a.gid, a.year, a.scoe ASC;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
-    print time.time()-t0
     
     # create index on gid and year
     sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_gid_btree 
@@ -471,8 +500,8 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     #==============================================================================
     #   clean up intermediate tables
     #==============================================================================
-    print "Cleaning up intermediate tables"
-    t0 = time.time()
+    msg = "Cleaning up intermediate tables"
+    logger.info(msg)
     intermediate_tables = ['wind_ds.pt_%(sector_abbr)s_sample_%(i_place_holder)s' % inputs,
                        'wind_ds.county_load_bins_random_lookup_%(sector_abbr)s' % inputs,
                        'wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs,
@@ -488,7 +517,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
         else:
             cur.execute(isql)
             con.commit()    
-    print time.time()-t0
+
     #==============================================================================
     #     return name of final table
     #==============================================================================
@@ -573,12 +602,13 @@ def get_scenario_options(cur):
     results = cur.fetchall()[0]
     return results
 
-def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, pg_conn_string):
+def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, pg_conn_string, logger):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
     inputs['chunk_place_holder'] = '%(county_ids)s'
 
-    print "Identifying initial incentives for customer bins from DSIRE Database"
+    msg = "Identifying initial incentives for customer bins from DSIRE Database"
+    logger.info(msg)
     if not preprocess:
         # adjust the name of the sector for incentives table (ind doesn't exist in dsire -- use com)
         if sector_abbr == 'ind':
@@ -974,4 +1004,4 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc['value_of_ptc'] = inc['lifetime_value_of_ptc'] / assumed_duration
     inc['ptc_length'] = assumed_duration
     
-    return inc[['gid', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
+    return inc[['gid', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
