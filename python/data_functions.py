@@ -20,22 +20,17 @@ import logging
 reload(logging)
 # note: need to install using pip install git+https://github.com/borntyping/python-colorlog.git#egg=colorlog
 import colorlog
+import colorama
 
 def init_log(log_file_path):
     
+    colorama.init()
     logging.basicConfig(filename = log_file_path, filemode = 'w', format='%(levelname)-8s:%(message)s', level = logging.DEBUG)   
     logger = logging.getLogger(__name__)
     formatter = colorlog.ColoredFormatter(
         "%(log_color)s%(levelname)-8s:%(reset)s %(white)s%(message)s",
         datefmt=None,
-        reset=True,
-        log_colors={
-                'DEBUG':    'cyan',
-                'INFO':     'green',
-                'WARNING':  'yellow',
-                'ERROR':    'red',
-                'CRITICAL': 'red',
-        }
+        reset=True
         )     
     console = logging.StreamHandler()
     console.setLevel(logging.DEBUG)
