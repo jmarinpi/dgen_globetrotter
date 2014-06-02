@@ -1,7 +1,4 @@
-﻿
-
-
--- create view of the valid counties
+﻿-- create view of the valid counties
 CREATE OR REPLACE VIEW wind_ds.counties_to_model AS
 SELECT county_id, census_region
 FROM wind_ds.county_geom a
@@ -11,6 +8,44 @@ ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)
 		end
 where a.state not in ('Hawaii','Alaska');
 
+-- view for carbon intensities
+DROP VIEW IF EXISTS wind_ds.carbon_intensities_to_model;
+CREATE OR REPLACE VIEW wind_ds.carbon_intensities_to_model AS
+SELECT state_abbr,
+	CASE WHEN b.carbon_price = 'No Carbon Price' THEN no_carbon_price_t_per_kwh
+	WHEN b.carbon_price = 'Price Based On State Carbon Intensity' THEN state_carbon_price_t_per_kwh
+	WHEN b.carbon_price = 'Price Based On NG Offset' THEN ng_offset_t_per_kwh
+	END as carbon_intensity_t_per_kwh
+FROM wind_ds.carbon_intensities a
+CROSS JOIN wind_ds.scenario_options b;
+
+-- view for net metering
+DROP VIEW IF EXISTS wind_ds.net_metering_to_model;
+CREATE OR REPLACE VIEW wind_ds.net_metering_to_model AS
+WITH combined as (
+SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr,
+	CASE WHEN b.overwrite_exist_nm = TRUE THEN False
+	ELSE TRUE
+	END as keep, 'ftg' as source
+	
+FROM wind_ds.net_metering_availability_2013 a
+CROSS JOIN wind_ds.scenario_options b
+
+UNION ALL
+
+SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr,
+	CASE WHEN b.overwrite_exist_nm = TRUE THEN TRUE
+	ELSE FALSE
+	END as keep, 'man' as source
+
+
+FROM wind_ds.manual_net_metering_availability a
+CROSS JOIN wind_ds.scenario_options b)
+
+SELECT sector, utility_type, nem_system_limit_kw, state_abbr
+FROM combined
+where keep = True;
+
 
 
 -- views of point data
@@ -19,7 +54,7 @@ DROP VIEW IF EXISTS wind_ds.pt_grid_us_ind_joined;
 CREATE OR REPLACE VIEW wind_ds.pt_grid_us_ind_joined AS
 SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
 	a.annual_rate_gid, a.iiijjjicf_id, a.excess_generation_factor,
-        c.ind_cents_per_kwh * ind_derate_factor as elec_rate_cents_per_kwh, 
+        c.ind_cents_per_kwh * (1-n.ind_demand_charge_rate) as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
@@ -55,7 +90,9 @@ ON e.state_abbr = l.state_abbr
 LEFT JOIN wind_ds.net_metering_to_model m
 ON e.state_abbr = m.state_abbr
 AND m.sector = 'ind'
-AND a.utility_type = m.utility_type;
+AND a.utility_type = m.utility_type
+-- manual demand charges
+CROSS JOIN wind_ds.scenario_options n;
 
 
 -- res
@@ -110,7 +147,7 @@ DROP VIEW IF EXISTS wind_ds.pt_grid_us_com_joined;
 CREATE OR REPLACE VIEW wind_ds.pt_grid_us_com_joined AS
 SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
 	a.annual_rate_gid, a.iiijjjicf_id, a.excess_generation_factor,
-	c.comm_cents_per_kwh * comm_derate_factor as elec_rate_cents_per_kwh, 
+	c.comm_cents_per_kwh * (1-n.com_demand_charge_rate) as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
@@ -146,7 +183,9 @@ ON e.state_abbr = l.state_abbr
 LEFT JOIN wind_ds.net_metering_to_model m
 ON e.state_abbr = m.state_abbr
 AND m.sector = 'com'
-AND a.utility_type = m.utility_type;
+AND a.utility_type = m.utility_type
+-- manual demand charges
+CROSS JOIN wind_ds.scenario_options n;
 
 
 -- create view of sectors to model
@@ -158,7 +197,7 @@ SELECT CASE WHEN markets = 'All' THEN 'res=>Residential,com=>Commercial,ind=>Ind
 	   end as sectors
 FROM wind_ds.scenario_options;
 
--- create view of sectors to model
+-- create view of exclusions to model
 CREATE OR REPLACE VIEW wind_ds.exclusions_to_model AS
 SELECT CASE WHEN height_exclusions = 'Population Density Only' THEN 'maxheight_m_popdens'
 	    when height_exclusions = 'Population Density & Canopy Cover (40%)' THEN 'maxheight_m_popdenscancov40pc'
@@ -292,40 +331,3 @@ LEFT JOIN wind_ds.wind_cost_projections b  --this join will repeat the cost proj
 ON a.turbine_size_kw = b.turbine_size_kw;
 
 
--- view for carbon intensities
-DROP VIEW IF EXISTS wind_ds.carbon_intensities_to_model;
-CREATE OR REPLACE VIEW wind_ds.carbon_intensities_to_model AS
-SELECT state_abbr,
-	CASE WHEN b.carbon_price = 'No Carbon Price' THEN no_carbon_price_t_per_kwh
-	WHEN b.carbon_price = 'Price Based On State Carbon Intensity' THEN state_carbon_price_t_per_kwh
-	WHEN b.carbon_price = 'Price Based On NG Offset' THEN ng_offset_t_per_kwh
-	END as carbon_intensity_t_per_kwh
-FROM wind_ds.carbon_intensities a
-CROSS JOIN wind_ds.scenario_options b;
-
--- view for net metering
-DROP VIEW IF EXISTS wind_ds.net_metering_to_model;
-CREATE OR REPLACE VIEW wind_ds.net_metering_to_model AS
-WITH combined as (
-SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr,
-	CASE WHEN b.overwrite_exist_nm = TRUE THEN False
-	ELSE TRUE
-	END as keep, 'ftg' as source
-	
-FROM wind_ds.net_metering_availability_2013 a
-CROSS JOIN wind_ds.scenario_options b
-
-UNION ALL
-
-SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr,
-	CASE WHEN b.overwrite_exist_nm = TRUE THEN TRUE
-	ELSE FALSE
-	END as keep, 'man' as source
-
-
-FROM wind_ds.manual_net_metering_availability a
-CROSS JOIN wind_ds.scenario_options b)
-
-SELECT sector, utility_type, nem_system_limit_kw, state_abbr
-FROM combined
-where keep = True;

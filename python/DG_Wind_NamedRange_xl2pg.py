@@ -440,7 +440,35 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
         print 'Exporting scenario_options'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
-    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.copy_expert('''COPY %s.%s (region, 
+        end_year, 
+        markets, 
+        cust_exp_elec_rates, 
+        load_growth_scenario, 
+        res_rate_structure, 
+        res_rate_escalation, 
+        res_max_market_curve, 
+        com_rate_structure, 
+        com_rate_escalation, 
+        com_max_market_curve, 
+        com_demand_charge_rate, 
+        ind_rate_structure, 
+        ind_rate_escalation, 
+        ind_max_market_curve, 
+        ind_demand_charge_rate,
+        net_metering_availability, 
+        carbon_price, 
+        height_exclusions, 
+        ann_inflation, 
+        scenario_name, 
+        overwrite_exist_inc, 
+        incentive_start_year, 
+        utility_type_iou, 
+        utility_type_muni, 
+        utility_type_coop, 
+        utility_type_allother, 
+        overwrite_exist_nm) FROM STDOUT WITH CSV;''' % (schema,table), f)        
+#    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
     cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
     conn.commit()
     f.close()

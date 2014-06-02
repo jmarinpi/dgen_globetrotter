@@ -42,9 +42,9 @@ preprocess = False #True means to use the last-created main table
     # Mike's path
 #Rscript_path = 'C:/Users/mgleason/Documents/R/R-3.0.2/bin/Rscript.exe'
     # Mike's mac path
-#Rscript_path = '/usr/bin/Rscript'
+Rscript_path = '/usr/bin/Rscript'
     # Ben's Path
-Rscript_path = 'C:/Program Files/R/R-3.0.2/bin/Rscript.exe' 
+#Rscript_path = 'C:/Program Files/R/R-3.0.2/bin/Rscript.exe' 
 
 # set boolean variable for parallelization
 parallelize = True
