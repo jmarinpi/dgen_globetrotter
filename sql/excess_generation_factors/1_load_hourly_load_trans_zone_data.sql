@@ -48,6 +48,9 @@ FROM ventyx.hourly_load_by_transmission_zone_20130723;
 
 -- add spatial data
 -- (loaded using shapfile loader plugin -- manually edited in QGIS to identify country canada from US)
+ALTER TABLE ventyx.transmission_zones_07232013
+ALTER zone_id TYPE integer;
+
 COMMENT ON TABLE ventyx.transmission_zones_07232013
   IS 'Transmission Zone Boundaries from Ventyx; collected 2013.07.23; loaded 2014.05.29. Manually edited to identify country for each zone.';
 
@@ -78,3 +81,16 @@ DROP VIEW IF EXISTS ventyx.transmission_zones;
 CREATE OR REPLACE VIEW ventyx.transmission_zones AS
 SELECT *
 FROM ventyx.transmission_zones_07232013;
+
+-- add hdf index column
+ALTER TABLE ventyx.transmission_zones_07232013
+ADD COLUMN hdf_index integer;
+
+UPDATE ventyx.transmission_zones_07232013
+SET hdf_index = gid - 1
+
+-- change pkey
+ALTER TABLE ventyx.transmission_zones_07232013 DROP CONSTRAINT transmission_zones07232013_pkey;
+
+ALTER TABLE ventyx.transmission_zones_07232013
+  ADD CONSTRAINT transmission_zones07232013_pkey PRIMARY KEY(zone_id);

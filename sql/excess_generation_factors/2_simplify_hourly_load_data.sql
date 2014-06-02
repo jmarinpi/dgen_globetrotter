@@ -50,3 +50,128 @@ and a.tmy_grid_gid = b.tmy_grid_gid;
 
 
 
+----------------------------------------------------------------------
+-- simplify hourly load data down to 8760
+
+-- first, make sure all zones have 8760
+SELECT transmission_zone_id, count(*)
+FROM ventyx.hourly_load_by_transmission_zone_20130723
+GROUP BY transmission_zone_id
+order by count;
+-- three zones are missing 1 hour of the year
+-- 615529, 1836089, 615603
+
+-- this is because they lost an hour in spring DST, but didn't add it back in in fall DST
+with a AS (
+SELECT date,count(*)
+FROM ventyx.hourly_load_by_transmission_zone_20130723
+where transmission_zone_id = 615529
+-- where transmission_zone_id = 1836089
+-- where transmission_zone_id = 615603
+GROUP BY date)
+
+SELECT *
+FROM a where count <> 24;
+
+-- compare to:
+with a AS (
+SELECT date,count(*)
+FROM ventyx.hourly_load_by_transmission_zone_20130723
+where transmission_zone_id = 615285
+
+GROUP BY date)
+
+SELECT *
+FROM a where count <> 24;
+
+-- how to fix -- just use a simple linear interpolation off the preceding and additional values
+--copy the data over to a new table
+DROP TABLE IF EXISTS ventyx.hourly_load_8760_by_transmission_zone_20130723;
+CREATE tABLE ventyx.hourly_load_8760_by_transmission_zone_20130723 AS
+SELECT *, 'ventyx'::text as source
+FROM ventyx.hourly_load_by_transmission_zone_20130723;
+
+-- extra hour needs to go between 1 am and 2 am and be labeled as 1 am
+SELECT *
+FROM ventyx.hourly_load_8760_by_transmission_zone_20130723
+-- where transmission_zone_id = 615529
+-- where transmission_zone_id = 1836089
+where transmission_zone_id = 615603
+and date = '2010-11-07'
+order by hour;
+
+INSERT INTO ventyx.hourly_load_8760_by_transmission_zone_20130723 
+(transmission_zone, local_datetime, year, date, hour, load_mw, transmission_zone_id, source)
+VALUES 
+('Grand River Dam Authority', '2010-11-07 01:00:00', 2010,  '2010-11-07', 1, 397, 615529, 'filled by averaging neighboring values');
+
+INSERT INTO ventyx.hourly_load_8760_by_transmission_zone_20130723 
+(transmission_zone, local_datetime, year, date, hour, load_mw, transmission_zone_id, source)
+VALUES 
+('Pacific Gas & Electric - Bay Area', '2010-11-07 01:00:00', 2010,  '2010-11-07', 1, (9333+4170)/2, 1836089, 'filled by averaging neighboring values');
+
+INSERT INTO ventyx.hourly_load_8760_by_transmission_zone_20130723 
+(transmission_zone, local_datetime, year, date, hour, load_mw, transmission_zone_id, source)
+VALUES 
+('Avista', '2010-11-07 01:00:00', 2010,  '2010-11-07', 1, (1076+1046)/2, 615603, 'filled by averaging neighboring values');
+
+-- check that everything is fixed now
+SELECT transmission_zone_id, count(*)
+FROM ventyx.hourly_load_8760_by_transmission_zone_20130723
+GROUP BY transmission_zone_id
+order by count;
+
+ALTER TABLE ventyx.hourly_load_8760_by_transmission_zone_20130723
+ADD COLUMN hour_of_year integer;
+
+with b as (
+	SELECT transmission_zone_id, date, hour, source, row_number() OVER (PARTITION BY transmission_zone_id ORDER BY date asc, hour asc, source desc) as hour_of_year
+	FROM ventyx.hourly_load_8760_by_transmission_zone_20130723)
+UPDATE ventyx.hourly_load_8760_by_transmission_zone_20130723 a
+SET hour_of_year = b.hour_of_year
+FROM b
+WHERE a.transmission_zone_id = b.transmission_zone_id
+and a.date = b.date
+and a.hour = b.hour
+and a.source = b.source;
+
+-- check ordering is correct for the filled values
+SELECT *
+FROM ventyx.hourly_load_8760_by_transmission_zone_20130723
+where transmission_zone_id = 615529
+-- where transmission_zone_id = 1836089
+-- where transmission_zone_id = 615603
+and date = '2010-11-07'
+order by hour_of_year;
+-- all looks good
+
+-- do some more checking
+SELECT transmission_zone_id, min(hour_of_year), max(hour_of_year)
+FROM ventyx.hourly_load_8760_by_transmission_zone_20130723
+GROUP BY transmission_zone_id;
+
+-- looks good -- clean everything else up
+-- drop columns
+ALTER TABLE ventyx.hourly_load_8760_by_transmission_zone_20130723
+DROP COLUMN local_datetime, 
+DROP COLUMN time_zone,
+DROP COLUMN time_zone_converted_to_dst;
+
+-- add index on transmission_zone and hour of year
+CREATE INDEX hourly_load_8760_by_transmission_zone_20130723_transmission_zone_id_btree ON ventyx.hourly_load_8760_by_transmission_zone_20130723
+USING btree(transmission_zone_id);
+
+CREATE INDEX hourly_load_8760_by_transmission_zone_20130723_hour_of_year_btree ON ventyx.hourly_load_8760_by_transmission_zone_20130723
+USING btree(hour_of_year);
+
+-- add comment
+COMMENT ON TABLE ventyx.hourly_load_8760_by_transmission_zone_20130723
+  IS 'Hourly Load by Transmission Zone (all sectors) from Ventyx, simplified to 8760 format. 
+  One hour gaps were found in three transmission zones (615529, 1836089, 615603) due to DST; 
+  these gaps were filled by averaging the two neighboring hourly load values. Derived from ventyx.hourly_load_by_transmission_zone_20130723.
+  Created 2014.05.30.';
+ 
+
+-- set owner
+ALTER TABLE ventyx.hourly_load_8760_by_transmission_zone_20130723
+  OWNER TO "ventyx-writers";
