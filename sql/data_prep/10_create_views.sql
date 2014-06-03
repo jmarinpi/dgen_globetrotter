@@ -53,7 +53,7 @@ where keep = True;
 DROP VIEW IF EXISTS wind_ds.pt_grid_us_ind_joined;
 CREATE OR REPLACE VIEW wind_ds.pt_grid_us_ind_joined AS
 SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.iiijjjicf_id, a.excess_generation_factor,
+	a.annual_rate_gid, a.iiijjjicf_id, 
         c.ind_cents_per_kwh * (1-n.ind_demand_charge_rate) as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
@@ -99,7 +99,7 @@ CROSS JOIN wind_ds.scenario_options n;
 DROP VIEW IF EXISTS wind_ds.pt_grid_us_res_joined;
 CREATE OR REPLACE VIEW wind_ds.pt_grid_us_res_joined AS
 SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.iiijjjicf_id, a.excess_generation_factor,
+	a.annual_rate_gid, a.iiijjjicf_id, 
 	c.res_cents_per_kwh as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_residential * k.perc_ooh as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_ooh as county_total_load_mwh_2011,
@@ -146,7 +146,7 @@ AND a.utility_type = m.utility_type;
 DROP VIEW IF EXISTS wind_ds.pt_grid_us_com_joined;
 CREATE OR REPLACE VIEW wind_ds.pt_grid_us_com_joined AS
 SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.iiijjjicf_id, a.excess_generation_factor,
+	a.annual_rate_gid, a.iiijjjicf_id, 
 	c.comm_cents_per_kwh * (1-n.com_demand_charge_rate) as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,

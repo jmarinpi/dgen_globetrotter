@@ -393,7 +393,8 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 SELECT a.*,
                 c.aep*a.aep_scale_factor*a.derate_factor as naep,
                 c.turbine_id as power_curve_id, 
-                c.height as turbine_height_m
+                c.height as turbine_height_m,
+                c.excess_gen_factor as excess_generation_factor
                 FROM wind_ds.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s a
                 LEFT JOIN wind_ds.wind_resource_annual c
                 ON a.i = c.i
