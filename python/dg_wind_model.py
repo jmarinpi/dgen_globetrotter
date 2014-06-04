@@ -221,7 +221,7 @@ def main():
                     # original method (memory intensive)
                     # outputs = outputs.append(df, ignore_index = 'True')
                     # postgres method
-                    datfunc.write_outputs(con, cur, df, sector_abbr)     
+                    datfunc.write_outputs(con, cur, df, sector_abbr)                        
                     
                     market_last_year = df[['gid','market_share', 'number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
                     market_last_year.columns = ['gid', 'market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
@@ -250,9 +250,7 @@ def main():
             #outputs = outputs.fillna(0)
             #outputs.to_csv(out_path + '/outputs.csv')
             # copy csv from postgres
-            f = open(out_path+'/outputs.csv','w')
-            cur.copy_expert('COPY (SELECT * FROM wind_ds.outputs_all) TO STDOUT WITH CSV HEADER;', f)
-            f.close()
+            datfunc.copy_outputs_to_csv(out_path, cur)
             
             # copy the input scenario spreadsheet
             shutil.copy(input_scenario, out_path)

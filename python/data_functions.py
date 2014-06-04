@@ -21,6 +21,7 @@ reload(logging)
 # note: need to install using pip install git+https://github.com/borntyping/python-colorlog.git#egg=colorlog
 import colorlog
 import colorama
+import gzip
 
 def init_log(log_file_path):
     
@@ -171,10 +172,43 @@ def clear_outputs(con,cur):
 def write_outputs(con, cur, outputs_df, sector_abbr):
     
     # set fields to write
-#    fields = ['gid','year','value_of_pbi_fit','max_market_share','market_share_last_year','discount_rate','pbi_fit_length','ic','down_payment','payback_period','installed_capacity_last_year','loan_rate','value_of_ptc','market_value','market_share','value_of_tax_credit_or_deduction','number_of_adopters_last_year','payback_key','market_value_last_year','loan_term_yrs','ptc_length','aep','installed_capacity','tax_rate','customer_expec_elec_rates','length_of_irr_analysis_yrs','cap','ownership_model','lcoe','number_of_adopters','value_of_increment','value_of_rebate']
-    # default right now is to use all fields in the df except sector
-    fields = list(outputs_df.columns)
-    fields.remove('sector')
+    fields = ['gid',
+            'year',
+            'customer_expec_elec_rates',
+            'ownership_model',
+            'loan_term_yrs',
+            'loan_rate',
+            'down_payment',
+            'discount_rate',
+            'tax_rate',
+            'length_of_irr_analysis_yrs',
+            'market_share_last_year',
+            'number_of_adopters_last_year',
+            'installed_capacity_last_year',
+            'market_value_last_year',
+            'value_of_increment',
+            'value_of_pbi_fit',
+            'value_of_ptc',
+            'pbi_fit_length',
+            'ptc_length',
+            'value_of_rebate',
+            'value_of_tax_credit_or_deduction',
+            'cap',
+            'ic',
+            'aep',
+            'payback_period',
+            'lcoe',
+            'payback_key',
+            'max_market_share',
+            'diffusion_market_share',
+            'new_market_share',
+            'new_adopters',
+            'new_capacity',
+            'new_market_value',
+            'market_share',
+            'number_of_adopters',
+            'installed_capacity',
+            'market_value']    
     # convert formatting of fields list
     fields_str = pylist_2_pglist(fields).replace("'","")       
     # open an in memory stringIO file (like an in memory csv)
@@ -214,6 +248,98 @@ def p_run(pg_conn_string, sql, county_chunks, npar):
         proc.start()
     for job in jobs:
         job.join()   
+
+
+def copy_outputs_to_csv(out_path, cur):
+    
+    sql = '''SELECT 'residential'::text as sector, 
+        
+        a.gid, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
+        a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
+        a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
+        a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
+        a.value_of_ptc, a.pbi_fit_length, a.ptc_length, a.value_of_rebate, a.value_of_tax_credit_or_deduction, 
+        a.cap, a.ic, a.aep, a.payback_period, a.lcoe, a.payback_key, a.max_market_share, 
+        a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
+        a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
+        a.market_value,
+        
+        b.county_id, b.state_abbr, b.census_division_abbr, b.utility_type, 
+        b.census_region, b.row_number, b.max_height, b.elec_rate_cents_per_kwh, 
+        b.carbon_price_cents_per_kwh, b.cap_cost_multiplier, b.fixed_om_dollars_per_kw_per_yr, 
+        b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
+        b.ann_cons_kwh, b.prob, b.weight, b.customers_in_bin, b.initial_customers_in_bin, 
+        b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
+        b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
+        b.aep_scale_factor, b.derate_factor, b.naep, b.nameplate_capacity_kw, 
+        b.power_curve_id, b.turbine_height_m, b.scoe
+        
+        FROM wind_ds.outputs_res a
+        LEFT JOIN wind_ds.pt_res_best_option_each_year b
+        ON a.gid = b.gid
+        and a.year = b.year
+        
+        UNION ALL
+        
+        SELECT 'commercial'::text as sector, 
+        
+        a.gid, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
+        a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
+        a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
+        a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
+        a.value_of_ptc, a.pbi_fit_length, a.ptc_length, a.value_of_rebate, a.value_of_tax_credit_or_deduction, 
+        a.cap, a.ic, a.aep, a.payback_period, a.lcoe, a.payback_key, a.max_market_share, 
+        a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
+        a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
+        a.market_value,
+        
+        b.county_id, b.state_abbr, b.census_division_abbr, b.utility_type, 
+        b.census_region, b.row_number, b.max_height, b.elec_rate_cents_per_kwh, 
+        b.carbon_price_cents_per_kwh, b.cap_cost_multiplier, b.fixed_om_dollars_per_kw_per_yr, 
+        b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
+        b.ann_cons_kwh, b.prob, b.weight, b.customers_in_bin, b.initial_customers_in_bin, 
+        b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
+        b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
+        b.aep_scale_factor, b.derate_factor, b.naep, b.nameplate_capacity_kw, 
+        b.power_curve_id, b.turbine_height_m, b.scoe
+        
+        FROM wind_ds.outputs_com a
+        LEFT JOIN wind_ds.pt_com_best_option_each_year b
+        ON a.gid = b.gid
+        and a.year = b.year
+        
+        UNION ALL
+        SELECT 'industrial'::text as sector, 
+        
+        a.gid, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
+        a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
+        a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
+        a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
+        a.value_of_ptc, a.pbi_fit_length, a.ptc_length, a.value_of_rebate, a.value_of_tax_credit_or_deduction, 
+        a.cap, a.ic, a.aep, a.payback_period, a.lcoe, a.payback_key, a.max_market_share, 
+        a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
+        a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
+        a.market_value,
+        
+        b.county_id, b.state_abbr, b.census_division_abbr, b.utility_type, 
+        b.census_region, b.row_number, b.max_height, b.elec_rate_cents_per_kwh, 
+        b.carbon_price_cents_per_kwh, b.cap_cost_multiplier, b.fixed_om_dollars_per_kw_per_yr, 
+        b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
+        b.ann_cons_kwh, b.prob, b.weight, b.customers_in_bin, b.initial_customers_in_bin, 
+        b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
+        b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
+        b.aep_scale_factor, b.derate_factor, b.naep, b.nameplate_capacity_kw, 
+        b.power_curve_id, b.turbine_height_m, b.scoe
+        
+        
+        FROM wind_ds.outputs_ind a
+        LEFT JOIN wind_ds.pt_ind_best_option_each_year b
+        ON a.gid = b.gid
+        and a.year = b.year'''
+        
+    f = gzip.open(out_path+'/outputs.csv.gz','w')
+    cur.copy_expert('COPY (%s) TO STDOUT WITH CSV HEADER;' % sql, f)
+    f.close()
 
 
 def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, 
