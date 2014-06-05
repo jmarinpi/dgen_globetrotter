@@ -1,0 +1,188 @@
+<!-- this script is needed for embedded slider functionality -->
+<!-- <head>
+<script src='http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.2.1/angular.min.js' type='text/javascript'></script>
+</head> -->
+<!-- this is the key line for enabling animation of dashed lines -->
+<link type="text/css" href="data/index.css" rel="stylesheet"/>
+<!-- <link type="text/css" href="index.css" rel="stylesheet"/> -->
+<!-- need both for now for testing from shiny and from local server, but could fix this by either addResourcePath() and moving to the base shiny app directory, or figuring out how to add assets to the datamaps object -->
+<!-- *********************************************************** -->
+<script id='popup-template' type='text/x-handlebars-template'>
+  {{{ popup_template }}}  
+</script>
+<script>
+  var chartParams = {{{ chartParams }}}
+  chartParams.element = document.getElementById('{{chartId}}')
+  
+  {{# popup_template }}
+  var tmplFn =  Handlebars.compile(
+    document.getElementById("popup-template").innerHTML
+  );
+  var popupFn = function(geography, data) {
+    return tmplFn({geography: geography, data: data});
+  }
+  if (chartParams.geographyConfig){
+    chartParams.geographyConfig.popupTemplate = popupFn
+  } else {
+    chartParams.geographyConfig = {"popupTemplate": popupFn}
+  }
+  {{/ popup_template }}
+  
+  var map{{chartId}} = new Datamap(chartParams);
+    //for use in shiny, we need to reset the subunits layer to null so that it doesn't draw on top of the bubbles
+    map{{chartId}}.addLayer('datamaps-subunits',null, true)
+      
+
+  if (chartParams.labels){
+    map{{chartId}}.labels()
+  }
+  
+  if (chartParams.legend){
+    map{{chartId}}.legend()
+  }
+  
+  setProjection = function( element, options ) {
+    var projection, path;
+ 
+      projection = d3.geo.albersUsa()
+        .scale(element.offsetWidth)
+        .translate([element.offsetWidth / 2, element.offsetHeight / 2]);
+ 
+    path = d3.geo.path()
+      .projection( projection );
+ 
+    return {path: path, projection: projection};
+  }
+  //draw a bubble map if specified
+  if (chartParams.bubbles) {
+    var bubbles = chartParams.bubbles[2010]
+    map{{chartId}}.bubbles(bubbles, chartParams.bubbleOptions)
+    // map{{chartId}}.bubbles([], chartParams.bubbleOptions)
+  }
+  //draw arcs if selected
+  if (chartParams.arcs) {
+    var arcs = chartParams.arcs
+    map{{chartId}}.arc(arcs)
+  }
+
+
+// setting up straight lines
+var defaultLineOptions = {
+      strokeColor: '#DD1C77',
+      strokeWidth: 1,
+      animationSpeed: 600,
+      strokeDashArray: ("3","5"),
+      animation: "slowflow 1s linear alternate infinite",
+      highlightOnHover: true
+    };
+
+map{{chartId}}.addPlugin('straightLine', function (layer, data, options) {
+    var self = this,
+        svg = this.svg;
+
+     // a class you'll add to the DOM elements
+    var className = 'path.datamaps-line';
+
+    if ( !data || (data && !data.slice) ) {
+      throw "Datamaps Error - lines must be an array";
+    }
+
+    var lines = layer
+              .selectAll(className)
+              .data( data, JSON.stringify );
+
+    lines
+      .enter()
+        .append('line')
+        .attr('class', className)
+        .style('stroke-linecap', 'round')
+        .style('fill', 'none')
+
+        .style('stroke', function(datum) {
+          if ( options && options.strokeColor) {
+            return options.strokeColor;
+          } 
+          return  defaultLineOptions.strokeColor
+        })
+
+        .style('stroke-dasharray', function(datum) {
+          if ( options && options.strokeDashArray) {
+            return options.strokeDashArray;
+          } 
+          return  defaultLineOptions.strokeDashArray
+        })
+
+
+        .style('stroke-width', function(datum) {
+          if ( options && options.strokeWidth) {
+            return options.strokeWidth;
+          }
+          if (datum.strokeWidth){
+            return datum.strokeWidth;
+          }
+
+          return defaultLineOptions.strokeWidth;
+        })
+
+        .attr('x1', function ( datum ) {
+          var originXY = self.latLngToXY(datum.origin_latitude, datum.origin_longitude);
+          return originXY[0];
+        })
+        .attr('y1', function ( datum ) {
+          var originXY = self.latLngToXY(datum.origin_latitude, datum.origin_longitude);
+          return originXY[1];
+        })
+        .attr('x2', function ( datum ) {        
+          var destXY = self.latLngToXY(datum.destination_latitude, datum.destination_longitude);
+          return destXY[0];
+        })
+        .attr('y2', function ( datum ) {
+          var destXY = self.latLngToXY(datum.destination_latitude, datum.destination_longitude);
+          return destXY[1];
+        })
+
+        // for unidirectional flow
+        // .style('animation','flow 10s linear infinite')
+        // .style('-webkit-animation','flow 10s linear infinite')
+        //for alternating flow
+        // .style('animation','slowflow 1s linear alternate infinite')
+        // .style('-webkit-animation','slowflow 1s linear alternate infinite')
+        
+        .style('animation', function(datum) {
+          if ( options && options.animation) {
+            return options.animation;
+          } 
+          return  defaultLineOptions.animation
+        })
+
+        .style('-webkit-animation', function(datum) {
+          if ( options && options.animation) {
+            return options.animation;
+          } 
+          return  defaultLineOptions.animation
+        })
+
+        // .attr('data-info', function(datum) {
+        //   return JSON.stringify(datum);
+        // })
+
+    lines.exit()
+      .transition()
+      .style('opacity', 0)
+      .remove();
+  });
+
+  //draw lines if selected
+  if (chartParams.lines) {
+    var lines = chartParams.lines
+    map{{chartId}}.straightLine(lines, chartParams.lineOptions)
+  }
+
+
+</script>
+
+<style>
+.datamaps {
+  position: relative;
+}
+</style>

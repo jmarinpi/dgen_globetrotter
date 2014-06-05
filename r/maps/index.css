@@ -1,0 +1,40 @@
+@keyframes flow {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@-webkit-keyframes flow {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+
+@keyframes slowflow {
+  from {
+    stroke-dashoffset: 25;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@-webkit-keyframes slowflow {
+  from {
+    stroke-dashoffset: 25;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
