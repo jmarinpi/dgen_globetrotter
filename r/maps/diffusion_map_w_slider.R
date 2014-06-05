@@ -115,7 +115,8 @@ d$save('/Users/mgleason/d.html')
 
 
 
-
+##############################################################################
+#  formal functions
 
 cut.format = function (x, breaks, labels = NULL, include.lowest = FALSE, right = TRUE, 
           dig.lab = 3L, ordered_result = FALSE, ...) 
@@ -164,7 +165,6 @@ cut.format = function (x, breaks, labels = NULL, include.lowest = FALSE, right =
 
 
 
-#  formal functions
 
 prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, slider = NULL)
 {
@@ -287,6 +287,11 @@ anim_choro_multi = function(data, fills, height = 400, width = 800, scope = 'usa
 m = anim_choro_multi(combined_data, combined_fills, height = 400, width = 900, scope = 'usa', legend = T, labels = T, slider_step = 2)
 m$save('/Users/mgleason/d.html')
 
+# to include in markdown
+# put:
+<iframe src="file:///Users/mgleason/d.html" name="map" height=400 width=800>
+  </iframe>
+# in the md file`
 
 
 
