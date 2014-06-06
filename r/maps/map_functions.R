@@ -108,19 +108,14 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
   
   # assign data to the datamap
   d$params$newData = data
-    if (!is.null(slider_var)){
-      if (length(value_vars) > 1){
-        # set to the first variable's data, and first element of slider
-        d$params$data = d$params$newData[[1]][[1]]
-      } else {
-        d$params$data = d$params$newData[[1]]
-      }
-      
-    } else {
-        # set to the first varaible's data
-        d$params$data = d$params$newData[[1]]            
-    }
-  
+  if (!is.null(slider_var)){
+      # set to the first timestep of the first variable
+      d$params$data = d$params$newData[[1]][[1]]
+  } else {
+      # set to the first variable's data
+      d$params$data = d$params$newData[[1]]            
+  }
+
   # assign fills to the datamap
   d$params$allFills = fills
   # set to the first set of fills (corresponding to the first dataset)
@@ -144,7 +139,7 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
       # otherwise, store the scripts in the chart params
       d$params$popup_scripts = popup_scripts
       # and write a function to update the popupTemplate based on the selected var
-      popup_function = "chartParams.geographyConfig.popupTemplate = chartParams.popup_scripts[[newSelection]];"
+      popup_function = "chartParams.geographyConfig.popupTemplate = chartParams.popup_scripts[newSelection];"
     }  
   } else {
     popup_function = ""
@@ -173,12 +168,15 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
                          </script>", slider_var, slider_min, slider_max, slider_step, slider_min)
     slider_function = sprintf("$scope.time = %s;
                                 $scope.$watch('time', function(newTime){
-                                  map{{chartId}}.updateChoropleth(chartParams.data[newTime]);
+                                  chartParams.data = chartParams.selectedData[newTime];
+                                  map{{chartId}}.updateChoropleth(chartParams.data);
                                 });", slider_min)
-    select_update = 'map{{chartId}}.updateChoropleth(chartParams.data[$scope.time]);'
+    select_update = 'chartParams.data = chartParams.selectedData[$scope.time];
+                     map{{chartId}}.updateChoropleth(chartParams.data);'
     
   } else {
-    select_update = 'map{{chartId}}.updateChoropleth(chartParams.data);'
+    select_update = 'chartParams.data = chartParams.selectedData;
+                     map{{chartId}}.updateChoropleth(chartParams.data);'
     slider_div = ''
     slider_function = ''
   }
@@ -205,7 +203,7 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
     
     select_function = sprintf("$scope.selection = '%s';
                               $scope.$watch('selection', function(newSelection, document){
-                                chartParams.data = chartParams.newData[newSelection];
+                                chartParams.selectedData = chartParams.newData[newSelection];
                                 chartParams.fills = chartParams.allFills[newSelection];
                                 %s                                
                                 removeElementsByClass('datamaps-legend');
@@ -215,12 +213,12 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
   } else {
     select_div = ''
     select_function = ''
+    d$set(selectedData = d$params$newData[[1]])
     if (legend_title == T){
       d$set(legendOptions = list(legendTitle = value_vars[1]))
     }
   }
-    
-  #/map{{chartId}}.updateChoropleth(chartParams.data[$scope.time]); 
+     
 if (!is.null(slider_var) | length(value_vars) > 1){
   chartDiv = sprintf("<div class='container ng-scope' ng-app ng-controller = 'rChartsCtrl'>
                      %s
@@ -248,21 +246,20 @@ if (!is.null(slider_var) | length(value_vars) > 1){
 
 
 
-# d$params$geographyConfig['popupTemplate'] = "#! function(geography, data) { //this function should just return a string
-# return '<div class=hoverinfo><strong>' + geography.properties.ba + '</strong></div>';
-# }  !#"
 
 
 ######################################################
 # tests
 violent_crime$rand = rnorm(nrow(violent_crime), mean = 100, sd = 25)
+vc_small = violent_crime[violent_crime$Year >= 1960 & violent_crime$Year <=1970,]
 
-m1 = anim_choro_multi(violent_crime, 'State', c('Crime','rand'), pals = list(Crime = 'Reds', rand = 'Blues'),
+
+m1 = anim_choro_multi(vc_small, 'State', c('Crime','rand'), pals = list(Crime = 'Reds', rand = 'Blues'),
                             ncuts = list(Crime = 5, rand = 5), height = 200, width = 400, scope = 'usa', 
                             legend = T, labels = T, slider_var = 'Year', slider_step = 1)
 
 
-m2 = anim_choro_multi(violent_crime, 'State', c('Crime'), pals = list(Crime = 'Reds'),
+m2 = anim_choro_multi(vc_small, 'State', c('Crime'), pals = list(Crime = 'Reds'),
                      ncuts = list(Crime = 5), height = 200, width = 400, scope = 'usa', 
                      legend = T, labels = T, slider_var = 'Year', slider_step = 1)
 
@@ -280,8 +277,8 @@ m4 = anim_choro_multi(vc2010, 'State', c('Crime'), pals = list(Crime = 'Reds'),
 
 ##### OTHER STUFF
 # save to html
-m2$save('/Users/mgleason/d.html')
-
+m2$save('/Users/mgleason/d.html', cdn = T)
+m2$show(cdn = T)
 # to include in markdown
 # put:
 <iframe src="file:///Users/mgleason/d.html" name="map" height=400 width=800>
