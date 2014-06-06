@@ -80,7 +80,7 @@ prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, slider = NU
 
 anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), ncuts = list(), height = 400, width = 800, scope = 'usa', legend = T, labels = T, 
                             slider_var = NULL, slider_step = 2, legend_title = T, map_title = NULL,
-                            label_precision = 2){
+                            label_precision = 2, show_data_popup = T){
   
   data = list()
   fills = list()
@@ -125,6 +125,31 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
   d$params$allFills = fills
   # set to the first set of fills (corresponding to the first dataset)
   d$params$fills = d$params$allFills[[1]]
+  
+  # set up popups
+  if (show_data_popup == T){
+    # create a list to store different popup scripts by value var
+    popup_scripts = list()
+    for (value_var in value_vars){
+      popup_scripts[[value_var]] = sprintf("#! function(geography, data) { 
+                   return '<div class=hoverinfo><strong>' + data.%s + 
+                   '</br>%s: ' + data.%s + '</strong></div>';
+                   }  !#", region_var, value_var, value_var)
+    }
+    # if there is only one value variable, set the popupTemplate
+    if (length(value_vars) == 1){
+      d$params$geographyConfig['popupTemplate'] = popup_scripts[[1]]
+      popup_function = ""
+    } else {
+      # otherwise, store the scripts in the chart params
+      d$params$popup_scripts = popup_scripts
+      # and write a function to update the popupTemplate based on the selected var
+      popup_function = "chartParams.geographyConfig.popupTemplate = chartParams.popup_scripts[[newSelection]];"
+    }  
+  } else {
+    popup_function = ""
+  }
+
   
   if (!is.null(slider_var)){
     slider_maxs = c()
@@ -185,7 +210,8 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
                                 %s                                
                                 removeElementsByClass('datamaps-legend');
                                 %s
-                              })", default_selection, select_update, legend_function)
+                                %s
+                              })", default_selection, select_update, legend_function, popup_function)
   } else {
     select_div = ''
     select_function = ''
@@ -215,15 +241,8 @@ if (!is.null(slider_var) | length(value_vars) > 1){
                        </script>", slider_div, select_div, slider_function, select_function)
   d$setTemplate(chartDiv = chartDiv)
   
-#   popup_js = sprintf("#! function(geography, data) { 
-#                              return '<div class=hoverinfo><strong>
-#                               Balancing Area: ' + data.ba +'<br/>
-#                               %s Capacity: ' + data.value + ' MW</strong></div>';
-#                                   }  !#", bigQ)
-  
-  
   } 
-
+  
   return(d)
 }
 
@@ -248,9 +267,6 @@ m2 = anim_choro_multi(violent_crime, 'State', c('Crime'), pals = list(Crime = 'R
                      legend = T, labels = T, slider_var = 'Year', slider_step = 1)
 
 
-
-
-
 vc2010 = violent_crime[violent_crime$Year == 2010,]
 m3 = anim_choro_multi(vc2010, 'State', c('Crime','rand'), pals = list(Crime = 'Reds', rand = 'Blues'),
                      ncuts = list(Crime = 5, rand = 5), height = 200, width = 400, scope = 'usa', 
@@ -261,9 +277,10 @@ m4 = anim_choro_multi(vc2010, 'State', c('Crime'), pals = list(Crime = 'Reds'),
                       legend = T, labels = T, map_title = 'My Map')
 
 
+
 ##### OTHER STUFF
 # save to html
-m4$save('/Users/mgleason/d.html')
+m2$save('/Users/mgleason/d.html')
 
 # to include in markdown
 # put:
