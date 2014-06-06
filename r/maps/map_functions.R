@@ -1,3 +1,10 @@
+library(rMaps)
+library(rCharts)
+library(reshape2)
+library(plyr)
+library(RColorBrewer)
+library(lattice)
+
 
 cut.format = function (x, breaks, labels = NULL, include.lowest = FALSE, right = TRUE, 
                        dig.lab = 3L, ordered_result = FALSE, ...) 
@@ -72,7 +79,7 @@ prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, slider = NU
 
 
 anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), ncuts = list(), height = 400, width = 800, scope = 'usa', legend = T, labels = T, 
-                            slider_var = NULL, slider_step = 2){
+                            slider_var = NULL, slider_step = 2, legend_title = T){
   
   data = list()
   fills = list()
@@ -157,17 +164,32 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
                                      {{ selection }}
                                      </select>
                          <br></br>",selections)
+    if (legend_title == T){
+      legend_options = '{legendTitle: newSelection}'  
+    } else {
+      legend_options = ''
+    }
+    
+    if (legend == T){
+      legend_function = sprintf("map{{chartId}}.legend(%s);", legend_options)
+    } else {
+      legend_function = ''
+    }
+    
     select_function = sprintf("$scope.selection = '%s';
                               $scope.$watch('selection', function(newSelection, document){
                                 chartParams.data = chartParams.newData[newSelection];
                                 chartParams.fills = chartParams.allFills[newSelection];
                                 %s                                
-                                removeElementsByClass('datamaps-legend')
-                                map{{chartId}}.legend();
-                              })", default_selection, select_update)
+                                removeElementsByClass('datamaps-legend');
+                                %s
+                              })", default_selection, select_update, legend_function)
   } else {
     select_div = ''
     select_function = ''
+    if (legend_title == T){
+      d$set(legendOptions = list(legendTitle = value_vars[1]))
+    }
   }
     
   #/map{{chartId}}.updateChoropleth(chartParams.data[$scope.time]); 
@@ -190,11 +212,24 @@ if (!is.null(slider_var) | length(value_vars) > 1){
                        }
                        </script>", slider_div, select_div, slider_function, select_function)
   d$setTemplate(chartDiv = chartDiv)
-}   
+  
+#   popup_js = sprintf("#! function(geography, data) { 
+#                              return '<div class=hoverinfo><strong>
+#                               Balancing Area: ' + data.ba +'<br/>
+#                               %s Capacity: ' + data.value + ' MW</strong></div>';
+#                                   }  !#", bigQ)
+  
+  
+  } 
 
   return(d)
 }
 
+
+
+# d$params$geographyConfig['popupTemplate'] = "#! function(geography, data) { //this function should just return a string
+# return '<div class=hoverinfo><strong>' + geography.properties.ba + '</strong></div>';
+# }  !#"
 
 
 ######################################################
@@ -202,12 +237,12 @@ if (!is.null(slider_var) | length(value_vars) > 1){
 violent_crime$rand = rnorm(nrow(violent_crime), mean = 100, sd = 25)
 
 m1 = anim_choro_multi(violent_crime, 'State', c('Crime','rand'), pals = list(Crime = 'Reds', rand = 'Blues'),
-                            ncuts = list(Crime = 5, rand = 5), height = 400, width = 800, scope = 'usa', 
+                            ncuts = list(Crime = 5, rand = 5), height = 200, width = 400, scope = 'usa', 
                             legend = T, labels = T, slider_var = 'Year', slider_step = 1)
 
 
 m2 = anim_choro_multi(violent_crime, 'State', c('Crime'), pals = list(Crime = 'Reds'),
-                     ncuts = list(Crime = 5), height = 400, width = 800, scope = 'usa', 
+                     ncuts = list(Crime = 5), height = 200, width = 400, scope = 'usa', 
                      legend = T, labels = T, slider_var = 'Year', slider_step = 1)
 
 
@@ -216,16 +251,20 @@ m2 = anim_choro_multi(violent_crime, 'State', c('Crime'), pals = list(Crime = 'R
 
 vc2010 = violent_crime[violent_crime$Year == 2010,]
 m3 = anim_choro_multi(vc2010, 'State', c('Crime','rand'), pals = list(Crime = 'Reds', rand = 'Blues'),
-                     ncuts = list(Crime = 5, rand = 5), height = 400, width = 800, scope = 'usa', 
+                     ncuts = list(Crime = 5, rand = 5), height = 200, width = 400, scope = 'usa', 
                      legend = T, labels = T)
 
 m4 = anim_choro_multi(vc2010, 'State', c('Crime'), pals = list(Crime = 'Reds'),
-                      ncuts = list(Crime = 5), height = 400, width = 800, scope = 'usa', 
+                      ncuts = list(Crime = 5), height = 200, width = 400, scope = 'usa', 
                       legend = T, labels = T)
+
+
+m4$params$data[['legendTitle']] = 'hello'
+
 
 ##### OTHER STUFF
 # save to html
-m$save('/Users/mgleason/d.html')
+m2$save('/Users/mgleason/d.html')
 
 # to include in markdown
 # put:
