@@ -16,14 +16,18 @@ national_installed_capacity_by_turb_size_bar(df)
 
 # Economics
 ```{r Economics}
-national_pp_line(df)
+national_pp_line(df,scen_name)
 print_table(mean_value_by_state_table(df,'payback_period'), caption = "Mean Payback Period (years")
+
+lcoe_boxplot(df)
+lcoe_cdf(df)
+print_table(mean_value_by_state_table(df,'lcoe'), caption = "Mean LCOE by State and Year")
 ```
 # System Characteristics
 ```{r System_Characteristics}
 cf_by_sector_and_year(df)
-dist_of_cap_selected(df)
-dist_of_height_selected(df)
+dist_of_cap_selected(df,scen_name)
+dist_of_height_selected(df,scen_name)
 
 ```
 # Resource Potential
