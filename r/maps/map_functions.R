@@ -27,7 +27,7 @@ cut.format = function (x, breaks, labels = NULL, include.lowest = FALSE, right =
   codes.only <- FALSE
   if (is.null(labels)) {
     for (dig in dig.lab:max(12L, dig.lab)) {
-      ch.br <- formatC(breaks, digits = dig, width = 1L)
+      ch.br <- formatC(breaks, digits = dig, format = 'f')
       if (ok <- all(ch.br[-1L] != ch.br[-nb])) 
         break
     }
@@ -54,11 +54,11 @@ cut.format = function (x, breaks, labels = NULL, include.lowest = FALSE, right =
 
 
 
-prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, slider = NULL)
+prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, slider = NULL, label_precision = 2)
 {
   fml = lattice::latticeParseFormula(formula, data = data)
   data = transform(data, fillKey = cut.format(fml$left, quantile(fml$left, 
-                                                                 seq(0, 1, 1/ncuts)), ordered_result = TRUE, dig.lab = 10))
+                                                                 seq(0, 1, 1/ncuts)), ordered_result = TRUE, dig.lab = label_precision))
   fillColors = RColorBrewer::brewer.pal(ncuts, pal)
   fills = as.list(setNames(fillColors, levels(data$fillKey)))
   if (!is.null(slider)) {
@@ -79,7 +79,8 @@ prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, slider = NU
 
 
 anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), ncuts = list(), height = 400, width = 800, scope = 'usa', legend = T, labels = T, 
-                            slider_var = NULL, slider_step = 2, legend_title = T, map_title = NULL){
+                            slider_var = NULL, slider_step = 2, legend_title = T, map_title = NULL,
+                            label_precision = 2){
   
   data = list()
   fills = list()
@@ -87,7 +88,7 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
     formula = as.formula(paste(value_var,region_var, sep = '~'))
     pal = pals[[value_var]]
     ncut = ncuts[[value_var]]
-    var_prep = prep_choro_data(formula, data_frame, pal = pal, ncuts = ncut, slider = slider_var)
+    var_prep = prep_choro_data(formula, data_frame, pal = pal, ncuts = ncut, slider = slider_var, label_precision = label_precision)
     data[[value_var]] = var_prep$data
     fills[[value_var]] = var_prep$fills
   }
