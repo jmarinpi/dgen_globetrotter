@@ -79,7 +79,7 @@ prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, slider = NU
 
 
 anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), ncuts = list(), height = 400, width = 800, scope = 'usa', legend = T, labels = T, 
-                            slider_var = NULL, slider_step = 2, legend_title = T){
+                            slider_var = NULL, slider_step = 2, legend_title = T, map_title = NULL){
   
   data = list()
   fills = list()
@@ -95,6 +95,7 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
   d = rMaps::Datamaps$new()
   d$templates$script = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/r/maps/dmap.html'
   d$params$id = 'chart1'
+  d$set(map_title = map_title)
   d$set(height = height)
   d$set(width = width)
   d$set(scope = scope)
@@ -252,19 +253,16 @@ m2 = anim_choro_multi(violent_crime, 'State', c('Crime'), pals = list(Crime = 'R
 vc2010 = violent_crime[violent_crime$Year == 2010,]
 m3 = anim_choro_multi(vc2010, 'State', c('Crime','rand'), pals = list(Crime = 'Reds', rand = 'Blues'),
                      ncuts = list(Crime = 5, rand = 5), height = 200, width = 400, scope = 'usa', 
-                     legend = T, labels = T)
+                     legend = T, labels = T, map_title = 'My Map')
 
 m4 = anim_choro_multi(vc2010, 'State', c('Crime'), pals = list(Crime = 'Reds'),
                       ncuts = list(Crime = 5), height = 200, width = 400, scope = 'usa', 
-                      legend = T, labels = T)
-
-
-m4$params$data[['legendTitle']] = 'hello'
+                      legend = T, labels = T, map_title = 'My Map')
 
 
 ##### OTHER STUFF
 # save to html
-m2$save('/Users/mgleason/d.html')
+m4$save('/Users/mgleason/d.html')
 
 # to include in markdown
 # put:

@@ -66,6 +66,7 @@
   }
 
 
+
 // setting up straight lines
 var defaultLineOptions = {
       strokeColor: '#DD1C77',
@@ -75,6 +76,21 @@ var defaultLineOptions = {
       animation: "slowflow 1s linear alternate infinite",
       highlightOnHover: true
     };
+
+// create plugin for adding title to the map
+map{{chartId}}.addPlugin('title', function (layer, data, options) {
+
+  var topElem = this.options.element.parentNode;
+  var hoverover = d3.select( topElem ).insert("h2", ":first-child")
+      .attr('style','font-family:"Helvetica Neue", Helvetica, Arial, sans-serif')
+      .html(data.map_title);
+});
+
+// add the title, if provided
+if (chartParams.map_title){
+    map{{chartId}}.title(chartParams)
+}
+
 
 map{{chartId}}.addPlugin('straightLine', function (layer, data, options) {
     var self = this,
