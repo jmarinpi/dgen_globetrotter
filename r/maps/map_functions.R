@@ -219,11 +219,14 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
   } else {
     select_div = ''
     select_function = ''
-    d$set(selectedData = d$params$newData[[1]])
+    # warning: if something is going wrong, look here
+#     d$params$selectedData = d$params$newData[[1]]
     if (legend_title == T){
       d$set(legendOptions = list(legendTitle = value_vars[1]))
     }
   }
+  # and here..
+  d$params$selectedData = d$params$newData[[1]]
      
 if (!is.null(slider_var) | length(value_vars) > 1){
   chartDiv = sprintf("<div class='container ng-scope' ng-app ng-controller = 'rChartsCtrl'>
