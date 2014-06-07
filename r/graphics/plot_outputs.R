@@ -15,7 +15,7 @@ source("../r/graphics/output_funcs.R")
 runpath<-commandArgs(TRUE)[1]
 scen_name<-commandArgs(TRUE)[2]
 
-con<-make_con(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
+con<-make_con(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", user = 'mgleason', password = 'mgleason')
 sql = "SELECT 'residential'::text as sector, 
 
       a.gid, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
@@ -108,6 +108,83 @@ knit2html("../r/graphics/plot_outputs.md", output = paste0(runpath,"/DG Wind rep
             options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
 dbDisconnect(con)
 
+
+ggplot(data = df, aes(x = excess_generation_factor, color = sector))+
+  stat_ecdf()
+
+ggplot(data = data.frame(x = rnorm(n=10000,mean=0.5,sd=0.1)), aes(x))+
+  stat_ecdf()
+
+
+
+
+# lcoe_boxplot<-function(df){
+# # Boxplot of LCOE over time, faceted by sector
+# ggplot(df, aes(x = factor(year), y = lcoe, fill = sector))+
+#   geom_boxplot()+
+#   facet_wrap(~sector)+
+#   scale_y_continuous(name = 'LCOE (c/kWh)',lim = c(0,100))+
+#   scale_x_discrete(name = 'Year')+
+#   ggtitle('Cost of Energy by Sector For All Sites Modeled')+
+#   scale_fill_manual(name = 'Sector', values = sector_fil)+
+#   theme_few()
+# 
+# data<-ddply(df,.(year,sector),summarise, median = median(lcoe), lql = quantile(lcoe, .25), uql = quantile(lcoe, .75))
+# write.csv(data, lcoe_trend.csv)
+# }
+# 
+# lcoe_cdf<-function(df){
+# # CDF of lcoe for the first and final model year, faceted by sector. Note that
+# # CDF is of bins, and is not weighted by # of custs in bin
+# yrs<-c(min(df$year),max(df$year))
+# data<-subset(df, year %in% yrs)
+# prices<-ddply(data, .(year),summarise, price = median(elec_rate_cents_per_kwh))
+# 
+# ggplot(data=data,aes(x = lcoe, colour = factor(year)))+
+#   stat_ecdf()+
+#   geom_vline(data = ddply(data, .(year, sector),summarise, price = median(elec_rate_cents_per_kwh)), aes(xintercept = price, color = factor(year)))+
+#   #geom_vline(data = prices, aes(xintercept = price, color = factor(year)))+
+#   facet_wrap(~sector)+
+#   coord_cartesian(xlim = c(0,60))+
+#   theme_few()+
+#   ggtitle('Cumulative Probability of Site LCOE (c/kWh)\n Vertical Lines are median retail elec prices')+
+#   scale_x_continuous(name = 'Levelized Cost of Energy (c/kWh)')+
+#   scale_y_continuous(name = 'Cumulative Probability', label = percent)+
+#   scale_color_discrete(name = 'Model Years')
+# }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# lcoe_ribbon<-function(df){ 
+# ggplot(data, aes(x = year, y = median, ymin = lql, max = uql, color = sector, fill = sector))+
+#   geom_ribbon(alpha = 0.4)+
+#   theme_few()+
+#   ggtitle('Trends in LCOE by Sector for All Sites')+
+#   scale_x_continuous(name = 'Year')+
+#   scale_y_continuous(name = 'LCOE (c/kWh)')+
+#   scale_fill_manual(name = 'LCOE Interquartile Range', values = sector_fil)+
+#   scale_color_manual(values = sector_fil)+
+#   guides(color = F)
+# }
 
 # ## Under development
 # dr<- 0.1
