@@ -6,7 +6,7 @@ library(RColorBrewer)
 library(lattice)
 
 
-cut.format = function (x, breaks, labels = NULL, include.lowest = FALSE, right = TRUE, 
+cut.format = function (x, breaks, labels = NULL, include.lowest = TRUE, right = TRUE, 
                        dig.lab = 3L, ordered_result = FALSE, ...) 
 {
   if (!is.numeric(x)) 
@@ -36,9 +36,9 @@ cut.format = function (x, breaks, labels = NULL, include.lowest = FALSE, right =
     else paste("Range", seq_len(nb - 1L), sep = "_")
     if (ok && include.lowest) {
       if (right) 
-        substr(labels[1L], 1L, 1L) <- "["
+        substr(labels[1L], 1L, 1L) <- ""
       else substring(labels[nb - 1L], nchar(labels[nb - 
-                                                     1L], "c")) <- "]"
+                                                     1L], "c")) <- ""
     }
   }
   else if (is.logical(labels) && !labels) 
@@ -80,7 +80,7 @@ prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, slider = NU
 
 anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), ncuts = list(), height = 400, width = 800, scope = 'usa', legend = T, labels = T, 
                             slider_var = NULL, slider_step = 2, legend_title = T, map_title = NULL,
-                            label_precision = 2, show_data_popup = T){
+                            label_precision = 2, show_data_popup = T, horizontal_legend = F){
   
   data = list()
   fills = list()
@@ -102,6 +102,7 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
   d$set(scope = scope)
   d$set(legend = legend)
   d$set(labels = labels)
+  d$set(horizontal_legend = horizontal_legend)
   # critical to include jshead and body attrs
   d$addAssets(jshead = "http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.2.1/angular.min.js")
   d$set(bodyattrs = "ng-app ng-controller='rChartsCtrl'")
@@ -157,9 +158,9 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
     slider_min = min(slider_mins)
     slider_max = max(slider_maxs)
     
-    slider_div = sprintf("<label for=slider>%s</label>
+    slider_div = sprintf("<label class='label' for=slider>%s</label>
                                 <input id='slider' type='range' min=%s max=%s step=%s ng-model='time' width=200 oninput='outputUpdate(value)' onchange='outputUpdate(value)'>
-                                <output for=slider id=current_slide_val>%s</output>
+                                <output  class='label' for=slider id=current_slide_val>%s</output>
                                 <br></br>
                          <script>
                                function outputUpdate(vol) {
@@ -184,7 +185,8 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
   if (length(value_vars) > 1){
     selections = gsub('[ ]','',paste("'",names(data),"'",collapse = ','))
     default_selection = names(data)[1]
-    select_div = sprintf("<select ng-model='selection' class='form-control'
+    select_div = sprintf("<label class='label' for=selector>Variable</label>
+                          <select id='selector' ng-model='selection' class='form-control'
                                      ng-options=\"selection for selection in [%s]\">
                                      {{ selection }}
                                      </select>
@@ -196,7 +198,11 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
     }
     
     if (legend == T){
-      legend_function = sprintf("map{{chartId}}.legend(%s);", legend_options)
+      if (horizontal_legend == T){
+        legend_function = sprintf("map{{chartId}}.legend(%s);", legend_options) 
+      } else {
+        legend_function = sprintf("map{{chartId}}.addVerticalLegend(%s);", legend_options) 
+      }
     } else {
       legend_function = ''
     }
@@ -236,7 +242,7 @@ if (!is.null(slider_var) | length(value_vars) > 1){
                         %s
                         %s
                        }
-                       </script>", slider_div, select_div, slider_function, select_function)
+                       </script>", select_div, slider_div, slider_function, select_function)
   d$setTemplate(chartDiv = chartDiv)
   
   } 

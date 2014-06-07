@@ -31,14 +31,9 @@
   var map{{chartId}} = new Datamap(chartParams);
     //for use in shiny, we need to reset the subunits layer to null so that it doesn't draw on top of the bubbles
     map{{chartId}}.addLayer('datamaps-subunits',null, true)
-      
 
   if (chartParams.labels){
     map{{chartId}}.labels()
-  }
-  
-  if (chartParams.legend){
-    map{{chartId}}.legend(chartParams.legendOptions)
   }
   
   setProjection = function( element, options ) {
@@ -195,10 +190,71 @@ map{{chartId}}.addPlugin('straightLine', function (layer, data, options) {
   }
 
 
+
+  //plugin to add a vertical map legend
+  map{{chartId}}.addPlugin('addVerticalLegend', function (layer, data, options) {
+    data = data || {};
+    if ( !this.options.fills ) {
+      return;
+    }
+
+    var html = '<dl>';
+    var label = '';
+    if ( data.legendTitle ) {
+      html = '<h2>' + data.legendTitle + '</h2>' + html;
+    }
+    for ( var fillKey in this.options.fills ) {
+
+      if ( fillKey === 'defaultFill') {
+        if (! data.defaultFillName ) {
+          continue;
+        }
+        label = data.defaultFillName;
+      } else {
+        if (data.labels && data.labels[fillKey]) {
+          label = data.labels[fillKey];
+        } else {
+          label= fillKey;
+        }
+      }
+      html += '<dd style="background-color:' +  this.options.fills[fillKey] + '">&nbsp;</dd>';
+      html += '<dt>' + label + '</dt><br></br>';
+    }
+    html += '<dd style="background-color:' +  'black' + '">&nbsp;</dd>';
+    html += '<dt>' + 'NA' + '</dt><br></br>';
+    html += '</dl>';
+
+    var hoverover = d3.select( this.options.element ).append('div')
+    // var hoverover = d3.select( this.options.element ).insert('div',':first-child')
+      .attr('class', 'datamaps-legend-vertical datamaps-legend')
+      .html(html);
+  });
+
+
+  if (chartParams.legend){
+    if (chartParams.horizontal_legend){
+      map{{chartId}}.legend(chartParams.legendOptions)
+    } else {
+      map{{chartId}}.addVerticalLegend(chartParams.legendOptions)      
+    }
+  }
+
+
 </script>
 
 <style>
 .datamaps {
   position: relative;
+}
+
+.datamaps-legend-vertical {
+  position: absolute;
+  display: inline-table;
+  left: auto;
+}
+
+.label{
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: bold;
 }
 </style>
