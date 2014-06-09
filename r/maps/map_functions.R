@@ -4,6 +4,7 @@ library(reshape2)
 library(plyr)
 library(RColorBrewer)
 library(lattice)
+library(classInt)
 
 
 cut.format = function (x, breaks, labels = NULL, include.lowest = TRUE, right = TRUE, 
@@ -48,11 +49,13 @@ cut.format = function (x, breaks, labels = NULL, include.lowest = TRUE, right = 
 
 
 
-prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, slider = NULL, label_precision = 2, big.mark = ',')
+prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, classification = 'equal',
+                            slider = NULL, label_precision = 2, big.mark = ',')
 {
   fml = lattice::latticeParseFormula(formula, data = data)
-  data = transform(data, fillKey = cut.format(fml$left, quantile(fml$left, 
-                                                                 seq(0, 1, 1/ncuts)), ordered_result = TRUE, dig.lab = label_precision, big.mark = big.mark))
+  intervals = classIntervals(fml$left,ncuts, classification)
+  breaks = intervals$brks
+  data = transform(data, fillKey = cut.format(fml$left, breaks, ordered_result = TRUE, dig.lab = label_precision, big.mark = big.mark))
   fillColors = RColorBrewer::brewer.pal(ncuts, pal)
   fills = as.list(setNames(fillColors, levels(data$fillKey)))
   if (!is.null(slider)) {
@@ -72,7 +75,8 @@ prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, slider = NU
 
 
 
-anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), ncuts = list(), height = 400, width = 800, 
+anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), ncuts = list(), classification = 'equal',
+                            height = 400, width = 800, 
                             scope = 'usa', legend = T, labels = T, 
                             slider_var = NULL, slider_step = 2, legend_title = T, legend_titles = NULL, map_title = NULL,
                             label_precision = 2, big.mark = ',', show_data_popup = T, horizontal_legend = F, slider_width = 300){
@@ -83,7 +87,7 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
     formula = as.formula(paste(value_var,region_var, sep = '~'))
     pal = pals[[value_var]]
     ncut = ncuts[[value_var]]
-    var_prep = prep_choro_data(formula, data_frame, pal = pal, ncuts = ncut, slider = slider_var, label_precision = label_precision, big.mark = big.mark)
+    var_prep = prep_choro_data(formula, data_frame, pal = pal, ncuts = ncut, classification = classification, slider = slider_var, label_precision = label_precision, big.mark = big.mark)
     data[[value_var]] = var_prep$data
     fills[[value_var]] = var_prep$fills
   }

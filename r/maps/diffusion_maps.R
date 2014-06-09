@@ -29,6 +29,7 @@ m1 = anim_choro_multi(diffusion_all, 'State',
                       c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity'),
                       pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds'),
                       ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5), 
+                      classification = 'jenks',
                       height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
                       legend = T, labels = T, 
                       slider_var = 'Year', slider_step = 1, map_title = 'Diffusion', horizontal_legend = F, slider_width = 300,
@@ -37,4 +38,6 @@ m1 = anim_choro_multi(diffusion_all, 'State',
 
 # m1$show(cdn = T)
 m1$save('/Users/mgleason/d.html', cdn =T)
+#classification = "fixed", "sd", "equal", "pretty", "quantile", "kmeans", "hclust", "bclust", 
+              # "fisher", or "jenks"
 
