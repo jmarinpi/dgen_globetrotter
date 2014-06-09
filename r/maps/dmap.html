@@ -247,6 +247,14 @@ map{{chartId}}.addPlugin('straightLine', function (layer, data, options) {
   position: relative;
 }
 
+/*use this if you want to center a horizontal legend under the map*/
+/*.datamaps-legend {
+  margin-left: auto;
+  margin-right: auto;
+  display: table;
+  position: relative;
+}*/
+
 .datamaps-legend-vertical {
   position: absolute;
   display: inline-table;
@@ -257,4 +265,12 @@ map{{chartId}}.addPlugin('straightLine', function (layer, data, options) {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-weight: bold;
 }
+
+
+#{{chartId}} {
+  /*align map and legend to left margin*/
+  margin-left: 0px; 
+}  
+
+
 </style>
