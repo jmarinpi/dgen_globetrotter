@@ -178,11 +178,19 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
   }
   
   if (length(value_vars) > 1){
-    selections = gsub('[ ]','',paste("'",names(data),"'",collapse = ','))
+    if (!is.null(legend_titles)){
+      selections = '['
+      for (var_name in names(legend_titles)){
+        selections = sprintf("%s{'id':'%s','label':'%s'},",selections, var_name, legend_titles[[var_name]])
+      }
+      selections = sprintf('selection.id as selection.label for selection in %s]',substr(selections,1,nchar(selections)-1))
+    } else {
+      selections = sprintf('selection for selection in [%s]',gsub('[ ]','',paste("'",names(data),"'",collapse = ',')))
+    }
     default_selection = names(data)[1]
     select_div = sprintf("<label class='label' for=selector>Variable</label>
                           <select id='selector' ng-model='selection' class='form-control'
-                                     ng-options=\"selection for selection in [%s]\">
+                                     ng-options=\"%s\">
                                      {{ selection }}
                                      </select>
                          <br></br>",selections)
