@@ -111,27 +111,28 @@ dist_of_cap_selected<-function(df,scen_name){
   cap_picked<-merge(cap_picked,tmp)
   cap_picked<-transform(cap_picked, p = cust_num/n)
   
-  ggplot(cap_picked, aes(x = factor(cap), weight = p, fill = factor(year)))+
+  p<-ggplot(cap_picked, aes(x = factor(cap), weight = p, fill = factor(year)))+
     geom_histogram(position = 'dodge')+
     facet_wrap(~sector)+
     theme_few()+
     scale_y_continuous(name ='Percent of Customers Selecting Turbine Size', labels = percent)+
     scale_x_discrete(name ='Optimal Size Turbine for Customer (kW)')+
     #scale_color_manual(values = sector_col) +
-    #scale_fill_manual(values = sector_fil) +
+    scale_fill_manual(name = '')+
     theme(axis.text.x = element_text(angle = 45, hjust = 1))+
     theme(strip.text.x = element_text(size=12, angle=0,))+
-    guides(color = FALSE, fill=FALSE)+
+    #guides(color = FALSE)+
     ggtitle('Size of Turbines Being Considered')
   cap_picked$scenario<-scen_name
   write.csv(cap_picked,paste0(runpath,'/cap_selected_trends.csv'),row.names = FALSE)
+  return(p)
 }
 
 dist_of_height_selected<-function(df,scen_name){
   #What heights are prefered?
   height_picked <- subset(df, year == 2014)
   height_picked<-ddply(height_picked,.(cap,turbine_height_m,sector),summarise, load_in_gw = sum(load_kwh_in_bin,na.rm=T)/(1e6*8760))
-  ggplot(height_picked)+
+  p<-ggplot(height_picked)+
     geom_point(aes(x = factor(cap), y = factor(turbine_height_m), size = load_in_gw, color = sector), aes = 0.2)+
     scale_size_continuous(name = 'Potential Customer Load (GW)', range = c(4,12))+
     theme_few()+
@@ -147,6 +148,7 @@ dist_of_height_selected<-function(df,scen_name){
     ggtitle('What Height-Size Combinations are Most-Prefered?')
   height_picked$scenario<-scen_name
   write.csv(height_picked,paste0(runpath,'/height_selected_trends.csv'),row.names = FALSE)
+  return(p)
 }
 
 national_pp_line<-function(df,scen_name){
@@ -237,7 +239,7 @@ diffusion_trends<-function(df,runpath,scen_name){
     theme(strip.text.x = element_text(size=12, angle=0))+
     ggtitle('National Value of Installed Capacity (Billion $)')
   
-  national_generation_bar<-ggplot(subset(data, variable %in% c("nat_generation")), 
+  national_generation_bar<-ggplot(subset(data, variable %in% c("nat_new_generation")), 
                                   aes(x = factor(year), fill = sector, weight = value/1e9))+
     geom_bar()+
     theme_few()+
@@ -303,7 +305,7 @@ p<-ggplot(df, aes(x = factor(year), y = lcoe, fill = sector))+
   theme_few()
 
 data<-ddply(df,.(year,sector),summarise, median = median(lcoe), lql = quantile(lcoe, .25), uql = quantile(lcoe, .75))
-write.csv(df, 'lcoe_trend.csv')
+write.csv(data,paste0(runpath,'/lcoe_trends.csv'),row.names = FALSE)
 return(p)
 }
 
