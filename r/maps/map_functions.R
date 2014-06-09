@@ -129,7 +129,7 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
       popup_scripts[[value_var]] = sprintf("#! function(geography, data) { 
                    return '<div class=hoverinfo><strong>' + data['%s'] + 
                    '</br>%s: ' + data['%s'] + '</strong></div>';
-                   }  !#", region_var, value_var, value_var)
+                   }  !#", region_var, ifelse(is.null(legend_titles),value_var,legend_titles[[value_var]]), value_var)
     }
     # if there is only one value variable, set the popupTemplate
     if (length(value_vars) == 1){
