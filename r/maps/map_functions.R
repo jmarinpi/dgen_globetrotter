@@ -78,8 +78,9 @@ prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, slider = NU
 
 
 
-anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), ncuts = list(), height = 400, width = 800, scope = 'usa', legend = T, labels = T, 
-                            slider_var = NULL, slider_step = 2, legend_title = T, map_title = NULL,
+anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), ncuts = list(), height = 400, width = 800, 
+                            scope = 'usa', legend = T, labels = T, 
+                            slider_var = NULL, slider_step = 2, legend_title = T, legend_titles = NULL, map_title = NULL,
                             label_precision = 2, show_data_popup = T, horizontal_legend = F, slider_width = 300){
   
   data = list()
@@ -192,7 +193,12 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
                                      </select>
                          <br></br>",selections)
     if (legend_title == T){
-      legend_options = '{legendTitle: newSelection}'  
+      if (!is.null(legend_titles)){
+        d$params$legend_titles = legend_titles
+        legend_options = "{legendTitle: chartParams.legend_titles[newSelection]}" 
+      } else {
+        legend_options = "{legendTitle: newSelection}"
+      }
     } else {
       legend_options = ''
     }
@@ -222,7 +228,12 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
     # warning: if something is going wrong, look here
 #     d$params$selectedData = d$params$newData[[1]]
     if (legend_title == T){
-      d$set(legendOptions = list(legendTitle = value_vars[1]))
+      if (!is.null(legend_titles)){
+        d$params$legendOptions = list(legendTitle = legend_titles[[1]])
+      } else {
+        d$params$legendOptions = list(legendTitle = value_vars[1]) 
+      }
+      
     }
   }
   # and here..
