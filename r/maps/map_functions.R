@@ -6,6 +6,13 @@ library(RColorBrewer)
 library(lattice)
 library(classInt)
 
+toProper <- function(s, strict = FALSE) {
+  cap <- function(s) paste(toupper(substring(s, 1, 1)),
+{s <- substring(s, 2); if(strict) tolower(s) else s},
+sep = "", collapse = " " )
+sapply(strsplit(s, split = " "), cap, USE.NAMES = !is.null(names(s)))
+}
+
 
 cut.format = function (x, breaks, labels = NULL, include.lowest = TRUE, right = TRUE, 
                        dig.lab = 3L, ordered_result = FALSE, big.mark = '', ...) 
@@ -53,10 +60,22 @@ prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, classificat
                             slider = NULL, label_precision = 2, big.mark = ',')
 {
   fml = lattice::latticeParseFormula(formula, data = data)
-  intervals = classIntervals(fml$left,ncuts, classification)
-  breaks = intervals$brks
-  data = transform(data, fillKey = cut.format(fml$left, breaks, ordered_result = TRUE, dig.lab = label_precision, big.mark = big.mark))
-  fillColors = RColorBrewer::brewer.pal(ncuts, pal)
+  if (length(unique(fml$left)) == 1){
+    # if there is only one unique value, set it as the break value and fillKey, and set ncuts to 1
+    breaks = formatC(unique(fml$left),big.mark = big.mark, format = 'f', digits = label_precision)
+    data = transform(data,fillKey = as.factor(breaks))
+    ncuts = 1
+  } else {
+    # otherwise, break the data up according to the specified classification
+    intervals = classIntervals(fml$left,ncuts, classification)  
+    # set breaks from the intervals object
+    breaks = intervals$brks
+    # set the fil key
+    data = transform(data, fillKey = cut.format(fml$left, breaks, ordered_result = TRUE, dig.lab = label_precision, big.mark = big.mark))
+    # reset ncuts to length(breaks)-1 --> this accounts for cases where there are fewer unique values than the original ncuts specified
+    ncuts = length(breaks)-1
+  }
+  fillColors = RColorBrewer::brewer.pal(ncuts, pal)[1:ncuts]
   fills = as.list(setNames(fillColors, levels(data$fillKey)))
   if (!is.null(slider)) {
     range_ = summary(data[[slider]])
