@@ -79,7 +79,8 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
                             height = 400, width = 800, 
                             scope = 'usa', legend = T, labels = T, 
                             slider_var = NULL, slider_step = 2, legend_title = T, legend_titles = NULL, map_title = NULL,
-                            label_precision = 2, big.mark = ',', show_data_popup = T, horizontal_legend = F, slider_width = 300){
+                            label_precision = 2, big.mark = ',', show_data_popup = T, popup_label_precision = 2,
+                            horizontal_legend = F, slider_width = 300){
   
   data = list()
   fills = list()
@@ -123,12 +124,14 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
   
   # set up popups
   if (show_data_popup == T){
+    # create number formatter
+    number_formatter = sprintf("var numfmt = d3.format(',.%sf')",popup_label_precision)
     # create a list to store different popup scripts by value var
     popup_scripts = list()
     for (value_var in value_vars){
       popup_scripts[[value_var]] = sprintf("#! function(geography, data) { 
                    return '<div class=hoverinfo><strong>' + data['%s'] + 
-                   '</br>%s: ' + data['%s'] + '</strong></div>';
+                   '</br>%s: ' + numfmt(data['%s']) + '</strong></div>';
                    }  !#", region_var, ifelse(is.null(legend_titles),value_var,legend_titles[[value_var]]), value_var)
     }
     # if there is only one value variable, set the popupTemplate
@@ -143,8 +146,8 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
     }  
   } else {
     popup_function = ""
+    number_formatter = ""
   }
-
   
   if (!is.null(slider_var)){
     slider_maxs = c()
@@ -250,7 +253,8 @@ if (!is.null(slider_var) | length(value_vars) > 1){
                      %s
                      %s
                     <div id='{{chartId}}' class='rChart datamaps'></div>  
-                    <script>                                     
+                    <script>    
+                       %s
                        function removeElementsByClass(className){
                          elements = document.getElementsByClassName(className);
                          while(elements.length > 0){
@@ -262,7 +266,7 @@ if (!is.null(slider_var) | length(value_vars) > 1){
                         %s
                         %s
                        }
-                       </script>", select_div, slider_div, slider_function, select_function)
+                       </script>", select_div, slider_div, number_formatter, slider_function, select_function)
   d$setTemplate(chartDiv = chartDiv)
   
   } 
