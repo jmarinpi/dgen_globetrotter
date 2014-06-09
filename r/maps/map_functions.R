@@ -80,7 +80,7 @@ prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, slider = NU
 
 anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), ncuts = list(), height = 400, width = 800, scope = 'usa', legend = T, labels = T, 
                             slider_var = NULL, slider_step = 2, legend_title = T, map_title = NULL,
-                            label_precision = 2, show_data_popup = T, horizontal_legend = F){
+                            label_precision = 2, show_data_popup = T, horizontal_legend = F, slider_width = 300){
   
   data = list()
   fills = list()
@@ -159,14 +159,14 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
     slider_max = max(slider_maxs)
     
     slider_div = sprintf("<label class='label' for=slider>%s</label>
-                                <input id='slider' type='range' min=%s max=%s step=%s ng-model='time' width=200 oninput='outputUpdate(value)' onchange='outputUpdate(value)'>
+                                <input id='slider' type='range' min=%s max=%s step=%s ng-model='time' style='width:%spx;' oninput='outputUpdate(value)' onchange='outputUpdate(value)'>
                                 <output  class='label' for=slider id=current_slide_val>%s</output>
                                 <br></br>
                          <script>
                                function outputUpdate(vol) {
                                document.querySelector('#current_slide_val').value = vol;
                                }
-                         </script>", slider_var, slider_min, slider_max, slider_step, slider_min)
+                         </script>", slider_var, slider_min, slider_max, slider_step, slider_width, slider_min)
     slider_function = sprintf("$scope.time = %s;
                                 $scope.$watch('time', function(newTime){
                                   chartParams.data = chartParams.selectedData[newTime];
