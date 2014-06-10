@@ -456,3 +456,68 @@ pp_trends_ribbon<-function(df){
     ggtitle('National Payback Period (Median and Inner-Quartile Range)')
   return(p)
 }
+
+diffusion_all_map <- function(df, runpath){
+  # aggregate the data
+  diffusion_all = ddply(df, .(state_abbr,year), summarize,
+                        Market.Share = sum(market_share),
+                        Market.Value = sum(market_value),
+                        Number.of.Adopters = sum(number_of_adopters),
+                        Installed.Capacity = sum(installed_capacity)
+  )
+  # reset variable names
+  names(diffusion_all)[1:2] = c('State','Year')
+  # make sure states are treated as character and not factor
+  diffusion_all$State = as.character(diffusion_all$State)
+  # create the map
+  map = anim_choro_multi(diffusion_all, 'State', 
+                        c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity'),
+                        pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds'),
+                        ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5), 
+                        classification = 'quantile',
+                        height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
+                        legend = T, labels = T, 
+                        slider_var = 'Year', slider_step = 1, map_title = 'Diffusion (Total)', horizontal_legend = F, slider_width = 300,
+                        legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
+                                             Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (kw)'))
+  # save the map
+  map$save(sprintf('%s/figure/diffusion_all.html', runpath), cdn =T)
+}
+
+
+diffusion_sectors_map <- function(df, runpath){
+  iframes = c()
+  # aggregate the data
+  for (sector in unique(df$sector)){
+    diffusion_sector = ddply(df[df$sector == sector,], .(state_abbr,year), summarize,
+                             Market.Share = sum(market_share),
+                             Market.Value = sum(market_value),
+                             Number.of.Adopters = sum(number_of_adopters),
+                             Installed.Capacity = sum(installed_capacity)
+    )
+    
+    # reset variable names
+    names(diffusion_sector)[1:2] = c('State','Year')
+    # make sure states are treated as character and not factor
+    diffusion_sector$State = as.character(diffusion_sector$State)
+    # create the map
+    map = anim_choro_multi(diffusion_sector, 'State', 
+                           c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity'),
+                           pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds'),
+                           ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5), 
+                           classification = 'quantile',
+                           height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
+                           legend = T, labels = T, 
+                           slider_var = 'Year', slider_step = 1, map_title = sprintf('Diffusion (%s)',toProper(sector)), horizontal_legend = F, slider_width = 300,
+                           legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
+                                                Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (kw)'))
+    # save the map
+    map$save(sprintf('%s/figure/diffusion_%s.html', runpath, sector), cdn =T)     
+    iframe = sprintf("<iframe src='./figure/diffusion_%s.html' name='diffusion_%s_map' height=600px width=1100px style='border:none;'></iframe>",sector,sector)
+    iframes = c(iframes,iframe)
+    }
+  return(iframes)
+  
+}
+
+

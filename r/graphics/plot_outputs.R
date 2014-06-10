@@ -10,7 +10,11 @@ library(reshape2)
 library(xtable)
 library(RPostgreSQL)
 
+# use for testing/debugging only:
+# setwd('/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/python')
+
 source("../r/graphics/output_funcs.R")
+source('../r/maps/map_functions.R')
 
 runpath<-commandArgs(TRUE)[1]
 scen_name<-commandArgs(TRUE)[2]
