@@ -262,8 +262,10 @@ def main():
             logger.info(msg)
             proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             messages = proc.communicate()
-            if 'error' in messages[1].lower() or 'warning' in messages[1].lower():
+            if 'error' in messages[1].lower():
                 logger.error(messages[1])
+            if 'warning' in messages[1].lower():
+                logger.warning(messages[1])
             returncode = proc.returncode
             msg = 'Model completed at %s run took %.1f seconds' % (time.ctime(), time.time() - model_init)                 
             
@@ -279,8 +281,10 @@ def main():
             logger.info(msg)
             proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             messages = proc.communicate()
-            if 'error' in messages[1].lower() or 'warning' in messages[1].lower():
+            if 'error' in messages[1].lower():
                 logger.error(messages[1])
+            if 'warning' in messages[1].lower():
+                logger.warning(messages[1])
             returncode = proc.returncode
         
     except Exception, e:

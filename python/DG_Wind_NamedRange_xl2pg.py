@@ -47,7 +47,7 @@ def main(wb, conn, verbose = False):
         # I had to disable a line in C:\Python27\lib\site-packages\openpyxl\namedrange.py
         # line #86 in refers_to_range: print range_string, bool(NAMED_RANGE_RE.match(range_string)) 
         # hopefully this is fixed in more up-to-date version of openpyxl
-        curWb = xl.load_workbook(wb)
+        curWb = xl.load_workbook(wb, data_only = True)
 
         table = 'wind_cost_projections'
         windCost(curWb,schema,table,conn,cur,verbose)
