@@ -476,13 +476,12 @@ diffusion_all_map <- function(df, runpath){
                         classification = 'quantile',
                         height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
                         legend = T, labels = T, 
-                        slider_var = 'Year', slider_step = 1, map_title = 'Diffusion (Total)', horizontal_legend = F, slider_width = 300,
+                        slider_var = 'Year', slider_step = 2, map_title = 'Diffusion (Total)', horizontal_legend = F, slider_width = 300,
                         legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
                                              Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
                                              Annual.Generation = 'Annual Generation (GWh)'))
   # save the map
   map$save(sprintf('%s/figure/diffusion_all.html', runpath), cdn =T)
-  map$save('/users/mgleason/d.html', cdn = T)
   iframe = "<iframe src='./figure/diffusion_all.html' name='diffusion_all_map' height=600px width=1100px style='border:none;'></iframe>"
   return(iframe)
 }
@@ -512,7 +511,7 @@ diffusion_sectors_map <- function(df, runpath){
                            classification = 'quantile',
                            height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
                            legend = T, labels = T, 
-                           slider_var = 'Year', slider_step = 1, map_title = sprintf('Diffusion (%s)',toProper(sector)), horizontal_legend = F, slider_width = 300,
+                           slider_var = 'Year', slider_step = 2, map_title = sprintf('Diffusion (%s)',toProper(sector)), horizontal_legend = F, slider_width = 300,
                            legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
                                                 Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
                                                 Annual.Generation = 'Annual Generation (GWh)'))

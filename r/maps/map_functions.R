@@ -78,7 +78,6 @@ prep_choro_data = function (formula, data, pal = "Blues", ncuts = 5, classificat
   fillColors = RColorBrewer::brewer.pal(ncuts, pal)[1:ncuts]
   fills = as.list(setNames(fillColors, levels(data$fillKey)))
   if (!is.null(slider)) {
-    range_ = summary(data[[slider]])
     data = plyr::dlply(data, slider, function(x) {
       y = rCharts::toJSONArray2(x, json = F)
       names(y) = lapply(y, "[[", fml$right.name)
@@ -169,15 +168,8 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
   }
   
   if (!is.null(slider_var)){
-    slider_maxs = c()
-    slider_mins = c()
-    for (i in seq(1,length(names(data)))) {
-      slider_vals = summary(as.integer(names(data[[i]])))
-      slider_mins = c(slider_vals[1],slider_mins)
-      slider_maxs = c(slider_vals[6],slider_maxs)
-    }
-    slider_min = min(slider_mins)
-    slider_max = max(slider_maxs)
+    slider_min = min(data_frame[,slider_var], na.rm = T)
+    slider_max = max(data_frame[,slider_var], na.rm = T)
     
     slider_div = sprintf("<label class='label' for=slider>%s</label>
                                 <input id='slider' type='range' min=%s max=%s step=%s ng-model='time' style='width:%spx;' oninput='outputUpdate(value)' onchange='outputUpdate(value)'>
