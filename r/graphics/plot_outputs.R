@@ -11,7 +11,7 @@ library(xtable)
 library(RPostgreSQL)
 
 # use for testing/debugging only:
-# setwd('/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/python')
+setwd('/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/python')
 
 source("../r/graphics/output_funcs.R")
 source('../r/maps/map_functions.R')
@@ -40,13 +40,20 @@ sql = "SELECT 'residential'::text as sector,
       b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
       b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
       b.aep_scale_factor, b.derate_factor, b.naep, b.nameplate_capacity_kw, 
-      b.power_curve_id, b.turbine_height_m, b.scoe
+      b.power_curve_id, b.turbine_height_m, b.scoe,
+
+      c.initial_market_share, c.initial_number_of_adopters,
+      c.initial_capacity_mw
       
       FROM wind_ds.outputs_res a
+
       LEFT JOIN wind_ds.pt_res_best_option_each_year b
       ON a.gid = b.gid
       and a.year = b.year
       
+      LEFT JOIN wind_ds.pt_res_initial_market_shares c
+      ON a.gid = c.gid
+
       UNION ALL
       
       SELECT 'commercial'::text as sector, 
@@ -69,12 +76,19 @@ sql = "SELECT 'residential'::text as sector,
       b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
       b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
       b.aep_scale_factor, b.derate_factor, b.naep, b.nameplate_capacity_kw, 
-      b.power_curve_id, b.turbine_height_m, b.scoe
+      b.power_curve_id, b.turbine_height_m, b.scoe,
+
+      c.initial_market_share, c.initial_number_of_adopters,
+      c.initial_capacity_mw
       
       FROM wind_ds.outputs_com a
+      
       LEFT JOIN wind_ds.pt_com_best_option_each_year b
       ON a.gid = b.gid
       and a.year = b.year
+
+      LEFT JOIN wind_ds.pt_com_initial_market_shares c
+      ON a.gid = c.gid
       
       UNION ALL
       SELECT 'industrial'::text as sector, 
@@ -97,13 +111,19 @@ sql = "SELECT 'residential'::text as sector,
       b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
       b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
       b.aep_scale_factor, b.derate_factor, b.naep, b.nameplate_capacity_kw, 
-      b.power_curve_id, b.turbine_height_m, b.scoe
-      
+      b.power_curve_id, b.turbine_height_m, b.scoe,
+
+      c.initial_market_share, c.initial_number_of_adopters,
+      c.initial_capacity_mw      
       
       FROM wind_ds.outputs_ind a
+
       LEFT JOIN wind_ds.pt_ind_best_option_each_year b
       ON a.gid = b.gid
-      and a.year = b.year"
+      and a.year = b.year
+
+      LEFT JOIN wind_ds.pt_ind_initial_market_shares c
+      ON a.gid = c.gid"
 
 df =  dbGetQuery(con,sql)
 

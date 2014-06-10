@@ -19,10 +19,10 @@ national_installed_capacity_by_turb_size_bar(df)
 
 # Diffusion Maps
 ```{r Diffusion Maps}
-diffusion_all_map(df, runpath)
-noquote("<iframe src='./figure/diffusion_all.html' name='diffusion_all_map' height=600px width=1100px style='border:none;'></iframe>")
+all_iframe = diffusion_all_map(df, runpath)
+cat(all_iframe)
 sector_iframes = diffusion_sectors_map(df, runpath)
-noquote(sector_iframes)
+cat(sector_iframes)
 ```
 
 # Economics

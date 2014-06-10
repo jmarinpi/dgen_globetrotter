@@ -832,7 +832,10 @@ def get_initial_market_shares(cur, con, sector_abbr, sector):
             where a.year = 2014;""" % inputs          
     cur.execute(sql)
     con.commit()
-
+    
+    sql = """CREATE INDEX pt_%(sector_abbr)s_initial_market_shares_gid_btree ON wind_ds.pt_%(sector_abbr)s_initial_market_shares USING BTREE(gid);""" % inputs
+    cur.execute(sql)
+    con.commit()
 
     sql = """SELECT gid, 
             initial_market_share AS market_share_last_year,

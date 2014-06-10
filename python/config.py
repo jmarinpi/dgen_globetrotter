@@ -5,7 +5,7 @@ Created on Wed Mar 26 13:01:56 2014
 @author: mgleason
 """
 
-import glob
+import os
 
 #==============================================================================
 # these are all variables that we can change, but don't want to expose to non-expert users
@@ -39,12 +39,13 @@ start_year = 2014
 preprocess = False #True means to use the last-created main table
 
 # Path to R will vary by user (until we move the script over to run on gispgdb server)
-    # Mike's path
-#Rscript_path = 'C:/Users/mgleason/Documents/R/R-3.0.2/bin/Rscript.exe'
-    # Mike's mac path
-#Rscript_path = '/usr/bin/Rscript'
-    # Ben's Path
-Rscript_path = 'C:/Program Files/R/R-3.0.2/bin/Rscript.exe' 
+Rscript_paths = ['/usr/bin/Rscript','C:/Users/mgleason/Documents/R/R-3.0.2/bin/Rscript.exe','C:/Program Files/R/R-3.0.2/bin/Rscript.exe' ]
+Rscript_path = None
+for rp in Rscript_paths:   
+    if os.path.exists(rp):
+        Rscript_path = rp
+if Rscript_path == None:
+    raise Exception('No Rscript Path found: Add a new path to Rscripts_path in config.py')
 
 # set boolean variable for parallelization
 parallelize = True

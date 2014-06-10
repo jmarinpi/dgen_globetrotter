@@ -9,6 +9,7 @@ make_con<-function(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", us
 }
 
 simpleCap <- function(x) {
+  # converts a given string to proper case
   # For formatting scenario options
   s <- strsplit(x, "_")[[1]]
   paste(toupper(substring(s, 1,1)), substring(s, 2),
@@ -177,15 +178,12 @@ national_pp_line<-function(df,scen_name){
 
 diffusion_trends<-function(df,runpath,scen_name){
   # Diffusion trends
-  starting_values = df[df$year == 2014, c('gid','number_of_adopters_last_year', 'installed_capacity_last_year', 'market_share_last_year','market_value_last_year')]
-  names(starting_values)[2:5] = c('number_of_adopters_initial', 'installed_capacity_initial', 'market_share_initial','market_value_initial')
-  df = merge(df,starting_values)
   data <- ddply(df, .(year, sector), summarise, 
                 nat_installed_capacity  = sum(installed_capacity,na.rm=TRUE)/1e6, 
-                nat_market_share = mean(market_share,na.rm=TRUE), 
+                nat_market_share = sum(number_of_adopters, na.rm = TRUE)/sum(customers_in_bin, na.rm = TRUE), 
                 nat_max_market_share = mean(max_market_share,na.rm=TRUE),
                 nat_market_value = sum(market_value, na.rm = TRUE),
-                nat_new_generation = sum((number_of_adopters-number_of_adopters_initial) * aep, na.rm = TRUE),
+                nat_generation = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000), na.rm = TRUE),
                 nat_number_of_adopters = sum(number_of_adopters,na.rm=TRUE))
   data<-melt(data=data,id.vars=c('year','sector'))
   data$scenario<-scen_name
@@ -239,7 +237,7 @@ diffusion_trends<-function(df,runpath,scen_name){
     theme(strip.text.x = element_text(size=12, angle=0))+
     ggtitle('National Value of Installed Capacity (Billion $)')
   
-  national_generation_bar<-ggplot(subset(data, variable %in% c("nat_new_generation")), 
+  national_generation_bar<-ggplot(subset(data, variable %in% c("nat_generation")), 
                                   aes(x = factor(year), fill = sector, weight = value/1e9))+
     geom_bar()+
     theme_few()+
@@ -272,10 +270,10 @@ print_table <- function(...){
 national_installed_capacity_by_turb_size_bar<-function(df){
   data<-ddply(df, .(year, sector, nameplate_capacity_kw), summarise, 
               nat_installed_capacity  = sum(installed_capacity,na.rm=TRUE)/1e6, 
-              nat_market_share = mean(market_share,na.rm=TRUE), 
+              nat_market_share =sum(number_of_adopters, na.rm = TRUE)/sum(customers_in_bin, na.rm = TRUE), 
               nat_max_market_share = mean(max_market_share,na.rm=TRUE),
               nat_market_value = sum(ic * number_of_adopters, na.rm = TRUE),
-              nat_generation = sum(number_of_adopters * aep, na.rm = TRUE),
+              nat_generation = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000), na.rm = TRUE),
               nat_number_of_adopters = sum(number_of_adopters,na.rm=TRUE))
   
   colourCount = length(unique(data$nameplate_capacity_kw))
@@ -460,10 +458,11 @@ pp_trends_ribbon<-function(df){
 diffusion_all_map <- function(df, runpath){
   # aggregate the data
   diffusion_all = ddply(df, .(state_abbr,year), summarize,
-                        Market.Share = sum(market_share),
+                        Market.Share = sum(number_of_adopters)/sum(customers_in_bin)*100,
                         Market.Value = sum(market_value),
                         Number.of.Adopters = sum(number_of_adopters),
-                        Installed.Capacity = sum(installed_capacity)
+                        Installed.Capacity = sum(installed_capacity)/1000,
+                        Annual.Generation =  sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000), na.rm = F)/1e6
   )
   # reset variable names
   names(diffusion_all)[1:2] = c('State','Year')
@@ -471,17 +470,21 @@ diffusion_all_map <- function(df, runpath){
   diffusion_all$State = as.character(diffusion_all$State)
   # create the map
   map = anim_choro_multi(diffusion_all, 'State', 
-                        c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity'),
-                        pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds'),
-                        ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5), 
+                        c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity', 'Annual.Generation'),
+                        pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds', Annual.Generation = 'YlOrRd'),
+                        ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5, Annual.Generation = 5), 
                         classification = 'quantile',
                         height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
                         legend = T, labels = T, 
                         slider_var = 'Year', slider_step = 1, map_title = 'Diffusion (Total)', horizontal_legend = F, slider_width = 300,
                         legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
-                                             Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (kw)'))
+                                             Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
+                                             Annual.Generation = 'Annual Generation (GWh)'))
   # save the map
   map$save(sprintf('%s/figure/diffusion_all.html', runpath), cdn =T)
+  map$save('/users/mgleason/d.html', cdn = T)
+  iframe = "<iframe src='./figure/diffusion_all.html' name='diffusion_all_map' height=600px width=1100px style='border:none;'></iframe>"
+  return(iframe)
 }
 
 
@@ -490,10 +493,11 @@ diffusion_sectors_map <- function(df, runpath){
   # aggregate the data
   for (sector in unique(df$sector)){
     diffusion_sector = ddply(df[df$sector == sector,], .(state_abbr,year), summarize,
-                             Market.Share = sum(market_share),
+                             Market.Share = sum(number_of_adopters)/sum(customers_in_bin)*100,
                              Market.Value = sum(market_value),
                              Number.of.Adopters = sum(number_of_adopters),
-                             Installed.Capacity = sum(installed_capacity)
+                             Installed.Capacity = sum(installed_capacity)/1000,
+                             Annual.Generation = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000), na.rm = F)/1e6
     )
     
     # reset variable names
@@ -502,20 +506,21 @@ diffusion_sectors_map <- function(df, runpath){
     diffusion_sector$State = as.character(diffusion_sector$State)
     # create the map
     map = anim_choro_multi(diffusion_sector, 'State', 
-                           c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity'),
-                           pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds'),
-                           ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5), 
+                           c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity', 'Annual.Generation'),
+                           pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds', Annual.Generation = 'YlOrRd'),
+                           ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5, Annual.Generation = 5), 
                            classification = 'quantile',
                            height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
                            legend = T, labels = T, 
                            slider_var = 'Year', slider_step = 1, map_title = sprintf('Diffusion (%s)',toProper(sector)), horizontal_legend = F, slider_width = 300,
                            legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
-                                                Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (kw)'))
+                                                Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
+                                                Annual.Generation = 'Annual Generation (GWh)'))
     # save the map
     map$save(sprintf('%s/figure/diffusion_%s.html', runpath, sector), cdn =T)     
     iframe = sprintf("<iframe src='./figure/diffusion_%s.html' name='diffusion_%s_map' height=600px width=1100px style='border:none;'></iframe>",sector,sector)
     iframes = c(iframes,iframe)
-    }
+  }
   return(iframes)
   
 }
