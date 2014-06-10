@@ -18,25 +18,43 @@ simpleCap <- function(x) {
 
 mean_value_by_state_table<-function(df,val){
   # Create table of mean value by year and state. value is string of variable to take mean of. 
-  by_state<-ddply(df,.(year,state_abbr), function(d) round(mean(d[[val]],na.rm=T),digits=2))
+  val = as.symbol(val)
+  g = group_by(df, year, state_abbr)
+  by_state = collect(summarise(g,
+                               round(mean(val),as.integer(2))
+                              )
+                     )
   names(by_state)<-c('year','State',val)
-  national<-ddply(df,.(year), function(d) round(mean(d[[val]],na.rm=T),digits=2))
+  g = group_by(df, year)
+  national = collect(summarise(g,
+                               round(mean(val),as.integer(2))
+                              )
+                     )
   national$State<-'U.S'
   names(national)<-c('year',val,'State')
-  by_state<-dcast(data = by_state,formula= State ~ year, value.var = val)
-  national<-dcast(data = national,formula= State ~ year, value.var = val)
+  by_state<-dcast(data = by_state,formula= State ~ year, value.var = as.character(val))
+  national<-dcast(data = national,formula= State ~ year, value.var = as.character(val))
   rbind(national,by_state)
 }
 
 total_value_by_state_table<-function(df,val){
   # Create table of summed value by year and state. value is string of variable to take sum over. 
-  by_state<-ddply(df,.(year,state_abbr), function(d) round(sum(d[[val]],na.rm=T),digits=2))
+  val = as.symbol(val)
+  g = group_by(df, year, state_abbr)
+  by_state = collect(summarise(g,
+                               round(sum(val),as.integer(2))
+                              )
+                      )
   names(by_state)<-c('year','State',val)
-  national<-ddply(df,.(year), function(d) round(sum(d[[val]],na.rm=T),digits=2))
+  g = group_by(df, year)
+  national = collect(summarise(g,
+                               round(sum(val),as.integer(2))
+                              )
+                      )
   national$State<-'U.S'
   names(national)<-c('year',val,'State')
-  by_state<-dcast(data = by_state,formula= State ~ year, value.var = val)
-  national<-dcast(data = national,formula= State ~ year, value.var = val)
+  by_state<-dcast(data = by_state,formula= State ~ year, value.var =  as.character(val))
+  national<-dcast(data = national,formula= State ~ year, value.var =  as.character(val))
   rbind(national,by_state)
 }
 
@@ -50,12 +68,12 @@ create_report <- function(runpath) {
 # ======================= GRAPHING FUNCTIONS =================================================
 
 cf_by_sector_and_year<-function(df){
+  g = group_by(df, year, sector)
   # Median and inner-quartile range of CF over sector and year
-  data<-ddply(df, .(year,sector), summarise, 
-              tql = quantile(naep, 0.75,na.rm=T)/ 8760,
-              median = quantile(naep, 0.5,na.rm=T)/ 8760,
-              fql = quantile(naep, 0.25,na.rm=T)/ 8760)
-  
+  data =  collect(summarise(g,
+                            tql = r_quantile(array_agg(naep), 0.75)/ 8760,
+                            median = r_quantile(array_agg(naep), 0.5)/ 8760,
+                            fql = r_quantile(array_agg(naep), 0.25)/ 8760))
   ggplot(data, aes(x = year, y = median, ymin = fql, ymax = tql, color = sector, fill = sector))+
     geom_smooth(aes(alpha = .1),stat = "identity")+
     facet_wrap(~sector)+
@@ -69,10 +87,14 @@ cf_by_sector_and_year<-function(df){
     ggtitle('Median Capacity Factor by Sector')
 }
 
+
+
 cf_supply_curve<-function(df){
   #' National capacity factor supply curve
-  data <- subset(df, year == min(df$year))
-  data <- data[,c("naep", "load_kwh_in_bin")]
+  # get the starting year
+  start_year = as.numeric(collect(summarize(df, min(year))))
+  # filter to only the start year, returning only the naep and load_kwh_in_bin cols
+  data = collect(select(filter(df, year == start_year),naep,load_kwh_in_bin))
   data <- transform(data, cf = naep/8760)
   data<-data[order(-data$cf),]
   data$load<-cumsum(data$load_kwh_in_bin/(1e6*8760))
@@ -88,8 +110,10 @@ cf_supply_curve<-function(df){
 
 elec_rate_supply_curve<-function(df){
   #' National electricity rate supply curve
-  data <- subset(df, year == min(df$year))
-  data <- data[,c("elec_rate_cents_per_kwh", "load_kwh_in_bin")]
+  # get the starting year
+  start_year = as.numeric(collect(summarize(df, min(year))))
+  # filter to only the start year, returning only the elec_rate_cents_per_kwh and load_kwh_in_bin cols
+  data = collect(select(filter(df, year == start_year),elec_rate_cents_per_kwh,load_kwh_in_bin))  
   data <- transform(data, load = load_kwh_in_bin/(1e6 * 8760), rate = elec_rate_cents_per_kwh)
   data<-data[order(-data$rate),]
   data$load<-cumsum(data$load)
@@ -105,21 +129,30 @@ elec_rate_supply_curve<-function(df){
 
 dist_of_cap_selected<-function(df,scen_name){
   # What size system are customers selecting in 2014?
-  cap_picked<-subset(df, year %in% c(min(df$year), max(df$year)))
-  cap_picked<-ddply(cap_picked,.(cap,sector,year),summarise, cust_num = sum(customers_in_bin,na.rm=T))
   
+  # get the starting and end years
+  start_year = as.numeric(collect(summarize(df, min(year))))
+  end_year = as.numeric(collect(summarize(df, max(year))))
+  
+  # filter to only the start year, returning only the elec_rate_cents_per_kwh and load_kwh_in_bin cols
+  f = filter(df, year %in% c(start_year,end_year))  
+  g = group_by(f, nameplate_capacity_kw, sector, year)
+  cap_picked = collect(summarise(g,
+                                 cust_num = sum(customers_in_bin)
+  )
+  )
   tmp<-ddply(cap_picked,.(sector,year),summarise, n = sum(cust_num))
   cap_picked<-merge(cap_picked,tmp)
   cap_picked<-transform(cap_picked, p = cust_num/n)
   
-  p<-ggplot(cap_picked, aes(x = factor(cap), weight = p, fill = factor(year)))+
+  p<-ggplot(cap_picked, aes(x = factor(nameplate_capacity_kw), weight = p, fill = factor(year)))+
     geom_histogram(position = 'dodge')+
     facet_wrap(~sector)+
     theme_few()+
     scale_y_continuous(name ='Percent of Customers Selecting Turbine Size', labels = percent)+
     scale_x_discrete(name ='Optimal Size Turbine for Customer (kW)')+
     #scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = '')+
+    scale_fill_manual(name = 'Year', values = c('black','gray'))+
     theme(axis.text.x = element_text(angle = 45, hjust = 1))+
     theme(strip.text.x = element_text(size=12, angle=0,))+
     #guides(color = FALSE)+
@@ -131,8 +164,16 @@ dist_of_cap_selected<-function(df,scen_name){
 
 dist_of_height_selected<-function(df,scen_name){
   #What heights are prefered?
-  height_picked <- subset(df, year == 2014)
-  height_picked<-ddply(height_picked,.(cap,turbine_height_m,sector),summarise, load_in_gw = sum(load_kwh_in_bin,na.rm=T)/(1e6*8760))
+  
+  # get the starting year
+  start_year = as.numeric(collect(summarize(df, min(year))))
+  # filter to starting year
+  f = filter(df, year == start_year)  
+  g = group_by(f, cap, turbine_height_m, sector)
+  height_picked = collect(summarise(g, 
+                                    load_in_gw = sum(load_kwh_in_bin)/(1e6*8760)
+  )
+  )
   p<-ggplot(height_picked)+
     geom_point(aes(x = factor(cap), y = factor(turbine_height_m), size = load_in_gw, color = sector), aes = 0.2)+
     scale_size_continuous(name = 'Potential Customer Load (GW)', range = c(4,12))+
@@ -154,10 +195,13 @@ dist_of_height_selected<-function(df,scen_name){
 
 national_pp_line<-function(df,scen_name){
   # Median payback period over time and sector
-  data<-ddply(df, .(year, sector), summarise, 
-              uql = quantile(payback_period, 0.95,na.rm=T),
-              median = quantile(payback_period, 0.5,na.rm=T),
-              lql = quantile(payback_period, 0.05,na.rm=T))
+  g = group_by(df, year, sector)
+  data = collect(summarise(g, 
+                           uql = r_quantile(array_agg(payback_period), 0.95),
+                           median = r_quantile(array_agg(payback_period), 0.5),
+                           lql = r_quantile(array_agg(payback_period), 0.05)
+  )
+  )
   
   p<-ggplot(data, aes(x = year, y = median, ymin = lql, ymax = uql, color = sector, fill = sector), size = 0.75)+
     geom_smooth(stat = 'identity')+
@@ -178,13 +222,15 @@ national_pp_line<-function(df,scen_name){
 
 diffusion_trends<-function(df,runpath,scen_name){
   # Diffusion trends
-  data <- ddply(df, .(year, sector), summarise, 
-                nat_installed_capacity  = sum(installed_capacity,na.rm=TRUE)/1e6, 
-                nat_market_share = sum(number_of_adopters, na.rm = TRUE)/sum(customers_in_bin, na.rm = TRUE), 
-                nat_max_market_share = mean(max_market_share,na.rm=TRUE),
-                nat_market_value = sum(market_value, na.rm = TRUE),
-                nat_generation = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000), na.rm = TRUE),
-                nat_number_of_adopters = sum(number_of_adopters,na.rm=TRUE))
+  g = group_by(df, year, sector)
+  data = collect(summarise(g, nat_installed_capacity  = sum(installed_capacity)/1e6, 
+                           nat_market_share = sum(number_of_adopters)/sum(customers_in_bin), 
+                           nat_max_market_share = mean(max_market_share),
+                           nat_market_value = sum(market_value),
+                           nat_generation = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000)),
+                           nat_number_of_adopters = sum(number_of_adopters)
+  )
+  )
   data<-melt(data=data,id.vars=c('year','sector'))
   data$scenario<-scen_name
   write.csv(data,paste0(runpath,'/diffusion_trends.csv'),row.names = FALSE)
@@ -255,6 +301,7 @@ diffusion_trends<-function(df,runpath,scen_name){
        "national_generation_bar" = national_generation_bar)
 }
 
+
 scenario_opts_table<-function(con){
   table<-dbGetQuery(con,"select * from wind_ds.scenario_options")
   names(table) <- unlist(lapply(names(table),simpleCap))
@@ -268,14 +315,14 @@ print_table <- function(...){
 }
 
 national_installed_capacity_by_turb_size_bar<-function(df){
-  data<-ddply(df, .(year, sector, nameplate_capacity_kw), summarise, 
-              nat_installed_capacity  = sum(installed_capacity,na.rm=TRUE)/1e6, 
-              nat_market_share =sum(number_of_adopters, na.rm = TRUE)/sum(customers_in_bin, na.rm = TRUE), 
-              nat_max_market_share = mean(max_market_share,na.rm=TRUE),
-              nat_market_value = sum(ic * number_of_adopters, na.rm = TRUE),
-              nat_generation = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000), na.rm = TRUE),
-              nat_number_of_adopters = sum(number_of_adopters,na.rm=TRUE))
+  g = group_by(df, year, sector, nameplate_capacity_kw)
+  data<- collect(summarise(g, 
+                           nat_installed_capacity  = sum(installed_capacity)/1e6
+  )
+  )
   
+  # order the data correctly
+  data = data[order(data$year,data$nameplate_capacity_kw),]
   colourCount = length(unique(data$nameplate_capacity_kw))
   getPalette = colorRampPalette(brewer.pal(9, "YlOrRd"))
   
@@ -291,41 +338,139 @@ national_installed_capacity_by_turb_size_bar<-function(df){
     ggtitle('National Installed Capacity by Turbine Size (GW)')
 }
 
-lcoe_boxplot<-function(df){
-# Boxplot of LCOE over time, faceted by sector
-p<-ggplot(df, aes(x = factor(year), y = lcoe, fill = sector))+
-  geom_boxplot()+
-  facet_wrap(~sector)+
-  scale_y_continuous(name = 'LCOE (c/kWh)',lim = c(0,100))+
-  scale_x_discrete(name = 'Year')+
-  ggtitle('Cost of Energy by Sector For All Sites Modeled')+
-  scale_fill_manual(name = 'Sector', values = sector_fil)+
-  theme_few()
 
-data<-ddply(df,.(year,sector),summarise, median = median(lcoe), lql = quantile(lcoe, .25), uql = quantile(lcoe, .75))
-write.csv(data,paste0(runpath,'/lcoe_trends.csv'),row.names = FALSE)
-return(p)
+lcoe_boxplot<-function(df){
+  data = collect(select(df,year,lcoe,sector))
+  # Boxplot of LCOE over time, faceted by sector
+  p<-ggplot(data, aes(x = factor(year), y = lcoe, fill = sector))+
+    geom_boxplot()+
+    facet_wrap(~sector)+
+    scale_y_continuous(name = 'LCOE (c/kWh)',lim = c(0,100))+
+    scale_x_discrete(name = 'Year')+
+    ggtitle('Cost of Energy by Sector For All Sites Modeled')+
+    scale_fill_manual(name = 'Sector', values = sector_fil)+
+    theme_few()
+  # aggregate summary stas on median and iqr to save to csv
+  g = group_by(df,year,sector)
+  out_data = collect(summarise(g, 
+                               median = r_median(array_agg(lcoe)), 
+                               lql = r_quantile(array_agg(lcoe), .25), 
+                               uql = r_quantile(array_agg(lcoe), .75)
+  )
+  )
+  write.csv(out_data,paste0(runpath,'/lcoe_trends.csv'),row.names = FALSE)
+  return(p)
 }
 
 lcoe_cdf<-function(df){
-# CDF of lcoe for the first and final model year, faceted by sector. Note that
-# CDF is of bins, and is not weighted by # of custs in bin
-yrs<-c(min(df$year),max(df$year))
-data<-subset(df, year %in% yrs)
-prices<-ddply(data, .(year),summarise, price = median(elec_rate_cents_per_kwh))
-
-ggplot(data=data,aes(x = lcoe, colour = factor(year)))+
-  stat_ecdf()+
-  geom_vline(data = ddply(data, .(year, sector),summarise, price = median(elec_rate_cents_per_kwh)), aes(xintercept = price, color = factor(year)))+
-  #geom_vline(data = prices, aes(xintercept = price, color = factor(year)))+
-  facet_wrap(~sector)+
-  coord_cartesian(xlim = c(0,60))+
-  theme_few()+
-  ggtitle('Cumulative Probability of Site LCOE (c/kWh)\n Vertical Lines are median retail elec prices')+
-  scale_x_continuous(name = 'Levelized Cost of Energy (c/kWh)')+
-  scale_y_continuous(name = 'Cumulative Probability', label = percent)+
-  scale_color_discrete(name = 'Model Years')
+  # CDF of lcoe for the first and final model year, faceted by sector. Note that
+  # CDF is of bins, and is not weighted by # of custs in bin
+  
+  start_year = as.numeric(collect(summarize(df, min(year))))
+  end_year = as.numeric(collect(summarize(df, max(year))))
+  yrs = c(start_year, end_year)
+  
+  # filter the data to rows in the start or end year
+  f = select(filter(df, year %in% yrs),year, sector, lcoe, elec_rate_cents_per_kwh)
+  data = collect(f)
+  g = group_by(f, year, sector)
+  prices = collect(summarise(g,
+                             price = r_median(array_agg(elec_rate_cents_per_kwh))
+  )
+  )
+  
+  
+  ggplot(data=data,aes(x = lcoe, colour = factor(year)))+
+    stat_ecdf()+
+    geom_vline(data = prices, aes(xintercept = price, color = factor(year)))+
+    #geom_vline(data = prices, aes(xintercept = price, color = factor(year)))+
+    facet_wrap(~sector)+
+    coord_cartesian(xlim = c(0,60))+
+    theme_few()+
+    ggtitle('Cumulative Probability of Site LCOE (c/kWh)\n Vertical Lines are median retail elec prices')+
+    scale_x_continuous(name = 'Levelized Cost of Energy (c/kWh)')+
+    scale_y_continuous(name = 'Cumulative Probability', label = percent)+
+    scale_color_discrete(name = 'Model Years')
 }
+
+
+
+diffusion_all_map <- function(df, runpath){
+  # aggregate the data
+  g = group_by(df, state_abbr, year)
+  diffusion_all = collect(summarise(g,
+                                    Market.Share = sum(number_of_adopters)/sum(customers_in_bin)*100,
+                                    Market.Value = sum(market_value),
+                                    Number.of.Adopters = sum(number_of_adopters),
+                                    Installed.Capacity = sum(installed_capacity)/1000,
+                                    Annual.Generation =  sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000))/1e6
+                                  )
+                          )
+  # reset variable names
+  names(diffusion_all)[1:2] = c('State','Year')
+  # make sure states are treated as character and not factor
+  diffusion_all$State = as.character(diffusion_all$State)
+  # create the map
+  map = anim_choro_multi(diffusion_all, 'State', 
+                         c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity', 'Annual.Generation'),
+                         pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds', Annual.Generation = 'YlOrRd'),
+                         ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5, Annual.Generation = 5), 
+                         classification = 'quantile',
+                         height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
+                         legend = T, labels = T, 
+                         slider_var = 'Year', slider_step = 2, map_title = 'Diffusion (Total)', horizontal_legend = F, slider_width = 300,
+                         legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
+                                              Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
+                                              Annual.Generation = 'Annual Generation (GWh)'))
+  # save the map
+  map$save(sprintf('%s/figure/diffusion_all.html', runpath), cdn =T)
+  iframe = "<iframe src='./figure/diffusion_all.html' name='diffusion_all_map' height=600px width=1100px style='border:none;'></iframe>"
+  return(iframe)
+}
+
+
+diffusion_sectors_map <- function(df, runpath){
+  iframes = c()
+  # aggregate the data
+  # get the unique sectors in the table
+  sectors = as.character(collect(summarize(df, distinct(sector))))
+  for (sector in sectors){
+    f = filter(df, sector == sector)
+    g = group_by(df, state_abbr, year)
+    diffusion_sector = collect(summarise(g,
+                                         Market.Share = sum(number_of_adopters)/sum(customers_in_bin)*100,
+                                         Market.Value = sum(market_value),
+                                         Number.of.Adopters = sum(number_of_adopters),
+                                         Installed.Capacity = sum(installed_capacity)/1000,
+                                         Annual.Generation = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000))/1e6
+                                        )
+                              )
+
+    # reset variable names
+    names(diffusion_sector)[1:2] = c('State','Year')
+    # make sure states are treated as character and not factor
+    diffusion_sector$State = as.character(diffusion_sector$State)
+    # create the map
+    map = anim_choro_multi(diffusion_sector, 'State', 
+                           c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity', 'Annual.Generation'),
+                           pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds', Annual.Generation = 'YlOrRd'),
+                           ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5, Annual.Generation = 5), 
+                           classification = 'quantile',
+                           height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
+                           legend = T, labels = T, 
+                           slider_var = 'Year', slider_step = 2, map_title = sprintf('Diffusion (%s)',toProper(sector)), horizontal_legend = F, slider_width = 300,
+                           legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
+                                                Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
+                                                Annual.Generation = 'Annual Generation (GWh)'))
+    # save the map
+    map$save(sprintf('%s/figure/diffusion_%s.html', runpath, sector), cdn =T)     
+    iframe = sprintf("<iframe src='./figure/diffusion_%s.html' name='diffusion_%s_map' height=600px width=1100px style='border:none;'></iframe>",sector,sector)
+    iframes = c(iframes,iframe)
+  }
+  return(iframes)
+}
+
+
 
 ###### Functions for the batch-mode scenario analysis ######################
 
@@ -455,73 +600,5 @@ pp_trends_ribbon<-function(df){
   return(p)
 }
 
-diffusion_all_map <- function(df, runpath){
-  # aggregate the data
-  diffusion_all = ddply(df, .(state_abbr,year), summarize,
-                        Market.Share = sum(number_of_adopters)/sum(customers_in_bin)*100,
-                        Market.Value = sum(market_value),
-                        Number.of.Adopters = sum(number_of_adopters),
-                        Installed.Capacity = sum(installed_capacity)/1000,
-                        Annual.Generation =  sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000), na.rm = F)/1e6
-  )
-  # reset variable names
-  names(diffusion_all)[1:2] = c('State','Year')
-  # make sure states are treated as character and not factor
-  diffusion_all$State = as.character(diffusion_all$State)
-  # create the map
-  map = anim_choro_multi(diffusion_all, 'State', 
-                        c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity', 'Annual.Generation'),
-                        pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds', Annual.Generation = 'YlOrRd'),
-                        ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5, Annual.Generation = 5), 
-                        classification = 'quantile',
-                        height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
-                        legend = T, labels = T, 
-                        slider_var = 'Year', slider_step = 2, map_title = 'Diffusion (Total)', horizontal_legend = F, slider_width = 300,
-                        legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
-                                             Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
-                                             Annual.Generation = 'Annual Generation (GWh)'))
-  # save the map
-  map$save(sprintf('%s/figure/diffusion_all.html', runpath), cdn =T)
-  iframe = "<iframe src='./figure/diffusion_all.html' name='diffusion_all_map' height=600px width=1100px style='border:none;'></iframe>"
-  return(iframe)
-}
-
-
-diffusion_sectors_map <- function(df, runpath){
-  iframes = c()
-  # aggregate the data
-  for (sector in unique(df$sector)){
-    diffusion_sector = ddply(df[df$sector == sector,], .(state_abbr,year), summarize,
-                             Market.Share = sum(number_of_adopters)/sum(customers_in_bin)*100,
-                             Market.Value = sum(market_value),
-                             Number.of.Adopters = sum(number_of_adopters),
-                             Installed.Capacity = sum(installed_capacity)/1000,
-                             Annual.Generation = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000), na.rm = F)/1e6
-    )
-    
-    # reset variable names
-    names(diffusion_sector)[1:2] = c('State','Year')
-    # make sure states are treated as character and not factor
-    diffusion_sector$State = as.character(diffusion_sector$State)
-    # create the map
-    map = anim_choro_multi(diffusion_sector, 'State', 
-                           c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity', 'Annual.Generation'),
-                           pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds', Annual.Generation = 'YlOrRd'),
-                           ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5, Annual.Generation = 5), 
-                           classification = 'quantile',
-                           height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
-                           legend = T, labels = T, 
-                           slider_var = 'Year', slider_step = 2, map_title = sprintf('Diffusion (%s)',toProper(sector)), horizontal_legend = F, slider_width = 300,
-                           legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
-                                                Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
-                                                Annual.Generation = 'Annual Generation (GWh)'))
-    # save the map
-    map$save(sprintf('%s/figure/diffusion_%s.html', runpath, sector), cdn =T)     
-    iframe = sprintf("<iframe src='./figure/diffusion_%s.html' name='diffusion_%s_map' height=600px width=1100px style='border:none;'></iframe>",sector,sector)
-    iframes = c(iframes,iframe)
-  }
-  return(iframes)
-  
-}
 
 

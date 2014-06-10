@@ -9,6 +9,8 @@ library(ggthemes)
 library(reshape2)
 library(xtable)
 library(RPostgreSQL)
+library (dplyr)
+
 
 # use for testing/debugging only:
 # setwd('/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/python')
@@ -19,114 +21,13 @@ source('../r/maps/map_functions.R')
 runpath<-commandArgs(TRUE)[1]
 scen_name<-commandArgs(TRUE)[2]
 
-con<-make_con(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", user = 'mgleason', password = 'mgleason')
-# sql = "SELECT * FROM wind_ds.outputs_all;"
-sql = "SELECT 'residential'::text as sector, 
+# two different connetions to postgres (1 used by RPostgreSQL and the other by dplyr)
+con<-make_con(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
+src = src_postgres(host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
+# lazy load the output table from postgres
+df = tbl(src,sql('SELECT * FROM wind_ds.outputs_all'))
 
-      a.gid, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
-      a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
-      a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
-      a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
-      a.value_of_ptc, a.pbi_fit_length, a.ptc_length, a.value_of_rebate, a.value_of_tax_credit_or_deduction, 
-      a.cap, a.ic, a.aep, a.payback_period, a.lcoe, a.payback_key, a.max_market_share, 
-      a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
-      a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-      a.market_value,
-      
-      b.county_id, b.state_abbr, b.census_division_abbr, b.utility_type, 
-      b.census_region, b.row_number, b.max_height, b.elec_rate_cents_per_kwh, 
-      b.carbon_price_cents_per_kwh, b.cap_cost_multiplier, b.fixed_om_dollars_per_kw_per_yr, 
-      b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
-      b.ann_cons_kwh, b.prob, b.weight, b.customers_in_bin, b.initial_customers_in_bin, 
-      b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
-      b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
-      b.aep_scale_factor, b.derate_factor, b.naep, b.nameplate_capacity_kw, 
-      b.power_curve_id, b.turbine_height_m, b.scoe,
-
-      c.initial_market_share, c.initial_number_of_adopters,
-      c.initial_capacity_mw
-      
-      FROM wind_ds.outputs_res a
-
-      LEFT JOIN wind_ds.pt_res_best_option_each_year b
-      ON a.gid = b.gid
-      and a.year = b.year
-      
-      LEFT JOIN wind_ds.pt_res_initial_market_shares c
-      ON a.gid = c.gid
-
-      UNION ALL
-      
-      SELECT 'commercial'::text as sector, 
-      
-      a.gid, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
-      a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
-      a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
-      a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
-      a.value_of_ptc, a.pbi_fit_length, a.ptc_length, a.value_of_rebate, a.value_of_tax_credit_or_deduction, 
-      a.cap, a.ic, a.aep, a.payback_period, a.lcoe, a.payback_key, a.max_market_share, 
-      a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
-      a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-      a.market_value,
-      
-      b.county_id, b.state_abbr, b.census_division_abbr, b.utility_type, 
-      b.census_region, b.row_number, b.max_height, b.elec_rate_cents_per_kwh, 
-      b.carbon_price_cents_per_kwh, b.cap_cost_multiplier, b.fixed_om_dollars_per_kw_per_yr, 
-      b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
-      b.ann_cons_kwh, b.prob, b.weight, b.customers_in_bin, b.initial_customers_in_bin, 
-      b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
-      b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
-      b.aep_scale_factor, b.derate_factor, b.naep, b.nameplate_capacity_kw, 
-      b.power_curve_id, b.turbine_height_m, b.scoe,
-
-      c.initial_market_share, c.initial_number_of_adopters,
-      c.initial_capacity_mw
-      
-      FROM wind_ds.outputs_com a
-      
-      LEFT JOIN wind_ds.pt_com_best_option_each_year b
-      ON a.gid = b.gid
-      and a.year = b.year
-
-      LEFT JOIN wind_ds.pt_com_initial_market_shares c
-      ON a.gid = c.gid
-      
-      UNION ALL
-      SELECT 'industrial'::text as sector, 
-      
-      a.gid, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
-      a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
-      a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
-      a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
-      a.value_of_ptc, a.pbi_fit_length, a.ptc_length, a.value_of_rebate, a.value_of_tax_credit_or_deduction, 
-      a.cap, a.ic, a.aep, a.payback_period, a.lcoe, a.payback_key, a.max_market_share, 
-      a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
-      a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-      a.market_value,
-      
-      b.county_id, b.state_abbr, b.census_division_abbr, b.utility_type, 
-      b.census_region, b.row_number, b.max_height, b.elec_rate_cents_per_kwh, 
-      b.carbon_price_cents_per_kwh, b.cap_cost_multiplier, b.fixed_om_dollars_per_kw_per_yr, 
-      b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
-      b.ann_cons_kwh, b.prob, b.weight, b.customers_in_bin, b.initial_customers_in_bin, 
-      b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
-      b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
-      b.aep_scale_factor, b.derate_factor, b.naep, b.nameplate_capacity_kw, 
-      b.power_curve_id, b.turbine_height_m, b.scoe,
-
-      c.initial_market_share, c.initial_number_of_adopters,
-      c.initial_capacity_mw      
-      
-      FROM wind_ds.outputs_ind a
-
-      LEFT JOIN wind_ds.pt_ind_best_option_each_year b
-      ON a.gid = b.gid
-      and a.year = b.year
-
-      LEFT JOIN wind_ds.pt_ind_initial_market_shares c
-      ON a.gid = c.gid"
-
-df =  dbGetQuery(con,sql)
+# df =  read.csv(paste0(runpath,'/outputs.csv.gz'))
 
 opts_knit$set(base.dir = runpath)
 knit2html("../r/graphics/plot_outputs.md", output = paste0(runpath,"/DG Wind report.html"), title = "DG Wind report", stylesheet = "../r/graphics/plot_outputs.css",
@@ -134,11 +35,11 @@ knit2html("../r/graphics/plot_outputs.md", output = paste0(runpath,"/DG Wind rep
 dbDisconnect(con)
 
 
-ggplot(data = df, aes(x = excess_generation_factor, color = sector))+
-  stat_ecdf()
-
-ggplot(data = data.frame(x = rnorm(n=10000,mean=0.5,sd=0.1)), aes(x))+
-  stat_ecdf()
+# ggplot(data = df, aes(x = excess_generation_factor, color = sector))+
+#   stat_ecdf()
+# 
+# ggplot(data = data.frame(x = rnorm(n=10000,mean=0.5,sd=0.1)), aes(x))+
+#   stat_ecdf()
 
 
 

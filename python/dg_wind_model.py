@@ -250,7 +250,7 @@ def main():
             #outputs = outputs.fillna(0)
             #outputs.to_csv(out_path + '/outputs.csv')
             # copy csv from postgres
-            datfunc.copy_outputs_to_csv(out_path, cur)
+            datfunc.copy_outputs_to_csv(out_path, cur, con)
             
             # copy the input scenario spreadsheet
             shutil.copy(input_scenario, out_path)
