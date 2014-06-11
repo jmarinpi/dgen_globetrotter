@@ -433,7 +433,7 @@ diffusion_sectors_map <- function(df, runpath){
   iframes = c()
   # aggregate the data
   # get the unique sectors in the table
-  sectors = as.character(collect(summarize(df, distinct(sector))))
+  sectors = collect(summarise(df, distinct(sector)))[,1]
   for (sector in sectors){
     f = filter(df, sector == sector)
     g = group_by(df, state_abbr, year)

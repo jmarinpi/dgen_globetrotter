@@ -229,8 +229,8 @@ def main():
             
             ## 12. Outputs & Visualization
             # set output subfolder
-            scen_name = scenario_opts['scenario_name']
             dup_n = 1
+            scen_name = scenario_opts['scenario_name']
             if scen_name in scenario_names:
                 msg = "Warning: Scenario name %s is a duplicate. Renaming to %s_%s" % (scen_name, scen_name, dup_n)
                 logger.warning(msg)
@@ -239,35 +239,19 @@ def main():
             scenario_names.append(scen_name)
             out_path = os.path.join(out_dir,scen_name)
             out_subfolders.append(out_path)
-            os.makedirs(out_path)
+            os.makedirs(out_path)            
             
-            # path to the plot_outputs R script        
-            plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
-                    
+            # copy outputs to csv    
             msg = 'Writing outputs'
             logger.info(msg)
-            # original method based on in memory df
-            #outputs = outputs.fillna(0)
-            #outputs.to_csv(out_path + '/outputs.csv')
-            # copy csv from postgres
             datfunc.copy_outputs_to_csv(out_path, cur, con)
-            
             # copy the input scenario spreadsheet
             shutil.copy(input_scenario, out_path)
+            # create output html report
+            datfunc.create_scenario_report(scen_name, out_path, cur, con, cfg.Rscript_path, logger)
             
-            #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
-            # for linux and mac, this needs to be formatted as a list of args passed to subprocess
-            command = [cfg.Rscript_path,'--vanilla',plot_outputs_path,out_path,scen_name]
-            msg = 'Creating outputs report'            
-            logger.info(msg)
-            proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            messages = proc.communicate()
-            if 'error' in messages[1].lower():
-                logger.error(messages[1])
-            if 'warning' in messages[1].lower():
-                logger.warning(messages[1])
-            returncode = proc.returncode
-            msg = 'Model completed at %s run took %.1f seconds' % (time.ctime(), time.time() - model_init)                 
+            
+            msg = 'Model completed at %s run took %.1f seconds' % (time.ctime(), time.time() - model_init)   
             
             logger.info(msg)
         

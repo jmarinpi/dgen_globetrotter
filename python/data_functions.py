@@ -22,6 +22,8 @@ reload(logging)
 import colorlog
 import colorama
 import gzip
+import subprocess
+import os
 
 def init_log(log_file_path):
     
@@ -375,6 +377,34 @@ def copy_outputs_to_csv(out_path, cur, con):
     cur.copy_expert('COPY wind_ds.outputs_all TO STDOUT WITH CSV HEADER;', f)
     f.close()
 
+def create_scenario_report(scen_name, out_path, cur, con, Rscript_path, logger = None):
+           
+    # path to the plot_outputs R script        
+    plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
+    
+    #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
+    # for linux and mac, this needs to be formatted as a list of args passed to subprocess
+    command = [Rscript_path,'--vanilla',plot_outputs_path,out_path,scen_name]
+    msg = 'Creating outputs report'
+    if logger is not None:            
+        logger.info(msg)
+    else:
+        print msg
+    proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    messages = proc.communicate()
+    if 'error' in messages[1].lower():
+        if logger is not None:
+            logger.error(messages[1])
+        else:
+            print "Error: %s" % messages[1]
+    if 'warning' in messages[1].lower():
+        if logger is not None:
+            logger.warning(messages[1])
+        else:
+            print "Warning: %s" % messages[1]
+    returncode = proc.returncode    
+
+    
 
 def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor,
