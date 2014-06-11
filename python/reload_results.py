@@ -11,11 +11,13 @@ import config as cfg
 import gzip
 import os
 
+####################################################################################################
+# input arguments
 #source_csv = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/runs/results_20140610_175211/co_res_demo/outputs.csv.gz'
-source_csv = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/runs/test/outputs.csv.gz'
-scenario_name = 'my_scenario'
+source_csv = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/runs/results_20140611_152914/co_res_demo/outputs.csv.gz'
+scenario_options_csv = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/runs/results_20140611_152914/co_res_demo/scenario_options_summary.csv'
 out_path = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/runs/test2'
-
+####################################################################################################
 
 if not os.path.exists(source_csv):
     raise Exception('Source csv does not exist: %s' % source_csv)
@@ -116,9 +118,27 @@ con.commit()
 # close the source csv.gz
 f.close()
 
+# clear existing scenario options table in postgres
+sql = 'DELETE FROM wind_ds.scenario_options;'
+cur.execute(sql)
+con.commit()
+
+# load the scenario options from the csv file
+# open the csv
+f2 = open(scenario_options_csv, 'r')
+# copy the data to the table
+cur.copy_expert('COPY wind_ds.scenario_options FROM STDIN WITH CSV HEADER;',f2)
+# commit changes
+con.commit()
+# close the source csv.gz
+f2.close()
+
+# get the scenario name
+sql = 'SELECT scenario_name FROM wind_ds.scenario_options;'
+cur.execute(sql)
+scenario_name = cur.fetchone()['scenario_name']
 
 # create output html report
-print 'Creating output report'
 datfunc.create_scenario_report(scenario_name, out_path, cur, con, cfg.Rscript_path)
 
 print "Process completed successfully"

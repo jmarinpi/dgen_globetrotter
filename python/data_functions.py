@@ -224,6 +224,7 @@ def write_outputs(con, cur, outputs_df, sector_abbr):
     # commit the additions and close the stringio file (clears memory)
     con.commit()    
     s.close()
+    
 
     
     
@@ -376,6 +377,11 @@ def copy_outputs_to_csv(out_path, cur, con):
     f = gzip.open(out_path+'/outputs.csv.gz','w')
     cur.copy_expert('COPY wind_ds.outputs_all TO STDOUT WITH CSV HEADER;', f)
     f.close()
+    
+    # write the scenario optoins to csv as well
+    f2 = open(out_path+'/scenario_options_summary.csv','w')
+    cur.copy_expert('COPY wind_ds.scenario_options TO STDOUT WITH CSV HEADER;',f2)
+    f2.close()
 
 def create_scenario_report(scen_name, out_path, cur, con, Rscript_path, logger = None):
            
