@@ -13,7 +13,7 @@ library (dplyr)
 
 
 # use for testing/debugging only:
-# setwd('/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/python')
+setwd('/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/python')
 
 source("../r/graphics/output_funcs.R")
 source('../r/maps/map_functions.R', chdir = T)

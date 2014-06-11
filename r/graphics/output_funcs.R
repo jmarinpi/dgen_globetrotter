@@ -395,7 +395,7 @@ lcoe_cdf<-function(df){
 
 
 
-diffusion_all_map <- function(df, runpath){
+diffusion_all_map <- function(df){
   # aggregate the data
   g = group_by(df, state_abbr, year)
   diffusion_all = collect(summarise(g,
@@ -423,13 +423,11 @@ diffusion_all_map <- function(df, runpath){
                                               Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
                                               Annual.Generation = 'Annual Generation (GWh)'))
   # save the map
-  map$save(sprintf('%s/figure/diffusion_all.html', runpath), cdn =T)
-  iframe = "<iframe src='./figure/diffusion_all.html' name='diffusion_all_map' height=600px width=1100px style='border:none;'></iframe>"
-  return(iframe)
+  map$show('iframesrc', cdn = T)
 }
 
 
-diffusion_sectors_map <- function(df, runpath){
+diffusion_sectors_map <- function(df){
   iframes = c()
   # aggregate the data
   # get the unique sectors in the table
@@ -463,11 +461,9 @@ diffusion_sectors_map <- function(df, runpath){
                                                 Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
                                                 Annual.Generation = 'Annual Generation (GWh)'))
     # save the map
-    map$save(sprintf('%s/figure/diffusion_%s.html', runpath, sector), cdn =T)     
-    iframe = sprintf("<iframe src='./figure/diffusion_%s.html' name='diffusion_%s_map' height=600px width=1100px style='border:none;'></iframe>",sector,sector)
-    iframes = c(iframes,iframe)
+      map$show('iframesrc', cdn = T)
   }
-  return(iframes)
+#   return(iframes)
 }
 
 

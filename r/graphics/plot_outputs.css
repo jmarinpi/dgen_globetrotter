@@ -19,6 +19,10 @@ body, td {
    counter-reset: h1counter;
 }
 
+iframe.rChart {
+   border: none;
+   height: 600px !important;
+}
 
 
 tt, code, pre {
