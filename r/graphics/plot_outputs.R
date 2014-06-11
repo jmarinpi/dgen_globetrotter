@@ -16,7 +16,7 @@ library (dplyr)
 # setwd('/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/python')
 
 source("../r/graphics/output_funcs.R")
-source('../r/maps/map_functions.R')
+source('../r/maps/map_functions.R', chdir = T)
 
 runpath<-commandArgs(TRUE)[1]
 scen_name<-commandArgs(TRUE)[2]

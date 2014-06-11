@@ -6,6 +6,8 @@ library(RColorBrewer)
 library(lattice)
 library(classInt)
 
+fp = getwd()
+
 toProper <- function(s, strict = FALSE) {
   cap <- function(s) paste(toupper(substring(s, 1, 1)),
 {s <- substring(s, 2); if(strict) tolower(s) else s},
@@ -112,7 +114,7 @@ anim_choro_multi = function(data_frame, region_var, value_vars, pals = list(), n
   }
   
   d = rMaps::Datamaps$new()
-  d$templates$script = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/r/maps/dmap.html'
+  d$templates$script = file.path(fp,'dmap.html')
   d$params$id = 'chart1'
   d$set(map_title = map_title)
   d$set(height = height)

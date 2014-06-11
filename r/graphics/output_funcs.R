@@ -92,7 +92,7 @@ cf_by_sector_and_year<-function(df){
 cf_supply_curve<-function(df){
   #' National capacity factor supply curve
   # get the starting year
-  start_year = as.numeric(collect(summarize(df, min(year))))
+  start_year = as.numeric(collect(summarise(df, min(year))))
   # filter to only the start year, returning only the naep and load_kwh_in_bin cols
   data = collect(select(filter(df, year == start_year),naep,load_kwh_in_bin))
   data <- transform(data, cf = naep/8760)
@@ -111,7 +111,7 @@ cf_supply_curve<-function(df){
 elec_rate_supply_curve<-function(df){
   #' National electricity rate supply curve
   # get the starting year
-  start_year = as.numeric(collect(summarize(df, min(year))))
+  start_year = as.numeric(collect(summarise(df, min(year))))
   # filter to only the start year, returning only the elec_rate_cents_per_kwh and load_kwh_in_bin cols
   data = collect(select(filter(df, year == start_year),elec_rate_cents_per_kwh,load_kwh_in_bin))  
   data <- transform(data, load = load_kwh_in_bin/(1e6 * 8760), rate = elec_rate_cents_per_kwh)
@@ -131,8 +131,8 @@ dist_of_cap_selected<-function(df,scen_name){
   # What size system are customers selecting in 2014?
   
   # get the starting and end years
-  start_year = as.numeric(collect(summarize(df, min(year))))
-  end_year = as.numeric(collect(summarize(df, max(year))))
+  start_year = as.numeric(collect(summarise(df, min(year))))
+  end_year = as.numeric(collect(summarise(df, max(year))))
   
   # filter to only the start year, returning only the elec_rate_cents_per_kwh and load_kwh_in_bin cols
   f = filter(df, year %in% c(start_year,end_year))  
@@ -166,7 +166,7 @@ dist_of_height_selected<-function(df,scen_name){
   #What heights are prefered?
   
   # get the starting year
-  start_year = as.numeric(collect(summarize(df, min(year))))
+  start_year = as.numeric(collect(summarise(df, min(year))))
   # filter to starting year
   f = filter(df, year == start_year)  
   g = group_by(f, cap, turbine_height_m, sector)
@@ -366,8 +366,8 @@ lcoe_cdf<-function(df){
   # CDF of lcoe for the first and final model year, faceted by sector. Note that
   # CDF is of bins, and is not weighted by # of custs in bin
   
-  start_year = as.numeric(collect(summarize(df, min(year))))
-  end_year = as.numeric(collect(summarize(df, max(year))))
+  start_year = as.numeric(collect(summarise(df, min(year))))
+  end_year = as.numeric(collect(summarise(df, max(year))))
   yrs = c(start_year, end_year)
   
   # filter the data to rows in the start or end year
