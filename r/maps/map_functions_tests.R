@@ -1,6 +1,7 @@
 library(rCharts)
 library(rMaps)
 source('/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/r/maps/map_functions.R', chdir = T)
+# source('S:/mgleason/DG_Wind/diffusion_repo/r/maps/map_functions.R', chdir = T)
 
 ######################################################
 # tests
@@ -25,7 +26,8 @@ m3 = anim_choro_multi(vc2010, 'State', c('Crime','rand'), pals = list(Crime = 'R
                       ncuts = list(Crime = 5, rand = 5), height = 400, width = 800, scope = 'usa', 
                       legend = T, labels = T, map_title = 'My Map', 
                       legend_titles = list(Crime = 'Crime (count)', rand = 'Random Variable'), popup_label_precision = 1)
-m3$save('/Users/mgleason/m3.html', cdn = T)
+# m3$save('/Users/mgleason/m3.html', cdn = T)
+m3$save('C:/NREL_Projects/d.html',cdn = T)
 
 m4 = anim_choro_multi(vc2010, 'State', c('Crime'), pals = list(Crime = 'Reds'),
                       ncuts = list(Crime = 5), height = 400, width = 800, scope = 'usa', 

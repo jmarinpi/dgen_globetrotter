@@ -15,6 +15,15 @@ sep = "", collapse = " " )
 sapply(strsplit(s, split = " "), cap, USE.NAMES = !is.null(names(s)))
 }
 
+# this is necessary because the most recent version of rMaps changed the show() function, and it no longer works correctly
+showIframeSrc = function (map, cdn) 
+{
+  writeLines(c("<iframe srcdoc='", htmlspecialchars(map$render(map$params$chartId, cdn)), 
+               "' scrolling='no' seamless class='rChart ", map$lib, 
+               " '", paste0("id='iframe-", map$params$dom, "'>"), "</iframe>", 
+               "<style>iframe.rChart{ width: 100%; height: 400px;}</style>"))
+  return(invisible())
+}
 
 cut.format = function (x, breaks, labels = NULL, include.lowest = TRUE, right = TRUE, 
                        dig.lab = 3L, ordered_result = FALSE, big.mark = '', ...) 

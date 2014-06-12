@@ -423,12 +423,11 @@ diffusion_all_map <- function(df){
                                               Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
                                               Annual.Generation = 'Annual Generation (GWh)'))
   # save the map
-  map$show('iframesrc', cdn = T)
+  showIframeSrc(map, cdn = T)
 }
 
 
 diffusion_sectors_map <- function(df){
-  iframes = c()
   # aggregate the data
   # get the unique sectors in the table
   sectors = collect(summarise(df, distinct(sector)))[,1]
@@ -461,7 +460,7 @@ diffusion_sectors_map <- function(df){
                                                 Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
                                                 Annual.Generation = 'Annual Generation (GWh)'))
     # save the map
-      map$show('iframesrc', cdn = T)
+    showIframeSrc(map, cdn = T)
   }
 #   return(iframes)
 }
