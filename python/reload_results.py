@@ -14,8 +14,8 @@ import os
 ####################################################################################################
 # input arguments
 #source_csv = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/runs/results_20140610_175211/co_res_demo/outputs.csv.gz'
-source_csv = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/runs/results_20140611_152914/co_res_demo/outputs.csv.gz'
-scenario_options_csv = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/runs/results_20140611_152914/co_res_demo/scenario_options_summary.csv'
+source_csv = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/runs/results_20140618_155630/ca_res_demo/outputs.csv.gz'
+scenario_options_csv = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/runs/results_20140618_155630/ca_res_demo/scenario_options_summary.csv'
 out_path = '/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/runs/test2'
 ####################################################################################################
 
@@ -73,6 +73,8 @@ sql = '''DROP TABLE wind_ds.outputs_all;
           census_division_abbr text,
           utility_type character varying(9),
           census_region text,
+          pca_reg text,
+          reeds_reg integer,
           row_number bigint,
           max_height integer,
           elec_rate_cents_per_kwh numeric,

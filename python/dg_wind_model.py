@@ -244,7 +244,7 @@ def main():
             # copy outputs to csv    
             msg = 'Writing outputs'
             logger.info(msg)
-            datfunc.copy_outputs_to_csv(out_path, cur, con)
+            datfunc.copy_outputs_to_csv(out_path, sectors, cur, con)
             # copy the input scenario spreadsheet
             shutil.copy(input_scenario, out_path)
             # create output html report

@@ -571,14 +571,85 @@ group by county_id; --10,000 - 13000 ms
 
 
 
--- add excess_generation_factor
+-- add pca region
+DROP TABLE IF EXISTS wind_ds_data.pt_grid_us_res_pca_reg_lookup;
+CREATE TABLE wind_ds_data.pt_grid_us_res_pca_reg_lookup (
+	gid integer,
+	pca_reg integer,
+	reeds_reg integer);
+
+SELECT parsel_2('dav-gis','mgleason','mgleason','wind_ds.pt_grid_us_res','gid',
+		'SELECT a.gid, b.pca_reg, b.demreg as reeds_reg
+		FROM  wind_ds.pt_grid_us_res a
+		INNER JOIN reeds.reeds_regions b
+		ON ST_Intersects(a.the_geom_4326,b.the_geom)
+		WHERE b.pca_reg NOT IN (135,136);',
+	'wind_ds_data.pt_grid_us_res_pca_reg_lookup', 'a',16);
+
+-- join the info back in
 ALTER TABLE wind_ds.pt_grid_us_res 
-ADD COLUMN excess_generation_factor numeric;
+ADD COLUMN pca_reg integer,
+ADD COLUMN reeds_reg integer;
 
--- ** this is dummy data for now -- eventually it will come from the i,j cell
-UPDATE wind_ds.pt_grid_us_res 
-SET excess_generation_factor = 0.5;
+CREATE INDEX pt_grid_us_res_pca_reg_lookup_gid_btree ON wind_ds_data.pt_grid_us_res_pca_reg_lookup using btree(gid);
 
+UPDATE wind_ds.pt_grid_us_res a
+SET (pca_reg,reeds_reg) = (b.pca_reg,b.reeds_reg)
+FROM wind_ds_data.pt_grid_us_res_pca_reg_lookup b
+where a.gid = b.gid;
+
+-- how many are null?
+CREATE INDEX pt_grid_us_res_pca_reg_btree ON wind_ds.pt_grid_us_res USING btree(pca_reg);
+CREATE INDEX pt_grid_us_res_reeds_reg_btree ON wind_ds.pt_grid_us_res USING btree(reeds_reg);
+
+-- any missing?
+select count(*)
+FROM wind_ds.pt_grid_us_res 
+where pca_reg is null or reeds_reg is null;
+--6208
+
+select count(*)
+FROM wind_ds.pt_grid_us_res 
+where pca_reg is null;
+-- 6208
+
+select count(*)
+FROM wind_ds.pt_grid_us_res 
+where reeds_reg is null;
+-- 6208
+
+-- fix the missing based on the closest
+DROP TABLE IF EXISTS wind_ds_data.pt_grid_us_res_pca_reg_missing_lookup;
+CREATE TABLE wind_ds_data.pt_grid_us_res_pca_reg_missing_lookup AS
+with a AS(
+	select gid, the_geom_900914
+	FROM wind_ds.pt_grid_us_res
+	where pca_reg is null),
+b as (
+	SELECT a.gid, a.the_geom_900914, 
+		(SELECT b.gid
+		 FROM wind_ds.pt_grid_us_res b
+		 where b.pca_reg is not null
+		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914
+		 LIMIT 1) as nn_gid
+	FROM a)
+SELECT b.gid, b.the_geom_900914, b.nn_gid, c.pca_reg, c.reeds_reg
+from b
+LEFT JOIN wind_ds.pt_grid_us_res c
+ON b.nn_gid = c.gid;
+-- **
+  
+--update the points table
+UPDATE wind_ds.pt_grid_us_res a
+SET (pca_reg,reeds_reg) = (b.pca_reg,b.reeds_reg)
+FROM wind_ds_data.pt_grid_us_res_pca_reg_missing_lookup b
+where a.gid = b.gid
+and a.pca_reg is null;
+ 
+-- check for any remaining nulls?
+select count(*)
+FROM wind_ds.pt_grid_us_res 
+where pca_reg is null or reeds_reg is null;
 
 -- add foreign keys
 	-- for county_id to county_geom.county id
