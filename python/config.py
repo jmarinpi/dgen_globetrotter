@@ -55,3 +55,7 @@ npar = 4
 # load scenario input sheet?
 load_scenario_inputs = True
 
+# Should a html report file be created?
+create_report = True
+init_model = True
+

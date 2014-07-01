@@ -28,74 +28,76 @@ import subprocess
 import datetime
 import config as cfg
 import shutil
+import sys, getopt
+import pickle
 
+def main(mode = None, resume_year = None):
 
-def main():
-
-    try:
-        # make output folder (do this first to hold the log file)
+    if mode == 'ReEDS':
+        if resume_year == 2014:
+            cfg.init_model = True
+            cdate = time.strftime('%Y%m%d_%H%M%S')    
+            out_dir = '%s/runs/results_%s' %(os.path.dirname(os.getcwd()),cdate)        
+            os.makedirs(out_dir)
+            input_scenarios = None
+            market_last_year = None
+        else:
+            cfg.init_model = False
+            # Load files here
+            market_last_year = pd.read_pickle("market_last_year.pkl")   
+            with open('saved_vars.pickle', 'rb') as handle:
+                saved_vars = pickle.load(handle)
+            out_dir = saved_vars['out_dir']
+            input_scenarios = saved_vars['input_scenarios']
+        #cfg.init_model,out_dir,input_scenarios, market_last_year = datfunc.load_resume_vars(cfg, resume_year)
+    else:
         cdate = time.strftime('%Y%m%d_%H%M%S')    
         out_dir = '%s/runs/results_%s' %(os.path.dirname(os.getcwd()),cdate)        
         os.makedirs(out_dir)
-        log_file = os.path.join(out_dir,'dg_wind_model.log')
-            
-        logger = datfunc.init_log(log_file)
-        
-        model_init = time.time()
-        
-        msg = 'Initiating model at %s' %time.ctime()
-        logger.info(msg)
-        
-        # 3. check that config values are acceptable
     
-        # check that random generator seed is in the acceptable range
-        if cfg.random_generator_seed < 0 or cfg.random_generator_seed > 1:
-            raise ValueError("""random_generator_seed in config.py is not in the range of acceptable values.
-                            Change to a value in the range >= 0 and <= 1.""")
-                            
+    # check that random generator seed is in the acceptable range
+    if cfg.random_generator_seed < 0 or cfg.random_generator_seed > 1:
+        raise ValueError("""random_generator_seed in config.py is not in the range of acceptable values. Change to a value in the range >= 0 and <= 1.""")                           
         # check that number of customer bins is in the acceptable range
-        if cfg.customer_bins not in (10,50,100,500):
-            raise ValueError("""Error: customer_bins in config.py is not in the range of acceptable values.
-                                Change to a value in the set (10,50,100,500).""")    
-        
-        
-        # 4. Connect to Postgres and configure connection(s)
-        # (to edit login information, edit config.py)
-        
+    if cfg.customer_bins not in (10,50,100,500):
+        raise ValueError("""Error: customer_bins in config.py is not in the range of acceptable values. Change to a value in the set (10,50,100,500).""") 
+    model_init = time.time()
+    
+    logger = datfunc.init_log(os.path.join(out_dir,'dg_wind_model.log'))
+    logger.info('Initiating model at %s' %time.ctime())
+
+    try:
+       
         # if parallelization is off, reduce npar to 1
         if not cfg.parallelize:
             cfg.npar = 1
-        
+
+        # 4. Connect to Postgres and configure connection(s) (to edit login information, edit config.py)
         # create a single connection to Postgres Database -- this will serve as the main cursor/connection
         con, cur = datfunc.make_con(cfg.pg_conn_string)
-        # register access to hstore in postgres
-        pgx.register_hstore(con)
+        pgx.register_hstore(con) # register access to hstore in postgres
         
         # configure pandas display options
         pd.set_option('max_columns', 9999)
         pd.set_option('max_rows',10)
         
         # find the input excel spreadsheets
-        if cfg.load_scenario_inputs:    
+        if cfg.init_model:    
             input_scenarios = [s for s in glob.glob("../input_scenarios/*.xls*") if not '~$' in s]
             if len(input_scenarios) == 0:
                 raise ValueError("""No input scenario spreadsheet were found in the input_scenarios folder.""")
         else:
             input_scenarios = ['']
-    
-    
-    
+            
         # run the model for each input scenario spreadsheet
         scenario_names = []
         out_subfolders = []
-        for i, input_scenario in enumerate(input_scenarios):
-            msg = '--------------------------------------------'
-            logger.info(msg) 
-            msg = "Running Scenario %s of %s" % (i+1, len(input_scenarios))
-            logger.info(msg)
+        for i, input_scenario in enumerate(input_scenarios): 
+            logger.info('--------------------------------------------') 
+            logger.info("Running Scenario %s of %s" % (i+1, len(input_scenarios)))
             
             # 5. Load Input excel spreadsheet to Postgres
-            if cfg.load_scenario_inputs:
+            if cfg.init_model:
                 msg = 'Loading input data from Input Scenario Worksheet'
                 logger.info(msg)
                 try:
@@ -107,23 +109,24 @@ def main():
                     logger.error(msg)
                     sys.exit(-1)
             else:
-                msg = "Warning: Skipping Import of Input Scenario Worksheet. This should only be done while testing."
-                logger.warning(msg)
+                logger.warning("Warning: Skipping Import of Input Scenario Worksheet. This should only be done in resume mode.")
             
             
-            # 6. Read in scenario option variables 
+            # 6. Read in scenario option variables
             scenario_opts = datfunc.get_scenario_options(cur) 
-            msg = 'Scenario Name: %s' % scenario_opts['scenario_name']
-            logger.info(msg)
+            logger.info('Scenario Name: %s' % scenario_opts['scenario_name'])
             exclusions = datfunc.get_exclusions(cur) # get exclusions
             load_growth_scenario = scenario_opts['load_growth_scenario'] # get financial variables
             net_metering = scenario_opts['net_metering_availability']
             inflation = scenario_opts['ann_inflation']
+            end_year = scenario_opts['end_year']
             
             # start year comes from config
-            end_year = scenario_opts['end_year']
-            model_years = range(cfg.start_year,end_year+1,2)
-            
+            if mode == 'ReEDS':
+                model_years = [resume_year]
+            else:
+                model_years = range(cfg.start_year,end_year+1,2)
+              
             # get the sectors to model
             sectors = datfunc.get_sectors(cur)
             
@@ -133,144 +136,98 @@ def main():
             market_projections = datfunc.get_market_projections(con)
             
             # 7. Combine All of the Temporally Varying Data in a new Table in Postgres
-            datfunc.combine_temporal_data(cur, con, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.values()), cfg.preprocess, logger)
-            
+            if cfg.init_model:
+                datfunc.combine_temporal_data(cur, con, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.values()), cfg.preprocess, logger)
+                              
             # 8. Set up the Main Data Frame for each sector
             outputs = pd.DataFrame()
-            datfunc.clear_outputs(con,cur) # clear results from previous run 
+            datfunc.clear_outputs(con,cur) # clear results from previous run
+              
             for sector_abbr, sector in sectors.iteritems():
                 # define the rate escalation source and max market curve for the current sector
                 rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
                 max_market_curve = scenario_opts['%s_max_market_curve' % sector_abbr]
                 # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
-                t0 = time.time()
-                main_table = datfunc.generate_customer_bins(cur, con, cfg.random_generator_seed, cfg.customer_bins, sector_abbr, sector, 
-                                               cfg.start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
-                                               cfg.oversize_turbine_factor, cfg.undersize_turbine_factor, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger = logger)
-                print time.time()-t0
-            
+                if cfg.init_model:
+                    main_table = datfunc.generate_customer_bins(cur, con, cfg.random_generator_seed, cfg.customer_bins, sector_abbr, sector, 
+                                                   cfg.start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
+                                                   cfg.oversize_turbine_factor, cfg.undersize_turbine_factor, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger = logger)
+                else:
+                    main_table = 'wind_ds.pt_%s_best_option_each_year' % sector_abbr
+                
                 # get dsire incentives for the generated customer bins
                 dsire_incentives = datfunc.get_dsire_incentives(cur, con, sector_abbr, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger)
                 # Pull data from the Main Table to a Data Frame for each year
-                
                 for year in model_years:
-                    msg = 'Working on %s for %s sector' %(year, sector_abbr) 
-                    logger.info(msg)
+                    logger.info('Working on %s for %s sector' %(year, sector_abbr))
                     df = datfunc.get_main_dataframe(con, main_table, year)
-                    df['sector'] = sector.lower()
-                    df = pd.merge(df,market_projections[['year', 'customer_expec_elec_rates']], how = 'left', on = 'year')
-                    df = pd.merge(df,financial_parameters, how = 'left', on = 'sector')
-                    
-                    ## Diffusion from previous year ## 
-                    if year == cfg.start_year: 
-                        # get the initial market share per bin by county
-                        initial_market_shares = datfunc.get_initial_market_shares(cur, con, sector_abbr, sector)
-                        # join this to the df to on county_id
-                        df = pd.merge(df, initial_market_shares, how = 'left', on = 'gid')
-                        df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']        
-                    else:
-                        df = pd.merge(df,market_last_year, how = 'left', on = 'gid')
-                   
                     # 9. Calculate economics including incentives
-                    # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years. 
-                    if scenario_opts['overwrite_exist_inc']:
-                        value_of_incentives = datfunc.calc_manual_incentives(df,con, year)
-                    else:
-                        inc = pd.merge(df,dsire_incentives,how = 'left', on = 'gid')
-                        value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
-                    df = pd.merge(df, value_of_incentives, how = 'left', on = 'gid')
-                    
-                    revenue, costs, cfs = finfunc.calc_cashflows(df,deprec_schedule,  yrs = 30)      
-                                    
-                    #Disabled at moment because of computation time
-                    #df['irr'] = finfunc.calc_irr(cfs)
-                    #df['mirr'] = finfunc.calc_mirr(cfs, finance_rate = df.discount_rate, reinvest_rate = df.discount_rate + 0.02)
-                    #df['npv'] = finfunc.calc_npv(cfs,df.discount_rate)
-                    
-                    payback = finfunc.calc_payback(cfs)
-                    ttd = finfunc.calc_ttd(cfs, df)  
-            
-                    df['payback_period'] = np.where(df['sector'] == 'residential',payback, ttd)
-                    df['lcoe'] = finfunc.calc_lcoe(costs,df.aep.values, df.discount_rate)
-                    df['payback_key'] = (df['payback_period']*10).astype(int)
-                    df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'payback_key'])
-                    
+                    if year == cfg.start_year:
+                        market_last_year = 0 #market_last_year is actually initialied in calc_economics
+                    df = finfunc.calc_economics(df, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule)
+                   
                     # 10. Calulate diffusion
                     ''' Calculates the market share (ms) added in the solve year. Market share must be less
                     than max market share (mms) except initial ms is greater than the calculated mms.
                     For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
                     decrease if economics deteroriate.
                     '''             
-                    
-                    df['diffusion_market_share'] = diffunc.calc_diffusion(df.payback_period.values,df.max_market_share.values, df.market_share_last_year.values)
-                    df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
-                    df['new_market_share'] = df['market_share']-df['market_share_last_year']
-                    df['new_market_share'] = np.where(df['market_share'] > df['max_market_share'], 0, df['new_market_share'])
-                    
-                    df['new_adopters'] = df['new_market_share'] * df['customers_in_bin']
-                    df['new_capacity'] = df['new_adopters'] * df['nameplate_capacity_kw']
-                    df['new_market_value'] = df['new_adopters'] * df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw']
-                    # then add these values to values from last year to get cumulative values:
-                    df['number_of_adopters'] = df['number_of_adopters_last_year'] + df['new_adopters']
-                    df['installed_capacity'] = df['installed_capacity_last_year'] + df['new_capacity']
-                    df['market_value'] = df['market_value_last_year'] + df['new_market_value']
-    
-                    
+                    df, market_last_year = diffunc.calc_diffusion(df)
                     # 11. Save outputs from this year and update parameters for next solve       
-                    # Save outputs
-                    # original method (memory intensive)
-                    # outputs = outputs.append(df, ignore_index = 'True')
-                    # postgres method
                     datfunc.write_outputs(con, cur, df, sector_abbr)                        
-                    
-                    market_last_year = df[['gid','market_share', 'number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
-                    market_last_year.columns = ['gid', 'market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
-            
-            
+                       
             ## 12. Outputs & Visualization
             # set output subfolder
-            dup_n = 1
-            scen_name = scenario_opts['scenario_name']
-            if scen_name in scenario_names:
-                msg = "Warning: Scenario name %s is a duplicate. Renaming to %s_%s" % (scen_name, scen_name, dup_n)
-                logger.warning(msg)
-                scen_name = "%s_%s" % (scen_name, dup_n)
-                dup_n += 1
-            scenario_names.append(scen_name)
-            out_path = os.path.join(out_dir,scen_name)
-            out_subfolders.append(out_path)
-            os.makedirs(out_path)            
+            if mode == 'ReEDS':
+                #sql = """SELECT a.*,b.pca_reg
+                #FROM wind_ds.outputs_all a
+                #LEFT JOIN wind_ds.pt_grid_us_res b
+                #ON a.gid = b.gid;"""
+                reeds_out = sqlio.read_frame('SELECT * FROM wind_ds.outputs_all', con)
+                #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()
+                market_last_year.to_pickle("market_last_year.pkl")
+                saved_vars = {'out_dir': out_dir, 'input_scenarios':input_scenarios}
+                with open('saved_vars.pickle', 'wb') as handle:
+                    pickle.dump(saved_vars, handle)  
+                return reeds_out
+                
+            else:
+                dup_n = 1
+                scen_name = scenario_opts['scenario_name']
+                if scen_name in scenario_names:
+                    logger.warning("Warning: Scenario name %s is a duplicate. Renaming to %s_%s" % (scen_name, scen_name, dup_n))
+                    scen_name = "%s_%s" % (scen_name, dup_n)
+                    dup_n += 1
+                scenario_names.append(scen_name)
+                out_path = os.path.join(out_dir,scen_name)
+                out_subfolders.append(out_path)
+                os.makedirs(out_path)            
+                        
+                # copy outputs to csv     
+                logger.info('Writing outputs')
+                datfunc.copy_outputs_to_csv(out_path, sectors, cur, con)
+                # copy the input scenario spreadsheet
+                shutil.copy(input_scenario, out_path)
+                # create output html report
+                datfunc.create_scenario_report(scen_name, out_path, cur, con, cfg.Rscript_path, logger)    
+                logger.info('Model completed at %s run took %.1f seconds' % (time.ctime(), time.time() - model_init))
             
-            # copy outputs to csv    
-            msg = 'Writing outputs'
-            logger.info(msg)
-            datfunc.copy_outputs_to_csv(out_path, sectors, cur, con)
-            # copy the input scenario spreadsheet
-            shutil.copy(input_scenario, out_path)
-            # create output html report
-            datfunc.create_scenario_report(scen_name, out_path, cur, con, cfg.Rscript_path, logger)
-            
-            
-            msg = 'Model completed at %s run took %.1f seconds' % (time.ctime(), time.time() - model_init)   
-            
-            logger.info(msg)
-        
-        # assemble report to compare scenarios
-        if len(input_scenarios) > 1:
-            scenario_analysis_path = '%s/r/graphics/scenario_analysis.R' % os.path.dirname(os.getcwd())
-            scenario_output_paths = datfunc.pylist_2_pglist(out_subfolders).replace("'","").replace(" ","")
-            scenario_comparison_path = os.path.join(out_dir,'scenario_comparison')
-            command = [cfg.Rscript_path,'--vanilla',scenario_analysis_path,scenario_output_paths,scenario_comparison_path]
-            msg = 'Creating scenario analysis report'            
-            logger.info(msg)
-            proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            messages = proc.communicate()
-            if 'error' in messages[1].lower():
-                logger.error(messages[1])
-            if 'warning' in messages[1].lower():
-                logger.warning(messages[1])
-            returncode = proc.returncode
-        
+            if len(input_scenarios) > 1:
+                # assemble report to compare scenarios
+                scenario_analysis_path = '%s/r/graphics/scenario_analysis.R' % os.path.dirname(os.getcwd())
+                scenario_output_paths = datfunc.pylist_2_pglist(out_subfolders).replace("'","").replace(" ","")
+                scenario_comparison_path = os.path.join(out_dir,'scenario_comparison')
+                command = [cfg.Rscript_path,'--vanilla',scenario_analysis_path,scenario_output_paths,scenario_comparison_path]
+                msg = 'Creating scenario analysis report'            
+                logger.info(msg)
+                proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                messages = proc.communicate()
+                if 'error' in messages[1].lower():
+                    logger.error(messages[1])
+                if 'warning' in messages[1].lower():
+                    logger.warning(messages[1])
+                returncode = proc.returncode
+
     except Exception, e:
         logger.error(e.__str__(), exc_info = True)
     
@@ -278,4 +235,4 @@ def main():
         datfunc.shutdown_log(logger)
     
 if __name__ == '__main__':
-    main()                    
+    main()

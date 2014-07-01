@@ -24,6 +24,70 @@ import colorama
 import gzip
 import subprocess
 import os
+import sys, getopt
+
+def load_resume_vars(cfg, resume_year):
+    # Load the variables necessary to resume the model
+    if resume_year == 2014:
+        cfg.init_model = True
+        out_dir = None
+        input_scenarios = None
+        market_last_year = None
+    else:
+        cfg.init_model = False
+        # Load files here
+        market_last_year = pd.read_pickle("market_last_year.pkl")   
+        with open('saved_vars.pickle', 'rb') as handle:
+            saved_vars = pickle.load(handle)
+        out_dir = saved_vars['out_dir']
+        input_scenarios = saved_vars['input_scenarios']
+    return cfg.init_model, out_dir, input_scenarios, market_last_year
+
+def prep_model(cfg):               
+    # Make output folder
+    cdate = time.strftime('%Y%m%d_%H%M%S')    
+    out_dir = '%s/runs/results_%s' %(os.path.dirname(os.getcwd()),cdate)        
+    os.makedirs(out_dir)
+    
+    # check that random generator seed is in the acceptable range
+    if cfg.random_generator_seed < 0 or cfg.random_generator_seed > 1:
+        raise ValueError("""random_generator_seed in config.py is not in the range of acceptable values. Change to a value in the range >= 0 and <= 1.""")                           
+        # check that number of customer bins is in the acceptable range
+    if cfg.customer_bins not in (10,50,100,500):
+        raise ValueError("""Error: customer_bins in config.py is not in the range of acceptable values. Change to a value in the set (10,50,100,500).""") 
+    model_init = time.time()
+    return out_dir, model_init
+def parse_command_args(argv):
+    ''' Function to parse the command line arguments
+    IN:
+    
+    -h : help 'dg_model.py -i <Initiate Model?> -y <year>'
+    -i : Initiate model for 2010 and quit
+    -y: or year= : Resume model solve in passed year
+    
+    OUT:
+    
+    init_model - Boolean - Should model initiate?
+    resume_year - Float - year model should resume
+    '''
+    
+    resume_year = None
+    init_model = False
+    
+    try:
+        opts, args = getopt.getopt(argv,"hiy:",["year="])
+    except getopt.GetoptError:
+        print 'Command line argument not recognized, please use: dg_model.py -i -y <year>'
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print 'dg_model.py -i <Initiate Model?> -y <year>'
+            sys.exit()
+        elif opt in ("-i"):
+            init_model = True
+        elif opt in ("-y", "year="):
+            resume_year = arg
+    return init_model, resume_year 
 
 def init_log(log_file_path):
     
@@ -1143,4 +1207,4 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc['value_of_ptc'] = inc['lifetime_value_of_ptc'] / assumed_duration
     inc['ptc_length'] = assumed_duration
     
-    return inc[['gid', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+    return inc[['gid', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]

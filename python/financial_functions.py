@@ -8,10 +8,54 @@ Last Revision: 3/24/14
 """
 
 import numpy as np
+import pandas as pd
 from collections import Iterable
+import data_functions as datfunc
 
 #==============================================================================
-
+def calc_economics(df, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule):
+    '''
+    Calculates economics of system adoption (cashflows, payback, irr, etc.)
+    
+        IN:
+            Lots    
+        
+        OUT:
+            df - pd dataframe - main dataframe with econ outputs appended as columns
+    '''
+    
+    df['sector'] = sector.lower()
+    df = pd.merge(df,market_projections[['year', 'customer_expec_elec_rates']], how = 'left', on = 'year')
+    df = pd.merge(df,financial_parameters, how = 'left', on = 'sector')
+    
+    ## Diffusion from previous year ## 
+    if year == cfg.start_year: 
+        # get the initial market share per bin by county
+        initial_market_shares = datfunc.get_initial_market_shares(cur, con, sector_abbr, sector)
+        # join this to the df to on county_id
+        df = pd.merge(df, initial_market_shares, how = 'left', on = 'gid')
+        df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']        
+    else:
+        df = pd.merge(df,market_last_year, how = 'left', on = 'gid')
+        # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years. 
+    if scenario_opts['overwrite_exist_inc']:
+        value_of_incentives = datfunc.calc_manual_incentives(df,con, year)
+    else:
+        inc = pd.merge(df,dsire_incentives,how = 'left', on = 'gid')
+        value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
+    df = pd.merge(df, value_of_incentives, how = 'left', on = 'gid')
+    
+    revenue, costs, cfs = calc_cashflows(df,deprec_schedule,  yrs = 30)      
+    payback = calc_payback(cfs)
+    ttd = calc_ttd(cfs, df)  
+    
+    df['payback_period'] = np.where(df['sector'] == 'residential',payback, ttd)
+    df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate)
+    df['payback_key'] = (df['payback_period']*10).astype(int)
+    df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'payback_key'])
+    return df
+    
+#==============================================================================
 def calc_cashflows(df,deprec_schedule, yrs = 30):
     """
     Name:   calc_cashflows

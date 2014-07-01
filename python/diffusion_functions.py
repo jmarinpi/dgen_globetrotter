@@ -19,6 +19,35 @@ import numpy as np
 import pandas as pd
 
 #=============================================================================
+# ^^^^  Diffusion Calculator  ^^^^
+def calc_diffusion(df):
+    ''' Brings everything together to calculate the diffusion market share 
+        based on payback, max market, and market last year. Using the calculated 
+        market share, relevant quantities are updated.
+
+        IN: df - pd dataframe - Main dataframe
+        
+        OUT: df - pd dataframe - Main dataframe
+            market_last_year - pd dataframe - market to inform diffusion in next year
+    '''
+    df['diffusion_market_share'] = calc_diffusion_market_share(df.payback_period.values,df.max_market_share.values, df.market_share_last_year.values)
+    df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
+    df['new_market_share'] = df['market_share']-df['market_share_last_year']
+    df['new_market_share'] = np.where(df['market_share'] > df['max_market_share'], 0, df['new_market_share'])
+    
+    df['new_adopters'] = df['new_market_share'] * df['customers_in_bin']
+    df['new_capacity'] = df['new_adopters'] * df['nameplate_capacity_kw']
+    df['new_market_value'] = df['new_adopters'] * df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw']
+    # then add these values to values from last year to get cumulative values:
+    df['number_of_adopters'] = df['number_of_adopters_last_year'] + df['new_adopters']
+    df['installed_capacity'] = df['installed_capacity_last_year'] + df['new_capacity']
+    df['market_value'] = df['market_value_last_year'] + df['new_market_value']
+    market_last_year = df[['gid','market_share', 'number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
+    market_last_year.columns = ['gid', 'market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
+    return df,market_last_year
+
+
+#=============================================================================
 # ^^^^  Bass Diffusion Calculator  ^^^^
 def bass_diffusion(p, q, t):
     ''' Calculate the fraction of population that diffuse into the max_market_share.
@@ -77,7 +106,7 @@ def set_param_payback(payback_period,pval = 0.0015):
 
 #==============================================================================
 #  ^^^^ Calculate new diffusion in market segment ^^^^
-def calc_diffusion(payback_period,max_market_share, market_share_last_year):
+def calc_diffusion_market_share(payback_period,max_market_share, market_share_last_year):
     ''' Calculate the fraction of overall population that have adopted the 
         technology in the current period. Note that this does not specify the 
         actual new adoption fraction without knowing adoption in the previous period. 
@@ -99,5 +128,3 @@ def calc_diffusion(payback_period,max_market_share, market_share_last_year):
     
     return market_share
 #==============================================================================  
-    
-calc_diffusion(30,0, 0)
