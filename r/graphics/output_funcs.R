@@ -223,11 +223,12 @@ national_pp_line<-function(df,scen_name){
 diffusion_trends<-function(df,runpath,scen_name){
   # Diffusion trends
   g = group_by(df, year, sector)
-  data = collect(summarise(g, nat_installed_capacity  = sum(installed_capacity)/1e6, 
+  # We have no way calculating CFs for existing capacity, so assume it had a 23% capacity factor
+  data = collect(summarise(g, nat_installed_capacity_gw  = sum(installed_capacity)/1e6, 
                            nat_market_share = sum(number_of_adopters)/sum(customers_in_bin), 
                            nat_max_market_share = mean(max_market_share),
                            nat_market_value = sum(market_value),
-                           nat_generation = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000)),
+                           nat_generation_kwh = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (0.23 * 8760 * initial_capacity_mw * 1000)), 
                            nat_number_of_adopters = sum(number_of_adopters)
   )
   )
@@ -246,17 +247,19 @@ diffusion_trends<-function(df,runpath,scen_name){
     scale_fill_manual(values = sector_fil) +
     scale_y_continuous(name ='Market Share (% of adopters in pop bin)', labels = percent)+
     scale_x_continuous(name ='Year')+
+    expand_limits(y=0)+
     theme(strip.text.x = element_text(size=12, angle=0))+
     guides(color = FALSE)+
     ggtitle('National Adoption Trends')
   
-  national_installed_capacity_bar<-ggplot(subset(data, variable %in% c("nat_installed_capacity")), 
+  national_installed_capacity_bar<-ggplot(subset(data, variable %in% c("nat_installed_capacity_gw")), 
                                           aes(x = factor(year), fill = sector, weight = value))+
     geom_bar()+
     theme_few()+
     scale_color_manual(values = sector_col) +
     scale_fill_manual(name = 'Sector', values = sector_fil) +
     scale_y_continuous(name ='National Installed Capacity (GW)', labels = comma)+
+    expand_limits(weight=0)+
     scale_x_discrete(name ='Year')+
     theme(strip.text.x = element_text(size=12, angle=0))+
     ggtitle('National Installed Capacity (GW)')
@@ -268,6 +271,7 @@ diffusion_trends<-function(df,runpath,scen_name){
     scale_color_manual(values = sector_col) +
     scale_fill_manual(name = 'Sector', values = sector_fil) +
     scale_y_continuous(name ='Number of Adopters', labels = comma)+
+    expand_limits(weight=0)+
     scale_x_discrete(name ='Year')+
     theme(strip.text.x = element_text(size=12, angle=0))+
     ggtitle('National Number of Adopters')  
@@ -279,17 +283,19 @@ diffusion_trends<-function(df,runpath,scen_name){
     scale_color_manual(values = sector_col) +
     scale_fill_manual(name = 'Sector', values = sector_fil) +
     scale_y_continuous(name ='Value of Installed Capacity (Billion $)', labels = comma)+
+    expand_limits(weight=0)+
     scale_x_discrete(name ='Year')+
     theme(strip.text.x = element_text(size=12, angle=0))+
     ggtitle('National Value of Installed Capacity (Billion $)')
   
-  national_generation_bar<-ggplot(subset(data, variable %in% c("nat_generation")), 
+  national_generation_bar<-ggplot(subset(data, variable %in% c("nat_generation_kwh")), 
                                   aes(x = factor(year), fill = sector, weight = value/1e9))+
     geom_bar()+
     theme_few()+
     scale_color_manual(values = sector_col) +
     scale_fill_manual(name = 'Sector', values = sector_fil) +
     scale_y_continuous(name ='National Annual Generation (TWh)', labels = comma)+
+    expand_limits(weight=0)+
     scale_x_discrete(name ='Year')+
     theme(strip.text.x = element_text(size=12, angle=0))+
     ggtitle('National Annual Generation (TWh)')  
@@ -497,7 +503,8 @@ res_diff_trends<-function(df){
     geom_line(size = 1)+
     facet_wrap(~variable,scales="free_y")+
     theme_few()+
-    ggtitle('National Residential Diffusion Trends')
+    expand_limits(y=0)+
+    ggtitle('National Residential Diffusion Trends \n Note different axis Limits than above')
   }
 }
 
@@ -510,7 +517,8 @@ com_diff_trends<-function(df){
     geom_line(size = 1)+
     facet_wrap(~variable,scales="free_y")+
     theme_few()+
-    ggtitle('National Commercial Diffusion Trends')
+    expand_limits(y=0)+
+    ggtitle('National Commercial Diffusion Trends \n Note different axis Limits than above')
   }
 }
 
@@ -523,7 +531,8 @@ ind_diff_trends<-function(df){
     geom_line(size = 1)+
     facet_wrap(~variable,scales="free_y")+
     theme_few()+
-    ggtitle('National Industrial Diffusion Trends')
+    expand_limits(y=0)+
+    ggtitle('National Industrial Diffusion Trends \n Note different axis Limits than above')
   }
 }
 

@@ -151,7 +151,7 @@ def main(mode = None, resume_year = None):
                 if cfg.init_model:
                     main_table = datfunc.generate_customer_bins(cur, con, cfg.random_generator_seed, cfg.customer_bins, sector_abbr, sector, 
                                                    cfg.start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
-                                                   cfg.oversize_turbine_factor, cfg.undersize_turbine_factor, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger = logger)
+                                                   cfg.oversize_turbine_factor, cfg.undersize_turbine_factor, cfg.preprocess, cfg.npar, cfg.pg_conn_string, scenario_opts['net_metering_availability'], logger = logger)
                 else:
                     main_table = 'wind_ds.pt_%s_best_option_each_year' % sector_abbr
                 
@@ -212,21 +212,21 @@ def main(mode = None, resume_year = None):
                 datfunc.create_scenario_report(scen_name, out_path, cur, con, cfg.Rscript_path, logger)    
                 logger.info('Model completed at %s run took %.1f seconds' % (time.ctime(), time.time() - model_init))
             
-            if len(input_scenarios) > 1:
-                # assemble report to compare scenarios
-                scenario_analysis_path = '%s/r/graphics/scenario_analysis.R' % os.path.dirname(os.getcwd())
-                scenario_output_paths = datfunc.pylist_2_pglist(out_subfolders).replace("'","").replace(" ","")
-                scenario_comparison_path = os.path.join(out_dir,'scenario_comparison')
-                command = [cfg.Rscript_path,'--vanilla',scenario_analysis_path,scenario_output_paths,scenario_comparison_path]
-                msg = 'Creating scenario analysis report'            
-                logger.info(msg)
-                proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                messages = proc.communicate()
-                if 'error' in messages[1].lower():
-                    logger.error(messages[1])
-                if 'warning' in messages[1].lower():
-                    logger.warning(messages[1])
-                returncode = proc.returncode
+        if len(input_scenarios) > 1:
+            # assemble report to compare scenarios
+            scenario_analysis_path = '%s/r/graphics/scenario_analysis.R' % os.path.dirname(os.getcwd())
+            scenario_output_paths = datfunc.pylist_2_pglist(out_subfolders).replace("'","").replace(" ","")
+            scenario_comparison_path = os.path.join(out_dir,'scenario_comparison')
+            command = [cfg.Rscript_path,'--vanilla',scenario_analysis_path,scenario_output_paths,scenario_comparison_path]
+            msg = 'Creating scenario analysis report'            
+            logger.info(msg)
+            proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            messages = proc.communicate()
+            if 'error' in messages[1].lower():
+                logger.error(messages[1])
+            if 'warning' in messages[1].lower():
+                logger.warning(messages[1])
+            returncode = proc.returncode
 
     except Exception, e:
         logger.error(e.__str__(), exc_info = True)

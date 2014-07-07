@@ -420,8 +420,8 @@ def create_scenario_report(scen_name, out_path, cur, con, Rscript_path, logger =
 
 def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor,
-                           preprocess, npar, pg_conn_string, logger):
-    
+                           preprocess, npar, pg_conn_string, nem_availability, logger):
+
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()  
     inputs['i_place_holder'] = '%(i)s'
@@ -650,7 +650,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             	b.nameplate_capacity_kw,
             	a.power_curve_id, 
             	a.turbine_height_m,
-            	wind_ds.scoe(b.installed_costs_dollars_per_kw, b.fixed_om_dollars_per_kw_per_yr, b.variable_om_dollars_per_kwh, a.naep , b.nameplate_capacity_kw , a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe
+            	wind_ds.scoe(b.installed_costs_dollars_per_kw, b.fixed_om_dollars_per_kw_per_yr, b.variable_om_dollars_per_kwh, a.naep , b.nameplate_capacity_kw , a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, '%(nem_availability)s', %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe
             FROM wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
             INNER JOIN wind_ds.temporal_factors b
             ON a.turbine_height_m = b.turbine_height_m
@@ -914,10 +914,11 @@ def get_initial_market_shares(cur, con, sector_abbr, sector):
     cur.execute(sql)
     con.commit()
 
+    # BOS - installed capacity is stored as MW in the database, but to be consisent with calculations should be in kW
     sql = """SELECT gid, 
             initial_market_share AS market_share_last_year,
             initial_number_of_adopters AS number_of_adopters_last_year,
-            initial_capacity_mw AS installed_capacity_last_year
+            1000 * initial_capacity_mw AS installed_capacity_last_year 
             FROM wind_ds.pt_%(sector_abbr)s_initial_market_shares;""" % inputs
     df = sqlio.read_frame(sql, con)
     return df  

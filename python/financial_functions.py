@@ -45,7 +45,7 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = 'gid')
     
-    revenue, costs, cfs = calc_cashflows(df,deprec_schedule,  yrs = 30)      
+    revenue, costs, cfs = calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30)      
     payback = calc_payback(cfs)
     ttd = calc_ttd(cfs, df)  
     
@@ -56,7 +56,7 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
     return df
     
 #==============================================================================
-def calc_cashflows(df,deprec_schedule, yrs = 30):
+def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 
@@ -70,7 +70,7 @@ def calc_cashflows(df,deprec_schedule, yrs = 30):
         vi) revenue from all other incentives
              
     Author: bsigrin
-    Last Revision: 3/19/14
+    Last Revision: 7/1/14
     
         IN:
             df - pandas dataframe - dataframe containing: [ic ($), loan_rate, 
@@ -125,15 +125,52 @@ def calc_cashflows(df,deprec_schedule, yrs = 30):
     om_cost[:] +=  (-df.fixed_om_dollars_per_kw_per_yr * df.cap)[:,np.newaxis]
     
     ## Revenue
+    """
+    3) Revenue from generation. Revenue comes from excess and offset 
+    generation. Offset energy is generation that instaneously offsets load and
+    is credited at the full retail rate, regardless of scenario. Excess energy 
+    is generation that exceeds load and may be credited as full retail (NEM), 
+    avoided cost, or no credit. Amount of excess energy is aep * excess_gen_factor + 0.31 * (gen/load - 1) 
+    See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail
+    """
     
-    # 3) Revenue from generation  ## REVISIONS NEEDED-- tie to perceived growth rates, not all generation will be offset at avg_rate
-    
+    # Multiplier for rate growth about real dollars
     tmp = np.empty(shape)
     tmp[:,0] = 1
     tmp[:,1:] = df.customer_expec_elec_rates[:,np.newaxis]
-    rate_growth_mult = np.cumprod(tmp, axis = 1)
-    # Cannot monetize more than you consume
-    generation_revenue = (np.minimum(df.aep,df.ann_cons_kwh) * 0.01 * df.elec_rate_cents_per_kwh)[:,np.newaxis] * rate_growth_mult 
+    rate_growth_mult = np.cumprod(tmp, axis = 1) 
+    
+    # Percentage of excess gen, bounded from 0 - 100%
+    per_excess_gen = np.minimum(np.maximum(df.excess_generation_factor + 0.31 * (df.aep/df.ann_cons_kwh -1), 0),1)
+    
+    curtailment_rate = 0 # Placeholder for this to be updated with ReEDS integration    
+    
+    outflow_gen_kwh = df.aep * per_excess_gen * (1 - curtailment_rate)
+    inflow_gen_kwh = df.aep * (1 - per_excess_gen)
+    
+    # Value of inflows (generation that is offsetting load)
+    inflow_rate_dol_kwh   = 0.01 * df.elec_rate_cents_per_kwh
+    value_inflows_dol = inflow_gen_kwh[:,np.newaxis] * inflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
+     
+    # Set the rate the excess generation is credited
+    if scenario_opts['net_metering_availability'] == 'Full_Net_Metering_Everywhere':
+        outflow_rate = inflow_rate_dol_kwh
+    elif scenario_opts['net_metering_availability'] == 'Partial_Avoided_Cost':
+        outflow_rate = 0.5 * inflow_rate_dol_kwh
+    elif scenario_opts['net_metering_availability'] == 'Partial_No_Outflows':
+        outflow_rate = 0 * inflow_rate_dol_kwh
+    elif scenario_opts['net_metering_availability'] == 'No_Net_Metering_Anywhere':
+        outflow_rate = 0 * inflow_rate_dol_kwh
+        df['nem_system_limit_kw'] = 0
+    else:
+        outflow_rate = 0 * inflow_rate_dol_kwh
+        
+    outflow_rate_dol_kwh = np.where(df.cap < df.nem_system_limit_kw, inflow_rate_dol_kwh, outflow_rate)
+    value_outflows_dol = outflow_gen_kwh[:, np.newaxis] * outflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
+    
+    generation_revenue = value_inflows_dol + value_outflows_dol
+
+    #OLD COMMAND generation_revenue = (np.minimum(df.aep,df.ann_cons_kwh) * 0.01 * df.elec_rate_cents_per_kwh)[:,np.newaxis] * rate_growth_mult 
     
     # 4) Revenue from depreciation.  ### THIS NEEDS MORE WORK ###  
     # Depreciable basis is installed cost less tax incentives

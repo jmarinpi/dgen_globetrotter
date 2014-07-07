@@ -40,7 +40,7 @@ def calc_diffusion(df):
     df['new_market_value'] = df['new_adopters'] * df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw']
     # then add these values to values from last year to get cumulative values:
     df['number_of_adopters'] = df['number_of_adopters_last_year'] + df['new_adopters']
-    df['installed_capacity'] = df['installed_capacity_last_year'] + df['new_capacity']
+    df['installed_capacity'] = df['installed_capacity_last_year'] + df['new_capacity'] # All capacity in kW in the model
     df['market_value'] = df['market_value_last_year'] + df['new_market_value']
     market_last_year = df[['gid','market_share', 'number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
     market_last_year.columns = ['gid', 'market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
