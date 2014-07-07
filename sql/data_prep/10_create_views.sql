@@ -101,8 +101,8 @@ CREATE OR REPLACE VIEW wind_ds.pt_grid_us_res_joined AS
 SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
 	a.annual_rate_gid, a.iiijjjicf_id, 'p' || a.pca_reg::text as pca_reg, a.reeds_reg,
 	c.res_cents_per_kwh as elec_rate_cents_per_kwh, 
-	b.total_customers_2011_residential * k.perc_ooh as county_total_customers_2011, 
-	b.total_load_mwh_2011_residential * k.perc_ooh as county_total_load_mwh_2011,
+	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
+	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region, f.derate_factor,
 	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
@@ -112,7 +112,7 @@ FROM wind_ds.pt_grid_us_res a
 LEFT JOIN wind_ds.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
 -- county % owner occ housing
-LEFT JOIN wind_ds.perc_own_occ_housing_by_county k
+LEFT JOIN wind_ds.county_housing_units k
 ON a.county_id = k.county_id
 -- rates
 LEFT JOIN wind_ds.annual_ave_elec_rates_2011 c
