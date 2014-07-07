@@ -138,7 +138,7 @@ def main(mode = None, resume_year = None):
             # 7. Combine All of the Temporally Varying Data in a new Table in Postgres
             if cfg.init_model:
                 datfunc.combine_temporal_data(cur, con, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.values()), cfg.preprocess, logger)
-                              
+                
             # 8. Set up the Main Data Frame for each sector
             outputs = pd.DataFrame()
             datfunc.clear_outputs(con,cur) # clear results from previous run

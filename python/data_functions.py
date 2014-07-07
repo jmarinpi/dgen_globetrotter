@@ -170,7 +170,8 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess, l
             	d.source as rate_escalation_source,
             	e.scenario as load_growth_scenario,
             	e.load_multiplier,
-            f.carbon_dollars_per_ton
+            f.carbon_dollars_per_ton,
+            g.derate_factor
             FROM wind_ds.wind_performance_improvements a
             LEFT JOIN wind_ds.allowable_turbine_sizes b
             ON a.nameplate_capacity_kw = b.turbine_size_kw
@@ -184,6 +185,9 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess, l
             AND a.year = e.year
             LEFT JOIN wind_ds.market_projections f
             ON a.year = f.year
+            LEFT JOIN wind_ds.wind_generation_derate_factors g
+            ON a.year = g.year
+            AND  a.nameplate_capacity_kw = g.turbine_size_kw
             WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
             AND d.sector in (%(sectors)s);""" % inputs
     cur.execute(sql)
@@ -593,7 +597,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     sql =  """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s;
                 CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s AS
                 SELECT a.*,
-                c.aep*a.aep_scale_factor*a.derate_factor as naep,
+                c.aep*a.aep_scale_factor as naep_no_derate,
                 c.turbine_id as power_curve_id, 
                 c.height as turbine_height_m,
                 c.excess_gen_factor as excess_generation_factor
@@ -645,12 +649,15 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             	a.load_kwh_per_customer_in_bin,
             a.nem_system_limit_kw,
             a.excess_generation_factor,
-            	a.i, a.j, a.cf_bin, a.aep_scale_factor, a.derate_factor,
-            	a.naep,
+            	a.i, a.j, a.cf_bin, a.aep_scale_factor, b.derate_factor,
+            	a.naep_no_derate * b.derate_factor as naep,
             	b.nameplate_capacity_kw,
             	a.power_curve_id, 
             	a.turbine_height_m,
-            	wind_ds.scoe(b.installed_costs_dollars_per_kw, b.fixed_om_dollars_per_kw_per_yr, b.variable_om_dollars_per_kwh, a.naep , b.nameplate_capacity_kw , a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, '%(nem_availability)s', %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe
+            	wind_ds.scoe(b.installed_costs_dollars_per_kw, b.fixed_om_dollars_per_kw_per_yr, 
+                          b.variable_om_dollars_per_kwh, a.naep_no_derate * b.derate_factor, b.nameplate_capacity_kw , 
+                          a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, 
+                          '%(nem_availability)s', %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe
             FROM wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
             INNER JOIN wind_ds.temporal_factors b
             ON a.turbine_height_m = b.turbine_height_m

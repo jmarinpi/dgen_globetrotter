@@ -58,7 +58,7 @@ SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_p
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
-	e.state_abbr, e.census_division_abbr, e.census_region, f.derate_factor,
+	e.state_abbr, e.census_division_abbr, e.census_region,
 	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
 FROM wind_ds.pt_grid_us_ind a
@@ -74,9 +74,6 @@ ON a.county_id = d.county_id
 -- census region and division
 LEFT JOIN wind_ds.county_geom e
 ON a.county_id = e.county_id
--- join in derate factors
-LEFT JOIN wind_ds.wind_derate_factors_by_state f
-ON e.state_abbr = f.state_abbr
 -- join in i,j,icf lookup
 LEFT JOIN wind_ds.ij_cfbin_lookup_ind_pts_us g
 on a.gid = g.pt_gid
@@ -104,7 +101,7 @@ SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_p
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
-	e.state_abbr, e.census_division_abbr, e.census_region, f.derate_factor,
+	e.state_abbr, e.census_division_abbr, e.census_region,
 	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
 FROM wind_ds.pt_grid_us_res a
@@ -123,9 +120,6 @@ ON a.county_id = d.county_id
 -- census region and division
 LEFT JOIN wind_ds.county_geom e
 ON a.county_id = e.county_id
--- join in derate factors
-LEFT JOIN wind_ds.wind_derate_factors_by_state f
-ON e.state_abbr = f.state_abbr
 -- join in i,j,icf lookup
 LEFT JOIN wind_ds.ij_cfbin_lookup_res_pts_us g
 on a.gid = g.pt_gid
@@ -151,7 +145,7 @@ SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_p
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.cap_cost_multiplier,
-	e.state_abbr, e.census_division_abbr, e.census_region, f.derate_factor,
+	e.state_abbr, e.census_division_abbr, e.census_region, 
 	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
 FROM wind_ds.pt_grid_us_com a
@@ -167,9 +161,6 @@ ON a.county_id = d.county_id
 -- census region and division
 LEFT JOIN wind_ds.county_geom e
 ON a.county_id = e.county_id
--- join in derate factors
-LEFT JOIN wind_ds.wind_derate_factors_by_state f
-ON e.state_abbr = f.state_abbr
 -- join in i,j,icf lookup
 LEFT JOIN wind_ds.ij_cfbin_lookup_com_pts_us g
 on a.gid = g.pt_gid
