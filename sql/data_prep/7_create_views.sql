@@ -1,7 +1,7 @@
 ﻿-- create view of the valid counties
 CREATE OR REPLACE VIEW wind_ds.counties_to_model AS
 SELECT county_id, census_region
-FROM wind_ds.county_geom a
+FROM diffusion_shared.county_geom a
 INNER JOIN wind_ds.scenario_options b
 ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)
 		else lower(b.region)
@@ -16,7 +16,7 @@ SELECT state_abbr,
 	WHEN b.carbon_price = 'Price Based On State Carbon Intensity' THEN state_carbon_price_t_per_kwh
 	WHEN b.carbon_price = 'Price Based On NG Offset' THEN ng_offset_t_per_kwh
 	END as carbon_intensity_t_per_kwh
-FROM wind_ds.carbon_intensities a
+FROM diffusion_shared.carbon_intensities a
 CROSS JOIN wind_ds.scenario_options b;
 
 -- view for net metering
@@ -28,7 +28,7 @@ SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr,
 	ELSE TRUE
 	END as keep, 'ftg' as source
 	
-FROM wind_ds.net_metering_availability_2013 a
+FROM diffusion_share.net_metering_availability_2013 a
 CROSS JOIN wind_ds.scenario_options b
 
 UNION ALL
@@ -63,16 +63,16 @@ SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_p
 	m.nem_system_limit_kw
 FROM wind_ds.pt_grid_us_ind a
 -- county_load_and_customers
-LEFT JOIN wind_ds.load_and_customers_by_county_us b
+LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
 -- rates
-LEFT JOIN wind_ds.annual_ave_elec_rates_2011 c
+LEFT JOIN diffusion_shared.annual_ave_elec_rates_2011 c
 ON a.annual_rate_gid = c.gid
 -- capital_costs
-LEFT JOIN wind_ds.capital_cost_multipliers_us d
+LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
 ON a.county_id = d.county_id
 -- census region and division
-LEFT JOIN wind_ds.county_geom e
+LEFT JOIN diffusion_shared.county_geom e
 ON a.county_id = e.county_id
 -- join in i,j,icf lookup
 LEFT JOIN wind_ds.ij_cfbin_lookup_ind_pts_us g
@@ -106,19 +106,19 @@ SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_p
 	m.nem_system_limit_kw
 FROM wind_ds.pt_grid_us_res a
 -- county_load_and_customers
-LEFT JOIN wind_ds.load_and_customers_by_county_us b
+LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
 -- county % owner occ housing
-LEFT JOIN wind_ds.county_housing_units k
+LEFT JOIN diffusion_shared.county_housing_units k
 ON a.county_id = k.county_id
 -- rates
-LEFT JOIN wind_ds.annual_ave_elec_rates_2011 c
+LEFT JOIN diffusion_shared.annual_ave_elec_rates_2011 c
 ON a.annual_rate_gid = c.gid
 -- capital_costs
-LEFT JOIN wind_ds.capital_cost_multipliers_us d
+LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
 ON a.county_id = d.county_id
 -- census region and division
-LEFT JOIN wind_ds.county_geom e
+LEFT JOIN diffusion_shared.county_geom e
 ON a.county_id = e.county_id
 -- join in i,j,icf lookup
 LEFT JOIN wind_ds.ij_cfbin_lookup_res_pts_us g
@@ -150,16 +150,16 @@ SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_p
 	m.nem_system_limit_kw
 FROM wind_ds.pt_grid_us_com a
 -- county_load_and_customers
-LEFT JOIN wind_ds.load_and_customers_by_county_us b
+LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
 -- rates
-LEFT JOIN wind_ds.annual_ave_elec_rates_2011 c
+LEFT JOIN diffusion_shared.annual_ave_elec_rates_2011 c
 ON a.annual_rate_gid = c.gid
 -- capital_costs
-LEFT JOIN wind_ds.capital_cost_multipliers_us d
+LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
 ON a.county_id = d.county_id
 -- census region and division
-LEFT JOIN wind_ds.county_geom e
+LEFT JOIN diffusion_shared.county_geom e
 ON a.county_id = e.county_id
 -- join in i,j,icf lookup
 LEFT JOIN wind_ds.ij_cfbin_lookup_com_pts_us g
@@ -212,7 +212,7 @@ with user_inputs as (
 ),
 all_maxmarket as (
 	SELECT years_to_payback as year, sector, max_market_share_new as new, max_market_share_retrofit as retrofit, source
-	FROM wind_ds.max_market_share
+	FROM diffusion_shared.max_market_share
 
 
 	UNION
@@ -230,7 +230,7 @@ order by year, sector;
 CREATE OR REPLACE VIEW wind_ds.rate_escalations_to_model AS
 WITH cdas as (
 	SELECT distinct(census_division_abbr) as census_division_abbr
-	FROM wind_ds.county_geom
+	FROM diffusion_shared.county_geom
 	),
 
 esc_combined AS (
@@ -285,7 +285,7 @@ esc_combined AS (
 
 	-- add in the prestaged AEO2014 projections
 	SELECT census_division_abbr, year, sector, escalation_factor, source
-	FROM wind_ds.rate_escalations
+	FROM diffusion_shared.rate_escalations
 
 	order by year, sector, census_division_abbr, source),
 

@@ -1,4 +1,4 @@
--- calculate rates
+﻿-- calculate rates
 
 -- use the ventyx sales data, where it was directly joined to ventyx polygons
 -- in remaining areas, backfill with state averages
@@ -137,43 +137,43 @@ GROUP BY gid, the_geom_4326;
 -- inspect results in Q -- looks good
 
 -- **
--- move results to wind_ds
--- ALTER TABLE wind_ds.annual_ave_elec_rates_2011 RENAME TO annual_ave_elec_rates_2011_old;
--- ALTER TABLE wind_ds.annual_ave_elec_rates_2011_old SET SCHEMA wind_ds_data;
-dROP TABLE IF EXISTS wind_ds.annual_ave_elec_rates_2011;
-CREATE TABLE wind_ds.annual_ave_elec_rates_2011 AS
+-- move results to diffusion_shared
+-- ALTER TABLE diffusion_shared.annual_ave_elec_rates_2011 RENAME TO annual_ave_elec_rates_2011_old;
+-- ALTER TABLE diffusion_shared.annual_ave_elec_rates_2011_old SET SCHEMA wind_ds_data;
+dROP TABLE IF EXISTS diffusion_shared.annual_ave_elec_rates_2011;
+CREATE TABLE diffusion_shared.annual_ave_elec_rates_2011 AS
 SELECT *
 FROM dg_wind.electricity_rates_2011_backfilled_no_overlaps;
 
-CREATE INDEX annual_ave_elec_rates_2011_the_geom_4326_gist ON wind_ds.annual_ave_elec_rates_2011 USING gist(the_geom_4326);
+CREATE INDEX annual_ave_elec_rates_2011_the_geom_4326_gist ON diffusion_shared.annual_ave_elec_rates_2011 USING gist(the_geom_4326);
 
-ALTER TABLE wind_ds.annual_ave_elec_rates_2011 ADD PRIMARY KEY (gid);
+ALTER TABLE diffusion_shared.annual_ave_elec_rates_2011 ADD PRIMARY KEY (gid);
 
 -- **
-ALTER TABLE wind_ds.annual_ave_elec_rates_2011 
+ALTER TABLE diffusion_shared.annual_ave_elec_rates_2011 
 ADD COLUMN the_geom_900914 geometry,
 ADD COLUMN the_geom_900915 geometry,
 ADD COLUMN the_geom_900916 geometry;
 
-UPDATE wind_ds.annual_ave_elec_rates_2011
+UPDATE diffusion_shared.annual_ave_elec_rates_2011
 SET (the_geom_900914, the_geom_900915, the_geom_900916) = (ST_Transform(the_geom_4326,900914),ST_Transform(the_geom_4326,900915),ST_Transform(the_geom_4326,900916));
 
-CREATE INDEX annual_ave_elec_rates_2011_the_geom_900914_gist ON wind_ds.annual_ave_elec_rates_2011 USING gist(the_geom_900914);
-CREATE INDEX annual_ave_elec_rates_2011_the_geom_900915_gist ON wind_ds.annual_ave_elec_rates_2011 USING gist(the_geom_900915);
-CREATE INDEX annual_ave_elec_rates_2011_the_geom_900916_gist ON wind_ds.annual_ave_elec_rates_2011 USING gist(the_geom_900916);
+CREATE INDEX annual_ave_elec_rates_2011_the_geom_900914_gist ON diffusion_shared.annual_ave_elec_rates_2011 USING gist(the_geom_900914);
+CREATE INDEX annual_ave_elec_rates_2011_the_geom_900915_gist ON diffusion_shared.annual_ave_elec_rates_2011 USING gist(the_geom_900915);
+CREATE INDEX annual_ave_elec_rates_2011_the_geom_900916_gist ON diffusion_shared.annual_ave_elec_rates_2011 USING gist(the_geom_900916);
 
-CREATE INDEX annual_ave_elec_rates_2011_ind_rates_btree ON wind_ds.annual_ave_elec_rates_2011 USING btree(ind_cents_per_kwh)
+CREATE INDEX annual_ave_elec_rates_2011_ind_rates_btree ON diffusion_shared.annual_ave_elec_rates_2011 USING btree(ind_cents_per_kwh)
 where ind_cents_per_kwh is null;
 
-CREATE INDEX annual_ave_elec_rates_2011_res_rates_btree ON wind_ds.annual_ave_elec_rates_2011 USING btree(res_cents_per_kwh)
+CREATE INDEX annual_ave_elec_rates_2011_res_rates_btree ON diffusion_shared.annual_ave_elec_rates_2011 USING btree(res_cents_per_kwh)
 where res_cents_per_kwh is null;
 
-CREATE INDEX annual_ave_elec_rates_2011_comm_rates_btree ON wind_ds.annual_ave_elec_rates_2011 USING btree(comm_cents_per_kwh)
+CREATE INDEX annual_ave_elec_rates_2011_comm_rates_btree ON diffusion_shared.annual_ave_elec_rates_2011 USING btree(comm_cents_per_kwh)
 where comm_cents_per_kwh is null;
 
-VACUUM ANALYZE wind_ds.annual_ave_elec_rates_2011;
+VACUUM ANALYZE diffusion_shared.annual_ave_elec_rates_2011;
 
 -- check that there are no zero rates
 select *
-FROM wind_ds.annual_ave_elec_rates_2011
+FROM diffusion_shared.annual_ave_elec_rates_2011
 where comm_cents_per_kwh = 0

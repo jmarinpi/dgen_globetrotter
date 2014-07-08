@@ -42,7 +42,7 @@ ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN county_id integer;
 
 UPDATE wind_ds.pt_grid_us_res a
 SET county_id = b.county_id
-FROM wind_ds.county_geom b
+FROM diffusion_shared.county_geom b
 WHERE ST_Intersects(a.the_geom_900914, b.the_geom_900914);
 
 CREATE INDEX pt_grid_us_res_county_id_btree ON wind_ds.pt_grid_us_res using btree(county_id);
@@ -61,7 +61,7 @@ with candidates as (
 
 SELECT a.gid, a.the_geom_900914, 
 	unnest((select array(SELECT b.county_id
-	 FROM wind_ds.county_geom b
+	 FROM diffusion_shared.county_geom b
 	 ORDER BY a.the_geom_900914 <#> b.the_geom_900914 LIMIT 3))) as county_id
 FROM wind_ds.pt_grid_us_res a
 where a.county_id is null
@@ -69,7 +69,7 @@ where a.county_id is null
 
 SELECT distinct ON (gid) a.gid, a.the_geom_900914, a.county_id, b.county
 FROM candidates a
-lEFT JOIN wind_ds.county_geom b
+lEFT JOIN diffusion_shared.county_geom b
 ON a.county_id = b.county_id
 ORDER BY gid, ST_Distance(a.the_geom_900914,b.the_geom_900914) asc;
 
@@ -458,7 +458,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_annual_rate_gid_lookup (
 SELECT parsel_2('dav-gis','wind_ds.pt_grid_us_res','gid',
 		'SELECT a.gid, b.gid as annual_rate_gid
 		FROM  wind_ds.pt_grid_us_res a
-		INNER JOIN wind_ds.annual_ave_elec_rates_2011 b
+		INNER JOIN diffusion_shared.annual_ave_elec_rates_2011 b
 		ON ST_Intersects(a.the_geom_4326,b.the_geom_4326)
 		WHERE b.res_cents_per_kwh IS NOT NULL;',
 	'wind_ds_data.pt_grid_us_res_annual_rate_gid_lookup', 'a',16);
@@ -490,7 +490,7 @@ where a.gid = b.gid;
 
 	SELECT a.gid, a.the_geom_900914, 
 		unnest((select array(SELECT b.gid
-		 FROM wind_ds.annual_ave_elec_rates_2011 b
+		 FROM diffusion_shared.annual_ave_elec_rates_2011 b
 		 WHERE b.res_cents_per_kwh IS NOT NULL
 		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914 LIMIT 5))) as rate_gid
 	FROM wind_ds.pt_grid_us_res a
@@ -499,7 +499,7 @@ where a.gid = b.gid;
 
 	SELECT distinct ON (gid) a.gid, a.the_geom_900914, a.rate_gid
 	FROM candidates a
-	LEFT JOIN wind_ds.annual_ave_elec_rates_2011 b
+	LEFT JOIN diffusion_shared.annual_ave_elec_rates_2011 b
 	ON a.rate_gid = b.gid
 	ORDER BY a.gid, ST_Distance(a.the_geom_900914,b.the_geom_900914) asc;
 
@@ -654,7 +654,7 @@ where pca_reg is null or reeds_reg is null;
 -- add foreign keys
 	-- for county_id to county_geom.county id
 ALTER TABLE wind_ds.pt_grid_us_res ADD CONSTRAINT county_id_fkey FOREIGN KEY (county_id) 
-REFERENCES wind_ds.county_geom (county_id) MATCH FULL 
+REFERENCES diffusion_shared.county_geom (county_id) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;
 	-- for iiijjjicf_id to iiijjjicf_lookup.id
 ALTER TABLE wind_ds.pt_grid_us_res ADD CONSTRAINT iiijjjicf_id_fkey FOREIGN KEY (iiijjjicf_id) 
@@ -671,7 +671,7 @@ ON UPDATE RESTRICT ON DELETE RESTRICT;
 	-- for annual_rate_gid to annual_ave_elec_rates_2011.gid
 -- ALTER TABLE wind_ds.pt_grid_us_res DROP CONSTRAINT annual_rate_gid_fkey;
 ALTER TABLE wind_ds.pt_grid_us_res ADD CONSTRAINT annual_rate_gid_fkey FOREIGN KEY (annual_rate_gid) 
-REFERENCES wind_ds.annual_ave_elec_rates_2011 (gid) MATCH FULL 
+REFERENCES diffusion_shared.annual_ave_elec_rates_2011 (gid) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 

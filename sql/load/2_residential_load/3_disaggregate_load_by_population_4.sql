@@ -1,4 +1,4 @@
---------------------------------------------------------------------------------------------------------------------
+﻿--------------------------------------------------------------------------------------------------------------------
 -- us
 --------------------------------------------------------------------------------------------------------------------
 
@@ -112,11 +112,11 @@ CREATE TABLE dg_wind.res_load_by_county_us
 total_load_mwh_2011_residential numeric);
 
 -- run parsel
-select parsel_2('dav-gis','wind_ds.county_geom','county_id',
+select parsel_2('dav-gis','diffusion_shared.county_geom','county_id',
 'WITH tile_stats as (
 	select a.county_id,
 		ST_SummaryStats(ST_Clip(b.rast, 1, a.the_geom_4326, true)) as stats
-	FROM wind_ds.county_geom as a
+	FROM diffusion_shared.county_geom as a
 	INNER JOIN dg_wind.mosaic_load_residential_us b
 	ON ST_Intersects(a.the_geom_4326,b.rast)
 )
@@ -148,7 +148,7 @@ b as (
 
 SELECT k.state_abbr, sum(total_load_mwh_2011_residential)
 FROM dg_wind.res_load_by_county_us j
-LEFT join wind_ds.county_geom k
+LEFT join diffusion_shared.county_geom k
 ON j.county_id = k.county_id
 GROUP BY k.state_abbr)
 
@@ -164,7 +164,7 @@ FROM dg_wind.res_load_by_county_us
 where total_load_mwh_2011_residential = 0;
 
 select *
-FROM wind_ds.county_geom
+FROM diffusion_shared.county_geom
 where county_id = 2988;
 
 ----------------------------------------------------------------------------------------------------
@@ -239,11 +239,11 @@ CREATE TABLE dg_wind.res_customers_by_county_us
 total_customers_2011_residential numeric);
 
 -- run parsel
-select parsel_2('dav-gis','wind_ds.county_geom','county_id',
+select parsel_2('dav-gis','diffusion_shared.county_geom','county_id',
 'WITH tile_stats as (
 	select a.county_id,
 		ST_SummaryStats(ST_Clip(b.rast, 1, a.the_geom_4326, true)) as stats
-	FROM wind_ds.county_geom as a
+	FROM diffusion_shared.county_geom as a
 	INNER JOIN dg_wind.mosaic_customers_residential_us b
 	ON ST_Intersects(a.the_geom_4326,b.rast)
 )
@@ -275,7 +275,7 @@ b as (
 
 SELECT k.state_abbr, sum(total_customers_2011_residential)
 FROM dg_wind.res_customers_by_county_us j
-LEFT join wind_ds.county_geom k
+LEFT join diffusion_shared.county_geom k
 ON j.county_id = k.county_id
 GROUP BY k.state_abbr)
 

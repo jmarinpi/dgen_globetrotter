@@ -1,6 +1,6 @@
---create table using zonal stats
-DROP TABLE IF EXISTS wind_ds.capital_cost_multipliers_us;
-CREATE TABLE wind_ds.capital_cost_multipliers_us AS
+﻿--create table using zonal stats
+DROP TABLE IF EXISTS diffusion_shared.capital_cost_multipliers_us;
+CREATE TABLE diffusion_shared.capital_cost_multipliers_us AS
 WITH tile_stats as (
 	select a.county_id, a.state_abbr,
 		ST_SummaryStats(ST_Clip(b.rast, 1, a.the_geom_96703, true)) as stats
@@ -29,7 +29,7 @@ DROP TABLE IF EXISTS dg_wind.missing_capcost;
 CREATE TABLE dg_wind.missing_capcost AS
 with tile_intersections AS (
 	select m.county_id, a.the_geom_96703 as county_geom, ST_PixelAsPolygons(b.rast) as gv
-	FROM wind_ds.capital_cost_multipliers_us m
+	FROM diffusion_shared.capital_cost_multipliers_us m
 	LEFT JOin wind_ds.county_geom a 
 	ON m.county_id = a.county_id
 	INNER JOIN dg_wind.cap_costs_idw_onshore_wind_10x10 b
@@ -41,7 +41,7 @@ where ST_Intersects(county_geom,(gv).geom)
 GROUP BY county_id, county_geom;
 
 -- add these changes into the main table
-UPDATE wind_ds.capital_cost_multipliers_us a
+UPDATE diffusion_shared.capital_cost_multipliers_us a
 SET cap_cost_multiplier = b.cap_cost
 FROM dg_wind.missing_capcost b
 where a.cap_cost_multiplier is null
@@ -49,20 +49,20 @@ and a.county_id = b.county_id;
 
 -- check this worked
 select count(*)
-FROM wind_ds.capital_cost_multipliers_us
+FROM diffusion_shared.capital_cost_multipliers_us
 where cap_cost_multiplier is null;
 
 -- ADD PRIMARY KEY
-ALTER TABLE wind_ds.capital_cost_multipliers_us ADD PRIMARY KEY (county_id);
+ALTER TABLE diffusion_shared.capital_cost_multipliers_us ADD PRIMARY KEY (county_id);
 
 -- create table to check results
-DROP VIEW IF EXISTS dg_wind.capital_costs_with_geoms;
-CREATE OR REPLACE VIEW dg_wind.capital_costs_with_geoms AS
-SELECT a.county_id, a.county, a.state_abbr, a.the_geom_4326,
-	b.cap_cost_multiplier
-FROM wind_ds.county_geom a
-inner join wind_ds.capital_cost_multipliers_us b
-on a.county_id = b.county_id;
+-- DROP VIEW IF EXISTS dg_wind.capital_costs_with_geoms;
+-- CREATE OR REPLACE VIEW dg_wind.capital_costs_with_geoms AS
+-- SELECT a.county_id, a.county, a.state_abbr, a.the_geom_4326,
+-- 	b.cap_cost_multiplier
+-- FROM wind_ds.county_geom a
+-- inner join diffusion_shared.capital_cost_multipliers_us b
+-- on a.county_id = b.county_id;
 -- export to shapefile and create a map to compare to the REEDs region level multipliers
 
 

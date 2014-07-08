@@ -1,4 +1,4 @@
---------------------------------------------------------------------------------------------------------------------
+﻿--------------------------------------------------------------------------------------------------------------------
 -- us
 --------------------------------------------------------------------------------------------------------------------
 
@@ -117,11 +117,11 @@ CREATE TABLE dg_wind.ind_load_by_county_us
 total_load_mwh_2011_industrial numeric);
 
 -- run parsel
-select parsel_2('dav-gis','wind_ds.county_geom','county_id',
+select parsel_2('dav-gis','diffusion_shared.county_geom','county_id',
 'WITH tile_stats as (
 	select a.county_id,
 		ST_SummaryStats(ST_Clip(b.rast, 1, a.the_geom_900914, true)) as stats
-	FROM wind_ds.county_geom as a
+	FROM diffusion_shared.county_geom as a
 	INNER JOIN dg_wind.mosaic_load_industrial_us b
 	ON ST_Intersects(a.the_geom_900914,b.rast)
 )
@@ -154,7 +154,7 @@ b as (
 
 SELECT k.state_abbr, sum(total_load_mwh_2011_industrial)
 FROM dg_wind.ind_load_by_county_us j
-LEFT join wind_ds.county_geom k
+LEFT join diffusion_shared.county_geom k
 ON j.county_id = k.county_id
 GROUP BY k.state_abbr)
 
@@ -174,7 +174,7 @@ where total_load_mwh_2011_industrial = 0; -- yup -- 9 of them!
 CREATE TABLE wind_ds_data.counties_without_load_ind AS
 SELECT b.*
 FROM dg_wind.ind_load_by_county_us a
-LEFT join wind_ds.county_geom b
+LEFT join diffusion_shared.county_geom b
 ON a.county_id = b.county_id
 where a.total_load_mwh_2011_industrial = 0;
 -- these are all seemingly legit zero load areas -- the original service territories show no industrial load
@@ -251,11 +251,11 @@ CREATE TABLE dg_wind.ind_customers_by_county_us
 total_customers_2011_industrial numeric);
 
 -- run parsel
-select parsel_2('dav-gis','wind_ds.county_geom','county_id',
+select parsel_2('dav-gis','diffusion_shared.county_geom','county_id',
 'WITH tile_stats as (
 	select a.county_id,
 		ST_SummaryStats(ST_Clip(b.rast, 1, a.the_geom_900914, true)) as stats
-	FROM wind_ds.county_geom as a
+	FROM diffusion_shared.county_geom as a
 	INNER JOIN dg_wind.mosaic_customers_industrial_us b
 	ON ST_Intersects(a.the_geom_900914,b.rast)
 )
@@ -288,7 +288,7 @@ b as (
 
 SELECT k.state_abbr, sum(total_customers_2011_industrial)
 FROM dg_wind.ind_customers_by_county_us j
-LEFT join wind_ds.county_geom k
+LEFT join diffusion_shared.county_geom k
 ON j.county_id = k.county_id
 GROUP BY k.state_abbr)
 

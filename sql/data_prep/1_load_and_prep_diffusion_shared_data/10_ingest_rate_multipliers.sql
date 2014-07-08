@@ -1,4 +1,4 @@
--- load the dg_wind temporarily to remove dupes for each state
+﻿-- load the dg_wind temporarily to remove dupes for each state
 DROP TABLE IF EXISTS dg_wind.rate_escalations;
 CREATE TABLE dg_wind.rate_escalations (
 	census_division text,
@@ -21,24 +21,24 @@ FROM eia.census_regions_20140123 b
 where a.census_division = b.division;
 
 -- remove the duplicates for each state, and move to wind_ds (prior to doing this, make sure that this query's row count matches the row count if you remove escalation_factor from the query
-CREATE TABLE wind_ds.rate_escalations AS
+CREATE TABLE diffusion_shared.rate_escalations AS
 SELECT census_division_abbr, sector, year, escalation_factor
 FROM dg_wind.rate_escalations
 GROUP BY census_division_abbr, sector, year, escalation_factor;
 
 -- set a check constraint for sector
-ALTER TABLE wind_ds.rate_escalations 
+ALTER TABLE diffusion_shared.rate_escalations 
 ADD constraint sector_check check (sector in ('Residential','Commercial','Industrial'));
 
 -- add source column
-ALTER TABLE wind_ds.rate_escalations 
+ALTER TABLE diffusion_shared.rate_escalations 
 ADD COLUMN source text;
 
-UPDATE  wind_ds.rate_escalations
+UPDATE  diffusion_shared.rate_escalations
 set source = 'AEO2014';
 
 -- add indices
-CREATE INDEX rate_escalations_btree_year ON wind_ds.rate_escalations using btree(year);
-CREATE INDEX rate_escalations_btree_census_division_abbr ON wind_ds.rate_escalations using btree(census_division_abbr);
-CREATE INDEX rate_escalations_btree_sector ON wind_ds.rate_escalations using btree(sector);
-CREATE INDEX rate_escalations_btree_source ON wind_ds.rate_escalations using btree(source);
+CREATE INDEX rate_escalations_btree_year ON diffusion_shared.rate_escalations using btree(year);
+CREATE INDEX rate_escalations_btree_census_division_abbr ON diffusion_shared.rate_escalations using btree(census_division_abbr);
+CREATE INDEX rate_escalations_btree_sector ON diffusion_shared.rate_escalations using btree(sector);
+CREATE INDEX rate_escalations_btree_source ON diffusion_shared.rate_escalations using btree(source);

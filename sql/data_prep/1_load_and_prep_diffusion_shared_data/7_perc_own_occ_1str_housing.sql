@@ -165,15 +165,15 @@ ORDER bY b.perc_own_occupied_housing-a.perc_own_occu_1str_housing;
 
 -- copy data to wind_ds schema
 SET ROLE 'wind_ds-writers';
-DROP TABLE IF EXISTS wind_ds.county_housing_units;
-CREATE TABLE wind_ds.county_housing_units AS
+DROP TABLE IF EXISTS diffusion_shared.county_housing_units;
+CREATE TABLE diffusion_shared.county_housing_units AS
 SELECT county_id, perc_own_occu_1str_housing 
 FROM  dg_wind.county_housing_units;
 
-ALTER TABLE wind_ds.county_housing_units
+ALTER TABLE diffusion_shared.county_housing_units
 ADD primary key (county_id);
 
-ALTER TABLE wind_ds.county_housing_units
+ALTER TABLE diffusion_shared.county_housing_units
 ADD CONSTRAINT county_id_fkey FOREIGN KEY (county_id)
       REFERENCES wind_ds.county_geom (county_id) MATCH FULL
       ON UPDATE RESTRICT ON DELETE RESTRICT;

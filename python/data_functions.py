@@ -180,7 +180,7 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess, l
             AND a.year = c.year
             LEFT JOIN wind_ds.rate_escalations_to_model d
             ON a.year = d.year
-            LEFT JOIN wind_ds.aeo_load_growth_projections e
+            LEFT JOIN diffusion_shared.aeo_load_growth_projections e
             ON d.census_division_abbr = e.census_division_abbr
             AND a.year = e.year
             LEFT JOIN wind_ds.market_projections f
@@ -530,7 +530,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                          row_number() OVER (PARTITION BY a.county_id ORDER BY random() * b.prob) as row_number, 
                          b.*
                 	FROM s, wind_ds.counties_to_model a
-                	LEFT JOIN wind_ds.binned_annual_load_kwh_%(n_bins)s_bins b
+                	LEFT JOIN diffusion_shared.binned_annual_load_kwh_%(n_bins)s_bins b
                 	ON a.census_region = b.census_region
                 	AND b.sector = lower('%(sector)s');""" % inputs
     cur.execute(sql)
