@@ -19,7 +19,7 @@ aggregated as (
 SELECT county_id,
 	case when state_abbr in ('PA','NJ','NY','RI','CT','MA','VT','NH','ME') then raw_multiplier+0.2 -- per consistency with the methodology we used for REEDs
 	ELSE raw_multiplier
-	end as cap_cost_multiplier
+	end as onshore_wind_cap_cost_multiplier
 FROM aggregated;
 
 
@@ -34,7 +34,7 @@ with tile_intersections AS (
 	ON m.county_id = a.county_id
 	INNER JOIN dg_wind.cap_costs_idw_onshore_wind_10x10 b
 	ON ST_Intersects(a.the_geom_96703,b.rast)
-	where m.cap_cost_multiplier is null)
+	where m.onshore_wind_cap_cost_multiplier is null)
 SELECT county_id, ST_Transform(county_geom,4326) as the_geom_4326, avg((gv).val) as cap_cost
 FROM tile_intersections
 where ST_Intersects(county_geom,(gv).geom)
@@ -42,7 +42,7 @@ GROUP BY county_id, county_geom;
 
 -- add these changes into the main table
 UPDATE diffusion_shared.capital_cost_multipliers_us a
-SET cap_cost_multiplier = b.cap_cost
+SET onshore_wind_cap_cost_multiplier = b.cap_cost
 FROM dg_wind.missing_capcost b
 where a.cap_cost_multiplier is null
 and a.county_id = b.county_id;
@@ -50,7 +50,7 @@ and a.county_id = b.county_id;
 -- check this worked
 select count(*)
 FROM diffusion_shared.capital_cost_multipliers_us
-where cap_cost_multiplier is null;
+where onshore_wind_cap_cost_multiplier is null;
 
 -- ADD PRIMARY KEY
 ALTER TABLE diffusion_shared.capital_cost_multipliers_us ADD PRIMARY KEY (county_id);
