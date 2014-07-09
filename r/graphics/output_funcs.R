@@ -87,7 +87,86 @@ cf_by_sector_and_year<-function(df){
     ggtitle('Median Capacity Factor by Sector')
 }
 
+lcoe_contour<-function(df,dr = 0.05,n = 30){
+# Map out the net present cost and annual capacity factor to achieve a given LCOE
+# LCOE is calculate as the net present cost divided by the net present generation over lifetime
+# To calculate NPC for the model, assume a 30yr life and 1c/kWh VOM
+# Plot a sample of model points for the first and final year for all sectors,sizes, etc.
+  
+d = data.frame()
+present_value_factor = ((1 - (1 + dr)^-n)/dr)
 
+# Calculate the min and max capacity factors for a given lcoe and net present cost (npc)
+for(lcoe in c(0,0.1, 0.2, 0.3, 0.4, 0.5, 0.6,0.7)){
+  tmp<-data.frame(npc = seq(0,10,.01))
+  tmp$cf <- 1000 * tmp$npc / (lcoe * 8760 * present_value_factor)
+  tmp$cf_max <- 1000 * tmp$npc / (lcoe * 8760 * present_value_factor)
+  tmp$cf_min <- 1000 * tmp$npc / ((lcoe + 0.1) * 8760 * present_value_factor)
+  tmp$lcoe <- lcoe
+  d <- rbind(d,tmp)
+}
+
+d[is.na(d)] <- 0.5
+d[d$cf_max > 0.5, 'cf_max'] <- 0.5
+d[d$cf_min > 0.5, 'cf_min'] <- 0.5
+d[d$lcoe == 0.7 , 'cf_min'] <- 0
+
+# Subset of model points for first and last year
+pts = subset(df, year %in% c(min(df$year),max(df$year)))
+pts = pts[sample(nrow(pts), min(1000,nrow(pts))),]
+
+ggplot()+
+  geom_ribbon(data = d, aes(x = npc, y = cf, ymin = cf_min, ymax = cf_max, fill = factor(lcoe)), alpha = 0.5)+
+  theme_few()+
+  scale_x_continuous(name = 'Net Present Cost ($/W)', limits = c(0,10))+
+  scale_y_continuous(name = 'Annual Capacity Factor', limits = c(0,.5))+
+  scale_fill_brewer(name = 'LCOE Range ($/kWh)', 
+                    labels=c('< 0.1' ,"0.1 - 0.2", "0.2 - 0.3", "0.3 - 0.4", "0.4 - 0.5", "0.5 - 0.6", "0.6 - 0.7", "> 0.7"), 
+                    palette = 'Spectral')+
+  geom_point(data = pts, aes(x = 0.001 * (installed_costs_dollars_per_kw + naep * 0.01 * present_value_factor), 
+                                y = naep/8760, color = factor(year), 
+                                shape = factor(year)))+
+  scale_colour_discrete(name = 'Sample From Model')+
+  scale_shape_discrete(name = 'Sample From Model')+
+  ggtitle("LCOE Contour Map For First and Final Model Years")
+}
+
+excess_gen_figs<-function(df,con){
+  
+  # Get the scenario options
+  table<-dbGetQuery(con,"select * from wind_ds.scenario_options")
+  nem_availability <- table[1,'net_metering_availability']
+  
+  if(nem_availability == 'Full_Net_Metering_Everywhere'){
+  df$percent_of_gen_monetized = 1   
+  } else if(nem_availability == 'Partial_Avoided_Cost'){
+  df$percent_of_gen_monetized = 1 - 0.5 * df$excess_generation_factor 
+  } else if(nem_availability == 'Partial_No_Outflows'){
+  df$percent_of_gen_monetized = 1 - excess_generation_factor 
+  } else if(nem_availability == 'No_Net_Metering_Anywhere'){
+  df$percent_of_gen_monetized = 1 - df$excess_generation_factor  
+  } else {percent_of_gen_monetized = 0}
+ 
+  if(nem_availability != 'No_Net_Metering_Anywhere'){
+  df[df$nem_system_limit_kw >= df$cap,'percent_of_gen_monetized'] <- 1
+  }
+  
+  excess_gen_pt<-ggplot(df, aes(x =percent_of_gen_monetized, y = payback_period, color = nem_system_limit_kw>0))+
+    geom_point()+
+    theme_few()+
+    scale_x_continuous(name = 'Percent of Generation Value at Retail Rate', labels = percent)+
+    scale_y_continuous(name = 'Payback Period (years)')+
+    ggtitle('Relationship Between NEM Availability and Payback Period')
+  
+  excess_gen_cdf<-ggplot(data = df, aes(x = percent_of_gen_monetized))+
+    stat_ecdf()+
+    theme_few()+
+    scale_x_continuous(name = 'Percent of Generation Value at Retail Rate', labels = percent)+
+    scale_y_continuous(name = 'Cumulative Percentage', labels = percent)+
+    ggtitle('Distribution of Generation Valued at Retail Rate and Payback Period')
+
+list('excess_gen_pt' = excess_gen_pt, 'excess_gen_cdf' = excess_gen_cdf)
+}
 
 cf_supply_curve<-function(df){
   #' National capacity factor supply curve
