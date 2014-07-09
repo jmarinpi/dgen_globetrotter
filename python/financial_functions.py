@@ -247,11 +247,11 @@ def calc_irr(cfs):
     
     '''
     if cfs.ndim == 1: 
-        irr_out = [np.array(np.irr(cfs)).min()]
+        irr_out = [np.array(irr(cfs)).min()]
     else: 
         irr_out = []
         for x in cfs:
-            out = np.array(np.irr(x)).min()
+            out = np.array(irr(x)).min()
             if np.isnan(out): out = -1
             irr_out.append(out)
     return np.array(irr_out)
@@ -373,7 +373,51 @@ def recalc_down_payment(df):
     return df
     
 #==============================================================================
-#
+
+def irr(values):
+    """
+    Return the minimum Internal Rate of Return (IRR) within the range [-30%,+Inf].
+
+    This is the "average" periodically compounded rate of return
+    that gives a net present value of 0.0; for a more complete explanation,
+    see Notes below.
+
+    Parameters
+    ----------
+    values : array_like, shape(N,)
+        Input cash flows per time period.  By convention, net "deposits"
+        are negative and net "withdrawals" are positive.  Thus, for example,
+        at least the first element of `values`, which represents the initial
+        investment, will typically be negative.
+
+    Returns
+    -------
+    out : float
+        Internal Rate of Return for periodic input values.
+
+    Notes
+    -----
+
+    """
+    res = np.roots(values[::-1])
+    # Find the root(s) between 0 and 1
+    mask = (res.imag == 0) & (res.real > 0)
+    res = res[mask].real
+    if res.size == 0:
+        return np.nan
+    rate = 1.0/res - 1
+    if sum(values)>0:
+        rate = rate[rate>0] # Negative IRR is returned otherwise
+    rate = rate[rate>-.3]
+    if rate.size == 0:
+        return np.nan
+    if rate.size == 1:
+        rate = rate.item()
+    else: 
+        rate = min(rate)
+    return rate
+
+#==============================================================================
 #
 #
 #
