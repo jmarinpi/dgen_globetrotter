@@ -1,7 +1,7 @@
-DROP TABLE IF EXISTS wind_ds_data.missing_ij_icf_res_points;
+﻿DROP TABLE IF EXISTS wind_ds_data.missing_ij_icf_res_points;
 CREATE TABLE wind_ds_data.missing_ij_icf_res_points AS
 SELECT a.gid, a.the_geom_900914, b.iii, b.jjj, b.icf, b.iii::integer as i, b.jjj::integer as j, b.icf::integer/10 as cf_bin
-FROM wind_ds.pt_grid_us_res a
+FROM diffusion_shared.pt_grid_us_res a
 
 LEFT JOIN wind_ds.iiijjjicf_lookup b
 ON a.iiijjjicf_id = b.id
@@ -132,7 +132,7 @@ DROP TABLE IF EXISTS wind_ds.ij_cfbin_lookup_res_pts_us;
 CREATE TABLE wind_ds.ij_cfbin_lookup_res_pts_us AS
 with notmissing as (
 	SELECT a.gid as pt_gid, b.iii::integer as i, b.jjj::integer as j, b.icf::integer/10 as cf_bin, 1::numeric as aep_scale_factor
-	FROM wind_ds.pt_grid_us_res a
+	FROM diffusion_shared.pt_grid_us_res a
 
 	LEFT JOIN wind_ds.iiijjjicf_lookup b
 	ON a.iiijjjicf_id = b.id
@@ -176,7 +176,7 @@ FROM adjusted_multi_cfbins;
 -- count should match wind_ds.pt_grid_us_res
 
 SELECT count(*)
-FROM wind_ds.pt_grid_us_res a;
+FROM diffusion_shared.pt_grid_us_res a;
 --6273234 rows (and it does!)
 
 
@@ -185,7 +185,7 @@ ALTER TABLE wind_ds.ij_cfbin_lookup_res_pts_us ADD PRIMARY KEY (pt_gid);
 -- add foreign key
 ALTER TABLE wind_ds.ij_cfbin_lookup_res_pts_us
   ADD CONSTRAINT pt_gid_fkey FOREIGN KEY (pt_gid)
-      REFERENCES wind_ds.pt_grid_us_res (gid) MATCH FULL
+      REFERENCES diffusion_shared.pt_grid_us_res (gid) MATCH FULL
       ON UPDATE RESTRICT ON DELETE RESTRICT;
 -- change i, j, cfbin column types
 ALTER TABLE wind_ds.ij_cfbin_lookup_res_pts_us ALTER i TYPE integer;
@@ -204,7 +204,7 @@ where aep_scale_factor = 0;
 
 -- test that everything worked
 SELECT a.gid, b.i, b.j, b.cf_bin, b.aep_scale_factor, c.aep as aep_raw, c.aep*b.aep_scale_factor as aep_adjusted
-FROM wind_ds.pt_grid_us_res a
+FROM diffusion_shared.pt_grid_us_res a
 LEFT JOIN wind_ds.ij_cfbin_lookup_res_pts_us b
 on a.gid = b.pt_gid
 LEFT JOIN wind_ds.wind_resource_annual c

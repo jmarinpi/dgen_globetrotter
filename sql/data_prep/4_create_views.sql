@@ -61,7 +61,7 @@ SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_p
 	e.state_abbr, e.census_division_abbr, e.census_region,
 	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
-FROM wind_ds.pt_grid_us_ind a
+FROM diffusion_shared.pt_grid_us_ind a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
@@ -104,7 +104,7 @@ SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_p
 	e.state_abbr, e.census_division_abbr, e.census_region,
 	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
-FROM wind_ds.pt_grid_us_res a
+FROM diffusion_shared.pt_grid_us_res a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
@@ -148,7 +148,7 @@ SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_p
 	e.state_abbr, e.census_division_abbr, e.census_region, 
 	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
-FROM wind_ds.pt_grid_us_com a
+FROM diffusion_shared.pt_grid_us_com a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id

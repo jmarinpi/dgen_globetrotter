@@ -1,8 +1,8 @@
--- find all the points without valid i, j, icf indbos
-DROP TABLE IF EXISTS wind_ds_data.missing_ij_icf_ind_points;
-CREATE TABLE wind_ds_data.missing_ij_icf_ind_points AS
+﻿-- find all the points without valid i, j, icf combos
+DROP TABLE IF EXISTS wind_ds_data.missing_ij_icf_com_points;
+CREATE TABLE wind_ds_data.missing_ij_icf_com_points AS
 SELECT a.gid, a.the_geom_900914, b.iii, b.jjj, b.icf, b.iii::integer as i, b.jjj::integer as j, b.icf::integer/10 as cf_bin
-FROM wind_ds.pt_grid_us_ind a
+FROM diffusion_shared.pt_grid_us_com a
 
 LEFT JOIN wind_ds.iiijjjicf_lookup b
 ON a.iiijjjicf_id = b.id
@@ -12,21 +12,21 @@ ON b.iii = c.iii
 and b.jjj = c.jjj
 and b.icf = c.icf
 
-where c.i is null; -- this filters down to the ones for which there is no matching i, j, icf indbo with elev and tmy data
--- 531505   points
+where c.i is null; -- this filters down to the ones for which there is no matching i, j, icf combo with elev and tmy data
+-- 875,275   points
 
-CREATE INDEX missing_ij_icf_ind_points_the_geom_900914_gist ON wind_ds_data.missing_ij_icf_ind_points using gist(the_geom_900914);
+CREATE INDEX missing_ij_icf_com_points_the_geom_900914_gist ON wind_ds_data.missing_ij_icf_com_points using gist(the_geom_900914);
 
 -- find which points can be fixed by going up or down one cfbin in the same i j cell
-DROP TABLE IF EXISTS wind_ds_data.ind_points_adjusted_1cfbin;
-CREATE TABLE wind_ds_data.ind_points_adjusted_1cfbin AS
+DROP TABLE IF EXISTS wind_ds_data.com_points_adjusted_1cfbin;
+CREATE TABLE wind_ds_data.com_points_adjusted_1cfbin AS
 with same_cell as (
 	SELECT a.*, 
 		CASE WHEN b.cf_bin is not null then b.cf_bin -- 1 bin up
 		     WHEN c.cf_bin is not null then c.cf_bin -- 1 bin down
 		else null
 		end as adjusted_cf_bin
-	FROM wind_ds_data.missing_ij_icf_ind_points a
+	FROM wind_ds_data.missing_ij_icf_com_points a
 	-- try same cell, 1 cfbin up
 	LEFT JOIN aws.ij_icf_lookup_onshore b
 	on a.iii = b.iii
@@ -40,16 +40,16 @@ with same_cell as (
 SELECT gid, iii, jjj, i, j, cf_bin, adjusted_cf_bin
 FROM same_cell
 where adjusted_cf_bin is not null;
--- 339566     rows (about 4/5 of the points)
+-- 576,769    rows (about 2/3 of the points)
 
 
 
-DROP TABLE IF EXISTS wind_ds_data.ind_points_adjusted_ij;
-CREATE TABLE wind_ds_data.ind_points_adjusted_ij AS
+DROP TABLE IF EXISTS wind_ds_data.com_points_adjusted_ij;
+CREATE TABLE wind_ds_data.com_points_adjusted_ij AS
 with unfixed as (
 	SELECT a.gid, a.the_geom_900914, a.iii, a.jjj, a.icf, a.i, a.j, a.cf_bin
-	FROM wind_ds_data.missing_ij_icf_ind_points a
-	LEFT JOIN wind_ds_data.ind_points_adjusted_1cfbin b
+	FROM wind_ds_data.missing_ij_icf_com_points a
+	LEFT JOIN wind_ds_data.com_points_adjusted_1cfbin b
 	ON a.gid = b.gid
 	where b.gid is null),
 near_cells As (
@@ -96,27 +96,27 @@ SELECT distinct on (a.gid) a.gid, a.the_geom_900914, a.iii, a.jjj, a.icf, a.i, a
 FROM nn_cfs a
 where adjusted_cf_bin is NOT null
 order by a.gid, nn_rank asc;
--- 162506  points
+-- 255,803 points
 
 
--- find everything that is still missing wind indource data
-DROP TABLE IF EXISTS wind_ds_data.remaining_missing_ind_points;
-CREATE TABLE wind_ds_data.remaining_missing_ind_points AS
+-- find everything that is still missing wind resource data
+DROP TABLE IF EXISTS wind_ds_data.remaining_missing_com_points;
+CREATE TABLE wind_ds_data.remaining_missing_com_points AS
 SELECT a.*
-FROM wind_ds_data.missing_ij_icf_ind_points a
-LEFT JOIN wind_ds_data.ind_points_adjusted_ij b
+FROM wind_ds_data.missing_ij_icf_com_points a
+LEFT JOIN wind_ds_data.com_points_adjusted_ij b
 ON a.gid = b.gid
-lEFT JOIN wind_ds_data.ind_points_adjusted_1cfbin c
+lEFT JOIN wind_ds_data.com_points_adjusted_1cfbin c
 ON a.gid = c.gid
 where b.gid is null and c.gid is null;
--- 29433    still have no data
+-- 42,703   still have no data
 
 -- for the remaining points, pick the closest cfbin in the same ij cell
-DROP TABLE IF EXISTS wind_ds_data.ind_points_adjusted_multi_cfbins;
-CREATE TABLE wind_ds_data.ind_points_adjusted_multi_cfbins AS
+DROP TABLE IF EXISTS wind_ds_data.com_points_adjusted_multi_cfbins;
+CREATE TABLE wind_ds_data.com_points_adjusted_multi_cfbins AS
 SELECT distinct ON (a.gid) a.gid, a.the_geom_900914, a.iii, a.jjj, a.icf, a.i, a.j, a.cf_bin, 
        b.cf_bin as adjusted_cf_bin
-FROM wind_ds_data.remaining_missing_ind_points a
+FROM wind_ds_data.remaining_missing_com_points a
 LEFT JOIN aws.ij_icf_lookup_onshore b
 ON a.i = b.i
 and a.j = b.j
@@ -124,16 +124,16 @@ order by a.gid asc, @(a.cf_bin-b.cf_bin) asc;
 
 -- make sure nothing is left
 select count(*)
-FROM wind_ds_data.ind_points_adjusted_multi_cfbins
+FROM wind_ds_data.com_points_adjusted_multi_cfbins
 where adjusted_cf_bin is null;
 
 
 -- combine all of these, along with non missing points, into a single lookup table
-DROP TABLE IF EXISTS wind_ds.ij_cfbin_lookup_ind_pts_us;
-CREATE TABLE wind_ds.ij_cfbin_lookup_ind_pts_us AS
+DROP TABLE IF EXISTS wind_ds.ij_cfbin_lookup_com_pts_us;
+CREATE TABLE wind_ds.ij_cfbin_lookup_com_pts_us AS
 with notmissing as (
 	SELECT a.gid as pt_gid, b.iii::integer as i, b.jjj::integer as j, b.icf::integer/10 as cf_bin, 1::integer as aep_scale_factor
-	FROM wind_ds.pt_grid_us_ind a
+	FROM diffusion_shared.pt_grid_us_com a
 
 	LEFT JOIN wind_ds.iiijjjicf_lookup b
 	ON a.iiijjjicf_id = b.id
@@ -146,15 +146,15 @@ with notmissing as (
 	where c.i is NOT null),
 adjusted_1cfbin as (
 	SELECT gid as pt_gid, i, j, adjusted_cf_bin as cf_bin, cf_bin::numeric/adjusted_cf_bin::numeric as aep_scale_factor
-	FROM wind_ds_data.ind_points_adjusted_1cfbin
+	FROM wind_ds_data.com_points_adjusted_1cfbin
 ),
 adjusted_ij AS (
 	SELECT gid as pt_gid, near_i as i, near_j as j, adjusted_cf_bin as cf_bin, cf_bin::numeric/adjusted_cf_bin::numeric as aep_scale_factor
-	FROM wind_ds_data.ind_points_adjusted_ij
+	FROM wind_ds_data.com_points_adjusted_ij
 	),
 adjusted_multi_cfbins as (
 	SELECT gid as pt_gid, i, j, adjusted_cf_bin as cf_bin, cf_bin::numeric/adjusted_cf_bin::numeric as aep_scale_factor
-	FROM wind_ds_data.ind_points_adjusted_multi_cfbins
+	FROM wind_ds_data.com_points_adjusted_multi_cfbins
 )
 SELECT *
 FROM notmissing
@@ -173,49 +173,50 @@ UNION ALL
 
 SELECT *
 FROM adjusted_multi_cfbins;
--- 2726840    rows
--- count should match wind_ds.pt_grid_us_ind
+-- 5159001   rows
+-- count should match wind_ds.pt_grid_us_com
 
 SELECT count(*)
-FROM wind_ds.pt_grid_us_ind a
---2726840 rows (and it does!)
+FROM diffusion_shared.pt_grid_us_com a
+--5159001 rows (and it does!)
 
 
 -- add primary
-ALTER TABLE wind_ds.ij_cfbin_lookup_ind_pts_us ADD PRIMARY KEY (pt_gid);
+ALTER TABLE wind_ds.ij_cfbin_lookup_com_pts_us ADD PRIMARY KEY (pt_gid);
 -- add foreign key
-ALTER TABLE wind_ds.ij_cfbin_lookup_ind_pts_us
+ALTER TABLE wind_ds.ij_cfbin_lookup_com_pts_us
   ADD CONSTRAINT pt_gid_fkey FOREIGN KEY (pt_gid)
-      REFERENCES wind_ds.pt_grid_us_ind (gid) MATCH FULL
+      REFERENCES diffusion_shared.pt_grid_us_com (gid) MATCH FULL
       ON UPDATE resTRICT ON DELETE resTRICT;
--- change i, j, cfbin column types
-ALTER TABLE wind_ds.ij_cfbin_lookup_ind_pts_us ALTER i TYPE integer;
-ALTER TABLE wind_ds.ij_cfbin_lookup_ind_pts_us ALTER j TYPE integer;
-ALTER TABLE wind_ds.ij_cfbin_lookup_ind_pts_us ALTER cf_bin TYPE integer;
--- add indices
-CREATE INDEX ij_cfbin_lookup_ind_pts_us_i_btree ON wind_ds.ij_cfbin_lookup_ind_pts_us using btree(i);
-CREATE INDEX ij_cfbin_lookup_ind_pts_us_j_btree ON wind_ds.ij_cfbin_lookup_ind_pts_us using btree(j);
-CREATE INDEX ij_cfbin_lookup_ind_pts_us_cf_bin_btree ON wind_ds.ij_cfbin_lookup_ind_pts_us using btree(cf_bin);
 
+-- change i, j, cfbin column types
+ALTER TABLE wind_ds.ij_cfbin_lookup_com_pts_us ALTER i TYPE integer;
+ALTER TABLE wind_ds.ij_cfbin_lookup_com_pts_us ALTER j TYPE integer;
+ALTER TABLE wind_ds.ij_cfbin_lookup_com_pts_us ALTER cf_bin TYPE integer;
+-- add indices
+CREATE INDEX ij_cfbin_lookup_com_pts_us_i_btree ON wind_ds.ij_cfbin_lookup_com_pts_us using btree(i);
+CREATE INDEX ij_cfbin_lookup_com_pts_us_j_btree ON wind_ds.ij_cfbin_lookup_com_pts_us using btree(j);
+CREATE INDEX ij_cfbin_lookup_com_pts_us_cf_bin_btree ON wind_ds.ij_cfbin_lookup_com_pts_us using btree(cf_bin);
 
 -- check for scale factors of zero
 select *
-FROM wind_ds.ij_cfbin_lookup_ind_pts_us
+FROM wind_ds.ij_cfbin_lookup_com_pts_us
 where aep_scale_factor = 0;
 -- do any occur? if so, figure out why
 
 
--- **
 -- test that everything worked
 SELECT a.gid, b.i, b.j, b.cf_bin, b.aep_scale_factor, c.aep as aep_raw, c.aep*b.aep_scale_factor as aep_adjusted
-FROM wind_ds.pt_grid_us_ind a
-LEFT JOIN wind_ds.ij_cfbin_lookup_ind_pts_us b
+FROM diffusion_shared.pt_grid_us_com a
+LEFT JOIN wind_ds.ij_cfbin_lookup_com_pts_us b
 on a.gid = b.pt_gid
 LEFT JOIN wind_ds.wind_resource_annual c
 ON b.i = c.i
 and b.j = c.j
 and b.cf_bin = c.cf_bin
--- where c.height = 50
--- and c.turbine_id = 2
+where c.height = 50
+and c.turbine_id = 1
 -- limit 100
-where c.aep is null; -- none are returned, so all points are being linked to aep values!!!
+and c.aep is null; -- none are returned, so all points are being linked to aep values!!!
+
+

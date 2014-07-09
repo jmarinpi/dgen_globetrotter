@@ -1,51 +1,51 @@
 ﻿-- DROP TABLE IF EXISTS wind_ds.pt_grid_us_res;
-CREATE TABLE wind_ds.pt_grid_us_res (
+CREATE TABLE diffusion_shared.pt_grid_us_res (
 	x numeric,
 	y numeric,
 	temp_col integer);
 
 SET ROLE "server-superusers";
 
-COPY wind_ds.pt_grid_us_res FROM '/srv/home/mgleason/data/dg_wind/res_points_200m_us.csv' with csv header;
+COPY diffusion_shared.pt_grid_us_res FROM '/srv/home/mgleason/data/dg_wind/res_points_200m_us.csv' with csv header;
 
 RESET ROLE;
 
-ALTER TABLE wind_ds.pt_grid_us_res ALTER x TYPE INTEGER;
-ALTER TABLE wind_ds.pt_grid_us_res ALTER y TYPE INTEGER;
+ALTER TABLE diffusion_shared.pt_grid_us_res ALTER x TYPE INTEGER;
+ALTER TABLE diffusion_shared.pt_grid_us_res ALTER y TYPE INTEGER;
 -- drop this column -- it means nothing
-ALTER TABLE wind_ds.pt_grid_us_res DROP COLUMN temp_col;
+ALTER TABLE diffusion_shared.pt_grid_us_res DROP COLUMN temp_col;
 
 
-ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN the_geom_900914 geometry;
+ALTER TABLE diffusion_shared.pt_grid_us_res ADD COLUMN the_geom_900914 geometry;
 
 UPDATE wind_ds.pt_grid_us_res
 SET the_geom_900914 = ST_SetSRID(ST_MakePoint(x,y),900914);
 
-CREATE INDEX pt_grid_us_res_the_geom_900914_gist ON wind_ds.pt_grid_us_res USING gist(the_geom_900914);
-CLUSTER wind_ds.pt_grid_us_res USING pt_grid_us_res_the_geom_900914_gist;
+CREATE INDEX pt_grid_us_res_the_geom_900914_gist ON diffusion_shared.pt_grid_us_res USING gist(the_geom_900914);
+CLUSTER diffusion_shared.pt_grid_us_res USING pt_grid_us_res_the_geom_900914_gist;
 
 VACUUM ANALYZE wind_ds.pt_grid_us_res;
 
 -- add:
 -- gid (serial) and pkey
-ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN gid serial;
-ALTER TABLE wind_ds.pt_grid_us_res ADD PRIMARY KEY (gid);
+ALTER TABLE diffusion_shared.pt_grid_us_res ADD COLUMN gid serial;
+ALTER TABLE diffusion_shared.pt_grid_us_res ADD PRIMARY KEY (gid);
 -- the_geom_4326 with index
-ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN the_geom_4326 geometry;
+ALTER TABLE diffusion_shared.pt_grid_us_res ADD COLUMN the_geom_4326 geometry;
 
 UPDATE wind_ds.pt_grid_us_res
 SET the_geom_4326 = ST_Transform(the_geom_900914,4326);
 
-CREATE INDEX pt_grid_us_res_the_geom_4326_gist ON wind_ds.pt_grid_us_res USING gist(the_geom_4326);
+CREATE INDEX pt_grid_us_res_the_geom_4326_gist ON diffusion_shared.pt_grid_us_res USING gist(the_geom_4326);
 -- county id (from polygons) and index (foreign key)?
-ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN county_id integer;
+ALTER TABLE diffusion_shared.pt_grid_us_res ADD COLUMN county_id integer;
 
-UPDATE wind_ds.pt_grid_us_res a
+UPDATE diffusion_shared.pt_grid_us_res a
 SET county_id = b.county_id
 FROM diffusion_shared.county_geom b
 WHERE ST_Intersects(a.the_geom_900914, b.the_geom_900914);
 
-CREATE INDEX pt_grid_us_res_county_id_btree ON wind_ds.pt_grid_us_res using btree(county_id);
+CREATE INDEX pt_grid_us_res_county_id_btree ON diffusion_shared.pt_grid_us_res using btree(county_id);
 -- check why there are nulls
 DROP TABLE IF EXISTS wind_ds_data.no_county_pts;
 CREATE TABLE wind_ds_data.no_county_pts AS
@@ -63,7 +63,7 @@ SELECT a.gid, a.the_geom_900914,
 	unnest((select array(SELECT b.county_id
 	 FROM diffusion_shared.county_geom b
 	 ORDER BY a.the_geom_900914 <#> b.the_geom_900914 LIMIT 3))) as county_id
-FROM wind_ds.pt_grid_us_res a
+FROM diffusion_shared.pt_grid_us_res a
 where a.county_id is null
  )
 
@@ -73,7 +73,7 @@ lEFT JOIN diffusion_shared.county_geom b
 ON a.county_id = b.county_id
 ORDER BY gid, ST_Distance(a.the_geom_900914,b.the_geom_900914) asc;
 
-UPDATE wind_ds.pt_grid_us_res a
+UPDATE diffusion_shared.pt_grid_us_res a
 SET county_id = b.county_id
 FROM wind_ds_data.no_county_pts_closest b
 WHERE a.county_id is null
@@ -81,7 +81,7 @@ and a.gid = b.gid;
 
 -- check no nulls remain
 SELECT count(*)
-FROM wind_ds.pt_grid_us_res 
+FROM diffusion_shared.pt_grid_us_res 
 where county_id is null;
 
 -- utility type
@@ -96,7 +96,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_utiltype_lookup (
 	),
 	isect as (
 		SELECT a.gid, b.company_type_general as utility_type, c.rank
-		FROM wind_ds.pt_grid_us_res a
+		FROM diffusion_shared.pt_grid_us_res a
 		INNER JOIN dg_wind.ventyx_elec_serv_territories_edit_diced b
 		ON ST_Intersects(a.the_geom_4326, b.the_geom_4326)
 		LEFT JOIN ut_ranks c
@@ -106,16 +106,16 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_utiltype_lookup (
 	ORDER BY a.gid, a.rank ASC;','wind_ds_data.pt_grid_us_res_utiltype_lookup', 'a', 16);
 	
 	-- join the info back in
-	ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN utility_type character varying(9);
+	ALTER TABLE diffusion_shared.pt_grid_us_res ADD COLUMN utility_type character varying(9);
 
 	CREATE INDEX pt_grid_us_res_utiltype_lookup_gid_btree ON wind_ds_data.pt_grid_us_res_utiltype_lookup using btree(gid);
 
-	UPDATE wind_ds.pt_grid_us_res a
+	UPDATE diffusion_shared.pt_grid_us_res a
 	SET utility_type = b.utility_type
 	FROM wind_ds_data.pt_grid_us_res_utiltype_lookup b
 	where a.gid = b.gid;
 	
-	CREATE INDEX pt_grid_us_res_utility_type_btree ON wind_ds.pt_grid_us_res USING btree(utility_type);
+	CREATE INDEX pt_grid_us_res_utility_type_btree ON diffusion_shared.pt_grid_us_res USING btree(utility_type);
 	
 	-- are there any nulls?
 	SELECT count(*) 
@@ -132,14 +132,14 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_utiltype_lookup (
 		where utility_type is null)
 	SELECT a.gid, a.the_geom_900914, 
 		(SELECT b.utility_type 
-		 FROM wind_ds.pt_grid_us_res b
+		 FROM diffusion_shared.pt_grid_us_res b
 		 where b.utility_type is not null
 		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914
 		 LIMIT 1) as utility_type
 	FROM a;
 
 	--update the points table
-	UPDATE wind_ds.pt_grid_us_res a
+	UPDATE diffusion_shared.pt_grid_us_res a
 	SET utility_type = b.utility_type
 	FROM wind_ds_data.pt_grid_us_res_utiltype_missing b
 	where a.gid = b.gid
@@ -162,22 +162,22 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 	--run in parallel for speed (100x100 tiles are necessary for it ti finishin in about 7 mins -- 1000x1000 tiles would take several hours even in parallel)
 	SELECT parsel_2('dav-gis','wind_ds.pt_grid_us_res','gid',
 	'SELECT a.gid, ST_Value(b.rast,a.the_geom_900914) as iiijjjicf_id
-	FROM  wind_ds.pt_grid_us_res a
+	FROM  diffusion_shared.pt_grid_us_res a
 	INNER JOIN wind_ds_data.iiijjjicf_us_100x100 b
 	ON ST_Intersects(b.rast,a.the_geom_900914);',
 		'wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup', 'a',16);
 	
 	-- join the info back in
-	ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN iiijjjicf_id integer;
+	ALTER TABLE diffusion_shared.pt_grid_us_res ADD COLUMN iiijjjicf_id integer;
 
 	CREATE INDEX pt_grid_us_res_iiijjjicf_id_lookup_gid_btree ON wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup using btree(gid);
 
-	UPDATE wind_ds.pt_grid_us_res a
+	UPDATE diffusion_shared.pt_grid_us_res a
 	SET iiijjjicf_id = b.iiijjjicf_id
 	FROM wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup b
 	where a.gid = b.gid;
 
-	CREATE INDEX pt_grid_us_res_iiijjjicf_id_btree ON wind_ds.pt_grid_us_res USING btree(iiijjjicf_id);
+	CREATE INDEX pt_grid_us_res_iiijjjicf_id_btree ON diffusion_shared.pt_grid_us_res USING btree(iiijjjicf_id);
 	
 	-- are there any nulls?
 	SELECT count(*) 
@@ -194,7 +194,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 		where iiijjjicf_id is null)
 	SELECT a.gid, a.the_geom_900914, 
 		(SELECT b.iiijjjicf_id 
-		 FROM wind_ds.pt_grid_us_res b
+		 FROM diffusion_shared.pt_grid_us_res b
 		 where b.iiijjjicf_id is not null
 		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914
 		 LIMIT 1) as iiijjjicf_id
@@ -208,7 +208,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 	and a.iiijjjicf_id is null;
 
 	--update the points table
-	UPDATE wind_ds.pt_grid_us_res a
+	UPDATE diffusion_shared.pt_grid_us_res a
 	SET iiijjjicf_id = b.iiijjjicf_id
 	FROM wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup b
 	where a.gid = b.gid
@@ -229,27 +229,27 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 	--run in parallel for speed (100x100 tiles are necessary for it ti finishin in about 7 mins -- 1000x1000 tiles would take several hours even in parallel)
 	SELECT parsel_2('dav-gis','wind_ds.pt_grid_us_res','gid',
 			'SELECT a.gid, ST_Value(b.rast,a.the_geom_900914) as maxheight_m_popdens
-			FROM  wind_ds.pt_grid_us_res a
+			FROM  diffusion_shared.pt_grid_us_res a
 			INNER JOIN wind_ds_data.maxheight_popdens_us_100x100 b
 			ON ST_Intersects(b.rast,a.the_geom_900914);',
 		'wind_ds_data.pt_grid_us_res_maxheight_popdens_lookup', 'a',16);
 
 	-- join the info back in
-	ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN maxheight_m_popdens integer;
+	ALTER TABLE diffusion_shared.pt_grid_us_res ADD COLUMN maxheight_m_popdens integer;
 
 	CREATE INDEX pt_grid_us_res_maxheight_popdens_lookup_gid_btree ON wind_ds_data.pt_grid_us_res_maxheight_popdens_lookup using btree(gid);
 
-	UPDATE wind_ds.pt_grid_us_res a
+	UPDATE diffusion_shared.pt_grid_us_res a
 	SET maxheight_m_popdens = b.maxheight_m_popdens
 	FROM wind_ds_data.pt_grid_us_res_maxheight_popdens_lookup b
 	where a.gid = b.gid;
 
 	-- how many are null?
-	CREATE INDEX pt_grid_us_res_maxheight_m_popdens ON wind_ds.pt_grid_us_res USING btree(maxheight_m_popdens) where maxheight_m_popdens is null;
+	CREATE INDEX pt_grid_us_res_maxheight_m_popdens ON diffusion_shared.pt_grid_us_res USING btree(maxheight_m_popdens) where maxheight_m_popdens is null;
 
 	-- any missing?
 	select count(*)
-	FROM wind_ds.pt_grid_us_res 
+	FROM diffusion_shared.pt_grid_us_res 
 	where maxheight_m_popdens is null;
 	-- nope, so dont need to do the commented section of this code block below
 	
@@ -263,7 +263,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 -- 		where maxheight_m_popdens is null)
 -- 	SELECT a.gid, a.the_geom_900914, 
 -- 		(SELECT b.maxheight_m_popdens 
--- 		 FROM wind_ds.pt_grid_us_res b
+-- 		 FROM diffusion_shared.pt_grid_us_res b
 -- 		 where b.maxheight_m_popdens is not null
 -- 		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914
 -- 		 LIMIT 1) as maxheight_m_popdens
@@ -277,7 +277,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 -- 	and a.maxheight_m_popdens is null;
 -- 
 -- 	--update the points table
--- 	UPDATE wind_ds.pt_grid_us_res a
+-- 	UPDATE diffusion_shared.pt_grid_us_res a
 -- 	SET maxheight_m_popdens = b.maxheight_m_popdens
 -- 	FROM wind_ds_data.pt_grid_us_res_maxheight_popdens_lookup b
 -- 	where a.gid = b.gid
@@ -285,7 +285,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 --  
 -- 	-- check for any remaining nulls?
 -- 	select count(*)
--- 	FROM wind_ds.pt_grid_us_res 
+-- 	FROM diffusion_shared.pt_grid_us_res 
 -- 	where maxheight_m_popdens is null;
 -- 
 -- 	VACUUM ANALYZE wind_ds.pt_grid_us_res;
@@ -299,27 +299,27 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 	--run in parallel for speed (100x100 tiles are necessary for it ti finishin in about 7 mins -- 1000x1000 tiles would take several hours even in parallel)
 	SELECT parsel_2('dav-gis','wind_ds.pt_grid_us_res','gid',
 			'SELECT a.gid, ST_Value(b.rast,a.the_geom_900914) as maxheight_m_popdenscancov20pc
-			FROM  wind_ds.pt_grid_us_res a
+			FROM  diffusion_shared.pt_grid_us_res a
 			INNER JOIN wind_ds_data.maxheight_popdenscancov20pc_us_100x100 b
 			ON ST_Intersects(b.rast,a.the_geom_900914);',
 		'wind_ds_data.pt_grid_us_res_maxheight_popdenscancov20pc_lookup', 'a',16);
 
 	-- join the info back in
-	ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN maxheight_m_popdenscancov20pc integer;
+	ALTER TABLE diffusion_shared.pt_grid_us_res ADD COLUMN maxheight_m_popdenscancov20pc integer;
 
 	CREATE INDEX pt_grid_us_res_maxheight_popdenscancov20pc_lookup_gid_btree ON wind_ds_data.pt_grid_us_res_maxheight_popdenscancov20pc_lookup using btree(gid);
 
-	UPDATE wind_ds.pt_grid_us_res a
+	UPDATE diffusion_shared.pt_grid_us_res a
 	SET maxheight_m_popdenscancov20pc = b.maxheight_m_popdenscancov20pc
 	FROM wind_ds_data.pt_grid_us_res_maxheight_popdenscancov20pc_lookup b
 	where a.gid = b.gid;
 
 	-- how many are null?
-	CREATE INDEX pt_grid_us_res_maxheight_m_popdenscancov20pc_btree ON wind_ds.pt_grid_us_res USING btree(maxheight_m_popdenscancov20pc) where maxheight_m_popdenscancov20pc is null;
+	CREATE INDEX pt_grid_us_res_maxheight_m_popdenscancov20pc_btree ON diffusion_shared.pt_grid_us_res USING btree(maxheight_m_popdenscancov20pc) where maxheight_m_popdenscancov20pc is null;
 
 	-- any missing?
 	select count(*)
-	FROM wind_ds.pt_grid_us_res 
+	FROM diffusion_shared.pt_grid_us_res 
 	where maxheight_m_popdenscancov20pc is null;
 	-- nope, so dont need to do the commented section of this code block below
 	
@@ -333,7 +333,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 -- 		where maxheight_m_popdenscancov20pc is null)
 -- 	SELECT a.gid, a.the_geom_900914, 
 -- 		(SELECT b.maxheight_m_popdenscancov20pc 
--- 		 FROM wind_ds.pt_grid_us_res b
+-- 		 FROM diffusion_shared.pt_grid_us_res b
 -- 		 where b.maxheight_m_popdenscancov20pc is not null
 -- 		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914
 -- 		 LIMIT 1) as maxheight_m_popdenscancov20pc
@@ -347,7 +347,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 -- 	and a.maxheight_m_popdenscancov20pc is null;
 -- 
 -- 	--update the points table
--- 	UPDATE wind_ds.pt_grid_us_res a
+-- 	UPDATE diffusion_shared.pt_grid_us_res a
 -- 	SET maxheight_m_popdenscancov20pc = b.maxheight_m_popdenscancov20pc
 -- 	FROM wind_ds_data.pt_grid_us_res_maxheight_popdenscancov20pc_lookup b
 -- 	where a.gid = b.gid
@@ -355,7 +355,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 --  
 -- 	-- check for any remaining nulls?
 -- 	select count(*)
--- 	FROM wind_ds.pt_grid_us_res 
+-- 	FROM diffusion_shared.pt_grid_us_res 
 -- 	where maxheight_m_popdenscancov20pc is null;
 -- 
 -- 	VACUUM ANALYZE wind_ds.pt_grid_us_res;
@@ -369,27 +369,27 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 	--run in parallel for speed (100x100 tiles are necessary for it ti finishin in about 7 mins -- 1000x1000 tiles would take several hours even in parallel)
 	SELECT parsel_2('dav-gis','wind_ds.pt_grid_us_res','gid',
 			'SELECT a.gid, ST_Value(b.rast,a.the_geom_900914) as maxheight_m_popdenscancov40pc
-			FROM  wind_ds.pt_grid_us_res a
+			FROM  diffusion_shared.pt_grid_us_res a
 			INNER JOIN wind_ds_data.maxheight_popdenscancov40pc_us_100x100 b
 			ON ST_Intersects(b.rast,a.the_geom_900914);',
 		'wind_ds_data.pt_grid_us_res_maxheight_popdenscancov40pc_lookup', 'a',16);
 
 	-- join the info back in
-	ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN maxheight_m_popdenscancov40pc integer;
+	ALTER TABLE diffusion_shared.pt_grid_us_res ADD COLUMN maxheight_m_popdenscancov40pc integer;
 
 	CREATE INDEX pt_grid_us_res_maxheight_popdenscancov40pc_lookup_gid_btree ON wind_ds_data.pt_grid_us_res_maxheight_popdenscancov40pc_lookup using btree(gid);
 
-	UPDATE wind_ds.pt_grid_us_res a
+	UPDATE diffusion_shared.pt_grid_us_res a
 	SET maxheight_m_popdenscancov40pc = b.maxheight_m_popdenscancov40pc
 	FROM wind_ds_data.pt_grid_us_res_maxheight_popdenscancov40pc_lookup b
 	where a.gid = b.gid;
 
 	-- how many are null?
-	CREATE INDEX pt_grid_us_res_maxheight_m_popdenscancov40pc_btree ON wind_ds.pt_grid_us_res USING btree(maxheight_m_popdenscancov40pc) where maxheight_m_popdenscancov40pc is null;
+	CREATE INDEX pt_grid_us_res_maxheight_m_popdenscancov40pc_btree ON diffusion_shared.pt_grid_us_res USING btree(maxheight_m_popdenscancov40pc) where maxheight_m_popdenscancov40pc is null;
 
 	-- any missing?
 	select count(*)
-	FROM wind_ds.pt_grid_us_res 
+	FROM diffusion_shared.pt_grid_us_res 
 	where maxheight_m_popdenscancov40pc is null;
 	-- nope, so dont need to do the commented section of this code block below
 	-- 
@@ -403,7 +403,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 -- 		where maxheight_m_popdenscancov40pc is null)
 -- 	SELECT a.gid, a.the_geom_900914, 
 -- 		(SELECT b.maxheight_m_popdenscancov40pc 
--- 		 FROM wind_ds.pt_grid_us_res b
+-- 		 FROM diffusion_shared.pt_grid_us_res b
 -- 		 where b.maxheight_m_popdenscancov40pc is not null
 -- 		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914
 -- 		 LIMIT 1) as maxheight_m_popdenscancov40pc
@@ -417,7 +417,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 -- 	and a.maxheight_m_popdenscancov40pc is null;
 -- 
 -- 	--update the points table
--- 	UPDATE wind_ds.pt_grid_us_res a
+-- 	UPDATE diffusion_shared.pt_grid_us_res a
 -- 	SET maxheight_m_popdenscancov40pc = b.maxheight_m_popdenscancov40pc
 -- 	FROM wind_ds_data.pt_grid_us_res_maxheight_popdenscancov40pc_lookup b
 -- 	where a.gid = b.gid
@@ -425,7 +425,7 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_iiijjjicf_id_lookup (
 --  
 -- 	-- check for any remaining nulls?
 -- 	select count(*)
--- 	FROM wind_ds.pt_grid_us_res 
+-- 	FROM diffusion_shared.pt_grid_us_res 
 -- 	where maxheight_m_popdenscancov40pc is null;
 -- 
 -- 	VACUUM ANALYZE wind_ds.pt_grid_us_res;
@@ -457,18 +457,18 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_annual_rate_gid_lookup (
 
 SELECT parsel_2('dav-gis','wind_ds.pt_grid_us_res','gid',
 		'SELECT a.gid, b.gid as annual_rate_gid
-		FROM  wind_ds.pt_grid_us_res a
+		FROM  diffusion_shared.pt_grid_us_res a
 		INNER JOIN diffusion_shared.annual_ave_elec_rates_2011 b
 		ON ST_Intersects(a.the_geom_4326,b.the_geom_4326)
 		WHERE b.res_cents_per_kwh IS NOT NULL;',
 	'wind_ds_data.pt_grid_us_res_annual_rate_gid_lookup', 'a',16);
 
 -- join the info back in
-ALTER TABLE wind_ds.pt_grid_us_res ADD COLUMN annual_rate_gid integer;
+ALTER TABLE diffusion_shared.pt_grid_us_res ADD COLUMN annual_rate_gid integer;
 
 CREATE INDEX pt_grid_us_res_annual_rate_gid_lookup_gid_btree ON wind_ds_data.pt_grid_us_res_annual_rate_gid_lookup using btree(gid);
 
-UPDATE wind_ds.pt_grid_us_res a
+UPDATE diffusion_shared.pt_grid_us_res a
 SET annual_rate_gid = b.annual_rate_gid
 FROM wind_ds_data.pt_grid_us_res_annual_rate_gid_lookup b
 where a.gid = b.gid;
@@ -493,7 +493,7 @@ where a.gid = b.gid;
 		 FROM diffusion_shared.annual_ave_elec_rates_2011 b
 		 WHERE b.res_cents_per_kwh IS NOT NULL
 		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914 LIMIT 5))) as rate_gid
-	FROM wind_ds.pt_grid_us_res a
+	FROM diffusion_shared.pt_grid_us_res a
 	where a.annual_rate_gid is null
 	 )
 
@@ -504,7 +504,7 @@ where a.gid = b.gid;
 	ORDER BY a.gid, ST_Distance(a.the_geom_900914,b.the_geom_900914) asc;
 
 	-- update the missing values in the main table
-	UPDATE wind_ds.pt_grid_us_res a
+	UPDATE diffusion_shared.pt_grid_us_res a
 	SET annual_rate_gid = b.rate_gid
 	FROM wind_ds_data.no_res_rate_pts_closest b
 	WHERE a.annual_rate_gid is null
@@ -554,7 +554,7 @@ where a.gid = b.gid;
 	SELECT e.gid as pt_gid, a.wind_incentives_uid
 	FROM a
 
-	INNER JOIN wind_ds.pt_grid_us_res e
+	INNER JOIN diffusion_shared.pt_grid_us_res e
 	ON ST_Intersects(a.the_geom,e.the_geom_4326);
 
 	CREATE INDEX dsire_incentives_lookup_res_pt_gid_btree ON wind_ds.dsire_incentives_lookup_res using btree(pt_gid);
@@ -580,41 +580,41 @@ CREATE TABLE wind_ds_data.pt_grid_us_res_pca_reg_lookup (
 
 SELECT parsel_2('dav-gis','mgleason','mgleason','wind_ds.pt_grid_us_res','gid',
 		'SELECT a.gid, b.pca_reg, b.demreg as reeds_reg
-		FROM  wind_ds.pt_grid_us_res a
+		FROM  diffusion_shared.pt_grid_us_res a
 		INNER JOIN reeds.reeds_regions b
 		ON ST_Intersects(a.the_geom_4326,b.the_geom)
 		WHERE b.pca_reg NOT IN (135,136);',
 	'wind_ds_data.pt_grid_us_res_pca_reg_lookup', 'a',16);
 
 -- join the info back in
-ALTER TABLE wind_ds.pt_grid_us_res 
+ALTER TABLE diffusion_shared.pt_grid_us_res 
 ADD COLUMN pca_reg integer,
 ADD COLUMN reeds_reg integer;
 
 CREATE INDEX pt_grid_us_res_pca_reg_lookup_gid_btree ON wind_ds_data.pt_grid_us_res_pca_reg_lookup using btree(gid);
 
-UPDATE wind_ds.pt_grid_us_res a
+UPDATE diffusion_shared.pt_grid_us_res a
 SET (pca_reg,reeds_reg) = (b.pca_reg,b.reeds_reg)
 FROM wind_ds_data.pt_grid_us_res_pca_reg_lookup b
 where a.gid = b.gid;
 
 -- how many are null?
-CREATE INDEX pt_grid_us_res_pca_reg_btree ON wind_ds.pt_grid_us_res USING btree(pca_reg);
-CREATE INDEX pt_grid_us_res_reeds_reg_btree ON wind_ds.pt_grid_us_res USING btree(reeds_reg);
+CREATE INDEX pt_grid_us_res_pca_reg_btree ON diffusion_shared.pt_grid_us_res USING btree(pca_reg);
+CREATE INDEX pt_grid_us_res_reeds_reg_btree ON diffusion_shared.pt_grid_us_res USING btree(reeds_reg);
 
 -- any missing?
 select count(*)
-FROM wind_ds.pt_grid_us_res 
+FROM diffusion_shared.pt_grid_us_res 
 where pca_reg is null or reeds_reg is null;
 --6208
 
 select count(*)
-FROM wind_ds.pt_grid_us_res 
+FROM diffusion_shared.pt_grid_us_res 
 where pca_reg is null;
 -- 6208
 
 select count(*)
-FROM wind_ds.pt_grid_us_res 
+FROM diffusion_shared.pt_grid_us_res 
 where reeds_reg is null;
 -- 6208
 
@@ -628,19 +628,19 @@ with a AS(
 b as (
 	SELECT a.gid, a.the_geom_900914, 
 		(SELECT b.gid
-		 FROM wind_ds.pt_grid_us_res b
+		 FROM diffusion_shared.pt_grid_us_res b
 		 where b.pca_reg is not null
 		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914
 		 LIMIT 1) as nn_gid
 	FROM a)
 SELECT b.gid, b.the_geom_900914, b.nn_gid, c.pca_reg, c.reeds_reg
 from b
-LEFT JOIN wind_ds.pt_grid_us_res c
+LEFT JOIN diffusion_shared.pt_grid_us_res c
 ON b.nn_gid = c.gid;
 -- **
   
 --update the points table
-UPDATE wind_ds.pt_grid_us_res a
+UPDATE diffusion_shared.pt_grid_us_res a
 SET (pca_reg,reeds_reg) = (b.pca_reg,b.reeds_reg)
 FROM wind_ds_data.pt_grid_us_res_pca_reg_missing_lookup b
 where a.gid = b.gid
@@ -648,29 +648,29 @@ and a.pca_reg is null;
  
 -- check for any remaining nulls?
 select count(*)
-FROM wind_ds.pt_grid_us_res 
+FROM diffusion_shared.pt_grid_us_res 
 where pca_reg is null or reeds_reg is null;
 
 -- add foreign keys
 	-- for county_id to county_geom.county id
-ALTER TABLE wind_ds.pt_grid_us_res ADD CONSTRAINT county_id_fkey FOREIGN KEY (county_id) 
+ALTER TABLE diffusion_shared.pt_grid_us_res ADD CONSTRAINT county_id_fkey FOREIGN KEY (county_id) 
 REFERENCES diffusion_shared.county_geom (county_id) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;
 	-- for iiijjjicf_id to iiijjjicf_lookup.id
-ALTER TABLE wind_ds.pt_grid_us_res ADD CONSTRAINT iiijjjicf_id_fkey FOREIGN KEY (iiijjjicf_id) 
+ALTER TABLE diffusion_shared.pt_grid_us_res ADD CONSTRAINT iiijjjicf_id_fkey FOREIGN KEY (iiijjjicf_id) 
 REFERENCES wind_ds.iiijjjicf_lookup (id) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;
 	-- for dsire_incentives_lookup_res.pt_gid to pt_grid_us_res.gid
 ALTER TABLE wind_ds.dsire_incentives_lookup_res ADD CONSTRAINT pt_gid_fkey FOREIGN KEY (pt_gid) 
-REFERENCES wind_ds.pt_grid_us_res (gid) MATCH FULL 
+REFERENCES diffusion_shared.pt_grid_us_res (gid) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;
 	-- for dsire_incentives_lookup_res.wind_incentives_uid to geo_incentives.wind_incentives.uid
 ALTER TABLE wind_ds.dsire_incentives_lookup_res ADD CONSTRAINT wind_incentives_uid_fkey FOREIGN KEY (wind_incentives_uid) 
 REFERENCES geo_incentives.wind_incentives (uid) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;
 	-- for annual_rate_gid to annual_ave_elec_rates_2011.gid
--- ALTER TABLE wind_ds.pt_grid_us_res DROP CONSTRAINT annual_rate_gid_fkey;
-ALTER TABLE wind_ds.pt_grid_us_res ADD CONSTRAINT annual_rate_gid_fkey FOREIGN KEY (annual_rate_gid) 
+-- ALTER TABLE diffusion_shared.pt_grid_us_res DROP CONSTRAINT annual_rate_gid_fkey;
+ALTER TABLE diffusion_shared.pt_grid_us_res ADD CONSTRAINT annual_rate_gid_fkey FOREIGN KEY (annual_rate_gid) 
 REFERENCES diffusion_shared.annual_ave_elec_rates_2011 (gid) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;
 
