@@ -67,6 +67,8 @@ def main(wb, conn, verbose = False):
         manNetMetering(curWb,schema,table,conn,cur,verbose)
         table = 'user_defined_max_market_share'
         maxMarket(curWb,schema,table,conn,cur,verbose)
+        table = 'wind_generation_derate_factors'
+        windDerate(curWb,schema,table,conn,cur,verbose)
 
 
         if close_conn:
@@ -162,6 +164,37 @@ def windPerf(curWb,schema,table,conn,cur,verbose=False):
     cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
     conn.commit()
     f.close()
+
+def windDerate(curWb,schema,table,conn,cur,verbose=False):
+    f = StringIO.StringIO()
+    named_range = curWb.get_named_range('Wind_Derate_Factors')
+    if named_range == None:
+        raise ExcelError('Wind_Derate_Factors named range does not exist')
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    columns = len(cells[0])
+    rows = len(cells)
+    # loop through values in the first column
+    sizes = [cells[r][0].value.lower().replace('kw','').strip() for r in range(1,rows)]
+    years = [cells[0][c].value for c in range(1, columns)]
+    for r, size in enumerate(sizes):
+        for c, year in enumerate(years):
+            if cells[r+1][c+1].value == None:
+                val = '0'
+            else:
+                val = cells[r+1][c+1].value
+            l = [size, year, val]
+            f.write(str(l).replace("u'","").replace("'","")[1:-1]+'\n')
+    f.seek(0)
+    if verbose:
+        print 'Exporting wind_generation_derate_factors'
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+    
+    
 
 
 def marketProj(curWb,schema,table,conn,cur,verbose=False):

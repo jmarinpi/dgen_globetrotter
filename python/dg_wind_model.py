@@ -138,7 +138,7 @@ def main(mode = None, resume_year = None):
             # 7. Combine All of the Temporally Varying Data in a new Table in Postgres
             if cfg.init_model:
                 datfunc.combine_temporal_data(cur, con, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.values()), cfg.preprocess, logger)
-                              
+                
             # 8. Set up the Main Data Frame for each sector
             outputs = pd.DataFrame()
             datfunc.clear_outputs(con,cur) # clear results from previous run
@@ -181,7 +181,7 @@ def main(mode = None, resume_year = None):
             if mode == 'ReEDS':
                 #sql = """SELECT a.*,b.pca_reg
                 #FROM wind_ds.outputs_all a
-                #LEFT JOIN wind_ds.pt_grid_us_res b
+                #LEFT JOIN diffusion_shared.pt_grid_us_res b
                 #ON a.gid = b.gid;"""
                 reeds_out = sqlio.read_frame('SELECT * FROM wind_ds.outputs_all', con)
                 #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()
