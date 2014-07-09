@@ -87,9 +87,9 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
 """                
     # default is 30 year analysis periods
     shape=(len(df),yrs); 
-    df['cap'] = df['nameplate_capacity_kw']
-    df['ic'] = df['installed_costs_dollars_per_kw'] * df['nameplate_capacity_kw']
-    df['aep'] = df['naep'] * df['nameplate_capacity_kw']
+    df['cap'] = df['turbine_size_kw']
+    df['ic'] = df['installed_costs_dollars_per_kw'] * df['turbine_size_kw']
+    df['aep'] = df['naep'] * df['turbine_size_kw']
     
     # Remove NAs if not rebate are passed in input sheet   
     df.ptc_length = df.ptc_length.fillna(0)

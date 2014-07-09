@@ -136,7 +136,7 @@ dist_of_cap_selected<-function(df,scen_name){
   
   # filter to only the start year, returning only the elec_rate_cents_per_kwh and load_kwh_in_bin cols
   f = filter(df, year %in% c(start_year,end_year))  
-  g = group_by(f, nameplate_capacity_kw, sector, year)
+  g = group_by(f, turbine_size_kw, sector, year)
   cap_picked = collect(summarise(g,
                                  cust_num = sum(customers_in_bin)
   )
@@ -145,7 +145,7 @@ dist_of_cap_selected<-function(df,scen_name){
   cap_picked<-merge(cap_picked,tmp)
   cap_picked<-transform(cap_picked, p = cust_num/n)
   
-  p<-ggplot(cap_picked, aes(x = factor(nameplate_capacity_kw), weight = p, fill = factor(year)))+
+  p<-ggplot(cap_picked, aes(x = factor(turbine_size_kw), weight = p, fill = factor(year)))+
     geom_histogram(position = 'dodge')+
     facet_wrap(~sector)+
     theme_few()+
@@ -321,21 +321,21 @@ print_table <- function(...){
 }
 
 national_installed_capacity_by_turb_size_bar<-function(df){
-  g = group_by(df, year, sector, nameplate_capacity_kw)
+  g = group_by(df, year, sector, turbine_size_kw)
   data<- collect(summarise(g, 
                            nat_installed_capacity  = sum(installed_capacity)/1e6
   )
   )
   
   # order the data correctly
-  data = data[order(data$year,data$nameplate_capacity_kw),]
-  colourCount = length(unique(data$nameplate_capacity_kw))
+  data = data[order(data$year,data$turbine_size_kw),]
+  colourCount = length(unique(data$turbine_size_kw))
   getPalette = colorRampPalette(brewer.pal(9, "YlOrRd"))
   
-  ggplot(data, aes(x = year, fill = factor(nameplate_capacity_kw), y = nat_installed_capacity), color = 'black')+
+  ggplot(data, aes(x = year, fill = factor(turbine_size_kw), y = nat_installed_capacity), color = 'black')+
     facet_wrap(~sector,scales="free_y")+
     geom_area()+
-    geom_line(aes(ymax = nameplate_capacity_kw), position = 'stack')+
+    geom_line(aes(ymax = turbine_size_kw), position = 'stack')+
     theme_few()+
     scale_fill_manual(name = 'Turbine Size', values = getPalette(colourCount))+#, values = sector_fil) +
     scale_y_continuous(name ='National Installed Capacity (GW)')+#, labels = comma)+

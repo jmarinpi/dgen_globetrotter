@@ -36,8 +36,8 @@ def calc_diffusion(df):
     df['new_market_share'] = np.where(df['market_share'] > df['max_market_share'], 0, df['new_market_share'])
     
     df['new_adopters'] = df['new_market_share'] * df['customers_in_bin']
-    df['new_capacity'] = df['new_adopters'] * df['nameplate_capacity_kw']
-    df['new_market_value'] = df['new_adopters'] * df['nameplate_capacity_kw'] * df['installed_costs_dollars_per_kw']
+    df['new_capacity'] = df['new_adopters'] * df['turbine_size_kw']
+    df['new_market_value'] = df['new_adopters'] * df['turbine_size_kw'] * df['installed_costs_dollars_per_kw']
     # then add these values to values from last year to get cumulative values:
     df['number_of_adopters'] = df['number_of_adopters_last_year'] + df['new_adopters']
     df['installed_capacity'] = df['installed_capacity_last_year'] + df['new_capacity'] # All capacity in kW in the model

@@ -159,7 +159,7 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess, l
     # combine all of the temporal data (this only needs to be done once for all sectors)
     sql = """DROP TABLE IF EXISTS wind_ds.temporal_factors;
             CREATE TABLE wind_ds.temporal_factors as 
-            SELECT a.year, a.nameplate_capacity_kw, a.power_curve_id,
+            SELECT a.year, a.turbine_size_kw, a.power_curve_id,
             	b.turbine_height_m,
             	c.fixed_om_dollars_per_kw_per_yr, 
             	c.variable_om_dollars_per_kwh,
@@ -174,9 +174,9 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess, l
             g.derate_factor
             FROM wind_ds.wind_performance_improvements a
             LEFT JOIN wind_ds.allowable_turbine_sizes b
-            ON a.nameplate_capacity_kw = b.turbine_size_kw
+            ON a.turbine_size_kw = b.turbine_size_kw
             LEFT JOIN wind_ds.turbine_costs_per_size_and_year c
-            ON a.nameplate_capacity_kw = c.turbine_size_kw
+            ON a.turbine_size_kw = c.turbine_size_kw
             AND a.year = c.year
             LEFT JOIN wind_ds.rate_escalations_to_model d
             ON a.year = d.year
@@ -187,7 +187,7 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess, l
             ON a.year = f.year
             LEFT JOIN wind_ds.wind_generation_derate_factors g
             ON a.year = g.year
-            AND  a.nameplate_capacity_kw = g.turbine_size_kw
+            AND  a.turbine_size_kw = g.turbine_size_kw
             WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
             AND d.sector in (%(sectors)s);""" % inputs
     cur.execute(sql)
@@ -353,7 +353,7 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
                     b.ann_cons_kwh, b.prob, b.weight, b.customers_in_bin, b.initial_customers_in_bin, 
                     b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
                     b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
-                    b.aep_scale_factor, b.derate_factor, b.naep, b.nameplate_capacity_kw, 
+                    b.aep_scale_factor, b.derate_factor, b.naep, b.turbine_size_kw, 
                     b.power_curve_id, b.turbine_height_m, b.scoe,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
@@ -378,7 +378,7 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
     sql = '''CREATE INDEX outputs_all_year_btree ON wind_ds.outputs_all USING BTREE(year);
              CREATE INDEX outputs_all_state_abbr_btree ON wind_ds.outputs_all USING BTREE(state_abbr);
              CREATE INDEX outputs_all_sector_btree ON wind_ds.outputs_all USING BTREE(sector);
-             CREATE INDEX outputs_all_nameplate_capacity_kw_btree ON wind_ds.outputs_all USING BTREE(nameplate_capacity_kw);
+             CREATE INDEX outputs_all_turbine_size_kw_btree ON wind_ds.outputs_all USING BTREE(turbine_size_kw);
              CREATE INDEX outputs_all_turbine_height_m_btree ON wind_ds.outputs_all USING BTREE(turbine_height_m);'''
     cur.execute(sql)
     con.commit()
@@ -651,11 +651,11 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             a.excess_generation_factor,
             	a.i, a.j, a.cf_bin, a.aep_scale_factor, b.derate_factor,
             	a.naep_no_derate * b.derate_factor as naep,
-            	b.nameplate_capacity_kw,
+            	b.turbine_size_kw,
             	a.power_curve_id, 
             	a.turbine_height_m,
             	wind_ds.scoe(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric, b.fixed_om_dollars_per_kw_per_yr, 
-                          b.variable_om_dollars_per_kwh, a.naep_no_derate * b.derate_factor, b.nameplate_capacity_kw , 
+                          b.variable_om_dollars_per_kwh, a.naep_no_derate * b.derate_factor, b.turbine_size_kw , 
                           a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, 
                           '%(nem_availability)s', %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe
             FROM wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
@@ -1057,10 +1057,10 @@ def calc_manual_incentives(df,con,cur_year):
     d = pd.merge(df,inc,left_on = ['state_abbr','sector','utility_type'], right_on = ['region','sector','utility_type'])
         
     # Calculate value of incentive and rebate, and value and length of PBI
-    d['value_of_tax_credit_or_deduction'] = d['incentive'] * d['installed_costs_dollars_per_kw'] * d['nameplate_capacity_kw'] * (cur_year <= d['expire'])
+    d['value_of_tax_credit_or_deduction'] = d['incentive'] * d['installed_costs_dollars_per_kw'] * d['turbine_size_kw'] * (cur_year <= d['expire'])
     d['value_of_tax_credit_or_deduction'] = d['value_of_tax_credit_or_deduction'].astype(float)
-    d['value_of_pbi_fit'] = 0.01 * d['incentives_c_per_kwh'] * d['naep'] * d['nameplate_capacity_kw'] * (cur_year <= d['expire']) # First year value  
-    d['value_of_rebate'] = np.minimum(1000 * d['dol_per_kw'] * d['nameplate_capacity_kw'] * (cur_year <= d['expire']), d.cap)
+    d['value_of_pbi_fit'] = 0.01 * d['incentives_c_per_kwh'] * d['naep'] * d['turbine_size_kw'] * (cur_year <= d['expire']) # First year value  
+    d['value_of_rebate'] = np.minimum(1000 * d['dol_per_kw'] * d['turbine_size_kw'] * (cur_year <= d['expire']), d.cap)
     d['pbi_fit_length'] = d['no_years']
     
     # These values are not used, but necessary for cashflow calculations later
@@ -1096,9 +1096,9 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
                                         mutiyear incentves, the (undiscounted) lifetime value is given 
     '''  
     # Shorten names
-    cap = inc['nameplate_capacity_kw']
-    aep = inc['naep'] * inc['nameplate_capacity_kw']
-    ic = inc['installed_costs_dollars_per_kw'] * inc['nameplate_capacity_kw']
+    cap = inc['turbine_size_kw']
+    aep = inc['naep'] * inc['turbine_size_kw']
+    ic = inc['installed_costs_dollars_per_kw'] * inc['turbine_size_kw']
     dr = inc['discount_rate']   
     cur_date = np.array([datetime.date(cur_year, 1, 1)]*len(inc))
     default_exp_date = np.array([datetime.date(default_exp_yr, 1, 1)]*len(inc))
