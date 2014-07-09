@@ -181,7 +181,7 @@ def main(mode = None, resume_year = None):
             if mode == 'ReEDS':
                 #sql = """SELECT a.*,b.pca_reg
                 #FROM wind_ds.outputs_all a
-                #LEFT JOIN wind_ds.pt_grid_us_res b
+                #LEFT JOIN diffusion_shared.pt_grid_us_res b
                 #ON a.gid = b.gid;"""
                 reeds_out = sqlio.read_frame('SELECT * FROM wind_ds.outputs_all', con)
                 #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()

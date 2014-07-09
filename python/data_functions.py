@@ -467,7 +467,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
         sql = """CREATE TABLE wind_ds.%(random_lookup_table)s AS
                  WITH 
                      s as (SELECT setseed(%(seed)s)),
-                     p as (SELECT a.gid FROM wind_ds.pt_grid_us_%(sector_abbr)s a 
+                     p as (SELECT a.gid FROM diffusion_shared.pt_grid_us_%(sector_abbr)s a 
                        ORDER BY a.gid)
                  SELECT p.gid, random() as random
                  FROM p, s;""" % inputs
