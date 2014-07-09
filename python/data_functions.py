@@ -654,7 +654,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             	b.nameplate_capacity_kw,
             	a.power_curve_id, 
             	a.turbine_height_m,
-            	wind_ds.scoe(b.installed_costs_dollars_per_kw, b.fixed_om_dollars_per_kw_per_yr, 
+            	wind_ds.scoe(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric, b.fixed_om_dollars_per_kw_per_yr, 
                           b.variable_om_dollars_per_kwh, a.naep_no_derate * b.derate_factor, b.nameplate_capacity_kw , 
                           a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, 
                           '%(nem_availability)s', %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe

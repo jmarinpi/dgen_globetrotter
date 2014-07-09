@@ -57,7 +57,7 @@ SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_p
         c.ind_cents_per_kwh * (1-n.ind_demand_charge_rate) as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
-	d.cap_cost_multiplier,
+	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region,
 	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
@@ -100,7 +100,7 @@ SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_p
 	c.res_cents_per_kwh as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
-	d.cap_cost_multiplier,
+	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region,
 	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
@@ -144,7 +144,7 @@ SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_p
 	c.comm_cents_per_kwh * (1-n.com_demand_charge_rate) as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
-	d.cap_cost_multiplier,
+	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region, 
 	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
