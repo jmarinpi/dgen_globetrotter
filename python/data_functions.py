@@ -341,7 +341,7 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
                     a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
                     a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
                     a.value_of_ptc, a.pbi_fit_length, a.ptc_length, a.value_of_rebate, a.value_of_tax_credit_or_deduction, 
-                    a.cap, a.ic, a.aep, a.payback_period, a.lcoe, a.payback_key, a.max_market_share, 
+                    a.ic, a.payback_period, a.lcoe, a.payback_key, a.max_market_share, 
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
                     a.market_value,
@@ -353,7 +353,8 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
                     b.ann_cons_kwh, b.prob, b.weight, b.customers_in_bin, b.initial_customers_in_bin, 
                     b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
                     b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
-                    b.aep_scale_factor, b.derate_factor, b.naep, b.turbine_size_kw, 
+                    b.aep_scale_factor, b.derate_factor, b.naep, b.aep, b.system_size_kw,
+                    b.nturb, b.turbine_size_kw, 
                     b.power_curve_id, b.turbine_height_m, b.scoe,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
@@ -631,41 +632,68 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
         
     sql =  """DROP TABLE IF EXISTS wind_ds.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
             CREATE TABLE wind_ds.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s AS
-            SELECT
-             	a.gid, b.year, a.county_id, a.state_abbr, a.census_division_abbr, 
-                  a.utility_type, a.census_region, a.pca_reg, a.reeds_reg, a.row_number, 
-                  %(exclusions_insert)s
-            	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
-            b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
-            	a.cap_cost_multiplier,
-            	b.fixed_om_dollars_per_kw_per_yr, 
-            	b.variable_om_dollars_per_kwh,
-            	b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric as installed_costs_dollars_per_kw,
-            	a.ann_cons_kwh, a.prob, a.weight,
-            	b.load_multiplier * a.customers_in_bin as customers_in_bin, 
-            	a.customers_in_bin as initial_customers_in_bin, 
-            	b.load_multiplier * a.load_kwh_in_bin AS load_kwh_in_bin,
-            	a.load_kwh_in_bin AS initial_load_kwh_in_bin,
-            	a.load_kwh_per_customer_in_bin,
-            a.nem_system_limit_kw,
-            a.excess_generation_factor,
-            	a.i, a.j, a.cf_bin, a.aep_scale_factor, b.derate_factor,
-            	a.naep_no_derate * b.derate_factor as naep,
-            	b.turbine_size_kw,
-            	a.power_curve_id, 
-            	a.turbine_height_m,
-            	wind_ds.scoe(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric, b.fixed_om_dollars_per_kw_per_yr, 
-                          b.variable_om_dollars_per_kwh, a.naep_no_derate * b.derate_factor, b.turbine_size_kw , 
-                          a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, 
-                          '%(nem_availability)s', %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe
-            FROM wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
-            INNER JOIN wind_ds.temporal_factors b
-            ON a.turbine_height_m = b.turbine_height_m
-            AND a.power_curve_id = b.power_curve_id
-            AND a.census_division_abbr = b.census_division_abbr
-            WHERE b.sector = '%(sector)s'
-            AND b.rate_escalation_source = '%(rate_escalation_source)s'
-            AND b.load_growth_scenario = '%(load_growth_scenario)s';""" % inputs
+            WITH combined AS
+            (
+                SELECT
+                 	a.gid, b.year, a.county_id, a.state_abbr, a.census_division_abbr, 
+                      a.utility_type, a.census_region, a.pca_reg, a.reeds_reg, a.row_number, 
+                      %(exclusions_insert)s
+                	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
+                b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
+                	a.cap_cost_multiplier,
+                	b.fixed_om_dollars_per_kw_per_yr, 
+                	b.variable_om_dollars_per_kwh,
+                	b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric as installed_costs_dollars_per_kw,
+                	a.ann_cons_kwh, a.prob, a.weight,
+                	b.load_multiplier * a.customers_in_bin as customers_in_bin, 
+                	a.customers_in_bin as initial_customers_in_bin, 
+                	b.load_multiplier * a.load_kwh_in_bin AS load_kwh_in_bin,
+                	a.load_kwh_in_bin AS initial_load_kwh_in_bin,
+                	a.load_kwh_per_customer_in_bin,
+                a.nem_system_limit_kw,
+                a.excess_generation_factor,
+                	a.i, a.j, a.cf_bin, a.aep_scale_factor, b.derate_factor,
+                	a.naep_no_derate * b.derate_factor as naep,
+                	b.turbine_size_kw,
+                	a.power_curve_id, 
+                	a.turbine_height_m,
+                	wind_ds.scoe(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric, b.fixed_om_dollars_per_kw_per_yr, 
+                              b.variable_om_dollars_per_kwh, a.naep_no_derate * b.derate_factor, b.turbine_size_kw , 
+                              a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, 
+                              '%(nem_availability)s', %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe_return
+                FROM wind_ds.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
+                INNER JOIN wind_ds.temporal_factors b
+                ON a.turbine_height_m = b.turbine_height_m
+                AND a.power_curve_id = b.power_curve_id
+                AND a.census_division_abbr = b.census_division_abbr
+                WHERE b.sector = '%(sector)s'
+                AND b.rate_escalation_source = '%(rate_escalation_source)s'
+                AND b.load_growth_scenario = '%(load_growth_scenario)s'
+            )
+            SELECT gid, year, county_id, state_abbr, census_division_abbr, utility_type, 
+               census_region, pca_reg, reeds_reg, row_number, max_height, elec_rate_cents_per_kwh, 
+               carbon_price_cents_per_kwh, cap_cost_multiplier, 
+        
+               fixed_om_dollars_per_kw_per_yr, 
+               variable_om_dollars_per_kwh, 
+               installed_costs_dollars_per_kw, 
+        
+               ann_cons_kwh, prob, weight, customers_in_bin, initial_customers_in_bin, 
+               load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
+               nem_system_limit_kw, excess_generation_factor, i, j, cf_bin, 
+               aep_scale_factor, derate_factor, 
+        
+               naep, 
+
+               naep*(scoe_return).nturb*turbine_size_kw as aep,
+               (scoe_return).nturb*turbine_size_kw as system_size_kw,
+               (scoe_return).nturb as nturb,
+
+               turbine_size_kw, 
+               power_curve_id, 
+               turbine_height_m, 
+               (scoe_return).scoe as scoe
+          FROM combined;""" % inputs
 
         
     p_run(pg_conn_string, sql, county_chunks, npar)

@@ -1,9 +1,18 @@
 ﻿-- Function: wind_ds.scoe(numeric, numeric, numeric, numeric, numeric, numeric, double precision, numeric, text, numeric, numeric)
---DROP FUNCTION wind_ds.scoe(numeric, numeric, numeric, numeric, numeric, numeric, double precision, numeric, text, numeric, numeric);
+
+-- create return data type
+SET ROLE 'wind_ds-writers';
+DROP tYPE if EXISTS wind_ds.scoe_return;
+CREATE TYPE wind_ds.scoe_return AS
+   (scoe numeric,
+    nturb numeric);
+RESET ROLE;
+
 
 SET ROLE 'server-superusers';
+DROP FUNCTION wind_ds.scoe(numeric, numeric, numeric, numeric, numeric, numeric, double precision, numeric, text, numeric, numeric);
 CREATE OR REPLACE FUNCTION wind_ds.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, nem_system_limit_kw double precision, excess_generation_factor numeric, nem_availability text, oversize_factor numeric DEFAULT 1.15, undersize_factor numeric DEFAULT 0.5)
-  RETURNS double precision AS
+  RETURNS wind_ds.scoe_return AS
 $BODY$
 
     """ Calculate simple metric for evaluating optimal capacity-height among several
@@ -30,28 +39,35 @@ $BODY$
            scoe - numpy array - simple lcoe (lower is better)
     """
 
-    if nem_availability == 'Full Net Metering Everywhere':
+    if nem_availability == 'Full_Net_Metering_Everywhere':
        percent_of_gen_monetized = 1
-    elif nem_availability == 'Partial - Avoided Cost':
+    elif nem_availability == 'Partial_Avoided_Cost':
         percent_of_gen_monetized = 1 - 0.5 * excess_generation_factor # Assume avoided cost is roughly 50% of retail, this effectively halves excess_gen_factor
-    elif nem_availability == 'Partial - No Outflows':
+    elif nem_availability == 'Partial_No_Outflows':
         percent_of_gen_monetized = 1 - excess_generation_factor
-    elif nem_availability == 'No Net Metering Anywhere':
-        percent_of_gen_monetized = 0
+    elif nem_availability == 'No_Net_Metering_Anywhere':
+        percent_of_gen_monetized = 1 - excess_generation_factor
     
-    if nem_system_limit_kw >= cap and nem_availability != 'No Net Metering Anywhere':
+    if nem_system_limit_kw >= cap and nem_availability != 'No_Net_Metering_Anywhere':
         percent_of_gen_monetized = 1
         
     if naep == 0:
-        return float('inf')
+        scoe = float('inf')
+        nturb = 1
+    elif cap == 1500 and naep * cap < ann_elec_cons * percent_of_gen_monetized:
+        # This indicates we want a project larger than 1500 kW. Return -inf scoe
+        # and the optimal continuous number of turbines
+        scoe = -float('inf')
+        nturb  = (ann_elec_cons * percent_of_gen_monetized) / (naep * cap)
     else:
         scoe = (ic + 30 * fom + 30 * naep * vom) / (30 * naep) # $/kWh
         # add in a penalty for oversizing that scales with the degree of oversizing
         oversized = ((naep * cap / ann_elec_cons) > (percent_of_gen_monetized * oversize_factor)) * ((naep * cap / ann_elec_cons) / (percent_of_gen_monetized * oversize_factor))
         undersized = ((naep * cap / ann_elec_cons) < (percent_of_gen_monetized * undersize_factor)) / ((naep * cap / ann_elec_cons) / (percent_of_gen_monetized * undersize_factor))
-        scoe = scoe + oversized * 10 + undersized * 0.1 # Penalize under/over sizing    
+        scoe = scoe + oversized * 10 + undersized * 0.1 # Penalize under/over sizing
+        nturb = 1
          
-        return scoe
+    return scoe, nturb
 
   $BODY$
   LANGUAGE plpythonu STABLE
