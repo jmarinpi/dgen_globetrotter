@@ -1,6 +1,6 @@
 ﻿-- residential
-DROP TABLE IF EXISTS wind_ds.outputs_res CASCADE;
-CREATE TABLE wind_ds.outputs_res (
+DROP TABLE IF EXISTS diffusion_wind.outputs_res CASCADE;
+CREATE TABLE diffusion_wind.outputs_res (
 	gid 					integer,
 	year					integer,
 	customer_expec_elec_rates		numeric, 
@@ -38,12 +38,12 @@ CREATE TABLE wind_ds.outputs_res (
 	market_value				numeric
 );
 
-CREATE INDEX outputs_res_gid_year_btree ON wind_ds.outputs_res USING btree(gid,year);
+CREATE INDEX outputs_res_gid_year_btree ON diffusion_wind.outputs_res USING btree(gid,year);
 
 
 -- commercial
-DROP TABLE IF EXISTS wind_ds.outputs_com CASCADE;
-CREATE TABLE wind_ds.outputs_com (
+DROP TABLE IF EXISTS diffusion_wind.outputs_com CASCADE;
+CREATE TABLE diffusion_wind.outputs_com (
 	gid 					integer,
 	year					integer,
 	customer_expec_elec_rates		numeric, 
@@ -81,11 +81,11 @@ CREATE TABLE wind_ds.outputs_com (
 	market_value				numeric
 );
 
-CREATE INDEX outputs_com_gid_year_btree ON wind_ds.outputs_com USING btree(gid,year);
+CREATE INDEX outputs_com_gid_year_btree ON diffusion_wind.outputs_com USING btree(gid,year);
 
 -- industrial
-DROP TABLE IF EXISTS wind_ds.outputs_ind CASCADE;
-CREATE TABLE wind_ds.outputs_ind (
+DROP TABLE IF EXISTS diffusion_wind.outputs_ind CASCADE;
+CREATE TABLE diffusion_wind.outputs_ind (
 	gid 					integer,
 	year					integer,
 	customer_expec_elec_rates		numeric, 
@@ -123,4 +123,4 @@ CREATE TABLE wind_ds.outputs_ind (
 	market_value				numeric
 );
 
-CREATE INDEX outputs_ind_gid_year_btree ON wind_ds.outputs_ind USING btree(gid,year);
+CREATE INDEX outputs_ind_gid_year_btree ON diffusion_wind.outputs_ind USING btree(gid,year);

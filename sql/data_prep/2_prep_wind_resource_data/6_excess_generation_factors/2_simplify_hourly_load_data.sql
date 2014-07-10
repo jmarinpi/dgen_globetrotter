@@ -1,6 +1,6 @@
 ﻿-- associate each i, j bin with a transmission zone using area weighted intersect
-DROP TABLE IF EXISTS wind_ds.ij_tzone_lookup;
-CREATE TABLE wind_ds.ij_tzone_lookup AS
+DROP TABLE IF EXISTS diffusion_wind.ij_tzone_lookup;
+CREATE TABLE diffusion_wind.ij_tzone_lookup AS
 WITH a AS (
 	SELECT a.gid, a.i, a.j,
 	b.zone_id, 
@@ -19,19 +19,19 @@ ORDER BY a.gid, a.i, a.j, a.isect_area DESC;
 
 -- check for nulls
 select *
-FROM wind_ds.ij_tzone_lookup
+FROM diffusion_wind.ij_tzone_lookup
 where transmission_zone_id is null;
 
 -- fix the nulls by simply using the nearest neighbor
-DROP TABLE IF EXISTS wind_ds_data.ij_no_transzone;
-CREATE TABLE wind_ds_data.ij_no_transzone AS
+DROP TABLE IF EXISTS diffusion_wind_data.ij_no_transzone;
+CREATE TABLE diffusion_wind_data.ij_no_transzone AS
 with candidates as (
 
 SELECT a.tmy_grid_gid, a.the_geom_96703, 
 	unnest((select array(SELECT b.zone_id
 	 FROM ventyx.transmission_zones_07232013 b
 	 ORDER BY a.the_geom_96703 <#> b.the_geom_96703 LIMIT 3))) as zone_id
-FROM wind_ds.ij_tzone_lookup a
+FROM diffusion_wind.ij_tzone_lookup a
 where a.transmission_zone_id is null
  )
 
@@ -42,9 +42,9 @@ ON a.zone_id = b.zone_id
 ORDER BY tmy_grid_gid, ST_Distance(a.the_geom_96703,b.the_geom_96703) asc;
 
 -- 
-UPDATE wind_ds.ij_tzone_lookup a
+UPDATE diffusion_wind.ij_tzone_lookup a
 SET transmission_zone_id = b.transmission_zone_id
-FROM wind_ds_data.ij_no_transzone b
+FROM diffusion_wind_data.ij_no_transzone b
 WHERE a.transmission_zone_id is null
 and a.tmy_grid_gid = b.tmy_grid_gid;
 

@@ -1,4 +1,4 @@
--- load iiijjjicf lookup table
+﻿-- load iiijjjicf lookup table
 
 -- load temporary table with all columsn
 DROP TABLE IF EXISTS dg_wind.iiijjjicf_temp;
@@ -15,17 +15,17 @@ COPY dg_wind.iiijjjicf_temp FROM '/srv/home/mgleason/data/dg_wind/gridvalue_to_i
 RESET ROLE;	
 
 -- copy the data over to the new table
-DROP TABLE IF EXISTS wind_ds.iiijjjicf_lookup;
-CREATE TABLE wind_ds.iiijjjicf_lookup AS
+DROP TABLE IF EXISTS diffusion_wind.iiijjjicf_lookup;
+CREATE TABLE diffusion_wind.iiijjjicf_lookup AS
 sELECT value as id, iiijjjicf,
 	substring(iiijjjicf from 1 for 3) as iii,
 	substring(iiijjjicf from 4 for 3)  as jjj,
 	substring(iiijjjicf from 7 for 3)  as icf
 FROM dg_wind.iiijjjicf_temp;
 
-ALTER TABLE wind_ds.iiijjjicf_lookup ADD PRIMARY KEY (id);
+ALTER TABLE diffusion_wind.iiijjjicf_lookup ADD PRIMARY KEY (id);
 
-VACUUM ANALYZE  wind_ds.iiijjjicf_lookup 
+VACUUM ANALYZE  diffusion_wind.iiijjjicf_lookup 
 
 -- drop the temp table
 DROP TABLE dg_wind.iiijjjicf_temp;

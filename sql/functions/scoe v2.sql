@@ -2,17 +2,17 @@
 
 -- create return data type
 SET ROLE 'wind_ds-writers';
-DROP tYPE if EXISTS wind_ds.scoe_return;
-CREATE TYPE wind_ds.scoe_return AS
+DROP tYPE if EXISTS diffusion_wind.scoe_return;
+CREATE TYPE diffusion_wind.scoe_return AS
    (scoe numeric,
     nturb numeric);
 RESET ROLE;
 
 
 SET ROLE 'server-superusers';
-DROP FUNCTION wind_ds.scoe(numeric, numeric, numeric, numeric, numeric, numeric, double precision, numeric, text, numeric, numeric);
-CREATE OR REPLACE FUNCTION wind_ds.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, nem_system_limit_kw double precision, excess_generation_factor numeric, nem_availability text, oversize_factor numeric DEFAULT 1.15, undersize_factor numeric DEFAULT 0.5)
-  RETURNS wind_ds.scoe_return AS
+DROP FUNCTION diffusion_wind.scoe(numeric, numeric, numeric, numeric, numeric, numeric, double precision, numeric, text, numeric, numeric);
+CREATE OR REPLACE FUNCTION diffusion_wind.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, nem_system_limit_kw double precision, excess_generation_factor numeric, nem_availability text, oversize_factor numeric DEFAULT 1.15, undersize_factor numeric DEFAULT 0.5)
+  RETURNS diffusion_wind.scoe_return AS
 $BODY$
 
     """ Calculate simple metric for evaluating optimal capacity-height among several
@@ -72,5 +72,5 @@ $BODY$
   $BODY$
   LANGUAGE plpythonu STABLE
   COST 100;
-ALTER FUNCTION wind_ds.scoe(numeric, numeric, numeric, numeric, numeric, numeric, double precision, numeric, text, numeric, numeric)
+ALTER FUNCTION diffusion_wind.scoe(numeric, numeric, numeric, numeric, numeric, numeric, double precision, numeric, text, numeric, numeric)
   OWNER TO "server-superusers";

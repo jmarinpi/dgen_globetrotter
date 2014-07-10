@@ -171,7 +171,7 @@ FROM dg_wind.ind_load_by_county_us
 where total_load_mwh_2011_industrial = 0; -- yup -- 9 of them!
 
 -- check them out
-CREATE TABLE wind_ds_data.counties_without_load_ind AS
+CREATE TABLE diffusion_wind_data.counties_without_load_ind AS
 SELECT b.*
 FROM dg_wind.ind_load_by_county_us a
 LEFT join diffusion_shared.county_geom b

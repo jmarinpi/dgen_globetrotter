@@ -485,14 +485,14 @@ FROM eia.census_regions b
 WHERE a.state_abbr = b.state_abbr;
 -- inspect results in Q
 
--- for later processing, we need this to be clipped down to the outer boundaries of wind_ds.county_geom
+-- for later processing, we need this to be clipped down to the outer boundaries of diffusion_shared.county_geom
 -- create a view of just the gids and geoms
 CREATE OR REPLACE VIEW  dg_wind.ventyx_ests_backfilled_geoms AS
 SELECT gid as est_gid, the_geom_4326
 FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled ;
 -- export to shapefile 
 	-- dg_wind.ventyx_ests_backfilled_geoms --> F:\data\mgleason\DG_Wind\Data\Analysis\county_boundaries\ventyx_ests_backfilled_geoms.shp
-	-- wind_ds.county_geom --> F:\data\mgleason\DG_Wind\Data\Analysis\county_boundaries\county_geom.shp
+	-- diffusion_shared.county_geom --> F:\data\mgleason\DG_Wind\Data\Analysis\county_boundaries\county_geom.shp
 -- dissolve county_geom.shp (allow multipart) -->F:\data\mgleason\DG_Wind\Data\Analysis\county_boundaries\county_geom_dissolved.shp
 -- clip ventyx_ests_backfilled_geoms.shp using county_geom_dissolved.shp
 	--> F:\data\mgleason\DG_Wind\Data\Analysis\county_boundaries\ventyx_ests_backfilled_geoms_clipped.shp
