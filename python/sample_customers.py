@@ -111,19 +111,19 @@ for sector in sectors.keys():
         n_bins = 83
     else:
         n_bins = customer_bins
-    pts_all_table = 'wind_ds.pt_grid_us_%s_joined' % sector
-    pts_sample_table = 'wind_ds.pt_grid_us_%s_sample' % sector
+    pts_all_table = 'diffusion_shared.pt_grid_us_%s_joined' % sector
+    pts_sample_table = 'diffusion_shared.pt_grid_us_%s_sample' % sector
     result = getNRandomRows(pts_all_table, n_bins, group_fields = ['county_id'],seed = random_generator_seed, out_table = pts_sample_table)
     print result
     
     # join to customer bins
-    pts_load = 'wind_ds.pt_grid_us_%s_sample_load' % sector
+    pts_load = 'diffusion_wind.pt_grid_us_%s_sample_load' % sector
     sql = "SET LOCAL SEED TO %s;\
             CREATE TABLE %s AS \
             WITH weighted_county_sample as (\
                 SELECT a.county_id, row_number() OVER (PARTITION BY a.county_id ORDER BY random() * b.prob) as row_number, b.*\
-                FROM wind_ds.county_geom a\
-            LEFT JOIN wind_ds.binned_annual_load_kwh_%s_bins b\
+                FROM diffusion_shared.county_geom a\
+            LEFT JOIN diffusion_shared.binned_annual_load_kwh_%s_bins b\
             ON a.census_region = b.census_region\
             AND b.sector = '%s')\
         SELECT a.*, b.ann_cons_kwh, b.prob, b.weight, \

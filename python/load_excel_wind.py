@@ -42,7 +42,7 @@ def main(wb, conn, verbose = False):
             raise ExcelError('The specified input worksheet (%s) does not exist' % wb)
         
         # load the data
-        schema = 'wind_ds'
+        schema = 'diffusion_wind'
         # note: to prevent this next line from printing all sorts of junk to the screen,
         # I had to disable a line in C:\Python27\lib\site-packages\openpyxl\namedrange.py
         # line #86 in refers_to_range: print range_string, bool(NAMED_RANGE_RE.match(range_string)) 
