@@ -23,7 +23,7 @@ import diffusion_functions as diffunc
 import financial_functions as finfunc
 import data_functions as datfunc
 reload(datfunc)
-import DG_Wind_NamedRange_xl2pg as loadXL
+import load_excel_wind as loadXL
 import subprocess
 import datetime
 import config as cfg

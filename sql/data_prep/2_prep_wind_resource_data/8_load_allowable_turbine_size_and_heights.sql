@@ -1,4 +1,4 @@
-DROP TABLE IF EXISTS wind_ds.allowable_turbine_sizes;
+﻿DROP TABLE IF EXISTS wind_ds.allowable_turbine_sizes;
 CREATE TABLE wind_ds.allowable_turbine_sizes (
 	turbine_size_kw numeric,
 	turbine_height_m integer);
@@ -6,6 +6,10 @@ CREATE TABLE wind_ds.allowable_turbine_sizes (
 SET ROLE 'server-superusers';
 COPY wind_ds.allowable_turbine_sizes FROM '/srv/home/mgleason/data/dg_wind/turbine_sizes_and_heights.csv' with csv header;
 RESET ROLE;
+
+-- drop the largest class (3000 kw) -- it is no longer used
+DELETE FROM wind_ds.allowable_turbine_sizes
+WHERE turbine_size_kw = 3000;
 
 CREATE INDEX allowable_turbine_sizes_turbine_size_kw_btree ON wind_ds.allowable_turbine_sizes using btree(turbine_size_kw);
 CREATE INDEX allowable_turbine_sizes_turbine_height_m_btree ON wind_ds.allowable_turbine_sizes using btree(turbine_height_m);
