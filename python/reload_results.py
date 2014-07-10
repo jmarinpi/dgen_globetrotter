@@ -26,9 +26,9 @@ if not os.path.exists(source_csv):
 con, cur = datfunc.make_con(cfg.pg_conn_string)
 
 # drop and recreate table
-print "Recreating empty wind_ds.outputs_all table"
-sql = '''DROP TABLE wind_ds.outputs_all;
-        CREATE TABLE wind_ds.outputs_all
+print "Recreating empty diffusion_wind.outputs_all table"
+sql = '''DROP TABLE diffusion_wind.outputs_all;
+        CREATE TABLE diffusion_wind.outputs_all
         (
           sector text,
           gid integer,
@@ -114,14 +114,14 @@ print "Copying csv data to postgres"
 # open the source csv.gz file
 f = gzip.open(source_csv, 'r')
 # copy the data to the table
-cur.copy_expert('COPY wind_ds.outputs_all FROM STDIN WITH CSV HEADER;',f)
+cur.copy_expert('COPY diffusion_wind.outputs_all FROM STDIN WITH CSV HEADER;',f)
 # commit changes
 con.commit()
 # close the source csv.gz
 f.close()
 
 # clear existing scenario options table in postgres
-sql = 'DELETE FROM wind_ds.scenario_options;'
+sql = 'DELETE FROM diffusion_wind.scenario_options;'
 cur.execute(sql)
 con.commit()
 
@@ -129,14 +129,14 @@ con.commit()
 # open the csv
 f2 = open(scenario_options_csv, 'r')
 # copy the data to the table
-cur.copy_expert('COPY wind_ds.scenario_options FROM STDIN WITH CSV HEADER;',f2)
+cur.copy_expert('COPY diffusion_wind.scenario_options FROM STDIN WITH CSV HEADER;',f2)
 # commit changes
 con.commit()
 # close the source csv.gz
 f2.close()
 
 # get the scenario name
-sql = 'SELECT scenario_name FROM wind_ds.scenario_options;'
+sql = 'SELECT scenario_name FROM diffusion_wind.scenario_options;'
 cur.execute(sql)
 scenario_name = cur.fetchone()['scenario_name']
 

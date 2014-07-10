@@ -147,7 +147,7 @@ excess_gen_figs<-function(df,con){
   df = collect(df)
   
   # Get the scenario options
-  table<-dbGetQuery(con,"select * from wind_ds.scenario_options")
+  table<-dbGetQuery(con,"select * from diffusion_wind.scenario_options")
   nem_availability <- table[1,'net_metering_availability']
   
   if(nem_availability == 'Full_Net_Metering_Everywhere'){
@@ -404,7 +404,7 @@ diffusion_trends<-function(df,runpath,scen_name){
 
 
 scenario_opts_table<-function(con){
-  table<-dbGetQuery(con,"select * from wind_ds.scenario_options")
+  table<-dbGetQuery(con,"select * from diffusion_wind.scenario_options")
   names(table) <- unlist(lapply(names(table),simpleCap))
   table<-melt(table, id.vars = c(),variable.name='Switch',value.name="Value")
   print_table(table, caption = 'Scenario Options')    

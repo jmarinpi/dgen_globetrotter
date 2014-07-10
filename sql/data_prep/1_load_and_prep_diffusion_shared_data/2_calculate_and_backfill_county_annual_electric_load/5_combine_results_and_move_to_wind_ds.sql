@@ -21,19 +21,19 @@ where a.state_abbr not in ('AK','HI');
 ALTER TABLE diffusion_shared.load_and_customers_by_county_us ADD primary key(county_id);
 
 -- add foreign keys to pt tables
-ALTER TABLE wind_ds.pt_grid_us_res ADD CONSTRAINT county_id FOREIGN KEY (county_id) 
+ALTER TABLE diffusion_shared.pt_grid_us_res ADD CONSTRAINT county_id FOREIGN KEY (county_id) 
 REFERENCES diffusion_shared.load_and_customers_by_county_us (county_id) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;
 
-ALTER TABLE wind_ds.pt_grid_us_com ADD CONSTRAINT county_id FOREIGN KEY (county_id) 
+ALTER TABLE diffusion_shared.pt_grid_us_com ADD CONSTRAINT county_id FOREIGN KEY (county_id) 
 REFERENCES diffusion_shared.load_and_customers_by_county_us (county_id) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;
 
-ALTER TABLE wind_ds.pt_grid_us_ind ADD CONSTRAINT county_id FOREIGN KEY (county_id) 
+ALTER TABLE diffusion_shared.pt_grid_us_ind ADD CONSTRAINT county_id FOREIGN KEY (county_id) 
 REFERENCES diffusion_shared.load_and_customers_by_county_us (county_id) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 -- add foreign key to diffusion_shared.load_and_customers_by_county_us
 ALTER TABLE diffusion_shared.load_and_customers_by_county_us ADD CONSTRAINT county_id FOREIGN KEY (county_id) 
-REFERENCES wind_ds.county_geom (county_id) MATCH FULL 
+REFERENCES diffusion_shared.county_geom (county_id) MATCH FULL 
 ON UPDATE RESTRICT ON DELETE RESTRICT;

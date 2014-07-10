@@ -30,8 +30,8 @@ where state = 'PR-VI';
 
 
 -- disaggregate to counties based on proprtion of county load to proportion of state load
-DROP TABLE IF EXISTS wind_ds.starting_wind_capacities_mw_2014_us;
-CREATE TABLE wind_ds.starting_wind_capacities_mw_2014_us AS
+DROP TABLE IF EXISTS diffusion_wind.starting_wind_capacities_mw_2014_us;
+CREATE TABLE diffusion_wind.starting_wind_capacities_mw_2014_us AS
 with sums as (
 	SELECT a.state_abbr, 
 		sum(b.total_load_mwh_2011_residential) as state_load_residential, 
@@ -40,8 +40,8 @@ with sums as (
 		sum(b.total_customers_2011_residential) as state_customers_residential, 
 		sum(b.total_customers_2011_commercial) as state_customers_commercial, 
 		sum(b.total_customers_2011_industrial) as state_customers_industrial
-	FROM wind_ds.county_geom a
-	LEFT JOIN wind_ds.load_and_customers_by_county_us b
+	FROM diffusion_shared.county_geom a
+	LEFT JOIN diffusion_wind.load_and_customers_by_county_us b
 	ON a.county_id = b.county_id
 	where a.state_abbr not in ('AK','HI')
 	GROUP BY a.state_abbr
@@ -54,8 +54,8 @@ counties as (
 		b.total_customers_2011_residential,
 		b.total_customers_2011_commercial,
 		b.total_customers_2011_industrial
-	FROM wind_ds.county_geom a
-	LEFT JOIN wind_ds.load_and_customers_by_county_us b
+	FROM diffusion_shared.county_geom a
+	LEFT JOIN diffusion_wind.load_and_customers_by_county_us b
 	ON a.county_id = b.county_id
 	where a.state_abbr not in ('AK','HI')
 	),
@@ -94,12 +94,12 @@ LEFT JOIN capacities c
 ON a.state_abbr = c.state_abbr;
 
 -- create primary key and foreign key
-ALTER TABLE wind_ds.starting_wind_capacities_mw_2014_us
+ALTER TABLE diffusion_wind.starting_wind_capacities_mw_2014_us
   ADD CONSTRAINT starting_wind_capacities_mw_2014_us_pkey PRIMARY KEY(county_id);
 
-ALTER TABLE wind_ds.starting_wind_capacities_mw_2014_us
+ALTER TABLE diffusion_wind.starting_wind_capacities_mw_2014_us
   ADD CONSTRAINT county_id FOREIGN KEY (county_id)
-      REFERENCES wind_ds.county_geom (county_id) MATCH FULL
+      REFERENCES diffusion_shared.county_geom (county_id) MATCH FULL
       ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 
@@ -107,6 +107,6 @@ ALTER TABLE wind_ds.starting_wind_capacities_mw_2014_us
 select state_abbr, 
 	round(sum(capacity_mw_residential),2) as res_cap, round(sum(capacity_mw_commercial),2) com_cap, round(sum(capacity_mw_industrial),2) ind_cap,
 	round(sum(systems_count_residential),2) res_sys, round(sum(systems_count_commercial),2) com_sys, round(sum(systems_count_industrial),2) ind_sys
-FROM wind_ds.starting_wind_capacities_mw_2014_us
+FROM diffusion_wind.starting_wind_capacities_mw_2014_us
 group by state_abbr
 order by state_abbr;

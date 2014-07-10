@@ -20,7 +20,7 @@ SET census_division_abbr = b.division_abbr
 FROM eia.census_regions_20140123 b
 where a.census_division = b.division;
 
--- remove the duplicates for each state, and move to wind_ds (prior to doing this, make sure that this query's row count matches the row count if you remove escalation_factor from the query
+-- remove the duplicates for each state, and move to diffusion_shared (prior to doing this, make sure that this query's row count matches the row count if you remove escalation_factor from the query
 CREATE TABLE diffusion_shared.rate_escalations AS
 SELECT census_division_abbr, sector, year, escalation_factor
 FROM dg_wind.rate_escalations

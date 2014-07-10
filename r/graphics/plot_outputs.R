@@ -25,7 +25,7 @@ scen_name<-commandArgs(TRUE)[2]
 con<-make_con(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
 src = src_postgres(host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
 # lazy load the output table from postgres
-df = tbl(src,sql('SELECT * FROM wind_ds.outputs_all'))
+df = tbl(src,sql('SELECT * FROM diffusion_wind.outputs_all'))
 
 opts_knit$set(base.dir = runpath)
 knit2html("../r/graphics/plot_outputs.md", output = paste0(runpath,"/DG Wind report.html"), title = "DG Wind report", stylesheet = "../r/graphics/plot_outputs.css",

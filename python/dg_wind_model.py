@@ -153,7 +153,7 @@ def main(mode = None, resume_year = None):
                                                    cfg.start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
                                                    cfg.oversize_turbine_factor, cfg.undersize_turbine_factor, cfg.preprocess, cfg.npar, cfg.pg_conn_string, scenario_opts['net_metering_availability'], logger = logger)
                 else:
-                    main_table = 'wind_ds.pt_%s_best_option_each_year' % sector_abbr
+                    main_table = 'diffusion_wind.pt_%s_best_option_each_year' % sector_abbr
                 
                 # get dsire incentives for the generated customer bins
                 dsire_incentives = datfunc.get_dsire_incentives(cur, con, sector_abbr, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger)
@@ -180,10 +180,10 @@ def main(mode = None, resume_year = None):
             # set output subfolder
             if mode == 'ReEDS':
                 #sql = """SELECT a.*,b.pca_reg
-                #FROM wind_ds.outputs_all a
+                #FROM diffusion_wind.outputs_all a
                 #LEFT JOIN diffusion_shared.pt_grid_us_res b
                 #ON a.gid = b.gid;"""
-                reeds_out = sqlio.read_frame('SELECT * FROM wind_ds.outputs_all', con)
+                reeds_out = sqlio.read_frame('SELECT * FROM diffusion_wind.outputs_all', con)
                 #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()
                 market_last_year.to_pickle("market_last_year.pkl")
                 saved_vars = {'out_dir': out_dir, 'input_scenarios':input_scenarios}

@@ -36,7 +36,7 @@ WITH a as (
 ),
 b AS (
 SELECT a.county_id, a.state, a.county, b.state_fips, b.cnty_fips
-FROM wind_ds.county_geom a
+FROM wind_shared.county_geom a
 inner JOIN esri.dtl_cnty_all_multi b
 ON a.county_id = b.gid)
 SELECT b.county_id, b.state, b.county, b.state_fips, b.cnty_fips, 
@@ -163,7 +163,7 @@ ORDER bY b.perc_own_occupied_housing-a.perc_own_occu_1str_housing;
 
 
 
--- copy data to wind_ds schema
+-- copy data to diffusion_shared schema
 SET ROLE 'wind_ds-writers';
 DROP TABLE IF EXISTS diffusion_shared.county_housing_units;
 CREATE TABLE diffusion_shared.county_housing_units AS
@@ -175,5 +175,5 @@ ADD primary key (county_id);
 
 ALTER TABLE diffusion_shared.county_housing_units
 ADD CONSTRAINT county_id_fkey FOREIGN KEY (county_id)
-      REFERENCES wind_ds.county_geom (county_id) MATCH FULL
+      REFERENCES diffusion_shared.county_geom (county_id) MATCH FULL
       ON UPDATE RESTRICT ON DELETE RESTRICT;
