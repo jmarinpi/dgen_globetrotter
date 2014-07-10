@@ -1083,10 +1083,10 @@ def calc_manual_incentives(df,con,cur_year):
     d = pd.merge(df,inc,left_on = ['state_abbr','sector','utility_type'], right_on = ['region','sector','utility_type'])
         
     # Calculate value of incentive and rebate, and value and length of PBI
-    d['value_of_tax_credit_or_deduction'] = d['incentive'] * d['installed_costs_dollars_per_kw'] * d['turbine_size_kw'] * (cur_year <= d['expire'])
+    d['value_of_tax_credit_or_deduction'] = d['incentive'] * d['installed_costs_dollars_per_kw'] * d['system_size_kw'] * (cur_year <= d['expire'])
     d['value_of_tax_credit_or_deduction'] = d['value_of_tax_credit_or_deduction'].astype(float)
-    d['value_of_pbi_fit'] = 0.01 * d['incentives_c_per_kwh'] * d['naep'] * d['turbine_size_kw'] * (cur_year <= d['expire']) # First year value  
-    d['value_of_rebate'] = np.minimum(1000 * d['dol_per_kw'] * d['turbine_size_kw'] * (cur_year <= d['expire']), d.cap)
+    d['value_of_pbi_fit'] = 0.01 * d['incentives_c_per_kwh'] * d['aep'] * (cur_year <= d['expire']) # First year value  
+    d['value_of_rebate'] = np.minimum(1000 * d['dol_per_kw'] * d['system_size_kw'] * (cur_year <= d['expire']), d['system_size_kw'])
     d['pbi_fit_length'] = d['no_years']
     
     # These values are not used, but necessary for cashflow calculations later
@@ -1122,10 +1122,8 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
                                         mutiyear incentves, the (undiscounted) lifetime value is given 
     '''  
     # Shorten names
-    cap = inc['turbine_size_kw']
-    aep = inc['naep'] * inc['turbine_size_kw']
-    ic = inc['installed_costs_dollars_per_kw'] * inc['turbine_size_kw']
-    dr = inc['discount_rate']   
+    ic = inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
+    
     cur_date = np.array([datetime.date(cur_year, 1, 1)]*len(inc))
     default_exp_date = np.array([datetime.date(default_exp_yr, 1, 1)]*len(inc))
     
@@ -1161,8 +1159,8 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc.tax_credit_max_size_kw[inc.tax_credit_max_size_kw.isnull()] = 10000
     
     # 1. # Calculate Value of Increment Incentive
-    cap_1 =  np.minimum(inc.increment_1_capacity_kw * 1000, cap)
-    cap_2 =  (inc.increment_1_capacity_kw > 0) * np.maximum(cap - inc.increment_1_capacity_kw * 1000,0)
+    cap_1 =  np.minimum(inc.increment_1_capacity_kw * 1000, inc['system_size_kw'])
+    cap_2 =  (inc.increment_1_capacity_kw > 0) * np.maximum(inc['system_size_kw'] - inc.increment_1_capacity_kw * 1000,0)
     
     value_of_increment = cap_1 * inc.increment_1_rebate_dlrs_kw + cap_2 * inc.increment_2_rebate_dlrs_kw
     value_of_increment[np.isnan(value_of_increment)] = 0
@@ -1172,9 +1170,9 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc.pbi_fit_end_date[inc.pbi_fit_end_date.isnull()] = datetime.date(default_exp_yr, 1, 1) # Assign expiry if no date
     pbi_fit_still_exists = cur_date <= inc.pbi_fit_end_date # Is the incentive still valid
     
-    pbi_fit_cap = np.where(cap < inc.pbi_fit_min_size_kw, 0, cap)
+    pbi_fit_cap = np.where(inc['system_size_kw'] < inc.pbi_fit_min_size_kw, 0, inc['system_size_kw'])
     pbi_fit_cap = np.where(pbi_fit_cap > inc.pbi_fit_max_size_kw, inc.pbi_fit_max_size_kw, pbi_fit_cap)
-    pbi_fit_aep = np.where(aep < inc.pbi_fit_min_output_kwh_yr, 0, aep)
+    pbi_fit_aep = np.where(inc['aep'] < inc.pbi_fit_min_output_kwh_yr, 0, inc['aep'])
     
     # If exists pbi_fit_kwh > 0 but no duration, assume duration
     inc.pbi_fit_duration_years = np.where((inc.pbi_fit_dlrs_kwh > 0) & (inc.pbi_fit_duration_years.isnull()), assumed_duration, inc.pbi_fit_duration_years)
@@ -1193,7 +1191,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     ## Calculate first year value and length of PTC
     inc.ptc_end_date[inc.ptc_end_date.isnull()] = datetime.date(default_exp_yr, 1, 1) # Assign expiry if no date
     ptc_still_exists = cur_date <= inc.ptc_end_date # Is the incentive still valid
-    ptc_max_size = np.minimum(cap, inc.tax_credit_max_size_kw)
+    ptc_max_size = np.minimum(inc['system_size_kw'], inc.tax_credit_max_size_kw)
     inc.max_tax_credit_dlrs = np.where(inc.max_tax_credit_dlrs.isnull(), 1e9, inc.max_tax_credit_dlrs)
     inc.ptc_duration_years = np.where((inc.ptc_dlrs_kwh > 0) & (inc.ptc_duration_years.isnull()), assumed_duration, inc.ptc_duration_years)
     value_of_ptc =  ptc_still_exists * np.minimum(inc.ptc_dlrs_kwh * inc.naep * ptc_max_size, inc.max_dlrs_yr)
@@ -1207,7 +1205,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc['lifetime_value_of_ptc'] = length_of_ptc * value_of_ptc
 
     # 4. #Calculate Value of Rebate
-    rebate_cap = np.where(cap < inc.rebate_min_size_kw, 0, cap)
+    rebate_cap = np.where(inc['system_size_kw'] < inc.rebate_min_size_kw, 0, inc['system_size_kw'])
     rebate_cap = np.where(rebate_cap > inc.rebate_max_size_kw, inc.rebate_max_size_kw, rebate_cap)
     value_of_rebate = inc.rebate_dlrs_kw * rebate_cap
     value_of_rebate = np.minimum(inc.rebate_max_dlrs, value_of_rebate)
@@ -1230,7 +1228,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     
     value_of_tax_credit_or_deduction = tax_pcnt_cost * ic
     value_of_tax_credit_or_deduction = np.minimum(max_tax_credit_or_deduction_value, value_of_tax_credit_or_deduction)
-    value_of_tax_credit_or_deduction = np.where(inc.tax_credit_max_size_kw > cap, tax_pcnt_cost * inc.tax_credit_max_size_kw, value_of_tax_credit_or_deduction)
+    value_of_tax_credit_or_deduction = np.where(inc.tax_credit_max_size_kw > inc['system_size_kw'], tax_pcnt_cost * inc.tax_credit_max_size_kw, value_of_tax_credit_or_deduction)
     value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
     
     inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction

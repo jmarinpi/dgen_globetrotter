@@ -14,7 +14,7 @@ out$national_market_cap_bar
 out$national_generation_bar
 print_table(mean_value_by_state_table(df,'market_share'), caption = "Mean Adoption Share")
 out$national_adopters_trends_bar
-national_installed_capacity_by_turb_size_bar(df)
+national_installed_capacity_by_system_size_bar(df)
 ```
 
 # Diffusion Maps
@@ -27,7 +27,7 @@ diffusion_sectors_map(df)
 ```{r Economics}
 national_pp_line(df,scen_name)
 print_table(mean_value_by_state_table(df,'payback_period'), caption = "Mean Payback Period (years")
-lcoe_contour(df,dr = 0.05,n = 30)
+lcoe_contour(df, dr = 0.05, n = 30)
 
 lcoe_boxplot(df)
 lcoe_cdf(df)
@@ -38,9 +38,9 @@ print_table(mean_value_by_state_table(df,'lcoe'), caption = "Mean LCOE by State 
 cf_by_sector_and_year(df)
 dist_of_cap_selected(df,scen_name)
 dist_of_height_selected(df,scen_name)
-excess_gen_figs<-list('excess_gen_pt' = excess_gen_pt, 'excess_gen_cdf' = excess_gen_cdf)
-excess_gen_figs$excess_gen_pt
-excess_gen_figs$excess_gen_cdf
+excess_gen_out<-excess_gen_figs(df,con)
+excess_gen_out$excess_gen_pt
+excess_gen_out$excess_gen_cdf
 ```
 # Resource Potential
 ``` {r Resource_Potential}

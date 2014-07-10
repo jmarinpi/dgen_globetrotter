@@ -87,9 +87,9 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
 """                
     # default is 30 year analysis periods
     shape=(len(df),yrs); 
-    df['cap'] = df['turbine_size_kw']
-    df['ic'] = df['installed_costs_dollars_per_kw'] * df['turbine_size_kw']
-    df['aep'] = df['naep'] * df['turbine_size_kw']
+    #df['cap'] = df['turbine_size_kw']
+    df['ic'] = df['installed_costs_dollars_per_kw'] * df['system_size_kw']
+    #df['aep'] = df['naep'] * df['turbine_size_kw']
     
     # Remove NAs if not rebate are passed in input sheet   
     df.ptc_length = df.ptc_length.fillna(0)
@@ -121,8 +121,8 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
 
     # 2) Costs of fixed & variable O&M
     om_cost = np.zeros(shape);
-    om_cost[:] =   (-df.variable_om_dollars_per_kwh * df.naep * df.cap)[:,np.newaxis]
-    om_cost[:] +=  (-df.fixed_om_dollars_per_kw_per_yr * df.cap)[:,np.newaxis]
+    om_cost[:] =   (-df.variable_om_dollars_per_kwh * df['aep'])[:,np.newaxis]
+    om_cost[:] +=  (-df.fixed_om_dollars_per_kw_per_yr * df['system_size_kw'])[:,np.newaxis]
     
     ## Revenue
     """
@@ -165,7 +165,7 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     else:
         outflow_rate = 0 * inflow_rate_dol_kwh
         
-    outflow_rate_dol_kwh = np.where(df.cap < df.nem_system_limit_kw, inflow_rate_dol_kwh, outflow_rate)
+    outflow_rate_dol_kwh = np.where(df['system_size_kw'] < df.nem_system_limit_kw, inflow_rate_dol_kwh, outflow_rate)
     value_outflows_dol = outflow_gen_kwh[:, np.newaxis] * outflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
     
     generation_revenue = value_inflows_dol + value_outflows_dol
@@ -418,89 +418,3 @@ def irr(values):
     return rate
 
 #==============================================================================
-#
-#
-#
-#
-##------------------------------------------------------------------------------
-##  ^^^^  CALCULATE TIME OF CASHFLOW SCRIPT:  ^^^^ 
-#"""
-#tt=np.zeros((10000,1), dtype=float)
-#for i1 in range(0, 10000):
-#    t1=time.clock()
-#    cost, principle = cashflow_calc(cap_cost, incent_frac, incent_rebate, tax_rt, 
-#                                down_payment, loan_term, loan_rate, disc_rate, 
-#                                MACRScom) 
-#    t2=time.clock()
-#    tt[i1]=(t2-t1)
-#
-#st = np.sort(tt, axis=0)
-#
-#p=plt.plot(st)
-#
-#meantp=np.mean(tt)
-#mediantp=np.median(tt)
-#timpact=(meantp-mediantp)/mediantp*100;
-#
-#print ' '
-#print '%0.1f number of runs' %(10000)
-#print '%0.6f median run time' %mediantp
-#print '%0.6f mean run time' %meantp
-#print '%0.2f percent runtime increase' %timpact
-#print ' '
-#
-##p = plt.plot(cost)
-#"""
-##------------------------------------------------------------------------------
-
-#def foo(cap_cost, incent_frac,capacity_factor):
-#    # Convert all input parameters to arrays if passed as scalar    
-#    arguments = locals()
-#    for name in arguments:
-#        if isinstance(arguments[name], (float,int)) : eval(name) = np.array([float(arguments[name])] * 4)
-#    return name,cap_cost,incent_frac,capacity_factor
-#
-#    arguments = locals()
-#    for name in arguments.keys():
-#        if isinstance(arguments[name], (float,int)) : eval(name) = np.array([float(arguments[name])] * l)
-#    return cap_cost, incent_frac   
-#        
-#    return arguments
-#    name, value = enumerate(arguments)
-#    if isinstance(value, (float,int)) : eval(name) = np.array([float(value)] * l)
-#    return cap_cost, incent_frac
-#
-#import numpy as np
-#
-#def f(*args, **kwargs):
-#  length = kwargs.get("length", 1)
-#  ret = []
-#  for arg in args:
-#    if isinstance(arg, (float, int)):
-#      ret.append(np.repeat(arg, length))
-#    else:
-#      ret.append(arg)
-#  return tuple(ret)
-#
-#print f(1, 2, length=4)
-
-##==============================================================================
-##  ^^^^  REVENUE CASH FLOW CALCULATOR    ^^^^   
-##
-## Calculate annual revenue cashflows from electrical generation ($/kW)
-##  !!Currently only for flat rate rate structure & Not vectorized!!
-##
-## INPUTS
-## capacity_factor: annual average capacity factor (fraction)
-## avg_rate: average (flat) electricity rate ($/kWh)
-## rate_growth: average annual growth in electricity rates (%)
-## yrs: length of examination (years)
-#def calc_revenue_cashflows(capacity_factor,avg_rate,rate_growth,yrs = 30):
-#       
-#    revenue=np.zeros((yrs,));                       
-#    
-#    for i in range(30):
-#        revenue[i] = 8760 * capacity_factor * avg_rate * (1 + rate_growth)**i
-#
-#    return revenue
-##==============================================================================

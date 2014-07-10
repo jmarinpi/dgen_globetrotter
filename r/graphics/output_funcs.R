@@ -8,6 +8,15 @@ make_con<-function(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", us
   dbConnect(dbDriver(driver), host = host, dbname = dbname, user = user, password = password)  
 }
 
+determine_system_cats<-function(df){
+  df<-collect(df)
+  # Create new column 'system_size_factors, which clarfies 1500 and 1500+ kW systems
+  df$system_size_factors <- df$turbine_size_kw
+  df[df$system_size_factors == 1500 & df$nturb > 1, 'system_size_factors'] <- '1500+'
+  df$system_size_factors <- ordered( df$system_size_factors, levels = c(2.5,5,10,20,50,100,250,500,750,1000,1500,'1500+'))
+  return(df)
+}
+
 simpleCap <- function(x) {
   # converts a given string to proper case
   # For formatting scenario options
@@ -87,13 +96,14 @@ cf_by_sector_and_year<-function(df){
     ggtitle('Median Capacity Factor by Sector')
 }
 
-lcoe_contour<-function(df,dr = 0.05,n = 30){
+lcoe_contour<-function(df, dr = 0.05, n = 30){
 # Map out the net present cost and annual capacity factor to achieve a given LCOE
 # LCOE is calculate as the net present cost divided by the net present generation over lifetime
 # To calculate NPC for the model, assume a 30yr life and 1c/kWh VOM
 # Plot a sample of model points for the first and final year for all sectors,sizes, etc.
   
 d = data.frame()
+
 present_value_factor = ((1 - (1 + dr)^-n)/dr)
 
 # Calculate the min and max capacity factors for a given lcoe and net present cost (npc)
@@ -112,9 +122,10 @@ d[d$cf_min > 0.5, 'cf_min'] <- 0.5
 d[d$lcoe == 0.7 , 'cf_min'] <- 0
 
 # Subset of model points for first and last year
+df = collect(df)
 pts = subset(df, year %in% c(min(df$year),max(df$year)))
 pts = pts[sample(nrow(pts), min(1000,nrow(pts))),]
-
+pts$present_value_factor <- present_value_factor
 ggplot()+
   geom_ribbon(data = d, aes(x = npc, y = cf, ymin = cf_min, ymax = cf_max, fill = factor(lcoe)), alpha = 0.5)+
   theme_few()+
@@ -132,6 +143,8 @@ ggplot()+
 }
 
 excess_gen_figs<-function(df,con){
+  
+  df = collect(df)
   
   # Get the scenario options
   table<-dbGetQuery(con,"select * from wind_ds.scenario_options")
@@ -151,7 +164,7 @@ excess_gen_figs<-function(df,con){
   df[df$nem_system_limit_kw >= df$cap,'percent_of_gen_monetized'] <- 1
   }
   
-  excess_gen_pt<-ggplot(df, aes(x =percent_of_gen_monetized, y = payback_period, color = nem_system_limit_kw>0))+
+  excess_gen_pt<-ggplot(df, aes(x = percent_of_gen_monetized, y = payback_period, color = nem_system_limit_kw>0))+
     geom_point()+
     theme_few()+
     scale_x_continuous(name = 'Percent of Generation Value at Retail Rate', labels = percent)+
@@ -209,13 +222,16 @@ elec_rate_supply_curve<-function(df){
 dist_of_cap_selected<-function(df,scen_name){
   # What size system are customers selecting in 2014?
   
+  # Distinguish between 1500 kW and 1500+ kW projects
+  df<-determine_system_cats(df)
+   
   # get the starting and end years
   start_year = as.numeric(collect(summarise(df, min(year))))
   end_year = as.numeric(collect(summarise(df, max(year))))
   
   # filter to only the start year, returning only the elec_rate_cents_per_kwh and load_kwh_in_bin cols
   f = filter(df, year %in% c(start_year,end_year))  
-  g = group_by(f, turbine_size_kw, sector, year)
+  g = group_by(f, system_size_factors, sector, year)
   cap_picked = collect(summarise(g,
                                  cust_num = sum(customers_in_bin)
   )
@@ -224,18 +240,16 @@ dist_of_cap_selected<-function(df,scen_name){
   cap_picked<-merge(cap_picked,tmp)
   cap_picked<-transform(cap_picked, p = cust_num/n)
   
-  p<-ggplot(cap_picked, aes(x = factor(turbine_size_kw), weight = p, fill = factor(year)))+
+  p<-ggplot(cap_picked, aes(x = factor(system_size_factors), weight = p, fill = factor(year)))+
     geom_histogram(position = 'dodge')+
     facet_wrap(~sector)+
     theme_few()+
-    scale_y_continuous(name ='Percent of Customers Selecting Turbine Size', labels = percent)+
-    scale_x_discrete(name ='Optimal Size Turbine for Customer (kW)')+
-    #scale_color_manual(values = sector_col) +
+    scale_y_continuous(name ='Percent of Customers Selecting System Size', labels = percent)+
+    scale_x_discrete(name ='Optimal Size System for Customer (kW)')+
     scale_fill_manual(name = 'Year', values = c('black','gray'))+
     theme(axis.text.x = element_text(angle = 45, hjust = 1))+
     theme(strip.text.x = element_text(size=12, angle=0,))+
-    #guides(color = FALSE)+
-    ggtitle('Size of Turbines Being Considered')
+    ggtitle('Size of Systems Being Considered')
   cap_picked$scenario<-scen_name
   write.csv(cap_picked,paste0(runpath,'/cap_selected_trends.csv'),row.names = FALSE)
   return(p)
@@ -244,25 +258,27 @@ dist_of_cap_selected<-function(df,scen_name){
 dist_of_height_selected<-function(df,scen_name){
   #What heights are prefered?
   
+  # Distinguish between 1500 kW and 1500+ kW projects
+  df<-determine_system_cats(df)
+  
   # get the starting year
   start_year = as.numeric(collect(summarise(df, min(year))))
   # filter to starting year
   f = filter(df, year == start_year)  
-  g = group_by(f, cap, turbine_height_m, sector)
+  g = group_by(f, system_size_factors, turbine_height_m, sector)
   height_picked = collect(summarise(g, 
                                     load_in_gw = sum(load_kwh_in_bin)/(1e6*8760)
   )
   )
   p<-ggplot(height_picked)+
-    geom_point(aes(x = factor(cap), y = factor(turbine_height_m), size = load_in_gw, color = sector), aes = 0.2)+
+    geom_point(aes(x = factor(system_size_factors), y = factor(turbine_height_m), size = load_in_gw, color = sector), aes = 0.2)+
     scale_size_continuous(name = 'Potential Customer Load (GW)', range = c(4,12))+
     theme_few()+
     facet_wrap(~sector,scales="free_y")+
     scale_color_manual(values = sector_col) +
     scale_fill_manual(values = sector_fil) +
-    #scale_size_continuous()+
     scale_y_discrete(name ='Turbine Height')+
-    scale_x_discrete(name ='Optimal Size Turbine for Customer (kW)')+
+    scale_x_discrete(name ='Optimal Size System for Customer (kW)')+
     theme(axis.text.x = element_text(angle = 45, hjust = 1))+
     theme(strip.text.x = element_text(size=12, angle=0,))+
     guides(color = FALSE, fill=FALSE)+
@@ -399,24 +415,27 @@ print_table <- function(...){
   print(xtable(...), type = "html", include.rownames = FALSE, caption.placement = "top")
 }
 
-national_installed_capacity_by_turb_size_bar<-function(df){
-  g = group_by(df, year, sector, turbine_size_kw)
+national_installed_capacity_by_system_size_bar<-function(df){
+    
+  # Distinguish between 1500 kW and 1500+ kW projects
+  df<-determine_system_cats(df)
+  g = group_by(df, year, sector, system_size_factors)
   data<- collect(summarise(g, 
                            nat_installed_capacity  = sum(installed_capacity)/1e6
   )
   )
   
   # order the data correctly
-  data = data[order(data$year,data$turbine_size_kw),]
-  colourCount = length(unique(data$turbine_size_kw))
+  data = data[order(data$year,data$system_size_factors),]
+  colourCount = length(unique(data$system_size_factors))
   getPalette = colorRampPalette(brewer.pal(9, "YlOrRd"))
   
-  ggplot(data, aes(x = year, fill = factor(turbine_size_kw), y = nat_installed_capacity), color = 'black')+
+  ggplot(data, aes(x = year, fill = factor(system_size_factors), y = nat_installed_capacity), color = 'black')+
     facet_wrap(~sector,scales="free_y")+
     geom_area()+
-    geom_line(aes(ymax = turbine_size_kw), position = 'stack')+
+    #geom_line(aes(ymax = system_size_factors), position = 'stack')+
     theme_few()+
-    scale_fill_manual(name = 'Turbine Size', values = getPalette(colourCount))+#, values = sector_fil) +
+    scale_fill_manual(name = 'System Size', values = getPalette(colourCount))+#, values = sector_fil) +
     scale_y_continuous(name ='National Installed Capacity (GW)')+#, labels = comma)+
     theme(strip.text.x = element_text(size = 12, angle = 0))+
     theme(axis.text.x = element_text(angle = 45, hjust = 1))+
@@ -488,7 +507,7 @@ diffusion_all_map <- function(df){
                                     Market.Value = sum(market_value),
                                     Number.of.Adopters = sum(number_of_adopters),
                                     Installed.Capacity = sum(installed_capacity)/1000,
-                                    Annual.Generation =  sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000))/1e6
+                                    Annual.Generation =  sum(((number_of_adopters-initial_number_of_adopters) * aep) + (0.23 * 8760 * initial_capacity_mw * 1000))/1e6
                                   )
                           )
   # reset variable names
@@ -505,7 +524,7 @@ diffusion_all_map <- function(df){
                          legend = T, labels = T, 
                          slider_var = 'Year', slider_step = 2, map_title = 'Diffusion (Total)', horizontal_legend = F, slider_width = 300,
                          legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
-                                              Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
+                                              Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (MW)',
                                               Annual.Generation = 'Annual Generation (GWh)'))
   # save the map
   showIframeSrc(map, cdn = T)
@@ -524,7 +543,7 @@ diffusion_sectors_map <- function(df){
                                          Market.Value = sum(market_value),
                                          Number.of.Adopters = sum(number_of_adopters),
                                          Installed.Capacity = sum(installed_capacity)/1000,
-                                         Annual.Generation = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (initial_capacity_mw*1000))/1e6
+                                         Annual.Generation =  sum(((number_of_adopters-initial_number_of_adopters) * aep) + (0.23 * 8760 * initial_capacity_mw * 1000))/1e6
                                         )
                               )
 
@@ -542,7 +561,7 @@ diffusion_sectors_map <- function(df){
                            legend = T, labels = T, 
                            slider_var = 'Year', slider_step = 2, map_title = sprintf('Diffusion (%s)',toProper(sector)), horizontal_legend = F, slider_width = 300,
                            legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
-                                                Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (mw)',
+                                                Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (MW)',
                                                 Annual.Generation = 'Annual Generation (GWh)'))
     # save the map
     showIframeSrc(map, cdn = T)
@@ -635,35 +654,33 @@ diff_trends_table<-function(diff_trends){
 }
 
 turb_trends_hist<-function(df){
+  
+  # Distinguish 1500 and 100+ kW projects
+  df<-determine_system_cats(df)
+  
   # What size system are customers selecting in 2014?
   df1<-subset(df, year == min(year))
   df2<-subset(df, year == max(year))
   
-  p1<-ggplot(df1, aes(x = factor(cap), weight = p, fill = scenario))+
+  p1<-ggplot(df1, aes(x = factor(system_size_factors), weight = p, fill = scenario))+
     geom_histogram(position = 'dodge')+
     facet_wrap(~sector)+
     theme_few()+
-    scale_y_continuous(name ='Percent of Customers Selecting Turbine Size', labels = percent)+
-    scale_x_discrete(name ='Optimal Size Turbine for Customer (kW)')+
-    #scale_color_manual(values = sector_col) +
-    #scale_fill_manual(values = sector_fil) +
+    scale_y_continuous(name ='Percent of Customers Selecting System Size', labels = percent)+
+    scale_x_discrete(name ='Optimal Size System for Customer (kW)')+
     theme(axis.text.x = element_text(angle = 45, hjust = 1))+
     theme(strip.text.x = element_text(size=12, angle=0,))+
-    #guides(color = FALSE, fill=FALSE)+
-    ggtitle(sprintf('Size of Turbines Considered in %s', min(df$year)))
+    ggtitle(sprintf('Size of System Considered in %s', min(df$year)))
   
-  p2<-ggplot(df2, aes(x = factor(cap), weight = p, fill = scenario))+
+  p2<-ggplot(df2, aes(x = factor(system_size_factors), weight = p, fill = scenario))+
     geom_histogram(position = 'dodge')+
     facet_wrap(~sector)+
     theme_few()+
-    scale_y_continuous(name ='Percent of Customers Selecting Turbine Size', labels = percent)+
-    scale_x_discrete(name ='Optimal Size Turbine for Customer (kW)')+
-    #scale_color_manual(values = sector_col) +
-    #scale_fill_manual(values = sector_fil) +
+    scale_y_continuous(name ='Percent of Customers Selecting System Size', labels = percent)+
+    scale_x_discrete(name ='Optimal Size System for Customer (kW)')+
     theme(axis.text.x = element_text(angle = 45, hjust = 1))+
     theme(strip.text.x = element_text(size=12, angle=0,))+
-    #guides(color = FALSE, fill=FALSE)+
-    ggtitle(sprintf('Size of Turbines Considered in %s', max(df$year)))
+    ggtitle(sprintf('Size of System Considered in %s', max(df$year)))
 
   out = list('p1' = p1, 'p2' = p2)  
 return(out)
