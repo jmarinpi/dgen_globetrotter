@@ -1,4 +1,6 @@
-﻿--create table using zonal stats
+﻿----------------------------------------------------------------------
+-- WIND
+--create table using zonal stats
 DROP TABLE IF EXISTS diffusion_shared.capital_cost_multipliers_us;
 CREATE TABLE diffusion_shared.capital_cost_multipliers_us AS
 WITH tile_stats as (
@@ -64,5 +66,57 @@ ALTER TABLE diffusion_shared.capital_cost_multipliers_us ADD PRIMARY KEY (county
 -- inner join diffusion_shared.capital_cost_multipliers_us b
 -- on a.county_id = b.county_id;
 -- export to shapefile and create a map to compare to the REEDs region level multipliers
+----------------------------------------------------------------------
 
 
+----------------------------------------------------------------------
+-- SOLAR
+-- calculate zonal statistics
+create table diffusion_solar_data.cap_costs_idw_pv_mw_10x10_agg as
+with tile_stats as
+(
+	select a.county_id, a.state_abbr, ST_SummaryStats(ST_Clip(b.rast, 1, a.the_geom_96703, TRUE)) as stats
+	from diffusion_shared.county_geom a 
+	inner join diffusion_solar_data.cap_costs_idw_pv_mw_10x10 b
+	on ST_Intersects(a.the_geom_96703, b.rast)
+	where a.state_abbr not in ('AK', 'HI')
+)
+
+select county_id, state_abbr, sum((stats).sum)/sum((stats).count) as pv_20mw_cap_cost_multplier
+from tile_stats
+group by county_id, state_abbr;
+
+-- some small counties are going to have no cap_cost_multplier because they didn't contain a raster cell centroid
+-- for these, find the mean of all cells they INTERSECT, 
+create table diffusion_solar_data.missing_cap_costs as
+
+with tile_intersection as 
+(
+	select a.county_id, b.the_geom_96703 as county_geom, ST_PixelAsPolygons(c.rast) as poly
+	from diffusion_solar_data.cap_costs_idw_pv_mw_10x10 a
+	left join diffusion_shared.county_geom b 
+	on a.county_id = b.county_id
+	inner join diffusion_solar_data.cap_costs_idw_pv_mw_10x10_raster c
+	on ST_Intersects(b.the_geom_96703, c.rast)
+	where a.pv_20mw_cap_cost_multplier is null
+)
+
+select county_id, ST_Transform(county_geom, 4326) as the_geom_4326, avg((poly).val) as cap_cost
+from tile_intersection
+where ST_Intersects(county_geom,(poly).geom)
+group by county_id, county_geom;
+
+update diffusion_solar_data.cap_costs_idw_pv_mw_10x10 a
+set pv_20mw_cap_cost_multplier = b.cap_cost
+from diffusion_solar_data.missing_cap_costs b
+where a.pv_20mw_cap_cost_multplier is null
+and a.county_id = b.county_id;
+
+select count(*)
+from diffusion_solar_data.cap_costs_idw_pv_mw_10x10
+where pv_20mw_cap_cost_multplier is null;
+
+update diffusion_shared.capital_cost_multipliers_us a
+set pv_20mw_cap_cost_multplier = b.pv_20mw_cap_cost_multplier
+from diffusion_solar_data.cap_costs_idw_pv_mw_10x10 b
+where a.county_id = b.county_id;
