@@ -655,8 +655,8 @@ diff_trends_table<-function(diff_trends){
 
 turb_trends_hist<-function(df){
   
-  # Distinguish 1500 and 100+ kW projects
-  df<-determine_system_cats(df)
+  # Correct order of factors
+  df$system_size_factors <- ordered( df$system_size_factors, levels = c(2.5,5,10,20,50,100,250,500,750,1000,1500,'1500+'))
   
   # What size system are customers selecting in 2014?
   df1<-subset(df, year == min(year))
