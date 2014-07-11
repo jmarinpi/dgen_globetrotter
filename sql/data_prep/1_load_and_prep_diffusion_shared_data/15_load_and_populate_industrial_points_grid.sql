@@ -637,6 +637,73 @@ where pca_reg is null or reeds_reg is null;
 
 
 
+-- add nsrdb grid gids
+DROP TABLE IF EXISTS  diffusion_solar_data.pt_grid_us_ind_solar_re_9809_lookup;
+CREATE TABLE  diffusion_solar_data.pt_grid_us_ind_solar_re_9809_lookup 
+(
+	gid integer,
+	solar_re_9809_gid integer
+);
+
+
+SELECT parsel_2('dav-gis','mgleason','mgleason','diffusion_shared.pt_grid_us_ind','gid',
+		'SELECT a.gid, b.gid as solar_re_9809_gid
+		FROM  diffusion_shared.pt_grid_us_ind a
+		INNER JOIN solar.solar_re_9809 b
+		ON ST_Intersects(a.the_geom_4326,b.the_geom_4326);',
+	'diffusion_solar_data.pt_grid_us_ind_solar_re_9809_lookup', 'a',16);
+
+-- join the info back in
+ALTER TABLE diffusion_shared.pt_grid_us_ind 
+ADD COLUMN solar_re_9809_gid integer;
+
+CREATE INDEX pt_grid_us_ind_solar_re_9809_lookup_git_btree 
+ON  diffusion_solar_data.pt_grid_us_ind_solar_re_9809_lookup 
+using btree(gid);
+
+UPDATE diffusion_shared.pt_grid_us_ind a
+SET solar_re_9809_gid = b.solar_re_9809_gid
+FROM  diffusion_solar_data.pt_grid_us_ind_solar_re_9809_lookup  b
+where a.gid = b.gid;
+
+
+-- how many are null?
+CREATE INDEX pt_grid_us_ind_solar_re_9809_gid_btree ON diffusion_shared.pt_grid_us_ind USING btree(solar_re_9809_gid);
+
+-- any missing?
+select count(*)
+FROM diffusion_shared.pt_grid_us_ind 
+where solar_re_9809_gid is null;
+--
+
+-- fix the missing based on the closest
+DROP TABLE IF EXISTS  diffusion_solar_data.pt_grid_us_solar_re_9809_gid_missing_lookup;
+CREATE TABLE  diffusion_solar_data.pt_grid_us_solar_re_9809_gid_missing_lookup AS
+with a AS(
+	select gid, the_geom_900914
+	FROM diffusion_shared.pt_grid_us_ind
+	where solar_re_9809_gid is null)
+SELECT a.gid, a.the_geom_900914, 
+	(SELECT b.solar_re_9809_gid
+	 FROM diffusion_shared.pt_grid_us_ind b
+	 where b.solar_re_9809_gid is not null
+	 ORDER BY a.the_geom_900914 <#> b.the_geom_900914
+	 LIMIT 1) as solar_re_9809_gid
+	FROM a;
+-- 
+  
+--update the points table
+UPDATE diffusion_shared.pt_grid_us_ind a
+SET solar_re_9809_gid = b.solar_re_9809_gid
+FROM  diffusion_solar_data.pt_grid_us_solar_re_9809_gid_missing_lookup b
+where a.gid = b.gid
+and a.solar_re_9809_gid is null;
+ 
+-- check for any remaining nulls?
+select count(*)
+FROM diffusion_shared.pt_grid_us_ind 
+where solar_re_9809_gid is null;
+
 
 -- add foreign keys
 	-- for county_id to county_geom.county id
