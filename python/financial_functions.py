@@ -11,9 +11,10 @@ import numpy as np
 import pandas as pd
 from collections import Iterable
 import data_functions as datfunc
+import time
 
 #==============================================================================
-def calc_economics(df, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule):
+def calc_economics(df, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule, logger):
     '''
     Calculates economics of system adoption (cashflows, payback, irr, etc.)
     
@@ -45,17 +46,29 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = 'gid')
     
-    revenue, costs, cfs = calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30)      
+    t0 = time.time()
+    revenue, costs, cfs = calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30)
+    logger.info('finfunc.calc_cashflows for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
+    
+    t0 = time.time()
     payback = calc_payback(cfs)
-    ttd = calc_ttd(cfs, df)  
+    logger.info('finfunc.calc_payback(cfs) for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
+    
+    t0 = time.time()
+    ttd = calc_ttd(cfs, df)
+    logger.info('finfunc.calc_ttd(cfs) for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
     
     df['payback_period'] = np.where(df['sector'] == 'residential',payback, ttd)
+    
+    t0 = time.time()
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate)
+    logger.info('finfunc.calc_ttd(cfs) for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
+    
     df['payback_key'] = (df['payback_period']*10).astype(int)
     
     #df = select_max_market_share(df,max_market_share, scenario_opts)
     df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'payback_key'])
-    return df
+    return df, logger
     
 #==============================================================================    
     
@@ -176,7 +189,6 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     
     generation_revenue = value_inflows_dol + value_outflows_dol
 
-    #OLD COMMAND generation_revenue = (np.minimum(df.aep,df.ann_cons_kwh) * 0.01 * df.elec_rate_cents_per_kwh)[:,np.newaxis] * rate_growth_mult 
     
     # 4) Revenue from depreciation.  ### THIS NEEDS MORE WORK ###  
     # Depreciable basis is installed cost less tax incentives
@@ -191,7 +203,7 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     
     # Calc interest paid
     interest_paid = np.empty(shape)
-    for i in range(len(df)):
+    for i in range(len(df)): # VECTORIZE THIS
         interest_paid[i,:] = (np.ipmt(df.loan_rate[i], [np.arange(yrs)], df.loan_term_yrs[i], -df.ic[i] * (1- df.down_payment[i])))    
     interest_paid[interest_paid < 0] = 0 # Truncate interest payments if loan_term < yrs
     interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial'))[:,np.newaxis]

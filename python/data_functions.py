@@ -1240,3 +1240,18 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc['ptc_length'] = assumed_duration
     
     return inc[['gid', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
+
+def code_profiler(out_dir):
+    lines = [ line for line in open(out_dir + '/dg_wind_model.log') if 'took:' in line]
+    
+    process = [line.split('took:')[-2] for line in lines]
+    process = [line.split(':')[-1] for line in process]
+    
+    time = [line.split('took:')[-1] for line in lines]
+    time = [line.split('s')[0] for line in time]
+    time = [float(x) for x in time]
+    
+    
+    profile = pd.DataFrame({'process': process, 'time':time})
+    profile = profile.sort('time', ascending = False)
+    profile.to_csv(out_dir + '/code_profiler.csv') 

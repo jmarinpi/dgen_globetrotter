@@ -17,10 +17,11 @@ Last Revision: 3/26/14
 
 import numpy as np
 import pandas as pd
+import time
 
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
-def calc_diffusion(df):
+def calc_diffusion(df, logger, year, sector):
     ''' Brings everything together to calculate the diffusion market share 
         based on payback, max market, and market last year. Using the calculated 
         market share, relevant quantities are updated.
@@ -30,7 +31,10 @@ def calc_diffusion(df):
         OUT: df - pd dataframe - Main dataframe
             market_last_year - pd dataframe - market to inform diffusion in next year
     '''
+    t0 = time.time()
     df['diffusion_market_share'] = calc_diffusion_market_share(df.payback_period.values,df.max_market_share.values, df.market_share_last_year.values)
+    logger.info('diffunc.calc_diffusion_market_share for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
+    
     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
     df['new_market_share'] = df['market_share']-df['market_share_last_year']
     df['new_market_share'] = np.where(df['market_share'] > df['max_market_share'], 0, df['new_market_share'])
@@ -44,7 +48,7 @@ def calc_diffusion(df):
     df['market_value'] = df['market_value_last_year'] + df['new_market_value']
     market_last_year = df[['gid','market_share', 'number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
     market_last_year.columns = ['gid', 'market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
-    return df,market_last_year
+    return df,market_last_year, logger
 
 
 #=============================================================================
