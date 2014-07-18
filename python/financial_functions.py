@@ -52,8 +52,14 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
     df['payback_period'] = np.where(df['sector'] == 'residential',payback, ttd)
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate)
     df['payback_key'] = (df['payback_period']*10).astype(int)
+    
+    #df = select_max_market_share(df,max_market_share, scenario_opts)
     df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'payback_key'])
     return df
+    
+#==============================================================================    
+    
+    
     
 #==============================================================================
 def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):

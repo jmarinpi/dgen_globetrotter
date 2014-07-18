@@ -144,9 +144,9 @@ def main(mode = None, resume_year = None):
             datfunc.clear_outputs(con,cur) # clear results from previous run
               
             for sector_abbr, sector in sectors.iteritems():
+                
                 # define the rate escalation source and max market curve for the current sector
                 rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
-                max_market_curve = scenario_opts['%s_max_market_curve' % sector_abbr]
                 # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
                 if cfg.init_model:
                     main_table = datfunc.generate_customer_bins(cur, con, cfg.random_generator_seed, cfg.customer_bins, sector_abbr, sector, 

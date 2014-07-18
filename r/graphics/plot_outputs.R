@@ -2,7 +2,7 @@ library(ggplot2)
 library(plyr)
 library(maps)
 library(scales)
-library(data.table,)
+library(data.table)
 library(knitr)
 library(RColorBrewer)
 library(ggthemes)
@@ -31,3 +31,4 @@ opts_knit$set(base.dir = runpath)
 knit2html("../r/graphics/plot_outputs.md", output = paste0(runpath,"/DG Wind report.html"), title = "DG Wind report", stylesheet = "../r/graphics/plot_outputs.css",
             options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
 dbDisconnect(con)
+
