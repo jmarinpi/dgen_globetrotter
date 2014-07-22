@@ -449,52 +449,6 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     counties = [row['county_id'] for row in cur.fetchall()]
     county_chunks = map(list,np.array_split(counties, npar))
     
-
-    #==============================================================================
-    #     check whether seed has been used before -- if not, create a new random lookup table
-    #==============================================================================
-    sql = """SELECT seed 
-             FROM diffusion_wind.prior_seeds_%(sector_abbr)s;""" % inputs
-    cur.execute(sql)
-    prior_seeds = [float(row['seed']) for row in cur.fetchall()]
-    inputs['random_lookup_table'] = 'random_lookup_%(sector_abbr)s_%(seed_str)s' % inputs
-    
-    if seed not in prior_seeds:
-        msg = "New Seed: Generating Random Values for Sampling"
-        logger.info(msg)
-        # generate the random lookup table
-        sql = """CREATE TABLE diffusion_wind.%(random_lookup_table)s AS
-                 WITH 
-                     s as (SELECT setseed(%(seed)s)),
-                     p as (SELECT a.gid FROM diffusion_shared.pt_grid_us_%(sector_abbr)s a 
-                       ORDER BY a.gid)
-                 SELECT p.gid, random() as random
-                 FROM p, s;""" % inputs
-        cur.execute(sql)
-        con.commit()
-        
-        # add a primary key lookup
-        sql = """ALTER TABLE diffusion_wind.%(random_lookup_table)s
-                 ADD PRIMARY KEY (gid);""" % inputs
-        cur.execute(sql)
-        con.commit()        
-        
-        # add seed to the prior seeds table
-        sql = """INSERT INTO diffusion_wind.prior_seeds_%(sector_abbr)s (seed) VALUES (%(seed)s);""" % inputs
-        cur.execute(sql)
-        con.commit()
-        
-        # vacuum analyze the lookup table
-        sql = "VACUUM ANALYZE diffusion_wind.%(random_lookup_table)s;" % inputs
-        con.autocommit = True
-        cur.execute(sql)
-        con.autocommit = False
-        
-    else:
-        msg = "This seed has been used previously. Skipping generation of random values"
-        logger.warning(msg)
-
-    
     #==============================================================================
     #     randomly sample  N points from each county 
     #==============================================================================    
@@ -504,17 +458,22 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     t0 = time.time() 
     sql = """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s;
              CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s AS
-             WITH a as (
-            	SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id order by b.random, a.gid) as row_number
-            	FROM diffusion_wind.pt_grid_us_%(sector_abbr)s_joined a
-              LEFT JOIN diffusion_wind.%(random_lookup_table)s b
-              ON a.gid = b.gid
-              WHERE a.county_id IN (%(chunk_place_holder)s))
-            SELECT *
-            FROM a
-            WHERE row_number <= %(n_bins)s;""" % inputs    
+            WITH b as 
+            (
+                SELECT unnest(sample(array_agg(a.gid order by a.gid),%(n_bins)s,%(seed)s,True)) as gid
+                FROM diffusion_shared.pt_grid_us_%(sector_abbr)s a
+                WHERE a.county_id in  (%(chunk_place_holder)s)
+                GROUP BY a.county_id
+            )
+                
+            SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.gid) as row_number
+            FROM diffusion_wind.pt_grid_us_%(sector_abbr)s_joined a
+            INNER JOIN b
+            ON a.gid = b.gid
+            WHERE a.county_id in  (%(chunk_place_holder)s);""" % inputs
 
     p_run(pg_conn_string, sql, county_chunks, npar)
+    print time.time()-t0
 
     #==============================================================================
     #    create lookup table with random values for each load bin 
@@ -534,6 +493,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 	AND b.sector = lower('%(sector)s');""" % inputs
     cur.execute(sql)
     con.commit()
+    print time.time()-t0
     
     # add an index on county id and row number
     sql = """CREATE INDEX county_load_bins_random_lookup_%(sector_abbr)s_join_fields_btree 
@@ -565,12 +525,10 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             	END AS load_kwh_per_customer_in_bin
             FROM binned a;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
+    print time.time()-t0
 
-    # query for indices creation
-    sql =  """ALTER TABLE diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
-              ADD PRIMARY Key (gid);
-              
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_census_division_abbr_btree 
+    # query for indices creation    
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_census_division_abbr_btree 
               ON diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
               USING BTREE(census_division_abbr);
               
@@ -713,9 +671,9 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     con.commit()
     
     sql =  """INSERT INTO diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
-              SELECT distinct on (a.gid, a.year) a.*
+              SELECT distinct on (a.county_id, a.row_number, a.year) a.*
               FROM  diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a
-              ORDER BY a.gid, a.year, a.scoe ASC;""" % inputs
+              ORDER BY a.county_id, a.row_number, a.year, a.scoe ASC;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     
     # create index on gid and year

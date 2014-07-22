@@ -26,8 +26,8 @@ input_xls = '../excel/DG_wind_01_16_2014_named_ranges.xlsm'
 customer_bins = 10
 
 # seed for random sampling of customers from each county
-# (allowable values are values in the range 0 to 1)
-random_generator_seed = .1
+# (any integer value is allowed)
+random_generator_seed = 1
 
 # allowable flex factor for oversizing or undersizing turbines (used in selection of optimal turbine height and size for each customer bin)
 oversize_turbine_factor = 1.15
