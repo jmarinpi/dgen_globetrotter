@@ -38,17 +38,17 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
         # get the initial market share per bin by county
         initial_market_shares = datfunc.get_initial_market_shares(cur, con, sector_abbr, sector)
         # join this to the df to on county_id
-        df = pd.merge(df, initial_market_shares, how = 'left', on = 'gid')
+        df = pd.merge(df, initial_market_shares, how = 'left', on = ['county_id','bin_id'])
         df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']        
     else:
-        df = pd.merge(df,market_last_year, how = 'left', on = 'gid')
+        df = pd.merge(df,market_last_year, how = 'left', on = ['county_id','bin_id'])
         # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years. 
     if scenario_opts['overwrite_exist_inc']:
         value_of_incentives = datfunc.calc_manual_incentives(df,con, year)
     else:
         inc = pd.merge(df,dsire_incentives,how = 'left', on = 'gid')
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
-    df = pd.merge(df, value_of_incentives, how = 'left', on = 'gid')
+    df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id'])
     
     t0 = time.time()
     revenue, costs, cfs = calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30)

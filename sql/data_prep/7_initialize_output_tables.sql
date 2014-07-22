@@ -2,6 +2,8 @@
 DROP TABLE IF EXISTS diffusion_wind.outputs_res CASCADE;
 CREATE TABLE diffusion_wind.outputs_res (
 	gid 					integer,
+	county_id				integer,
+	bin_id					integer,
 	year					integer,
 	customer_expec_elec_rates		numeric, 
 	ownership_model				text,
@@ -38,13 +40,15 @@ CREATE TABLE diffusion_wind.outputs_res (
 	market_value				numeric
 );
 
-CREATE INDEX outputs_res_gid_year_btree ON diffusion_wind.outputs_res USING btree(gid,year);
+CREATE INDEX outputs_res_join_fields_btree ON diffusion_wind.outputs_res USING btree(county_id,bin_id,year);
 
 
 -- commercial
 DROP TABLE IF EXISTS diffusion_wind.outputs_com CASCADE;
 CREATE TABLE diffusion_wind.outputs_com (
 	gid 					integer,
+	county_id				integer,
+	bin_id					integer,
 	year					integer,
 	customer_expec_elec_rates		numeric, 
 	ownership_model				text,
@@ -81,12 +85,14 @@ CREATE TABLE diffusion_wind.outputs_com (
 	market_value				numeric
 );
 
-CREATE INDEX outputs_com_gid_year_btree ON diffusion_wind.outputs_com USING btree(gid,year);
+CREATE INDEX outputs_com_join_fields_btree ON diffusion_wind.outputs_com USING btree(county_id,bin_id,year);
 
 -- industrial
 DROP TABLE IF EXISTS diffusion_wind.outputs_ind CASCADE;
 CREATE TABLE diffusion_wind.outputs_ind (
 	gid 					integer,
+	county_id				integer,
+	bin_id					integer,
 	year					integer,
 	customer_expec_elec_rates		numeric, 
 	ownership_model				text,
@@ -123,4 +129,4 @@ CREATE TABLE diffusion_wind.outputs_ind (
 	market_value				numeric
 );
 
-CREATE INDEX outputs_ind_gid_year_btree ON diffusion_wind.outputs_ind USING btree(gid,year);
+CREATE INDEX outputs_ind_join_fields_btree ON diffusion_wind.outputs_ind USING btree(county_id,bin_id,year);
