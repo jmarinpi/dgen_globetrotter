@@ -137,6 +137,7 @@ def main(mode = None, resume_year = None):
             financial_parameters = datfunc.get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned')
             max_market_share = datfunc.get_max_market_share(con, sectors.values(), scenario_opts, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit')
             market_projections = datfunc.get_market_projections(con)
+            rate_escalations = datfunc.get_rate_escalations(con)
 
             logger.info('Getting various parameters took: %0.1fs' %(time.time() - t0))
             # 7. Combine All of the Temporally Varying Data in a new Table in Postgres
@@ -182,7 +183,7 @@ def main(mode = None, resume_year = None):
                         market_last_year = 0 #market_last_year is actually initialied in calc_economics
                         
                     t_calc_econ = time.time()    
-                    df, logger = finfunc.calc_economics(df, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule, logger)
+                    df, logger = finfunc.calc_economics(df, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule, logger, rate_escalations)
                     logger.info('The entire finfunc.calc_economics for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t_calc_econ))
                     
                     # 10. Calulate diffusion
@@ -198,7 +199,7 @@ def main(mode = None, resume_year = None):
                     # 11. Save outputs from this year and update parameters for next solve       
                     t0 = time.time()                    
                     datfunc.write_outputs(con, cur, df, sector_abbr)
-                    logger.info('datfunc.get_main_dataframe for %s took: %0.1fs' %(year, time.time() - t0))                        
+                    logger.info('datfunc.write_outputs for %s took: %0.1fs' %(year, time.time() - t0))                        
                     logger.info('Doing the entire %s model year for %s sector took: %0.1fs' %(year, sector, time.time() - t_loop))   
             ## 12. Outputs & Visualization
             # set output subfolder
