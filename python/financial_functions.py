@@ -13,8 +13,10 @@ from collections import Iterable
 import data_functions as datfunc
 import time
 
+
+
 #==============================================================================
-def calc_economics(df, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule, logger):
+def calc_economics(df, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule, logger, rate_escalations):
     '''
     Calculates economics of system adoption (cashflows, payback, irr, etc.)
     
@@ -26,7 +28,9 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
     '''
     
     df['sector'] = sector.lower()
-    df = pd.merge(df,market_projections[['year', 'customer_expec_elec_rates']], how = 'left', on = 'year')
+    
+    df = datfunc.calc_expected_rate_escal(df,rate_escalations, year)
+    #df = pd.merge(df,market_projections[['year', 'customer_expec_elec_rates']], how = 'left', on = 'year')
     df = pd.merge(df,financial_parameters, how = 'left', on = 'sector')
     
     ## Diffusion from previous year ## 
@@ -56,13 +60,13 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
     
     t0 = time.time()
     ttd = calc_ttd(cfs, df)
-    logger.info('finfunc.calc_ttd(cfs) for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
+    logger.info('finfunc.calc_ttd for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
     
     df['payback_period'] = np.where(df['sector'] == 'residential',payback, ttd)
     
     t0 = time.time()
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate)
-    logger.info('finfunc.calc_ttd(cfs) for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
+    logger.info('finfunc.calc_lcoe for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
     
     df['payback_key'] = (df['payback_period']*10).astype(int)
     
@@ -153,7 +157,11 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail
     """
     
-    # Multiplier for rate growth about real dollars
+
+    
+    # Multiplier for rate growth in real 2011 dollars
+
+        
     tmp = np.empty(shape)
     tmp[:,0] = 1
     tmp[:,1:] = df.customer_expec_elec_rates[:,np.newaxis]

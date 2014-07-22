@@ -1241,6 +1241,44 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     
     return inc[['gid', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
 
+def get_rate_escalations(con):
+    '''
+    Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
+    resulting in an average real compounding rate growth. This rate is then used to calculate cash flows
+    
+    IN: con - connection to server
+    OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
+    '''  
+    rate_escalations = sqlio.read_frame('SELECT * FROM diffusion_shared.rate_escalations', con)
+    rate_escalations['sector'] = rate_escalations['sector'].str.lower()
+    return rate_escalations
+    
+def calc_expected_rate_escal(df,rate_escalations, year): 
+    '''
+    Append the expected rate escalation to the main dataframe.
+    Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
+    resulting in an average real compounding rate growth. This rate is then used to calculate cash flows
+    
+    IN: con - connection to server
+    OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
+    '''  
+    def avg_pct_change(x):
+        x = x.sort('year')
+        return x['escalation_factor'].pct_change().mean()
+    
+    # Only use the escalation multiplier over the next 30 years
+    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < year + 30) & (rate_escalations['year'] >=  year)]
+    
+    avg_rate_esc = projected_rate_escalations.groupby(['census_division_abbr','sector'])
+    
+    # Next we find the average percent change in rate projected over next 30 years    
+    avg_rate_esc = avg_rate_esc.apply(avg_pct_change)
+    
+    # Finally, join dataframes to add customer_expec_elec_rate field
+    avg_rate_esc = pd.DataFrame({'customer_expec_elec_rates': avg_rate_esc})
+    df = pd.merge(df,avg_rate_esc, how = 'left', left_on = ['census_division_abbr', 'sector'], right_index = True)
+    return df
+
 def code_profiler(out_dir):
     lines = [ line for line in open(out_dir + '/dg_wind_model.log') if 'took:' in line]
     
