@@ -30,7 +30,6 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
     df['sector'] = sector.lower()
     
     df = datfunc.calc_expected_rate_escal(df,rate_escalations, year)
-    #df = pd.merge(df,market_projections[['year', 'customer_expec_elec_rates']], how = 'left', on = 'year')
     df = pd.merge(df,financial_parameters, how = 'left', on = 'sector')
     
     ## Diffusion from previous year ## 
@@ -40,9 +39,11 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
         # join this to the df to on county_id
         df = pd.merge(df, initial_market_shares, how = 'left', on = ['county_id','bin_id'])
         df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']        
-    else:
+    else:    
         df = pd.merge(df,market_last_year, how = 'left', on = ['county_id','bin_id'])
         # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years. 
+
+    # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
     if scenario_opts['overwrite_exist_inc']:
         value_of_incentives = datfunc.calc_manual_incentives(df,con, year)
     else:
@@ -134,13 +135,17 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     ## COSTS    
     
     # 1)  Cost of servicing loan
-    loan_cost = np.zeros(shape); 
     crf = (df.loan_rate*(1 + df.loan_rate)**df.loan_term_yrs) / ( (1+df.loan_rate)**df.loan_term_yrs - 1);
     pmt = - (1 - df.down_payment)* df.ic * crf    
     
-    for i in range(len(loan_cost)): ## VECTORIZE THIS ##
-        loan_cost[i][:df.loan_term_yrs[i]] = [pmt[i]] * df.loan_term_yrs[i]
+    loan_cost = datfunc.fill_jagged_array(pmt,df.loan_term_yrs)
     loan_cost[:,0] -= df.ic * df.down_payment 
+    
+    # OLD SOLUTION -- delete once confident in above
+    
+    #for i in range(len(loan_cost)): ## VECTORIZE THIS ##
+    #    loan_cost[i][:df.loan_term_yrs[i]] = [pmt[i]] * df.loan_term_yrs[i]
+    #loan_cost[:,0] -= df.ic * df.down_payment 
 
     # 2) Costs of fixed & variable O&M
     om_cost = np.zeros(shape);
@@ -156,17 +161,14 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     avoided cost, or no credit. Amount of excess energy is aep * excess_gen_factor + 0.31 * (gen/load - 1) 
     See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail
     """
-    
 
-    
     # Multiplier for rate growth in real 2011 dollars
 
-        
     tmp = np.empty(shape)
     tmp[:,0] = 1
     tmp[:,1:] = df.customer_expec_elec_rates[:,np.newaxis]
     rate_growth_mult = np.cumprod(tmp, axis = 1) 
-    
+
     # Percentage of excess gen, bounded from 0 - 100%
     per_excess_gen = np.minimum(np.maximum(df.excess_generation_factor + 0.31 * (df.aep/df.ann_cons_kwh -1), 0),1)
     
@@ -219,14 +221,15 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     # 6) Revenue from other incentives    
     incentive_revenue = np.zeros(shape)
     incentive_revenue[:, 1] = df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction
-
-    ptc_revenue = np.zeros(shape)
-    for i in range(len(df)):
-        ptc_revenue[i,1:1+df.ptc_length[i]] = df.value_of_ptc[i]
     
-    pbi_fit_revenue = np.zeros(shape)
-    for i in range(len(df)):
-        pbi_fit_revenue[i,1:1+df.pbi_fit_length[i]] = df.value_of_pbi_fit[i]
+    ptc_revenue = datfunc.fill_jagged_array(df.value_of_ptc,df.ptc_length)
+    #for i in range(len(df)):
+    #    ptc_revenue[i,1:1+df.ptc_length[i]] = df.value_of_ptc[i]
+    
+    pbi_fit_revenue = datfunc.fill_jagged_array(df.value_of_pbi_fit,df.pbi_fit_length)    
+    #pbi_fit_revenue = np.zeros(shape)
+    #for i in range(len(df)):
+    #    pbi_fit_revenue[i,1:1+df.pbi_fit_length[i]] = df.value_of_pbi_fit[i]
     
     incentive_revenue += ptc_revenue + pbi_fit_revenue
     
