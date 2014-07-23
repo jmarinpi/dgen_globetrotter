@@ -1080,10 +1080,10 @@ def calc_manual_incentives(df,con,cur_year):
     join above could join on multiple rows. Thus, groupby by county_id & bin_id 
     to sum over incentives and condense back to unique gid values
     '''
+
+    value_of_incentives = d[['county_id', 'bin_id', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id']).sum().reset_index() 
     
-    
-    return d.groupby(['county_id','bin_id']).sum()[['value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].reset_index()    
-    
+    return value_of_incentives
     
 def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration = 10):
     '''
@@ -1172,7 +1172,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     ptc_max_size = np.minimum(inc['system_size_kw'], inc.tax_credit_max_size_kw)
     inc.max_tax_credit_dlrs = np.where(inc.max_tax_credit_dlrs.isnull(), 1e9, inc.max_tax_credit_dlrs)
     inc.ptc_duration_years = np.where((inc.ptc_dlrs_kwh > 0) & (inc.ptc_duration_years.isnull()), assumed_duration, inc.ptc_duration_years)
-    value_of_ptc =  ptc_still_exists * np.minimum(inc.ptc_dlrs_kwh * inc.naep * ptc_max_size, inc.max_dlrs_yr)
+    value_of_ptc =  ptc_still_exists * np.minimum(inc.ptc_dlrs_kwh * inc.aep * (ptc_max_size/inc.system_size_kw), inc.max_dlrs_yr)
     value_of_ptc[np.isnan(value_of_ptc)] = 0
     value_of_ptc = np.where(value_of_ptc < inc.max_tax_credit_dlrs, value_of_ptc,inc.max_tax_credit_dlrs)
     length_of_ptc = inc.ptc_duration_years
@@ -1210,7 +1210,8 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
     
     inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction
-    inc = inc.groupby(['county_id','bin_id']).sum()[['county_id', 'bin_id', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].reset_index()
+    inc = inc[['county_id', 'bin_id', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id']).sum().reset_index() 
+    
     inc['value_of_pbi_fit'] = inc['lifetime_value_of_pbi_fit'] / assumed_duration
     inc['pbi_fit_length'] = assumed_duration
     

@@ -204,10 +204,6 @@ def main(mode = None, resume_year = None):
             ## 12. Outputs & Visualization
             # set output subfolder
             if mode == 'ReEDS':
-                #sql = """SELECT a.*,b.pca_reg
-                #FROM diffusion_wind.outputs_all a
-                #LEFT JOIN diffusion_shared.pt_grid_us_res b
-                #ON a.gid = b.gid;"""
                 reeds_out = sqlio.read_frame('SELECT * FROM diffusion_wind.outputs_all', con)
                 #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()
                 market_last_year.to_pickle("market_last_year.pkl")
