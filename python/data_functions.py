@@ -242,41 +242,43 @@ def clear_outputs(con,cur):
 def write_outputs(con, cur, outputs_df, sector_abbr):
     
     # set fields to write
-    fields = ['gid',
-            'year',
-            'customer_expec_elec_rates',
-            'ownership_model',
-            'loan_term_yrs',
-            'loan_rate',
-            'down_payment',
-            'discount_rate',
-            'tax_rate',
-            'length_of_irr_analysis_yrs',
-            'market_share_last_year',
-            'number_of_adopters_last_year',
-            'installed_capacity_last_year',
-            'market_value_last_year',
-            'value_of_increment',
-            'value_of_pbi_fit',
-            'value_of_ptc',
-            'pbi_fit_length',
-            'ptc_length',
-            'value_of_rebate',
-            'value_of_tax_credit_or_deduction',
-            'ic',
-            'payback_period',
-            'lcoe',
-            'payback_key',
-            'max_market_share',
-            'diffusion_market_share',
-            'new_market_share',
-            'new_adopters',
-            'new_capacity',
-            'new_market_value',
-            'market_share',
-            'number_of_adopters',
-            'installed_capacity',
-            'market_value']    
+    fields = [  'gid',
+                'county_id',
+                'bin_id',          
+                'year',
+                'customer_expec_elec_rates',
+                'ownership_model',
+                'loan_term_yrs',
+                'loan_rate',
+                'down_payment',
+                'discount_rate',
+                'tax_rate',
+                'length_of_irr_analysis_yrs',
+                'market_share_last_year',
+                'number_of_adopters_last_year',
+                'installed_capacity_last_year',
+                'market_value_last_year',
+                'value_of_increment',
+                'value_of_pbi_fit',
+                'value_of_ptc',
+                'pbi_fit_length',
+                'ptc_length',
+                'value_of_rebate',
+                'value_of_tax_credit_or_deduction',
+                'ic',
+                'payback_period',
+                'lcoe',
+                'payback_key',
+                'max_market_share',
+                'diffusion_market_share',
+                'new_market_share',
+                'new_adopters',
+                'new_capacity',
+                'new_market_value',
+                'market_share',
+                'number_of_adopters',
+                'installed_capacity',
+                'market_value']    
     # convert formatting of fields list
     fields_str = pylist_2_pglist(fields).replace("'","")       
     # open an in memory stringIO file (like an in memory csv)
@@ -334,7 +336,7 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
         sub_sql = '''%s 
                     SELECT '%s'::text as sector, 
 
-                    a.gid, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
+                    a.gid, a.county_id, a.bin_id, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
                     a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
                     a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
                     a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
@@ -344,16 +346,18 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
                     a.market_value,
                     
-                    b.county_id, b.state_abbr, b.census_division_abbr, b.utility_type, 
-                    b.census_region, b.pca_reg, b.reeds_reg, b.row_number, b.max_height, b.elec_rate_cents_per_kwh, 
-                    b.carbon_price_cents_per_kwh, b.cap_cost_multiplier, b.fixed_om_dollars_per_kw_per_yr, 
+                    b.state_abbr, b.census_division_abbr, b.utility_type, 
+                    b.pca_reg, b.reeds_reg, b.max_height, b.elec_rate_cents_per_kwh, 
+                    b.carbon_price_cents_per_kwh, 
+                    b.fixed_om_dollars_per_kw_per_yr, 
                     b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
-                    b.ann_cons_kwh, b.prob, b.weight, b.customers_in_bin, b.initial_customers_in_bin, 
+                    b.ann_cons_kwh, 
+                    b.customers_in_bin, b.initial_customers_in_bin, 
                     b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
-                    b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
-                    b.aep_scale_factor, b.derate_factor, b.naep, b.aep, b.system_size_kw,
+                    b.nem_system_limit_kw, b.excess_generation_factor, 
+                    b.aep, b.system_size_kw,
                     b.nturb, b.turbine_size_kw, 
-                    b.power_curve_id, b.turbine_height_m, b.scoe,
+                    b.turbine_height_m, b.scoe,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
                     c.initial_capacity_mw
@@ -361,11 +365,13 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
                     FROM diffusion_wind.outputs_%s a
                     
                     LEFT JOIN diffusion_wind.pt_%s_best_option_each_year b
-                    ON a.gid = b.gid
+                    ON a.county_id = b.county_id
+                    AND a.bin_id = b.bin_id
                     and a.year = b.year
                     
                     LEFT JOIN diffusion_wind.pt_%s_initial_market_shares c
-                    ON a.gid = c.gid
+                    ON a.county_id = c.county_id
+                    AND a.bin_id = c.bin_id
                     ''' % (union, sector, sector_abbr, sector_abbr, sector_abbr)
         sql += sub_sql
     
@@ -383,7 +389,7 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
     con.commit()
 
     # copy data to csv
-    f = gzip.open(out_path+'/outputs.csv.gz','w')
+    f = gzip.open(out_path+'/outputs.csv.gz','w',5)
     cur.copy_expert('COPY diffusion_wind.outputs_all TO STDOUT WITH CSV HEADER;', f)
     f.close()
     
@@ -391,6 +397,7 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
     f2 = open(out_path+'/scenario_options_summary.csv','w')
     cur.copy_expert('COPY diffusion_wind.scenario_options TO STDOUT WITH CSV HEADER;',f2)
     f2.close()
+    
 
 def create_scenario_report(scen_name, out_path, cur, con, Rscript_path, logger = None):
            
@@ -466,7 +473,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 GROUP BY a.county_id
             )
                 
-            SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.gid) as row_number
+            SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.gid) as bin_id
             FROM diffusion_wind.pt_grid_us_%(sector_abbr)s_joined a
             INNER JOIN b
             ON a.gid = b.gid
@@ -495,7 +502,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     con.commit()
     print time.time()-t0
     
-    # add an index on county id and row number
+    # add an index on county id and row_number
     sql = """CREATE INDEX county_load_bins_random_lookup_%(sector_abbr)s_join_fields_btree 
             ON diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s USING BTREE(county_id, row_number);""" % inputs
     cur.execute(sql)
@@ -517,8 +524,8 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             FROM diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
             LEFT JOIN diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s b
             ON a.county_id = b.county_id
-            and a.row_number = b.row_number
-            where county_total_load_mwh_2011 > 0)
+            AND a.bin_id = b.row_number
+            WHERE county_total_load_mwh_2011 > 0)
             SELECT a.*,
             	CASE WHEN a.customers_in_bin > 0 THEN a.load_kwh_in_bin/a.customers_in_bin 
             	ELSE 0
@@ -575,11 +582,13 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
               ON diffusion_wind.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s 
               USING BTREE(turbine_height_m, census_division_abbr, power_curve_id);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
-    
+
+
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
     #==============================================================================
     msg = "Finding All Combinations of Cost and Resource for Each Customer Bin and Year"
+    t0 = time.time()
     logger.info(msg)
     if exclusion_type is not None:
         inputs['exclusions_insert'] = "a.%(exclusion_type)s as max_height," % inputs
@@ -591,16 +600,16 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             WITH combined AS
             (
                 SELECT
-                 	a.gid, b.year, a.county_id, a.state_abbr, a.census_division_abbr, 
-                      a.utility_type, a.census_region, a.pca_reg, a.reeds_reg, a.row_number, 
+                 	a.gid, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
+                      a.utility_type, --a.census_region, 
+                      a.pca_reg, a.reeds_reg,
                       %(exclusions_insert)s
                 	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
                 b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
-                	a.cap_cost_multiplier,
                 	b.fixed_om_dollars_per_kw_per_yr, 
                 	b.variable_om_dollars_per_kwh,
                 	b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric as installed_costs_dollars_per_kw,
-                	a.ann_cons_kwh, a.prob, a.weight,
+                	a.ann_cons_kwh, 
                 	b.load_multiplier * a.customers_in_bin as customers_in_bin, 
                 	a.customers_in_bin as initial_customers_in_bin, 
                 	b.load_multiplier * a.load_kwh_in_bin AS load_kwh_in_bin,
@@ -608,10 +617,8 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 	a.load_kwh_per_customer_in_bin,
                 a.nem_system_limit_kw,
                 a.excess_generation_factor,
-                	a.i, a.j, a.cf_bin, a.aep_scale_factor, b.derate_factor,
                 	a.naep_no_derate * b.derate_factor as naep,
                 	b.turbine_size_kw,
-                	a.power_curve_id, 
                 	a.turbine_height_m,
                 	diffusion_wind.scoe(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric, b.fixed_om_dollars_per_kw_per_yr, 
                               b.variable_om_dollars_per_kwh, a.naep_no_derate * b.derate_factor, b.turbine_size_kw , 
@@ -626,40 +633,42 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 AND b.rate_escalation_source = '%(rate_escalation_source)s'
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
-            SELECT gid, year, county_id, state_abbr, census_division_abbr, utility_type, 
-               census_region, pca_reg, reeds_reg, row_number, max_height, elec_rate_cents_per_kwh, 
-               carbon_price_cents_per_kwh, cap_cost_multiplier, 
-        
-               fixed_om_dollars_per_kw_per_yr, 
-               variable_om_dollars_per_kwh, 
-               installed_costs_dollars_per_kw, 
-        
-               ann_cons_kwh, prob, weight, customers_in_bin, initial_customers_in_bin, 
-               load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
-               nem_system_limit_kw, excess_generation_factor, i, j, cf_bin, 
-               aep_scale_factor, derate_factor, 
-        
-               naep, 
-
-               naep*(scoe_return).nturb*turbine_size_kw as aep,
-               (scoe_return).nturb*turbine_size_kw as system_size_kw,
-               (scoe_return).nturb as nturb,
-
-               turbine_size_kw, 
-               power_curve_id, 
-               turbine_height_m, 
-               (scoe_return).scoe as scoe
-          FROM combined;""" % inputs
+                SELECT gid, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
+                   pca_reg, reeds_reg, max_height, elec_rate_cents_per_kwh, 
+                   carbon_price_cents_per_kwh, 
+            
+                   fixed_om_dollars_per_kw_per_yr, 
+                   variable_om_dollars_per_kwh, 
+                   installed_costs_dollars_per_kw, 
+            
+                   ann_cons_kwh, 
+                   customers_in_bin, initial_customers_in_bin, 
+                   load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
+                   nem_system_limit_kw, excess_generation_factor, 
+    
+                   naep*(scoe_return).nturb*turbine_size_kw as aep,
+                   (scoe_return).nturb*turbine_size_kw as system_size_kw,
+                   (scoe_return).nturb as nturb,
+    
+                   turbine_size_kw, 
+                   turbine_height_m, 
+                   (round((scoe_return).scoe,3)*100)::INTEGER as scoe
+          FROM combined;
+          
+          CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s_sort_fields_btree
+             ON diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s
+             USING BTREE(county_id ASC, bin_id ASC, year ASC, scoe ASC);           
+          """ % inputs
 
         
     p_run(pg_conn_string, sql, county_chunks, npar)
-
-    # NOTE: not worth creating indices for this one -- it wil only slow down the processing    
+    print time.time() - t0
 
     #==============================================================================
     #    Find the Most Cost-Effective Wind Turbine Configuration for Each Customer Bin
     #==============================================================================
     msg = "Selecting the most cost-effective wind turbine configuration for each customer bin and year"
+    t0 = time.time()
     logger.info(msg)
     # create empty table
     sql = """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_best_option_each_year;
@@ -671,15 +680,19 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     con.commit()
     
     sql =  """INSERT INTO diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
-              SELECT distinct on (a.county_id, a.row_number, a.year) a.*
+              SELECT distinct on (a.county_id, a.bin_id, a.year) a.*
               FROM  diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a
-              ORDER BY a.county_id, a.row_number, a.year, a.scoe ASC;""" % inputs
+              ORDER BY a.county_id ASC, a.bin_id ASC, a.year ASC, a.scoe ASC;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     
     # create index on gid and year
     sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_gid_btree 
              ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
              USING BTREE(gid);
+             
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_join_fields_btree 
+             ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(county_id,bin_id);
              
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_year_btree 
              ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
@@ -688,6 +701,8 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     cur.execute(sql)
     con.commit()
     
+    print time.time() - t0
+
     #==============================================================================
     #   clean up intermediate tables
     #==============================================================================
@@ -713,6 +728,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     #     return name of final table
     #==============================================================================
     final_table = 'diffusion_wind.pt_%(sector_abbr)s_best_option_each_year' % inputs
+
     return final_table
 
 def get_sectors(cur):
@@ -890,7 +906,7 @@ def get_initial_market_shares(cur, con, sector_abbr, sector):
     
     sql = """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_initial_market_shares;
            CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_initial_market_shares AS
-            SELECT a.county_id, a.gid, 
+            SELECT a.county_id, a.bin_id,
                 	(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
                 	(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
                 	b.systems_count_%(sector)s/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id) AS initial_market_share
@@ -901,12 +917,14 @@ def get_initial_market_shares(cur, con, sector_abbr, sector):
     cur.execute(sql)
     con.commit()
     
-    sql = """CREATE INDEX pt_%(sector_abbr)s_initial_market_shares_gid_btree ON diffusion_wind.pt_%(sector_abbr)s_initial_market_shares USING BTREE(gid);""" % inputs
+    sql = """CREATE INDEX pt_%(sector_abbr)s_initial_market_shares_join_fields_btree 
+             ON diffusion_wind.pt_%(sector_abbr)s_initial_market_shares 
+             USING BTREE(county_id,bin_id);""" % inputs
     cur.execute(sql)
     con.commit()
 
     # BOS - installed capacity is stored as MW in the database, but to be consisent with calculations should be in kW
-    sql = """SELECT gid, 
+    sql = """SELECT county_id, bin_id, 
             initial_market_share AS market_share_last_year,
             initial_number_of_adopters AS number_of_adopters_last_year,
             1000 * initial_capacity_mw AS installed_capacity_last_year 
@@ -1059,11 +1077,13 @@ def calc_manual_incentives(df,con,cur_year):
     d['pbi_fit_length'] = d['pbi_fit_length'].astype(float)
     '''
     Because a system could potentially qualify for several incentives, the left 
-    join above could join on multiple rows. Thus, groupby by gid 
+    join above could join on multiple rows. Thus, groupby by county_id & bin_id 
     to sum over incentives and condense back to unique gid values
     '''
     
-    return d[['value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(d['gid']).sum().reset_index()
+    
+    return d.groupby(['county_id','bin_id']).sum()[['value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].reset_index()    
+    
     
 def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration = 10):
     '''
@@ -1190,14 +1210,14 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
     
     inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction
-    inc = inc[['gid', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['gid']).sum().reset_index() 
+    inc = inc.groupby(['county_id','bin_id']).sum()[['county_id', 'bin_id', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].reset_index()
     inc['value_of_pbi_fit'] = inc['lifetime_value_of_pbi_fit'] / assumed_duration
     inc['pbi_fit_length'] = assumed_duration
     
     inc['value_of_ptc'] = inc['lifetime_value_of_ptc'] / assumed_duration
     inc['ptc_length'] = assumed_duration
     
-    return inc[['gid', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
+    return inc[['county_id','bin_id', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
 
 def get_rate_escalations(con):
     '''
