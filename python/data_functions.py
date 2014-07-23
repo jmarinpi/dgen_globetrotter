@@ -347,15 +347,17 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
                     a.market_value,
                     
                     b.state_abbr, b.census_division_abbr, b.utility_type, 
-                    b.census_region, b.pca_reg, b.reeds_reg, b.max_height, b.elec_rate_cents_per_kwh, 
-                    b.carbon_price_cents_per_kwh, b.cap_cost_multiplier, b.fixed_om_dollars_per_kw_per_yr, 
+                    b.pca_reg, b.reeds_reg, b.max_height, b.elec_rate_cents_per_kwh, 
+                    b.carbon_price_cents_per_kwh, 
+                    b.fixed_om_dollars_per_kw_per_yr, 
                     b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
-                    b.ann_cons_kwh, b.prob, b.weight, b.customers_in_bin, b.initial_customers_in_bin, 
+                    b.ann_cons_kwh, 
+                    b.customers_in_bin, b.initial_customers_in_bin, 
                     b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
-                    b.nem_system_limit_kw, b.excess_generation_factor, b.i, b.j, b.cf_bin, 
-                    b.aep_scale_factor, b.derate_factor, b.naep, b.aep, b.system_size_kw,
+                    b.nem_system_limit_kw, b.excess_generation_factor, 
+                    b.aep, b.system_size_kw,
                     b.nturb, b.turbine_size_kw, 
-                    b.power_curve_id, b.turbine_height_m, b.scoe,
+                    b.turbine_height_m, b.scoe,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
                     c.initial_capacity_mw
@@ -386,6 +388,10 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
     cur.execute(sql)
     con.commit()
 
+#    sql = """SELECT * FROM diffusion_wind.outputs_all;"""
+#    df = sqlio.read_frame(sql, con)
+#    df.to_hdf(out_path+'/outputs.h5',key='results',mode = 'w')
+
     # copy data to csv
     f = gzip.open(out_path+'/outputs.csv.gz','w')
     cur.copy_expert('COPY diffusion_wind.outputs_all TO STDOUT WITH CSV HEADER;', f)
@@ -395,6 +401,11 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
     f2 = open(out_path+'/scenario_options_summary.csv','w')
     cur.copy_expert('COPY diffusion_wind.scenario_options TO STDOUT WITH CSV HEADER;',f2)
     f2.close()
+    
+#    sql = """SELECT * FROM diffusion_wind.scenario_options;"""
+#    df = sqlio.read_frame(sql, con)
+#    df.to_hdf(out_path+'/outputs.h5',key='scenario_opts',mode = 'a')
+    
 
 def create_scenario_report(scen_name, out_path, cur, con, Rscript_path, logger = None):
            
@@ -579,11 +590,141 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
               ON diffusion_wind.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s 
               USING BTREE(turbine_height_m, census_division_abbr, power_curve_id);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
-    
+
+
+##########################        ##########################        ##########################
+##########################        ##########################        ##########################    
+#    #==============================================================================
+#    #     Find All Combinations of Costs and Resource for Each Customer Bin
+#    #==============================================================================
+#    msg = "Finding All Combinations of Cost and Resource for Each Customer Bin and Year"
+#    t0 = time.time()
+#    logger.info(msg)
+#    if exclusion_type is not None:
+#        inputs['exclusions_insert'] = "a.%(exclusion_type)s as max_height," % inputs
+#    else:
+#        inputs['exclusions_insert'] = ""
+#        
+#    sql =  """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
+#            CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s AS
+#            WITH combined AS
+#            (
+#                SELECT
+#                 	a.gid, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
+#                      a.utility_type, --a.census_region, 
+#                      a.pca_reg, a.reeds_reg,
+#                      %(exclusions_insert)s
+#                	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
+#                b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
+#                	b.fixed_om_dollars_per_kw_per_yr, 
+#                	b.variable_om_dollars_per_kwh,
+#                	b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric as installed_costs_dollars_per_kw,
+#                	a.ann_cons_kwh, 
+#                	b.load_multiplier * a.customers_in_bin as customers_in_bin, 
+#                	a.customers_in_bin as initial_customers_in_bin, 
+#                	b.load_multiplier * a.load_kwh_in_bin AS load_kwh_in_bin,
+#                	a.load_kwh_in_bin AS initial_load_kwh_in_bin,
+#                	a.load_kwh_per_customer_in_bin,
+#                a.nem_system_limit_kw,
+#                a.excess_generation_factor,
+#                	a.naep_no_derate * b.derate_factor as naep,
+#                	b.turbine_size_kw,
+#                	a.turbine_height_m,
+#                	diffusion_wind.scoe(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric, b.fixed_om_dollars_per_kw_per_yr, 
+#                              b.variable_om_dollars_per_kwh, a.naep_no_derate * b.derate_factor, b.turbine_size_kw , 
+#                              a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, 
+#                              '%(nem_availability)s', %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe_return
+#                FROM diffusion_wind.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
+#                INNER JOIN diffusion_wind.temporal_factors b
+#                ON a.turbine_height_m = b.turbine_height_m
+#                AND a.power_curve_id = b.power_curve_id
+#                AND a.census_division_abbr = b.census_division_abbr
+#                WHERE b.sector = '%(sector)s'
+#                AND b.rate_escalation_source = '%(rate_escalation_source)s'
+#                AND b.load_growth_scenario = '%(load_growth_scenario)s'
+#            ), 
+#            simplified as 
+#            (
+#                SELECT gid, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
+#                   pca_reg, reeds_reg, max_height, elec_rate_cents_per_kwh, 
+#                   carbon_price_cents_per_kwh, 
+#            
+#                   fixed_om_dollars_per_kw_per_yr, 
+#                   variable_om_dollars_per_kwh, 
+#                   installed_costs_dollars_per_kw, 
+#            
+#                   ann_cons_kwh, 
+#                   customers_in_bin, initial_customers_in_bin, 
+#                   load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
+#                   nem_system_limit_kw, excess_generation_factor, 
+#    
+#                   naep*(scoe_return).nturb*turbine_size_kw as aep,
+#                   (scoe_return).nturb*turbine_size_kw as system_size_kw,
+#                   (scoe_return).nturb as nturb,
+#    
+#                   turbine_size_kw, 
+#                   turbine_height_m, 
+#                   (round((scoe_return).scoe,3)*100)::INTEGER as scoe
+#              FROM combined
+#              )
+#              
+#              SELECT DISTINCT ON (a.county_id, a.bin_id, a.year) a.*
+#              FROM  simplified a
+#              ORDER BY a.county_id ASC, a.bin_id ASC, a.year ASC, a.scoe ASC;"""  % inputs
+#                  
+#    p_run(pg_conn_string, sql, county_chunks, npar)
+#    # NOTE: not worth creating indices for this one -- it wil only slow down the processing   
+#    print time.time() - t0
+#
+#    #==============================================================================
+#    #    Find the Most Cost-Effective Wind Turbine Configuration for Each Customer Bin
+#    #==============================================================================
+#    msg = "Selecting the most cost-effective wind turbine configuration for each customer bin and year"
+#    t0 = time.time()
+#    logger.info(msg)
+#    # create empty table
+#    sql = """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_best_option_each_year;
+#            CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_best_option_each_year AS
+#            SELECT *
+#            FROM diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_0
+#            LIMIT 0;""" % inputs    
+#    cur.execute(sql)
+#    con.commit()
+#    
+#    sql =  """INSERT INTO diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
+#              SELECT *
+#              FROM  diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a;""" % inputs
+#    p_run(pg_conn_string, sql, county_chunks, npar)
+#    
+#    # create index on gid and year
+#    sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_gid_btree 
+#             ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
+#             USING BTREE(gid);
+#             
+#             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_join_fields_btree 
+#             ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
+#             USING BTREE(county_id,bin_id);
+#             
+#             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_year_btree 
+#             ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
+#             USING BTREE(year);
+#            """ % inputs
+#    cur.execute(sql)
+#    con.commit()
+#    
+#    print time.time() - t0
+
+##########################        ##########################        ##########################
+##########################        ##########################        ##########################
+
+
+##########################        ##########################        ##########################
+##########################        ##########################        ##########################    
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
     #==============================================================================
     msg = "Finding All Combinations of Cost and Resource for Each Customer Bin and Year"
+    t0 = time.time()
     logger.info(msg)
     if exclusion_type is not None:
         inputs['exclusions_insert'] = "a.%(exclusion_type)s as max_height," % inputs
@@ -596,15 +737,15 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             (
                 SELECT
                  	a.gid, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
-                      a.utility_type, a.census_region, a.pca_reg, a.reeds_reg,
+                      a.utility_type, --a.census_region, 
+                      a.pca_reg, a.reeds_reg,
                       %(exclusions_insert)s
                 	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
                 b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
-                	a.cap_cost_multiplier,
                 	b.fixed_om_dollars_per_kw_per_yr, 
                 	b.variable_om_dollars_per_kwh,
                 	b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric as installed_costs_dollars_per_kw,
-                	a.ann_cons_kwh, a.prob, a.weight,
+                	a.ann_cons_kwh, 
                 	b.load_multiplier * a.customers_in_bin as customers_in_bin, 
                 	a.customers_in_bin as initial_customers_in_bin, 
                 	b.load_multiplier * a.load_kwh_in_bin AS load_kwh_in_bin,
@@ -612,10 +753,8 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 	a.load_kwh_per_customer_in_bin,
                 a.nem_system_limit_kw,
                 a.excess_generation_factor,
-                	a.i, a.j, a.cf_bin, a.aep_scale_factor, b.derate_factor,
                 	a.naep_no_derate * b.derate_factor as naep,
                 	b.turbine_size_kw,
-                	a.power_curve_id, 
                 	a.turbine_height_m,
                 	diffusion_wind.scoe(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric, b.fixed_om_dollars_per_kw_per_yr, 
                               b.variable_om_dollars_per_kwh, a.naep_no_derate * b.derate_factor, b.turbine_size_kw , 
@@ -630,40 +769,43 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 AND b.rate_escalation_source = '%(rate_escalation_source)s'
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
-            SELECT gid, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
-               census_region, pca_reg, reeds_reg, max_height, elec_rate_cents_per_kwh, 
-               carbon_price_cents_per_kwh, cap_cost_multiplier, 
-        
-               fixed_om_dollars_per_kw_per_yr, 
-               variable_om_dollars_per_kwh, 
-               installed_costs_dollars_per_kw, 
-        
-               ann_cons_kwh, prob, weight, customers_in_bin, initial_customers_in_bin, 
-               load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
-               nem_system_limit_kw, excess_generation_factor, i, j, cf_bin, 
-               aep_scale_factor, derate_factor, 
-        
-               naep, 
-
-               naep*(scoe_return).nturb*turbine_size_kw as aep,
-               (scoe_return).nturb*turbine_size_kw as system_size_kw,
-               (scoe_return).nturb as nturb,
-
-               turbine_size_kw, 
-               power_curve_id, 
-               turbine_height_m, 
-               (scoe_return).scoe as scoe
-          FROM combined;""" % inputs
+                SELECT gid, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
+                   pca_reg, reeds_reg, max_height, elec_rate_cents_per_kwh, 
+                   carbon_price_cents_per_kwh, 
+            
+                   fixed_om_dollars_per_kw_per_yr, 
+                   variable_om_dollars_per_kwh, 
+                   installed_costs_dollars_per_kw, 
+            
+                   ann_cons_kwh, 
+                   customers_in_bin, initial_customers_in_bin, 
+                   load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
+                   nem_system_limit_kw, excess_generation_factor, 
+    
+                   naep*(scoe_return).nturb*turbine_size_kw as aep,
+                   (scoe_return).nturb*turbine_size_kw as system_size_kw,
+                   (scoe_return).nturb as nturb,
+    
+                   turbine_size_kw, 
+                   turbine_height_m, 
+                   (round((scoe_return).scoe,3)*100)::INTEGER as scoe
+          FROM combined;
+          
+          CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s_sort_fields_btree
+             ON diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s
+             USING BTREE(county_id ASC, bin_id ASC, year ASC, scoe ASC);           
+          """ % inputs
 
         
     p_run(pg_conn_string, sql, county_chunks, npar)
-
+    print time.time() - t0
     # NOTE: not worth creating indices for this one -- it wil only slow down the processing    
 
     #==============================================================================
     #    Find the Most Cost-Effective Wind Turbine Configuration for Each Customer Bin
     #==============================================================================
     msg = "Selecting the most cost-effective wind turbine configuration for each customer bin and year"
+    t0 = time.time()
     logger.info(msg)
     # create empty table
     sql = """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_best_option_each_year;
@@ -677,7 +819,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     sql =  """INSERT INTO diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
               SELECT distinct on (a.county_id, a.bin_id, a.year) a.*
               FROM  diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a
-              ORDER BY a.county_id, a.bin_id, a.year, a.scoe ASC;""" % inputs
+              ORDER BY a.county_id ASC, a.bin_id ASC, a.year ASC, a.scoe ASC;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     
     # create index on gid and year
@@ -695,8 +837,13 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             """ % inputs
     cur.execute(sql)
     con.commit()
-        
     
+    print time.time() - t0
+
+##########################        ##########################        ##########################
+##########################        ##########################        ##########################
+
+    crash
     #==============================================================================
     #   clean up intermediate tables
     #==============================================================================
@@ -722,6 +869,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     #     return name of final table
     #==============================================================================
     final_table = 'diffusion_wind.pt_%(sector_abbr)s_best_option_each_year' % inputs
+
     return final_table
 
 def get_sectors(cur):
