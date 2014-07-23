@@ -1237,6 +1237,34 @@ def calc_expected_rate_escal(df,rate_escalations, year):
     df = pd.merge(df,avg_rate_esc, how = 'left', left_on = ['census_division_abbr', 'sector'], right_index = True)
     return df
 
+def fill_jagged_array(vals,lens, cols = 30):
+    '''
+    Create a 'jagged' array filling each row with a value of variable length.
+    vals and lens must be equal length; cols gives the number of columns of the
+    output ndarray
+    
+    IN: 
+        vals - np array containing values to fill
+        lens - np array containing lengths of values to fill
+        cols - integer of number of columns in output array
+    
+    OUT:
+        
+        jagged numpy array
+    '''
+    
+    rows = vals.shape[0]
+    # create a 1d array of zeros, same size as array b
+    z = np.zeros((rows,),dtype = int)
+    
+    # combine a and b within a 1d array in an alternating manner
+    az = np.vstack((vals,z)).ravel(1)    
+    # calculate the number of repeats necessary for the zeros, then combine with b in a 1d array in an alternating manner
+    bz = np.vstack((lens,cols-lens)).ravel(1)
+    # use the repeate function to repeate elements in az by the factors in bz, then reshape to the final array size and shape
+    r = np.repeat(az,bz).reshape((rows,cols))
+    return r
+    
 def code_profiler(out_dir):
     lines = [ line for line in open(out_dir + '/dg_wind_model.log') if 'took:' in line]
     
