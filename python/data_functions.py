@@ -388,10 +388,6 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
     cur.execute(sql)
     con.commit()
 
-#    sql = """SELECT * FROM diffusion_wind.outputs_all;"""
-#    df = sqlio.read_frame(sql, con)
-#    df.to_hdf(out_path+'/outputs.h5',key='results',mode = 'w',format='table')
-
     # copy data to csv
     f = gzip.open(out_path+'/outputs.csv.gz','w',5)
     cur.copy_expert('COPY diffusion_wind.outputs_all TO STDOUT WITH CSV HEADER;', f)
@@ -401,10 +397,6 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
     f2 = open(out_path+'/scenario_options_summary.csv','w')
     cur.copy_expert('COPY diffusion_wind.scenario_options TO STDOUT WITH CSV HEADER;',f2)
     f2.close()
-    
-#    sql = """SELECT * FROM diffusion_wind.scenario_options;"""
-#    df = sqlio.read_frame(sql, con)
-#    df.to_hdf(out_path+'/outputs.h5',key='scenario_opts',mode = 'a',format='table')
     
 
 def create_scenario_report(scen_name, out_path, cur, con, Rscript_path, logger = None):
