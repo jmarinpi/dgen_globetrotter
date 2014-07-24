@@ -50,34 +50,21 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
         inc = pd.merge(df,dsire_incentives,how = 'left', on = 'gid')
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id'])
-    
-    t0 = time.time()
     revenue, costs, cfs = calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30)
-    logger.info('finfunc.calc_cashflows for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
-    
-    t0 = time.time()
     payback = calc_payback(cfs)
-    logger.info('finfunc.calc_payback(cfs) for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
     
-    t0 = time.time()
     if sector == 'Residential':
         ttd = np.zeros(len(cfs))
     else: # Don't calculate for res sector
         ttd = calc_ttd(cfs)
-        
-    logger.info('finfunc.calc_ttd for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
-    
+            
     df['payback_period'] = np.where(df['sector'] == 'residential',payback, ttd)
-    
-    t0 = time.time()
-    df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate)
-    logger.info('finfunc.calc_lcoe for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
-    
+    df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate)    
     df['payback_key'] = (df['payback_period']*10).astype(int)
     
     #df = select_max_market_share(df,max_market_share, scenario_opts)
     df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'payback_key'])
-    return df, logger
+    return df
     
 #==============================================================================    
     
@@ -115,9 +102,7 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
 """                
     # default is 30 year analysis periods
     shape=(len(df),yrs); 
-    #df['cap'] = df['turbine_size_kw']
     df['ic'] = df['installed_costs_dollars_per_kw'] * df['system_size_kw']
-    #df['aep'] = df['naep'] * df['turbine_size_kw']
     
     # Remove NAs if not rebate are passed in input sheet   
     df.ptc_length = df.ptc_length.fillna(0)
@@ -134,7 +119,6 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     # When the incentive payment in first year is larger than the downpayment, 
     # it distorts the IRR. This increases the down payment to at least 10%> than
     # the ITC
-    #df = recalc_down_payment(df)
 
     ## COSTS    
     
@@ -144,18 +128,12 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     
     loan_cost = datfunc.fill_jagged_array(pmt,df.loan_term_yrs)
     loan_cost[:,0] -= df.ic * df.down_payment 
-    
-    # OLD SOLUTION -- delete once confident in above
-    
-    #for i in range(len(loan_cost)): ## VECTORIZE THIS ##
-    #    loan_cost[i][:df.loan_term_yrs[i]] = [pmt[i]] * df.loan_term_yrs[i]
-    #loan_cost[:,0] -= df.ic * df.down_payment 
 
     # 2) Costs of fixed & variable O&M
     om_cost = np.zeros(shape);
     om_cost[:] =   (-df.variable_om_dollars_per_kwh * df['aep'])[:,np.newaxis]
     om_cost[:] +=  (-df.fixed_om_dollars_per_kw_per_yr * df['system_size_kw'])[:,np.newaxis]
-    
+
     ## Revenue
     """
     3) Revenue from generation. Revenue comes from excess and offset 
@@ -202,8 +180,6 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     value_outflows_dol = outflow_gen_kwh[:, np.newaxis] * outflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
     
     generation_revenue = value_inflows_dol + value_outflows_dol
-
-    
     # 4) Revenue from depreciation.  ### THIS NEEDS MORE WORK ###  
     # Depreciable basis is installed cost less tax incentives
     # Revenue comes from taxable deduction [basis * tax rate * schedule] and cannot be monetized by Residential
@@ -211,15 +187,12 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     depreciation_revenue = np.zeros(shape)
     deprec_basis = (df.ic - 0.5 * (df.value_of_tax_credit_or_deduction  + df.value_of_rebate))[:,np.newaxis] # depreciable basis reduced by half the incentive
     depreciation_revenue[:,:20] = deprec_basis * deprec_schedule.reshape(1,20) * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial'))[:,np.newaxis]   
-    
+
     # 5) Interest paid on loans is tax-deductible for commercial & industrial; 
     # assume can fully monetize
     
     # Calc interest paid
-    interest_paid = np.empty(shape)
-    for i in range(len(df)): # VECTORIZE THIS
-        interest_paid[i,:] = (np.ipmt(df.loan_rate[i], [np.arange(yrs)], df.loan_term_yrs[i], -df.ic[i] * (1- df.down_payment[i])))    
-    interest_paid[interest_paid < 0] = 0 # Truncate interest payments if loan_term < yrs
+    interest_paid = calc_interest_pmt_schedule(df,30)
     interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial'))[:,np.newaxis]
     
     # 6) Revenue from other incentives    
@@ -227,19 +200,14 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     incentive_revenue[:, 1] = df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction
     
     ptc_revenue = datfunc.fill_jagged_array(df.value_of_ptc,df.ptc_length)
-    #for i in range(len(df)):
-    #    ptc_revenue[i,1:1+df.ptc_length[i]] = df.value_of_ptc[i]
-    
     pbi_fit_revenue = datfunc.fill_jagged_array(df.value_of_pbi_fit,df.pbi_fit_length)    
-    #pbi_fit_revenue = np.zeros(shape)
-    #for i in range(len(df)):
-    #    pbi_fit_revenue[i,1:1+df.pbi_fit_length[i]] = df.value_of_pbi_fit[i]
-    
+
     incentive_revenue += ptc_revenue + pbi_fit_revenue
     
     revenue = generation_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
     costs = loan_cost + om_cost
-    cfs = revenue + costs 
+    cfs = revenue + costs
+
     return revenue, costs, cfs
     
 #==============================================================================
@@ -512,5 +480,22 @@ def virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5):
     r = np.where(irr.mask * (negative_irrs == False), 0.5, r)
         
     return r
+    
+#==============================================================================
+    
+def calc_interest_pmt_schedule(df,yrs):
+    ''' Calculate the schedule of interest payments for a loan
+    '''
+    # Calculate future value (remaining balance on loan)
+    crf = (df.loan_rate*(1 + df.loan_rate)**df.loan_term_yrs) / ( (1+df.loan_rate)**df.loan_term_yrs - 1);
+    pv = df.ic * (1 - df.down_payment)
+    pmt = df.ic * (1 - df.down_payment) * crf
+    fv1 = pv[:,np.newaxis] * (1 + df.loan_rate[:,np.newaxis])**np.arange(yrs)
+    fv2 = pmt[:,np.newaxis] *(((1 + df.loan_rate[:,np.newaxis])**np.arange(yrs) - 1)/df.loan_rate[:,np.newaxis])
+    fv = fv1 - fv2
+    
+    # Interest payment is product of loan rate and balance on loan
+    interest_pmt = np.maximum(df.loan_rate[:,np.newaxis] * fv,0)
+    return interest_pmt
     
 #==============================================================================
