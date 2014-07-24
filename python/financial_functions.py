@@ -60,7 +60,11 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
     logger.info('finfunc.calc_payback(cfs) for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
     
     t0 = time.time()
-    ttd = calc_ttd(cfs, df)
+    if sector == 'Residential':
+        ttd = np.zeros(len(cfs))
+    else: # Don't calculate for res sector
+        ttd = calc_ttd(cfs)
+        
     logger.info('finfunc.calc_ttd for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
     
     df['payback_period'] = np.where(df['sector'] == 'residential',payback, ttd)
@@ -321,7 +325,7 @@ def calc_mirr(cfs,finance_rate, reinvest_rate):
 
 #==============================================================================
 
-def calc_ttd(cfs,df):
+def calc_ttd(cfs):
     ''' Calculate time to double investment based on the MIRR. This is used for
     the commercial and industrial sectors.
     
@@ -330,7 +334,7 @@ def calc_ttd(cfs,df):
     OUT: ttd - numpy array - Time to double investment (years) 
     
     '''
-    irrs = calc_irr(cfs)
+    irrs = virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5)
     irrs = np.where(irrs<=0,1e-6,irrs)
     ttd = np.log(2) / np.log(1 + irrs)
     ttd[ttd <= 0] = 0
@@ -446,4 +450,67 @@ def irr(values):
         rate = min(rate)
     return rate
 
+#==============================================================================
+
+def virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5):
+    ''' Vectorized IRR calculator. First calculate a 3D array of the discounted
+    cash flows along cash flow series, time period, and discount rate. Sum over time to 
+    collapse to a 2D array which gives the NPV along a range of discount rates 
+    for each cash flow series. Next, find crossover where NPV is zero--corresponds
+    to the lowest real IRR value. For performance, negative IRRs are not calculated
+    -- returns "-1", and values are only calculated to an acceptable precision.
+    
+    IN:
+        cfs - numpy 2d array - rows are cash flow series, cols are time periods
+        precision - level of accuracy for the inner IRR band eg 0.005%
+        rmin - lower bound of the inner IRR band eg 0%
+        rmax1 - upper bound of the inner IRR band eg 30%
+        rmax2 - upper bound of the outer IRR band. eg 50% Values in the outer 
+                band are calculated to 1% precision, IRRs outside the upper band 
+                return the rmax2 value
+    OUT:
+        r - numpy column array of IRRs for cash flow series
+        
+    M Gleason, B Sigrin - NREL 2014
+    '''
+    
+    if cfs.ndim == 1: 
+        cfs = cfs.reshape(1,len(cfs))
+
+    # Range of time periods
+    years = np.arange(0,cfs.shape[1])
+    
+    # Range of the discount rates
+    rates_length1 = int((rmax1 - rmin)/precision) + 1
+    rates_length2 = int((rmax2 - rmax1)/0.01)
+    rates = np.zeros((rates_length1 + rates_length2,))
+    rates[:rates_length1] = np.linspace(0,0.3,rates_length1)
+    rates[rates_length1:] = np.linspace(0.31,0.5,rates_length2)
+
+    # Discount rate multiplier rows are years, cols are rates
+    drm = (1+rates)**-years[:,np.newaxis]
+
+    # Calculate discounted cfs   
+    discounted_cfs = cfs[:,:,np.newaxis] * drm
+    
+    # Calculate NPV array by summing over discounted cashflows
+    npv = discounted_cfs.sum(axis = 1)
+    
+    # Convert npv into boolean for positives (0) and negatives (1)
+    signs = npv < 0
+    
+    # Find the pairwise differences in boolean values
+    # sign crosses over, the pairwise diff will be True
+    crossovers = np.diff(signs,1,1)
+    
+    # Extract the irr from the first crossover for each row
+    irr = np.min(np.ma.masked_equal(rates[1:]* crossovers,0),1)
+    
+    # deal with negative irrs
+    negative_irrs = cfs.sum(1) < 0
+    r = np.where(negative_irrs,-1,irr)
+    r = np.where(irr.mask * (negative_irrs == False), 0.5, r)
+        
+    return r
+    
 #==============================================================================
