@@ -12,6 +12,7 @@ library(RPostgreSQL)
 library (dplyr,quietly = T)
 
 # use for testing/debugging only:
+# setwd('C:/Users/bsigrin/Desktop/diffusion/python')
 # setwd('/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/python')
 # setwd('S:/mgleason/DG_Wind/diffusion_repo/python')
 

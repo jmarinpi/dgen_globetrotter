@@ -46,18 +46,19 @@ mean_value_by_state_table<-function(df,val){
   rbind(national,by_state)
 }
 
-total_value_by_state_table<-function(df,val){
-  # Create table of summed value by year and state. value is string of variable to take sum over. 
+total_value_by_state_table<-function(df,val,unit_factor = 1){
+  # Create table of summed value by year and state. value is string of variable to take sum over.
+  # Use unit_factor to convert units if needed i.e. unit_factor = 1e-6 will convert kW to GW
   val = as.symbol(val)
   g = group_by(df, year, state_abbr)
   by_state = collect(summarise(g,
-                               round(sum(val),as.integer(2))
+                               round(sum(val * unit_factor),as.integer(2))
                               )
                       )
   names(by_state)<-c('year','State',val)
   g = group_by(df, year)
   national = collect(summarise(g,
-                               round(sum(val),as.integer(2))
+                               round(sum(val * unit_factor),as.integer(2))
                               )
                       )
   national$State<-'U.S'

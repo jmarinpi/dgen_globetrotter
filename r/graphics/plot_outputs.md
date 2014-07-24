@@ -12,6 +12,7 @@ out$national_installed_capacity_bar
 out$national_num_of_adopters_bar
 out$national_market_cap_bar
 out$national_generation_bar
+print_table(total_value_by_state_table(df,'installed_capacity', unit_factor = 0.001), caption = "Installed Capacity (MW)")
 print_table(mean_value_by_state_table(df,'market_share'), caption = "Mean Adoption Share")
 out$national_adopters_trends_bar
 national_installed_capacity_by_system_size_bar(df)
