@@ -26,6 +26,14 @@ import subprocess
 import os
 import sys, getopt
 
+# configure psycopg2 to treat numeric values as floats (improves performance of pulling data from the database)
+DEC2FLOAT = pg.extensions.new_type(
+    pg.extensions.DECIMAL.values,
+    'DEC2FLOAT',
+    lambda value, curs: float(value) if value is not None else None)
+pg.extensions.register_type(DEC2FLOAT)
+
+
 def load_resume_vars(cfg, resume_year):
     # Load the variables necessary to resume the model
     if resume_year == 2014:
@@ -940,13 +948,9 @@ def get_main_dataframe(con, main_table, year):
         OUT: df  - pd dataframe - pre-processed resource,bins, rates, etc. for all years:
 
     '''
-    if not con:
-        close_con = True
-        con = make_con()
-    else:
-        close_con = False
+    
     sql = 'SELECT * FROM %s WHERE year = %s' % (main_table,year)
-    df = sqlio.read_frame(sql, con)
+    df = sqlio.read_frame(sql, con, coerce_float = False)
     return df
     
 def get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned'):
