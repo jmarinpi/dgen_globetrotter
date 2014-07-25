@@ -601,7 +601,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     if exclusion_type is not None:
         inputs['exclusions_insert'] = "a.%(exclusion_type)s as max_height," % inputs
     else:
-        inputs['exclusions_insert'] = ""
+        inputs['exclusions_insert'] = "80::integer as max_height,"
         
     sql =  """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
             CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s AS
