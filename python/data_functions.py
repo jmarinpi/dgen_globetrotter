@@ -397,7 +397,7 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
     con.commit()
 
     # copy data to csv
-    f = gzip.open(out_path+'/outputs.csv.gz','w',5)
+    f = gzip.open(out_path+'/outputs.csv.gz','w',1)
     cur.copy_expert('COPY diffusion_wind.outputs_all TO STDOUT WITH CSV HEADER;', f)
     f.close()
     
