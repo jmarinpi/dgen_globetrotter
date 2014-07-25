@@ -44,17 +44,19 @@ total_value_by_state_table<-function(df,val,unit_factor = 1){
   val = as.symbol(val)
   g = group_by(df, year, state_abbr)
   by_state = collect(summarise(g,
-                               round(sum(val * unit_factor),as.integer(2))
+                               sum(val * unit_factor)
                               )
                       )
   names(by_state)<-c('year','State',val)
-  g = group_by(df, year)
-  national = collect(summarise(g,
-                               round(sum(val * unit_factor),as.integer(2))
-                              )
-                      )
+  g = group_by(by_state,year)
+  national = summarise(g, 
+                       sum(val))
+
   national$State<-'U.S'
   names(national)<-c('year',val,'State')
+  # round the results
+  by_state[,toString(val)] = round(by_state[,toString(val)],2)
+  national[,toString(val)] = round(national[,toString(val)],2)
   by_state<-dcast(data = by_state,formula= State ~ year, value.var =  as.character(val))
   national<-dcast(data = national,formula= State ~ year, value.var =  as.character(val))
   rbind(national,by_state)
@@ -235,7 +237,8 @@ dist_of_cap_selected<-function(df,scen_name, start_year, end_year){
     theme(strip.text.x = element_text(size=12, angle=0,))+
     ggtitle('Size of Systems Being Considered')
   cap_picked$scenario<-scen_name
-  write.csv(cap_picked,paste0(runpath,'/cap_selected_trends.csv'),row.names = FALSE)
+#   write.csv(cap_picked,paste0(runpath,'/cap_selected_trends.csv'),row.names = FALSE)
+  save(cap_picked,file = paste0(runpath,'/cap_selected_trends.RData'),compress = T, compression_level = 1)
   return(p)
 }
 
@@ -266,7 +269,8 @@ dist_of_height_selected<-function(df,scen_name,start_year){
     guides(color = FALSE, fill=FALSE)+
     ggtitle('What Height-Size Combinations are Most-Prefered?')
   height_picked$scenario<-scen_name
-  write.csv(height_picked,paste0(runpath,'/height_selected_trends.csv'),row.names = FALSE)
+#   write.csv(height_picked,paste0(runpath,'/height_selected_trends.csv'),row.names = FALSE)
+  save(height_picked,file = paste0(runpath,'/height_selected_trends.RData'),compress = T, compression_level = 1)
   return(p)
 }
 
@@ -293,7 +297,8 @@ national_pp_line<-function(df,scen_name){
     guides(color = FALSE, fill=FALSE)+
     ggtitle('National Payback Period (Median and Inner-Quartile Range)')
   data$scenario<-scen_name
-  write.csv(data,paste0(runpath,'/payback_period_trends.csv'),row.names = FALSE)
+#   write.csv(data,paste0(runpath,'/payback_period_trends.csv'),row.names = FALSE)
+    save(data,file = paste0(runpath,'/payback_period_trends.RData'),compress = T, compression_level = 1)
   return(p)
 }
 
@@ -311,7 +316,8 @@ diffusion_trends<-function(df,runpath,scen_name){
   )
   data<-melt(data=data,id.vars=c('year','sector'))
   data$scenario<-scen_name
-  write.csv(data,paste0(runpath,'/diffusion_trends.csv'),row.names = FALSE)
+#   write.csv(data,paste0(runpath,'/diffusion_trends.csv'),row.names = FALSE)
+  save(data,file = paste0(runpath,'/diffusion_trends.RData'),compress = T, compression_level = 1)
   
   #' National market share trends
   national_adopters_trends_bar<-ggplot(subset(data, variable %in% c('nat_market_share', 'nat_max_market_share')), 
@@ -444,7 +450,8 @@ lcoe_boxplot<-function(df){
                                uql = r_quantile(array_agg(lcoe), .75)
   )
   )
-  write.csv(out_data,paste0(runpath,'/lcoe_trends.csv'),row.names = FALSE)
+#   write.csv(out_data,paste0(runpath,'/lcoe_trends.csv'),row.names = FALSE)
+  save(out_data,file = paste0(runpath,'/lcoe_trends.RData'),compress = T, compression_level = 1)
   return(p)
 }
 
@@ -558,6 +565,16 @@ get_csv_data<-function(scen_folders, file_name){
   for(path in scen_folders){
     tmp<-read.csv(paste0(path,'/',file_name,'.csv'))
     df<-rbind(df,tmp)
+  }
+  return(df)
+}
+
+get_r_data<-function(scen_folders, file_name){
+  df<-data.frame()
+  for(path in scen_folders){
+    tmp_name<-load(paste0(path,'/',file_name,'.RData'))
+    df<-rbind(df,get(tmp_name))
+    rm(list = c(tmp_name))
   }
   return(df)
 }

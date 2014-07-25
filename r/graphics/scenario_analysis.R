@@ -20,10 +20,10 @@ out_folder <- commandArgs(T)[2]
 #                'C:/Users/bsigrin/Desktop/diffusion/runs/results_20140606_153935/LowPTC')
 # out_folder<-"C:/Users/bsigrin/Desktop/diffusion/runs/results_20140606_153935/scenario_comparison"
 
-diff_trends<-get_csv_data(scen_folders,'diffusion_trends')
-cap_selected_trends<-get_csv_data(scen_folders,'cap_selected_trends')
-height_selected_trends<-get_csv_data(scen_folders,'height_selected_trends')
-payback_period_trends<-get_csv_data(scen_folders,'payback_period_trends')
+diff_trends<-get_r_data(scen_folders,'diffusion_trends')
+cap_selected_trends<-get_r_data(scen_folders,'cap_selected_trends')
+height_selected_trends<-get_r_data(scen_folders,'height_selected_trends')
+payback_period_trends<-get_r_data(scen_folders,'payback_period_trends')
 
 
 dir.create(out_folder)
