@@ -8,14 +8,6 @@ make_con<-function(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", us
   dbConnect(dbDriver(driver), host = host, dbname = dbname, user = user, password = password)  
 }
 
-determine_system_cats<-function(df){
-  df<-collect(df)
-  # Create new column 'system_size_factors, which clarfies 1500 and 1500+ kW systems
-  df$system_size_factors <- df$turbine_size_kw
-  df[df$system_size_factors == 1500 & df$nturb > 1, 'system_size_factors'] <- '1500+'
-  df$system_size_factors <- ordered( df$system_size_factors, levels = c(2.5,5,10,20,50,100,250,500,750,1000,1500,'1500+'))
-  return(df)
-}
 
 simpleCap <- function(x) {
   # converts a given string to proper case
@@ -123,10 +115,22 @@ d[d$cf_min > 0.5, 'cf_min'] <- 0.5
 d[d$lcoe == 0.7 , 'cf_min'] <- 0
 
 # Subset of model points for first and last year
-df = collect(df)
-pts = subset(df, year %in% c(min(df$year),max(df$year)))
-pts = pts[sample(nrow(pts), min(1000,nrow(pts))),]
-pts$present_value_factor <- present_value_factor
+# get the first year and last year
+start_year = as.numeric(collect(summarise(df, min(year))))
+end_year = as.numeric(collect(summarise(df, max(year))))
+
+sql = sprintf("SELECT * FROM diffusion_wind.outputs_all WHERE year in (%s,%s) ORDER BY RANDOM() LIMIT 1000",start_year, end_year)
+f = tbl(src,sql(sql))       
+pts = collect(select(f,installed_costs_dollars_per_kw,naep,present_value_factor,year))
+
+# filter to only the start year, returning only the elec_rate_cents_per_kwh and load_kwh_in_bin cols
+# f = filter(df, year %in% c(start_year,end_year))  
+# data = collect(select(f,installed_costs_dollars_per_kw,naep,present_value_factor,year))
+# pts = data[sample(nrow(data), min(1000,nrow(data))),]
+# pts$present_value_factor <- present_value_factor
+
+
+
 ggplot()+
   geom_ribbon(data = d, aes(x = npc, y = cf, ymin = cf_min, ymax = cf_max, fill = factor(lcoe)), alpha = 0.5)+
   theme_few()+
@@ -145,24 +149,24 @@ ggplot()+
 
 excess_gen_figs<-function(df,con){
   
-  df = collect(df)
+  df = collect(select(df,excess_generation_factor,payback_period, nem_system_limit_kw,system_size_kw))
   
   # Get the scenario options
   table<-dbGetQuery(con,"select * from diffusion_wind.scenario_options")
   nem_availability <- table[1,'net_metering_availability']
   
   if(nem_availability == 'Full_Net_Metering_Everywhere'){
-  df$percent_of_gen_monetized = 1   
+    df$percent_of_gen_monetized = 1   
   } else if(nem_availability == 'Partial_Avoided_Cost'){
-  df$percent_of_gen_monetized = 1 - 0.5 * df$excess_generation_factor 
+    df$percent_of_gen_monetized = 1 - 0.5 * df$excess_generation_factor 
   } else if(nem_availability == 'Partial_No_Outflows'){
-  df$percent_of_gen_monetized = 1 - excess_generation_factor 
+    df$percent_of_gen_monetized = 1 - df$excess_generation_factor 
   } else if(nem_availability == 'No_Net_Metering_Anywhere'){
-  df$percent_of_gen_monetized = 1 - df$excess_generation_factor  
-  } else {percent_of_gen_monetized = 0}
- 
+    df$percent_of_gen_monetized = 1 - df$excess_generation_factor  
+  } else {df$percent_of_gen_monetized = 0}
+  
   if(nem_availability != 'No_Net_Metering_Anywhere'){
-  df[df$nem_system_limit_kw >= df$cap,'percent_of_gen_monetized'] <- 1
+    df[df$nem_system_limit_kw >= df$cap,'percent_of_gen_monetized'] <- 1
   }
   
   excess_gen_pt<-ggplot(df, aes(x = percent_of_gen_monetized, y = payback_period, color = nem_system_limit_kw>0))+
@@ -178,8 +182,8 @@ excess_gen_figs<-function(df,con){
     scale_x_continuous(name = 'Percent of Generation Value at Retail Rate', labels = percent)+
     scale_y_continuous(name = 'Cumulative Percentage', labels = percent)+
     ggtitle('Distribution of Generation Valued at Retail Rate and Payback Period')
-
-list('excess_gen_pt' = excess_gen_pt, 'excess_gen_cdf' = excess_gen_cdf)
+  
+  list('excess_gen_pt' = excess_gen_pt, 'excess_gen_cdf' = excess_gen_cdf)
 }
 
 cf_supply_curve<-function(df){
@@ -222,10 +226,7 @@ elec_rate_supply_curve<-function(df){
 
 dist_of_cap_selected<-function(df,scen_name){
   # What size system are customers selecting in 2014?
-  
-  # Distinguish between 1500 kW and 1500+ kW projects
-  df<-determine_system_cats(df)
-   
+     
   # get the starting and end years
   start_year = as.numeric(collect(summarise(df, min(year))))
   end_year = as.numeric(collect(summarise(df, max(year))))
@@ -240,6 +241,7 @@ dist_of_cap_selected<-function(df,scen_name){
   tmp<-ddply(cap_picked,.(sector,year),summarise, n = sum(cust_num))
   cap_picked<-merge(cap_picked,tmp)
   cap_picked<-transform(cap_picked, p = cust_num/n)
+  cap_picked$system_size_factors <- ordered( cap_picked$system_size_factors, levels = c('2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
   
   p<-ggplot(cap_picked, aes(x = factor(system_size_factors), weight = p, fill = factor(year)))+
     geom_histogram(position = 'dodge')+
@@ -260,7 +262,6 @@ dist_of_height_selected<-function(df,scen_name){
   #What heights are prefered?
   
   # Distinguish between 1500 kW and 1500+ kW projects
-  df<-determine_system_cats(df)
   
   # get the starting year
   start_year = as.numeric(collect(summarise(df, min(year))))
@@ -271,6 +272,7 @@ dist_of_height_selected<-function(df,scen_name){
                                     load_in_gw = sum(load_kwh_in_bin)/(1e6*8760)
   )
   )
+  height_picked$system_size_factors <- ordered( height_picked$system_size_factors, levels = c('2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
   p<-ggplot(height_picked)+
     geom_point(aes(x = factor(system_size_factors), y = factor(turbine_height_m), size = load_in_gw, color = sector), aes = 0.2)+
     scale_size_continuous(name = 'Potential Customer Load (GW)', range = c(4,12))+
@@ -419,7 +421,6 @@ print_table <- function(...){
 national_installed_capacity_by_system_size_bar<-function(df){
     
   # Distinguish between 1500 kW and 1500+ kW projects
-  df<-determine_system_cats(df)
   g = group_by(df, year, sector, system_size_factors)
   data<- collect(summarise(g, 
                            nat_installed_capacity  = sum(installed_capacity)/1e6
@@ -427,6 +428,7 @@ national_installed_capacity_by_system_size_bar<-function(df){
   )
   
   # order the data correctly
+  data$system_size_factors <- ordered( data$system_size_factors, levels = c('2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
   data = data[order(data$year,data$system_size_factors),]
   colourCount = length(unique(data$system_size_factors))
   getPalette = colorRampPalette(brewer.pal(9, "YlOrRd"))
