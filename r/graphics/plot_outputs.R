@@ -27,7 +27,9 @@ con<-make_con(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", user = 
 src = src_postgres(host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
 # lazy load the output table from postgres
 df = tbl(src,sql("SELECT *,  CASE WHEN turbine_size_kw = 1500 AND nturb > 1 THEN '1500+'::TEXT ELSE turbine_size_kw::TEXT END as system_size_factors FROM diffusion_wind.outputs_all"))
-
+# get the start year and end year for the model run
+start_year = as.numeric(collect(summarise(df, min(year))))
+end_year = as.numeric(collect(summarise(df, max(year))))
 
 opts_knit$set(base.dir = runpath)
 knit2html("../r/graphics/plot_outputs.md", output = paste0(runpath,"/DG Wind report.html"), title = "DG Wind report", stylesheet = "../r/graphics/plot_outputs.css",

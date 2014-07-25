@@ -28,25 +28,25 @@ diffusion_sectors_map(df)
 ```{r Economics}
 national_pp_line(df,scen_name)
 print_table(mean_value_by_state_table(df,'payback_period'), caption = "Mean Payback Period (years")
-lcoe_contour(df, dr = 0.05, n = 30)
+lcoe_contour(df, start_year, end_year, dr = 0.05, n = 30)
 
 lcoe_boxplot(df)
-lcoe_cdf(df)
+lcoe_cdf(df, start_year, end_year)
 print_table(mean_value_by_state_table(df,'lcoe'), caption = "Mean LCOE by State and Year")
 ```
 # System Characteristics
 ```{r System_Characteristics}
 cf_by_sector_and_year(df)
-dist_of_cap_selected(df,scen_name)
-dist_of_height_selected(df,scen_name)
+dist_of_cap_selected(df,scen_name,start_year,end_year)
+dist_of_height_selected(df,scen_name,start_year)
 excess_gen_out<-excess_gen_figs(df,con)
 excess_gen_out$excess_gen_pt
 excess_gen_out$excess_gen_cdf
 ```
 # Resource Potential
 ``` {r Resource_Potential}
-cf_supply_curve(df)
-elec_rate_supply_curve(df)
+cf_supply_curve(df, start_year)
+elec_rate_supply_curve(df, start_year)
 ```
 
 # Scenario options
