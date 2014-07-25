@@ -903,7 +903,7 @@ def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, pg_conn_string
     
     sql =  """SELECT * FROM 
             diffusion_wind.pt_%(sector_abbr)s_incentives;""" % inputs
-    df = sqlio.read_frame(sql, con)
+    df = sqlio.read_frame(sql, con, coerce_float = Falses)
     return df
 
 
