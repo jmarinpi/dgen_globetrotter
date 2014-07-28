@@ -1147,6 +1147,8 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     value_of_increment = cap_1 * inc.increment_1_rebate_dlrs_kw + cap_2 * inc.increment_2_rebate_dlrs_kw
     value_of_increment[np.isnan(value_of_increment)] = 0
     inc['value_of_increment'] = value_of_increment
+    # Don't let increment exceed 20% of project cost
+    inc['value_of_increment'] = np.where(inc['value_of_increment'] > 0.2 * inc['installed_costs_dollars_per_kw'] * inc['system_size_kw'],  0.2 * inc['installed_costs_dollars_per_kw'] * inc['system_size_kw'])
     
     # 2. # Calculate lifetime value of PBI & FIT
     inc.pbi_fit_end_date[inc.pbi_fit_end_date.isnull()] = datetime.date(default_exp_yr, 1, 1) # Assign expiry if no date
