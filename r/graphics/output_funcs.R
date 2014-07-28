@@ -305,8 +305,8 @@ national_pp_line<-function(df,scen_name){
 diffusion_trends<-function(df,runpath,scen_name){
   # Diffusion trends
   g = group_by(df, year, sector)
-  # We have no way calculating CFs for existing capacity, so assume it had a 23% capacity factor
   data = collect(summarise(g, nat_installed_capacity_gw  = sum(installed_capacity)/1e6, 
+  # We have no way calculating CFs for existing capacity, so assume it had a 23% capacity factor
                            nat_market_share = sum(number_of_adopters)/sum(customers_in_bin), 
                            nat_max_market_share = mean(max_market_share),
                            nat_market_value = sum(market_value),

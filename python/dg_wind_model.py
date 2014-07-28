@@ -30,8 +30,14 @@ import config as cfg
 import shutil
 import sys, getopt
 import pickle
+import random
 
 def main(mode = None, resume_year = None):
+    
+    ### I AM MAKING A RANDOM SEED HERE ###    
+    int_seed = random.randint(1,1e6)
+    float_seed = int_seed/1e6
+    ### MAEK SURE TO FIX generate_customer_bins and randomized_load_bins ###
 
     if mode == 'ReEDS':
         if resume_year == 2014:
@@ -158,7 +164,7 @@ def main(mode = None, resume_year = None):
                 # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
                 if cfg.init_model:
                     t0 = time.time()
-                    main_table = datfunc.generate_customer_bins(cur, con, cfg.random_generator_seed, cfg.customer_bins, sector_abbr, sector, 
+                    main_table = datfunc.generate_customer_bins(cur, con, int_seed, cfg.customer_bins, sector_abbr, sector, 
                                                    cfg.start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
                                                    cfg.oversize_turbine_factor, cfg.undersize_turbine_factor, cfg.preprocess, cfg.npar, cfg.pg_conn_string, scenario_opts['net_metering_availability'], logger = logger)
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
@@ -180,7 +186,7 @@ def main(mode = None, resume_year = None):
                     
                     # 9. Calculate economics including incentives
                     if year == cfg.start_year:
-                        market_last_year = 0 #market_last_year is actually initialied in calc_economics
+                        market_last_year = 0 #market_last_year is actually initialized in calc_economics
                         
                     t_calc_econ = time.time()    
                     df = finfunc.calc_economics(df, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule, logger, rate_escalations)

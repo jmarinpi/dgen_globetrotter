@@ -496,9 +496,11 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     msg = "Setting up randomized load bins"
     logger.info(msg)
     t0 = time.time()
+    inputs['float_seed'] = seed/1e6
+    #float_seed = seed/1e6    
     sql =  """DROP TABLE IF EXISTS diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s;
              CREATE TABLE diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s AS
-             WITH s as (SELECT setseed(%(seed)s))
+             WITH s as (SELECT setseed(%(float_seed)s))
                 	SELECT a.county_id, 
                          row_number() OVER (PARTITION BY a.county_id ORDER BY random() * b.prob) as row_number, 
                          b.*

@@ -1,5 +1,5 @@
 library(ggplot2)
-library(plyr)
+#library(plyr)
 library(maps)
 library(scales)
 library(data.table)
@@ -30,6 +30,9 @@ df = tbl(src,sql("SELECT *,  CASE WHEN turbine_size_kw = 1500 AND nturb > 1 THEN
 # get the start year and end year for the model run
 start_year = as.numeric(collect(summarise(df, min(year))))
 end_year = as.numeric(collect(summarise(df, max(year))))
+
+#start_year = 2014
+#end_year = 2050 
 
 opts_knit$set(base.dir = runpath)
 knit2html("../r/graphics/plot_outputs.md", output = paste0(runpath,"/DG Wind report.html"), title = "DG Wind report", stylesheet = "../r/graphics/plot_outputs.css",
