@@ -586,6 +586,8 @@ all_sectors_diff_trends<-function(df){
     geom_line(size = 1)+
     facet_wrap(~variable,scales="free_y")+
     theme_few()+
+    theme(strip.text.x = element_text(size = 16))+
+    theme(axis.text.y = element_text(size = 16))+
     ggtitle('National Diffusion Trends (All Sectors)')
 }
 

@@ -31,6 +31,8 @@ opts_knit$set(base.dir = out_folder)
 knit2html("../r/graphics/scenario_analysis.md", output = sprintf("%s/Scenario Analysis Report.html",out_folder), title = "DG Wind Scenario Analysis Report", stylesheet = "../r/graphics/plot_outputs.css",
             options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
 
+# Save the workspace for easy manipulation later
+save.image(paste0(out_folder,"scenario_workspace.Rdata"))
 
 
 # pp_trends_ribbon<-function(df){
