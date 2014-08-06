@@ -497,7 +497,6 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     logger.info(msg)
     t0 = time.time()
     inputs['float_seed'] = seed/1e6
-    #float_seed = seed/1e6    
     sql =  """DROP TABLE IF EXISTS diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s;
              CREATE TABLE diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s AS
              WITH s as (SELECT setseed(%(float_seed)s))
