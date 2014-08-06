@@ -33,11 +33,6 @@ import pickle
 import random
 
 def main(mode = None, resume_year = None):
-    
-    ### I AM MAKING A RANDOM SEED HERE ###    
-    int_seed = random.randint(1,1e6)
-    float_seed = int_seed/1e6
-    ### MAEK SURE TO FIX generate_customer_bins and randomized_load_bins ###
 
     if mode == 'ReEDS':
         if resume_year == 2014:
@@ -98,6 +93,9 @@ def main(mode = None, resume_year = None):
         scenario_names = []
         out_subfolders = []
         for i, input_scenario in enumerate(input_scenarios): 
+            ### I AM MAKING A RANDOM SEED HERE ###    
+            int_seed = random.randint(1,1e6)
+            ### MAEK SURE TO FIX generate_customer_bins and randomized_load_bins ###
             logger.info('--------------------------------------------') 
             logger.info("Running Scenario %s of %s" % (i+1, len(input_scenarios)))
             
