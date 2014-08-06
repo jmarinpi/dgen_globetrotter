@@ -1,5 +1,5 @@
 library(ggplot2)
-#library(plyr)
+library(plyr)
 library(maps)
 library(scales)
 library(data.table)

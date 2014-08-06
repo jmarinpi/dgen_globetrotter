@@ -363,7 +363,7 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
                     b.customers_in_bin, b.initial_customers_in_bin, 
                     b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
                     b.nem_system_limit_kw, b.excess_generation_factor, 
-                    b.aep, b.system_size_kw,
+                    b.naep, b.aep, b.system_size_kw,
                     b.nturb, b.turbine_size_kw, 
                     b.turbine_height_m, b.scoe,
                     
@@ -656,6 +656,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                    load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
                    nem_system_limit_kw, excess_generation_factor, 
     
+                   naep,
                    naep*(scoe_return).nturb*turbine_size_kw as aep,
                    (scoe_return).nturb*turbine_size_kw as system_size_kw,
                    (scoe_return).nturb as nturb,
