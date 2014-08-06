@@ -2,6 +2,8 @@ library(rMaps)
 library(rCharts)
 library(reshape2)
 library(RColorBrewer)
+library(plyr)
+library(dplyr)
 library(lattice)
 library(classInt)
 
