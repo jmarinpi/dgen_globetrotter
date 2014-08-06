@@ -355,7 +355,7 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
                     a.market_value,
                     
                     b.state_abbr, b.census_division_abbr, b.utility_type, 
-                    b.pca_reg, b.reeds_reg, b.max_height, b.elec_rate_cents_per_kwh, 
+                    b.pca_reg, b.reeds_reg, b.wind_incentive_array_id, b.max_height, b.elec_rate_cents_per_kwh, 
                     b.carbon_price_cents_per_kwh, 
                     b.fixed_om_dollars_per_kw_per_yr, 
                     b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
@@ -611,8 +611,9 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             (
                 SELECT
                  	a.gid, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
-                      a.utility_type, --a.census_region, 
+                      a.utility_type, 
                       a.pca_reg, a.reeds_reg,
+                      a.wind_incentive_array_id,
                       %(exclusions_insert)s
                 	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
                 b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
@@ -644,7 +645,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT gid, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
-                   pca_reg, reeds_reg, max_height, elec_rate_cents_per_kwh, 
+                   pca_reg, reeds_reg, wind_incentive_array_id, max_height, elec_rate_cents_per_kwh, 
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 
@@ -707,6 +708,10 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_year_btree 
              ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
              USING BTREE(year);
+             
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_incentive_array_btree 
+             ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(wind_incentive_array_id);             
             """ % inputs
     cur.execute(sql)
     con.commit()
@@ -892,8 +897,8 @@ def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, pg_conn_string
         sql =  """INSERT INTO diffusion_wind.pt_%(sector_abbr)s_incentives
                     SELECT a.gid, c.*
                     FROM diffusion_wind.pt_%(sector_abbr)s_best_option_each_year a
-                    LEFT JOIN diffusion_wind.dsire_incentives_lookup_%(sector_abbr)s b
-                    ON a.gid = b.pt_gid
+                    LEFT JOIN diffusion_wind.dsire_incentives_simplified_lkup_%(sector_abbr)s b
+                    ON a.wind_incentive_array_id = b.wind_incentive_array_id
                     LEFT JOIN diffusion_wind.incentives c
                     ON b.wind_incentives_uid = c.uid
                     WHERE lower(c.sector) = '%(incentives_sector)s'
