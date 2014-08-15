@@ -668,7 +668,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
           
           CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s_sort_fields_btree
              ON diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s
-             USING BTREE(county_id ASC, bin_id ASC, year ASC, scoe ASC);           
+             USING BTREE(county_id ASC, bin_id ASC, year ASC, scoe ASC, system_size_kw ASC, turbine_height_m ASC);           
           """ % inputs
 
         
@@ -694,7 +694,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
               SELECT distinct on (a.county_id, a.bin_id, a.year) a.*
               FROM  diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a
               ORDER BY a.county_id ASC, a.bin_id ASC, a.year ASC, a.scoe ASC,
-                       a.installed_costs_dollars_per_kw ASC;""" % inputs
+                       a.system_size_kw ASC, a.turbine_height_m ASC;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     
     # create index on gid and year
