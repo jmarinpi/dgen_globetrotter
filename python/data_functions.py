@@ -856,6 +856,8 @@ def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, pg_conn_string
                 CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_incentives
                     (
                       gid integer,
+                      county_id integer,
+                      bin_id integer,
                       uid integer,
                       incentive_id integer,
                       increment_1_capacity_kw numeric,
@@ -896,7 +898,9 @@ def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, pg_conn_string
         
         # set up sql statement to insert data into the table in chunks
         sql =  """INSERT INTO diffusion_wind.pt_%(sector_abbr)s_incentives
-                    SELECT a.gid, c.*
+                    SELECT a.gid, 
+                           a.county_id, a.bin_id, 
+                           c.*
                     FROM diffusion_wind.pt_%(sector_abbr)s_best_option_each_year a
                     LEFT JOIN diffusion_wind.dsire_incentives_simplified_lkup_%(sector_abbr)s b
                     ON a.wind_incentive_array_id = b.wind_incentive_array_id
