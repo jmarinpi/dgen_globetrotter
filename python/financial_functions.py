@@ -47,9 +47,7 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
     if scenario_opts['overwrite_exist_inc']:
         value_of_incentives = datfunc.calc_manual_incentives(df,con, year)
     else:
-#        inc = pd.merge(df,dsire_incentives,how = 'left', on = 'gid')
-        inc = pd.merge(df,dsire_incentives,how = 'left', on = ['county_id','bin_id'])
-#        print '\n\n\n\n\n',inc.shape,'\n\n\n\n\n'
+        inc = pd.merge(df,dsire_incentives,how = 'left', on = 'wind_incentive_array_id')
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id'])
     revenue, costs, cfs = calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30)

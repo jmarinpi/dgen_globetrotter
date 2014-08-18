@@ -825,96 +825,35 @@ def get_scenario_options(cur):
     results = cur.fetchall()[0]
     return results
 
+
 def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, pg_conn_string, logger):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
-    inputs['chunk_place_holder'] = '%(county_ids)s'
 
     msg = "Identifying initial incentives for customer bins from DSIRE Database"
     logger.info(msg)
-    if not preprocess:
-        # adjust the name of the sector for incentives table (ind doesn't exist in dsire -- use com)
-        if sector_abbr == 'ind':
-            inputs['incentives_sector'] = 'com'
-        else:
-            inputs['incentives_sector'] = sector_abbr           
-        
-        #==============================================================================
-        #     break counties into subsets for parallel processing
-        #==============================================================================
-        # get list of counties
-        sql =   """SELECT county_id 
-                   FROM diffusion_wind.counties_to_model
-                   ORDER BY county_id;"""
-        cur.execute(sql)
-        counties = [row['county_id'] for row in cur.fetchall()]
-        county_chunks = map(list,np.array_split(counties, npar))        
-        
-        # initialize the output table
-        t0 = time.time()  
-        sql = """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_incentives;
-                CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_incentives
-                    (
-                      gid integer,
-                      county_id integer,
-                      bin_id integer,
-                      uid integer,
-                      incentive_id integer,
-                      increment_1_capacity_kw numeric,
-                      increment_2_capacity_kw numeric,
-                      increment_3_capacity_kw numeric,
-                      pbi_fit_duration_years numeric,
-                      pbi_fit_end_date date,
-                      pbi_fit_max_size_kw numeric,
-                      pbi_fit_min_output_kwh_yr numeric,
-                      pbi_fit_min_size_kw numeric,
-                      ptc_duration_years numeric,
-                      ptc_end_date date,
-                      rating_basis_ac_dc text,
-                      fit_dlrs_kwh numeric,
-                      pbi_dlrs_kwh numeric,
-                      pbi_fit_dlrs_kwh numeric,
-                      increment_1_rebate_dlrs_kw numeric,
-                      increment_2_rebate_dlrs_kw numeric,
-                      increment_3_rebate_dlrs_kw numeric,
-                      max_dlrs_yr numeric,
-                      max_tax_credit_dlrs numeric,
-                      max_tax_deduction_dlrs numeric,
-                      pbi_fit_max_dlrs numeric,
-                      pbi_fit_pcnt_cost_max numeric,
-                      ptc_dlrs_kwh numeric,
-                      rebate_dlrs_kw numeric,
-                      rebate_max_dlrs numeric,
-                      rebate_max_size_kw numeric,
-                      rebate_min_size_kw numeric,
-                      rebate_pcnt_cost_max numeric,
-                      tax_credit_pcnt_cost numeric,
-                      tax_deduction_pcnt_cost numeric,
-                      tax_credit_max_size_kw numeric,
-                      tax_credit_min_size_kw numeric,
-                      sector text)""" % inputs    
-        cur.execute(sql)
-        con.commit()
-        
-        # set up sql statement to insert data into the table in chunks
-        sql =  """INSERT INTO diffusion_wind.pt_%(sector_abbr)s_incentives
-                    SELECT a.gid, 
-                           a.county_id, a.bin_id, 
-                           c.*
-                    FROM diffusion_wind.pt_%(sector_abbr)s_best_option_each_year a
-                    LEFT JOIN diffusion_wind.dsire_incentives_simplified_lkup_%(sector_abbr)s b
-                    ON a.wind_incentive_array_id = b.wind_incentive_array_id
-                    LEFT JOIN diffusion_wind.incentives c
-                    ON b.wind_incentives_uid = c.uid
-                    WHERE lower(c.sector) = '%(incentives_sector)s'
-                    AND a.county_id IN (%(chunk_place_holder)s)
-                    AND a.year = 2014
-                    ORDER by a.gid;""" % inputs  
-        # run in parallel
-        p_run(pg_conn_string, sql, county_chunks, npar) 
     
-    sql =  """SELECT * FROM 
-            diffusion_wind.pt_%(sector_abbr)s_incentives;""" % inputs
+    if sector_abbr == 'ind':
+        inputs['incentives_sector'] = 'com'
+    else:
+        inputs['incentives_sector'] = sector_abbr    
+    
+    sql =   """
+                WITH a AS
+                (
+                	SELECT DISTINCT wind_incentive_array_id as wind_incentive_array_id
+                	FROM diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
+                	WHERE year = 2014
+                )
+                SELECT a.wind_incentive_array_id, c.*
+                FROM a
+                LEFT JOIN diffusion_wind.dsire_incentives_simplified_lkup_%(sector_abbr)s b
+                ON a.wind_incentive_array_id = b.wind_incentive_array_id
+                LEFT JOIN diffusion_wind.incentives c
+                ON b.wind_incentives_uid = c.uid
+                WHERE lower(c.sector) = '%(incentives_sector)s'
+                ORDER BY a.wind_incentive_array_id
+            """ % inputs
     df = sqlio.read_frame(sql, con, coerce_float = False)
     return df
 
