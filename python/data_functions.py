@@ -1163,7 +1163,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     
     value_of_tax_credit_or_deduction = tax_pcnt_cost * ic
     value_of_tax_credit_or_deduction = np.minimum(max_tax_credit_or_deduction_value, value_of_tax_credit_or_deduction)
-    value_of_tax_credit_or_deduction = np.where(inc.tax_credit_max_size_kw > inc['system_size_kw'], tax_pcnt_cost * inc.tax_credit_max_size_kw, value_of_tax_credit_or_deduction)
+    value_of_tax_credit_or_deduction = np.where(inc.tax_credit_max_size_kw < inc['system_size_kw'], tax_pcnt_cost * inc.tax_credit_max_size_kw * inc.installed_costs_dollars_per_kw, value_of_tax_credit_or_deduction)
     value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
     
     inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction
