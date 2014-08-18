@@ -1140,33 +1140,47 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc['lifetime_value_of_ptc'] = length_of_ptc * value_of_ptc
 
     # 4. #Calculate Value of Rebate
-    rebate_cap = np.where(inc['system_size_kw'] < inc.rebate_min_size_kw, 0, inc['system_size_kw'])
-    rebate_cap = np.where(rebate_cap > inc.rebate_max_size_kw, inc.rebate_max_size_kw, rebate_cap)
-    value_of_rebate = inc.rebate_dlrs_kw * rebate_cap
-    value_of_rebate = np.minimum(inc.rebate_max_dlrs, value_of_rebate)
-    value_of_rebate = np.minimum(inc.rebate_pcnt_cost_max * ic, value_of_rebate)
-    value_of_rebate[np.isnan(value_of_rebate)] = 0
+
+    # check whether the credits are still active (this can be applied universally because DSIRE does not provide specific info 
+    # about expirations for each tax credit or deduction)
+    if datetime.date(cur_year, 1, 1) >= datetime.date(default_exp_yr, 1, 1):
+        value_of_rebate = 0.0
+    else:
+        rebate_cap = np.where(inc['system_size_kw'] < inc.rebate_min_size_kw, 0, inc['system_size_kw'])
+        rebate_cap = np.where(rebate_cap > inc.rebate_max_size_kw, inc.rebate_max_size_kw, rebate_cap)
+        value_of_rebate = inc.rebate_dlrs_kw * rebate_cap
+        value_of_rebate = np.minimum(inc.rebate_max_dlrs, value_of_rebate)
+        value_of_rebate = np.minimum(inc.rebate_pcnt_cost_max * ic, value_of_rebate)
+        value_of_rebate[np.isnan(value_of_rebate)] = 0
     
     inc['value_of_rebate'] = value_of_rebate
     
     # 5. # Calculate Value of Tax Credit
     # Assume able to fully monetize tax credits
-    inc.tax_credit_pcnt_cost = np.where(inc.tax_credit_pcnt_cost.isnull(), 0, inc.tax_credit_pcnt_cost)
-    inc.tax_credit_pcnt_cost = np.where(inc.tax_credit_pcnt_cost >= 1, 0.01 * inc.tax_credit_pcnt_cost, inc.tax_credit_pcnt_cost)
-    inc.tax_deduction_pcnt_cost = np.where(inc.tax_deduction_pcnt_cost.isnull(), 0, inc.tax_deduction_pcnt_cost)
-    inc.tax_deduction_pcnt_cost = np.where(inc.tax_deduction_pcnt_cost >= 1, 0.01 * inc.tax_deduction_pcnt_cost, inc.tax_deduction_pcnt_cost)    
-    tax_pcnt_cost = inc.tax_credit_pcnt_cost + inc.tax_deduction_pcnt_cost
     
-    inc.max_tax_credit_dlrs = np.where(inc.max_tax_credit_dlrs.isnull(), 1e9, inc.max_tax_credit_dlrs)
-    inc.max_tax_deduction_dlrs = np.where(inc.max_tax_deduction_dlrs.isnull(), 1e9, inc.max_tax_deduction_dlrs)
-    max_tax_credit_or_deduction_value = np.maximum(inc.max_tax_credit_dlrs,inc.max_tax_deduction_dlrs)
-    
-    value_of_tax_credit_or_deduction = tax_pcnt_cost * ic
-    value_of_tax_credit_or_deduction = np.minimum(max_tax_credit_or_deduction_value, value_of_tax_credit_or_deduction)
-    value_of_tax_credit_or_deduction = np.where(inc.tax_credit_max_size_kw < inc['system_size_kw'], tax_pcnt_cost * inc.tax_credit_max_size_kw * inc.installed_costs_dollars_per_kw, value_of_tax_credit_or_deduction)
-    value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
+    # check whether the credits are still active (this can be applied universally because DSIRE does not provide specific info 
+    # about expirations for each tax credit or deduction)
+    if datetime.date(cur_year, 1, 1) >= datetime.date(default_exp_yr, 1, 1):
+        value_of_tax_credit_or_deduction = 0.0
+    else:
+        inc.tax_credit_pcnt_cost = np.where(inc.tax_credit_pcnt_cost.isnull(), 0, inc.tax_credit_pcnt_cost)
+        inc.tax_credit_pcnt_cost = np.where(inc.tax_credit_pcnt_cost >= 1, 0.01 * inc.tax_credit_pcnt_cost, inc.tax_credit_pcnt_cost)
+        inc.tax_deduction_pcnt_cost = np.where(inc.tax_deduction_pcnt_cost.isnull(), 0, inc.tax_deduction_pcnt_cost)
+        inc.tax_deduction_pcnt_cost = np.where(inc.tax_deduction_pcnt_cost >= 1, 0.01 * inc.tax_deduction_pcnt_cost, inc.tax_deduction_pcnt_cost)    
+        tax_pcnt_cost = inc.tax_credit_pcnt_cost + inc.tax_deduction_pcnt_cost
+        
+        inc.max_tax_credit_dlrs = np.where(inc.max_tax_credit_dlrs.isnull(), 1e9, inc.max_tax_credit_dlrs)
+        inc.max_tax_deduction_dlrs = np.where(inc.max_tax_deduction_dlrs.isnull(), 1e9, inc.max_tax_deduction_dlrs)
+        max_tax_credit_or_deduction_value = np.maximum(inc.max_tax_credit_dlrs,inc.max_tax_deduction_dlrs)
+        
+        value_of_tax_credit_or_deduction = tax_pcnt_cost * ic
+        value_of_tax_credit_or_deduction = np.minimum(max_tax_credit_or_deduction_value, value_of_tax_credit_or_deduction)
+        value_of_tax_credit_or_deduction = np.where(inc.tax_credit_max_size_kw < inc['system_size_kw'], tax_pcnt_cost * inc.tax_credit_max_size_kw * inc.installed_costs_dollars_per_kw, value_of_tax_credit_or_deduction)
+        value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
     
     inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction
+    
+    # sum results to customer bins
     inc = inc[['county_id', 'bin_id', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id']).sum().reset_index() 
     
     inc['value_of_pbi_fit'] = inc['lifetime_value_of_pbi_fit'] / assumed_duration
