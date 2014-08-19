@@ -62,8 +62,7 @@ SELECT a.micro_id, a.county_id, a.utility_type,
 	e.state_abbr, e.census_division_abbr, e.census_region,
 	a.i, a.j, a.cf_bin, a.aep_scale_factor, 
 	l.carbon_intensity_t_per_kwh,
-	m.nem_system_limit_kw,
-	a.weight
+	m.nem_system_limit_kw
 FROM diffusion_wind.point_microdata_ind_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
@@ -104,8 +103,7 @@ SELECT a.micro_id, a.county_id, a.utility_type,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region,
 	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh,
-	m.nem_system_limit_kw,
-	a.weight
+	m.nem_system_limit_kw
 FROM diffusion_wind.point_microdata_res_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
@@ -147,8 +145,7 @@ SELECT a.micro_id, a.county_id, a.utility_type,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region, 
 	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh,
-	m.nem_system_limit_kw,
-	a.weight
+	m.nem_system_limit_kw
 FROM diffusion_wind.point_microdata_com_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b

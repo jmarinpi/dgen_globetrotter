@@ -10,7 +10,7 @@ WITH a AS
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id,
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor,
-		count(*) as weight
+		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_res a
 	LEFT JOIN diffusion_wind.ij_cfbin_lookup_res_pts_us b 
 	ON a.gid = b.pt_gid
@@ -21,7 +21,7 @@ WITH a AS
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor
 )
-SELECT row_number() OVER (ORDER BY county_id, random()) as micro_id, *
+SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
 FROM a
 ORDER BY county_id;
 --use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
@@ -60,7 +60,7 @@ WITH a AS
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id,
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor,
-		count(*) as weight
+		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_com a
 	LEFT JOIN diffusion_wind.ij_cfbin_lookup_com_pts_us b 
 	ON a.gid = b.pt_gid
@@ -71,7 +71,7 @@ WITH a AS
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor
 )
-SELECT row_number() OVER (ORDER BY county_id, random()) as micro_id, *
+SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
 FROM a
 ORDER BY county_id;
 --use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
@@ -111,7 +111,7 @@ WITH a AS
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id,
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor,
-		count(*) as weight
+		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_ind a
 	LEFT JOIN diffusion_wind.ij_cfbin_lookup_ind_pts_us b 
 	ON a.gid = b.pt_gid
@@ -122,7 +122,7 @@ WITH a AS
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor
 )
-SELECT row_number() OVER (ORDER BY county_id, random()) as micro_id, *
+SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
 FROM a
 ORDER BY county_id;
 --use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
