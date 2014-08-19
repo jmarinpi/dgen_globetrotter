@@ -506,20 +506,10 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     msg = "Setting up randomized load bins"
     logger.info(msg)
     t0 = time.time()
-
-#    inputs['float_seed'] = seed/1e6    
-#    sql =  """DROP TABLE IF EXISTS diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s;
-#             CREATE TABLE diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s AS
-#             WITH s as (SELECT setseed(%(float_seed)s))
-#                	SELECT a.county_id, %(load_columns)s,
-#                         row_number() OVER (PARTITION BY a.county_id ORDER BY random() * b.%(load_weight_column)s) as bin_id
-#                	FROM s, diffusion_wind.counties_to_model a
-#                	LEFT JOIN %(load_table)s b
-#                	ON a.census_region = b.census_region;""" % inputs    
     
     
-    sql =  """DROP TABLE IF EXISTS diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s;
-         CREATE TABLE diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s AS
+    sql =  """DROP TABLE IF EXISTS diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s;
+         CREATE TABLE diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s AS
          WITH all_bins AS
          (
              SELECT a.county_id, 
@@ -527,6 +517,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
              FROM diffusion_wind.counties_to_model a
              LEFT JOIN %(load_table)s b
              ON a.census_region = b.census_region
+             WHERE a.county_id in  (%(chunk_place_holder)s)
         ),
         sampled_bins AS 
         (
@@ -546,15 +537,13 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
         FROM numbered_samples a
         LEFT JOIN %(load_table)s b
         ON a.load_id = b.%(load_pkey)s;""" % inputs
-    cur.execute(sql)
-    con.commit()
+    p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
     
     # add an index on county id and row_number
-    sql = """CREATE INDEX county_load_bins_random_lookup_%(sector_abbr)s_join_fields_btree 
-            ON diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s USING BTREE(county_id, bin_id);""" % inputs
-    cur.execute(sql)
-    con.commit()
+    sql = """CREATE INDEX county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s_join_fields_btree 
+            ON diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s USING BTREE(county_id, bin_id);""" % inputs
+    p_run(pg_conn_string, sql, county_chunks, npar)
    
     #==============================================================================
     #     link each point to a load bin
@@ -570,7 +559,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             	a.county_total_customers_2011 * b.weight/sum(weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
             	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
             FROM diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
-            LEFT JOIN diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s b
+            LEFT JOIN diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s b
             ON a.county_id = b.county_id
             AND a.bin_id = b.bin_id
             WHERE county_total_load_mwh_2011 > 0)
@@ -764,7 +753,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     msg = "Cleaning up intermediate tables"
     logger.info(msg)
     intermediate_tables = ['diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s' % inputs,
-#                       'diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s' % inputs,
+                       'diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s' % inputs,
                        'diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs,
                        'diffusion_wind.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s' % inputs,
                        'diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs]
