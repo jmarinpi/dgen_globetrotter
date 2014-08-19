@@ -725,7 +725,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                        a.system_size_kw ASC, a.turbine_height_m ASC;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     
-    # create index on gid and year
+    # create indices
     sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_join_fields_btree 
              ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
              USING BTREE(county_id,bin_id);
@@ -1057,7 +1057,7 @@ def calc_manual_incentives(df,con,cur_year):
     '''
     Because a system could potentially qualify for several incentives, the left 
     join above could join on multiple rows. Thus, groupby by county_id & bin_id 
-    to sum over incentives and condense back to unique gid values
+    to sum over incentives and condense back to unique county_id/bin_id combinations
     '''
 
     value_of_incentives = d[['county_id', 'bin_id', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id']).sum().reset_index() 
@@ -1066,9 +1066,9 @@ def calc_manual_incentives(df,con,cur_year):
     
 def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration = 10):
     '''
-    Calculate the value of incentives based on DSIRE database. The main dataframe 
-    is joined by gid to the dsire incentives.There may be many incentives per gid, so the value is calculated for each row (incentives)
-    and then groupedby gid, summing over incentives value. For multiyear incentives (ptc/pbi/fit), this requires
+    Calculate the value of incentives based on DSIRE database. There may be many incentives per each customer bin (county_id+bin_id),
+    so the value is calculated for each row (incentives)
+    and then groupedby county_id & bin_id, summing over incentives value. For multiyear incentives (ptc/pbi/fit), this requires
     assumption that incentives are disbursed over 10 years.
     
     IN: inc - pandas dataframe (df) - main df joined by dsire_incentives
