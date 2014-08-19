@@ -57,10 +57,12 @@ def main(mode = None, resume_year = None):
     
     # check that random generator seed is in the acceptable range
     if type(cfg.random_generator_seed) <> int:
-        raise ValueError("""random_generator_seed in config.py must be of type integer.""")                           
+        raise ValueError("""Error: random_generator_seed in config.py must be of type integer.""")                           
         # check that number of customer bins is in the acceptable range
-    if cfg.customer_bins not in (10,50,100,500):
-        raise ValueError("""Error: customer_bins in config.py is not in the range of acceptable values. Change to a value in the set (10,50,100,500).""") 
+    if type(cfg.customer_bins) <> int:
+        raise ValueError("""Error: customer_bins in config.py must be of type integer.""") 
+    if cfg.customer_bins <= 0:
+        raise ValueError("""Error: customer_bins in config.py must be a positive integer.""") 
     model_init = time.time()
     
     logger = datfunc.init_log(os.path.join(out_dir,'dg_wind_model.log'))
