@@ -55,10 +55,8 @@ def main(mode = None, resume_year = None):
         out_dir = '%s/runs/results_%s' %(os.path.dirname(os.getcwd()),cdate)        
         os.makedirs(out_dir)
     
-    # check that random generator seed is in the acceptable range
-    if type(cfg.random_generator_seed) <> int:
-        raise ValueError("""Error: random_generator_seed in config.py must be of type integer.""")                           
-        # check that number of customer bins is in the acceptable range
+                        
+    # check that number of customer bins is in the acceptable range
     if type(cfg.customer_bins) <> int:
         raise ValueError("""Error: customer_bins in config.py must be of type integer.""") 
     if cfg.customer_bins <= 0:
@@ -160,7 +158,7 @@ def main(mode = None, resume_year = None):
                 # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
                 if cfg.init_model:
                     t0 = time.time()
-                    main_table = datfunc.generate_customer_bins(cur, con, cfg.random_generator_seed, cfg.customer_bins, sector_abbr, sector, 
+                    main_table = datfunc.generate_customer_bins(cur, con, scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
                                                    cfg.start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
                                                    cfg.oversize_turbine_factor, cfg.undersize_turbine_factor, cfg.preprocess, cfg.npar, cfg.pg_conn_string, scenario_opts['net_metering_availability'], logger = logger)
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        

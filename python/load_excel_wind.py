@@ -492,6 +492,7 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
         net_metering_availability, 
         carbon_price, 
         height_exclusions, 
+        random_generator_seed,
         ann_inflation, 
         scenario_name, 
         overwrite_exist_inc, 
