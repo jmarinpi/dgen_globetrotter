@@ -50,18 +50,20 @@ where keep = True;
 
 -- views of point data
 -- ind
-DROP VIEW IF EXISTS diffusion_wind.pt_grid_us_ind_joined;
-CREATE OR REPLACE VIEW diffusion_wind.pt_grid_us_ind_joined AS
-SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.iiijjjicf_id, 'p' || a.pca_reg::text as pca_reg, a.reeds_reg, a.wind_incentive_array_id,
+DROP VIEW IF EXISTS diffusion_wind.point_microdata_ind_us_joined;
+CREATE OR REPLACE VIEW diffusion_wind.point_microdata_ind_us_joined AS
+SELECT a.micro_id, a.county_id, a.utility_type, 
+	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
+	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.wind_incentive_array_id,
         c.ind_cents_per_kwh * (1-n.ind_demand_charge_rate) as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region,
-	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
+	a.i, a.j, a.cf_bin, a.aep_scale_factor, 
+	l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
-FROM diffusion_shared.pt_grid_us_ind a
+FROM diffusion_wind.point_microdata_ind_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
@@ -74,9 +76,6 @@ ON a.county_id = d.county_id
 -- census region and division
 LEFT JOIN diffusion_shared.county_geom e
 ON a.county_id = e.county_id
--- join in i,j,icf lookup
-LEFT JOIN diffusion_wind.ij_cfbin_lookup_ind_pts_us g
-on a.gid = g.pt_gid
 -- subset to counties of interest
 INNER JOIN diffusion_wind.counties_to_model h 
 ON a.county_id = h.county_id
@@ -93,18 +92,19 @@ CROSS JOIN diffusion_wind.scenario_options n;
 
 
 -- res
-DROP VIEW IF EXISTS diffusion_wind.pt_grid_us_res_joined;
-CREATE OR REPLACE VIEW diffusion_wind.pt_grid_us_res_joined AS
-SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.iiijjjicf_id, 'p' || a.pca_reg::text as pca_reg, a.reeds_reg, a.wind_incentive_array_id,
+DROP VIEW IF EXISTS diffusion_wind.point_microdata_res_us_joined;
+CREATE OR REPLACE VIEW diffusion_wind.point_microdata_res_us_joined AS
+SELECT a.micro_id, a.county_id, a.utility_type, 
+	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
+	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.wind_incentive_array_id,
 	c.res_cents_per_kwh as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region,
-	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
+	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
-FROM diffusion_shared.pt_grid_us_res a
+FROM diffusion_wind.point_microdata_res_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
@@ -120,9 +120,6 @@ ON a.county_id = d.county_id
 -- census region and division
 LEFT JOIN diffusion_shared.county_geom e
 ON a.county_id = e.county_id
--- join in i,j,icf lookup
-LEFT JOIN diffusion_wind.ij_cfbin_lookup_res_pts_us g
-on a.gid = g.pt_gid
 -- subset to counties of interest
 INNER JOIN diffusion_wind.counties_to_model h 
 ON a.county_id = h.county_id
@@ -137,18 +134,19 @@ AND a.utility_type = m.utility_type;
 
 
 -- comm
-DROP VIEW IF EXISTS diffusion_wind.pt_grid_us_com_joined;
-CREATE OR REPLACE VIEW diffusion_wind.pt_grid_us_com_joined AS
-SELECT a.gid, a.county_id, a.utility_type, a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.iiijjjicf_id, 'p' || a.pca_reg::text as pca_reg, a.reeds_reg, a.wind_incentive_array_id,
+DROP VIEW IF EXISTS diffusion_wind.point_microdata_com_us_joined;
+CREATE OR REPLACE VIEW diffusion_wind.point_microdata_com_us_joined AS
+SELECT a.micro_id, a.county_id, a.utility_type, 
+	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
+	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.wind_incentive_array_id,
 	c.comm_cents_per_kwh * (1-n.com_demand_charge_rate) as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.census_division_abbr, e.census_region, 
-	g.i, g.j, g.cf_bin, g.aep_scale_factor, l.carbon_intensity_t_per_kwh,
+	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
-FROM diffusion_shared.pt_grid_us_com a
+FROM diffusion_wind.point_microdata_com_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
@@ -161,9 +159,6 @@ ON a.county_id = d.county_id
 -- census region and division
 LEFT JOIN diffusion_shared.county_geom e
 ON a.county_id = e.county_id
--- join in i,j,icf lookup
-LEFT JOIN diffusion_wind.ij_cfbin_lookup_com_pts_us g
-on a.gid = g.pt_gid
 -- subset to counties of interest
 INNER JOIN diffusion_wind.counties_to_model h 
 ON a.county_id = h.county_id

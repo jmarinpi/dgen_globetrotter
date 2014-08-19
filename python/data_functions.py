@@ -250,7 +250,7 @@ def clear_outputs(con,cur):
 def write_outputs(con, cur, outputs_df, sector_abbr):
     
     # set fields to write
-    fields = [  'gid',
+    fields = [  'micro_id',
                 'county_id',
                 'bin_id',          
                 'year',
@@ -344,7 +344,7 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
         sub_sql = '''%s 
                     SELECT '%s'::text as sector, 
 
-                    a.gid, a.county_id, a.bin_id, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
+                    a.micro_id, a.county_id, a.bin_id, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
                     a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
                     a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
                     a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
@@ -485,17 +485,17 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
              CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s AS
             WITH b as 
             (
-                SELECT unnest(sample(array_agg(a.gid order by a.gid),%(n_bins)s,%(seed)s,True)) as gid
-                FROM diffusion_shared.pt_grid_us_%(sector_abbr)s a
-                WHERE a.county_id in  (%(chunk_place_holder)s)
+                SELECT unnest(sample(array_agg(a.micro_id ORDER BY a.micro_id),%(n_bins)s,%(seed)s,True,array_agg(a.point_weight ORDER BY a.micro_id))) as micro_id
+                FROM diffusion_wind.point_microdata_%(sector_abbr)s_us a
+                WHERE a.county_id IN (%(chunk_place_holder)s)
                 GROUP BY a.county_id
             )
                 
-            SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.gid) as bin_id
-            FROM diffusion_wind.pt_grid_us_%(sector_abbr)s_joined a
+            SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.micro_id) as bin_id
+            FROM diffusion_wind.point_microdata_%(sector_abbr)s_us_joined a
             INNER JOIN b
-            ON a.gid = b.gid
-            WHERE a.county_id in  (%(chunk_place_holder)s);""" % inputs
+            ON a.micro_id = b.micro_id
+            WHERE a.county_id IN (%(chunk_place_holder)s);""" % inputs
 
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
@@ -556,7 +556,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
             WITH binned as(
             SELECT a.*, b.ann_cons_kwh, b.weight,
-            	a.county_total_customers_2011 * b.weight/sum(weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
+            	a.county_total_customers_2011 * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
             	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
             FROM diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
             LEFT JOIN diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s b
@@ -637,7 +637,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             WITH combined AS
             (
                 SELECT
-                 	a.gid, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
+                 	a.micro_id, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
                       a.utility_type, 
                       a.pca_reg, a.reeds_reg,
                       a.wind_incentive_array_id,
@@ -671,7 +671,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 AND b.rate_escalation_source = '%(rate_escalation_source)s'
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
-                SELECT gid, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
+                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
                    pca_reg, reeds_reg, wind_incentive_array_id, max_height, elec_rate_cents_per_kwh, 
                    carbon_price_cents_per_kwh, 
             
@@ -726,11 +726,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     p_run(pg_conn_string, sql, county_chunks, npar)
     
     # create index on gid and year
-    sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_gid_btree 
-             ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
-             USING BTREE(gid);
-             
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_join_fields_btree 
+    sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_join_fields_btree 
              ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
              USING BTREE(county_id,bin_id);
              

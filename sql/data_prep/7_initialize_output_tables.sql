@@ -1,7 +1,7 @@
 ﻿-- residential
 DROP TABLE IF EXISTS diffusion_wind.outputs_res CASCADE;
 CREATE TABLE diffusion_wind.outputs_res (
-	gid 					integer,
+	micro_id				bigint,
 	county_id				integer,
 	bin_id					integer,
 	year					integer,
@@ -46,7 +46,7 @@ CREATE INDEX outputs_res_join_fields_btree ON diffusion_wind.outputs_res USING b
 -- commercial
 DROP TABLE IF EXISTS diffusion_wind.outputs_com CASCADE;
 CREATE TABLE diffusion_wind.outputs_com (
-	gid 					integer,
+	micro_id				bigint,
 	county_id				integer,
 	bin_id					integer,
 	year					integer,
@@ -90,7 +90,7 @@ CREATE INDEX outputs_com_join_fields_btree ON diffusion_wind.outputs_com USING b
 -- industrial
 DROP TABLE IF EXISTS diffusion_wind.outputs_ind CASCADE;
 CREATE TABLE diffusion_wind.outputs_ind (
-	gid 					integer,
+	micro_id				bigint,
 	county_id				integer,
 	bin_id					integer,
 	year					integer,
