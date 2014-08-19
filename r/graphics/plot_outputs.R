@@ -23,8 +23,8 @@ runpath<-commandArgs(TRUE)[1]
 scen_name<-commandArgs(TRUE)[2]
 
 # two different connetions to postgres (1 used by RPostgreSQL and the other by dplyr)
-con<-make_con(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
-src = src_postgres(host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
+con<-make_con(driver = "PostgreSQL", host = 'gispgdb.nrel.gov', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
+src = src_postgres(host = 'gispgdb.nrel.gov', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
 # lazy load the output table from postgres
 df = tbl(src,sql("SELECT *,  CASE WHEN turbine_size_kw = 1500 AND nturb > 1 THEN '1500+'::TEXT ELSE turbine_size_kw::TEXT END as system_size_factors FROM diffusion_wind.outputs_all"))
 # get the start year and end year for the model run

@@ -11,7 +11,7 @@ import os
 # these are all variables that we can change, but don't want to expose to non-expert users
 #==============================================================================
 
-pg_params = {'host'     : 'gispgdb',
+pg_params = {'host'     : 'gispgdb.nrel.gov',
              'dbname'   : 'dav-gis',
              'user'     : 'mgleason',
              'password' : 'mgleason'

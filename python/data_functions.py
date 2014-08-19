@@ -445,7 +445,17 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     inputs['i_place_holder'] = '%(i)s'
     inputs['chunk_place_holder'] = '%(county_ids)s'
     inputs['seed_str'] = str(seed).replace('.','p')
-    
+    if sector_abbr == 'res':
+        inputs['load_table'] = 'diffusion_shared.eia_microdata_recs_2009'
+        inputs['load_columns'] = 'b.doeid as load_id, b.nweight as weight, b.kwh as ann_cons_kwh'
+        inputs['load_pkey'] = 'doeid'
+        inputs['load_weight_column'] = 'nweight'
+    else:
+        inputs['load_table'] = 'diffusion_shared.eia_microdata_cbecs_2003'
+        inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh'
+        inputs['load_pkey'] = 'pubid8'
+        inputs['load_weight_column'] = 'adjwt8'
+        
     msg = "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
     logger.info(msg)
      
@@ -496,24 +506,53 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     msg = "Setting up randomized load bins"
     logger.info(msg)
     t0 = time.time()
-    inputs['float_seed'] = seed/1e6
+
+#    inputs['float_seed'] = seed/1e6    
+#    sql =  """DROP TABLE IF EXISTS diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s;
+#             CREATE TABLE diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s AS
+#             WITH s as (SELECT setseed(%(float_seed)s))
+#                	SELECT a.county_id, %(load_columns)s,
+#                         row_number() OVER (PARTITION BY a.county_id ORDER BY random() * b.%(load_weight_column)s) as bin_id
+#                	FROM s, diffusion_wind.counties_to_model a
+#                	LEFT JOIN %(load_table)s b
+#                	ON a.census_region = b.census_region;""" % inputs    
+    
+    
     sql =  """DROP TABLE IF EXISTS diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s;
-             CREATE TABLE diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s AS
-             WITH s as (SELECT setseed(%(float_seed)s))
-                	SELECT a.county_id, 
-                         row_number() OVER (PARTITION BY a.county_id ORDER BY random() * b.prob) as row_number, 
-                         b.*
-                	FROM s, diffusion_wind.counties_to_model a
-                	LEFT JOIN diffusion_shared.binned_annual_load_kwh_%(n_bins)s_bins b
-                	ON a.census_region = b.census_region
-                	AND b.sector = lower('%(sector)s');""" % inputs
+         CREATE TABLE diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s AS
+         WITH all_bins AS
+         (
+             SELECT a.county_id, 
+                     %(load_columns)s
+             FROM diffusion_wind.counties_to_model a
+             LEFT JOIN %(load_table)s b
+             ON a.census_region = b.census_region
+        ),
+        sampled_bins AS 
+        (
+            SELECT a.county_id, 
+                    unnest(sample(array_agg(a.load_id ORDER BY a.load_id),%(n_bins)s,%(seed)s * a.county_id,True,array_agg(a.weight ORDER BY a.load_id))) as load_id
+            FROM all_bins a
+            GROUP BY a.county_id
+        ), 
+        numbered_samples AS
+        (
+            SELECT a.county_id, a.load_id,
+                   ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.load_id) as bin_id 
+            FROM sampled_bins a
+        )
+        SELECT  a.county_id, a.bin_id,
+                    %(load_columns)s
+        FROM numbered_samples a
+        LEFT JOIN %(load_table)s b
+        ON a.load_id = b.%(load_pkey)s;""" % inputs
     cur.execute(sql)
     con.commit()
     print time.time()-t0
     
     # add an index on county id and row_number
     sql = """CREATE INDEX county_load_bins_random_lookup_%(sector_abbr)s_join_fields_btree 
-            ON diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s USING BTREE(county_id, row_number);""" % inputs
+            ON diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s USING BTREE(county_id, bin_id);""" % inputs
     cur.execute(sql)
     con.commit()
    
@@ -527,13 +566,13 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     sql =  """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s;
             CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
             WITH binned as(
-            SELECT a.*, b.ann_cons_kwh, b.prob, b.weight,
+            SELECT a.*, b.ann_cons_kwh, b.weight,
             	a.county_total_customers_2011 * b.weight/sum(weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
             	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
             FROM diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
             LEFT JOIN diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s b
             ON a.county_id = b.county_id
-            AND a.bin_id = b.row_number
+            AND a.bin_id = b.bin_id
             WHERE county_total_load_mwh_2011 > 0)
             SELECT a.*,
             	CASE WHEN a.customers_in_bin > 0 THEN a.load_kwh_in_bin/a.customers_in_bin 
@@ -725,7 +764,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     msg = "Cleaning up intermediate tables"
     logger.info(msg)
     intermediate_tables = ['diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s' % inputs,
-                       'diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s' % inputs,
+#                       'diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s' % inputs,
                        'diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs,
                        'diffusion_wind.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s' % inputs,
                        'diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs]

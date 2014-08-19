@@ -56,8 +56,8 @@ def main(mode = None, resume_year = None):
         os.makedirs(out_dir)
     
     # check that random generator seed is in the acceptable range
-    if cfg.random_generator_seed < 0 or cfg.random_generator_seed > 1:
-        raise ValueError("""random_generator_seed in config.py is not in the range of acceptable values. Change to a value in the range >= 0 and <= 1.""")                           
+    if type(cfg.random_generator_seed) <> int:
+        raise ValueError("""random_generator_seed in config.py must be of type integer.""")                           
         # check that number of customer bins is in the acceptable range
     if cfg.customer_bins not in (10,50,100,500):
         raise ValueError("""Error: customer_bins in config.py is not in the range of acceptable values. Change to a value in the set (10,50,100,500).""") 
