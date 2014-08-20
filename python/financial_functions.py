@@ -28,9 +28,10 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
     '''
     
     df['sector'] = sector.lower()
-    
-    df = datfunc.calc_expected_rate_escal(df,rate_escalations, year)
     df = pd.merge(df,financial_parameters, how = 'left', on = 'sector')
+    
+    # get customer expected rate escalations
+    rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector)    
     
     ## Diffusion from previous year ## 
     if year == cfg.start_year: 
@@ -50,7 +51,7 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
         inc = pd.merge(df,dsire_incentives,how = 'left', on = 'wind_incentive_array_id')
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id'])
-    revenue, costs, cfs = calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30)
+    revenue, costs, cfs = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, yrs = 30)
     payback = calc_payback(cfs)
     
     if sector == 'Residential':
@@ -71,7 +72,7 @@ def calc_economics(df, sector, sector_abbr, market_projections, market_last_year
     
     
 #==============================================================================
-def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
+def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, yrs = 30):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 
@@ -144,12 +145,6 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
     See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail
     """
 
-    # Multiplier for rate growth in real 2011 dollars
-
-    tmp = np.empty(shape)
-    tmp[:,0] = 1
-    tmp[:,1:] = df.customer_expec_elec_rates[:,np.newaxis]+1
-    rate_growth_mult = np.cumprod(tmp, axis = 1) 
 
     # Percentage of excess gen, bounded from 0 - 100%
     per_excess_gen = np.minimum(np.maximum(df.excess_generation_factor + 0.31 * (df.aep/df.ann_cons_kwh -1), 0),1)

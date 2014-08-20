@@ -1227,11 +1227,12 @@ def get_rate_escalations(con):
     IN: con - connection to server
     OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
     '''  
-    rate_escalations = sqlio.read_frame('SELECT * FROM diffusion_shared.rate_escalations', con)
-    rate_escalations['sector'] = rate_escalations['sector'].str.lower()
+    sql = """SELECT census_division_abbr, year, lower(sector) as sector, escalation_factor
+                FROM diffusion_wind.rate_escalations_to_model;"""
+    rate_escalations = sqlio.read_frame(sql, con)
     return rate_escalations
     
-def calc_expected_rate_escal(df,rate_escalations, year): 
+def calc_expected_rate_escal(df,rate_escalations, year, sector): 
     '''
     Append the expected rate escalation to the main dataframe.
     Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
@@ -1245,17 +1246,18 @@ def calc_expected_rate_escal(df,rate_escalations, year):
         return x['escalation_factor'].pct_change().mean()
     
     # Only use the escalation multiplier over the next 30 years
-    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + 30)) & (rate_escalations['year'] >=  year)]
+    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + 30)) & (rate_escalations['year'] >=  year) 
+                                                    & (rate_escalations['sector'] == sector)]
     
-    avg_rate_esc = projected_rate_escalations.groupby(['census_division_abbr','sector'])
+    rate_pivot = projected_rate_escalations.pivot(index = 'census_division_abbr',columns = 'year', values = 'escalation_factor')    
+    rate_pivot['census_division_abbr'] = rate_pivot.index
     
-    # Next we find the average percent change in rate projected over next 30 years    
-    avg_rate_esc = avg_rate_esc.apply(avg_pct_change)
+    customer_expected_escalations =  pd.merge(df[['county_id','bin_id','census_division_abbr']], rate_pivot, how = 'left')
     
-    # Finally, join dataframes to add customer_expec_elec_rate field
-    avg_rate_esc = pd.DataFrame({'customer_expec_elec_rates': avg_rate_esc})
-    df = pd.merge(df,avg_rate_esc, how = 'left', left_on = ['census_division_abbr', 'sector'], right_index = True)
-    return df
+    if (df[['county_id','bin_id']] == customer_expected_escalations[['county_id','bin_id']]).all().all():
+        return customer_expected_escalations[list(customer_expected_escalations.columns)[3:]].values
+    else:
+        raise Exception("rate_escalations_have been reordered!")
 
 def fill_jagged_array(vals,lens, cols = 30):
     '''
