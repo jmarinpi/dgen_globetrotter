@@ -305,15 +305,19 @@ def write_outputs(con, cur, outputs_df, sector_abbr):
     
     
 def p_execute(pg_conn_string, sql):
-    # create cursor and connection
-    con, cur = make_con(pg_conn_string)  
-    # execute query
-    cur.execute(sql)
-    # commit changes
-    con.commit()
-    # close cursor and connection
-    con.close()
-    cur.close()
+    try:
+        # create cursor and connection
+        con, cur = make_con(pg_conn_string)  
+        # execute query
+        cur.execute(sql)
+        # commit changes
+        con.commit()
+        # close cursor and connection
+        con.close()
+        cur.close()
+    except Exception, e:
+        print 'Error: %s' % e
+        print sql
 
     
 def p_run(pg_conn_string, sql, county_chunks, npar):
