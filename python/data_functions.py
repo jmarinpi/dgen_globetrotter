@@ -695,7 +695,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     
                    turbine_size_kw, 
                    turbine_height_m, 
-                   (round((scoe_return).scoe,3)*100)::INTEGER as scoe
+                   (round((scoe_return).scoe,4)*1000)::BIGINT as scoe
           FROM combined;
           
           CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s_sort_fields_btree
