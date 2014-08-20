@@ -148,7 +148,7 @@ def calc_cashflows(df,deprec_schedule, scenario_opts, yrs = 30):
 
     tmp = np.empty(shape)
     tmp[:,0] = 1
-    tmp[:,1:] = df.customer_expec_elec_rates[:,np.newaxis]
+    tmp[:,1:] = df.customer_expec_elec_rates[:,np.newaxis]+1
     rate_growth_mult = np.cumprod(tmp, axis = 1) 
 
     # Percentage of excess gen, bounded from 0 - 100%
