@@ -254,7 +254,7 @@ def write_outputs(con, cur, outputs_df, sector_abbr):
                 'county_id',
                 'bin_id',          
                 'year',
-                'customer_expec_elec_rates',
+                #'customer_expec_elec_rates',
                 'ownership_model',
                 'loan_term_yrs',
                 'loan_rate',
@@ -1241,13 +1241,9 @@ def calc_expected_rate_escal(df,rate_escalations, year, sector):
     IN: con - connection to server
     OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
     '''  
-    def avg_pct_change(x):
-        x = x.sort('year')
-        return x['escalation_factor'].pct_change().mean()
     
     # Only use the escalation multiplier over the next 30 years
-    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + 30)) & (rate_escalations['year'] >=  year) 
-                                                    & (rate_escalations['sector'] == sector)]
+    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + 30)) & (rate_escalations['year'] >=  year) & (rate_escalations['sector'] == sector.lower())]
     
     rate_pivot = projected_rate_escalations.pivot(index = 'census_division_abbr',columns = 'year', values = 'escalation_factor')    
     rate_pivot['census_division_abbr'] = rate_pivot.index
@@ -1255,7 +1251,7 @@ def calc_expected_rate_escal(df,rate_escalations, year, sector):
     customer_expected_escalations =  pd.merge(df[['county_id','bin_id','census_division_abbr']], rate_pivot, how = 'left')
     
     if (df[['county_id','bin_id']] == customer_expected_escalations[['county_id','bin_id']]).all().all():
-        return customer_expected_escalations[list(customer_expected_escalations.columns)[3:]].values
+        return customer_expected_escalations.ix[:,3:].values
     else:
         raise Exception("rate_escalations_have been reordered!")
 
