@@ -1245,7 +1245,7 @@ def calc_expected_rate_escal(df,rate_escalations, year):
         return x['escalation_factor'].pct_change().mean()
     
     # Only use the escalation multiplier over the next 30 years
-    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < year + 30) & (rate_escalations['year'] >=  year)]
+    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + 30)) & (rate_escalations['year'] >=  year)]
     
     avg_rate_esc = projected_rate_escalations.groupby(['census_division_abbr','sector'])
     
