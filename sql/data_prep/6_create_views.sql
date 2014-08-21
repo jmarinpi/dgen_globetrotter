@@ -228,9 +228,9 @@ With cdas AS (
 	FROM diffusion_shared.county_geom
 	order by year, census_division_abbr
 ),
-user_defined_gaps AS 
+user_defined_gaps_res AS 
 (
-	SELECT b.census_division_abbr, b.year, 
+	SELECT b.census_division_abbr, b.year, 'Residential'::text as sector,
 		a.user_defined_res_rate_escalations as escalation_factor,
 		lag(a.user_defined_res_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lag_factor,
 		lead(a.user_defined_res_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lead_factor,
@@ -240,15 +240,50 @@ user_defined_gaps AS
 	LEFT JOIN diffusion_wind.market_projections a
        on a.year = b.year
 ),
+user_defined_gaps_com AS 
+(
+	SELECT b.census_division_abbr, b.year, 'Commercial'::text as sector,
+		a.user_defined_com_rate_escalations as escalation_factor,
+		lag(a.user_defined_com_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lag_factor,
+		lead(a.user_defined_com_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lead_factor,
+		(array_agg(a.user_defined_com_rate_escalations) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING))[37] as last_factor,
+		'User Defined'::text as source
+	FROM cdas b
+	LEFT JOIN diffusion_wind.market_projections a
+       on a.year = b.year
+),
+user_defined_gaps_ind AS 
+(
+	SELECT b.census_division_abbr, b.year, 'Industrial'::text as sector,
+		a.user_defined_ind_rate_escalations as escalation_factor,
+		lag(a.user_defined_ind_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lag_factor,
+		lead(a.user_defined_ind_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lead_factor,
+		(array_agg(a.user_defined_ind_rate_escalations) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING))[37] as last_factor,
+		'User Defined'::text as source
+	FROM cdas b
+	LEFT JOIN diffusion_wind.market_projections a
+       on a.year = b.year
+),
+user_defined_gaps_all AS
+(
+	SELECT *
+	FROM user_defined_gaps_res
+	UNION
+	SELECT *
+	FROM user_defined_gaps_com
+	UNION
+	SELECT *
+	FROM user_defined_gaps_ind
+),
 user_defined_filled AS
 (
-	SELECT census_division_abbr, year, unnest(array['Residential','Commercial','Industrial'])::text as sector,
+	SELECT census_division_abbr, year, sector,
 	CASE WHEN escalation_factor is null and year <= 2050 THEN (lag_factor+lead_factor)/2
 	     WHEN escalation_factor is null and year > 2050 THEN last_factor
 	     ELSE escalation_factor
 	END as escation_factor,
 	source
-	FROM user_defined_gaps
+	FROM user_defined_gaps_all
 ),
 no_growth AS (
 SELECT census_division_abbr, year, unnest(array['Residential','Commercial','Industrial'])::text as sector,
@@ -297,6 +332,9 @@ INNER JOIN inp_opts b
 ON a.sector = b.sector
 and a.source = b.source;
 
+-- SELECT *
+-- FROM diffusion_wind.rate_escalations_to_model
+-- order by year;
 
 -- costs for all turbine sizes and years
 DROP VIEW IF EXISTS diffusion_wind.turbine_costs_per_size_and_year;
