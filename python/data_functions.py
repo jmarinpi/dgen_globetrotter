@@ -1248,7 +1248,10 @@ def calc_expected_rate_escal(df,rate_escalations, year, sector):
     rate_pivot = projected_rate_escalations.pivot(index = 'census_division_abbr',columns = 'year', values = 'escalation_factor')    
     rate_pivot['census_division_abbr'] = rate_pivot.index
     
-    customer_expected_escalations =  pd.merge(df[['county_id','bin_id','census_division_abbr']], rate_pivot, how = 'left')
+    # Need to join expected escalations on df without sorting, thus remerge with original frame
+    # see: http://stackoverflow.com/questions/20206615/how-can-a-pandas-merge-preserve-order
+    temp_df = df[['county_id','bin_id','census_division_abbr']]
+    customer_expected_escalations = temp_df.merge(temp_df.merge(rate_pivot, how = 'left', on = 'census_division_abbr', sort = False))
     
     if (df[['county_id','bin_id']] == customer_expected_escalations[['county_id','bin_id']]).all().all():
         return customer_expected_escalations.ix[:,3:].values
