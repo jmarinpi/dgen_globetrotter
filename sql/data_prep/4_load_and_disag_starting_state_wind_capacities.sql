@@ -34,28 +34,22 @@ DROP TABLE IF EXISTS diffusion_wind.starting_wind_capacities_mw_2014_us;
 CREATE TABLE diffusion_wind.starting_wind_capacities_mw_2014_us AS
 with sums as (
 	SELECT a.state_abbr, 
-		sum(b.total_load_mwh_2011_residential) as state_load_residential, 
-		sum(b.total_load_mwh_2011_commercial) as state_load_commercial, 
-		sum(b.total_load_mwh_2011_industrial) as state_load_industrial,
 		sum(b.total_customers_2011_residential) as state_customers_residential, 
 		sum(b.total_customers_2011_commercial) as state_customers_commercial, 
 		sum(b.total_customers_2011_industrial) as state_customers_industrial
 	FROM diffusion_shared.county_geom a
-	LEFT JOIN diffusion_wind.load_and_customers_by_county_us b
+	LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 	ON a.county_id = b.county_id
 	where a.state_abbr not in ('AK','HI')
 	GROUP BY a.state_abbr
 	),
 counties as (
 	SELECT a.state_abbr, a.county_id,
-		b.total_load_mwh_2011_residential,
-		b.total_load_mwh_2011_commercial,
-		b.total_load_mwh_2011_industrial,
 		b.total_customers_2011_residential,
 		b.total_customers_2011_commercial,
 		b.total_customers_2011_industrial
 	FROM diffusion_shared.county_geom a
-	LEFT JOIN diffusion_wind.load_and_customers_by_county_us b
+	LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 	ON a.county_id = b.county_id
 	where a.state_abbr not in ('AK','HI')
 	),
@@ -79,9 +73,9 @@ capacities as (
 	and c.sector = 'Industrial')
 	
 SELECT a.state_abbr, a.county_id, 
-	a.total_load_mwh_2011_residential/b.state_load_residential*c.capacity_mw_residential as capacity_mw_residential,
-	a.total_load_mwh_2011_commercial/b.state_load_commercial*c.capacity_mw_commercial as capacity_mw_commercial,
-	a.total_load_mwh_2011_industrial/b.state_load_industrial*c.capacity_mw_industrial as capacity_mw_industrial,
+	a.total_customers_2011_residential/b.state_customers_residential*c.capacity_mw_residential as capacity_mw_residential,
+	a.total_customers_2011_commercial/b.state_customers_commercial*c.capacity_mw_commercial as capacity_mw_commercial,
+	a.total_customers_2011_industrial/b.state_customers_industrial*c.capacity_mw_industrial as capacity_mw_industrial,
 
 	a.total_customers_2011_residential/b.state_customers_residential*c.systems_count_residential as systems_count_residential,
 	a.total_customers_2011_commercial/b.state_customers_commercial*c.systems_count_commercial as systems_count_commercial,
