@@ -1,3 +1,0 @@
--run scripts in ../python/excess_generation_factors to calculate excess generation factors
--results are ingested to postgres as wind_ds_data.excess_generation_factors_[turbine_name]
--and linked together with the resource data in the parent table wind_ds.wind_resource_annual  
