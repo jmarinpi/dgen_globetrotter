@@ -1,0 +1,16 @@
+scalars 
+	 B_hr_storage 	 
+ 			 / 6 / 
+	 B_min_OP 	 
+ 			 / 0 / 
+	 B_max_OP 	 
+ 			 / 10 / 
+	 B_rTrip_eff 	 
+ 			 / 1 / 
+	 operating_cost 	 
+ 			 / 0 / 
+	 PVscale 	 
+ 			 / 1000 / 
+	 eSoldCap 	 
+ 			 / 1000 / 
+;
