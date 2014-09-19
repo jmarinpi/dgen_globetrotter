@@ -49,3 +49,7 @@ select *
 from diffusion_solar.solar_resource_annual
 where solar_re_9809_gid in (3101,3451)
 order by tilt, azimuth;
+
+-- check stats again
+SELECT min(excess_gen_factor), max(excess_gen_factor), avg(excess_gen_factor)
+FROM diffusion_solar.solar_resource_annual

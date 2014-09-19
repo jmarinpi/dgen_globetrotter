@@ -60,7 +60,7 @@ print 'Finding hdf files'
 #hdf_path = '/Users/mgleason/gispgdb/data/dg_solar/cf'
 hdf_path = '/home/mgleason/data/dg_solar/cf'
 
-hdfs = [os.path.join(hdf_path,f) for f in glob.glob1(hdf_path,'*.h5')]
+hdfs = [os.path.join(hdf_path,f) for f in glob.glob1(hdf_path,'mg*.h5')]
 
 for hdf in hdfs:
     print 'Loading %s' % hdf
