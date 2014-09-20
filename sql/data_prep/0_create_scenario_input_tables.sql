@@ -28,6 +28,7 @@ CREATE TABLE diffusion_solar.scenario_options
   system_sizing text,
   random_generator_seed integer,
   ann_inflation numeric,
+  ann_system_degradation numeric,
   scenario_name text,
   overwrite_exist_inc boolean,
   incentive_start_year numeric,
