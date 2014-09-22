@@ -57,11 +57,11 @@ CREATE TABLE diffusion_solar.market_projections
   default_rate_escalations numeric
 );
 
-DROP TABLE IF EXISTS diffusion_solar.statewide_carbon_and_ng_intensities ;
-CREATE TABLE diffusion_solar.statewide_carbon_and_ng_intensities 
+DROP TABLE IF EXISTS diffusion_solar.manual_carbon_intensities ;
+CREATE TABLE diffusion_solar.manual_carbon_intensities 
 (
 	state_abbr character varying(2),
-	co2_intensity_tons_per_kwh numeric,
+	no_carbon_price_t_per_kwh numeric,
 	ng_intensity numeric
 );
 
@@ -102,6 +102,16 @@ CREATE TABLE diffusion_solar.solar_cost_projections
 	fixed_om_dollars_per_kw_per_yr numeric,
 	variable_om_dollars_per_kwh numeric,
 	sector character varying(3)
+);
+
+
+DROP TABLE IF EXISTS diffusion_solar.cost_multipliers;
+CREATE TABLE diffusion_solar.cost_multipliers
+(
+	sector character varying(3),
+	new_construction_multiplier numeric,
+	base_size_kw numeric,
+	size_adjustment_factor numeric
 );
 
 DROP TABLE IF EXISTS diffusion_solar.learning_rates;
