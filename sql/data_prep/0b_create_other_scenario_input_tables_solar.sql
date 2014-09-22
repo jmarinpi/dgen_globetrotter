@@ -104,6 +104,18 @@ CREATE TABLE diffusion_solar.solar_cost_projections
 	sector character varying(3)
 );
 
+-- this one isn't really an input table -- it should be a static table in the model
+-- but it can be loaded from the input spreadsheet nontheless
+DROP TABLE IF EXISTS diffusion_solar.solar_program_target_cost_projections;
+CREATE TABLE diffusion_solar.solar_program_target_cost_projections
+(
+	year integer,
+	capital_cost_dollars_per_kw numeric,
+	inverter_cost_dollars_per_kw numeric,
+	fixed_om_dollars_per_kw_per_yr numeric,
+	variable_om_dollars_per_kwh numeric,
+	sector character varying(3)
+);
 
 DROP TABLE IF EXISTS diffusion_solar.cost_multipliers;
 CREATE TABLE diffusion_solar.cost_multipliers
