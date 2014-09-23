@@ -60,5 +60,5 @@ create_report = True
 init_model = True
 
 # model mode (solar or wind)
-#mode = 'wind'
-mode = 'solar'
+#technology = 'wind'
+technology = 'solar'
