@@ -13,7 +13,7 @@ WITH a AS
 	FROM diffusion_shared.pt_grid_us_res a
 	GROUP BY a.county_id, 
 		a.annual_rate_gid, 
-		a.pca_reg, a.reeds_reg, a.wind_incentive_array_id,
+		a.pca_reg, a.reeds_reg, a.solar_incentive_array_id,
 		a.utility_type, 
 		a.solar_re_9809_gid
 )
@@ -39,9 +39,9 @@ CREATE INDEX point_microdata_res_us_utility_type_btree
   ON diffusion_solar.point_microdata_res_us
   USING btree (utility_type);
 
-BEGIN;
+
 VACUUM ANALYZE diffusion_solar.point_microdata_res_us;
-commit;
+
 
 ----------------------------------------------------------------------------------------------------
 -- commercial
@@ -132,6 +132,5 @@ CREATE INDEX point_microdata_ind_us_utility_type_btree
   ON diffusion_solar.point_microdata_ind_us
   USING btree (utility_type);
 
-Begin;
+
 VACUUM ANALYZE diffusion_solar.point_microdata_ind_us;
-commit;

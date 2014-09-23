@@ -144,7 +144,7 @@ def make_con(connection_string, async = False):
     # create cursor object
     cur = con.cursor(cursor_factory=pgx.RealDictCursor)
     # set role (this should avoid permissions issues)
-    cur.execute('SET ROLE "wind_ds-writers";')    
+    cur.execute('SET ROLE "diffusion-writers";')    
     if async:
         wait(con)
     else:
@@ -775,12 +775,12 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
 
     return final_table
 
-def get_sectors(cur):
+def get_sectors(cur, schema):
     '''Return the sectors to model from table view in postgres.
         Returned as a dictionary.
         '''    
     
-    sql = 'SELECT sectors FROM diffusion_wind.sectors_to_model;'
+    sql = 'SELECT sectors FROM %s.sectors_to_model;' % schema
     cur.execute(sql)
     sectors = cur.fetchone()['sectors']
     return sectors
@@ -796,7 +796,7 @@ def get_exclusions(cur):
     exclusions = cur.fetchone()['exclusions']
     return exclusions
     
-def get_depreciation_schedule(con, type = 'all'):
+def get_depreciation_schedule(con, schema, type = 'all'):
     ''' Pull depreciation schedule from dB
     
         IN: type - string - [all, macrs, standard] 
@@ -809,46 +809,19 @@ def get_depreciation_schedule(con, type = 'all'):
     else:
         close_con = False    
     if type.lower() == 'macrs':
-        sql = 'SELECT macrs FROM diffusion_wind.depreciation_schedule'
+        sql = 'SELECT macrs FROM %s.depreciation_schedule' % schema
     elif type.lower() == 'standard':
-        sql = 'SELECT standard FROM diffusion_wind.depreciation_schedule'
+        sql = 'SELECT standard FROM %s.depreciation_schedule' % schema
     else:
-        sql = 'SELECT * FROM diffusion_wind.depreciation_schedule'
+        sql = 'SELECT * FROM %s.depreciation_schedule' % schema
     df = sqlio.read_frame(sql, con)
     return df
     
-def get_scenario_options(cur):
+def get_scenario_options(cur, schema):
     ''' Pull scenario options from dB
     
-        IN: none
-        OUT: scenario_options - pandas data frame:
-                    'region', 
-                    'end_year', 
-                    'markets', 
-                    'cust_exp_elec_rates', 
-                    'res_rate_structure', 
-                    'res_rate_escalation', 
-                    'res_max_market_curve', 
-                    'com_rate_structure', 
-                    'com_rate_escalation', 
-                    'com_max_market_curve', 
-                    'ind_rate_structure', 
-                    'ind_rate_escalation', 
-                    'ind_max_market_curve', 
-                    'net_metering_availability', 
-                    'carbon_price', 
-                    'height_exclusions', 
-                    'ann_inflation', 
-                    'scenario_name', 
-                    'overwrite_exist_inc', 
-                    'starting_year', 
-                    'utility_type_iou', 
-                    'utility_type_muni', 
-                    'utility_type_coop', 
-                    'utility_type_allother'
-        
     '''
-    sql = "SELECT * FROM diffusion_wind.scenario_options"
+    sql = "SELECT * FROM %s.scenario_options" % schema
     cur.execute(sql)
     results = cur.fetchall()[0]
     return results
@@ -932,7 +905,7 @@ def get_main_dataframe(con, main_table, year):
     df = sqlio.read_frame(sql, con, coerce_float = False)
     return df
     
-def get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned'):
+def get_financial_parameters(con, schema, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned'):
     ''' Pull financial parameters dataframe from dB. Use passed parameters to subset for new/existing home/leasing/host-owned
     
         IN: con - pg con object - connection object
@@ -949,7 +922,7 @@ def get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host
     # Get data, filtering based on ownership models selected
     sql = """SELECT lower(sector) as sector, ownership_model, loan_term_yrs, loan_rate, down_payment, 
            discount_rate, tax_rate, length_of_irr_analysis_yrs
-           FROM diffusion_wind.financial_parameters
+           FROM %(schema)s.financial_parameters
            WHERE (lower(sector) = 'residential' AND ownership_model = '%(res_model)s')
            OR (lower(sector) = 'commercial' AND ownership_model = '%(com_model)s')
            OR (lower(sector) = 'industrial' AND ownership_model = '%(ind_model)s');""" % inputs
@@ -959,7 +932,7 @@ def get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host
  
 #==============================================================================
    
-def get_max_market_share(con, sectors, scenario_opts, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit'):
+def get_max_market_share(con, schema, sectors, scenario_opts, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit'):
     ''' Pull max market share from dB, select curve based on scenario_options, and interpolate to tenth of a year. 
         Use passed parameters to determine ownership type
     
@@ -989,14 +962,14 @@ def get_max_market_share(con, sectors, scenario_opts, residential_type = 'retrof
         # Whether to use default or user fit max market share curves
         if scenario_opts[short_sector + '_max_market_curve'] == 'User Fit':
             sql = """SELECT * 
-            FROM diffusion_wind.user_defined_max_market_share
-            WHERE lower(sector) = '%s';""" % sector.lower()
+            FROM %s.user_defined_max_market_share
+            WHERE lower(sector) = '%s';""" % (schema, sector.lower())
             mm = sqlio.read_frame(sql, con)
         else:
             # get the data for this sector from postgres (this will handle all of the selection based on scenario inputs)
             sql = """SELECT *
-                     FROM diffusion_wind.max_market_curves_to_model
-                     WHERE lower(sector) = '%s';""" % sector.lower()
+                     FROM %s.max_market_curves_to_model
+                     WHERE lower(sector) = '%s';""" % (schema, sector.lower())
             mm = sqlio.read_frame(sql, con)
         # create an interpolation function to interpolate max market share (for either retrofit or new) based on the year
         interp_func = interp1d(mm['year'], mm[ownership_type]);
@@ -1009,13 +982,13 @@ def get_max_market_share(con, sectors, scenario_opts, residential_type = 'retrof
     return max_market_share
     
 
-def get_market_projections(con):
+def get_market_projections(con, schema):
     ''' Pull market projections table from dB
     
         IN: con - pg con object - connection object
         OUT: market_projections - numpy array - table containing various market projections
     '''
-    return sqlio.read_frame('SELECT * FROM diffusion_wind.market_projections', con)
+    return sqlio.read_frame('SELECT * FROM %s.market_projections' % schema, con)
     
 def get_manual_incentives(con):
     ''' Pull manual incentives from input sheet
@@ -1219,7 +1192,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     
     return inc[['county_id','bin_id', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
 
-def get_rate_escalations(con):
+def get_rate_escalations(con, schema):
     '''
     Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
     resulting in an average real compounding rate growth. This rate is then used to calculate cash flows
@@ -1228,7 +1201,7 @@ def get_rate_escalations(con):
     OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
     '''  
     sql = """SELECT census_division_abbr, year, lower(sector) as sector, escalation_factor
-                FROM diffusion_wind.rate_escalations_to_model;"""
+                FROM %s.rate_escalations_to_model;""" % schema
     rate_escalations = sqlio.read_frame(sql, con)
     return rate_escalations
     
@@ -1287,7 +1260,7 @@ def fill_jagged_array(vals,lens, cols = 30):
     return r
     
 def code_profiler(out_dir):
-    lines = [ line for line in open(out_dir + '/dg_wind_model.log') if 'took:' in line]
+    lines = [ line for line in open(out_dir + '/dg_model.log') if 'took:' in line]
     
     process = [line.split('took:')[-2] for line in lines]
     process = [line.split(':')[-1] for line in process]

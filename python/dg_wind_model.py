@@ -23,15 +23,22 @@ import diffusion_functions as diffunc
 import financial_functions as finfunc
 import data_functions as datfunc
 reload(datfunc)
-import load_excel_wind as loadXL
 import subprocess
 import datetime
 import config as cfg
 import shutil
 import sys, getopt
 import pickle
+if cfg.technology == 'wind':
+    import load_excel_wind as loadXL
+elif cfg.technology == 'solar':
+    import load_excel_solar as loadXL
+    
 
 def main(mode = None, resume_year = None):
+
+    # check which technology is being modeled and adjust variables accordingly
+    schema = "diffusion_%s" % cfg.technology
 
     if mode == 'ReEDS':
         if resume_year == 2014:
@@ -63,8 +70,9 @@ def main(mode = None, resume_year = None):
         raise ValueError("""Error: customer_bins in config.py must be a positive integer.""") 
     model_init = time.time()
     
-    logger = datfunc.init_log(os.path.join(out_dir,'dg_wind_model.log'))
+    logger = datfunc.init_log(os.path.join(out_dir,'dg_model.log'))
     logger.info('Initiating model at %s' %time.ctime())
+
 
     try:       
         # if parallelization is off, reduce npar to 1
@@ -82,9 +90,9 @@ def main(mode = None, resume_year = None):
         
         # find the input excel spreadsheets
         if cfg.init_model:    
-            input_scenarios = [s for s in glob.glob("../input_scenarios/*.xls*") if not '~$' in s]
+            input_scenarios = [s for s in glob.glob("../input_scenarios_%s/*.xls*" % cfg.technology) if not '~$' in s]
             if len(input_scenarios) == 0:
-                raise ValueError("""No input scenario spreadsheet were found in the input_scenarios folder.""")
+                raise ValueError("""No input scenario spreadsheet were found in the input_scenarios_%s folder.""" % cfg.technology)
         else:
             input_scenarios = ['']
             
@@ -113,7 +121,7 @@ def main(mode = None, resume_year = None):
             
             
             # 6. Read in scenario option variables
-            scenario_opts = datfunc.get_scenario_options(cur) 
+            scenario_opts = datfunc.get_scenario_options(cur, schema) 
             logger.info('Scenario Name: %s' % scenario_opts['scenario_name'])
             t0 = time.time()
             exclusions = datfunc.get_exclusions(cur) # get exclusions
@@ -132,14 +140,15 @@ def main(mode = None, resume_year = None):
             # get the sectors to model
             t0 = time.time()
             
-            sectors = datfunc.get_sectors(cur)
-            deprec_schedule = datfunc.get_depreciation_schedule(con, type = 'standard').values
-            financial_parameters = datfunc.get_financial_parameters(con, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned')
-            max_market_share = datfunc.get_max_market_share(con, sectors.values(), scenario_opts, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit')
-            market_projections = datfunc.get_market_projections(con)
-            rate_escalations = datfunc.get_rate_escalations(con)
+            sectors = datfunc.get_sectors(cur, schema)
+            deprec_schedule = datfunc.get_depreciation_schedule(con, schema, type = 'standard').values
+            financial_parameters = datfunc.get_financial_parameters(con, schema, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned')
+            max_market_share = datfunc.get_max_market_share(con, schema, sectors.values(), scenario_opts, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit')
+            market_projections = datfunc.get_market_projections(con, schema)
+            rate_escalations = datfunc.get_rate_escalations(con, schema)
 
             logger.info('Getting various parameters took: %0.1fs' %(time.time() - t0))
+
             # 7. Combine All of the Temporally Varying Data in a new Table in Postgres
             if cfg.init_model:
                 t0 = time.time()

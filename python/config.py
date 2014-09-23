@@ -59,3 +59,6 @@ load_scenario_inputs = True
 create_report = True
 init_model = True
 
+# model mode (solar or wind)
+#mode = 'wind'
+mode = 'solar'
