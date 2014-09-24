@@ -30,8 +30,8 @@ customer_bins = 10
 random_generator_seed = 1
 
 # allowable flex factor for oversizing or undersizing turbines (used in selection of optimal turbine height and size for each customer bin)
-oversize_turbine_factor = 1.15
-undersize_turbine_factor = 0.5
+oversize_system_factor = 1.15
+undersize_system_factor = 0.5
 
 # model start year
 start_year = 2014

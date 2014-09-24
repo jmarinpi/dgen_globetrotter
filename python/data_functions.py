@@ -65,6 +65,7 @@ def prep_model(cfg):
         raise ValueError("""Error: customer_bins in config.py is not in the range of acceptable values. Change to a value in the set (10,50,100,500).""") 
     model_init = time.time()
     return out_dir, model_init
+
 def parse_command_args(argv):
     ''' Function to parse the command line arguments
     IN:
@@ -511,14 +512,42 @@ def create_scenario_report(scen_name, out_path, cur, con, Rscript_path, logger =
             print "Warning: %s" % messages[1]
     returncode = proc.returncode    
 
-    
-
-def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_year, end_year, 
-                           rate_escalation_source, load_growth_scenario, exclusion_type, oversize_turbine_factor,undersize_turbine_factor,
+def generate_customer_bins(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+                           rate_escalation_source, load_growth_scenario, exclusion_type, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, nem_availability, logger):
+                               
+                               
+    if technology == 'wind':
+        resource_key = 'i,j,cf_bin'
+        generate_customer_bins_wind(cur, con, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+                           rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, oversize_system_factor, undersize_system_factor,
+                           preprocess, npar, pg_conn_string, nem_availability, logger)
+    elif technology == 'solar':
+        resource_key = 'solar_re_9809_gid'
+        generate_customer_bins_solar(cur, con, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+                           rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, oversize_system_factor, undersize_system_factor,
+                           preprocess, npar, pg_conn_string, nem_availability, logger)    
 
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+def split_counties(cur, schema, npar):
     # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()  
+    inputs = locals().copy()      
+    
+    # get list of counties
+    sql =   """SELECT county_id 
+               FROM %(schema)s.counties_to_model
+               ORDER BY county_id;""" % inputs
+    cur.execute(sql)
+    counties = [row['county_id'] for row in cur.fetchall()]
+    county_chunks = map(list,np.array_split(counties, npar))    
+    
+    return county_chunks
+
+
+def add_to_inputs_dict(inputs, sector_abbr, seed):
+    
     inputs['i_place_holder'] = '%(i)s'
     inputs['chunk_place_holder'] = '%(county_ids)s'
     inputs['seed_str'] = str(seed).replace('.','p')
@@ -532,24 +561,10 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
         inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh'
         inputs['load_pkey'] = 'pubid8'
         inputs['load_weight_column'] = 'adjwt8'
-        
-    msg = "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
-    logger.info(msg)
-     
-    if preprocess == True:
-        table_name_dict = {'res': 'diffusion_wind.pt_res_best_option_each_year', 'com' : 'diffusion_wind.pt_com_best_option_each_year', 'ind' : 'diffusion_wind.pt_ind_best_option_each_year'}
-        return table_name_dict[sector_abbr]
-    
-    #==============================================================================
-    #     break counties into subsets for parallel processing
-    #==============================================================================
-    # get list of counties
-    sql =   """SELECT county_id 
-               FROM diffusion_wind.counties_to_model
-               ORDER BY county_id;"""
-    cur.execute(sql)
-    counties = [row['county_id'] for row in cur.fetchall()]
-    county_chunks = map(list,np.array_split(counties, npar))
+    return inputs
+
+
+def sample_customers_and_load(inputs_dict, county_chunks, exclusion_type, resource_key, npar, pg_conn_string, logger):
     
     #==============================================================================
     #     randomly sample  N points from each county 
@@ -558,21 +573,21 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     msg = 'Sampling Customer Bins from Each County'
     logger.info(msg)
     t0 = time.time() 
-    sql = """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s;
-             CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s AS
+    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s;
+             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s AS
             WITH b as 
             (
                 SELECT unnest(sample(array_agg(a.micro_id ORDER BY a.micro_id),%(n_bins)s,%(seed)s,True,array_agg(a.point_weight ORDER BY a.micro_id))) as micro_id
-                FROM diffusion_wind.point_microdata_%(sector_abbr)s_us a
+                FROM %(schema)s.point_microdata_%(sector_abbr)s_us a
                 WHERE a.county_id IN (%(chunk_place_holder)s)
                 GROUP BY a.county_id
             )
                 
             SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.micro_id) as bin_id
-            FROM diffusion_wind.point_microdata_%(sector_abbr)s_us_joined a
+            FROM %(schema)s.point_microdata_%(sector_abbr)s_us_joined a
             INNER JOIN b
             ON a.micro_id = b.micro_id
-            WHERE a.county_id IN (%(chunk_place_holder)s);""" % inputs
+            WHERE a.county_id IN (%(chunk_place_holder)s);""" % inputs_dict
 
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
@@ -585,13 +600,13 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     t0 = time.time()
     
     
-    sql =  """DROP TABLE IF EXISTS diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s;
-         CREATE TABLE diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s AS
+    sql =  """DROP TABLE IF EXISTS %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s;
+         CREATE TABLE %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s AS
          WITH all_bins AS
          (
              SELECT a.county_id, 
                      %(load_columns)s
-             FROM diffusion_wind.counties_to_model a
+             FROM %(schema)s.counties_to_model a
              LEFT JOIN %(load_table)s b
              ON a.census_region = b.census_region
              WHERE a.county_id in  (%(chunk_place_holder)s)
@@ -613,13 +628,13 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                     %(load_columns)s
         FROM numbered_samples a
         LEFT JOIN %(load_table)s b
-        ON a.load_id = b.%(load_pkey)s;""" % inputs
+        ON a.load_id = b.%(load_pkey)s;""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
     
     # add an index on county id and row_number
     sql = """CREATE INDEX county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s_join_fields_btree 
-            ON diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s USING BTREE(county_id, bin_id);""" % inputs
+            ON %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s USING BTREE(county_id, bin_id);""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
    
     #==============================================================================
@@ -629,14 +644,14 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     # have a representative sample of load bins 
     msg = 'Associating Customer Bins with Load and Customer Count'    
     logger.info(msg)
-    sql =  """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s;
-            CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
+    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s;
+            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
             WITH binned as(
             SELECT a.*, b.ann_cons_kwh, b.weight,
             	a.county_total_customers_2011 * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
             	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
-            FROM diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
-            LEFT JOIN diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s b
+            FROM %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
+            LEFT JOIN %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s b
             ON a.county_id = b.county_id
             AND a.bin_id = b.bin_id
             WHERE county_total_load_mwh_2011 > 0)
@@ -644,43 +659,72 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
             	CASE WHEN a.customers_in_bin > 0 THEN a.load_kwh_in_bin/a.customers_in_bin 
             	ELSE 0
             	END AS load_kwh_per_customer_in_bin
-            FROM binned a;""" % inputs
+            FROM binned a;""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
 
     # query for indices creation    
     sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_census_division_abbr_btree 
-              ON diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
               USING BTREE(census_division_abbr);
               
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_i_j_cf_bin 
-              ON diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
-              USING BTREE(i,j,cf_bin);""" % inputs
+              CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_resource_key_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
+              USING BTREE(%(resource_key)s);""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
-
 
     # add index for exclusions (if they apply)
     if exclusion_type is not None:
         sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_%(exclusion_type)s_btree 
-                  ON diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
+                  ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
                   USING BTREE(%(exclusion_type)s)
-                  WHERE %(exclusion_type)s > 0;""" % inputs
+                  WHERE %(exclusion_type)s > 0;""" % inputs_dict
         p_run(pg_conn_string, sql, county_chunks, npar)
+
+
+def generate_customer_bins_solar(cur, con, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+                           rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, 
+                           oversize_system_factor, undersize_system_factor,
+                           preprocess, npar, pg_conn_string, nem_availability, logger):
+
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs_init = locals().copy()  
+    inputs = add_to_inputs_dict(inputs_init, sector_abbr, seed)
+        
+    msg = "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
+    logger.info(msg)
+     
+    if preprocess == True:
+        table_name_dict = {'res': '%(schema)s.pt_res_best_option_each_year' % inputs, 
+                           'com' : '%(schema)s.pt_com_best_option_each_year' % inputs, 
+                           'ind' : '%(schema)s.pt_ind_best_option_each_year' % inputs}
+        return table_name_dict[sector_abbr]
     
+    #==============================================================================
+    #     break counties into subsets for parallel processing
+    #==============================================================================
+    # get list of counties
+    county_chunks = split_counties(cur, schema, npar)
+
+    #==============================================================================
+    #     sample customer locations and load. and link together    
+    #==============================================================================
+    sample_customers_and_load(inputs, county_chunks, exclusion_type, resource_key, npar, pg_conn_string, logger)
+
     #==============================================================================
     #     Find All Combinations of Points and Wind Resource
     #==============================================================================  
     msg = "Finding All Wind Resource Combinations for Each Customer Bin"
     logger.info(msg)
-    sql =  """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s;
-                CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s AS
+    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s;
+                CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s AS
                 SELECT a.*,
                 c.aep*a.aep_scale_factor as naep_no_derate,
                 c.turbine_id as power_curve_id, 
                 c.height as turbine_height_m,
                 c.excess_gen_factor as excess_generation_factor
-                FROM diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s a
-                LEFT JOIN diffusion_wind.wind_resource_annual c
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s a
+                LEFT JOIN %(schema)s.wind_resource_annual c
                 ON a.i = c.i
                 AND a.j = c.j
                 AND a.cf_bin = c.cf_bin""" % inputs
@@ -693,7 +737,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
 
     # create indices for subsequent joins
     sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s_join_fields_btree 
-              ON diffusion_wind.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s 
               USING BTREE(turbine_height_m, census_division_abbr, power_curve_id);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
 
@@ -709,8 +753,8 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     else:
         inputs['exclusions_insert'] = "80::integer as max_height,"
         
-    sql =  """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
-            CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s AS
+    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
+            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s AS
             WITH combined AS
             (
                 SELECT
@@ -735,12 +779,12 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
                 	a.naep_no_derate * b.derate_factor as naep,
                 	b.turbine_size_kw,
                 	a.turbine_height_m,
-                	diffusion_wind.scoe(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric, b.fixed_om_dollars_per_kw_per_yr, 
+                	%(schema)s.scoe(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric, b.fixed_om_dollars_per_kw_per_yr, 
                               b.variable_om_dollars_per_kwh, a.naep_no_derate * b.derate_factor, b.turbine_size_kw , 
                               a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, 
-                              '%(nem_availability)s', %(oversize_turbine_factor)s, %(undersize_turbine_factor)s) as scoe_return
-                FROM diffusion_wind.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
-                INNER JOIN diffusion_wind.temporal_factors b
+                              '%(nem_availability)s', %(oversize_system_factor)s, %(undersize_system_factor)s) as scoe_return
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
+                INNER JOIN %(schema)s.temporal_factors b
                 ON a.turbine_height_m = b.turbine_height_m
                 AND a.power_curve_id = b.power_curve_id
                 AND a.census_division_abbr = b.census_division_abbr
@@ -772,7 +816,7 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
           FROM combined;
           
           CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s_sort_fields_btree
-             ON diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s
+             ON %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s
              USING BTREE(county_id ASC, bin_id ASC, year ASC, scoe ASC, system_size_kw ASC, turbine_height_m ASC);           
           """ % inputs
 
@@ -787,32 +831,32 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     t0 = time.time()
     logger.info(msg)
     # create empty table
-    sql = """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_best_option_each_year;
-            CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_best_option_each_year AS
+    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_best_option_each_year;
+            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_best_option_each_year AS
             SELECT *
-            FROM diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_0
+            FROM %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_0
             LIMIT 0;""" % inputs    
     cur.execute(sql)
     con.commit()
     
-    sql =  """INSERT INTO diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
+    sql =  """INSERT INTO %(schema)s.pt_%(sector_abbr)s_best_option_each_year
               SELECT distinct on (a.county_id, a.bin_id, a.year) a.*
-              FROM  diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a
+              FROM  %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a
               ORDER BY a.county_id ASC, a.bin_id ASC, a.year ASC, a.scoe ASC,
                        a.system_size_kw ASC, a.turbine_height_m ASC;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     
     # create indices
     sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_join_fields_btree 
-             ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
              USING BTREE(county_id,bin_id);
              
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_year_btree 
-             ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
              USING BTREE(year);
              
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_incentive_array_btree 
-             ON diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
              USING BTREE(wind_incentive_array_id);             
             """ % inputs
     cur.execute(sql)
@@ -825,11 +869,11 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     #==============================================================================
     msg = "Cleaning up intermediate tables"
     logger.info(msg)
-    intermediate_tables = ['diffusion_wind.pt_%(sector_abbr)s_sample_%(i_place_holder)s' % inputs,
-                       'diffusion_wind.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s' % inputs,
-                       'diffusion_wind.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs,
-                       'diffusion_wind.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s' % inputs,
-                       'diffusion_wind.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs]
+    intermediate_tables = ['%(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s' % inputs,
+                       '%(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s' % inputs,
+                       '%(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs,
+                       '%(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s' % inputs,
+                       '%(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs]
         
          
     sql = 'DROP TABLE IF EXISTS %s;'
@@ -844,7 +888,221 @@ def generate_customer_bins(cur, con, seed, n_bins, sector_abbr, sector, start_ye
     #==============================================================================
     #     return name of final table
     #==============================================================================
-    final_table = 'diffusion_wind.pt_%(sector_abbr)s_best_option_each_year' % inputs
+    final_table = '%(schema)s.pt_%(sector_abbr)s_best_option_each_year' % inputs
+
+    return final_table
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+def generate_customer_bins_wind(cur, con, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+                           rate_escalation_source, load_growth_scenario, exclusion_type, resource_key,
+                           oversize_system_factor, undersize_system_factor,
+                           preprocess, npar, pg_conn_string, nem_availability, logger):
+
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs_init = locals().copy()  
+    inputs = add_to_inputs_dict(inputs_init, sector_abbr, seed)
+        
+    msg = "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
+    logger.info(msg)
+     
+    if preprocess == True:
+        table_name_dict = {'res': '%(schema)s.pt_res_best_option_each_year' % inputs, 
+                           'com' : '%(schema)s.pt_com_best_option_each_year' % inputs, 
+                           'ind' : '%(schema)s.pt_ind_best_option_each_year' % inputs}
+        return table_name_dict[sector_abbr]
+    
+    #==============================================================================
+    #     break counties into subsets for parallel processing
+    #==============================================================================
+    # get list of counties
+    county_chunks = split_counties(cur, schema, npar)
+    
+
+    #==============================================================================
+    #     sample customer locations and load. and link together    
+    #==============================================================================
+    sample_customers_and_load(inputs, county_chunks, exclusion_type, resource_key, npar, pg_conn_string, logger)
+    
+    #==============================================================================
+    #     Find All Combinations of Points and Wind Resource
+    #==============================================================================  
+    msg = "Finding All Wind Resource Combinations for Each Customer Bin"
+    logger.info(msg)
+    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s;
+                CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s AS
+                SELECT a.*,
+                c.aep*a.aep_scale_factor as naep_no_derate,
+                c.turbine_id as power_curve_id, 
+                c.height as turbine_height_m,
+                c.excess_gen_factor as excess_generation_factor
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s a
+                LEFT JOIN %(schema)s.wind_resource_annual c
+                ON a.i = c.i
+                AND a.j = c.j
+                AND a.cf_bin = c.cf_bin""" % inputs
+    if exclusion_type is not None:
+        sql += """ AND a.%(exclusion_type)s >= c.height
+                WHERE a.%(exclusion_type)s > 0;""" % inputs 
+    else:
+        sql += ';'
+    p_run(pg_conn_string, sql, county_chunks, npar)
+
+    # create indices for subsequent joins
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s_join_fields_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s 
+              USING BTREE(turbine_height_m, census_division_abbr, power_curve_id);""" % inputs
+    p_run(pg_conn_string, sql, county_chunks, npar)
+
+
+    #==============================================================================
+    #     Find All Combinations of Costs and Resource for Each Customer Bin
+    #==============================================================================
+    msg = "Finding All Combinations of Cost and Resource for Each Customer Bin and Year"
+    t0 = time.time()
+    logger.info(msg)
+    if exclusion_type is not None:
+        inputs['exclusions_insert'] = "a.%(exclusion_type)s as max_height," % inputs
+    else:
+        inputs['exclusions_insert'] = "80::integer as max_height,"
+        
+    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
+            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s AS
+            WITH combined AS
+            (
+                SELECT
+                 	a.micro_id, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
+                      a.utility_type, 
+                      a.pca_reg, a.reeds_reg,
+                      a.wind_incentive_array_id,
+                      %(exclusions_insert)s
+                	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
+                b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
+                	b.fixed_om_dollars_per_kw_per_yr, 
+                	b.variable_om_dollars_per_kwh,
+                	b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric as installed_costs_dollars_per_kw,
+                	a.ann_cons_kwh, 
+                	b.load_multiplier * a.customers_in_bin as customers_in_bin, 
+                	a.customers_in_bin as initial_customers_in_bin, 
+                	b.load_multiplier * a.load_kwh_in_bin AS load_kwh_in_bin,
+                	a.load_kwh_in_bin AS initial_load_kwh_in_bin,
+                	a.load_kwh_per_customer_in_bin,
+                a.nem_system_limit_kw,
+                a.excess_generation_factor,
+                	a.naep_no_derate * b.derate_factor as naep,
+                	b.turbine_size_kw,
+                	a.turbine_height_m,
+                	%(schema)s.scoe(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric, b.fixed_om_dollars_per_kw_per_yr, 
+                              b.variable_om_dollars_per_kwh, a.naep_no_derate * b.derate_factor, b.turbine_size_kw , 
+                              a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, 
+                              '%(nem_availability)s', %(oversize_system_factor)s, %(undersize_system_factor)s) as scoe_return
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
+                INNER JOIN %(schema)s.temporal_factors b
+                ON a.turbine_height_m = b.turbine_height_m
+                AND a.power_curve_id = b.power_curve_id
+                AND a.census_division_abbr = b.census_division_abbr
+                WHERE b.sector = '%(sector)s'
+                AND b.rate_escalation_source = '%(rate_escalation_source)s'
+                AND b.load_growth_scenario = '%(load_growth_scenario)s'
+            )
+                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
+                   pca_reg, reeds_reg, wind_incentive_array_id, max_height, elec_rate_cents_per_kwh, 
+                   carbon_price_cents_per_kwh, 
+            
+                   fixed_om_dollars_per_kw_per_yr, 
+                   variable_om_dollars_per_kwh, 
+                   installed_costs_dollars_per_kw, 
+            
+                   ann_cons_kwh, 
+                   customers_in_bin, initial_customers_in_bin, 
+                   load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
+                   nem_system_limit_kw, excess_generation_factor, 
+    
+                   naep,
+                   naep*(scoe_return).nturb*turbine_size_kw as aep,
+                   (scoe_return).nturb*turbine_size_kw as system_size_kw,
+                   (scoe_return).nturb as nturb,
+    
+                   turbine_size_kw, 
+                   turbine_height_m, 
+                   (round((scoe_return).scoe,4)*1000)::BIGINT as scoe
+          FROM combined;
+          
+          CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s_sort_fields_btree
+             ON %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s
+             USING BTREE(county_id ASC, bin_id ASC, year ASC, scoe ASC, system_size_kw ASC, turbine_height_m ASC);           
+          """ % inputs
+
+        
+    p_run(pg_conn_string, sql, county_chunks, npar)
+    print time.time() - t0
+
+    #==============================================================================
+    #    Find the Most Cost-Effective Wind Turbine Configuration for Each Customer Bin
+    #==============================================================================
+    msg = "Selecting the most cost-effective wind turbine configuration for each customer bin and year"
+    t0 = time.time()
+    logger.info(msg)
+    # create empty table
+    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_best_option_each_year;
+            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_best_option_each_year AS
+            SELECT *
+            FROM %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_0
+            LIMIT 0;""" % inputs    
+    cur.execute(sql)
+    con.commit()
+    
+    sql =  """INSERT INTO %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+              SELECT distinct on (a.county_id, a.bin_id, a.year) a.*
+              FROM  %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a
+              ORDER BY a.county_id ASC, a.bin_id ASC, a.year ASC, a.scoe ASC,
+                       a.system_size_kw ASC, a.turbine_height_m ASC;""" % inputs
+    p_run(pg_conn_string, sql, county_chunks, npar)
+    
+    # create indices
+    sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_join_fields_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(county_id,bin_id);
+             
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_year_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(year);
+             
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_incentive_array_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(wind_incentive_array_id);             
+            """ % inputs
+    cur.execute(sql)
+    con.commit()
+    
+    print time.time() - t0
+
+    #==============================================================================
+    #   clean up intermediate tables
+    #==============================================================================
+    msg = "Cleaning up intermediate tables"
+    logger.info(msg)
+    intermediate_tables = ['%(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s' % inputs,
+                       '%(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s' % inputs,
+                       '%(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs,
+                       '%(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s' % inputs,
+                       '%(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs]
+        
+         
+    sql = 'DROP TABLE IF EXISTS %s;'
+    for intermediate_table in intermediate_tables:
+        isql = sql % intermediate_table
+        if '%(i)s' in intermediate_table:
+            p_run(pg_conn_string, isql, county_chunks, npar)
+        else:
+            cur.execute(isql)
+            con.commit()    
+
+    #==============================================================================
+    #     return name of final table
+    #==============================================================================
+    final_table = '%(schema)s.pt_%(sector_abbr)s_best_option_each_year' % inputs
 
     return final_table
 
@@ -859,14 +1117,17 @@ def get_sectors(cur, schema):
     return sectors
     
     
-def get_exclusions(cur):
+def get_exclusions(cur, technology):
     '''Return the sectors to model from table view in postgres.
         Returned as a dictionary.
         '''    
+    if technology == 'wind':
+        sql = 'SELECT * FROM diffusion_wind.exclusions_to_model;'
+        cur.execute(sql)
+        exclusions = cur.fetchone()['exclusions']
+    elif technology == 'solar':
+        exclusions = None
     
-    sql = 'SELECT * FROM diffusion_wind.exclusions_to_model;'
-    cur.execute(sql)
-    exclusions = cur.fetchone()['exclusions']
     return exclusions
     
 def get_depreciation_schedule(con, schema, type = 'all'):

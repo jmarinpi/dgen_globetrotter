@@ -124,7 +124,7 @@ def main(mode = None, resume_year = None):
             scenario_opts = datfunc.get_scenario_options(cur, schema) 
             logger.info('Scenario Name: %s' % scenario_opts['scenario_name'])
             t0 = time.time()
-            exclusions = datfunc.get_exclusions(cur) # get exclusions
+            exclusions = datfunc.get_exclusions(cur, cfg.technology) # get exclusions
             logger.info('Getting exclusions took: %0.1f' % (time.time() - t0))
             load_growth_scenario = scenario_opts['load_growth_scenario'] # get financial variables
             net_metering = scenario_opts['net_metering_availability']
@@ -167,9 +167,11 @@ def main(mode = None, resume_year = None):
                 # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
                 if cfg.init_model:
                     t0 = time.time()
-                    main_table = datfunc.generate_customer_bins(cur, con, scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
+                    main_table = datfunc.generate_customer_bins(cur, con, cfg.technology, schema, 
+                                                   scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
                                                    cfg.start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
-                                                   cfg.oversize_turbine_factor, cfg.undersize_turbine_factor, cfg.preprocess, cfg.npar, cfg.pg_conn_string, scenario_opts['net_metering_availability'], logger = logger)
+                                                   cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.preprocess, cfg.npar, 
+                                                   cfg.pg_conn_string, scenario_opts['net_metering_availability'], logger = logger)
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
                 else:
                     main_table = 'diffusion_wind.pt_%s_best_option_each_year' % sector_abbr
