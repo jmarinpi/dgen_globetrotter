@@ -157,7 +157,7 @@ def main(mode = None, resume_year = None):
             # 8. Set up the Main Data Frame for each sector
             outputs = pd.DataFrame()
             t0 = time.time()
-            datfunc.clear_outputs(con,cur) # clear results from previous run
+            datfunc.clear_outputs(con, cur, schema) # clear results from previous run
             logger.info('datfunc.clear_outputs took: %0.1fs' %(time.time() - t0))
               
             for sector_abbr, sector in sectors.iteritems():

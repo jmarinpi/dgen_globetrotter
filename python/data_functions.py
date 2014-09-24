@@ -307,7 +307,7 @@ def combine_temporal_data_wind(cur, con, start_year, end_year, sectors, preproce
     
     return 1
     
-def clear_outputs(con,cur,schema):
+def clear_outputs(con, cur, schema):
     """Delete all rows from the res, com, and ind output tables"""
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
