@@ -2,7 +2,7 @@
 
 -- create view of the valid counties
 CREATE OR REPLACE VIEW diffusion_solar.counties_to_model AS
-SELECT county_id, census_region
+SELECT county_id, census_region, state_abbr
 FROM diffusion_shared.county_geom a
 INNER JOIN diffusion_solar.scenario_options b
 ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)

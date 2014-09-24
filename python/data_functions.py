@@ -519,12 +519,12 @@ def generate_customer_bins(cur, con, technology, schema, seed, n_bins, sector_ab
                                
     if technology == 'wind':
         resource_key = 'i,j,cf_bin'
-        generate_customer_bins_wind(cur, con, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+        generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, nem_availability, logger)
     elif technology == 'solar':
         resource_key = 'solar_re_9809_gid'
-        generate_customer_bins_solar(cur, con, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+        generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, nem_availability, logger)    
 
@@ -663,26 +663,32 @@ def sample_customers_and_load(inputs_dict, county_chunks, exclusion_type, resour
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
 
-    # query for indices creation    
-    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_census_division_abbr_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
-              USING BTREE(census_division_abbr);
-              
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_resource_key_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
-              USING BTREE(%(resource_key)s);""" % inputs_dict
-    p_run(pg_conn_string, sql, county_chunks, npar)
-
-    # add index for exclusions (if they apply)
-    if exclusion_type is not None:
-        sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_%(exclusion_type)s_btree 
+    if inputs_dict['technology'] == 'wind':
+        # query for indices creation    
+        sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_census_division_abbr_btree 
                   ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
-                  USING BTREE(%(exclusion_type)s)
-                  WHERE %(exclusion_type)s > 0;""" % inputs_dict
+                  USING BTREE(census_division_abbr);
+                  
+                  CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_resource_key_btree 
+                  ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
+                  USING BTREE(%(resource_key)s);""" % inputs_dict
+        p_run(pg_conn_string, sql, county_chunks, npar)
+    
+        # add index for exclusions (if they apply)
+        if exclusion_type is not None:
+            sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_%(exclusion_type)s_btree 
+                      ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
+                      USING BTREE(%(exclusion_type)s)
+                      WHERE %(exclusion_type)s > 0;""" % inputs_dict
+            p_run(pg_conn_string, sql, county_chunks, npar)
+    elif inputs_dict['technology'] == 'solar':
+        # add an index on county id and row_number
+        sql = """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_join_fields_btree 
+                ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s  USING BTREE(county_id, bin_id);""" % inputs_dict
         p_run(pg_conn_string, sql, county_chunks, npar)
 
 
-def generate_customer_bins_solar(cur, con, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, 
                            oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, nem_availability, logger):
@@ -712,33 +718,99 @@ def generate_customer_bins_solar(cur, con, schema, seed, n_bins, sector_abbr, se
     sample_customers_and_load(inputs, county_chunks, exclusion_type, resource_key, npar, pg_conn_string, logger)
 
     #==============================================================================
-    #     Find All Combinations of Points and Wind Resource
+    #     Sample set of rooftop orientations for each county
     #==============================================================================  
-    msg = "Finding All Wind Resource Combinations for Each Customer Bin"
+    msg = "Sampling from distribution of rooftop availability"
     logger.info(msg)
-    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s;
-                CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s AS
-                SELECT a.*,
-                c.aep*a.aep_scale_factor as naep_no_derate,
-                c.turbine_id as power_curve_id, 
-                c.height as turbine_height_m,
-                c.excess_gen_factor as excess_generation_factor
+    
+    t0 = time.time()
+    sql = """DROP TABLE IF EXISTS %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s;
+             CREATE TABLE %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s AS
+            WITH all_bins AS
+             (
+                 SELECT a.county_id, 
+                         b.uid as orientation_uid,
+                         b.weight::numeric as weight
+                 FROM %(schema)s.counties_to_model a
+                 LEFT JOIN %(schema)s.solar_ds_rooftop_availability b
+                 ON a.state_abbr = b.state_abbr
+                 and b.sector = '%(sector_abbr)s'
+                 WHERE a.county_id IN (%(chunk_place_holder)s)
+            ),
+            sampled_bins AS 
+            (
+                SELECT a.county_id, 
+                        unnest(sample(array_agg(a.orientation_uid ORDER BY a.orientation_uid), %(n_bins)s, %(seed)s * a.county_id,True, array_agg(a.weight ORDER BY a.orientation_uid))) as orientation_uid
+                FROM all_bins a
+                GROUP BY a.county_id
+                ORDER BY a.county_id, orientation_uid
+            ), 
+            numbered_samples AS
+            (
+                SELECT a.county_id, a.orientation_uid,
+                       ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.orientation_uid) as bin_id 
+                FROM sampled_bins a
+            )
+            SELECT  a.county_id, a.bin_id,
+                        b.pct_shaded, b.tilt, b.azimuth, b.weight
+            FROM numbered_samples a
+            LEFT JOIN %(schema)s.solar_ds_rooftop_availability b
+            ON a.orientation_uid = b.uid;""" % inputs
+    p_run(pg_conn_string, sql, county_chunks, npar)   
+    print time.time()-t0
+    
+    # add an index on county id and row_number
+    sql = """CREATE INDEX county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s_join_fields_btree 
+            ON %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s USING BTREE(county_id, bin_id);""" % inputs
+    p_run(pg_conn_string, sql, county_chunks, npar)
+   
+    #==============================================================================
+    #     link each point to a rooftop orientation
+    #==============================================================================
+    # use random weighted sampling on the load bins to ensure that countyies with <N points
+    # have a representative sample of load bins 
+    msg = 'Associating Customer Bins with Rooftop Availability'    
+    logger.info(msg)
+    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s;
+            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s AS
+                SELECT a.*, b.pct_shaded, b.tilt, b.azimuth, b.weight as rooftop_weight
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s a
-                LEFT JOIN %(schema)s.wind_resource_annual c
-                ON a.i = c.i
-                AND a.j = c.j
-                AND a.cf_bin = c.cf_bin""" % inputs
-    if exclusion_type is not None:
-        sql += """ AND a.%(exclusion_type)s >= c.height
-                WHERE a.%(exclusion_type)s > 0;""" % inputs 
-    else:
-        sql += ';'
+                LEFT JOIN %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s b
+                ON a.county_id = b.county_id
+                AND a.bin_id = b.bin_id""" % inputs
+    p_run(pg_conn_string, sql, county_chunks, npar)
+    print time.time()-t0
+
+    # query for indices creation    
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s_census_division_abbr_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s 
+              USING BTREE(census_division_abbr);
+              
+              CREATE INDEX pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s_resource_key_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s 
+              USING BTREE(solar_re_9809_gid, tilt, azimuth);""" % inputs
+    p_run(pg_conn_string, sql, county_chunks, npar)
+    
+    # join to resource
+    msg = "Finding Resource for Each Customer Bin"
+    logger.info(msg)
+    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s;
+                CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s AS
+                SELECT a.*,
+                        b.derate,
+                        b.naep,
+                        b.excess_gen_factor as excess_generation_factor
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s a
+                LEFT JOIN %(schema)s.solar_resource_annual b
+                ON a.solar_re_9809_gid = b.solar_re_9809_gid
+                AND a.tilt = b.tilt
+                AND a.azimuth = b.azimuth""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
 
     # create indices for subsequent joins
-    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s_join_fields_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s 
-              USING BTREE(turbine_height_m, census_division_abbr, power_curve_id);""" % inputs
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_join_fields_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s 
+              USING BTREE(derate, census_division_abbr);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
 
 
@@ -748,57 +820,70 @@ def generate_customer_bins_solar(cur, con, schema, seed, n_bins, sector_abbr, se
     msg = "Finding All Combinations of Cost and Resource for Each Customer Bin and Year"
     t0 = time.time()
     logger.info(msg)
-    if exclusion_type is not None:
-        inputs['exclusions_insert'] = "a.%(exclusion_type)s as max_height," % inputs
-    else:
-        inputs['exclusions_insert'] = "80::integer as max_height,"
         
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s AS
             WITH combined AS
             (
                 SELECT
-                 	a.micro_id, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
-                      a.utility_type, 
-                      a.pca_reg, a.reeds_reg,
-                      a.wind_incentive_array_id,
-                      %(exclusions_insert)s
+                 	a.micro_id, a.county_id, a.bin_id, 
+                  b.year, 
+                  a.state_abbr, 
+                  a.census_division_abbr, 
+                  a.utility_type, 
+                  a.pca_reg, a.reeds_reg,
+                  a.solar_incentive_array_id,
                 	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
-                b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
+                  b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
                 	b.fixed_om_dollars_per_kw_per_yr, 
                 	b.variable_om_dollars_per_kwh,
-                	b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric as installed_costs_dollars_per_kw,
+                	b.capital_cost_dollars_per_kw * a.cap_cost_multiplier::NUMERIC as capital_cost_dollars_per_kw,
+                  b.inverter_cost_dollars_per_kw * a.cap_cost_multiplier::NUMERIC as inverter_cost_dollars_per_kw,
                 	a.ann_cons_kwh, 
-                	b.load_multiplier * a.customers_in_bin as customers_in_bin, 
-                	a.customers_in_bin as initial_customers_in_bin, 
-                	b.load_multiplier * a.load_kwh_in_bin AS load_kwh_in_bin,
-                	a.load_kwh_in_bin AS initial_load_kwh_in_bin,
+                	b.load_multiplier * a.customers_in_bin * (1-a.pct_shaded) as customers_in_bin, 
+                	a.customers_in_bin * (1-a.pct_shaded) as initial_customers_in_bin, 
+                	b.load_multiplier * a.load_kwh_in_bin * (1-a.pct_shaded) AS load_kwh_in_bin,
+                	a.load_kwh_in_bin * (1-a.pct_shaded) AS initial_load_kwh_in_bin,
                 	a.load_kwh_per_customer_in_bin,
-                a.nem_system_limit_kw,
-                a.excess_generation_factor,
-                	a.naep_no_derate * b.derate_factor as naep,
-                	b.turbine_size_kw,
-                	a.turbine_height_m,
-                	%(schema)s.scoe(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric, b.fixed_om_dollars_per_kw_per_yr, 
-                              b.variable_om_dollars_per_kwh, a.naep_no_derate * b.derate_factor, b.turbine_size_kw , 
-                              a.load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, 
-                              '%(nem_availability)s', %(oversize_system_factor)s, %(undersize_system_factor)s) as scoe_return
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
+                  a.nem_system_limit_kw,
+                  a.excess_generation_factor,
+                	a.naep * b.efficiency_improvement_factor as naep,
+                  a.tilt,
+                  a.azimuth,
+                  a.derate,
+                  a.pct_shaded,
+                  a.solar_re_9809_gid,
+                  b.density_w_per_sqft, 
+                  b.inverter_lifetime_yrs--,
+                  -- REPLACE SCOE WITH AN OPTIMAL SIZING ALGORITHM THAT RETURNS A SYSTEM SIZE GIVEN THE FOLLOWING INPUTS:
+                  -- capital_cost_dollars_per_kw
+                  -- inverter_cost_dollars_per_kw
+                  -- fixed_om_dollars_per_kw_per_year
+                  -- variable_om_dollars_per_kwh
+                  -- naep
+                  -- density_w_per_sqft (this will be inactive for now)
+                  -- available rooftop space (this will be inactive for now)
+                  -- load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, 
+                  -- %(nem_availability)s
+                  -- %(oversize_system_factor)s
+                  -- %(undersize_system_factor)s
+                	--%(schema)s.scoe() as scoe_return
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s a
                 INNER JOIN %(schema)s.temporal_factors b
-                ON a.turbine_height_m = b.turbine_height_m
-                AND a.power_curve_id = b.power_curve_id
+                ON a.derate = b.derate
                 AND a.census_division_abbr = b.census_division_abbr
-                WHERE b.sector = '%(sector)s'
+                WHERE b.sector = '%(sector_abbr)s'
                 AND b.rate_escalation_source = '%(rate_escalation_source)s'
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
-                   pca_reg, reeds_reg, wind_incentive_array_id, max_height, elec_rate_cents_per_kwh, 
+                   pca_reg, reeds_reg, solar_incentive_array_id, elec_rate_cents_per_kwh, 
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 
                    variable_om_dollars_per_kwh, 
-                   installed_costs_dollars_per_kw, 
+                   capital_cost_dollars_per_kw, 
+                   inverter_cost_dollars_per_kw,
             
                    ann_cons_kwh, 
                    customers_in_bin, initial_customers_in_bin, 
@@ -806,24 +891,30 @@ def generate_customer_bins_solar(cur, con, schema, seed, n_bins, sector_abbr, se
                    nem_system_limit_kw, excess_generation_factor, 
     
                    naep,
-                   naep*(scoe_return).nturb*turbine_size_kw as aep,
-                   (scoe_return).nturb*turbine_size_kw as system_size_kw,
-                   (scoe_return).nturb as nturb,
+                   -- ??? should we add in a conversion to calculate the actual aep based on naep and the output of scoe
+                   --(scoe_return).nturb*turbine_size_kw as system_size_kw,
+                   --(scoe_return).nturb as nturb,
     
-                   turbine_size_kw, 
-                   turbine_height_m, 
-                   (round((scoe_return).scoe,4)*1000)::BIGINT as scoe
+                   tilt,
+                   azimuth,
+                   derate,
+                   pct_shaded,
+                   solar_re_9809_gid,
+                   density_w_per_sqft,
+                   inverter_lifetime_yrs--,
+                   --(round((scoe_return).scoe,4)*1000)::BIGINT as scoe
           FROM combined;
           
-          CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s_sort_fields_btree
-             ON %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s
-             USING BTREE(county_id ASC, bin_id ASC, year ASC, scoe ASC, system_size_kw ASC, turbine_height_m ASC);           
+          --CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s_sort_fields_btree
+             --ON %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s
+             --USING BTREE(county_id ASC, bin_id ASC, year ASC, scoe ASC, system_size_kw ASC, turbine_height_m ASC);           
           """ % inputs
 
         
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time() - t0
 
+    # NOTE: NOT SURE IF THIS IS NESSARY ANYMORE -- PROBABLY NOT
     #==============================================================================
     #    Find the Most Cost-Effective Wind Turbine Configuration for Each Customer Bin
     #==============================================================================
@@ -895,7 +986,7 @@ def generate_customer_bins_solar(cur, con, schema, seed, n_bins, sector_abbr, se
 ########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
-def generate_customer_bins_wind(cur, con, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, exclusion_type, resource_key,
                            oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, nem_availability, logger):
