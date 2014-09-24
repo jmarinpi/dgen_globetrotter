@@ -21,12 +21,13 @@ set (naep, cf_avg) = (b.naep,b.cf_avg)
 FROM replacements b
 where a.solar_re_9809_gid = 3101
 and a.tilt = b.tilt
-and a.azimuth = b.azimuth;
+and a.azimuth = b.azimuth
+and a.derate = b.derate;
 
 select *
 from diffusion_solar.solar_resource_annual
 where solar_re_9809_gid in (3101,3451)
-order by tilt, azimuth;
+order by tilt, azimuth, derate;
 
 -- alter type of the tilt column
 SELECT distinct(tilt)
@@ -37,7 +38,7 @@ ALTER COLUMN tilt TYPE integer using tilt::integer;
 
 -- create primary key (on gid, tilt, azimuth)
 ALTER TABLE diffusion_solar.solar_resource_annual
-ADD primary key (solar_re_9809_gid, tilt, azimuth);
+ADD primary key (solar_re_9809_gid, tilt, azimuth, derate);
 
 -- create separate indices
 CREATE INDEX solar_resource_annual_gid_btree
@@ -48,5 +49,8 @@ ON diffusion_solar.solar_resource_annual USING btree(tilt);
 
 CREATE INDEX solar_resource_annual_azimuth_btree
 ON diffusion_solar.solar_resource_annual USING btree(azimuth);
+
+CREATE INDEX solar_resource_annual_derate_btree
+ON diffusion_solar.solar_resource_annual USING btree(derate);
 
 vacuum analyze diffusion_solar.solar_resource_annual;

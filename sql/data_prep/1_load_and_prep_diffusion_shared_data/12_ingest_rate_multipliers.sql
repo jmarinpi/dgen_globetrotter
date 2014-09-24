@@ -30,6 +30,19 @@ GROUP BY census_division_abbr, sector, year, escalation_factor;
 ALTER TABLE diffusion_shared.rate_escalations 
 ADD constraint sector_check check (sector in ('Residential','Commercial','Industrial'));
 
+-- add a sector_abbr column
+ALTER TABLE diffusion_shared.rate_escalations 
+ADD COLUMN sector_abbr character varying(3);
+
+UPDATE diffusion_shared.rate_escalations 
+SET sector_abbr = CASE WHEN sector = 'Residential' THEN 'res'
+			WHEN sector = 'Industrial' THEN 'ind'
+			WHEN sector = 'Commercial' then 'com'
+		   end;
+
+ALTER TABLE diffusion_shared.rate_escalations 		   
+ADD constraint sector_abbr_check check (sector_abbr in ('res','com','ind'));
+
 -- add source column
 ALTER TABLE diffusion_shared.rate_escalations 
 ADD COLUMN source text;
@@ -42,3 +55,4 @@ CREATE INDEX rate_escalations_btree_year ON diffusion_shared.rate_escalations us
 CREATE INDEX rate_escalations_btree_census_division_abbr ON diffusion_shared.rate_escalations using btree(census_division_abbr);
 CREATE INDEX rate_escalations_btree_sector ON diffusion_shared.rate_escalations using btree(sector);
 CREATE INDEX rate_escalations_btree_source ON diffusion_shared.rate_escalations using btree(source);
+CREATE INDEX rate_escalations_btree_sector_abbr ON diffusion_shared.rate_escalations using btree(sector_abbr);

@@ -213,6 +213,56 @@ ON a.sector = b.sector
 and a.source = b.source
 order by year, sector;
 
+
+-- cost projections
+CREATE OR REPLACE VIEW diffusion_solar.cost_projections_to_model As
+WITH a as 
+(
+	SELECT year, capital_cost_dollars_per_kw, inverter_cost_dollars_per_kw, 
+	       fixed_om_dollars_per_kw_per_yr, variable_om_dollars_per_kwh, 
+	       sector, 'User Defined'::text as source
+	FROM diffusion_solar.solar_cost_projections
+
+	UNION ALL
+
+	SELECT year, capital_cost_dollars_per_kw, inverter_cost_dollars_per_kw, 
+		fixed_om_dollars_per_kw_per_yr, variable_om_dollars_per_kwh, 
+		sector, 'Solar Program Targets'::text as source
+	FROM diffusion_solar.solar_program_target_cost_projections
+)
+SELECT a.*
+FROM a
+INNER JOIN diffusion_solar.scenario_options b
+ON a.source = b.cost_assumptions;
+
+
+with user_inputs as (
+	SELECT 'residential' as sector, res_max_market_curve as source
+	FROM diffusion_solar.scenario_options
+	UNION
+	SELECT 'commercial' as sector, com_max_market_curve as source
+	FROM diffusion_solar.scenario_options
+	UNION
+	SELECT 'industrial' as sector, ind_max_market_curve as source
+	FROM diffusion_solar.scenario_options
+),
+all_maxmarket as (
+	SELECT years_to_payback as year, sector, max_market_share_new as new, max_market_share_retrofit as retrofit, source
+	FROM diffusion_shared.max_market_share
+
+
+	UNION
+
+	SELECT year, sector, new, retrofit, 'User Defined' as source
+	FROM diffusion_solar.user_defined_max_market_share)
+SELECT a.*
+FROM all_maxmarket a
+INNER JOIN user_inputs b
+ON a.sector = b.sector
+and a.source = b.source
+order by year, sector;
+
+
 -- create view for rate escalations
 CREATE OR REPLACE VIEW diffusion_solar.rate_escalations_to_model AS
 With cdas AS (
@@ -222,7 +272,7 @@ With cdas AS (
 ),
 user_defined_gaps_res AS 
 (
-	SELECT b.census_division_abbr, b.year, 'Residential'::text as sector,
+	SELECT b.census_division_abbr, b.year, 'res'::text as sector,
 		a.user_defined_res_rate_escalations as escalation_factor,
 		lag(a.user_defined_res_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lag_factor,
 		lead(a.user_defined_res_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lead_factor,
@@ -234,7 +284,7 @@ user_defined_gaps_res AS
 ),
 user_defined_gaps_com AS 
 (
-	SELECT b.census_division_abbr, b.year, 'Commercial'::text as sector,
+	SELECT b.census_division_abbr, b.year, 'com'::text as sector,
 		a.user_defined_com_rate_escalations as escalation_factor,
 		lag(a.user_defined_com_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lag_factor,
 		lead(a.user_defined_com_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lead_factor,
@@ -246,7 +296,7 @@ user_defined_gaps_com AS
 ),
 user_defined_gaps_ind AS 
 (
-	SELECT b.census_division_abbr, b.year, 'Industrial'::text as sector,
+	SELECT b.census_division_abbr, b.year, 'ind'::text as sector,
 		a.user_defined_ind_rate_escalations as escalation_factor,
 		lag(a.user_defined_ind_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lag_factor,
 		lead(a.user_defined_ind_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lead_factor,
@@ -278,14 +328,14 @@ user_defined_filled AS
 	FROM user_defined_gaps_all
 ),
 no_growth AS (
-SELECT census_division_abbr, year, unnest(array['Residential','Commercial','Industrial'])::text as sector,
+SELECT census_division_abbr, year, unnest(array['res','com','ind'])::text as sector,
 		1::numeric as escalation_factor,
 		'No Growth'::text as source
 	FROM cdas
 ),
 aeo AS 
 (
-	SELECT census_division_abbr, year, sector, 
+	SELECT census_division_abbr, year, sector_abbr::text as sector, 
 		escalation_factor, 
 		source
 	FROM diffusion_shared.rate_escalations
@@ -308,13 +358,13 @@ esc_combined AS
 ),
 inp_opts AS 
 (
-	SELECT 'Residential'::text as sector, res_rate_escalation as source
+	SELECT 'res'::text as sector, res_rate_escalation as source
 	FROM diffusion_solar.scenario_options
 	UNION
-	SELECT 'Commercial'::text as sector, com_rate_escalation as source
+	SELECT 'com'::text as sector, com_rate_escalation as source
 	FROM diffusion_solar.scenario_options
 	UNION
-	SELECT 'Industrial'::text as sector, ind_rate_escalation as source
+	SELECT 'ind'::text as sector, ind_rate_escalation as source
 	FROM diffusion_solar.scenario_options
 )
 

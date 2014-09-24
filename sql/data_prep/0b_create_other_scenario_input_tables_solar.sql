@@ -1,12 +1,12 @@
-﻿DROP TABLE IF EXISTS diffusion_solar.solar_performance_improvements;
+﻿SET ROLE 'diffusion-writers';
+DROP TABLE IF EXISTS diffusion_solar.solar_performance_improvements;
 CREATE TABLE diffusion_solar.solar_performance_improvements
 (
 	year integer,
-	pv_efficiency_pct numeric,
-	user_pv_efficiency_pct numeric,
+	efficiency_improvement_factor numeric,
 	density_w_per_sqft numeric,
-	user_density_w_per_sqft numeric,
-	inverter_lifetime_yr integer
+	derate numeric,
+	inverter_lifetime_yrs integer
 );
 
 

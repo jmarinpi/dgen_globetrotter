@@ -152,17 +152,94 @@ def make_con(connection_string, async = False):
     
     return con, cur
 
-
-def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess, logger):
-    # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()       
+def combine_temporal_data(cur, con, technology, start_year, end_year, sector_abbrs, sectors, preprocess, logger):
 
     msg = "Combining Temporal Factors"    
     logger.info(msg)
 
-    t0 = time.time()    
     if preprocess:
         return 1
+        
+    if technology == 'wind':
+        combine_temporal_data_wind(cur, con, start_year, end_year, sectors, preprocess, logger)
+    elif technology == 'solar':
+        combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, preprocess, logger)
+    
+
+def combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, preprocess, logger):
+    
+     # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs = locals().copy()       
+
+    # combine all of the temporal data (this only needs to be done once for all sectors)        
+    sql = """
+            DROP TABLE IF EXISTS diffusion_solar.temporal_factors;
+            CREATE TABLE diffusion_solar.temporal_factors as 
+            SELECT a.year, 
+                a.efficiency_improvement_factor,
+                a.density_w_per_sqft,
+                a.derate,
+                a.inverter_lifetime_yrs,
+                b.capital_cost_dollars_per_kw, 
+                b.inverter_cost_dollars_per_kw, 
+                b.fixed_om_dollars_per_kw_per_yr, 
+                b.variable_om_dollars_per_kwh, 
+                b.sector,
+                b.source as cost_projection_source,
+                c.census_division_abbr,
+                c.escalation_factor as rate_escalation_factor,
+                c.source as rate_escalation_source,
+                d.scenario as load_growth_scenario,
+                d.load_multiplier,
+                e.carbon_dollars_per_ton
+            FROM diffusion_solar.solar_performance_improvements a
+            LEFT JOIN diffusion_solar.cost_projections_to_model b
+            ON a.year = b.year
+            LEFT JOIN diffusion_solar.rate_escalations_to_model c
+            ON a.year = c.year
+            AND b.sector = c.sector
+            LEFT JOIN diffusion_shared.aeo_load_growth_projections d
+            ON c.census_division_abbr = d.census_division_abbr
+            AND a.year = d.year
+            LEFT JOIN diffusion_solar.market_projections e
+            ON a.year = e.year
+            WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
+            AND c.sector in (%(sector_abbrs)s);""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
+    # create indices for subsequent joins
+    sql =  """CREATE INDEX temporal_factors_turbine_derate_btree 
+              ON diffusion_solar.temporal_factors 
+              USING BTREE(derate);
+              
+              CREATE INDEX temporal_factors_sector_btree 
+              ON diffusion_solar.temporal_factors 
+              USING BTREE(sector);
+              
+              CREATE INDEX temporal_factors_load_growth_scenario_btree 
+              ON diffusion_solar.temporal_factors 
+              USING BTREE(load_growth_scenario);
+              
+              CREATE INDEX temporal_factors_rate_escalation_source_btree 
+              ON diffusion_solar.temporal_factors 
+              USING BTREE(rate_escalation_source);
+              
+              CREATE INDEX temporal_factors_census_division_abbr_btree 
+              ON diffusion_solar.temporal_factors 
+              USING BTREE(census_division_abbr);
+              
+              CREATE INDEX temporal_factors_join_fields_btree 
+              ON diffusion_solar.temporal_factors 
+              USING BTREE(derate, census_division_abbr);"""
+    cur.execute(sql)
+    con.commit()  
+    
+    return 1
+
+def combine_temporal_data_wind(cur, con, start_year, end_year, sectors, preprocess, logger):
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs = locals().copy()       
     
     # combine all of the temporal data (this only needs to be done once for all sectors)
     sql = """DROP TABLE IF EXISTS diffusion_wind.temporal_factors;
@@ -230,21 +307,17 @@ def combine_temporal_data(cur, con, start_year, end_year, sectors, preprocess, l
     
     return 1
     
-def clear_outputs(con,cur):
+def clear_outputs(con,cur,schema):
     """Delete all rows from the res, com, and ind output tables"""
     
-    sql = """DELETE FROM diffusion_wind.outputs_res;
-            DELETE FROM diffusion_wind.outputs_com;
-            DELETE FROM diffusion_wind.outputs_ind;""" 
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs = locals().copy()      
+    
+    sql = """DELETE FROM %(schema)s.outputs_res;
+            DELETE FROM %(schema)s.outputs_com;
+            DELETE FROM %(schema)s.outputs_ind;""" % inputs
     cur.execute(sql)
     con.commit()
-    
-#def clear_outputs(con,cur, sector_abbr):
-#    """Delete all rows from the output table"""
-#    
-#    sql = """DELETE FROM diffusion_wind.outputs_%s""" % sector_abbr
-#    cur.execute(sql)
-#    con.commit()
 
 
 def write_outputs(con, cur, outputs_df, sector_abbr):
