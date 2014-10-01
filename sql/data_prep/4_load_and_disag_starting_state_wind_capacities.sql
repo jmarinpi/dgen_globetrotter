@@ -30,8 +30,8 @@ where state = 'PR-VI';
 
 
 -- disaggregate to counties based on proprtion of county load to proportion of state load
-DROP TABLE IF EXISTS diffusion_wind.starting_wind_capacities_mw_2014_us;
-CREATE TABLE diffusion_wind.starting_wind_capacities_mw_2014_us AS
+DROP TABLE IF EXISTS diffusion_wind.starting_capacities_mw_2014_us;
+CREATE TABLE diffusion_wind.starting_capacities_mw_2014_us AS
 with sums as (
 	SELECT a.state_abbr, 
 		sum(b.total_customers_2011_residential) as state_customers_residential, 
@@ -88,10 +88,10 @@ LEFT JOIN capacities c
 ON a.state_abbr = c.state_abbr;
 
 -- create primary key and foreign key
-ALTER TABLE diffusion_wind.starting_wind_capacities_mw_2014_us
-  ADD CONSTRAINT starting_wind_capacities_mw_2014_us_pkey PRIMARY KEY(county_id);
+ALTER TABLE diffusion_wind.starting_capacities_mw_2014_us
+  ADD CONSTRAINT starting_capacities_mw_2014_us_pkey PRIMARY KEY(county_id);
 
-ALTER TABLE diffusion_wind.starting_wind_capacities_mw_2014_us
+ALTER TABLE diffusion_wind.starting_capacities_mw_2014_us
   ADD CONSTRAINT county_id FOREIGN KEY (county_id)
       REFERENCES diffusion_shared.county_geom (county_id) MATCH FULL
       ON UPDATE RESTRICT ON DELETE RESTRICT;
@@ -101,6 +101,6 @@ ALTER TABLE diffusion_wind.starting_wind_capacities_mw_2014_us
 select state_abbr, 
 	round(sum(capacity_mw_residential),2) as res_cap, round(sum(capacity_mw_commercial),2) com_cap, round(sum(capacity_mw_industrial),2) ind_cap,
 	round(sum(systems_count_residential),2) res_sys, round(sum(systems_count_commercial),2) com_sys, round(sum(systems_count_industrial),2) ind_sys
-FROM diffusion_wind.starting_wind_capacities_mw_2014_us
+FROM diffusion_wind.starting_capacities_mw_2014_us
 group by state_abbr
 order by state_abbr;

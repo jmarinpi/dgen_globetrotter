@@ -596,14 +596,14 @@ where a.gid = b.gid;
 	--unnest the data from the unique combos table
 	DROP TABLE IF EXISTS diffusion_wind.dsire_incentives_simplified_lkup_ind;
 	CREATE TABLE diffusion_wind.dsire_incentives_simplified_lkup_ind AS
-	SELECT incentive_array_id as wind_incentive_array_id, 
-		unnest(wind_incentives_uid_array) as wind_incentives_uid
+	SELECT incentive_array_id as incentive_array_id, 
+		unnest(wind_incentives_uid_array) as incentives_uid
 	FROM diffusion_wind_data.dsire_incentives_unique_combos_ind;
 
 	-- create index
 	CREATE INDEX dsire_incentives_simplified_lkup_ind_inc_id_btree
 	ON diffusion_wind.dsire_incentives_simplified_lkup_ind
-	USING btree(wind_incentive_array_id);
+	USING btree(wincentive_array_id);
 
 	-- SOLAR
 	--create the lookup table		
@@ -687,14 +687,14 @@ where a.gid = b.gid;
 	--unnest the data from the unique combos table
 	DROP TABLE IF EXISTS diffusion_solar.dsire_incentives_simplified_lkup_ind;
 	CREATE TABLE diffusion_solar.dsire_incentives_simplified_lkup_ind AS
-	SELECT incentive_array_id as solar_incentive_array_id, 
-		unnest(solar_incentives_uid_array) as solar_incentives_uid
+	SELECT incentive_array_id as incentive_array_id, 
+		unnest(solar_incentives_uid_array) as incentives_uid
 	FROM diffusion_solar_data.dsire_incentives_unique_combos_ind;
 
 	-- create index
 	CREATE INDEX dsire_incentives_simplified_lkup_ind_inc_id_btree
 	ON diffusion_solar.dsire_incentives_simplified_lkup_ind
-	USING btree(solar_incentive_array_id);
+	USING btree(incentive_array_id);
 
 
 

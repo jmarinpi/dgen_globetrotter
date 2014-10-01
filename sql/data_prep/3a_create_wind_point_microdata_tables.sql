@@ -7,7 +7,7 @@ WITH a AS
 	SELECT a.county_id, 
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
 		a.annual_rate_gid, 
-		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id,
+		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id,
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor,
 		count(*)::integer as point_weight
@@ -57,7 +57,7 @@ WITH a AS
 	SELECT a.county_id, 
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
 		a.annual_rate_gid, 
-		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id,
+		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id,
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor,
 		count(*)::integer as point_weight
@@ -108,7 +108,7 @@ WITH a AS
 	SELECT a.county_id, 
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
 		a.annual_rate_gid, 
-		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id,
+		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id,
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor,
 		count(*)::integer as point_weight

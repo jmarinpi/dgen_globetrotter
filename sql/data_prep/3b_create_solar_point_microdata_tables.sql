@@ -6,14 +6,14 @@ WITH a AS
 (
 	SELECT a.county_id, 
 		a.annual_rate_gid, 
-		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.solar_incentive_array_id,
+		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.incentive_array_id,
 		a.utility_type, 
 		a.solar_re_9809_gid,
 		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_res a
 	GROUP BY a.county_id, 
 		a.annual_rate_gid, 
-		a.pca_reg, a.reeds_reg, a.solar_incentive_array_id,
+		a.pca_reg, a.reeds_reg, a.incentive_array_id,
 		a.utility_type, 
 		a.solar_re_9809_gid
 )
@@ -52,14 +52,14 @@ WITH a AS
 (
 	SELECT a.county_id, 
 		a.annual_rate_gid, 
-		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.solar_incentive_array_id,
+		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.incentive_array_id,
 		a.utility_type, 
 		a.solar_re_9809_gid,
 		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_com a
 	GROUP BY a.county_id, 
 		a.annual_rate_gid, 
-		a.pca_reg, a.reeds_reg, a.solar_incentive_array_id,
+		a.pca_reg, a.reeds_reg, a.incentive_array_id,
 		a.utility_type, 
 		a.solar_re_9809_gid
 )
@@ -99,14 +99,14 @@ WITH a AS
 (
 	SELECT a.county_id, 
 		a.annual_rate_gid, 
-		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.solar_incentive_array_id,
+		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.incentive_array_id,
 		a.utility_type, 
 		a.solar_re_9809_gid,
 		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_ind a
 	GROUP BY a.county_id, 
 		a.annual_rate_gid, 
-		a.pca_reg, a.reeds_reg, a.solar_incentive_array_id,
+		a.pca_reg, a.reeds_reg, a.incentive_array_id,
 		a.utility_type, 
 		a.solar_re_9809_gid
 )

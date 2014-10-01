@@ -1,7 +1,7 @@
 ﻿SET role 'diffusion-writers';
 
-DROP TABLE IF EXISTS diffusion_solar.starting_solar_capacities_mw_2013_us;
-CREAtE TABLE diffusion_solar.starting_solar_capacities_mw_2014_us AS
+DROP TABLE IF EXISTS diffusion_solar.starting_capacities_mw_2014_us;
+CREAtE TABLE diffusion_solar.starting_capacities_mw_2014_us AS
 WITH customers_sums_by_sector AS
 (
 	SELECT a.state_abbr, 
@@ -75,10 +75,10 @@ FROM combined
 
 
 -- create primary key and foreign key
-ALTER TABLE diffusion_solar.starting_solar_capacities_mw_2014_us
-  ADD CONSTRAINT starting_solar_capacities_mw_2014_us_pkey PRIMARY KEY(county_id);
+ALTER TABLE diffusion_solar.starting_capacities_mw_2014_us
+  ADD CONSTRAINT starting_capacities_mw_2014_us_pkey PRIMARY KEY(county_id);
 
-ALTER TABLE diffusion_solar.starting_solar_capacities_mw_2014_us
+ALTER TABLE diffusion_solar.starting_capacities_mw_2014_us
   ADD CONSTRAINT county_id FOREIGN KEY (county_id)
       REFERENCES diffusion_shared.county_geom (county_id) MATCH FULL
       ON UPDATE RESTRICT ON DELETE RESTRICT;
@@ -90,7 +90,7 @@ with a AS
 	select state_abbr, 
 		round(sum(capacity_mw_residential),2) as res_cap, round(sum(capacity_mw_commercial),2) com_cap, round(sum(capacity_mw_industrial),2) ind_cap,
 		round(sum(systems_count_residential),2) res_sys, round(sum(systems_count_commercial),2) com_sys, round(sum(systems_count_industrial),2) ind_sys
-	FROM diffusion_solar.starting_solar_capacities_mw_2014_us
+	FROM diffusion_solar.starting_capacities_mw_2014_us
 	group by state_abbr
 	order by state_abbr
 )

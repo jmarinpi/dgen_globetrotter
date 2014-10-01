@@ -433,7 +433,7 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
                     a.market_value,
                     
                     b.state_abbr, b.census_division_abbr, b.utility_type, 
-                    b.pca_reg, b.reeds_reg, b.wind_incentive_array_id, b.max_height, b.elec_rate_cents_per_kwh, 
+                    b.pca_reg, b.reeds_reg, b.incentive_array_id, b.max_height, b.elec_rate_cents_per_kwh, 
                     b.carbon_price_cents_per_kwh, 
                     b.fixed_om_dollars_per_kw_per_yr, 
                     b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
@@ -835,7 +835,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   utility_type character varying(9),
                   pca_reg text,
                   reeds_reg integer,
-                  solar_incentive_array_id integer,
+                  incentive_array_id integer,
                   elec_rate_cents_per_kwh numeric,
                   carbon_price_cents_per_kwh numeric,
                   fixed_om_dollars_per_kw_per_yr numeric,
@@ -876,7 +876,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.census_division_abbr, 
                   a.utility_type, 
                   a.pca_reg, a.reeds_reg,
-                  a.solar_incentive_array_id,
+                  a.incentive_array_id,
                 	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
                   b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
                 	b.fixed_om_dollars_per_kw_per_yr, 
@@ -917,7 +917,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
-                   pca_reg, reeds_reg, solar_incentive_array_id, elec_rate_cents_per_kwh, 
+                   pca_reg, reeds_reg, incentive_array_id, elec_rate_cents_per_kwh, 
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 
@@ -958,7 +958,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
              
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_incentive_array_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
-             USING BTREE(solar_incentive_array_id);             
+             USING BTREE(incentive_array_id);             
             """ % inputs
     cur.execute(sql)
     con.commit()
@@ -1076,7 +1076,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                  	a.micro_id, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
                       a.utility_type, 
                       a.pca_reg, a.reeds_reg,
-                      a.wind_incentive_array_id,
+                      a.incentive_array_id,
                       %(exclusions_insert)s
                 	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
                 b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
@@ -1108,7 +1108,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
-                   pca_reg, reeds_reg, wind_incentive_array_id, max_height, elec_rate_cents_per_kwh, 
+                   pca_reg, reeds_reg, incentive_array_id, max_height, elec_rate_cents_per_kwh, 
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 
@@ -1172,7 +1172,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
              
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_incentive_array_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
-             USING BTREE(wind_incentive_array_id);             
+             USING BTREE(incentive_array_id);             
             """ % inputs
     cur.execute(sql)
     con.commit()
@@ -1262,7 +1262,7 @@ def get_scenario_options(cur, schema):
     return results
 
 
-def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, pg_conn_string, logger):
+def get_dsire_incentives(cur, con, schema, sector_abbr, preprocess, npar, pg_conn_string, logger):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
 
@@ -1277,43 +1277,43 @@ def get_dsire_incentives(cur, con, sector_abbr, preprocess, npar, pg_conn_string
     sql =   """
                 WITH a AS
                 (
-                	SELECT DISTINCT wind_incentive_array_id as wind_incentive_array_id
-                	FROM diffusion_wind.pt_%(sector_abbr)s_best_option_each_year
+                	SELECT DISTINCT incentive_array_id as incentive_array_id
+                	FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year
                 	WHERE year = 2014
                 )
-                SELECT a.wind_incentive_array_id, c.*
+                SELECT a.incentive_array_id, c.*
                 FROM a
-                LEFT JOIN diffusion_wind.dsire_incentives_simplified_lkup_%(sector_abbr)s b
-                ON a.wind_incentive_array_id = b.wind_incentive_array_id
-                LEFT JOIN diffusion_wind.incentives c
-                ON b.wind_incentives_uid = c.uid
+                LEFT JOIN %(schema)s.dsire_incentives_simplified_lkup_%(sector_abbr)s b
+                ON a.incentive_array_id = b.incentive_array_id
+                LEFT JOIN %(schema)s.incentives c
+                ON b.incentives_uid = c.uid
                 WHERE lower(c.sector) = '%(incentives_sector)s'
-                ORDER BY a.wind_incentive_array_id
+                ORDER BY a.incentive_array_id
             """ % inputs
     df = sqlio.read_frame(sql, con, coerce_float = False)
     return df
 
 
-def get_initial_market_shares(cur, con, sector_abbr, sector):
+def get_initial_market_shares(cur, con, sector_abbr, sector, schema):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()     
     
-    sql = """DROP TABLE IF EXISTS diffusion_wind.pt_%(sector_abbr)s_initial_market_shares;
-           CREATE TABLE diffusion_wind.pt_%(sector_abbr)s_initial_market_shares AS
+    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares;
+           CREATE TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares AS
             SELECT a.county_id, a.bin_id,
                 	(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
                 	(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
                 	b.systems_count_%(sector)s/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id) AS initial_market_share
-            FROM diffusion_wind.pt_%(sector_abbr)s_best_option_each_year a
-            LEFT JOIN diffusion_wind.starting_wind_capacities_mw_2014_us b
+            FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year a
+            LEFT JOIN %(schema)s.starting_dgen_capacities_mw_2014_us b
             ON a.county_id = b.county_id
             where a.year = 2014;""" % inputs          
     cur.execute(sql)
     con.commit()
     
     sql = """CREATE INDEX pt_%(sector_abbr)s_initial_market_shares_join_fields_btree 
-             ON diffusion_wind.pt_%(sector_abbr)s_initial_market_shares 
+             ON %(schema)s.pt_%(sector_abbr)s_initial_market_shares 
              USING BTREE(county_id,bin_id);""" % inputs
     cur.execute(sql)
     con.commit()
@@ -1323,7 +1323,7 @@ def get_initial_market_shares(cur, con, sector_abbr, sector):
             initial_market_share AS market_share_last_year,
             initial_number_of_adopters AS number_of_adopters_last_year,
             1000 * initial_capacity_mw AS installed_capacity_last_year 
-            FROM diffusion_wind.pt_%(sector_abbr)s_initial_market_shares;""" % inputs
+            FROM %(schema)s.pt_%(sector_abbr)s_initial_market_shares;""" % inputs
     df = sqlio.read_frame(sql, con)
     return df  
 
@@ -1425,18 +1425,18 @@ def get_market_projections(con, schema):
     '''
     return sqlio.read_frame('SELECT * FROM %s.market_projections' % schema, con)
     
-def get_manual_incentives(con):
+def get_manual_incentives(con, schema):
     ''' Pull manual incentives from input sheet
     
         IN: con - pg con object - connection object
         OUT: inc - pd dataframe - dataframe of manual incentives
     '''
-    sql = 'SELECT * FROM diffusion_wind.manual_incentives'
+    sql = 'SELECT * FROM %s.manual_incentives' % schema
     df = sqlio.read_frame(sql, con)
     df['sector'] = df['sector'].str.lower()
     return df
  
-def calc_manual_incentives(df,con,cur_year):
+def calc_manual_incentives(df, con, cur_year, schema):
     ''' Calculate the value in first year and length for incentives manually 
     entered in input sheet. 
 
@@ -1446,7 +1446,7 @@ def calc_manual_incentives(df,con,cur_year):
         OUT: manual_incentives_value - pandas DataFrame - value of rebate, tax incentives, and PBI
     '''
     # Join manual incentives with main df   
-    inc = get_manual_incentives(con)
+    inc = get_manual_incentives(con, schema)
     d = pd.merge(df,inc,left_on = ['state_abbr','sector','utility_type'], right_on = ['region','sector','utility_type'])
         
     # Calculate value of incentive and rebate, and value and length of PBI

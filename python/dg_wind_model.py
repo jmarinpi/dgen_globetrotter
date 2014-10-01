@@ -174,7 +174,7 @@ def main(mode = None, resume_year = None):
                                                    cfg.pg_conn_string, scenario_opts['net_metering_availability'], logger = logger)
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
                 else:
-                    main_table = '%(schema)s.pt_%s_best_option_each_year' % (schema, sector_abbr)
+                    main_table = '%s.pt_%s_best_option_each_year' % (schema, sector_abbr)
                 
                 # get dsire incentives for the generated customer bins
                 t0 = time.time()
@@ -194,7 +194,7 @@ def main(mode = None, resume_year = None):
                         market_last_year = 0 #market_last_year is actually initialized in calc_economics
                         
                     t_calc_econ = time.time()    
-                    df = finfunc.calc_economics(df, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule, logger, rate_escalations)
+                    df = finfunc.calc_economics(df, schema, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule, logger, rate_escalations)
                     logger.info('finfunc.calc_economics for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t_calc_econ))
                     
                     # 10. Calulate diffusion
@@ -215,7 +215,7 @@ def main(mode = None, resume_year = None):
             ## 12. Outputs & Visualization
             # set output subfolder
             if mode == 'ReEDS':
-                reeds_out = sqlio.read_frame('SELECT * FROM %(schema)s.outputs_all' % schema, con)
+                reeds_out = sqlio.read_frame('SELECT * FROM %s.outputs_all' % schema, con)
                 #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()
                 market_last_year.to_pickle("market_last_year.pkl")
                 saved_vars = {'out_dir': out_dir, 'input_scenarios':input_scenarios}
