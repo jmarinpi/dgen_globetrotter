@@ -27,7 +27,8 @@ import subprocess
 import datetime
 import config as cfg
 import shutil
-import sys, getopt
+import sys
+import getopt
 import pickle
 if cfg.technology == 'wind':
     import load_excel_wind as loadXL
@@ -178,7 +179,7 @@ def main(mode = None, resume_year = None):
                 
                 # get dsire incentives for the generated customer bins
                 t0 = time.time()
-                dsire_incentives = datfunc.get_dsire_incentives(cur, con, sector_abbr, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger)
+                dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, sector_abbr, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger)
                 logger.info('datfunc.get_dsire_incentives took: %0.1fs' %(time.time() - t0))                  
                 # Pull data from the Main Table to a Data Frame for each year
                 for year in model_years:

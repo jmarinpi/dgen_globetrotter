@@ -1306,7 +1306,7 @@ def get_initial_market_shares(cur, con, sector_abbr, sector, schema):
                 	(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
                 	b.systems_count_%(sector)s/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id) AS initial_market_share
             FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year a
-            LEFT JOIN %(schema)s.starting_dgen_capacities_mw_2014_us b
+            LEFT JOIN %(schema)s.starting_capacities_mw_2014_us b
             ON a.county_id = b.county_id
             where a.year = 2014;""" % inputs          
     cur.execute(sql)
