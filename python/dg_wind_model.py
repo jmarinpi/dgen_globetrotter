@@ -143,7 +143,7 @@ def main(mode = None, resume_year = None):
             
             sectors = datfunc.get_sectors(cur, schema)
             deprec_schedule = datfunc.get_depreciation_schedule(con, schema, type = 'standard').values
-            financial_parameters = datfunc.get_financial_parameters(con, schema, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned')
+            financial_parameters = datfunc.get_financial_parameters(con, schema, res_model = 'Host Owned', com_model = 'Host Owned', ind_model = 'Host Owned')
             max_market_share = datfunc.get_max_market_share(con, schema, sectors.values(), scenario_opts, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit')
             market_projections = datfunc.get_market_projections(con, schema)
             rate_escalations = datfunc.get_rate_escalations(con, schema)

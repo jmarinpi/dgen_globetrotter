@@ -840,7 +840,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   carbon_price_cents_per_kwh numeric,
                   fixed_om_dollars_per_kw_per_yr numeric,
                   variable_om_dollars_per_kwh numeric,
-                  capital_cost_dollars_per_kw numeric,
+                  installed_costs_dollars_per_kw numeric, -- *** THIS MAY NOT BE CORRECT-- CHECK WITH BEN ***
                   inverter_cost_dollars_per_kw numeric,
                   ann_cons_kwh numeric,
                   customers_in_bin double precision,
@@ -922,7 +922,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
             
                    fixed_om_dollars_per_kw_per_yr, 
                    variable_om_dollars_per_kwh, 
-                   capital_cost_dollars_per_kw, 
+                   capital_cost_dollars_per_kw as installed_costs_dollars_per_kw, -- *** THIS MAY NOT BE CORRECT -- CHECK WITH BEN ***
                    inverter_cost_dollars_per_kw,
             
                    ann_cons_kwh, 
@@ -1340,7 +1340,7 @@ def get_main_dataframe(con, main_table, year):
     df = sqlio.read_frame(sql, con, coerce_float = False)
     return df
     
-def get_financial_parameters(con, schema, res_model = 'Existing Home', com_model = 'Host Owned', ind_model = 'Host Owned'):
+def get_financial_parameters(con, schema, res_model = 'Host Owned', com_model = 'Host Owned', ind_model = 'Host Owned'):
     ''' Pull financial parameters dataframe from dB. Use passed parameters to subset for new/existing home/leasing/host-owned
     
         IN: con - pg con object - connection object
