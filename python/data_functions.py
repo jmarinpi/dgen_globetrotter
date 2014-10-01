@@ -817,12 +817,54 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
     #==============================================================================
-    msg = "Finding All Combinations of Cost and Resource for Each Customer Bin and Year"
+    msg = "Combining Cost, Resource, and System Sizing for Each Customer Bin and Year"
     t0 = time.time()
     logger.info(msg)
-        
-    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
-            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s AS
+    
+    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_best_option_each_year;
+                CREATE TABLE  %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+                (
+                  micro_id integer,
+                  county_id integer,
+                  bin_id bigint,
+                  year integer,
+                  state_abbr character varying(2),
+                  census_division_abbr text,
+                  utility_type character varying(9),
+                  pca_reg text,
+                  reeds_reg integer,
+                  solar_incentive_array_id integer,
+                  elec_rate_cents_per_kwh numeric,
+                  carbon_price_cents_per_kwh numeric,
+                  fixed_om_dollars_per_kw_per_yr numeric,
+                  variable_om_dollars_per_kwh numeric,
+                  capital_cost_dollars_per_kw numeric,
+                  inverter_cost_dollars_per_kw numeric,
+                  ann_cons_kwh numeric,
+                  customers_in_bin double precision,
+                  initial_customers_in_bin double precision,
+                  load_kwh_in_bin double precision,
+                  initial_load_kwh_in_bin double precision,
+                  load_kwh_per_customer_in_bin numeric,
+                  nem_system_limit_kw double precision,
+                  excess_generation_factor numeric,
+                  naep numeric,
+                  aep numeric,
+                  system_size_kw numeric,
+                  npanels numeric,
+                  tilt integer,
+                  azimuth text,
+                  derate numeric,
+                  pct_shaded double precision,
+                  solar_re_9809_gid integer,
+                  density_w_per_sqft numeric,
+                  inverter_lifetime_yrs integer,
+                  available_rooftop_space_sqm numeric
+                );""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
+    sql =  """INSERT INTO %(schema)s.pt_%(sector_abbr)s_best_option_each_year
             WITH combined AS
             (
                 SELECT
@@ -854,20 +896,16 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.pct_shaded,
                   a.solar_re_9809_gid,
                   b.density_w_per_sqft, 
-                  b.inverter_lifetime_yrs--,
-                  -- REPLACE SCOE WITH AN OPTIMAL SIZING ALGORITHM THAT RETURNS A SYSTEM SIZE GIVEN THE FOLLOWING INPUTS:
-                  -- capital_cost_dollars_per_kw
-                  -- inverter_cost_dollars_per_kw
-                  -- fixed_om_dollars_per_kw_per_year
-                  -- variable_om_dollars_per_kwh
-                  -- naep
-                  -- density_w_per_sqft (this will be inactive for now)
-                  -- available rooftop space (this will be inactive for now)
-                  -- load_kwh_per_customer_in_bin , a.nem_system_limit_kw, a.excess_generation_factor, 
-                  -- %(nem_availability)s
-                  -- %(oversize_system_factor)s
-                  -- %(undersize_system_factor)s
-                	--%(schema)s.scoe() as scoe_return
+                  b.inverter_lifetime_yrs,
+                  --OPTIMAL SIZING ALGORITHM THAT RETURNS A SYSTEM SIZE AND NUMBER OF PANELS:
+                  diffusion_solar.system_sizing( '%(sector)s'::TEXT,
+                                                (b.load_multiplier * a.load_kwh_in_bin * (1-a.pct_shaded))::NUMERIC, 
+                                                a.naep * b.efficiency_improvement_factor, 
+                                                1000::NUMERIC, -- replace with actual available_rooftop_space_sqm 
+                                                b.density_w_per_sqft,
+                                                '%(nem_availability)s'::TEXT, 
+                                                a.excess_generation_factor
+                                                ) as system_sizing_return
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s a
                 INNER JOIN %(schema)s.temporal_factors b
                 ON a.derate = b.derate
@@ -891,9 +929,9 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    nem_system_limit_kw, excess_generation_factor, 
     
                    naep,
-                   -- ??? should we add in a conversion to calculate the actual aep based on naep and the output of scoe
-                   --(scoe_return).nturb*turbine_size_kw as system_size_kw,
-                   --(scoe_return).nturb as nturb,
+                   naep * (system_sizing_return).system_size_kw as aep,
+                   (system_sizing_return).system_size_kw as system_size_kw,
+                   (system_sizing_return).npanels as npanels,
     
                    tilt,
                    azimuth,
@@ -901,41 +939,11 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    pct_shaded,
                    solar_re_9809_gid,
                    density_w_per_sqft,
-                   inverter_lifetime_yrs--,
-                   --(round((scoe_return).scoe,4)*1000)::BIGINT as scoe
-          FROM combined;
-          
-          --CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s_sort_fields_btree
-             --ON %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s
-             --USING BTREE(county_id ASC, bin_id ASC, year ASC, scoe ASC, system_size_kw ASC, turbine_height_m ASC);           
-          """ % inputs
-
-        
+                   inverter_lifetime_yrs,
+                   1000::NUMERIC as available_rooftop_space_sqm -- replace with actual available_rooftop_space_sqm 
+          FROM combined;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time() - t0
-
-    # NOTE: NOT SURE IF THIS IS NESSARY ANYMORE -- PROBABLY NOT
-    #==============================================================================
-    #    Find the Most Cost-Effective Wind Turbine Configuration for Each Customer Bin
-    #==============================================================================
-    msg = "Selecting the most cost-effective wind turbine configuration for each customer bin and year"
-    t0 = time.time()
-    logger.info(msg)
-    # create empty table
-    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_best_option_each_year;
-            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_best_option_each_year AS
-            SELECT *
-            FROM %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_0
-            LIMIT 0;""" % inputs    
-    cur.execute(sql)
-    con.commit()
-    
-    sql =  """INSERT INTO %(schema)s.pt_%(sector_abbr)s_best_option_each_year
-              SELECT distinct on (a.county_id, a.bin_id, a.year) a.*
-              FROM  %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a
-              ORDER BY a.county_id ASC, a.bin_id ASC, a.year ASC, a.scoe ASC,
-                       a.system_size_kw ASC, a.turbine_height_m ASC;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)
     
     # create indices
     sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_join_fields_btree 
@@ -948,7 +956,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
              
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_incentive_array_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
-             USING BTREE(wind_incentive_array_id);             
+             USING BTREE(solar_incentive_array_id);             
             """ % inputs
     cur.execute(sql)
     con.commit()
@@ -960,13 +968,13 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     #==============================================================================
     msg = "Cleaning up intermediate tables"
     logger.info(msg)
-    intermediate_tables = ['%(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s' % inputs,
-                       '%(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s' % inputs,
-                       '%(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs,
-                       '%(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s' % inputs,
-                       '%(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs]
+    intermediate_tables = [ '%(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s' % inputs,
+                            '%(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs]
         
-         
     sql = 'DROP TABLE IF EXISTS %s;'
     for intermediate_table in intermediate_tables:
         isql = sql % intermediate_table
