@@ -174,7 +174,7 @@ def main(mode = None, resume_year = None):
                                                    cfg.pg_conn_string, scenario_opts['net_metering_availability'], logger = logger)
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
                 else:
-                    main_table = 'diffusion_wind.pt_%s_best_option_each_year' % sector_abbr
+                    main_table = '%(schema)s.pt_%s_best_option_each_year' % (schema, sector_abbr)
                 
                 # get dsire incentives for the generated customer bins
                 t0 = time.time()
@@ -215,7 +215,7 @@ def main(mode = None, resume_year = None):
             ## 12. Outputs & Visualization
             # set output subfolder
             if mode == 'ReEDS':
-                reeds_out = sqlio.read_frame('SELECT * FROM diffusion_wind.outputs_all', con)
+                reeds_out = sqlio.read_frame('SELECT * FROM %(schema)s.outputs_all' % schema, con)
                 #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()
                 market_last_year.to_pickle("market_last_year.pkl")
                 saved_vars = {'out_dir': out_dir, 'input_scenarios':input_scenarios}

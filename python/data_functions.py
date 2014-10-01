@@ -519,14 +519,16 @@ def generate_customer_bins(cur, con, technology, schema, seed, n_bins, sector_ab
                                
     if technology == 'wind':
         resource_key = 'i,j,cf_bin'
-        generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+        final_table = generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, nem_availability, logger)
     elif technology == 'solar':
         resource_key = 'solar_re_9809_gid'
-        generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+        final_table = generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, oversize_system_factor, undersize_system_factor,
-                           preprocess, npar, pg_conn_string, nem_availability, logger)    
+                           preprocess, npar, pg_conn_string, nem_availability, logger)  
+
+    return final_table
 
 ########################################################################################################################
 ########################################################################################################################
