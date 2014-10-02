@@ -406,21 +406,24 @@ def p_run(pg_conn_string, sql, county_chunks, npar):
     for job in jobs:
         job.join()   
 
-
-def copy_outputs_to_csv(out_path, sectors, cur, con):
+def combine_outputs_wind(schema, sectors, cur, con):
     
-    sql = '''DROP TABLE IF EXISTS diffusion_wind.outputs_all;
-            CREATE TABLE diffusion_wind.outputs_all AS  '''    
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs = locals().copy()   
+
+    sql = '''DROP TABLE IF EXISTS %(schema)s.outputs_all;
+            CREATE TABLE %(schema)s.outputs_all AS  ''' % inputs  
     
     for i, sector_abbr in enumerate(sectors.keys()):
-        sector = sectors[sector_abbr].lower()
+        inputs['sector'] = sectors[sector_abbr].lower()
+        inputs['sector_abbr'] = sector_abbr
         if i > 0:
-            union = 'UNION ALL '
+            inputs['union'] = 'UNION ALL '
         else:
-            union = ''
+            inputs['union'] = ''
         
-        sub_sql = '''%s 
-                    SELECT '%s'::text as sector, 
+        sub_sql = '''%(union)s 
+                    SELECT '%(sector)s'::text as sector, 
 
                     a.micro_id, a.county_id, a.bin_id, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
                     a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
@@ -448,17 +451,17 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
                     c.initial_market_share, c.initial_number_of_adopters,
                     c.initial_capacity_mw
                     
-                    FROM diffusion_wind.outputs_%s a
+                    FROM %(schema)s.outputs_%(sector_abbr)s a
                     
-                    LEFT JOIN diffusion_wind.pt_%s_best_option_each_year b
+                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_best_option_each_year b
                     ON a.county_id = b.county_id
                     AND a.bin_id = b.bin_id
                     and a.year = b.year
                     
-                    LEFT JOIN diffusion_wind.pt_%s_initial_market_shares c
+                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_initial_market_shares c
                     ON a.county_id = c.county_id
                     AND a.bin_id = c.bin_id
-                    ''' % (union, sector, sector_abbr, sector_abbr, sector_abbr)
+                    ''' % inputs
         sql += sub_sql
     
     sql += ';'
@@ -466,22 +469,108 @@ def copy_outputs_to_csv(out_path, sectors, cur, con):
     con.commit()
 
     # create indices that will be needed for various aggregations in R visualization script
-    sql = '''CREATE INDEX outputs_all_year_btree ON diffusion_wind.outputs_all USING BTREE(year);
-             CREATE INDEX outputs_all_state_abbr_btree ON diffusion_wind.outputs_all USING BTREE(state_abbr);
-             CREATE INDEX outputs_all_sector_btree ON diffusion_wind.outputs_all USING BTREE(sector);
-             CREATE INDEX outputs_all_turbine_size_kw_btree ON diffusion_wind.outputs_all USING BTREE(turbine_size_kw);
-             CREATE INDEX outputs_all_turbine_height_m_btree ON diffusion_wind.outputs_all USING BTREE(turbine_height_m);'''
+    sql = '''CREATE INDEX outputs_all_year_btree ON %(schema)s.outputs_all USING BTREE(year);
+             CREATE INDEX outputs_all_state_abbr_btree ON %(schema)s.outputs_all USING BTREE(state_abbr);
+             CREATE INDEX outputs_all_sector_btree ON %(schema)s.outputs_all USING BTREE(sector);
+             CREATE INDEX outputs_all_turbine_size_kw_btree ON %(schema)s.outputs_all USING BTREE(turbine_size_kw);
+             CREATE INDEX outputs_all_turbine_height_m_btree ON %(schema)s.outputs_all USING BTREE(turbine_height_m);''' % inputs
     cur.execute(sql)
     con.commit()
 
+
+def combine_outputs_solar(schema, sectors, cur, con):
+    
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs = locals().copy()   
+
+    sql = '''DROP TABLE IF EXISTS %(schema)s.outputs_all;
+            CREATE TABLE %(schema)s.outputs_all AS  ''' % inputs  
+    
+    for i, sector_abbr in enumerate(sectors.keys()):
+        inputs['sector'] = sectors[sector_abbr].lower()
+        inputs['sector_abbr'] = sector_abbr
+        if i > 0:
+            inputs['union'] = 'UNION ALL '
+        else:
+            inputs['union'] = ''
+        
+        sub_sql = '''%(union)s 
+                    SELECT '%(sector)s'::text as sector, 
+
+                    a.micro_id, a.county_id, a.bin_id, a.year, 
+                    
+                    a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
+                    a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
+                    a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
+                    a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
+                    a.value_of_ptc, a.pbi_fit_length, a.ptc_length, a.value_of_rebate, a.value_of_tax_credit_or_deduction, 
+                    a.ic, a.payback_period, a.lcoe, a.payback_key, a.max_market_share, 
+                    a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
+                    a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
+                    a.market_value,
+                    
+                    b.state_abbr, b.census_division_abbr, b.utility_type, 
+                    b.pca_reg, b.reeds_reg, b.incentive_array_id, b.elec_rate_cents_per_kwh, 
+                    b.carbon_price_cents_per_kwh, 
+                    b.fixed_om_dollars_per_kw_per_yr, 
+                    b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
+                    b.inverter_cost_dollars_per_kw, 
+                    b.ann_cons_kwh, 
+                    b.customers_in_bin, b.initial_customers_in_bin, 
+                    b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
+                    b.nem_system_limit_kw, b.excess_generation_factor, 
+                    b.naep, b.aep, b.system_size_kw, 
+                    b.npanels, 
+                    b.tilt, b.azimuth, b.derate, 
+                    b.pct_shaded, b.solar_re_9809_gid, 
+                    b.density_w_per_sqft, b.inverter_lifetime_yrs, 
+                    b.available_rooftop_space_sqm,
+                    
+                    c.initial_market_share, c.initial_number_of_adopters,
+                    c.initial_capacity_mw
+                    
+                    FROM %(schema)s.outputs_%(sector_abbr)s a
+                    
+                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_best_option_each_year b
+                    ON a.county_id = b.county_id
+                    AND a.bin_id = b.bin_id
+                    and a.year = b.year
+                    
+                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_initial_market_shares c
+                    ON a.county_id = c.county_id
+                    AND a.bin_id = c.bin_id
+                    ''' % inputs
+        sql += sub_sql
+    
+    sql += ';'
+    cur.execute(sql)
+    con.commit()
+
+    # create indices that will be needed for various aggregations in R visualization script
+    sql = '''CREATE INDEX outputs_all_year_btree ON %(schema)s.outputs_all USING BTREE(year);
+             CREATE INDEX outputs_all_state_abbr_btree ON %(schema)s.outputs_all USING BTREE(state_abbr);
+             CREATE INDEX outputs_all_sector_btree ON %(schema)s.outputs_all USING BTREE(sector);
+             CREATE INDEX outputs_all_system_size_kw_btree ON %(schema)s.outputs_all USING BTREE(system_size_kw);
+             CREATE INDEX outputs_all_npanels_btree ON %(schema)s.outputs_all USING BTREE(npanels);
+             CREATE INDEX outputs_all_rooftop_availability_btree ON %(schema)s.outputs_all USING BTREE(available_rooftop_space_sqm);''' % inputs
+    cur.execute(sql)
+    con.commit()
+
+def copy_outputs_to_csv(technology, schema, out_path, sectors, cur, con):
+    
+    if technology == 'wind':
+        combine_outputs_wind(schema, sectors, cur, con)
+    elif technology == 'solar':
+        combine_outputs_solar(schema, sectors, cur, con)        
+
     # copy data to csv
     f = gzip.open(out_path+'/outputs.csv.gz','w',1)
-    cur.copy_expert('COPY diffusion_wind.outputs_all TO STDOUT WITH CSV HEADER;', f)
+    cur.copy_expert('COPY %s.outputs_all TO STDOUT WITH CSV HEADER;' % schema, f)
     f.close()
     
     # write the scenario optoins to csv as well
     f2 = open(out_path+'/scenario_options_summary.csv','w')
-    cur.copy_expert('COPY diffusion_wind.scenario_options TO STDOUT WITH CSV HEADER;',f2)
+    cur.copy_expert('COPY %s.scenario_options TO STDOUT WITH CSV HEADER;' % schema,f2)
     f2.close()
     
 

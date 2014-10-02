@@ -239,7 +239,7 @@ def main(mode = None, resume_year = None):
                 # copy outputs to csv     
                 logger.info('Writing outputs')
                 t0 = time.time()
-                datfunc.copy_outputs_to_csv(out_path, sectors, cur, con)
+                datfunc.copy_outputs_to_csv(cfg.technology, schema, out_path, sectors, cur, con)
                 # copy the input scenario spreadsheet
                 shutil.copy(input_scenario, out_path)
                 logger.info('datfunc.copy_outputs_to_csv took: %0.1fs' %(time.time() - t0))
