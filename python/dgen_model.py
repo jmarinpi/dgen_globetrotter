@@ -72,7 +72,7 @@ def main(mode = None, resume_year = None):
     model_init = time.time()
     
     logger = datfunc.init_log(os.path.join(out_dir,'dg_model.log'))
-    logger.info('Initiating model at %s' %time.ctime())
+    logger.info('Initiating model (%s)' %time.ctime())
 
 
     try:       
@@ -245,7 +245,7 @@ def main(mode = None, resume_year = None):
                 logger.info('datfunc.copy_outputs_to_csv took: %0.1fs' %(time.time() - t0))
                 # create output html report
                 t0 = time.time()
-                datfunc.create_scenario_report(scen_name, out_path, cur, con, cfg.Rscript_path, logger)
+                datfunc.create_scenario_report(cfg.technology, schema, scen_name, out_path, cur, con, cfg.Rscript_path, logger)
                 logger.info('datfunc.create_scenario_report took: %0.1fs' %(time.time() - t0))
                 #logger.info('Model completed at %s run took: %.1f seconds' % (time.ctime(), time.time() - model_init))
                 logger.info('The entire model run took: %.1f seconds' % (time.time() - model_init))

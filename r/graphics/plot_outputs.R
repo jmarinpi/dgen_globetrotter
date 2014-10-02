@@ -19,23 +19,38 @@ library (dplyr,quietly = T)
 source("../r/graphics/output_funcs.R")
 source('../r/maps/map_functions.R', chdir = T)
 
-runpath<-commandArgs(TRUE)[1]
-scen_name<-commandArgs(TRUE)[2]
+runpath<-commandArgs(T)[1]
+scen_name<-commandArgs(T)[2]
+tech = commandArgs(T)[3]
+schema = commandArgs(T)[4]
 
 # two different connetions to postgres (1 used by RPostgreSQL and the other by dplyr)
 con<-make_con(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
 src = src_postgres(host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
+
 # lazy load the output table from postgres
-df = tbl(src,sql("SELECT *,  CASE WHEN turbine_size_kw = 1500 AND nturb > 1 THEN '1500+'::TEXT ELSE turbine_size_kw::TEXT END as system_size_factors FROM diffusion_wind.outputs_all"))
+if (tech == 'wind'){
+  sql = sprintf("SELECT *,  
+                  CASE WHEN turbine_size_kw = 1500 AND nturb > 1 THEN '1500+'::TEXT 
+                  ELSE turbine_size_kw::TEXT 
+                  END as system_size_factors 
+                FROM %s.outputs_all",schema)
+} else if (tech == 'solar'){
+  sql = sprintf("SELECT *
+                FROM %s.outputs_all",schema)
+}
+df = tbl(src,sql(sql))
+
 # get the start year and end year for the model run
 start_year = as.numeric(collect(summarise(df, min(year))))
 end_year = as.numeric(collect(summarise(df, max(year))))
 
-#start_year = 2014
-#end_year = 2050 
-
+# set up markdown params and knit markdown file
 opts_knit$set(base.dir = runpath)
-knit2html("../r/graphics/plot_outputs.md", output = paste0(runpath,"/DG Wind report.html"), title = "DG Wind report", stylesheet = "../r/graphics/plot_outputs.css",
+report_title = sprintf('d%s Report', tech)
+report_filepath = sprintf('%s/d%s_Report.html', runpath, tech)
+knit2html("../r/graphics/plot_outputs.md", output = report_filepath, title = report_title, 
+            stylesheet = "../r/graphics/plot_outputs.css",
             options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
 dbDisconnect(con)
 

@@ -91,59 +91,59 @@ cf_by_sector_and_year<-function(df){
     ggtitle('Median Capacity Factor by Sector')
 }
 
-lcoe_contour<-function(df, start_year, end_year, dr = 0.05, n = 30){
-# Map out the net present cost and annual capacity factor to achieve a given LCOE
-# LCOE is calculate as the net present cost divided by the net present generation over lifetime
-# To calculate NPC for the model, assume a 30yr life and 1c/kWh VOM
-# Plot a sample of model points for the first and final year for all sectors,sizes, etc.
+lcoe_contour<-function(df, schema, start_year, end_year, dr = 0.05, n = 30){
+  # Map out the net present cost and annual capacity factor to achieve a given LCOE
+  # LCOE is calculate as the net present cost divided by the net present generation over lifetime
+  # To calculate NPC for the model, assume a 30yr life and 1c/kWh VOM
+  # Plot a sample of model points for the first and final year for all sectors,sizes, etc.
+    
+  d = data.frame()
   
-d = data.frame()
-
-present_value_factor = ((1 - (1 + dr)^-n)/dr)
-
-# Calculate the min and max capacity factors for a given lcoe and net present cost (npc)
-for(lcoe in c(0,0.1, 0.2, 0.3, 0.4, 0.5, 0.6,0.7)){
-  tmp<-data.frame(npc = seq(0,10,.01))
-  tmp$cf <- 1000 * tmp$npc / (lcoe * 8760 * present_value_factor)
-  tmp$cf_max <- 1000 * tmp$npc / (lcoe * 8760 * present_value_factor)
-  tmp$cf_min <- 1000 * tmp$npc / ((lcoe + 0.1) * 8760 * present_value_factor)
-  tmp$lcoe <- lcoe
-  d <- rbind(d,tmp)
+  present_value_factor = ((1 - (1 + dr)^-n)/dr)
+  
+  # Calculate the min and max capacity factors for a given lcoe and net present cost (npc)
+  for(lcoe in c(0,0.1, 0.2, 0.3, 0.4, 0.5, 0.6,0.7)){
+    tmp<-data.frame(npc = seq(0,10,.01))
+    tmp$cf <- 1000 * tmp$npc / (lcoe * 8760 * present_value_factor)
+    tmp$cf_max <- 1000 * tmp$npc / (lcoe * 8760 * present_value_factor)
+    tmp$cf_min <- 1000 * tmp$npc / ((lcoe + 0.1) * 8760 * present_value_factor)
+    tmp$lcoe <- lcoe
+    d <- rbind(d,tmp)
+  }
+  
+  d[is.na(d)] <- 0.5
+  d[d$cf_max > 0.5, 'cf_max'] <- 0.5
+  d[d$cf_min > 0.5, 'cf_min'] <- 0.5
+  d[d$lcoe == 0.7 , 'cf_min'] <- 0
+  
+  # Subset of model points for first and last year
+  sql = sprintf("SELECT * FROM %s.outputs_all WHERE year in (%s,%s) ORDER BY RANDOM() LIMIT 1000", schema, start_year, end_year)
+  f = tbl(src,sql(sql))       
+  pts = collect(select(f,installed_costs_dollars_per_kw,naep,year))
+  pts$present_value_factor <- present_value_factor
+  
+  ggplot()+
+    geom_ribbon(data = d, aes(x = npc, y = cf, ymin = cf_min, ymax = cf_max, fill = factor(lcoe)), alpha = 0.5)+
+    theme_few()+
+    scale_x_continuous(name = 'Net Present Cost ($/W)', limits = c(0,10))+
+    scale_y_continuous(name = 'Annual Capacity Factor', limits = c(0,.5))+
+    scale_fill_brewer(name = 'LCOE Range ($/kWh)', 
+                      labels=c('< 0.1' ,"0.1 - 0.2", "0.2 - 0.3", "0.3 - 0.4", "0.4 - 0.5", "0.5 - 0.6", "0.6 - 0.7", "> 0.7"), 
+                      palette = 'Spectral')+
+    geom_point(data = pts, aes(x = 0.001 * (installed_costs_dollars_per_kw + naep * 0.01 * present_value_factor), 
+                                  y = naep/8760, color = factor(year), 
+                                  shape = factor(year)))+
+    scale_colour_discrete(name = 'Sample From Model')+
+    scale_shape_discrete(name = 'Sample From Model')+
+    ggtitle("LCOE Contour Map For First and Final Model Years")
 }
 
-d[is.na(d)] <- 0.5
-d[d$cf_max > 0.5, 'cf_max'] <- 0.5
-d[d$cf_min > 0.5, 'cf_min'] <- 0.5
-d[d$lcoe == 0.7 , 'cf_min'] <- 0
-
-# Subset of model points for first and last year
-sql = sprintf("SELECT * FROM diffusion_wind.outputs_all WHERE year in (%s,%s) ORDER BY RANDOM() LIMIT 1000",start_year, end_year)
-f = tbl(src,sql(sql))       
-pts = collect(select(f,installed_costs_dollars_per_kw,naep,year))
-pts$present_value_factor <- present_value_factor
-
-ggplot()+
-  geom_ribbon(data = d, aes(x = npc, y = cf, ymin = cf_min, ymax = cf_max, fill = factor(lcoe)), alpha = 0.5)+
-  theme_few()+
-  scale_x_continuous(name = 'Net Present Cost ($/W)', limits = c(0,10))+
-  scale_y_continuous(name = 'Annual Capacity Factor', limits = c(0,.5))+
-  scale_fill_brewer(name = 'LCOE Range ($/kWh)', 
-                    labels=c('< 0.1' ,"0.1 - 0.2", "0.2 - 0.3", "0.3 - 0.4", "0.4 - 0.5", "0.5 - 0.6", "0.6 - 0.7", "> 0.7"), 
-                    palette = 'Spectral')+
-  geom_point(data = pts, aes(x = 0.001 * (installed_costs_dollars_per_kw + naep * 0.01 * present_value_factor), 
-                                y = naep/8760, color = factor(year), 
-                                shape = factor(year)))+
-  scale_colour_discrete(name = 'Sample From Model')+
-  scale_shape_discrete(name = 'Sample From Model')+
-  ggtitle("LCOE Contour Map For First and Final Model Years")
-}
-
-excess_gen_figs<-function(df,con){
+excess_gen_figs<-function(df, con, schema){
   
   df = collect(select(df,excess_generation_factor,payback_period, nem_system_limit_kw,system_size_kw))
   
   # Get the scenario options
-  table<-dbGetQuery(con,"select * from diffusion_wind.scenario_options")
+  table<-dbGetQuery(con,sprintf("SELECT * FROM %s.scenario_options", schema))
   nem_availability <- table[1,'net_metering_availability']
   
   if(nem_availability == 'Full_Net_Metering_Everywhere'){
@@ -391,8 +391,8 @@ diffusion_trends<-function(df,runpath,scen_name){
 }
 
 
-scenario_opts_table<-function(con){
-  table<-dbGetQuery(con,"select * from diffusion_wind.scenario_options")
+scenario_opts_table<-function(con, schema){
+  table<-dbGetQuery(con,sprintf("SELECT * from %s.scenario_options", schema))
   names(table) <- unlist(lapply(names(table),simpleCap))
   table<-melt(table, id.vars = c(),variable.name='Switch',value.name="Value")
   print_table(table, caption = 'Scenario Options')    
