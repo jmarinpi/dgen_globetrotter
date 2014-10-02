@@ -45,7 +45,7 @@ def main(mode = None, resume_year = None):
         if resume_year == 2014:
             cfg.init_model = True
             cdate = time.strftime('%Y%m%d_%H%M%S')    
-            out_dir = '%s/runs/results_%s' %(os.path.dirname(os.getcwd()),cdate)        
+            out_dir = '%s/runs_%s/results_%s' %(os.path.dirname(os.getcwd()), cfg.technology, cdate)        
             os.makedirs(out_dir)
             input_scenarios = None
             market_last_year = None
@@ -60,7 +60,7 @@ def main(mode = None, resume_year = None):
         #cfg.init_model,out_dir,input_scenarios, market_last_year = datfunc.load_resume_vars(cfg, resume_year)
     else:
         cdate = time.strftime('%Y%m%d_%H%M%S')    
-        out_dir = '%s/runs/results_%s' %(os.path.dirname(os.getcwd()),cdate)        
+        out_dir = '%s/runs_%s/results_%s' %(os.path.dirname(os.getcwd()), cfg.technology, cdate)        
         os.makedirs(out_dir)
     
                         
