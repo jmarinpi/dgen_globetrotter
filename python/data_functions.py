@@ -321,7 +321,7 @@ def clear_outputs(con, cur, schema):
     con.commit()
 
 
-def write_outputs(con, cur, outputs_df, sector_abbr):
+def write_outputs(con, cur, outputs_df, sector_abbr, schema):
     
     # set fields to write
     fields = [  'micro_id',
@@ -370,7 +370,7 @@ def write_outputs(con, cur, outputs_df, sector_abbr):
     # seek back to the beginning of the stringIO file
     s.seek(0)
     # copy the data from the stringio file to the postgres table
-    cur.copy_expert('COPY diffusion_wind.outputs_%s (%s) FROM STDOUT WITH CSV' % (sector_abbr,fields_str), s)
+    cur.copy_expert('COPY %s.outputs_%s (%s) FROM STDOUT WITH CSV' % (schema, sector_abbr,fields_str), s)
     # commit the additions and close the stringio file (clears memory)
     con.commit()    
     s.close()
@@ -900,8 +900,8 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   b.density_w_per_sqft, 
                   b.inverter_lifetime_yrs,
                   --OPTIMAL SIZING ALGORITHM THAT RETURNS A SYSTEM SIZE AND NUMBER OF PANELS:
-                  diffusion_solar.system_sizing( '%(sector)s'::TEXT,
-                                                (b.load_multiplier * a.load_kwh_in_bin * (1-a.pct_shaded))::NUMERIC, 
+                  diffusion_solar.system_sizing( lower('%(sector)s')::TEXT,
+                                                (b.load_multiplier * a.load_kwh_per_customer_in_bin * (1-a.pct_shaded))::NUMERIC, 
                                                 a.naep * b.efficiency_improvement_factor, 
                                                 1000::NUMERIC, -- replace with actual available_rooftop_space_sqm 
                                                 b.density_w_per_sqft,
@@ -1640,7 +1640,7 @@ def get_rate_escalations(con, schema):
     rate_escalations = sqlio.read_frame(sql, con)
     return rate_escalations
     
-def calc_expected_rate_escal(df,rate_escalations, year, sector): 
+def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr): 
     '''
     Append the expected rate escalation to the main dataframe.
     Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
@@ -1651,7 +1651,7 @@ def calc_expected_rate_escal(df,rate_escalations, year, sector):
     '''  
     
     # Only use the escalation multiplier over the next 30 years
-    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + 30)) & (rate_escalations['year'] >=  year) & (rate_escalations['sector'] == sector.lower())]
+    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + 30)) & (rate_escalations['year'] >=  year) & (rate_escalations['sector'] == sector_abbr.lower())]
     
     rate_pivot = projected_rate_escalations.pivot(index = 'census_division_abbr',columns = 'year', values = 'escalation_factor')    
     rate_pivot['census_division_abbr'] = rate_pivot.index

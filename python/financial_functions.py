@@ -33,7 +33,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections, market_l
     df = pd.merge(df,financial_parameters, how = 'left', on = 'sector')
     
     # get customer expected rate escalations
-    rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector)    
+    rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector_abbr)    
     
     ## Diffusion from previous year ## 
     if year == cfg.start_year: 
@@ -149,7 +149,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, yrs = 3
 
 
     # Percentage of excess gen, bounded from 0 - 100%
-    per_excess_gen = np.minimum(np.maximum(df.excess_generation_factor + 0.31 * (df.aep/df.ann_cons_kwh -1), 0),1)
+    per_excess_gen = np.minimum(np.maximum(df.excess_generation_factor + 0.31 * (df.aep/df.load_kwh_per_customer_in_bin -1), 0),1)
     
     curtailment_rate = 0 # Placeholder for this to be updated with ReEDS integration    
     

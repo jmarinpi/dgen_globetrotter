@@ -210,8 +210,8 @@ def main(mode = None, resume_year = None):
                     
                     # 11. Save outputs from this year and update parameters for next solve       
                     t0 = time.time()                    
-                    datfunc.write_outputs(con, cur, df, sector_abbr)
-                    logger.info('datfunc.write_outputs for %s took: %0.1fs' %(year, time.time() - t0))                        
+                    datfunc.write_outputs(con, cur, df, sector_abbr, schema)
+                    logger.info('datfunc.write_outputs for %s took: %0.1fs' % (year, time.time() - t0))                        
                     logger.info('Doing the entire %s model year for %s sector took: %0.1fs' %(year, sector, time.time() - t_loop))   
             ## 12. Outputs & Visualization
             # set output subfolder

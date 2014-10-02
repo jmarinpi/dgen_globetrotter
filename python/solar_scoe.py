@@ -24,7 +24,7 @@ def solar_scoe(sector, load_kwh_per_customer_in_bin, naep, available_rooftop_spa
     available_rooftop_space_sqft = available_rooftop_space_sqm * 10.7639
     
     # Assume res sizes to load, others to 1/4 of load
-    if sector == 'residential':
+    if sector.lower() == 'residential':
         sector_size_mult = 1
     else:
         sector_size_mult = 0.25
