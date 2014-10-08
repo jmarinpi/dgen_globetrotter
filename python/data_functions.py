@@ -1306,6 +1306,14 @@ def get_sectors(cur, schema):
     sectors = cur.fetchone()['sectors']
     return sectors
     
+def get_system_degradation(cur, schema):
+    '''Return the annual system degradation rate as float.
+        '''    
+    sql = 'SELECT ann_system_degradation FROM %s.scenario_options;' % schema
+    cur.execute(sql)
+    ann_system_degradation = cur.fetchone()['ann_system_degradation']
+    return ann_system_degradation    
+    
     
 def get_exclusions(cur, technology):
     '''Return the sectors to model from table view in postgres.

@@ -132,6 +132,11 @@ def main(mode = None, resume_year = None):
             inflation = scenario_opts['ann_inflation']
             end_year = scenario_opts['end_year']
             
+            if cfg.technology == 'solar':
+                ann_system_degradation = datfunc.get_system_degradation(cur,schema)
+            else:
+                ann_system_degradation = 0
+            
             # start year comes from config
             if mode == 'ReEDS':
                 model_years = [resume_year]
@@ -195,7 +200,7 @@ def main(mode = None, resume_year = None):
                         market_last_year = 0 #market_last_year is actually initialized in calc_economics
                         
                     t_calc_econ = time.time()    
-                    df = finfunc.calc_economics(df, schema, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule, logger, rate_escalations)
+                    df = finfunc.calc_economics(df, schema, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation)
                     logger.info('finfunc.calc_economics for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t_calc_econ))
                     
                     # 10. Calulate diffusion

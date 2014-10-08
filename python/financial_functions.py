@@ -18,7 +18,7 @@ import time
 #==============================================================================
 def calc_economics(df, schema, sector, sector_abbr, market_projections, market_last_year, 
                    financial_parameters, cfg, scenario_opts, max_market_share, cur, con, 
-                   year, dsire_incentives, deprec_schedule, logger, rate_escalations):
+                   year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation):
     '''
     Calculates economics of system adoption (cashflows, payback, irr, etc.)
     
@@ -53,7 +53,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections, market_l
         inc = pd.merge(df,dsire_incentives,how = 'left', on = 'incentive_array_id')
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id'])
-    revenue, costs, cfs = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, yrs = 30)
+    revenue, costs, cfs = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, yrs = 30)
     payback = calc_payback(cfs)
     
     if sector == 'Residential':
@@ -74,7 +74,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections, market_l
     
     
 #==============================================================================
-def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, yrs = 30):
+def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, ann_system_degradation, yrs = 30):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 
@@ -88,7 +88,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, yrs = 3
         vi) revenue from all other incentives
              
     Author: bsigrin
-    Last Revision: 7/1/14
+    Last Revision: 10/8/14
     
         IN:
             df - pandas dataframe - dataframe containing: [ic ($), loan_rate, 
@@ -146,19 +146,24 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, yrs = 3
     avoided cost, or no credit. Amount of excess energy is aep * excess_gen_factor + 0.31 * (gen/load - 1) 
     See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail
     """
-
-
+    
+    # Annual system production (kWh) including degradation
+    aep = np.empty(shape)
+    aep[:,0] = 1
+    aep[:,1:]  = 1 - ann_system_degradation
+    aep = df.aep[:,np.newaxis] * aep.cumprod(axis = 1)
+    
     # Percentage of excess gen, bounded from 0 - 100%
-    per_excess_gen = np.minimum(np.maximum(df.excess_generation_factor + 0.31 * (df.aep/df.load_kwh_per_customer_in_bin -1), 0),1)
+    per_excess_gen = np.minimum(np.maximum(df.excess_generation_factor[:,np.newaxis] + 0.31 * (aep/df.load_kwh_per_customer_in_bin[:,np.newaxis] -1), 0),1)
     
     curtailment_rate = 0 # Placeholder for this to be updated with ReEDS integration    
     
-    outflow_gen_kwh = df.aep * per_excess_gen * (1 - curtailment_rate)
-    inflow_gen_kwh = df.aep * (1 - per_excess_gen)
+    outflow_gen_kwh = aep * per_excess_gen * (1 - curtailment_rate)
+    inflow_gen_kwh = aep * (1 - per_excess_gen)
     
     # Value of inflows (generation that is offsetting load)
     inflow_rate_dol_kwh   = 0.01 * df.elec_rate_cents_per_kwh
-    value_inflows_dol = inflow_gen_kwh[:,np.newaxis] * inflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
+    value_inflows_dol = inflow_gen_kwh * inflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
      
     # Set the rate the excess generation is credited
     if scenario_opts['net_metering_availability'] == 'Full_Net_Metering_Everywhere':
@@ -174,7 +179,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, yrs = 3
         outflow_rate = 0 * inflow_rate_dol_kwh
         
     outflow_rate_dol_kwh = np.where(df['system_size_kw'] < df.nem_system_limit_kw, inflow_rate_dol_kwh, outflow_rate)
-    value_outflows_dol = outflow_gen_kwh[:, np.newaxis] * outflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
+    value_outflows_dol = outflow_gen_kwh * outflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
     
     generation_revenue = value_inflows_dol + value_outflows_dol
     # 4) Revenue from depreciation.  ### THIS NEEDS MORE WORK ###  
