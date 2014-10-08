@@ -130,8 +130,13 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     pmt = - (1 - df.down_payment)* df.ic * crf    
     
     loan_cost = datfunc.fill_jagged_array(pmt,df.loan_term_yrs)
-    loan_cost[:,0] -= df.ic * df.down_payment 
-
+    loan_cost[:,0] -= df.ic * df.down_payment
+        
+    # Annualized (undiscounted) inverter replacement cost $/year (includes system size). Applied from year 10 onwards since assume initial 10-year warranty
+    inverter_replacement_cost  = df['system_size_kw'] * df.inverter_cost_dollars_per_kw/df.inverter_lifetime_yrs
+    inverter_cost = np.zeros(shape)
+    inverter_cost[:,10:] = -inverter_replacement_cost[:,np.newaxis]
+    
     # 2) Costs of fixed & variable O&M
     om_cost = np.zeros(shape);
     om_cost[:] =   (-df.variable_om_dollars_per_kwh * df['aep'])[:,np.newaxis]
@@ -207,7 +212,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     incentive_revenue += ptc_revenue + pbi_fit_revenue
     
     revenue = generation_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
-    costs = loan_cost + om_cost
+    costs = loan_cost + om_cost + inverter_cost
     cfs = revenue + costs
 
     return revenue, costs, cfs
