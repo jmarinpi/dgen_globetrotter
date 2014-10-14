@@ -708,5 +708,23 @@ pp_trends_ribbon<-function(df){
   return(p)
 }
 
-
-
+dist_of_azimuth_selected<-function(df, start_year){
+  
+  d<-filter(df, year == start_year) %.%
+    group_by(year, sector, azimuth) %.%
+    summarise(cap = sum(system_size_kw)) %.%
+    collect()
+  
+  # Reorder the azimuth category order
+  d$azimuth2 <- factor(d$azimuth, levels = c('W','SW','S','SE','E'))
+  
+  ggplot(d, aes(x = azimuth2, weight = cap, fill = sector))+
+    geom_bar(position = 'dodge', alpha = 0.5)+
+    facet_wrap(~sector, scales = "free_y")+
+    scale_y_continuous(name ='Number of systems selected')+
+    scale_fill_manual(values = sector_fil)+
+    xlab('Azimuth')+
+    theme_few()+
+    theme(strip.text.x = element_text(size=12, angle=0,))+
+    ggtitle('Optimal system orientations in 2014')
+}

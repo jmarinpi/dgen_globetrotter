@@ -40,7 +40,10 @@ cf_by_sector_and_year(df)
 if (tech == 'wind'){
   dist_of_cap_selected(df,scen_name,start_year,end_year)
   dist_of_height_selected(df,scen_name,start_year)
+} else if(tech == 'solar'){
+  dist_of_azimuth_selected(df, start_year)
 }
+
 excess_gen_out<-excess_gen_figs(df, con, schema)
 excess_gen_out$excess_gen_pt
 excess_gen_out$excess_gen_cdf
