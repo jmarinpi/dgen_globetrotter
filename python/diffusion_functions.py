@@ -38,7 +38,7 @@ def calc_diffusion(df, logger, year, sector):
     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
     df['new_market_share'] = df['market_share']-df['market_share_last_year']
     df['new_market_share'] = np.where(df['market_share'] > df['max_market_share'], 0, df['new_market_share'])
-    
+            
     df['new_adopters'] = df['new_market_share'] * df['customers_in_bin']
     df['new_capacity'] = df['new_adopters'] * df['system_size_kw']
     df['new_market_value'] = df['new_adopters'] * df['system_size_kw'] * df['installed_costs_dollars_per_kw']

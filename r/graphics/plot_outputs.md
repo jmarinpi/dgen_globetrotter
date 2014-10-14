@@ -15,10 +15,7 @@ out$national_generation_bar
 print_table(total_value_by_state_table(df,'installed_capacity', unit_factor = 0.001), caption = "Installed Capacity (MW)")
 print_table(mean_value_by_state_table(df,'market_share'), caption = "Mean Adoption Share")
 out$national_adopters_trends_bar
-if (tech == 'wind'){
-  national_installed_capacity_by_system_size_bar(df)
-}
-
+national_installed_capacity_by_system_size_bar(df,tech)
 ```
 
 # Diffusion Maps
