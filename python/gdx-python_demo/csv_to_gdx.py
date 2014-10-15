@@ -6,6 +6,31 @@ import argparse
 import os
 import sys
 
+def append_csv_to_gdx(ifile,gdx): 
+    print("Processing '{}'.".format(ifile))
+    
+    # open file into pandas DataFrame
+    df = pds.DataFrame.from_csv(ifile, index_col = None)
+    print(df)
+    
+    # create an info object for this csv file as a symbol
+    # assume:
+    #   1. symbol name same as file name
+    #   2. header is present with 'value' column clearly labelled
+    #   3. all other columns are a dimension defined by a set
+    symbol_name = os.path.splitext(os.path.basename(ifile))[0]
+    symbol_info = {}
+    symbol_info['name'] = symbol_name
+    symbol_info['typename'] = 'Parameter'
+    symbol_info['dims'] = len(df.columns) - 1
+    symbol_info['records'] = len(df.index)
+    symbol_info['domain'] = []
+    for col in df.columns:
+        if not col == 'value':
+            symbol_info['domain'].append({'key': col})
+    gdx.add_symbol(symbol_info)
+    top_dim = gdx[symbol_name]
+
 def convert_csv_to_gdx(input_files, output_file, gams_dir=None):
 
     # check inputs
@@ -48,11 +73,7 @@ def convert_csv_to_gdx(input_files, output_file, gams_dir=None):
     if os.path.isfile(output_file):
         print("Overwriting '{}'.".format(output_file))
         os.remove(output_file)
-    gdx.write(output_file, gams_dir)    
-    
-def append_csv_to_gdx(ifile,gdx): 
-    print("Processing '{}'.".format(ifile))
-    
+    gdx.write(output_file, gams_dir)        
 
 if __name__ == "__main__":
 
