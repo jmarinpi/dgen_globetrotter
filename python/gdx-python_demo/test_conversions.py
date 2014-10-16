@@ -28,17 +28,17 @@ def setup_module():
     os.mkdir(test_dir())
     shutil.copytree(os.path.join(base_dir(),'data'),test_data_dir())
     
-def test_csv_to_gdx():
-    cmds = ['python', os.path.join(base_dir(),'csv_to_gdx.py'),
-            '-i',os.path.join(test_data_dir(),'installed_capacity.csv'),
-                 os.path.join(test_data_dir(),'annual_generation.csv'),
-            '-o',os.path.join(test_dir(),'output.gdx'),
-            '-g',gams_dir()]
-    subp.call(cmds)
-    
 def test_gdx_to_csv():
     cmds = ['python', os.path.join(base_dir(),'gdx_to_csv.py'),
             '-i',os.path.join(test_data_dir(),'CONVqn.gdx'),
             '-o',os.path.join(test_dir(),'output_csvs'),
             '-g',gams_dir()]
     subp.call(cmds)
+    
+def test_csv_to_gdx():
+    cmds = ['python', os.path.join(base_dir(),'csv_to_gdx.py'),
+            '-i',os.path.join(test_data_dir(),'installed_capacity.csv'),
+                 os.path.join(test_data_dir(),'annual_generation.csv'),
+            '-o',os.path.join(test_dir(),'output.gdx'),
+            '-g',gams_dir()]
+    subp.call(cmds)    
