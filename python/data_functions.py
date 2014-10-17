@@ -1593,12 +1593,26 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     cur_date = np.array([datetime.date(cur_year, 1, 1)]*len(inc))
     default_exp_date = np.array([datetime.date(default_exp_yr, 1, 1)]*len(inc))
     
+    # Column names differ btw the wind and solar tables. 
+    # Adding this exception handling so they have common set of columns
+    
+    for col in ['increment_4_capacity_kw','increment_4_rebate_dlrs_kw',
+    'pbi_fit_max_size_for_dlrs_calc_kw','tax_credit_dlrs_kw',
+    'pbi_fit_min_output_kwh_yr','increment_3_rebate_dlrs_kw',
+    'increment_4_rebate_dlrs_kw']:
+        if col not in inc.columns:
+            inc[col] = None
+    
     ## Coerce incentives to following types:
+    # Don't loop over column names, because some are strings e.g. don't coerce all to floats
     inc.increment_1_capacity_kw = inc.increment_1_capacity_kw.astype(float)
     inc.increment_2_capacity_kw = inc.increment_2_capacity_kw.astype(float)
     inc.increment_3_capacity_kw = inc.increment_3_capacity_kw.astype(float)
+    inc.increment_4_capacity_kw = inc.increment_4_capacity_kw.astype(float)
     inc.increment_1_rebate_dlrs_kw = inc.increment_1_rebate_dlrs_kw.astype(float)
     inc.increment_2_rebate_dlrs_kw = inc.increment_2_rebate_dlrs_kw.astype(float)
+    inc.increment_3_rebate_dlrs_kw = inc.increment_3_rebate_dlrs_kw.astype(float)
+    inc.increment_4_rebate_dlrs_kw = inc.increment_4_rebate_dlrs_kw.astype(float)
     inc.pbi_fit_duration_years = inc.pbi_fit_duration_years.astype(float)
     inc.pbi_fit_max_size_kw = inc.pbi_fit_max_size_kw.astype(float)
     inc.pbi_fit_min_output_kwh_yr = inc.pbi_fit_min_output_kwh_yr.astype(float)
@@ -1625,16 +1639,24 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc.tax_credit_max_size_kw[inc.tax_credit_max_size_kw.isnull()] = 10000
     
     # 1. # Calculate Value of Increment Incentive
-    cap_1 =  np.minimum(inc.increment_1_capacity_kw * 1000, inc['system_size_kw'])
-    cap_2 =  (inc.increment_1_capacity_kw > 0) * np.maximum(inc['system_size_kw'] - inc.increment_1_capacity_kw * 1000,0)
+
+    increment_vars = ['increment_1_capacity_kw','increment_2_capacity_kw','increment_3_capacity_kw','increment_4_capacity_kw', 'increment_1_rebate_dlrs_kw','increment_2_rebate_dlrs_kw','increment_3_rebate_dlrs_kw','increment_4_rebate_dlrs_kw']    
+    inc[increment_vars] = inc[increment_vars].fillna(0)
+
+    # The amount of capacity that qualifies for the increment
+    cap_1 = np.minimum(inc.increment_1_capacity_kw, inc['system_size_kw'])
+    cap_2 = np.maximum(inc['system_size_kw'] - inc.increment_1_capacity_kw,0)
+    cap_3 = np.maximum(inc['system_size_kw'] - inc.increment_2_capacity_kw,0)
+    cap_4 = np.maximum(inc['system_size_kw'] - inc.increment_3_capacity_kw,0)
     
-    value_of_increment = cap_1 * inc.increment_1_rebate_dlrs_kw + cap_2 * inc.increment_2_rebate_dlrs_kw
+    value_of_increment = cap_1 * inc.increment_1_rebate_dlrs_kw + cap_2 * inc.increment_2_rebate_dlrs_kw + cap_3 * inc.increment_3_rebate_dlrs_kw + cap_4 * inc.increment_4_rebate_dlrs_kw
     value_of_increment[np.isnan(value_of_increment)] = 0
     inc['value_of_increment'] = value_of_increment
     # Don't let increment exceed 20% of project cost
     inc['value_of_increment'] = np.where(inc['value_of_increment'] > 0.2 * inc['installed_costs_dollars_per_kw'] * inc['system_size_kw'],  0.2 * inc['installed_costs_dollars_per_kw'] * inc['system_size_kw'], inc['value_of_increment'])
     
     # 2. # Calculate lifetime value of PBI & FIT
+    inc['pbi_fit_min_output_kwh_yr'] = inc['pbi_fit_min_output_kwh_yr'].fillna(0)    
     inc.pbi_fit_end_date[inc.pbi_fit_end_date.isnull()] = datetime.date(default_exp_yr, 1, 1) # Assign expiry if no date
     pbi_fit_still_exists = cur_date <= inc.pbi_fit_end_date # Is the incentive still valid
     
@@ -1694,7 +1716,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     # check whether the credits are still active (this can be applied universally because DSIRE does not provide specific info 
     # about expirations for each tax credit or deduction)
     if datetime.date(cur_year, 1, 1) >= datetime.date(default_exp_yr, 1, 1):
-        value_of_tax_credit_or_deduction = 0.0
+        inc['value_of_tax_credit_or_deduction'] = 0.0
     else:
         inc.tax_credit_pcnt_cost = np.where(inc.tax_credit_pcnt_cost.isnull(), 0, inc.tax_credit_pcnt_cost)
         inc.tax_credit_pcnt_cost = np.where(inc.tax_credit_pcnt_cost >= 1, 0.01 * inc.tax_credit_pcnt_cost, inc.tax_credit_pcnt_cost)
@@ -1706,12 +1728,14 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
         inc.max_tax_deduction_dlrs = np.where(inc.max_tax_deduction_dlrs.isnull(), 1e9, inc.max_tax_deduction_dlrs)
         max_tax_credit_or_deduction_value = np.maximum(inc.max_tax_credit_dlrs,inc.max_tax_deduction_dlrs)
         
-        value_of_tax_credit_or_deduction = tax_pcnt_cost * ic
+        inc['tax_credit_dlrs_kw'] = inc['tax_credit_dlrs_kw'].fillna(0)
+        
+        value_of_tax_credit_or_deduction = tax_pcnt_cost * ic + inc['tax_credit_dlrs_kw'] * inc['system_size_kw']
         value_of_tax_credit_or_deduction = np.minimum(max_tax_credit_or_deduction_value, value_of_tax_credit_or_deduction)
         value_of_tax_credit_or_deduction = np.where(inc.tax_credit_max_size_kw < inc['system_size_kw'], tax_pcnt_cost * inc.tax_credit_max_size_kw * inc.installed_costs_dollars_per_kw, value_of_tax_credit_or_deduction)
-        value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
-    
-    inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction
+        value_of_tax_credit_or_deduction = value_of_tax_credit_or_deduction.fillna(0)        
+        #value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
+        inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction.astype(float)
     
     # sum results to customer bins
     inc = inc[['county_id', 'bin_id', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id']).sum().reset_index() 
