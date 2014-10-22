@@ -188,20 +188,21 @@ def main(mode = None, resume_year = None):
                 logger.info('datfunc.get_dsire_incentives took: %0.1fs' %(time.time() - t0))                  
                 # Pull data from the Main Table to a Data Frame for each year
                 for year in model_years:
-                    t_loop = time.time()
-                    logger.info('Working on %s for %s sector' %(year, sector_abbr))
-                    
-                    t0 = time.time()                    
+                    logger.info('Working on %s for %s sector' %(year, sector_abbr))               
                     df = datfunc.get_main_dataframe(con, main_table, year)
-                    logger.info('datfunc.get_main_dataframe for %s took: %0.1fs' %(year, time.time() - t0))
                     
+                    ''' TESTING 
+                    Decision to buy pr lease must be made upstream of here, probably in generate_customer_bins    
+                    '''
+                    # Random assign business model                    
+                    tmp = np.random.rand(df.shape[0]) > 0.5
+                    df['ownership_model'] = np.where(tmp,'Host Owned','Leased')
+
                     # 9. Calculate economics including incentives
                     if year == cfg.start_year:
                         market_last_year = 0 #market_last_year is actually initialized in calc_economics
                         
-                    t_calc_econ = time.time()    
                     df = finfunc.calc_economics(df, schema, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation)
-                    logger.info('finfunc.calc_economics for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t_calc_econ))
                     
                     # 10. Calulate diffusion
                     ''' Calculates the market share (ms) added in the solve year. Market share must be less
@@ -209,15 +210,11 @@ def main(mode = None, resume_year = None):
                     For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
                     decrease if economics deteroriate.
                     '''             
-                    t_calc_diffusion = time.time() 
                     df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
-                    logger.info('The entire diffunc.calc_diffusion for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t_calc_diffusion))
                     
                     # 11. Save outputs from this year and update parameters for next solve       
                     t0 = time.time()                    
-                    datfunc.write_outputs(con, cur, df, sector_abbr, schema)
-                    logger.info('datfunc.write_outputs for %s took: %0.1fs' % (year, time.time() - t0))                        
-                    logger.info('Doing the entire %s model year for %s sector took: %0.1fs' %(year, sector, time.time() - t_loop))   
+                    datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
             ## 12. Outputs & Visualization
             # set output subfolder
             if mode == 'ReEDS':
