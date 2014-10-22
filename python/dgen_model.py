@@ -148,8 +148,8 @@ def main(mode = None, resume_year = None):
             
             sectors = datfunc.get_sectors(cur, schema)
             deprec_schedule = datfunc.get_depreciation_schedule(con, schema, type = 'standard').values
-            financial_parameters = datfunc.get_financial_parameters(con, schema, res_model = 'Host Owned', com_model = 'Host Owned', ind_model = 'Host Owned')
-            max_market_share = datfunc.get_max_market_share(con, schema, sectors.values(), scenario_opts, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit')
+            financial_parameters = datfunc.get_financial_parameters(con, schema)
+            max_market_share = datfunc.get_max_market_share(con, schema)
             market_projections = datfunc.get_market_projections(con, schema)
             rate_escalations = datfunc.get_rate_escalations(con, schema)
 
@@ -192,11 +192,12 @@ def main(mode = None, resume_year = None):
                     df = datfunc.get_main_dataframe(con, main_table, year)
                     
                     ''' TESTING 
-                    Decision to buy pr lease must be made upstream of here, probably in generate_customer_bins    
+                    Decision to buy or lease must be made upstream of here, probably in generate_customer_bins    
                     '''
                     # Random assign business model                    
                     tmp = np.random.rand(df.shape[0]) > 0.5
-                    df['ownership_model'] = np.where(tmp,'Host Owned','Leased')
+                    df['business_model'] = np.where(tmp,'host_owned','tpo')
+                    df['metric'] = np.where(tmp,'payback_period','monthly_bill_savings')
 
                     # 9. Calculate economics including incentives
                     if year == cfg.start_year:

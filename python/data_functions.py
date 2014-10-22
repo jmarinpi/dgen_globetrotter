@@ -1437,80 +1437,76 @@ def get_main_dataframe(con, main_table, year):
     df = sqlio.read_frame(sql, con, coerce_float = False)
     return df
     
-def get_financial_parameters(con, schema, res_model = 'Host Owned', com_model = 'Host Owned', ind_model = 'Host Owned'):
-    ''' Pull financial parameters dataframe from dB. Use passed parameters to subset for new/existing home/leasing/host-owned
+def get_financial_parameters(con, schema):
+    ''' Pull financial parameters dataframe from dB. We used to filter by business model here, but with leasing we will join
+    on sector and business_model later in calc_economics.
     
         IN: con - pg con object - connection object
-            res - string - which residential ownership structure to use (assume 100%)
-            com - string - which commercial ownership structure to use (assume 100%)
-            ind - string - which industrial ownership structure to use (assume 100%)
+            schema - string - schema for technology i.e. diffusion_solar
             
         OUT: fin_param  - pd dataframe - pre-processed resource,bins, rates, etc. for all years:
     '''
     
-    # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()   
-    
-    # Get data, filtering based on ownership models selected
-    sql = """SELECT lower(sector) as sector, ownership_model, loan_term_yrs, loan_rate, down_payment, 
-           discount_rate, tax_rate, length_of_irr_analysis_yrs
-           FROM %(schema)s.financial_parameters
-           WHERE (lower(sector) = 'residential' AND ownership_model = '%(res_model)s')
-           OR (lower(sector) = 'commercial' AND ownership_model = '%(com_model)s')
-           OR (lower(sector) = 'industrial' AND ownership_model = '%(ind_model)s');""" % inputs
+    sql = """SELECT * FROM %s.financial_parameters;"""%schema
     df = sqlio.read_frame(sql, con)
+    
+    # minor formatting for table joins later on
+    df.sector = df.sector.str.lower()
+    df['business_model'] = df.ownership_model.str.lower().str.replace(" ", "_").str.replace("leased","tpo")
+    df = df.drop('ownership_model', axis = 1)
     
     return df
  
 #==============================================================================
    
-def get_max_market_share(con, schema, sectors, scenario_opts, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit'):
+def get_max_market_share(con, schema):
     ''' Pull max market share from dB, select curve based on scenario_options, and interpolate to tenth of a year. 
         Use passed parameters to determine ownership type
     
         IN: con - pg con object - connection object
-            residential_type - string - which residential ownership structure to use (new or retrofit)
-            commercial_type - string - which commercial ownership structure to use (new or retrofit)
-            industrial_type - string - which industrial ownership structure to use (new or retrofit)
+            schema - string - schema for technology i.e. diffusion_solar
+
             
         OUT: max_market_share  - pd dataframe - dataframe to join on main df to determine max share 
                                                 keys are sector & payback period 
     '''
+    sql = """SELECT * FROM %s.max_market_curves_to_model;""" %schema
+    max_market_share = sqlio.read_frame(sql, con)
     # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()       
-
-    # the max market curves need to be interpolated to a finer temporal resolution of 1/10ths of years
-    # initialize a list for time steps at that inverval for a max 30 year payback period
-    yrs = np.linspace(0,30,301)
-    
-    # initialize a data frame to hold all of the interpolated max market curves (1 for each sector)
-    max_market_share = pd.DataFrame()
-    # loop through sectors
-    for sector in sectors:
-        # define the ownership type based on the current sector
-        ownership_type = inputs['%s_type' % sector.lower()]
-        short_sector = sector[:3].lower()        
-        
-        # Whether to use default or user fit max market share curves
-        if scenario_opts[short_sector + '_max_market_curve'] == 'User Fit':
-            sql = """SELECT * 
-            FROM %s.user_defined_max_market_share
-            WHERE lower(sector) = '%s';""" % (schema, sector.lower())
-            mm = sqlio.read_frame(sql, con)
-        else:
-            # get the data for this sector from postgres (this will handle all of the selection based on scenario inputs)
-            sql = """SELECT *
-                     FROM %s.max_market_curves_to_model
-                     WHERE lower(sector) = '%s';""" % (schema, sector.lower())
-            mm = sqlio.read_frame(sql, con)
-        # create an interpolation function to interpolate max market share (for either retrofit or new) based on the year
-        interp_func = interp1d(mm['year'], mm[ownership_type]);
-        # create a data frame of max market values for yrs using this interpolation function
-        interpolated_mm = pd.DataFrame({'max_market_share': interp_func(yrs),'payback_key': np.arange(301)})
-        # add in the sector to the data frame
-        interpolated_mm['sector'] = sector.lower()
-        # append to the main data frame
-        max_market_share = max_market_share.append(interpolated_mm, ignore_index = True)
+    #    inputs = locals().copy()       
+    #
+    #    # the max market curves need to be interpolated to a finer temporal resolution of 1/10ths of years
+    #    # initialize a list for time steps at that inverval for a max 30 year payback period
+    #    yrs = np.linspace(0,30,301)
+    #    
+    #    # initialize a data frame to hold all of the interpolated max market curves (1 for each sector)
+    #    max_market_share = pd.DataFrame()
+    #    # loop through sectors
+    #    for sector in sectors:
+    #        # define the ownership type based on the current sector
+    #        ownership_type = inputs['%s_type' % sector.lower()]
+    #        short_sector = sector[:3].lower()        
+    #        
+    #        # Whether to use default or user fit max market share curves
+    #        if scenario_opts[short_sector + '_max_market_curve'] == 'User Fit':
+    #            sql = """SELECT * 
+    #            FROM %s.user_defined_max_market_share
+    #            WHERE lower(sector) = '%s';""" % (schema, sector.lower())
+    #            mm = sqlio.read_frame(sql, con)
+    #        else:
+    #            # get the data for this sector from postgres (this will handle all of the selection based on scenario inputs)
+    #            sql = """SELECT *
+    #                     FROM %s.max_market_curves_to_model
+    #                     WHERE lower(sector) = '%s';""" % (schema, sector.lower())
+    #            mm = sqlio.read_frame(sql, con)
+    #        # create an interpolation function to interpolate max market share (for either retrofit or new) based on the year
+    #        interp_func = interp1d(mm['year'], mm[ownership_type]);
+    #        # create a data frame of max market values for yrs using this interpolation function
+    #        interpolated_mm = pd.DataFrame({'max_market_share': interp_func(yrs),'payback_key': np.arange(301)})
+    #        # add in the sector to the data frame
+    #        interpolated_mm['sector'] = sector.lower()
+    #        # append to the main data frame
+    #        max_market_share = max_market_share.append(interpolated_mm, ignore_index = True)
     return max_market_share
     
 
