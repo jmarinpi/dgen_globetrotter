@@ -196,32 +196,41 @@ FROM diffusion_wind.scenario_options;
 
 
 -- max market share
+DROP VIEW IF EXISTS diffusion_wind.max_market_curves_to_model;
 CREATE OR REPLACE VIEW diffusion_wind.max_market_curves_to_model As
-with user_inputs as (
-	SELECT 'residential' as sector, res_max_market_curve as source
+with user_inputs as 
+(
+	-- user selections for host owned curves
+	SELECT 'residential' as sector, 'host_owned' as business_model,
+		res_max_market_curve as source
 	FROM diffusion_wind.scenario_options
 	UNION
-	SELECT 'commercial' as sector, com_max_market_curve as source
+	SELECT 'commercial' as sector, 'host_owned' as business_model,
+		com_max_market_curve as source
 	FROM diffusion_wind.scenario_options
 	UNION
-	SELECT 'industrial' as sector, ind_max_market_curve as source
+	SELECT 'industrial' as sector, 'host_owned' as business_model,
+		ind_max_market_curve as source
 	FROM diffusion_wind.scenario_options
+	UNION
+	-- default selections for third party owned curves (only one option -- NREL)
+	SELECT unnest(array['residential','commercial','industrial']) as sector, 
+		'tpo' as business_model,
+		'NREL' as source	
 ),
-all_maxmarket as (
-	SELECT years_to_payback as year, sector, max_market_share_new as new, max_market_share_retrofit as retrofit, source
-	FROM diffusion_shared.max_market_share
-
-
-	UNION
-
-	SELECT year, sector, new, retrofit, 'User Defined' as source
-	FROM diffusion_wind.user_defined_max_market_share)
+all_maxmarket as 
+(
+	SELECT metric_value, sector, max_market_share, metric, 
+		source, business_model
+	FROM diffusion_shared.max_market_share_revised
+)
 SELECT a.*
 FROM all_maxmarket a
 INNER JOIN user_inputs b
 ON a.sector = b.sector
 and a.source = b.source
-order by year, sector;
+and a.business_model = b.business_model
+order by sector, metric, metric_value;
 
 -- create view for rate escalations
 CREATE OR REPLACE VIEW diffusion_wind.rate_escalations_to_model AS
