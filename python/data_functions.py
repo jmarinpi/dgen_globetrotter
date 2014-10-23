@@ -153,7 +153,7 @@ def make_con(connection_string, async = False):
     
     return con, cur
 
-def combine_temporal_data(cur, con, technology, start_year, end_year, sector_abbrs, sectors, preprocess, logger):
+def combine_temporal_data(cur, con, technology, start_year, end_year, sector_abbrs, preprocess, logger):
 
     msg = "Combining Temporal Factors"    
     logger.info(msg)
@@ -162,7 +162,7 @@ def combine_temporal_data(cur, con, technology, start_year, end_year, sector_abb
         return 1
         
     if technology == 'wind':
-        combine_temporal_data_wind(cur, con, start_year, end_year, sectors, preprocess, logger)
+        combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, preprocess, logger)
     elif technology == 'solar':
         combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, preprocess, logger)
     
@@ -238,7 +238,7 @@ def combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, pr
     
     return 1
 
-def combine_temporal_data_wind(cur, con, start_year, end_year, sectors, preprocess, logger):
+def combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, preprocess, logger):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
     
@@ -275,7 +275,7 @@ def combine_temporal_data_wind(cur, con, start_year, end_year, sectors, preproce
             ON a.year = g.year
             AND  a.turbine_size_kw = g.turbine_size_kw
             WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
-            AND d.sector in (%(sectors)s);""" % inputs
+            AND d.sector in (%(sector_abbrs)s);""" % inputs
     cur.execute(sql)
     con.commit()
     
@@ -1192,7 +1192,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 ON a.turbine_height_m = b.turbine_height_m
                 AND a.power_curve_id = b.power_curve_id
                 AND a.census_division_abbr = b.census_division_abbr
-                WHERE b.sector = '%(sector)s'
+                WHERE b.sector = '%(sector_abbr)s'
                 AND b.rate_escalation_source = '%(rate_escalation_source)s'
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
@@ -1280,14 +1280,14 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                        '%(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs]
         
          
-    sql = 'DROP TABLE IF EXISTS %s;'
-    for intermediate_table in intermediate_tables:
-        isql = sql % intermediate_table
-        if '%(i)s' in intermediate_table:
-            p_run(pg_conn_string, isql, county_chunks, npar)
-        else:
-            cur.execute(isql)
-            con.commit()    
+#    sql = 'DROP TABLE IF EXISTS %s;'
+#    for intermediate_table in intermediate_tables:
+#        isql = sql % intermediate_table
+#        if '%(i)s' in intermediate_table:
+#            p_run(pg_conn_string, isql, county_chunks, npar)
+#        else:
+#            cur.execute(isql)
+#            con.commit()    
 
     #==============================================================================
     #     return name of final table
@@ -1729,7 +1729,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
         value_of_tax_credit_or_deduction = tax_pcnt_cost * ic + inc['tax_credit_dlrs_kw'] * inc['system_size_kw']
         value_of_tax_credit_or_deduction = np.minimum(max_tax_credit_or_deduction_value, value_of_tax_credit_or_deduction)
         value_of_tax_credit_or_deduction = np.where(inc.tax_credit_max_size_kw < inc['system_size_kw'], tax_pcnt_cost * inc.tax_credit_max_size_kw * inc.installed_costs_dollars_per_kw, value_of_tax_credit_or_deduction)
-        value_of_tax_credit_or_deduction = value_of_tax_credit_or_deduction.fillna(0)        
+        value_of_tax_credit_or_deduction = pd.Series(value_of_tax_credit_or_deduction).fillna(0)        
         #value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
         inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction.astype(float)
     

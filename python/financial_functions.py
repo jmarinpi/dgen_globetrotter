@@ -156,13 +156,14 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     
     loan_cost = datfunc.fill_jagged_array(pmt,df.loan_term_yrs)
     loan_cost[:,0] -= df.ic * df.down_payment
-        
-    # Annualized (undiscounted) inverter replacement cost $/year (includes system size). Applied from year 10 onwards since assume initial 10-year warranty
-    inverter_replacement_cost  = df['system_size_kw'] * df.inverter_cost_dollars_per_kw/df.inverter_lifetime_yrs
-    inverter_cost = np.zeros(shape)
     
+    # initialize an empty data frame for inverter costs (for wind, this doesn't apply)
+    inverter_cost = np.zeros(shape)
     # wind turbines do not have inverters hence no replacement cost.
+    # but for solar, calculate and replace the inverter replacement costs with actual values
     if tech == 'solar':
+        # Annualized (undiscounted) inverter replacement cost $/year (includes system size). Applied from year 10 onwards since assume initial 10-year warranty
+        inverter_replacement_cost  = df['system_size_kw'] * df.inverter_cost_dollars_per_kw/df.inverter_lifetime_yrs
         inverter_cost[:,10:] = -inverter_replacement_cost[:,np.newaxis]
     
     # 2) Costs of fixed & variable O&M
