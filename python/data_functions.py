@@ -1280,14 +1280,14 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                        '%(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs]
         
          
-#    sql = 'DROP TABLE IF EXISTS %s;'
-#    for intermediate_table in intermediate_tables:
-#        isql = sql % intermediate_table
-#        if '%(i)s' in intermediate_table:
-#            p_run(pg_conn_string, isql, county_chunks, npar)
-#        else:
-#            cur.execute(isql)
-#            con.commit()    
+    sql = 'DROP TABLE IF EXISTS %s;'
+    for intermediate_table in intermediate_tables:
+        isql = sql % intermediate_table
+        if '%(i)s' in intermediate_table:
+            p_run(pg_conn_string, isql, county_chunks, npar)
+        else:
+            cur.execute(isql)
+            con.commit()    
 
     #==============================================================================
     #     return name of final table
