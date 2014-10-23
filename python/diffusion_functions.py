@@ -32,7 +32,7 @@ def calc_diffusion(df, logger, year, sector):
             market_last_year - pd dataframe - market to inform diffusion in next year
     '''
     t0 = time.time()
-    df['diffusion_market_share'] = calc_diffusion_market_share(df.payback_period.values,df.max_market_share.values, df.market_share_last_year.values)
+    df['diffusion_market_share'] = calc_diffusion_market_share(df)
     logger.info('diffunc.calc_diffusion_market_share for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
     
     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
@@ -92,17 +92,18 @@ def calc_equiv_time(msly, mms, p, q):
 #=============================================================================
 
 #=============================================================================
-def set_param_payback(payback_period,pval = 0.0015):
+def set_bass_param(scaled_metric_value,pval = 0.0015):
     ''' Set the p & q parameters which define the Bass diffusion curve.
     p is the coefficient of innovation, external influence or advertising effect. 
     q is the coefficient of imitation, internal influence or word-of-mouth effect.
 
-        IN: payback_period - numpy array - payback in years
+        IN: scaled_metric_value - numpy array - scaled value of economic attractiveness [0-1]
         OUT: p,q - numpy arrays - Bass diffusion parameters
     '''
     # set p and q values
-    p = np.array([pval] * payback_period.size);
-    q = np.where(payback_period <= 3, 0.5, np.where((payback_period <=10) & (payback_period > 3), 0.4, 0.3))
+    p = np.array([pval] * scaled_metric_value.size);
+    # q value is set based off how attractive the technology is; these values are arbitrary and inherited from SolarDS
+    q = np.where(scaled_metric_value >= 0.9, 0.5, np.where((scaled_metric_value <=0.66) & (scaled_metric_value < 0.9), 0.4, 0.3))
 
     return p, q
     
@@ -110,7 +111,7 @@ def set_param_payback(payback_period,pval = 0.0015):
 
 #==============================================================================
 #  ^^^^ Calculate new diffusion in market segment ^^^^
-def calc_diffusion_market_share(payback_period,max_market_share, market_share_last_year):
+def calc_diffusion_market_share(df):
     ''' Calculate the fraction of overall population that have adopted the 
         technology in the current period. Note that this does not specify the 
         actual new adoption fraction without knowing adoption in the previous period. 
@@ -122,13 +123,15 @@ def calc_diffusion_market_share(payback_period,max_market_share, market_share_la
         OUT: new_market_share - numpy array - fraction of overall population 
                                                 that have adopted the technology
     '''
-    payback_period = np.maximum(np.minimum(payback_period,30),0) # Payback defined [0,30] years        
-    p,q  = set_param_payback(payback_period) 
-    teq = calc_equiv_time(market_share_last_year, max_market_share, p, q); # find the 'equivalent time' on the newly scaled diffusion curve
+    # The relative economic attractiveness controls the p,q values in Bass diffusion
+    # Current assumption is that only payback and MBS are being used, that pp is bounded [0-30] and MBS bounded [0-120]
+    scaled_metric_value = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'monthly_bill_savings', df.metric_value/120,np.nan))    
+    p,q  = set_bass_param(scaled_metric_value) 
+    teq = calc_equiv_time(df.market_share_last_year, df.max_market_share, p, q); # find the 'equivalent time' on the newly scaled diffusion curve
     teq2 = teq + 2; # now step forward two years from the 'new location'
     new_adopt_fraction = bass_diffusion(p, q, teq2); # calculate the new diffusion by stepping forward 2 years
-    market_share = max_market_share * new_adopt_fraction; # new market adoption    
-    market_share = np.where(market_share_last_year > max_market_share, market_share_last_year, market_share)
+    market_share = df.max_market_share * new_adopt_fraction; # new market adoption    
+    market_share = np.where(df.market_share_last_year > df.max_market_share, df.market_share_last_year, market_share)
     
     return market_share
 #==============================================================================  
