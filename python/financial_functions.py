@@ -59,11 +59,6 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections, market_l
     ## Calc metric value here
     df['metric_value'] = calc_metric_value(df,cfs,revenue,costs)
 
-
-        
-
-    
-    
     #    if sector == 'Residential':
     #        ttd = np.zeros(len(cfs))
     #    else: # Don't calculate for res sector
@@ -204,7 +199,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     
     depreciation_revenue = np.zeros(shape)
     deprec_basis = (df.ic - 0.5 * (df.value_of_tax_credit_or_deduction  + df.value_of_rebate))[:,np.newaxis] # depreciable basis reduced by half the incentive
-    depreciation_revenue[:,:20] = deprec_basis * deprec_schedule.reshape(1,20) * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | df.business_model == 'tpo')[:,np.newaxis]   
+    depreciation_revenue[:,:20] = deprec_basis * deprec_schedule.reshape(1,20) * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | (df.business_model == 'tpo'))[:,np.newaxis]   
 
     # 5) Interest paid on loans is tax-deductible for commercial & industrial; 
     # assume can fully monetize
@@ -540,7 +535,7 @@ def calc_metric_value(df,cfs,revenue,costs):
     Also, assume lease contract is over 20 years
     """ 
     
-    mbs = (np.sum(revenues[:,:20], axis = 1) - np.sum(costs[:,:20], axis = 1))/20
+    mbs = (np.sum(revenue[:,:20], axis = 1) + np.sum(costs[:,:20], axis = 1))/(12*20) # Recall that costs are negative values hence Rev + Costs
     metric_value = np.where(df.business_model == 'tpo',mbs, np.where((df.sector == 'Industrial') | (df.sector == 'Commercial'),ttd,payback))
     
     return metric_value
