@@ -57,7 +57,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections, market_l
     revenue, costs, cfs = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, yrs = 30)
     
     ## Calc metric value here
-    df['metric_value'] = calc_metric_value(df,cfs,revenue,costs)
+    df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs)
 
     #    if sector == 'Residential':
     #        ttd = np.zeros(len(cfs))
@@ -67,9 +67,31 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections, market_l
     #    df['payback_period'] = np.where(df['sector'] == 'residential',payback, ttd)
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate)    
     #df['payback_key'] = (df['payback_period']*10).astype(int)
-     
+    
+    # cleanup metric values
+    # find the bounding values for the max market share curves for payback period and monthly bill savings (mbs)
+    max_payback = max_market_share[max_market_share.metric == 'payback_period'].metric_value.max()
+    min_payback = max_market_share[max_market_share.metric == 'payback_period'].metric_value.min()
+    max_mbs = max_market_share[max_market_share.metric == 'monthly_bill_savings'].metric_value.max()
+    min_mbs = max_market_share[max_market_share.metric == 'monthly_bill_savings'].metric_value.min()
+    # copy the metric valeus to a new column to store an edited version
+    metric_value_bounded = df.metric_value_precise.values.copy()
+    # where the metric value exceeds the corresponding max market curve bounds, set the value to the corresponding bound
+    metric_value_bounded[np.where((df.metric == 'payback_period') & (df.metric_value_precise < min_payback))] = min_payback
+    metric_value_bounded[np.where((df.metric == 'payback_period') & (df.metric_value_precise > max_payback))] = max_payback    
+    metric_value_bounded[np.where((df.metric == 'monthly_bill_savings') & (df.metric_value_precise < min_mbs))] = min_mbs
+    metric_value_bounded[np.where((df.metric == 'monthly_bill_savings') & (df.metric_value_precise > max_mbs))] = max_mbs
+    df['metric_value_bounded'] = metric_value_bounded
+    # check that this worked
+#    df[df.metric_value_precise <> df.metric_value_bounded][['metric_value_precise','metric_value_bounded']]    
+    # scale and round to nearest int    
+    df['metric_value_as_factor'] = (df['metric_value_bounded'] * 10).round().astype('int')
+    # add a scaled key to the max_market_share df too
+    max_market_share['metric_value_as_factor'] = (max_market_share['metric_value'] * 10).round().astype('int')
+
     # Does the metric_value need to be an int?
-    df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'metric','metric_value','business_model'])
+    df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'metric','metric_value_as_factor','business_model'])
+    
     return df
     
 #==============================================================================    
