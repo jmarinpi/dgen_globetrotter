@@ -1811,6 +1811,45 @@ def fill_jagged_array(vals,lens, cols = 30):
     r = np.repeat(az,bz).reshape((rows,cols))
     return r
     
+def calc_lease_availability(df,leasing_availability, year,start_year,market_threshold = 0.01):
+    
+    # For the first year start with existing policies
+    if year == start_year:
+        sql = """SELECT state as state_abbr, leasing_allowed FROM diffusion_shared.states_allowing_leasing_in_2013;"""
+        lease_avail = sqlio.read_frame(sql, con, coerce_float = False)
+        lease_avail['leasing_allowed'] = np.where(lease_avail['leasing_allowed'] == 'Not Allowed',False, True)
+        df = pd.merge(df, lease_avail, how = 'left', on = ['state_abbr'])
+    
+    # Makes leasing allowed everywhere    
+    if leasing_availability == 'Full_Leasing_Everywhere':
+        df['leasing_allowed'] = True
+        
+    # Makes leasing allowed nowhere      
+    elif leasing_availability == 'No_Leasing_Anywhere':
+        df['leasing_allowed'] = False
+    
+    # Leasing only in markets defined in first year   
+    elif leasing_availability == 'No_New_Markets':                 
+        pass
+    
+    # Leasing allowed in existing markets, or if the avg. max market share exceed the threshold i.e 1% 
+    elif leasing_availability == 'Market_Threshold':
+        
+        # We need at least one year of calculations. Note that this means new markets cannot unlock until 2016 at earliest.
+        if year != start_year:
+            
+            # Does the state's avg max market share exceed the market_threshold i.e 1%?
+            market_availability = df.groupby(['state_abbr'])['max_market_share'].mean().reset_index()
+            market_availability['leasing_market_availability'] = market_availability['max_market_share'] > market_threshold
+            market_availability = market_availability.drop('max_market_share',axis = 1)
+            
+            # Join with main on state; ignore falses if the state already permits leasing
+            df = pd.merge(df, market_availability, how = 'left', on = ['state_abbr'])
+            df['leasing_allowed'] = np.where(df['leasing_allowed'], True, df['leasing_market_availability'])
+            df = df.drop('leasing_market_availability', axis = 1)
+            
+    return df
+    
 def code_profiler(out_dir):
     lines = [ line for line in open(out_dir + '/dg_model.log') if 'took:' in line]
     

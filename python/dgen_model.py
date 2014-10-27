@@ -120,9 +120,16 @@ def main(mode = None, resume_year = None):
             else:
                 logger.warning("Warning: Skipping Import of Input Scenario Worksheet. This should only be done in resume mode.")
             
+
+            
             
             # 6. Read in scenario option variables
             scenario_opts = datfunc.get_scenario_options(cur, schema) 
+            
+            # TEMP
+            scenario_opts['leasing_availability'] = 'Market_Threshold'
+            # TEMP
+            
             logger.info('Scenario Name: %s' % scenario_opts['scenario_name'])
             t0 = time.time()
             exclusions = datfunc.get_exclusions(cur, cfg.technology) # get exclusions
