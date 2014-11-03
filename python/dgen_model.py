@@ -214,7 +214,7 @@ def main(mode = None, resume_year = None):
                     logger.info('The entire diffunc.calc_diffusion for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t_calc_diffusion))
                     
                     # 11. Save outputs from this year and update parameters for next solve       
-                    t0 = time.time()                    
+                    t0 = time.time()                 
                     datfunc.write_outputs(con, cur, df, sector_abbr, schema)
                     logger.info('datfunc.write_outputs for %s took: %0.1fs' % (year, time.time() - t0))                        
                     logger.info('Doing the entire %s model year for %s sector took: %0.1fs' %(year, sector, time.time() - t_loop))   

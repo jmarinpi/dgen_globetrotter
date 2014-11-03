@@ -65,8 +65,11 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections, market_l
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate)    
     df['payback_key'] = (df['payback_period']*10).astype(int)
     
-    #df = select_max_market_share(df,max_market_share, scenario_opts)
-    df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'payback_key'])
+    # !!! FIX THESE !!! #
+    df['business_model'] = 'host_owned'
+    df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'business_model', 'payback_key'])
+    df['metric'] = 'payback_period'
+    df['metric_value'] = df['payback_period']
     return df
     
 #==============================================================================    

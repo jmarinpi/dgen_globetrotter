@@ -328,8 +328,7 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
                 'county_id',
                 'bin_id',          
                 'year',
-                #'customer_expec_elec_rates',
-                'ownership_model',
+                'business_model',
                 'loan_term_yrs',
                 'loan_rate',
                 'down_payment',
@@ -348,9 +347,9 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
                 'value_of_rebate',
                 'value_of_tax_credit_or_deduction',
                 'ic',
-                'payback_period',
+                #'payback_period',
                 'lcoe',
-                'payback_key',
+                #'payback_key',
                 'max_market_share',
                 'diffusion_market_share',
                 'new_market_share',
@@ -499,12 +498,12 @@ def combine_outputs_solar(schema, sectors, cur, con):
 
                     a.micro_id, a.county_id, a.bin_id, a.year, 
                     
-                    a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
+                    a.customer_expec_elec_rates, a.business_model, a.loan_term_yrs, 
                     a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
                     a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
                     a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
                     a.value_of_ptc, a.pbi_fit_length, a.ptc_length, a.value_of_rebate, a.value_of_tax_credit_or_deduction, 
-                    a.ic, a.payback_period, a.lcoe, a.payback_key, a.max_market_share, 
+                    a.ic, a.metric, a.metric_value, a.lcoe, a.max_market_share, 
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
                     a.market_value,
@@ -1476,41 +1475,51 @@ def get_max_market_share(con, schema, sectors, scenario_opts, residential_type =
         OUT: max_market_share  - pd dataframe - dataframe to join on main df to determine max share 
                                                 keys are sector & payback period 
     '''
-    # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()       
-
-    # the max market curves need to be interpolated to a finer temporal resolution of 1/10ths of years
-    # initialize a list for time steps at that inverval for a max 30 year payback period
-    yrs = np.linspace(0,30,301)
     
-    # initialize a data frame to hold all of the interpolated max market curves (1 for each sector)
-    max_market_share = pd.DataFrame()
-    # loop through sectors
-    for sector in sectors:
-        # define the ownership type based on the current sector
-        ownership_type = inputs['%s_type' % sector.lower()]
-        short_sector = sector[:3].lower()        
+    '''Temp fix -- this will be overwritten by the add-leasing branch'''
+    sql = """SELECT (metric_value * 10) as payback_key, max_market_share, sector, business_model
+                    FROM %s.max_market_curves_to_model
+                    WHERE metric = 'payback_period' AND source = 'Navigant' AND business_model = 'host_owned';""" %(schema)
+                    
+    max_market_share = sqlio.read_frame(sql, con)
+
+        #    # create a dictionary out of the input arguments -- this is used through sql queries    
+        #    inputs = locals().copy()       
+        #
+        #    # the max market curves need to be interpolated to a finer temporal resolution of 1/10ths of years
+        #    # initialize a list for time steps at that inverval for a max 30 year payback period
+        #    yrs = np.linspace(0,30,301)
+        #    
+        #    # initialize a data frame to hold all of the interpolated max market curves (1 for each sector)
+        #    max_market_share = pd.DataFrame()
+        #    # loop through sectors
+        #    for sector in sectors:
+        #        # define the ownership type based on the current sector
+        #        ownership_type = inputs['%s_type' % sector.lower()]
+        #        short_sector = sector[:3].lower()        
         
-        # Whether to use default or user fit max market share curves
-        if scenario_opts[short_sector + '_max_market_curve'] == 'User Fit':
-            sql = """SELECT * 
-            FROM %s.user_defined_max_market_share
-            WHERE lower(sector) = '%s';""" % (schema, sector.lower())
-            mm = sqlio.read_frame(sql, con)
-        else:
-            # get the data for this sector from postgres (this will handle all of the selection based on scenario inputs)
-            sql = """SELECT *
-                     FROM %s.max_market_curves_to_model
-                     WHERE lower(sector) = '%s';""" % (schema, sector.lower())
-            mm = sqlio.read_frame(sql, con)
-        # create an interpolation function to interpolate max market share (for either retrofit or new) based on the year
-        interp_func = interp1d(mm['year'], mm[ownership_type]);
-        # create a data frame of max market values for yrs using this interpolation function
-        interpolated_mm = pd.DataFrame({'max_market_share': interp_func(yrs),'payback_key': np.arange(301)})
-        # add in the sector to the data frame
-        interpolated_mm['sector'] = sector.lower()
-        # append to the main data frame
-        max_market_share = max_market_share.append(interpolated_mm, ignore_index = True)
+             
+        
+        ##        # Whether to use default or user fit max market share curves
+        ##        if scenario_opts[short_sector + '_max_market_curve'] == 'User Fit':
+        ##            sql = """SELECT * 
+        ##            FROM %s.user_defined_max_market_share
+        ##            WHERE lower(sector) = '%s';""" % (schema, sector.lower())
+        ##            mm = sqlio.read_frame(sql, con)
+        ##        else:
+        ##            # get the data for this sector from postgres (this will handle all of the selection based on scenario inputs)
+        #        sql = """SELECT *
+        #                 FROM %s.max_market_curves_to_model
+        #                 WHERE lower(sector) = '%s';""" % (schema, sector.lower())
+        #            mm = sqlio.read_frame(sql, con)
+        #        ## create an interpolation function to interpolate max market share (for either retrofit or new) based on the year
+        #        #interp_func = interp1d(mm['year'], mm[ownership_type]);
+        #        ## create a data frame of max market values for yrs using this interpolation function
+        #        #interpolated_mm = pd.DataFrame({'max_market_share': interp_func(yrs),'payback_key': np.arange(301)})
+        #        # add in the sector to the data frame
+        #        #interpolated_mm['sector'] = sector.lower()
+        #        # append to the main data frame
+        #        max_market_share = max_market_share.append(interpolated_mm, ignore_index = True)
     return max_market_share
     
 
