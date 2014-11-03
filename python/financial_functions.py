@@ -16,7 +16,7 @@ import time
 
 
 #==============================================================================
-def calc_economics(df, schema, sector, sector_abbr, market_projections, market_last_year, 
+def calc_economics(df, schema, sector, sector_abbr, market_projections, 
                    financial_parameters, cfg, scenario_opts, max_market_share, cur, con, 
                    year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation):
     '''
@@ -35,17 +35,6 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections, market_l
     # get customer expected rate escalations
     rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector_abbr)    
     
-    ## Diffusion from previous year ## 
-    if year == cfg.start_year: 
-        # get the initial market share per bin by county
-        initial_market_shares = datfunc.get_initial_market_shares(cur, con, sector_abbr, sector, schema)
-        # join this to the df to on county_id
-        df = pd.merge(df, initial_market_shares, how = 'left', on = ['county_id','bin_id'])
-        df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']        
-    else:    
-        df = pd.merge(df,market_last_year, how = 'left', on = ['county_id','bin_id'])
-        # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years. 
-
     # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
     if scenario_opts['overwrite_exist_inc']:
         value_of_incentives = datfunc.calc_manual_incentives(df,con, year, schema)
