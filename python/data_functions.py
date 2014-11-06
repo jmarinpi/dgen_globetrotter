@@ -1811,6 +1811,108 @@ def fill_jagged_array(vals,lens, cols = 30):
     r = np.repeat(az,bz).reshape((rows,cols))
     return r
     
+def calc_lease_availability(df,con, leasing_avail_status_by_state,leasing_availability, year,start_year,market_threshold = 5):
+    
+        # For the first year start with existing policies
+    #    if year == start_year:
+    #        sql = """SELECT state as state_abbr, leasing_allowed FROM diffusion_shared.states_allowing_leasing_in_2013;"""
+    #        leasing_avail_status_by_state = sqlio.read_frame(sql, con, coerce_float = False)
+    #        leasing_avail_status_by_state['leasing_allowed'] = np.where(leasing_avail_status_by_state['leasing_allowed'] == 'Not Allowed',False, True)
+    #        df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
+    #    else:
+    #        df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
+    
+    # Makes leasing allowed everywhere    
+    if leasing_availability == 'Full_Leasing_Everywhere':
+        df['leasing_allowed'] = True
+        
+    # Makes leasing allowed nowhere      
+    elif leasing_availability == 'No_Leasing_Anywhere':
+        df['leasing_allowed'] = False
+    
+    # Leasing only in markets defined in first year   
+    elif leasing_availability == 'No_New_Markets':                 
+        pass
+    
+    # Leasing allowed in existing markets, or if the cumulative installed capacity exceed the threshold i.e 5 MW 
+    elif leasing_availability == 'Market_Threshold':
+
+        # Does the state's avg max market share exceed the market_threshold i.e 1%?
+        market_availability = df.groupby(['state_abbr'])['installed_capacity_last_year'].sum().reset_index()
+        market_availability['leasing_market_availability'] = market_availability['installed_capacity_last_year'] > market_threshold
+        market_availability = market_availability.drop('installed_capacity_last_year',axis = 1)
+        
+        # Join with main on state; ignore falses if the state already permits leasing
+        df = pd.merge(df, market_availability, how = 'left', on = ['state_abbr'])
+        df['leasing_allowed'] = np.where(df['leasing_allowed'], True, df['leasing_market_availability'])
+        df = df.drop('leasing_market_availability', axis = 1)
+    
+    # Update the leasing_avail_status_by_state dataframe
+    leasing_avail_status_by_state = df.groupby(['state_abbr'])['leasing_allowed'].all().reset_index()
+    leasing_avail_status_by_state['leasing_allowed'] = leasing_avail_status_by_state[0]
+    leasing_avail_status_by_state = leasing_avail_status_by_state.drop(0,axis = 1)
+            
+    return df, leasing_avail_status_by_state
+    
+def get_initial_lease_status(df,con):
+    sql = """SELECT state as state_abbr, leasing_allowed FROM diffusion_shared.states_allowing_leasing_in_2013;"""
+    leasing_avail_status_by_state = sqlio.read_frame(sql, con, coerce_float = False)
+    leasing_avail_status_by_state['leasing_allowed'] = np.where(leasing_avail_status_by_state['leasing_allowed'] == 'Not Allowed',False, True)
+    
+    return leasing_avail_status_by_state
+    
+def wavg(val_col_name, wt_col_name):
+    ''' Weighted average by group
+    e.g df.apply(wavg('value','weight'))
+    '''    
+    def inner(group):
+        return (group[val_col_name] * group[wt_col_name]).sum() / group[wt_col_name].sum()
+    inner.__name__ = 'wtd_avg'
+    return inner
+    
+def assign_business_model(df, year, start_year, alpha = 2):
+    ''' Assign a business model (host_owned or tpo) to a customer bin. The assignment is
+    based on (i) whether that bin's state permits leasing or buying; (ii) a comparison
+    of the weighted meanmax market share for each model. Based on these means, a logit
+    function assigns a probability of leasing or buying, which is then randomly simulated.
+    
+    This function should be applied before calc_economics and after the first 
+    year's solve because it uses the market shares calculated in the previous year. 
+    
+        IN: df - pd pataframe - the main dataframe 
+            alpha - float - a scalar in the logit function-- higher alphas make the larger option exponentially more likely
+        OUT: df - pd pataframe - the main dataframe w/ an assigned business model
+    '''
+    if year == start_year:
+        df['prob_of_leasing'] = 0.68 # Nationally 68% of new installs were leased in 2014
+    else:
+        # Calculate the weighted-average max market share by state and business model
+        leasing_df = df.groupby(['state_abbr','business_model']).apply(wavg('max_market_share_last_year','customers_in_bin')).reset_index()
+        leasing_df['max_market_share_last_year'] = leasing_df[0]
+        leasing_df = leasing_df.drop(0,axis = 1)
+    
+        # Calculate the probability of leasing based on an logit equation:
+        # p(Lease) = (max_market_share | leasing)**alpha/ [(max_market_share | leasing)**alpha + (max_market_share | buying)**alpha]
+        leasing_df['mkt_exp'] = leasing_df['max_market_share_last_year']**alpha
+        temp_df = leasing_df.groupby(['state_abbr'])['mkt_exp'].sum().reset_index()
+        temp_df.columns = ['state_abbr', 'sum_mkt_exp']
+        leasing_df = pd.merge(leasing_df,temp_df,how = 'left', on = ['state_abbr'])
+        leasing_df['prob_of_leasing'] = leasing_df['mkt_exp'] /leasing_df['sum_mkt_exp']
+        
+        # Don't let prob of leasing or buying exceed 95%    
+        leasing_df = leasing_df[(leasing_df['business_model'] == 'tpo')][['state_abbr','prob_of_leasing']]    
+        leasing_df['prob_of_leasing'] = np.where(leasing_df['prob_of_leasing'] > 0.95, 0.95,leasing_df['prob_of_leasing'])
+        leasing_df['prob_of_leasing'] = np.where(leasing_df['prob_of_leasing'] < 0.05, 0.05,leasing_df['prob_of_leasing'])
+        
+        # Join leasing_df st. each customer now has a probability of leasing given their state
+        df = pd.merge(df, leasing_df, how = 'left', on = ['state_abbr'])
+    
+    # Random assign business model and metric given probability of leasing                   
+    tmp = df['leasing_allowed'] * (np.random.rand(df.shape[0]) > df.prob_of_leasing)
+    df['business_model'] = np.where(tmp,'host_owned','tpo')
+    df['metric'] = np.where(tmp,'payback_period','monthly_bill_savings')
+    return df
+    
 def code_profiler(out_dir):
     lines = [ line for line in open(out_dir + '/dg_model.log') if 'took:' in line]
     
