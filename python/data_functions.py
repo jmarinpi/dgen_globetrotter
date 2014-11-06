@@ -1775,11 +1775,11 @@ def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr):
     
     # Need to join expected escalations on df without sorting, thus remerge with original frame
     # see: http://stackoverflow.com/questions/20206615/how-can-a-pandas-merge-preserve-order
-    temp_df = df[['county_id','bin_id','census_division_abbr']]
+    temp_df = df[['county_id','bin_id','business_model','census_division_abbr']]
     customer_expected_escalations = temp_df.merge(temp_df.merge(rate_pivot, how = 'left', on = 'census_division_abbr', sort = False))
     
-    if (df[['county_id','bin_id']] == customer_expected_escalations[['county_id','bin_id']]).all().all():
-        return customer_expected_escalations.ix[:,3:].values
+    if (df[['county_id','bin_id','business_model']] == customer_expected_escalations[['county_id','bin_id','business_model']]).all().all():
+        return customer_expected_escalations.ix[:,4:].values
     else:
         raise Exception("rate_escalations_have been reordered!")
 

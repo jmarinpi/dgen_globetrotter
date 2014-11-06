@@ -225,10 +225,18 @@ def main(mode = None, resume_year = None):
                         df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
                         
                     # Update leasing availability
-                    df, leasing_avail_status_by_state = datfunc.calc_lease_availability(df,con, leasing_avail_status_by_state, scenario_opts['leasing_availability'], year,cfg.start_year,market_threshold = 5)
-
+#                    df, leasing_avail_status_by_state = datfunc.calc_lease_availability(df,con, leasing_avail_status_by_state, scenario_opts['leasing_availability'], year,cfg.start_year,market_threshold = 5)
+                    # temporary patch -- everyone is allowed to lease
+                    df['leasing_allowed'] = True
+                    
                     # Randomly assigns a business model, with probability influenced by relative economics and whether that state permits leasing    
-                    df = datfunc.assign_business_model(df, year, cfg.start_year, alpha = 2)
+#                    df = datfunc.assign_business_model(df, year, cfg.start_year, alpha = 2)
+                    business_model = pd.DataFrame({'business_model' : ('host_owned','tpo'), 
+                                                   'metric' : ('payback_period','monthly_bill_savings'),
+                                                   'cross_join' : (1, 1)})
+                    df['cross_join'] = 1
+                    df = pd.merge(df, business_model, on = 'cross_join')
+                    df.drop('cross_join', axis=1, inplace=True)
                     
                     # Calculate economics of adoption given system cofiguration and business model
                     df = finfunc.calc_economics(df, schema, sector, sector_abbr, 
@@ -237,6 +245,12 @@ def main(mode = None, resume_year = None):
                                                                                dsire_incentives, deprec_schedule, logger, rate_escalations, 
                                                                                ann_system_degradation)
                     
+                    # pick the better business model
+                    gb = df.groupby(['county_id','bin_id'])
+                    rb = gb['max_market_share'].rank(ascending = False)
+                    df['econ_rank'] = rb    
+                    df = df[df.econ_rank == 1]
+                    
                     # 10. Calulate diffusion
                     ''' Calculates the market share (ms) added in the solve year. Market share must be less
                     than max market share (mms) except initial ms is greater than the calculated mms.
@@ -244,7 +258,7 @@ def main(mode = None, resume_year = None):
                     decrease if economics deterioriate.
                     '''             
                     df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
-                    business_model_last_year = df[['bin_id','county_id','business_model']]
+#                    business_model_last_year = df[['bin_id','county_id','business_model']]
                     
                     # 11. Save outputs from this year and update parameters for next solve       
                     t0 = time.time()                    
