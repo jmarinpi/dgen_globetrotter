@@ -192,43 +192,43 @@ CREATE TABLE diffusion_wind_data.pt_grid_us_com_iiijjjicf_id_lookup (
 	SELECT count(*)
 	FROM diffusion_shared.pt_grid_us_com
 	where iiijjjicf_id is null;
-	-- none
+	-- 94
 	
--- 	-- isolate the unjoined points
--- 	-- and fix them by assigning value from their nearest neighbor that is not null
--- 	DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_com_iiijjjicf_id_lookup_no_id;
--- 	CREATE TABLE diffusion_wind_data.pt_grid_us_com_iiijjjicf_id_lookup_no_id AS
--- 	with a AS(
--- 		select gid, the_geom_900914
--- 		FROM diffusion_shared.pt_grid_us_com
--- 		where iiijjjicf_id is null)
--- 	SELECT a.gid, a.the_geom_900914, 
--- 		(SELECT b.iiijjjicf_id 
--- 		 FROM diffusion_shared.pt_grid_us_com b
--- 		 where b.iiijjjicf_id is not null
--- 		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914
--- 		 LIMIT 1) as iiijjjicf_id
--- 	FROM a;
--- 	-- inspect in Q
--- 
--- 	--update the lookup table
--- 	UPDATE diffusion_wind_data.pt_grid_us_com_iiijjjicf_id_lookup a
--- 	SET iiijjjicf_id = b.iiijjjicf_id
--- 	FROM diffusion_wind_data.pt_grid_us_com_iiijjjicf_id_lookup_no_id b
--- 	where a.gid = b.gid
--- 	and a.iiijjjicf_id is null;
--- 
--- 	--update the points table
--- 	UPDATE diffusion_shared.pt_grid_us_com a
--- 	SET iiijjjicf_id = b.iiijjjicf_id
--- 	FROM diffusion_wind_data.pt_grid_us_com_iiijjjicf_id_lookup b
--- 	where a.gid = b.gid
--- 	and a.iiijjjicf_id is null;
--- 
--- 	-- check no nulls remain
--- 	SELECT count(*)
--- 	FROM diffusion_shared.pt_grid_us_com
--- 	where iiijjjicf_id is null; 
+	-- isolate the unjoined points
+	-- and fix them by assigning value from their nearest neighbor that is not null
+	DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_com_iiijjjicf_id_lookup_no_id;
+	CREATE TABLE diffusion_wind_data.pt_grid_us_com_iiijjjicf_id_lookup_no_id AS
+	with a AS(
+		select gid, the_geom_900914
+		FROM diffusion_shared.pt_grid_us_com
+		where iiijjjicf_id is null)
+	SELECT a.gid, a.the_geom_900914, 
+		(SELECT b.iiijjjicf_id 
+		 FROM diffusion_shared.pt_grid_us_com b
+		 where b.iiijjjicf_id is not null
+		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914
+		 LIMIT 1) as iiijjjicf_id
+	FROM a;
+	-- inspect in Q
+
+	--update the lookup table
+	UPDATE diffusion_wind_data.pt_grid_us_com_iiijjjicf_id_lookup a
+	SET iiijjjicf_id = b.iiijjjicf_id
+	FROM diffusion_wind_data.pt_grid_us_com_iiijjjicf_id_lookup_no_id b
+	where a.gid = b.gid
+	and a.iiijjjicf_id is null;
+
+	--update the points table
+	UPDATE diffusion_shared.pt_grid_us_com a
+	SET iiijjjicf_id = b.iiijjjicf_id
+	FROM diffusion_wind_data.pt_grid_us_com_iiijjjicf_id_lookup b
+	where a.gid = b.gid
+	and a.iiijjjicf_id is null;
+
+	-- check no nulls remain
+	SELECT count(*)
+	FROM diffusion_shared.pt_grid_us_com
+	where iiijjjicf_id is null; 
 
 
 -- 3 different versions of exclusions (from rasters)
