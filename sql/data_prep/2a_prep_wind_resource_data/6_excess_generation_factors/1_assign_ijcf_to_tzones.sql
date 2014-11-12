@@ -8,7 +8,7 @@ WITH a AS (
 		else 0
 		END as isect_area, 
 	a.the_geom_96703
-	FROM aws.tmy_grid a
+	FROM aws_2014.ij_polygons a
 	LEFT JOIN ventyx.transmission_zones_07232013 b
 	ON ST_Intersects(a.the_geom_96703, b.the_geom_96703)
 	where b.country <> 'Canada' or b.country is null
@@ -40,6 +40,7 @@ FROM candidates a
 lEFT JOIN ventyx.transmission_zones_07232013 b
 ON a.zone_id = b.zone_id
 ORDER BY tmy_grid_gid, ST_Distance(a.the_geom_96703,b.the_geom_96703) asc;
+-- look at in Q: these are all either offshore grid cells or just south of the souther border
 
 -- 
 UPDATE diffusion_wind.ij_tzone_lookup a
@@ -47,5 +48,11 @@ SET transmission_zone_id = b.transmission_zone_id
 FROM diffusion_wind_data.ij_no_transzone b
 WHERE a.transmission_zone_id is null
 and a.tmy_grid_gid = b.tmy_grid_gid;
+
+-- check for nulls again
+select *
+FROM diffusion_wind.ij_tzone_lookup
+where transmission_zone_id is null;
+-- none
 
 

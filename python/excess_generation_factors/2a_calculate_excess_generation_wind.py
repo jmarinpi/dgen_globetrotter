@@ -25,12 +25,12 @@ cur = conn.cursor()
 
 # get lookup table that maps from i,j to transmission zone id
 sql = '''SELECT i, j, transmission_zone_id as tzone_id
-        FROM wind_ds.ij_tzone_lookup;'''
+        FROM diffusion_wind.ij_tzone_lookup;'''
 ij_tzone_lkup = sqlio.read_frame(sql,conn)
 
 # open the hourly load data
 #load_path = '/Volumes/Staff/mgleason/DG_Wind/Data/Analysis/hourly_load_by_transmission_zone/ventyx_hourly_load_by_tzone.hdf'
-load_path ='F:/data/mgleason/DG_Wind/Data/Analysis/hourly_load_by_transmission_zone/ventyx_hourly_load_by_tzone.hdf'
+load_path ='/home/mgleason/data/dg_wind/hourly_load_by_transmission_zone/ventyx_hourly_load_by_tzone.hdf'
 load = h5py.File(load_path,'r')
 # get the metadata for the load
 load_meta = meta_to_pandas(load['meta'])
@@ -41,12 +41,12 @@ load.close()
 
 # set path to the generation data
 #generation_path = '/Volumes/Resources/GIS_Data_Catalog/NAM/Country/US/e_res/wind/awst_wind_licensed/AWS_ReEDS_wind/windpy/outputs/hdf/DG_Wind/'
-generation_path = 'D:/data/GIS_Data_Catalog/NAM/Country/US/e_res/wind/awst_wind_licensed/AWS_ReEDS_wind/windpy/outputs/hdf/DG_Wind'
+generation_path = '/home/mgleason/data/dg_wind/aws_2014_wind_generation_update/outputs'
 generation_hdfs = dict((f[13:].split('_2014')[0], os.path.join(generation_path,f)) for f in glob.glob1(generation_path, '*.hdf5'))
 
 # define the cf_bins and heights to process
-cf_bins = ['%03i0_cfbin' % cf for cf in range(3,69,3)]
-heights = ['30','40','50','80']
+cf_bins = ['%03i0_cfbin' % cf for cf in range(0,78,3)]
+heights = ['20','30','40','50','80']
 
 # loop through output generation files, by turbine
 for turbine_name, hdf_path in generation_hdfs.iteritems():
@@ -83,11 +83,11 @@ for turbine_name, hdf_path in generation_hdfs.iteritems():
                 
             # get the generation data for this height and cf bin
             # find the fill value
-            fill_value = generation[cf_bin][height]['pwr_hourly'].attrs['fill_value']
-            # find the scale factor
-            scale_factor = generation[cf_bin][height]['pwr_hourly'].attrs['scale_factor']
+            fill_value = generation[cf_bin][height]['pwr_hourly'].fillvalue
+#            # find the scale factor - no longer applies
+#            scale_factor = generation[cf_bin][height]['pwr_hourly'].attrs['scale_factor']
             # load the data, accounting for the fill value and scale factor
-            gi = np.ma.masked_equal(generation[cf_bin][height]['pwr_hourly'], fill_value) * scale_factor
+            gi = np.ma.masked_equal(generation[cf_bin][height]['pwr_hourly'], fill_value)
             # normalize the data over the row-wise sums
             gi_norm = gi/gi.sum(1).reshape(gi.shape[0],1)
             # clear gi from memory

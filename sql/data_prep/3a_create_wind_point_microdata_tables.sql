@@ -1,5 +1,5 @@
 ﻿-- residential
-DROP TABLE IF EXISTS diffusion_wind.point_microdata_res_us;
+DROP TABLE IF EXISTS diffusion_wind.point_microdata_res_us CASCADE;
 SET seed to 1;
 CREATE TABLE diffusion_wind.point_microdata_res_us AS
 WITH a AS
@@ -43,13 +43,11 @@ CREATE INDEX point_microdata_res_us_utility_type_btree
   ON diffusion_wind.point_microdata_res_us
   USING btree (utility_type);
 
-BEGIN;
 VACUUM ANALYZE diffusion_wind.point_microdata_res_us;
-commit;
 
 ----------------------------------------------------------------------------------------------------
 -- commercial
-DROP TABLE IF EXISTS diffusion_wind.point_microdata_com_us;
+DROP TABLE IF EXISTS diffusion_wind.point_microdata_com_us CASCADE;
 SET seed to 1;
 CREATE TABLE diffusion_wind.point_microdata_com_us AS
 WITH a AS
@@ -93,14 +91,12 @@ CREATE INDEX point_microdata_com_us_utility_type_btree
   ON diffusion_wind.point_microdata_com_us
   USING btree (utility_type);
 
-BEGin;
 VACUUM ANALYZE diffusion_wind.point_microdata_com_us;
-commit;
 
 
 ----------------------------------------------------------------------------------------------------
 -- industrial
-DROP TABLE IF EXISTS diffusion_wind.point_microdata_ind_us;
+DROP TABLE IF EXISTS diffusion_wind.point_microdata_ind_us CASCADE;
 SET seed to 1;
 CREATE TABLE diffusion_wind.point_microdata_ind_us AS
 WITH a AS
@@ -144,6 +140,5 @@ CREATE INDEX point_microdata_ind_us_utility_type_btree
   ON diffusion_wind.point_microdata_ind_us
   USING btree (utility_type);
 
-Begin;
+
 VACUUM ANALYZE diffusion_wind.point_microdata_ind_us;
-commit;
