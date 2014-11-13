@@ -52,7 +52,7 @@ heights = ['20','30','40','50','80']
 for turbine_name, hdf_path in generation_hdfs.iteritems():
     print 'Working on Turbine: %s' % turbine_name
     # create output hdf to hold excess generation factor data
-    out_hdf_filepath = os.path.join(load_path,'excess_generation_factors_%s.hdf5' % turbine_name)
+    out_hdf_filepath = os.path.join('/home/mgleason/data/dg_wind/hourly_load_by_transmission_zone','excess_generation_factors_%s.hdf5' % turbine_name)
     out_hdf = h5py.File(out_hdf_filepath, 'w')
     
     # open the generation data
