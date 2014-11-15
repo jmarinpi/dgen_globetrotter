@@ -36,12 +36,20 @@ elif cfg.technology == 'solar':
     import load_excel_solar as loadXL
     
 
-def main(mode = None, resume_year = None):
+def main(mode = None, resume_year = None, ReEDS_inputs = None):
 
     # check which technology is being modeled and adjust variables accordingly
     schema = "diffusion_%s" % cfg.technology
 
     if mode == 'ReEDS':
+        distPVCurtailment = ReEDS_inputs['annual_distPVSurplusMar'] # Fraction of distributed PV curtailed in timeslice (m) and BA (n)
+        #retail_elec_price = ReEDS_inputs['retail_elec_price'] # Retail electricity price in 2004$/MWh by BA (n)
+        change_elec_price = ReEDS_inputs['change_elec_price'] # Relative change in electricity price since 2014 by BA (n)
+        # Rename columns to match names in SolarDS
+        distPVCurtailment.columns = ['pca_reg','curtailment_rate']
+        #retail_elec_price.columns = ['pca_reg','elec_price_ReEDS']
+        change_elec_price.columns = ['pca_reg','elec_price_change']        
+        
         if resume_year == 2014:
             cfg.init_model = True
             cdate = time.strftime('%Y%m%d_%H%M%S')    
@@ -100,7 +108,7 @@ def main(mode = None, resume_year = None):
         # run the model for each input scenario spreadsheet
         scenario_names = []
         out_subfolders = []
-        for i, input_scenario in enumerate(input_scenarios): 
+        for i, input_scenario in enumerate(input_scenarios):
             logger.info('--------------------------------------------') 
             logger.info("Running Scenario %s of %s" % (i+1, len(input_scenarios)))
             
@@ -167,7 +175,7 @@ def main(mode = None, resume_year = None):
             logger.info('datfunc.clear_outputs took: %0.1fs' %(time.time() - t0))
               
             for sector_abbr, sector in sectors.iteritems():
-                
+
                 # define the rate escalation source and max market curve for the current sector
                 rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
                 # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
@@ -193,6 +201,15 @@ def main(mode = None, resume_year = None):
                     
                     t0 = time.time()                    
                     df = datfunc.get_main_dataframe(con, main_table, year)
+                    if mode == 'ReEDS':
+                        # When in ReEDS mode add the values from ReEDS to df
+                        df = pd.merge(df,distPVCurtailment, how = 'left', on = 'pca_reg')
+                        #df = pd.merge(df,retail_elec_price, how = 'left', on = 'pca_reg')
+                        df = pd.merge(df,change_elec_price, how = 'left', on = 'pca_reg')
+                    else:
+                        # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
+                        df['curtailment_rate'] = 0
+                        df['elec_price_change'] = 1
                     logger.info('datfunc.get_main_dataframe for %s took: %0.1fs' %(year, time.time() - t0))
                     
                     # 9. Calculate economics including incentives

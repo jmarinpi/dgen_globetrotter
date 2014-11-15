@@ -152,25 +152,23 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     is credited at the full retail rate, regardless of scenario. Excess energy 
     is generation that exceeds load and may be credited as full retail (NEM), 
     avoided cost, or no credit. Amount of excess energy is aep * excess_gen_factor + 0.31 * (gen/load - 1) 
-    See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail
+    See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail    
     """
     
-    # Annual system production (kWh) including degradation
+    # Annual system production (kWh) including degradation and curtailments
     aep = np.empty(shape)
     aep[:,0] = 1
     aep[:,1:]  = 1 - ann_system_degradation
-    aep = df.aep[:,np.newaxis] * aep.cumprod(axis = 1)
+    aep = df.aep[:,np.newaxis] * aep.cumprod(axis = 1) * (1 - df.curtailment_rate)
     
     # Percentage of excess gen, bounded from 0 - 100%
     per_excess_gen = np.minimum(np.maximum(df.excess_generation_factor[:,np.newaxis] + 0.31 * (aep/df.load_kwh_per_customer_in_bin[:,np.newaxis] -1), 0),1)
     
-    curtailment_rate = 0 # Placeholder for this to be updated with ReEDS integration    
-    
-    outflow_gen_kwh = aep * per_excess_gen * (1 - curtailment_rate)
+    outflow_gen_kwh = aep * per_excess_gen
     inflow_gen_kwh = aep * (1 - per_excess_gen)
     
     # Value of inflows (generation that is offsetting load)
-    inflow_rate_dol_kwh   = 0.01 * df.elec_rate_cents_per_kwh
+    inflow_rate_dol_kwh   = 0.01 * df.elec_rate_cents_per_kwh * df.elec_price_change
     value_inflows_dol = inflow_gen_kwh * inflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
      
     # Set the rate the excess generation is credited
