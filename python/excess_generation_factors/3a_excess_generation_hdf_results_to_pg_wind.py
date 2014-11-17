@@ -47,7 +47,6 @@ for name, fpath in hdf_results.iteritems():
     cur.execute(sql)
     conn.commit()
 
-    print os.path.join()
     hf = h5py.File(os.path.join(hf_path,fpath),'r')
     # get ijs from meta dataset    
     ijs = np.array(hf['meta'])
