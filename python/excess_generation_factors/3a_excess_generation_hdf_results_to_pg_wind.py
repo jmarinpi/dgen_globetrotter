@@ -18,17 +18,17 @@ pg_conn_string = 'host=gispgdb dbname=dav-gis user=mgleason password=mgleason'
 conn = pg.connect(pg_conn_string)
 cur = conn.cursor()
 
-sql = 'SET ROLE "wind_ds_data-writers";'
+sql = 'SET ROLE "diffusion-writers";'
 cur.execute(sql)
 conn.commit()  
 
-hf_path = '/Volumes/Staff/mgleason/DG_Wind/Data/Analysis/hourly_load_by_transmission_zone/excess_generation_factors'
-hdf_results = dict((s.lower().split('.')[0].replace('_dg_wind_','_').lower(),s) for s in glob.glob1(hf_path,'*.hdf5'))
+hf_path = '/home/mgleason/data/dg_wind/hourly_load_by_transmission_zone/excess_generation_factors'
+hdf_results = dict((s.lower().split('.')[0].replace('_dwind_','_').lower(),s) for s in glob.glob1(hf_path,'*.hdf5'))
 
 for name, fpath in hdf_results.iteritems():
   
     
-    out_table = 'wind_ds_data.%s_turbine' % name
+    out_table = 'diffusion_wind_data.%s_turbine' % name
     print 'Loading %s to %s' % (fpath, out_table)
 
     # create the table
@@ -53,8 +53,8 @@ for name, fpath in hdf_results.iteritems():
     ijs = np.array(hf['meta'])
     
     # define the cf_bins and heights to process
-    cf_bins = ['%03i0_cfbin' % cf for cf in range(3,69,3)]
-    heights = ['30','40','50','80']    
+    cf_bins = ['%03i0_cfbin' % cf for cf in range(3,78,3)]
+    heights = ['20','30','40','50','80']    
     
     for cf_bin in cf_bins:
         for height in heights:
