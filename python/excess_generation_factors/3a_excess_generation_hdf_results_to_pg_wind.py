@@ -22,8 +22,8 @@ sql = 'SET ROLE "diffusion-writers";'
 cur.execute(sql)
 conn.commit()  
 
-hf_path = '/home/mgleason/data/dg_wind/hourly_load_by_transmission_zone/excess_generation_factors'
-#hf_path = '/Users/mgleason/gispgdb/data/dg_wind/hourly_load_by_transmission_zone/excess_generation_factors'
+#hf_path = '/home/mgleason/data/dg_wind/hourly_load_by_transmission_zone/excess_generation_factors'
+hf_path = '/Users/mgleason/gispgdb/data/dg_wind/hourly_load_by_transmission_zone/excess_generation_factors'
 hdf_results = dict((s.lower().split('.')[0].replace('_dwind_','_').lower(),s) for s in glob.glob1(hf_path,'*.hdf5'))
 
 for name, fpath in hdf_results.iteritems():

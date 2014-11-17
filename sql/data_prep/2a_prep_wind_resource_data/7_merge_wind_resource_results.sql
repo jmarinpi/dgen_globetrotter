@@ -242,33 +242,37 @@ ADD COLUMN excess_gen_factor NUMERIC;
 
 -- to do:
 -- add primary keys to the excess generation tables
-ALTER TABLE diffusion_wind_data.excess_generation_factors_current_small_turbine
-	ADD CONSTRAINT excess_generation_factors_current_small_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
+ALTER TABLE diffusion_wind_data.excess_generation_factors_current_residential_turbine
+	ADD CONSTRAINT excess_generation_factors_current_residential_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
-ALTER TABLE diffusion_wind_data.excess_generation_factors_current_mid_turbine
-	ADD CONSTRAINT excess_generation_factors_current_mid_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
+ALTER TABLE diffusion_wind_data.excess_generation_factors_current_small_commercial_turbine
+	ADD CONSTRAINT excess_generation_factors_current_small_commercial_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
+
+ALTER TABLE diffusion_wind_data.excess_generation_factors_current_mid_size_turbine
+	ADD CONSTRAINT excess_generation_factors_current_mid_size_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
 ALTER TABLE diffusion_wind_data.excess_generation_factors_current_large_turbine
 	ADD CONSTRAINT excess_generation_factors_current_large_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
-ALTER TABLE diffusion_wind_data.excess_generation_factors_nearfuture_small_turbine
-	ADD CONSTRAINT excess_generation_factors_nearfuture_small_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
+ALTER TABLE diffusion_wind_data.excess_generation_factors_near_future_residential_turbine
+	ADD CONSTRAINT excess_generation_factors_near_future_residential_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
-ALTER TABLE diffusion_wind_data.excess_generation_factors_nearfuture_mid_and_large_turbine
-	ADD CONSTRAINT excess_generation_factors_nearfuture_mid_and_large_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
+ALTER TABLE diffusion_wind_data.excess_generation_factors_near_future_mid_size_turbine
+	ADD CONSTRAINT excess_generation_factors_near_future_mid_size_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
-ALTER TABLE diffusion_wind_data.excess_generation_factors_future_small_turbine
-	ADD CONSTRAINT excess_generation_factors_future_small_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
+ALTER TABLE diffusion_wind_data.excess_generation_factors_far_future_small_turbine
+	ADD CONSTRAINT excess_generation_factors_far_future_small_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
-ALTER TABLE diffusion_wind_data.excess_generation_factors_future_mid_and_large_turbine
-	ADD CONSTRAINT excess_generation_factors_future_mid_and_large_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
+ALTER TABLE diffusion_wind_data.excess_generation_factors_far_future_mid_size_and_large_turbine
+	ADD CONSTRAINT excess_generation_factors_far_future_ml_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
 -- join the data from excess gen factors to resource tables
 
+-- current residential
 -- update
-UPDATE diffusion_wind_data.wind_resource_current_small_turbine a
+UPDATE diffusion_wind_data.wind_resource_current_residential_turbine a
 SET excess_gen_factor = b.excess_gen_factor
-FROM diffusion_wind_data.excess_generation_factors_current_small_turbine b
+FROM diffusion_wind_data.excess_generation_factors_current_residential_turbine b
 where a.i = b.i
 and a.j = b.j
 and a.cf_bin = b.cf_bin
@@ -276,13 +280,25 @@ and a.height = b.height;
 
 -- check for nulls
 SELECT *
-FROM diffusion_wind_data.wind_resource_current_small_turbine
+FROM diffusion_wind_data.wind_resource_current_residential_turbine
+where aep = 0
+where excess_gen_factor is null;
+-- in current run, there may be some nulls in low cf_bins (0, 3, 6) and height = 20 
+-- and aep = 0.
+-- do to a flaw in the calulate_excess_genration_wind.py script. 
+-- in future runs, that bug should be fixed and there should be no nulls.
+-- fix now by setting excess_gen_factor = 0
+UPDATE diffusion_wind_data.wind_resource_current_residential_turbine
+SET excess_gen_factor = 0
 where excess_gen_factor is null;
 
+---------
+
+-- current small commercial
 -- update
-UPDATE diffusion_wind_data.wind_resource_current_mid_turbine a
+UPDATE diffusion_wind_data.wind_resource_current_small_commercial_turbine a
 SET excess_gen_factor = b.excess_gen_factor
-FROM diffusion_wind_data.excess_generation_factors_current_mid_turbine b
+FROM diffusion_wind_data.excess_generation_factors_current_small_commercial_turbine b
 where a.i = b.i
 and a.j = b.j
 and a.cf_bin = b.cf_bin
@@ -290,9 +306,45 @@ and a.height = b.height;
 
 -- check for nulls
 SELECT *
-FROM diffusion_wind_data.wind_resource_current_mid_turbine
+FROM diffusion_wind_data.wind_resource_current_small_commercial_turbine
+where excess_gen_factor is null;
+-- in current run, there may be some nulls in low cf_bins (0, 3, 6)  and height = 20 
+-- and aep = 0.
+-- do to a flaw in the calulate_excess_genration_wind.py script. 
+-- in future runs, that bug should be fixed and there should be no nulls.
+-- fix now by setting excess_gen_factor = 0
+UPDATE diffusion_wind_data.wind_resource_current_small_commercial_turbine
+SET excess_gen_factor = 0
 where excess_gen_factor is null;
 
+---------
+
+-- current mid size
+-- update
+UPDATE diffusion_wind_data.wind_resource_current_mid_size_turbine a
+SET excess_gen_factor = b.excess_gen_factor
+FROM diffusion_wind_data.excess_generation_factors_current_mid_size_turbine b
+where a.i = b.i
+and a.j = b.j
+and a.cf_bin = b.cf_bin
+and a.height = b.height;
+
+-- check for nulls
+SELECT *
+FROM diffusion_wind_data.wind_resource_current_mid_size_turbine
+where excess_gen_factor is null;
+-- in current run, there may be some nulls in low cf_bins (0, 3, 6)  and height = 20 
+-- and aep = 0.
+-- do to a flaw in the calulate_excess_genration_wind.py script. 
+-- in future runs, that bug should be fixed and there should be no nulls.
+-- fix now by setting excess_gen_factor = 0
+UPDATE diffusion_wind_data.wind_resource_current_mid_size_turbine
+SET excess_gen_factor = 0
+where excess_gen_factor is null;
+
+---------
+
+-- current large
 -- update
 UPDATE diffusion_wind_data.wind_resource_current_large_turbine a
 SET excess_gen_factor = b.excess_gen_factor
@@ -306,11 +358,22 @@ and a.height = b.height;
 SELECT *
 FROM diffusion_wind_data.wind_resource_current_large_turbine
 where excess_gen_factor is null;
+-- in current run, there may be some nulls in low cf_bins (0, 3, 6)  and height = 20 
+-- and aep = 0.
+-- do to a flaw in the calulate_excess_genration_wind.py script. 
+-- in future runs, that bug should be fixed and there should be no nulls.
+-- fix now by setting excess_gen_factor = 0
+UPDATE diffusion_wind_data.wind_resource_current_large_turbine
+SET excess_gen_factor = 0
+where excess_gen_factor is null;
 
+---------
+
+-- near future residential
 -- update
-UPDATE diffusion_wind_data.wind_resource_nearfuture_small_turbine a
+UPDATE diffusion_wind_data.wind_resource_near_future_residential_turbine a
 SET excess_gen_factor = b.excess_gen_factor
-FROM diffusion_wind_data.excess_generation_factors_nearfuture_small_turbine b
+FROM diffusion_wind_data.excess_generation_factors_near_future_residential_turbine b
 where a.i = b.i
 and a.j = b.j
 and a.cf_bin = b.cf_bin
@@ -318,13 +381,24 @@ and a.height = b.height;
 
 -- check for nulls
 SELECT *
-FROM diffusion_wind_data.wind_resource_nearfuture_small_turbine
+FROM diffusion_wind_data.wind_resource_near_future_residential_turbine
+where excess_gen_factor is null;
+-- in current run, there may be some nulls in low cf_bins (0, 3, 6)  and height = 20 
+-- and aep = 0.
+-- do to a flaw in the calulate_excess_genration_wind.py script. 
+-- in future runs, that bug should be fixed and there should be no nulls.
+-- fix now by setting excess_gen_factor = 0
+UPDATE diffusion_wind_data.wind_resource_near_future_residential_turbine
+SET excess_gen_factor = 0
 where excess_gen_factor is null;
 
+---------
+
+-- near future mid size
 -- update
-UPDATE diffusion_wind_data.wind_resource_nearfuture_mid_and_large_turbine a
+UPDATE diffusion_wind_data.wind_resource_near_future_mid_size_turbine a
 SET excess_gen_factor = b.excess_gen_factor
-FROM diffusion_wind_data.excess_generation_factors_nearfuture_mid_and_large_turbine b
+FROM diffusion_wind_data.excess_generation_factors_near_future_mid_size_turbine b
 where a.i = b.i
 and a.j = b.j
 and a.cf_bin = b.cf_bin
@@ -332,14 +406,24 @@ and a.height = b.height;
 
 -- check for nulls
 SELECT *
-FROM diffusion_wind_data.wind_resource_nearfuture_mid_and_large_turbine
+FROM diffusion_wind_data.wind_resource_near_future_mid_size_turbine
+where excess_gen_factor is null;
+-- in current run, there may be some nulls in low cf_bins (0, 3, 6)  and height = 20 
+-- and aep = 0.
+-- do to a flaw in the calulate_excess_genration_wind.py script. 
+-- in future runs, that bug should be fixed and there should be no nulls.
+-- fix now by setting excess_gen_factor = 0
+UPDATE diffusion_wind_data.wind_resource_near_future_mid_size_turbine
+SET excess_gen_factor = 0
 where excess_gen_factor is null;
 
+---------
 
+-- far future small
 -- update
-UPDATE diffusion_wind_data.wind_resource_future_small_turbine a
+UPDATE diffusion_wind_data.wind_resource_far_future_small_turbine a
 SET excess_gen_factor = b.excess_gen_factor
-FROM diffusion_wind_data.excess_generation_factors_future_small_turbine b
+FROM diffusion_wind_data.excess_generation_factors_far_future_small_turbine b
 where a.i = b.i
 and a.j = b.j
 and a.cf_bin = b.cf_bin
@@ -347,13 +431,27 @@ and a.height = b.height;
 
 -- check for nulls
 SELECT *
-FROM diffusion_wind_data.wind_resource_future_small_turbine
+FROM diffusion_wind_data.wind_resource_far_future_small_turbine
+where excess_gen_factor is null;
+-- in current run, there may be some nulls in low cf_bins (0, 3, 6)  and height = 20 
+-- and aep = 0.
+-- do to a flaw in the calulate_excess_genration_wind.py script. 
+-- in future runs, that bug should be fixed and there should be no nulls.
+-- fix now by setting excess_gen_factor = 0
+UPDATE diffusion_wind_data.wind_resource_far_future_small_turbine
+SET excess_gen_factor = 0
 where excess_gen_factor is null;
 
+---------
+
+
+---------
+
+-- far future mid size and large
 -- update
-UPDATE diffusion_wind_data.wind_resource_future_mid_and_large_turbine a
+UPDATE diffusion_wind_data.wind_resource_far_future_mid_size_and_large_turbine a
 SET excess_gen_factor = b.excess_gen_factor
-FROM diffusion_wind_data.excess_generation_factors_future_mid_and_large_turbine b
+FROM diffusion_wind_data.excess_generation_factors_far_future_mid_size_and_large_turbine b
 where a.i = b.i
 and a.j = b.j
 and a.cf_bin = b.cf_bin
@@ -361,9 +459,22 @@ and a.height = b.height;
 
 -- check for nulls
 SELECT *
-FROM diffusion_wind_data.wind_resource_future_mid_and_large_turbine
+FROM diffusion_wind_data.wind_resource_far_future_mid_size_and_large_turbine
+where excess_gen_factor is null;
+-- in current run, there may be some nulls in low cf_bins (0, 3, 6)  and height = 20 
+-- and aep = 0.
+-- do to a flaw in the calulate_excess_genration_wind.py script. 
+-- in future runs, that bug should be fixed and there should be no nulls.
+-- fix now by setting excess_gen_factor = 0
+UPDATE diffusion_wind_data.wind_resource_far_future_mid_size_and_large_turbine
+SET excess_gen_factor = 0
 where excess_gen_factor is null;
 
+---------
+
+
+
+-- FINAL CHECK:
 -- check parent table for nulls
 SELECT *
 FROM diffusion_wind.wind_resource_annual

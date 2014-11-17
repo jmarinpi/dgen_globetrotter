@@ -29,8 +29,8 @@ sql = '''SELECT i, j, transmission_zone_id as tzone_id
 ij_tzone_lkup = sqlio.read_frame(sql,conn)
 
 # open the hourly load data
-#load_path = '/Volumes/Staff/mgleason/DG_Wind/Data/Analysis/hourly_load_by_transmission_zone/ventyx_hourly_load_by_tzone.hdf'
-load_path ='/home/mgleason/data/dg_wind/hourly_load_by_transmission_zone/ventyx_hourly_load_by_tzone.hdf'
+load_path = '/Volumes/Staff/mgleason/DG_Wind/Data/Analysis/hourly_load_by_transmission_zone/ventyx_hourly_load_by_tzone.hdf'
+#load_path ='/home/mgleason/data/dg_wind/hourly_load_by_transmission_zone/ventyx_hourly_load_by_tzone.hdf'
 load = h5py.File(load_path,'r')
 # get the metadata for the load
 load_meta = meta_to_pandas(load['meta'])
@@ -40,8 +40,8 @@ ci_norm_all = np.array(load['normalized_hourly_load']*load['normalized_hourly_lo
 load.close()
 
 # set path to the generation data
-#generation_path = '/Volumes/Resources/GIS_Data_Catalog/NAM/Country/US/e_res/wind/awst_wind_licensed/AWS_ReEDS_wind/windpy/outputs/hdf/DG_Wind/'
-generation_path = '/home/mgleason/data/dg_wind/aws_2014_wind_generation_update/outputs'
+generation_path = '/Users/mgleason/gispgdb/data/dg_wind/aws_2014_wind_generation_update/outputs'
+#generation_path = '/home/mgleason/data/dg_wind/aws_2014_wind_generation_update/outputs'
 generation_hdfs = dict((f[13:].split('_2014')[0], os.path.join(generation_path,f)) for f in glob.glob1(generation_path, '*.hdf5'))
 
 # define the cf_bins and heights to process
@@ -89,9 +89,14 @@ for turbine_name, hdf_path in generation_hdfs.iteritems():
             # load the data, accounting for the fill value and scale factor
             gi = np.ma.masked_equal(generation[cf_bin][height]['pwr_hourly'], fill_value)
             # normalize the data over the row-wise sums
-            gi_norm = gi/gi.sum(1).reshape(gi.shape[0],1)
+            gi_sum = gi.sum(1).reshape(gi.shape[0],1)
+            # need to do this to deal with rare locations where there is zero total aep
+            # (this prevents those lcoations befrom becoming masked rather nad makes sure they are
+            # coded as gi_norm of zero)
+            gi_norm = np.where(gi_sum <> 0, gi/gi_sum, 0)
             # clear gi from memory
             del gi
+            del gi_sum
             # difference the data from the normalized consumption data
             diff = gi_norm-ci_norm
             # clear gi_norm from memory
