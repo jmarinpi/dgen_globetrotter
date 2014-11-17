@@ -47,7 +47,7 @@ for name, fpath in hdf_results.iteritems():
     cur.execute(sql)
     conn.commit()
 
-
+    print os.path.join()
     hf = h5py.File(os.path.join(hf_path,fpath),'r')
     # get ijs from meta dataset    
     ijs = np.array(hf['meta'])
@@ -60,8 +60,8 @@ for name, fpath in hdf_results.iteritems():
         for height in heights:
             data_path = r'%s\%s/%s' % (cf_bin,height,'excess_gen_factors')
             # get the data ()   
-            excess_gen = hdfaccess.getFilteredData(hf,data_path)
-
+            fill_value = hf[data_path].fillvalue
+            excess_gen = np.ma.masked_equal(hf[data_path], fill_value)
 
             out_array = np.recarray((np.invert(excess_gen.mask).sum(),), dtype = [('i', '<i4'), ('j', '<i4'), ('height','<i4'), ('cf_bin','<i4'), ('excess_gen_factor','f4')])
             
