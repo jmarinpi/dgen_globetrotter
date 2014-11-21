@@ -204,38 +204,23 @@ def main(mode = None, resume_year = None):
                         df = pd.merge(df, initial_market_shares, how = 'left', on = ['county_id','bin_id'])
                         df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']
                         
-                        # get the initial lease availability by state
-                        leasing_avail_status_by_state = datfunc.get_initial_lease_status(df,con)
-                        df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
+                        ## get the initial lease availability by state
+                        #leasing_avail_status_by_state = datfunc.get_initial_lease_status(df,con)
+                        #df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
                     else:    
                         df = pd.merge(df,market_last_year, how = 'left', on = ['county_id','bin_id'])
-                        df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
+                        #df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
                     
-                    ''' TEMP '''
-                    df['leasing_allowed'] = True
-                    ''' /TEMP '''
-                    
-                    #business_model = pd.DataFrame({'business_model' : ('host_owned','tpo'), 
-                    #                               'metric' : ('payback_period','monthly_bill_savings'),
-                    #                               'cross_join' : (1, 1)})
-                    #df['cross_join'] = 1
-                    #df = pd.merge(df, business_model, on = 'cross_join')
-                    #df = df.drop('cross_join', axis=1)
-                    
+                    # Determine whether leasing is permitted in given year
+                    lease_availability = datfunc.get_lease_availability(con, schema)
+                    df = pd.merge(df, lease_availability, on = ['state_abbr','year'])
+                                        
                     # Calculate economics of adoption given system cofiguration and business model
                     df = finfunc.calc_economics(df, schema, sector, sector_abbr, 
                                                                                market_projections, financial_parameters, 
                                                                                cfg, scenario_opts, max_market_share, cur, con, year, 
                                                                                dsire_incentives, deprec_schedule, logger, rate_escalations, 
                                                                                ann_system_degradation)
-                    
-                    # pick the better business model
-                    #gb = df.groupby(['county_id','bin_id'])
-                    #rb = gb['max_market_share'].rank(ascending = False)
-                    #df['econ_rank'] = rb    
-                    #df = df[df.econ_rank == 1]
-                    
-
                     
                     # 10. Calulate diffusion
                     ''' Calculates the market share (ms) added in the solve year. Market share must be less

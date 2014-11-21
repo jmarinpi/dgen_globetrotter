@@ -25,6 +25,10 @@ def makeConn(connection_string, autocommit=True):
         conn.set_isolation_level(pg.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
     return conn
 
+def list2line(l):
+    s = str(l).replace(" u'","").replace("u'","").replace("'","").replace(', ',',')[1:-1]+'\n'
+    return s
+
 def main(wb, conn, verbose = False):
     try:
         # check connection to PG
@@ -69,6 +73,8 @@ def main(wb, conn, verbose = False):
         maxMarket(curWb,schema,table,conn,cur,verbose)
         table = 'wind_generation_derate_factors'
         windDerate(curWb,schema,table,conn,cur,verbose)
+        table = 'leasing_availability'
+        leasingAvail(curWb,schema,table,conn,cur,verbose)
 
 
         if close_conn:
@@ -695,6 +701,38 @@ def maxMarket(curWb,schema,table,conn,cur,verbose=False):
     conn.commit()
     f.close()
 
+def leasingAvail(curWb,schema,table,conn,cur,verbose=False):
+    
+    f = StringIO.StringIO()
+    rname = 'leasing_avail'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist.' % rname)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+
+    columns = len(cells[0])
+    rows = len(cells)
+    r = 1
+    while r < rows:
+        c = 1
+        while c < columns:
+            if cells[r][c].value == None:
+                val = '0'
+            else:
+                val = cells[r][c].value
+            l = [cells[r][0].value, cells[0][c].value, val]
+            f.write(list2line(l))
+            c += 1
+        r += 1
+    f.seek(0)
+    if verbose:
+        print 'Exporting leasing_avail'
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
 
 if __name__ == '__main__':
     input_xls = '../excel/scenario_inputs.xlsm'

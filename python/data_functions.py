@@ -1757,6 +1757,18 @@ def get_rate_escalations(con, schema):
     rate_escalations = sqlio.read_frame(sql, con)
     return rate_escalations
     
+def get_lease_availability(con, schema):
+    '''
+    Get leasing availability by state and year, based on options selected in input sheet
+    
+    IN: con - connection to server
+    OUT: DataFrame with state, year, and availability (True/False) as columns
+    '''  
+    sql = """SELECT state as state_abbr, year, leasing_allowed
+                FROM %s.leasing_availability;""" % schema
+    df = sqlio.read_frame(sql, con)
+    return df
+    
 def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr): 
     '''
     Append the expected rate escalation to the main dataframe.
@@ -1810,69 +1822,11 @@ def fill_jagged_array(vals,lens, cols = 30):
     # use the repeate function to repeate elements in az by the factors in bz, then reshape to the final array size and shape
     r = np.repeat(az,bz).reshape((rows,cols))
     return r
-    
-def calc_lease_availability(df,con, leasing_avail_status_by_state,leasing_availability, year,start_year,market_threshold = 5):
-    
-        # For the first year start with existing policies
-    #    if year == start_year:
-    #        sql = """SELECT state as state_abbr, leasing_allowed FROM diffusion_shared.states_allowing_leasing_in_2013;"""
-    #        leasing_avail_status_by_state = sqlio.read_frame(sql, con, coerce_float = False)
-    #        leasing_avail_status_by_state['leasing_allowed'] = np.where(leasing_avail_status_by_state['leasing_allowed'] == 'Not Allowed',False, True)
-    #        df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
-    #    else:
-    #        df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
-    
-    # Makes leasing allowed everywhere    
-    if leasing_availability == 'Full_Leasing_Everywhere':
-        df['leasing_allowed'] = True
-        
-    # Makes leasing allowed nowhere      
-    elif leasing_availability == 'No_Leasing_Anywhere':
-        df['leasing_allowed'] = False
-    
-    # Leasing only in markets defined in first year   
-    elif leasing_availability == 'No_New_Markets':                 
-        pass
-    
-    # Leasing allowed in existing markets, or if the cumulative installed capacity exceed the threshold i.e 5 MW 
-    elif leasing_availability == 'Market_Threshold':
-
-        # Does the state's avg max market share exceed the market_threshold i.e 1%?
-        market_availability = df.groupby(['state_abbr'])['installed_capacity_last_year'].sum().reset_index()
-        market_availability['leasing_market_availability'] = market_availability['installed_capacity_last_year'] > market_threshold
-        market_availability = market_availability.drop('installed_capacity_last_year',axis = 1)
-        
-        # Join with main on state; ignore falses if the state already permits leasing
-        df = pd.merge(df, market_availability, how = 'left', on = ['state_abbr'])
-        df['leasing_allowed'] = np.where(df['leasing_allowed'], True, df['leasing_market_availability'])
-        df = df.drop('leasing_market_availability', axis = 1)
-    
-    # Update the leasing_avail_status_by_state dataframe
-    leasing_avail_status_by_state = df.groupby(['state_abbr'])['leasing_allowed'].all().reset_index()
-    leasing_avail_status_by_state['leasing_allowed'] = leasing_avail_status_by_state[0]
-    leasing_avail_status_by_state = leasing_avail_status_by_state.drop(0,axis = 1)
             
-    return df, leasing_avail_status_by_state
-    
-def get_initial_lease_status(df,con):
-    sql = """SELECT state as state_abbr, leasing_allowed FROM diffusion_shared.states_allowing_leasing_in_2013;"""
-    leasing_avail_status_by_state = sqlio.read_frame(sql, con, coerce_float = False)
-    leasing_avail_status_by_state['leasing_allowed'] = np.where(leasing_avail_status_by_state['leasing_allowed'] == 'Not Allowed',False, True)
-    
-    return leasing_avail_status_by_state
-    
-def wavg(val_col_name, wt_col_name):
-    ''' Weighted average by group
-    e.g df.apply(wavg('value','weight'))
-    '''    
-    def inner(group):
-        return (group[val_col_name] * group[wt_col_name]).sum() / group[wt_col_name].sum()
-    inner.__name__ = 'wtd_avg'
-    return inner
-    
 def assign_business_model(df, method = 'prob', alpha = 2):
     
     if method == 'prob':
+        
         # The method here is to calculate a probability of leasing based on the relative
         # trade-off of market market shares. Then we draw a random number to determine if
         # the customer leases (# < prob of leasing). A ranking method is used as a mask to
@@ -1979,3 +1933,52 @@ def code_profiler(out_dir):
 #    df['business_model'] = np.where(tmp,'host_owned','tpo')
 #    df['metric'] = np.where(tmp,'payback_period','monthly_bill_savings')
 #    return df
+    #def calc_lease_availability(df,con, leasing_avail_status_by_state,leasing_availability, year,start_year,market_threshold = 5):
+    #    
+    #        # For the first year start with existing policies
+    #    #    if year == start_year:
+    #    #        sql = """SELECT state as state_abbr, leasing_allowed FROM diffusion_shared.states_allowing_leasing_in_2013;"""
+    #    #        leasing_avail_status_by_state = sqlio.read_frame(sql, con, coerce_float = False)
+    #    #        leasing_avail_status_by_state['leasing_allowed'] = np.where(leasing_avail_status_by_state['leasing_allowed'] == 'Not Allowed',False, True)
+    #    #        df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
+    #    #    else:
+    #    #        df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
+    #    
+    #    # Makes leasing allowed everywhere    
+    #    if leasing_availability == 'Full_Leasing_Everywhere':
+    #        df['leasing_allowed'] = True
+    #        
+    #    # Makes leasing allowed nowhere      
+    #    elif leasing_availability == 'No_Leasing_Anywhere':
+    #        df['leasing_allowed'] = False
+    #    
+    #    # Leasing only in markets defined in first year   
+    #    elif leasing_availability == 'No_New_Markets':                 
+    #        pass
+    #    
+    #    # Leasing allowed in existing markets, or if the cumulative installed capacity exceed the threshold i.e 5 MW 
+    #    elif leasing_availability == 'Market_Threshold':
+    #
+    #        # Does the state's avg max market share exceed the market_threshold i.e 1%?
+    #        market_availability = df.groupby(['state_abbr'])['installed_capacity_last_year'].sum().reset_index()
+    #        market_availability['leasing_market_availability'] = market_availability['installed_capacity_last_year'] > market_threshold
+    #        market_availability = market_availability.drop('installed_capacity_last_year',axis = 1)
+    #        
+    #        # Join with main on state; ignore falses if the state already permits leasing
+    #        df = pd.merge(df, market_availability, how = 'left', on = ['state_abbr'])
+    #        df['leasing_allowed'] = np.where(df['leasing_allowed'], True, df['leasing_market_availability'])
+    #        df = df.drop('leasing_market_availability', axis = 1)
+    #    
+    #    # Update the leasing_avail_status_by_state dataframe
+    #    leasing_avail_status_by_state = df.groupby(['state_abbr'])['leasing_allowed'].all().reset_index()
+    #    leasing_avail_status_by_state['leasing_allowed'] = leasing_avail_status_by_state[0]
+    #    leasing_avail_status_by_state = leasing_avail_status_by_state.drop(0,axis = 1)
+    #            
+    #    return df, leasing_avail_status_by_state
+    
+    #def get_initial_lease_status(df,con):
+    #    sql = """SELECT state as state_abbr, leasing_allowed FROM diffusion_shared.states_allowing_leasing_in_2013;"""
+    #    leasing_avail_status_by_state = sqlio.read_frame(sql, con, coerce_float = False)
+    #    leasing_avail_status_by_state['leasing_allowed'] = np.where(leasing_avail_status_by_state['leasing_allowed'] == 'Not Allowed',False, True)
+    #    
+    #    return leasing_avail_status_by_state
