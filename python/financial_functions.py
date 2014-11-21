@@ -28,6 +28,13 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
         OUT:
             df - pd dataframe - main dataframe with econ outputs appended as columns
     '''
+    # Evaluate economics of leasing or buying for all customers who are able to lease
+    business_model = pd.DataFrame({'business_model' : ('host_owned','tpo'), 
+                                   'metric' : ('payback_period','monthly_bill_savings'),
+                                   'cross_join' : (1, 1)})
+    df['cross_join'] = 1
+    df = pd.merge(df, business_model, on = 'cross_join')
+    df = df.drop('cross_join', axis=1)
     
     df['sector'] = sector.lower()
     df = pd.merge(df,financial_parameters, how = 'left', on = ['sector','business_model'])
@@ -48,38 +55,34 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs)
 
-    #    if sector == 'Residential':
-    #        ttd = np.zeros(len(cfs))
-    #    else: # Don't calculate for res sector
-    #        ttd = calc_ttd(cfs)
-    #            
-    #    df['payback_period'] = np.where(df['sector'] == 'residential',payback, ttd)
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate)    
-    #df['payback_key'] = (df['payback_period']*10).astype(int)
+
     
-    # cleanup metric values
-    # find the bounding values for the max market share curves for payback period and monthly bill savings (mbs)
+    # Convert metric value to integer as a primary key, then bound within max market share ranges
     max_payback = max_market_share[max_market_share.metric == 'payback_period'].metric_value.max()
     min_payback = max_market_share[max_market_share.metric == 'payback_period'].metric_value.min()
     max_mbs = max_market_share[max_market_share.metric == 'monthly_bill_savings'].metric_value.max()
     min_mbs = max_market_share[max_market_share.metric == 'monthly_bill_savings'].metric_value.min()
+    
     # copy the metric valeus to a new column to store an edited version
     metric_value_bounded = df.metric_value_precise.values.copy()
+    
     # where the metric value exceeds the corresponding max market curve bounds, set the value to the corresponding bound
     metric_value_bounded[np.where((df.metric == 'payback_period') & (df.metric_value_precise < min_payback))] = min_payback
     metric_value_bounded[np.where((df.metric == 'payback_period') & (df.metric_value_precise > max_payback))] = max_payback    
     metric_value_bounded[np.where((df.metric == 'monthly_bill_savings') & (df.metric_value_precise < min_mbs))] = min_mbs
     metric_value_bounded[np.where((df.metric == 'monthly_bill_savings') & (df.metric_value_precise > max_mbs))] = max_mbs
     df['metric_value_bounded'] = metric_value_bounded
-    # check that this worked
-#    df[df.metric_value_precise <> df.metric_value_bounded][['metric_value_precise','metric_value_bounded']]    
+
     # scale and round to nearest int    
     df['metric_value_as_factor'] = (df['metric_value_bounded'] * 10).round().astype('int')
     # add a scaled key to the max_market_share df too
     max_market_share['metric_value_as_factor'] = (max_market_share['metric_value'] * 10).round().astype('int')
 
-    # Does the metric_value need to be an int?
+    # Join the max_market_share table and df in order to select the ultimate mms based on the metric value. 
     df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'metric','metric_value_as_factor','business_model'])
+    
+    df = datfunc.assign_business_model(df, method = 'prob', alpha = 2)
     
     return df
     

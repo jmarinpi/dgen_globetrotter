@@ -1870,47 +1870,56 @@ def wavg(val_col_name, wt_col_name):
     inner.__name__ = 'wtd_avg'
     return inner
     
-def assign_business_model(df, year, start_year, alpha = 2):
-    ''' Assign a business model (host_owned or tpo) to a customer bin. The assignment is
-    based on (i) whether that bin's state permits leasing or buying; (ii) a comparison
-    of the weighted meanmax market share for each model. Based on these means, a logit
-    function assigns a probability of leasing or buying, which is then randomly simulated.
+def assign_business_model(df, method = 'prob', alpha = 2):
     
-    This function should be applied before calc_economics and after the first 
-    year's solve because it uses the market shares calculated in the previous year. 
-    
-        IN: df - pd pataframe - the main dataframe 
-            alpha - float - a scalar in the logit function-- higher alphas make the larger option exponentially more likely
-        OUT: df - pd pataframe - the main dataframe w/ an assigned business model
-    '''
-    if year == start_year:
-        df['prob_of_leasing'] = 0.68 # Nationally 68% of new installs were leased in 2014
-    else:
-        # Calculate the weighted-average max market share by state and business model
-        leasing_df = df.groupby(['state_abbr','business_model']).apply(wavg('max_market_share_last_year','customers_in_bin')).reset_index()
-        leasing_df['max_market_share_last_year'] = leasing_df[0]
-        leasing_df = leasing_df.drop(0,axis = 1)
-    
-        # Calculate the probability of leasing based on an logit equation:
-        # p(Lease) = (max_market_share | leasing)**alpha/ [(max_market_share | leasing)**alpha + (max_market_share | buying)**alpha]
-        leasing_df['mkt_exp'] = leasing_df['max_market_share_last_year']**alpha
-        temp_df = leasing_df.groupby(['state_abbr'])['mkt_exp'].sum().reset_index()
-        temp_df.columns = ['state_abbr', 'sum_mkt_exp']
-        leasing_df = pd.merge(leasing_df,temp_df,how = 'left', on = ['state_abbr'])
-        leasing_df['prob_of_leasing'] = leasing_df['mkt_exp'] /leasing_df['sum_mkt_exp']
+    if method == 'prob':
+        # The method here is to calculate a probability of leasing based on the relative
+        # trade-off of market market shares. Then we draw a random number to determine if
+        # the customer leases (# < prob of leasing). A ranking method is used as a mask to
+        # identify which rows to drop 
         
-        # Don't let prob of leasing or buying exceed 95%    
-        leasing_df = leasing_df[(leasing_df['business_model'] == 'tpo')][['state_abbr','prob_of_leasing']]    
-        leasing_df['prob_of_leasing'] = np.where(leasing_df['prob_of_leasing'] > 0.95, 0.95,leasing_df['prob_of_leasing'])
-        leasing_df['prob_of_leasing'] = np.where(leasing_df['prob_of_leasing'] < 0.05, 0.05,leasing_df['prob_of_leasing'])
         
-        # Join leasing_df st. each customer now has a probability of leasing given their state
-        df = pd.merge(df, leasing_df, how = 'left', on = ['state_abbr'])
-    
-    # Random assign business model and metric given probability of leasing                   
-    tmp = df['leasing_allowed'] * (np.random.rand(df.shape[0]) > df.prob_of_leasing)
-    df['business_model'] = np.where(tmp,'host_owned','tpo')
-    df['metric'] = np.where(tmp,'payback_period','monthly_bill_savings')
+        # Calculate the logit value and sum of logit values for the bin id
+        df['mkt_exp'] = df['max_market_share']**alpha
+        gb = df.groupby(['county_id','bin_id'])
+        gb = pd.DataFrame({'mkt_sum': gb['mkt_exp'].sum()})
+        
+        # Draw a random number for both business models in the bin
+        gb['rnd'] = np.random.random(len(gb)) 
+        df = df.merge(gb, left_on=['county_id','bin_id'],right_index = True)
+        
+        # Determine the probability of leasing
+        df['prob_of_leasing'] = df['mkt_exp']/df['mkt_sum']
+        df.loc[(df['business_model'] == 'tpo') & ~(df['leasing_allowed']),'prob_of_leasing'] = 0 #Restrict leasing if not allowed by state
+        
+        # Both business models are still in the df, so we use a ranking algorithm after the random draw
+        # To determine whether to buy or lease 
+        df['rank'] =0
+        df.loc[(df['business_model'] == 'host_owned'),'rank'] = 1
+        df.loc[(df['business_model'] == 'tpo') & (df['rnd']< df['prob_of_leasing']),'rank'] = 2
+        
+        #df[['county_id','bin_id','business_model','max_market_share','rnd','prob_of_leasing','rank']].head(10)
+        
+        gb = df.groupby(['county_id','bin_id'])
+        rb = gb['rank'].rank(ascending = False)
+        df['econ_rank'] = rb    
+        df = df[df.econ_rank == 1]
+        
+        df = df.drop(['mkt_exp','mkt_sum','rnd','rank','econ_rank'],axis = 1)
+        #df[['county_id','bin_id','business_model','max_market_share','rnd','prob_of_leasing','econ_rank']].head(10)
+        
+    if method == 'rank':
+        
+        # just pick the business model with a higher max market share
+        df['mms'] = df['max_market_share']
+        df.loc[(df['business_model'] == 'tpo') & ~(df['leasing_allowed']),'mms'] = 0
+        gb = df.groupby(['county_id','bin_id'])
+       
+        rb = gb['mms'].rank(ascending = False)
+        df['econ_rank'] = rb    
+        df = df[df.econ_rank == 1]
+        df = df.drop(['econ_rank','mms'], axis = 1)
+        
     return df
     
 def code_profiler(out_dir):
@@ -1927,3 +1936,46 @@ def code_profiler(out_dir):
     profile = pd.DataFrame({'process': process, 'time':time})
     profile = profile.sort('time', ascending = False)
     profile.to_csv(out_dir + '/code_profiler.csv') 
+    
+#def assign_business_model(df, year, start_year, alpha = 2):
+#    ''' Assign a business model (host_owned or tpo) to a customer bin. The assignment is
+#    based on (i) whether that bin's state permits leasing or buying; (ii) a comparison
+#    of the weighted meanmax market share for each model. Based on these means, a logit
+#    function assigns a probability of leasing or buying, which is then randomly simulated.
+#    
+#    This function should be applied before calc_economics and after the first 
+#    year's solve because it uses the market shares calculated in the previous year. 
+#    
+#        IN: df - pd pataframe - the main dataframe 
+#            alpha - float - a scalar in the logit function-- higher alphas make the larger option exponentially more likely
+#        OUT: df - pd pataframe - the main dataframe w/ an assigned business model
+#    '''
+#    if year == start_year:
+#        df['prob_of_leasing'] = 0.68 # Nationally 68% of new installs were leased in 2014
+#    else:
+#        # Calculate the weighted-average max market share by state and business model
+#        leasing_df = df.groupby(['state_abbr','business_model']).apply(wavg('max_market_share_last_year','customers_in_bin')).reset_index()
+#        leasing_df['max_market_share_last_year'] = leasing_df[0]
+#        leasing_df = leasing_df.drop(0,axis = 1)
+#    
+#        # Calculate the probability of leasing based on an logit equation:
+#        # p(Lease) = (max_market_share | leasing)**alpha/ [(max_market_share | leasing)**alpha + (max_market_share | buying)**alpha]
+#        leasing_df['mkt_exp'] = leasing_df['max_market_share_last_year']**alpha
+#        temp_df = leasing_df.groupby(['state_abbr'])['mkt_exp'].sum().reset_index()
+#        temp_df.columns = ['state_abbr', 'sum_mkt_exp']
+#        leasing_df = pd.merge(leasing_df,temp_df,how = 'left', on = ['state_abbr'])
+#        leasing_df['prob_of_leasing'] = leasing_df['mkt_exp'] /leasing_df['sum_mkt_exp']
+#        
+#        # Don't let prob of leasing or buying exceed 95%    
+#        leasing_df = leasing_df[(leasing_df['business_model'] == 'tpo')][['state_abbr','prob_of_leasing']]    
+#        leasing_df['prob_of_leasing'] = np.where(leasing_df['prob_of_leasing'] > 0.95, 0.95,leasing_df['prob_of_leasing'])
+#        leasing_df['prob_of_leasing'] = np.where(leasing_df['prob_of_leasing'] < 0.05, 0.05,leasing_df['prob_of_leasing'])
+#        
+#        # Join leasing_df st. each customer now has a probability of leasing given their state
+#        df = pd.merge(df, leasing_df, how = 'left', on = ['state_abbr'])
+#    
+#    # Random assign business model and metric given probability of leasing                   
+#    tmp = df['leasing_allowed'] * (np.random.rand(df.shape[0]) > df.prob_of_leasing)
+#    df['business_model'] = np.where(tmp,'host_owned','tpo')
+#    df['metric'] = np.where(tmp,'payback_period','monthly_bill_savings')
+#    return df
