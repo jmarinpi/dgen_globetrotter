@@ -11,12 +11,12 @@ os.chdir('/Users/mgleason/NREL_Projects/Software/ssc-sdk-2014-1-21/languages/pyt
 #sys.path.append()
 #sys.path.append('/Users/mgleason/NREL_Projects/Software/ssc-sdk-2014-1-21/osx64')
 import ssc
+import multiprocessing
 
 
 def calc_cashflows(ac_hourly):
-    # INITIALIZE THE DATA CONTAINER
-    dat = ssc.Data()
-    
+    # INITIALIZE THE DATA CONTAINER]
+    dat = ssc.Data()   
     # NOTE: THIS IS THE SLOWEST PART -- MOVE TO OUTSIDE OF FUNCTION AND PASS IN GENERATION VALUES
     # 1 - add weather file to dat
     # set params
@@ -204,8 +204,7 @@ def calc_cashflows(ac_hourly):
     ur_tr_sched_m10 = 0
     ur_tr_sched_m11 = 0
     ur_tr_sched_m12 = 0
-    t1 = time.time()
-    dat.set_number('analysis_years', 30 )
+    dat.set_number('analysis_years', 1 )
     dat.set_array('system_availability', [ 100 ] )
     dat.set_array('system_degradation', [ 0.5 ] )
     dat.set_array('rate_escalation', [ 0.5+2.5 ] )
@@ -348,21 +347,14 @@ def calc_cashflows(ac_hourly):
     dat.set_array('e_with_system', ac_hourly )
     dat.set_array('e_without_system', [0.1]*8760 )
     dat.set_array('load_escalation', [ 0.2 ] )
-    print time.time() - t1
     # load the module
-    t1 = time.time()
     utilityrate = ssc.Module('utilityrate')
-    print time.time() - t1
     # run the module
-    t1 = time.time()
     utilityrate.exec_(dat)
-    print time.time() - t1
     # free the moduel
 #    ssc.module_free(utilityrate)
     # get the data we need
-    t1 = time.time()
     energy_value = dat.get_array('energy_value')
-    print time.time() - t1
     
     return energy_value
     
@@ -671,7 +663,6 @@ def calc_cashflows(ac_hourly):
 
 
 
-
 import time
 # INITIALIZE THE DATA CONTAINER
 pvdat = ssc.Data()
@@ -708,9 +699,8 @@ ac_hourly = pvdat.get_array('ac')
 
 
 
-
 t0 = time.time()
-for i in range(0,100):
+for i in range(0,3000*3*18):
     cfs = calc_cashflows(ac_hourly)
 print time.time()-t0
 
