@@ -728,3 +728,67 @@ dist_of_azimuth_selected<-function(df, start_year){
     theme(strip.text.x = element_text(size=12, angle=0,))+
     ggtitle('Optimal system orientations in 2014')
 }
+
+leasing_mkt_share<-function(df){
+data = collect(df) %>%
+  select(year,sector,business_model,new_capacity) %>%
+  group_by(year,sector,business_model)%>%
+  summarise(annual_capacity_gw = sum(new_capacity)/1e6)
+
+data2 = group_by(data, year, sector) %>%
+  summarise(tot_cap = sum(annual_capacity_gw))
+
+data3 = join(data,data2) %>%
+  mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
+  filter(business_model == 'tpo')
+
+plot<-ggplot(data3, aes(x = year, y = per_mkt_share, color = sector, fill = sector))+
+  geom_area(alpha = 0.5)+
+  facet_wrap(~sector)+
+  theme_few()+
+  scale_color_manual(values = sector_col)+
+  scale_fill_manual(values = sector_fil)+
+  xlab("")+
+  scale_y_continuous("% of New Capacity", label = percent)+
+  ggtitle("Leasing Market Share: Percent of New Capacity Added")
+
+# Table of market share by state and year (aggregating sectors)
+data = collect(df)%>%
+  select(year,state = state_abbr,business_model,new_capacity) %>%
+  group_by(year,state,business_model)%>%
+  summarise(annual_capacity_gw = sum(new_capacity)/1e6)
+
+data2 = group_by(data, year, state) %>%
+  summarise(tot_cap = sum(annual_capacity_gw))
+
+table <- join(data,data2) %>%
+  mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
+  filter(business_model == 'tpo')%>%
+  select(year, state, market_share = per_mkt_share)%>%
+  spread(year,market_share)
+
+l = list("plot" = plot, "table" = table)  
+return(l)
+}
+
+cum_installed_capacity_by_bm<-function(df){
+  
+  data = collect(df) %>%
+    select(year,sector,business_model,new_capacity) %>%
+    group_by(year, sector, business_model) %>%
+    summarise(cap = sum(new_capacity/1e6))
+  
+  data2 = group_by(data, business_model, sector) %>%
+    mutate(cs = cumsum(cap))
+    
+  plot<-ggplot(data2,aes(x = year, y = cs, color = sector, fill = business_model))+
+    geom_area(position = 'stack', color = 'black')+
+    facet_wrap(~sector)+
+    theme_few()+
+    xlab("")+
+    scale_y_continuous("Cumulative Installed Capacity since 2014 (GW)")+
+    ggtitle("Cumulative Installed Capacity Since 2014\n [Data on ownership trends prior to 2014 not available]")
+  
+ return(plot)
+ 
+}
