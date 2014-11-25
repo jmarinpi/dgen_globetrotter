@@ -8,6 +8,7 @@ Created on Mon Nov 24 16:47:13 2014
 import json
 import urllib
 import urllib2
+import os
 
 
 def get_urdb(rate_key):
@@ -37,6 +38,34 @@ def get_urdb(rate_key):
     raw = response['items'][0]
     
     return raw
+
+def save_urdb(rate_key, outfile):
+    ### MAKE THE REQUEST TO OPENEI FOR THE RATE DATA OF THE SPECIFIED RATE KEY
+    
+    # API LINKS:
+    # http://en.openei.org/services/doc/rest/util_rates?version=3
+    # http://en.openei.org/wiki/Help:US_Utility_Rate_Database_API_Tutorial#Requesting_Utility_Company_Data_with_OpenEI_API
+
+    api = 'http://en.openei.org/services/rest/utility_rates?'
+    
+    
+    
+    params = {'version' : 3,
+              'format' : 'json',
+              'detail' : 'full',
+              'getpage': rate_key
+              }
+              
+    params_encode = urllib.urlencode(params)
+    
+    url = api+params_encode
+    o = urllib2.urlopen(url)
+    f = file(outfile, 'w')
+    f.write(o.read())
+    o.close()
+    f.close()
+    
+    return 1
 
 
 def generate_field_names():
@@ -134,6 +163,9 @@ def urdb_rate_to_sam_structure(rate_key):
     
 
 if __name__ == '__main__':
-    # set a rate key to test
-    rate_key = '53fcf1095257a3764cdbd604'
-    output = urdb_rate_to_sam_structure(rate_key)
+#    # set a rate key to test
+#    rate_key = '53fcf1095257a3764cdbd604'
+#    rate_key = '539fc4a4ec4f024c27d8c945'
+    rate_key = '539f737eec4f024411ecfd7f'
+    save_urdb(rate_key,os.path.join('/Users/mgleason/NREL_Projects/Projects/URDB_Rates/test_json', '%s.json' % rate_key))
+#    output = urdb_rate_to_sam_structure(rate_key)
