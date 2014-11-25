@@ -159,7 +159,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     aep = np.empty(shape)
     aep[:,0] = 1
     aep[:,1:]  = 1 - ann_system_degradation
-    aep = df.aep[:,np.newaxis] * aep.cumprod(axis = 1) * (1 - df.curtailment_rate)
+    aep = df.aep[:,np.newaxis] * aep.cumprod(axis = 1) * (1 - df.curtailment_rate[:,np.newaxis])
     
     # Percentage of excess gen, bounded from 0 - 100%
     per_excess_gen = np.minimum(np.maximum(df.excess_generation_factor[:,np.newaxis] + 0.31 * (aep/df.load_kwh_per_customer_in_bin[:,np.newaxis] -1), 0),1)
