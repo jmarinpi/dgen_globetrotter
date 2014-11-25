@@ -12,6 +12,11 @@ import urllib2
 
 def get_urdb(rate_key):
     ### MAKE THE REQUEST TO OPENEI FOR THE RATE DATA OF THE SPECIFIED RATE KEY
+    
+    # API LINKS:
+    # http://en.openei.org/services/doc/rest/util_rates?version=3
+    # http://en.openei.org/wiki/Help:US_Utility_Rate_Database_API_Tutorial#Requesting_Utility_Company_Data_with_OpenEI_API
+
     api = 'http://en.openei.org/services/rest/utility_rates?'
     
     
