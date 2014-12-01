@@ -201,6 +201,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     
                     t0 = time.time()                    
                     df = datfunc.get_main_dataframe(con, main_table, year)
+                    print df
                     if mode == 'ReEDS':
                         # When in ReEDS mode add the values from ReEDS to df
                         df = pd.merge(df,distPVCurtailment, how = 'left', on = 'pca_reg')
@@ -228,6 +229,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     '''             
                     t_calc_diffusion = time.time() 
                     df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
+                    df.to_csv("temp3.csv")
                     logger.info('The entire diffunc.calc_diffusion for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t_calc_diffusion))
                     
                     # 11. Save outputs from this year and update parameters for next solve       
@@ -246,7 +248,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     pickle.dump(saved_vars, handle)  
                 return reeds_out
                 
-            else:
+            if mode != 'ReEDS' or resume_year == 2050:
                 dup_n = 1
                 scen_name = scenario_opts['scenario_name']
                 if scen_name in scenario_names:
@@ -294,6 +296,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
     finally:
         datfunc.shutdown_log(logger)
         datfunc.code_profiler(out_dir)
+        df.to_csv("temp2.csv")
     
 if __name__ == '__main__':
     main()
