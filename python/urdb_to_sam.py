@@ -140,6 +140,7 @@ def extract_sam_fields(raw_json):
     # initialize the output dictionary
     rate = {}
     
+
     # get the dictionary of simple fields
     simple_fields = generate_simple_field_names()
     # add each field that applies to the data pulled from openEI
@@ -147,12 +148,28 @@ def extract_sam_fields(raw_json):
         if urdb_key in raw_json.keys():
             rate[sam_key] = raw_json[urdb_key]  
             
+
     # get the dictionary of schedule fields (for energy charge and demand charge schedules)
     schedule_fields = generate_schedule_field_names()
     for urdb_key, sam_key in schedule_fields.iteritems():        
         if urdb_key in raw_json.keys():        
             rate[sam_key] = retrieve_diurnal_data(raw_json, urdb_key)                
             
+            
+    # get the complex rate structures
+    energy_charge_structure = extract_energy_rate_structure(raw_json)    
+    flat_demand_charge_structure = extract_flat_demand_charge_structure(raw_json)
+    tou_demand_charge_structure = extract_tou_demand_charge_structure(raw_json)
+    # add these to the rate dictionary
+    rate.update(energy_charge_structure)
+    rate.update(flat_demand_charge_structure)
+    rate.update(tou_demand_charge_structure)
+    # update the dc_enable field (if any of the ur_dc_*_dc fields are nonzero, set it true)
+    demand_charge_rates = [rate[k] for k in rate.keys() if k.endswith('_dc') and k.startswith('ur_dc') and rate[k] <> 0]
+    if len(demand_charge_rates) > 0:
+        rate['dc_enable'] = 1
+    else:
+        rate['dc_enable'] = 0
 
     # Manually add some additional strange ones
     # descriptive text
@@ -169,6 +186,7 @@ def extract_sam_fields(raw_json):
     rate['ur_flat_buy_rate'] = 0
     rate['ur_flat_sell_rate'] = 0
     
+
     return rate
     
 
@@ -176,8 +194,6 @@ def urdb_rate_to_sam_structure(rate_key):
 
     raw_json = get_urdb(rate_key)
     rate = extract_sam_fields(raw_json)
-    # add the rate key to the returned dictionary
-    rate['urdb_rate_key'] = rate_key
 
     return rate
     
@@ -204,6 +220,10 @@ def retrieve_diurnal_data(json, key):
 
 
 def extract_energy_rate_structure(raw_json):
+
+    #==============================================================================
+    #  TOU ENERGY CHARGE STRUCTURE
+    #==============================================================================
     
     field_template = "ur_ec_p%s_t%s_"
     d = {}
@@ -239,16 +259,15 @@ def extract_energy_rate_structure(raw_json):
     return d
 
 
-def extract_demand_charge_structure(raw_json):
+def extract_flat_demand_charge_structure(raw_json):
     
-
-    # initialize the output dictionary and the starting value for dc_enable
-    d = {}    
-    dc_enable = False
-
     #==============================================================================
     #  FLAT DEMAND STRUCTURE
     #==============================================================================
+    
+    # initialize the output dictionary
+    d = {}    
+
     # check whether this info is provided in the json file
     if 'flatdemandstructure' in raw_json.keys() and 'flatdemandmonths' in raw_json.keys():
         # extract the flat demand months and flat demand structure
@@ -297,10 +316,9 @@ def extract_demand_charge_structure(raw_json):
                         flat_demand_parameters[period][tier]['charge'] = flat_demand_charge
                         flat_demand_parameters[period][tier]['max'] = flat_demand_max
 
-                        if not(dc_enable) and flat_demand_charge <> 0:
-                            dc_enable = True
          
             # loop through 12 months, extracting the relevant charges/upper bounds for the corresponding period and its tiers
+            # set up the template for output dictionary keys
             field_template = "ur_dc_%s_t%s_"   
             for month, period in flat_demand_months.iteritems():
                 period_params = flat_demand_parameters[period]
@@ -314,132 +332,77 @@ def extract_demand_charge_structure(raw_json):
                     d[field_base + 'dc'] = flat_demand_charge
     
     
+    return d
+    
+    
+def extract_tou_demand_charge_structure(raw_json):    
+    
     #==============================================================================
     #  TOU DEMAND STRUCTURE
     #==============================================================================    
-    # ADD CODE
+
+    # initialize the output dictionary
+    d = {}    
     
+    # set up the template for output dictionary keys
+    field_template = "ur_dc_p%s_t%s_"
     
-    
-    
-    
-    # set dc_enable                   
-    d['dc_enable'] = int(dc_enable)    
+    # check whether this info is provided in the json file
+    if 'demandratestructure' in raw_json.keys():
+        drs_periods = raw_json['demandratestructure']
+        # check that the object is a list
+        if type(drs_periods) == list:
+            # make sure there are no more than 12 periods
+            period_count = len(drs_periods)
+            if period_count > 12:
+                raise ValueError('Number of periods in demandratestructure is greater than 12')
+            for period in range(0, period_count):
+                # extract the tiers for this period
+                drs_tiers = drs_periods[period]
+                # make sure the tiers object is a list
+                if type(drs_tiers) == list:
+                    # make sure there are no more than 6 tiers
+                    tier_count = len(drs_tiers)
+                    if tier_count > 6:
+                        raise ValueError('Number of tiers in demandratestructure is greater than 6')
+                    for tier in range(0, tier_count):
+                        field_base = field_template % (period+1, tier+1)
+                        # extract by key if available, otherwise set to default            
+                        demand_max = json_default(drs_tiers[tier], 'max', 1e38)
+                        demand_rate = json_default(drs_tiers[tier], 'rate', 0.0)
+                        demand_adj = json_default(drs_tiers[tier], 'adj', 0.0)  
+                        demand_charge = demand_rate + demand_adj
+                        d[field_base + 'ub'] = demand_max                
+                        d[field_base + 'dc'] = demand_charge
+ 
     
     return d
 
 if __name__ == '__main__':
 #    # set a rate key to test
-#    rate_key = '53fcf1095257a3764cdbd604'
-#    rate_key = '539fc4a4ec4f024c27d8c945'
-#    rate_key = '539f737eec4f024411ecfd7f'
-#    rate_key = '539fba9cec4f024bc1dc2feb'
 
 #    save_urdb(rate_key,os.path.join('/Users/mgleason/NREL_Projects/Projects/URDB_Rates/test_json', '%s.json' % rate_key))
 #    output = urdb_rate_to_sam_structure(rate_key)
 
-    rate_key = '539f70f6ec4f024411ece0b1'    
-    raw_json = get_urdb(rate_key)
+    # commercial rate with flat demand and energy charges
+#    rate_key = '539f70f6ec4f024411ece0b1'    
 
-    r = extract_sam_fields(raw_json)
+    # commercial rate with flat demand and energy charges
+    rate_key = '539f6b82ec4f024411ec9db9'
 
-#    # this is the code for flat demand (needs further testing)
-    d = {}    
-    dc_enable = False
-    # check whether this info is provided in the json file
-    if 'flatdemandstructure' in raw_json.keys() and 'flatdemandmonths' in raw_json.keys():
-        # extract the flat demand months and flat demand structure
-        fds_periods = raw_json['flatdemandstructure']    
-        fdm_periods = raw_json['flatdemandmonths']
-        # make sure both are lists
-        if type(fds_periods) == list and type(fdm_periods) == list:
-            
-            
-            # extract the array that indicates which period applies to each of the 12 months in the year
-            months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec" ]
-            # ensure there are 12 months in fdm_periods
-            fdm_period_count = len(fdm_periods)
-            if fdm_period_count <> 12:
-                raise ValueError('Number of periods in flatdemandmonths is not equal to 12') 
-            flat_demand_months = dict(zip(months, fdm_periods))
-            
-            
-            # extract the flat demand periods and tiers
-            # create dictionaries to hold the flat demand charges and upper bounds for each period/tier
-            flat_demand_parameters = {}
-            # make sure there are no more than 12 periods in the flat demand structure
-            fds_period_count = len(fds_periods)
-            if fds_period_count > 12:
-                raise ValueError('Number of periods in flatdemandstructure is greater than 12')
-            for period in range(0, fds_period_count):
-                # extract the tiers in this period
-                fds_tiers = fds_periods[period]
-                # make sure the fds_tiers object is a list
-                if type(fds_tiers) == list:
-                    # make sure there are no more than 6 tiers
-                    tier_count = len(fds_tiers)
-                    if tier_count > 6:
-                        raise ValueError('Number of tiers in flatdemandstructure is greater than 6')         
-                    # add a dictionary for this period to the dictionary
-                    flat_demand_parameters[period] = {}
-                    for tier in range(0, tier_count):
-                        # add this tier to the dictionary
-                        flat_demand_parameters[period][tier] = {}
-                        # extract by key if available, otherwise set to default            
-                        flat_demand_max = json_default(fds_tiers[tier], 'max', 1e38)
-                        flat_demand_rate = json_default(fds_tiers[tier], 'rate', 0.0)
-                        flat_demand_adj = json_default(fds_tiers[tier], 'adj', 0.0)
-                        flat_demand_charge = flat_demand_rate + flat_demand_adj
-                        # assign to dictionary
-                        flat_demand_parameters[period][tier]['charge'] = flat_demand_charge
-                        flat_demand_parameters[period][tier]['max'] = flat_demand_max
-
-                        if not(dc_enable) and flat_demand_charge <> 0:
-                            dc_enable = True
-         
-            # loop through 12 months, extracting the relevant charges/upper bounds for the corresponding period and its tiers
-            field_template = "ur_dc_%s_t%s_"   
-            for month, period in flat_demand_months.iteritems():
-                period_params = flat_demand_parameters[period]
-                tiers = period_params.keys()
-                for tier in tiers:
-                    tier_params = period_params[tier]
-                    field_base = field_template % (month, tier+1)    
-                    flat_demand_charge = tier_params['charge']
-                    flat_demand_max = tier_params['max']
-                    d[field_base + 'ub'] = flat_demand_max                
-                    d[field_base + 'dc'] = flat_demand_charge
+    # commercial rate with tou demand , flat demand, and energy charges
+    rate_key = '539fb91bec4f024bc1dc1ef1'
     
-    # set dc_enable                   
-    d['dc_enable'] = int(dc_enable)
-#
-#
-#    # this is the code for tou demand (needs further testing)
-#    field_template = "ur_dc_p%s_t%s_"
-#    if 'demandratestructure' in raw_json.keys():
-#        drs_periods = raw_json['demandratestructure']
-#        period_count = len(drs_periods)
-#        if period_count > 12:
-#            raise ValueError('Number of periods in demandratestructure is greater than 12')
-#        for period in range(0, period_count):
-#            drs_tiers = drs_periods[period]
-#            if type(drs_tiers) == list:
-#                tier_count = len(drs_tiers)
-#                if tier_count > 6:
-#                    raise ValueError('Number of tiers in demandratestructure is greater than 6')
-#                for tier in range(0, tier_count):
-#                    field_base = field_template % (period+1, tier+1)
-#                    # extract by key if available, otherwise set to default            
-#                    demand_max = json_default(drs_tiers[tier], 'max', 1e38)
-#                    demand_charge = json_default(drs_tiers[tier], 'rate', 0)
-#                    demand_adj = json_default(drs_tiers[tier], 'adj', 0)          
-#                    dcharge = demand_charge + demand_adj
-#                    d[field_base + 'ub'] = demand_max                
-#                    d[field_base + 'dc'] = dcharge
-#                    if not(dc_enable) and dcharge <> 0:
-#                        dc_enable = True
-#
-#    d['dc_enable'] = int(dc_enable)            
+    # get the raw json from urdb
+    raw_json = get_urdb(rate_key)
+    print raw_json['rateurl']
+    
+    # get the simple fields
+    r = extract_sam_fields(raw_json)
+    n = extract_energy_rate_structure(raw_json)    
+    f = extract_flat_demand_charge_structure(raw_json)
+    t = extract_tou_demand_charge_structure(raw_json)
+          
             
 
 
