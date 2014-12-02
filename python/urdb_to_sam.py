@@ -94,7 +94,17 @@ def generate_basic_rate_field_names():
     
 
     # key is the key used by URDB, value is the key used by SAM
-    fields =      {         'peakkwcapacityhistory' : 'ur_demand_history',
+    fields =      {         'annualmincharge' : 'ur_annual_min_charge', # 
+                            'minmonthlycharge' : 'ur_monthly_min_charge', #
+                            'fixedmonthlycharge' : 'ur_monthly_fixed_charge' #
+                        }
+    
+    return fields
+
+
+def generate_applicability_field_names():
+
+    fields = {               'peakkwcapacityhistory' : 'ur_demand_history',
                             'peakkwcapacitymax' : 'ur_demand_max',
                             'peakkwcapacitymin' : 'ur_demand_min',
                             'peakkwhusagehistory' : 'ur_energy_history',
@@ -103,15 +113,12 @@ def generate_basic_rate_field_names():
                             'voltagemaximum' : 'ur_voltage_max',
                             'voltageminimum' : 'ur_voltage_min',
                             'voltagecategory' : 'ur_voltage_category',
-                            'phasewiring' : 'ur_phase_wiring',
-                            'annualmincharge' : 'ur_annual_min_charge',
-                            'minmonthlycharge' : 'ur_monthly_min_charge',
-                            'fixedmonthlycharge' : 'ur_monthly_fixed_charge'
-                        }
-    
+                            'phasewiring' : 'ur_phase_wiring'
+                }    
+
     return fields
     
-
+    
 def generate_schedule_field_names():
     
     fields =       {'energyweekdayschedule' : 'ur_ec_sched_weekday',
@@ -353,27 +360,40 @@ def extract_sam_fields(raw_json):
     rate['ur_flat_buy_rate'] = 0
     rate['ur_flat_sell_rate'] = 0
     
-
-    # add metadata as a nested dictionary
-    rate['meta'] = {}
+    
+    # get the applicability fields
+    applicability = {}
+    applicability_fields = generate_applicability_field_names()
+    for urdb_key, sam_key in applicability_fields.iteritems():        
+        if urdb_key in raw_json.keys():        
+            applicability[sam_key] = raw_json[urdb_key]  
+            
+            
+    # get metadata info
+    meta = {}
     # get the dictionary of metadata fields
     meta_fields = generate_meta_field_names()
     for urdb_key, sam_key in meta_fields.iteritems():        
         if urdb_key in raw_json.keys():        
-            rate['meta'][sam_key] = raw_json[urdb_key]  
+            meta[sam_key] = raw_json[urdb_key]  
     # manually add descriptive text
-    rate['meta']['ur_description'] = '. '.join([str(raw_json[k]) for k in ['description','basicinformationcomments','energycomments','demandcomments'] if k in raw_json.keys()])
+    meta['ur_description'] = '. '.join([str(raw_json[k]) for k in ['description','basicinformationcomments','energycomments','demandcomments'] if k in raw_json.keys()])
 
 
-    return rate
+    # combine into a final dictionary
+    out_json = meta.copy()
+    out_json['sam_json'] = rate
+    out_json['applicability'] = applicability
+
+    return out_json
     
 
 def urdb_rate_to_sam_structure(rate_key):
 
     raw_json = get_urdb(rate_key)
-    rate = extract_sam_fields(raw_json)
+    out_json = extract_sam_fields(raw_json)
 
-    return rate
+    return out_json
 
 
 
