@@ -11,6 +11,7 @@ import urllib2
 import os
 import numpy as np
 
+
 def get_urdb(rate_key):
     ### MAKE THE REQUEST TO OPENEI FOR THE RATE DATA OF THE SPECIFIED RATE KEY
     
@@ -36,7 +37,9 @@ def get_urdb(rate_key):
     o.close()
     
     raw = response['items'][0]
-    raw['url'] = url
+    
+    # add some basic identifying parameters
+    raw['jsonurl'] = url
     raw['guid'] = rate_key
     raw['rateurl'] = "http://en.openei.org/apps/USURDB/rate/view/" + rate_key
     
@@ -72,19 +75,26 @@ def save_urdb(rate_key, outfile):
     return 1
 
 
-def generate_simple_field_names():
+def generate_meta_field_names():
+    
+    # key is the key used by URDB, value is the key used by SAM
+    fields = {  'name' : 'ur_schedule_name',
+                'utility' : 'ur_name',
+                'source' : 'ur_source',
+                'guid' : 'urdb_rate_id',
+                'rateurl' : 'rateurl',
+                'jsonurl' : 'jsonurl'}
+    
+    return fields
+
+
+def generate_basic_rate_field_names():
     
     ### SET UP FIELD NAMES TO EXTRACT FROM THE RAW DATA
     
 
-    #       (key is the key used by URDB, value is the key used by SAM)
-    fields =      {
-                          #   DESCRIPTIVE FIELDS
-                            'name' : 'ur_schedule_name',
-                            'utility' : 'ur_name',
-                            'source' : 'ur_source',
-                          #   BASIC RATE FIELDS
-                            'peakkwcapacityhistory' : 'ur_demand_history',
+    # key is the key used by URDB, value is the key used by SAM
+    fields =      {         'peakkwcapacityhistory' : 'ur_demand_history',
                             'peakkwcapacitymax' : 'ur_demand_max',
                             'peakkwcapacitymin' : 'ur_demand_min',
                             'peakkwhusagehistory' : 'ur_energy_history',
@@ -104,100 +114,14 @@ def generate_simple_field_names():
 
 def generate_schedule_field_names():
     
-    fields =  {'energyweekdayschedule' : 'ur_ec_sched_weekday',
+    fields =       {'energyweekdayschedule' : 'ur_ec_sched_weekday',
                     'energyweekendschedule' : 'ur_ec_sched_weekend',
                     'demandweekdayschedule' : 'ur_dc_sched_weekday',
                     'demandweekendschedule' : 'ur_dc_sched_weekend'}
                     
     return fields
     
-#    #   COMPLEX RATE FIELDS
-#    #       (this one is a list because SAM and URDB use the same names)
-#    #       NOTE: The resulting list of fields was been checked against SAM SDKTool.app on 11/24/14
-#    complex_rate_fields = []
-#    complex_structures = {'energy_charge': {'field_template' : "ur_ec_p%s_t%s_%s", 'field_suffixes' : ['ub', 'br', 'sr']},
-#                          'demand_tou'   : {'field_template' : "ur_dc_p%s_t%s_%s", 'field_suffixes' : ['ub', 'dc']},
-#                          'flat_demand'  : {'field_template' : "ur_dc_%s_t%s_%s" , 'field_suffixes' : ['ub', 'dc']}
-#                         }
-#    months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec" ]
-#    for period in range(0, 12):
-#        for tier in range(1, 7):
-#            for structure in complex_structures.keys():
-#                if structure == 'flat_demand':
-#                    period_name = months[period]
-#                else:
-#                    period_name = period + 1
-#                field_template = complex_structures[structure]['field_template']
-#                field_suffixes = complex_structures[structure]['field_suffixes']
-#                for suffix in field_suffixes:
-#                    key = field_template % (period_name, tier, suffix)
-#                    complex_rate_fields.append(key)
-    
 
-        
-def extract_sam_fields(raw_json):
-          
-    # initialize the output dictionary
-    rate = {}
-    
-
-    # get the dictionary of simple fields
-    simple_fields = generate_simple_field_names()
-    # add each field that applies to the data pulled from openEI
-    for urdb_key, sam_key in simple_fields.iteritems():
-        if urdb_key in raw_json.keys():
-            rate[sam_key] = raw_json[urdb_key]  
-            
-
-    # get the dictionary of schedule fields (for energy charge and demand charge schedules)
-    schedule_fields = generate_schedule_field_names()
-    for urdb_key, sam_key in schedule_fields.iteritems():        
-        if urdb_key in raw_json.keys():        
-            rate[sam_key] = retrieve_diurnal_data(raw_json, urdb_key)                
-            
-            
-    # get the complex rate structures
-    energy_charge_structure = extract_energy_rate_structure(raw_json)    
-    flat_demand_charge_structure = extract_flat_demand_charge_structure(raw_json)
-    tou_demand_charge_structure = extract_tou_demand_charge_structure(raw_json)
-    # add these to the rate dictionary
-    rate.update(energy_charge_structure)
-    rate.update(flat_demand_charge_structure)
-    rate.update(tou_demand_charge_structure)
-    # update the dc_enable field (if any of the ur_dc_*_dc fields are nonzero, set it true)
-    demand_charge_rates = [rate[k] for k in rate.keys() if k.endswith('_dc') and k.startswith('ur_dc') and rate[k] <> 0]
-    if len(demand_charge_rates) > 0:
-        rate['dc_enable'] = 1
-    else:
-        rate['dc_enable'] = 0
-
-    # Manually add some additional strange ones
-    # descriptive text
-    rate['ur_description'] = '. '.join([str(raw_json[k]) for k in ['description','basicinformationcomments','energycomments','demandcomments'] if k in raw_json.keys()])
-        
-    # net metering
-    # defaults to true if not specified (we will want to change this in the diffusion modeling)
-    if 'usenetmetering' in raw_json.keys():
-        rate['ur_enable_net_metering'] = raw_json['usenetmetering']
-    else:
-        rate['ur_enable_net_metering'] = True
-        
-    # "fixed energy rates - URDB handles as energy charges" (not sure what this means -- taken from source code)
-    rate['ur_flat_buy_rate'] = 0
-    rate['ur_flat_sell_rate'] = 0
-    
-
-    return rate
-    
-
-def urdb_rate_to_sam_structure(rate_key):
-
-    raw_json = get_urdb(rate_key)
-    rate = extract_sam_fields(raw_json)
-
-    return rate
-    
-    
 def json_default(json, key, default_val):
     
     if key in json.keys():
@@ -377,6 +301,81 @@ def extract_tou_demand_charge_structure(raw_json):
  
     
     return d
+
+
+def extract_sam_fields(raw_json):
+          
+    # initialize the output dictionary
+    rate = {}
+    
+
+    # get the dictionary of basic rate fields
+    basic_rate_fields = generate_basic_rate_field_names()
+    # add each field that applies to the data pulled from openEI
+    for urdb_key, sam_key in basic_rate_fields.iteritems():
+        if urdb_key in raw_json.keys():
+            rate[sam_key] = raw_json[urdb_key]  
+            
+
+    # get the dictionary of schedule fields (for energy charge and demand charge schedules)
+    schedule_fields = generate_schedule_field_names()
+    for urdb_key, sam_key in schedule_fields.iteritems():        
+        if urdb_key in raw_json.keys():        
+            rate[sam_key] = retrieve_diurnal_data(raw_json, urdb_key)                
+            
+            
+    # get the complex rate structures
+    energy_charge_structure = extract_energy_rate_structure(raw_json)    
+    flat_demand_charge_structure = extract_flat_demand_charge_structure(raw_json)
+    tou_demand_charge_structure = extract_tou_demand_charge_structure(raw_json)
+    # add these to the rate dictionary
+    rate.update(energy_charge_structure)
+    rate.update(flat_demand_charge_structure)
+    rate.update(tou_demand_charge_structure)
+    # update the dc_enable field (if any of the ur_dc_*_dc fields are nonzero, set it true)
+    demand_charge_rates = [rate[k] for k in rate.keys() if k.endswith('_dc') and k.startswith('ur_dc') and rate[k] <> 0]
+    if len(demand_charge_rates) > 0:
+        rate['dc_enable'] = 1
+    else:
+        rate['dc_enable'] = 0
+
+
+    # Manually add additional fields
+    # net metering
+    # defaults to true if not specified (we will want to change this in the diffusion modeling)
+    if 'usenetmetering' in raw_json.keys():
+        rate['ur_enable_net_metering'] = raw_json['usenetmetering']
+    else:
+        rate['ur_enable_net_metering'] = True
+        
+    # "fixed energy rates - URDB handles as energy charges" (not sure what this means -- taken from source code)
+    # my interpretation of this is that these are always treated as zeros when the data comes from URDB
+    rate['ur_flat_buy_rate'] = 0
+    rate['ur_flat_sell_rate'] = 0
+    
+
+    # add metadata as a nested dictionary
+    rate['meta'] = {}
+    # get the dictionary of metadata fields
+    meta_fields = generate_meta_field_names()
+    for urdb_key, sam_key in meta_fields.iteritems():        
+        if urdb_key in raw_json.keys():        
+            rate['meta'][sam_key] = raw_json[urdb_key]  
+    # manually add descriptive text
+    rate['meta']['ur_description'] = '. '.join([str(raw_json[k]) for k in ['description','basicinformationcomments','energycomments','demandcomments'] if k in raw_json.keys()])
+
+
+    return rate
+    
+
+def urdb_rate_to_sam_structure(rate_key):
+
+    raw_json = get_urdb(rate_key)
+    rate = extract_sam_fields(raw_json)
+
+    return rate
+
+
 
 if __name__ == '__main__':
 #    # set a rate key to test
