@@ -63,7 +63,8 @@ def urdb_to_pg(rate_keys, cur, con, sql_params, log):
     output_fields = ['urdb_rate_id', 'ur_name', 'ur_schedule_name', 'ur_source', 'rateurl', 'jsonurl', 'ur_description', 'sam_json', 'applicability']
     
     # 
-    for rate_key in rate_keys[0:100]:
+    for rate_key in rate_keys:
+        print rate_key
         try:
             rate_data = urdb_to_sam.urdb_rate_to_sam_structure(rate_key)
             # format sam_json as actual JSON string
@@ -78,11 +79,11 @@ def urdb_to_pg(rate_keys, cur, con, sql_params, log):
                 else:
                     output_list.append('')
             # convert list to a single text string
-            output_line = str(output_list)[1:-1].replace(" '",'^').replace("'",'^') + '\n'
+            output_line = ','.join(['^%s^' % s for s in output_list]) + '\n'
             f.write(output_line)
         except Exception, e:
             print e
-            log.write('%s\n' % e)
+            log.write('Error on rate %s: %s\n' % (rate_key,e))
     
     f.seek(0)    
     # copy the data from the stringio file to the postgres table

@@ -36,12 +36,17 @@ def get_urdb(rate_key):
     response = json.loads(o.read())
     o.close()
     
+    # check that data was actually returned
+    if len(response['items']) == 0:
+        raise ValueError("No data returned by the URDB for rate with ID %s" % rate_key)
+    
     raw = response['items'][0]
     
     # add some basic identifying parameters
     raw['jsonurl'] = url
     raw['guid'] = rate_key
     raw['rateurl'] = "http://en.openei.org/apps/USURDB/rate/view/" + rate_key
+    
     
     return raw
         
