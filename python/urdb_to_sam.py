@@ -8,8 +8,8 @@ Created on Mon Nov 24 16:47:13 2014
 import json
 import urllib
 import urllib2
-import os
 import numpy as np
+#import os
 
 
 def get_urdb(rate_key):
@@ -377,30 +377,27 @@ def urdb_rate_to_sam_structure(rate_key):
 
 
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
 #    # set a rate key to test
-
-#    save_urdb(rate_key,os.path.join('/Users/mgleason/NREL_Projects/Projects/URDB_Rates/test_json', '%s.json' % rate_key))
-#    output = urdb_rate_to_sam_structure(rate_key)
-
-    # commercial rate with flat demand and energy charges
-#    rate_key = '539f70f6ec4f024411ece0b1'    
-
-    # commercial rate with flat demand and energy charges
-    rate_key = '539f6b82ec4f024411ec9db9'
-
-    # commercial rate with tou demand , flat demand, and energy charges
-    rate_key = '539fb91bec4f024bc1dc1ef1'
-    
-    # get the raw json from urdb
-    raw_json = get_urdb(rate_key)
-    print raw_json['rateurl']
-    
-    # get the simple fields
-    r = extract_sam_fields(raw_json)
-    n = extract_energy_rate_structure(raw_json)    
-    f = extract_flat_demand_charge_structure(raw_json)
-    t = extract_tou_demand_charge_structure(raw_json)
+#
+#    # commercial rate with flat demand and energy charges
+#    # rate_key = '539f70f6ec4f024411ece0b1'    
+#
+#    # commercial rate with flat demand and energy charges
+#    rate_key = '539f6b82ec4f024411ec9db9'
+#
+#    # commercial rate with tou demand , flat demand, and energy charges
+#    rate_key = '539fb91bec4f024bc1dc1ef1'
+#    
+#    # get the raw json from urdb
+#    raw_json = get_urdb(rate_key)
+#    print raw_json['rateurl']
+#    
+#    # get the simple fields
+#    r = extract_sam_fields(raw_json)
+#    n = extract_energy_rate_structure(raw_json)    
+#    f = extract_flat_demand_charge_structure(raw_json)
+#    t = extract_tou_demand_charge_structure(raw_json)
           
             
 
