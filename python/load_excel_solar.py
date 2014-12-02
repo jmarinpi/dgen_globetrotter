@@ -78,6 +78,8 @@ def main(wb, conn, verbose = False):
         manNetMetering(curWb,schema,table,conn,cur,verbose)
         table = 'user_defined_max_market_share'
         maxMarket(curWb,schema,table,conn,cur,verbose)
+        table = 'leasing_availability'
+        leasingAvail(curWb,schema,table,conn,cur,verbose)
         # only need this to manually load the table once -- these generally shouldn't change
 #        table = 'solar_program_target_cost_projections'
 #        sptCostProj(curWb,schema,table,conn,cur,verbose)
@@ -863,6 +865,39 @@ def maxMarket(curWb,schema,table,conn,cur,verbose=False):
     conn.commit()
     f.close()
 
+def leasingAvail(curWb,schema,table,conn,cur,verbose=False):
+    
+    f = StringIO.StringIO()
+    rname = 'leasing_avail'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist.' % rname)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    #states = cells[r][0]
+    #years = cells[0][c]
+    columns = len(cells[0])
+    rows = len(cells)
+    r = 1
+    while r < rows:
+        c = 1
+        while c < columns:
+            if cells[r][c].value == None:
+                val = '0'
+            else:
+                val = cells[r][c].value
+            l = [cells[r][0].value, cells[0][c].value, val]
+            f.write(list2line(l))
+            c += 1
+        r += 1
+    f.seek(0)
+    if verbose:
+        print 'Exporting leasing_avail'
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
 
 if __name__ == '__main__':
     input_xls = '../excel/scenario_inputs_solar.xlsm'

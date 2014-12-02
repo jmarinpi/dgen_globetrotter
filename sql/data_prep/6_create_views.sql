@@ -233,6 +233,7 @@ and a.business_model = b.business_model
 order by sector, metric, metric_value;
 
 -- create view for rate escalations
+set role 'diffusion-writers';
 CREATE OR REPLACE VIEW diffusion_wind.rate_escalations_to_model AS
 With cdas AS (
 	SELECT distinct(census_division_abbr) as census_division_abbr, generate_series(2014,2080) as year
@@ -241,7 +242,7 @@ With cdas AS (
 ),
 user_defined_gaps_res AS 
 (
-	SELECT b.census_division_abbr, b.year, 'Residential'::text as sector,
+	SELECT b.census_division_abbr, b.year, 'res'::text as sector,
 		a.user_defined_res_rate_escalations as escalation_factor,
 		lag(a.user_defined_res_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lag_factor,
 		lead(a.user_defined_res_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lead_factor,
@@ -253,7 +254,7 @@ user_defined_gaps_res AS
 ),
 user_defined_gaps_com AS 
 (
-	SELECT b.census_division_abbr, b.year, 'Commercial'::text as sector,
+	SELECT b.census_division_abbr, b.year, 'com'::text as sector,
 		a.user_defined_com_rate_escalations as escalation_factor,
 		lag(a.user_defined_com_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lag_factor,
 		lead(a.user_defined_com_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lead_factor,
@@ -265,7 +266,7 @@ user_defined_gaps_com AS
 ),
 user_defined_gaps_ind AS 
 (
-	SELECT b.census_division_abbr, b.year, 'Industrial'::text as sector,
+	SELECT b.census_division_abbr, b.year, 'ind'::text as sector,
 		a.user_defined_ind_rate_escalations as escalation_factor,
 		lag(a.user_defined_ind_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lag_factor,
 		lead(a.user_defined_ind_rate_escalations,1) OVER (PARTITION BY b.census_division_abbr ORDER BY b.year asc) as lead_factor,
@@ -297,14 +298,14 @@ user_defined_filled AS
 	FROM user_defined_gaps_all
 ),
 no_growth AS (
-SELECT census_division_abbr, year, unnest(array['Residential','Commercial','Industrial'])::text as sector,
+SELECT census_division_abbr, year, unnest(array['res','com','ind'])::text as sector,
 		1::numeric as escalation_factor,
 		'No Growth'::text as source
 	FROM cdas
 ),
 aeo AS 
 (
-	SELECT census_division_abbr, year, sector, 
+	SELECT census_division_abbr, year, sector_abbr as sector, 
 		escalation_factor, 
 		source
 	FROM diffusion_shared.rate_escalations
@@ -327,13 +328,13 @@ esc_combined AS
 ),
 inp_opts AS 
 (
-	SELECT 'Residential'::text as sector, res_rate_escalation as source
+	SELECT 'res'::text as sector, res_rate_escalation as source
 	FROM diffusion_wind.scenario_options
 	UNION
-	SELECT 'Commercial'::text as sector, com_rate_escalation as source
+	SELECT 'com'::text as sector, com_rate_escalation as source
 	FROM diffusion_wind.scenario_options
 	UNION
-	SELECT 'Industrial'::text as sector, ind_rate_escalation as source
+	SELECT 'ind'::text as sector, ind_rate_escalation as source
 	FROM diffusion_wind.scenario_options
 )
 

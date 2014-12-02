@@ -160,17 +160,19 @@ CREATE TABLE  diffusion_wind_data.pt_grid_us_res_iiijjjicf_id_lookup (
 	iiijjjicf_id integer);
 
 	--run in parallel for speed (100x100 tiles are necessary for it ti finishin in about 7 mins -- 1000x1000 tiles would take several hours even in parallel)
-	SELECT parsel_2('dav-gis','diffusion_shared.pt_grid_us_res','gid',
-	'SELECT a.gid, ST_Value(b.rast,a.the_geom_900914) as iiijjjicf_id
+	SELECT parsel_2('dav-gis','mgleason','mgleason','diffusion_shared.pt_grid_us_res','gid',
+	'SELECT a.gid, ST_Value(b.rast,a.the_geom_4326) as iiijjjicf_id
 	FROM  diffusion_shared.pt_grid_us_res a
-	INNER JOIN  diffusion_wind_data.iiijjjicf_us_100x100 b
-	ON ST_Intersects(b.rast,a.the_geom_900914);',
+	INNER JOIN  aws_2014.iiijjjicf_200m_raster_100x100 b
+	ON ST_Intersects(b.rast,a.the_geom_4326);',
 		' diffusion_wind_data.pt_grid_us_res_iiijjjicf_id_lookup', 'a',16);
 	
 	-- join the info back in
+	ALTER TABLE diffusion_shared.pt_grid_us_res DROP COLUMN IF EXISTS iiijjjicf_id;
 	ALTER TABLE diffusion_shared.pt_grid_us_res ADD COLUMN iiijjjicf_id integer;
 
-	CREATE INDEX pt_grid_us_res_iiijjjicf_id_lookup_gid_btree ON  diffusion_wind_data.pt_grid_us_res_iiijjjicf_id_lookup using btree(gid);
+	CREATE INDEX pt_grid_us_res_iiijjjicf_id_lookup_gid_btree 
+	ON  diffusion_wind_data.pt_grid_us_res_iiijjjicf_id_lookup using btree(gid);
 
 	UPDATE diffusion_shared.pt_grid_us_res a
 	SET iiijjjicf_id = b.iiijjjicf_id
@@ -183,6 +185,7 @@ CREATE TABLE  diffusion_wind_data.pt_grid_us_res_iiijjjicf_id_lookup (
 	SELECT count(*) 
 	FROM diffusion_shared.pt_grid_us_res
 	where iiijjjicf_id is null;
+	-- 63 points
 	
 	-- isolate the unjoined points
 	-- and fix them by assigning value from their nearest neighbor that is not null
