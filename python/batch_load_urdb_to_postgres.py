@@ -28,7 +28,7 @@ def pg_connect(pg_params):
 
 def get_rate_keys(cur):
     # get rate ids that we want to load
-    sql = """SELECT urdb_rate_id as rate_key
+    sql = """SELECT DISTINCT(urdb_rate_id) as rate_key
              FROM urdb_rates.urdb3_verified_rates_lookup_20141202;"""
     cur.execute(sql)
     rate_keys = [row['rate_key'] for row in cur.fetchall()]
