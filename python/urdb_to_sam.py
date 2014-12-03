@@ -257,15 +257,17 @@ def extract_flat_demand_charge_structure(raw_json):
             # set up the template for output dictionary keys
             field_template = "ur_dc_%s_t%s_"   
             for month, period in flat_demand_months.iteritems():
-                period_params = flat_demand_parameters[period]
-                tiers = period_params.keys()
-                for tier in tiers:
-                    tier_params = period_params[tier]
-                    field_base = field_template % (month, tier+1)    
-                    flat_demand_charge = tier_params['charge']
-                    flat_demand_max = tier_params['max']
-                    d[field_base + 'ub'] = flat_demand_max                
-                    d[field_base + 'dc'] = flat_demand_charge
+                # this line is necessary due to some bugginess in urdb
+                if period in flat_demand_parameters.keys():
+                    period_params = flat_demand_parameters[period]
+                    tiers = period_params.keys()
+                    for tier in tiers:
+                        tier_params = period_params[tier]
+                        field_base = field_template % (month, tier+1)    
+                        flat_demand_charge = tier_params['charge']
+                        flat_demand_max = tier_params['max']
+                        d[field_base + 'ub'] = flat_demand_max                
+                        d[field_base + 'dc'] = flat_demand_charge
     
     
     return d
