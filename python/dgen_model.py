@@ -147,7 +147,7 @@ def main(mode = None, resume_year = None):
             t0 = time.time()
             
             sectors = datfunc.get_sectors(cur, schema)
-            deprec_schedule = datfunc.get_depreciation_schedule(con, schema, type = 'standard').values
+            deprec_schedule = datfunc.get_depreciation_schedule(con, schema, type = 'macrs').values
             financial_parameters = datfunc.get_financial_parameters(con, schema)
             max_market_share = datfunc.get_max_market_share(con, schema)
             market_projections = datfunc.get_market_projections(con, schema)

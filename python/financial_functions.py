@@ -54,7 +54,13 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs, annual_elec_bill_pre_solar_dol)
-
+    
+    #df.to_csv('temp_df_%s_%s.csv' %(year, sector_abbr))
+    #np.savetxt('temp_rev_%s_%s.csv' %(year, sector_abbr), revenue, delimiter = ",")    
+    #np.savetxt('temp_costv_%s_%s.csv' %(year, sector_abbr), costs, delimiter = ",")
+    #np.savetxt('temp_cfs_%s_%s.csv' %(year, sector_abbr), cfs, delimiter = ",")
+    #np.savetxt('temp_bill_%s_%s.csv' %(year, sector_abbr), annual_elec_bill_pre_solar_dol, delimiter = ",")
+        
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate)    
 
     
@@ -158,10 +164,11 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
         inverter_replacement_cost  = df['system_size_kw'] * df.inverter_cost_dollars_per_kw/df.inverter_lifetime_yrs
         inverter_cost[:,10:] = -inverter_replacement_cost[:,np.newaxis]
     
-    # 2) Costs of fixed & variable O&M
+    # 2) Costs of fixed & variable O&M. O&M costs are tax deductible for commerical entitites
     om_cost = np.zeros(shape);
     om_cost[:] =   (-df.variable_om_dollars_per_kwh * df['aep'])[:,np.newaxis]
     om_cost[:] +=  (-df.fixed_om_dollars_per_kw_per_yr * df['system_size_kw'])[:,np.newaxis]
+    om_cost[:] *= (1 - (df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | (df.business_model == 'tpo'))[:,np.newaxis]))
 
     ## Revenue
     """
@@ -207,7 +214,9 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     outflow_rate_dol_kwh = np.where(df['system_size_kw'] < df.nem_system_limit_kw, inflow_rate_dol_kwh, outflow_rate)
     value_outflows_dol = outflow_gen_kwh * outflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
     
-    generation_revenue = value_inflows_dol + value_outflows_dol
+    # Value of generation is value of offset inflows + value of sold outflows.
+    # Since electricity expenses are tax deductible for commercial & industrial entities, the net annual savings from a PV system is reduced by the marginal tax rate
+    generation_revenue = (value_inflows_dol + value_outflows_dol) * (1 - df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial'))[:,np.newaxis])
 
     # Need to estimate the electricity bill prior to adoption to estimate percent MBS 
     annual_elec_bill_pre_solar_dol  = 0.01 * df.load_kwh_per_customer_in_bin * df.elec_rate_cents_per_kwh
@@ -217,15 +226,15 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # Revenue comes from taxable deduction [basis * tax rate * schedule] and cannot be monetized by Residential
     
     depreciation_revenue = np.zeros(shape)
-    deprec_basis = (df.ic - 0.5 * (df.value_of_tax_credit_or_deduction  + df.value_of_rebate))[:,np.newaxis] # depreciable basis reduced by half the incentive
+    deprec_basis = np.maximum(df.ic - 0.5 * (df.value_of_tax_credit_or_deduction  + df.value_of_rebate),0)[:,np.newaxis] # depreciable basis reduced by half the incentive
     depreciation_revenue[:,:20] = deprec_basis * deprec_schedule.reshape(1,20) * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | (df.business_model == 'tpo'))[:,np.newaxis]   
 
-    # 5) Interest paid on loans is tax-deductible for commercial & industrial; 
-    # assume can fully monetize
+    # 5) Interest paid on loans is tax-deductible for commercial & industrial users; 
+    # assume can fully monetize. Assume that third-party owners finance system all-cash--thus no interest to deduct. 
     
     # Calc interest paid
     interest_paid = calc_interest_pmt_schedule(df,30)
-    interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | (df.business_model == 'tpo'))[:,np.newaxis]
+    interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') & (df.business_model == 'host_owned'))[:,np.newaxis]
     
     # 6) Revenue from other incentives    
     incentive_revenue = np.zeros(shape)

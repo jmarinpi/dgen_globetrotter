@@ -81,8 +81,8 @@ def main(wb, conn, verbose = False):
         table = 'leasing_availability'
         leasingAvail(curWb,schema,table,conn,cur,verbose)
         # only need this to manually load the table once -- these generally shouldn't change
-#        table = 'solar_program_target_cost_projections'
-#        sptCostProj(curWb,schema,table,conn,cur,verbose)
+        table = 'solar_program_target_cost_projections'
+        sptCostProj(curWb,schema,table,conn,cur,verbose)
 
 
         if close_conn:
@@ -139,8 +139,7 @@ def costProj(curWb,schema,table,conn,cur,verbose=False):
 
 def sptCostProj(curWb,schema,table,conn,cur,verbose=False):
     
-    f = open('/Users/mgleason/NREL_Projects/git_repos/diffusion/data_share/spt_cost_projections.csv','w+')
-    f.write('year,capital_cost_dollars_per_kw,inverter_cost_dollars_per_kw,fixed_om_dollars_per_kw_per_yr,variable_om_dollars_per_kwh,sector\n')
+    f = StringIO.StringIO()
     sectors = ['res','com','ind']
     for sector in sectors:
         rname = 'solar_program_costs_%s' % sector
@@ -167,7 +166,7 @@ def sptCostProj(curWb,schema,table,conn,cur,verbose=False):
             #print l
             c += 1
     f.seek(0)
-    f.readline()
+    #f.readline()
     if verbose:
         print 'Exporting solar_program_target_cost_projections'
     # use "COPY" to dump the data to the staging table in PG
