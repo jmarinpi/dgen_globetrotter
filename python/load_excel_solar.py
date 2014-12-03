@@ -80,9 +80,11 @@ def main(wb, conn, verbose = False):
         maxMarket(curWb,schema,table,conn,cur,verbose)
         table = 'leasing_availability'
         leasingAvail(curWb,schema,table,conn,cur,verbose)
-        # only need this to manually load the table once -- these generally shouldn't change
-        table = 'solar_program_target_cost_projections'
-        sptCostProj(curWb,schema,table,conn,cur,verbose)
+        
+        # The solar program costs are static, so only need this to manually load the table once.
+        # Uncomment to make SPT table dynamic
+        #table = 'solar_program_target_cost_projections'
+        #sptCostProj(curWb,schema,table,conn,cur,verbose)
 
 
         if close_conn:
