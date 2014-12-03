@@ -1832,7 +1832,6 @@ def assign_business_model(df, method = 'prob', alpha = 2):
         # the customer leases (# < prob of leasing). A ranking method is used as a mask to
         # identify which rows to drop 
         
-        
         # Calculate the logit value and sum of logit values for the bin id
         df['mkt_exp'] = df['max_market_share']**alpha
         gb = df.groupby(['county_id','bin_id'])
