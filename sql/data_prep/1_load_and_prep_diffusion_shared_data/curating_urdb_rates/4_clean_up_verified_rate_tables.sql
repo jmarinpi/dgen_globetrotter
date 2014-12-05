@@ -122,30 +122,40 @@ using btree(utility_id);
 
 ------------------------------------------------------------------------
 -- CLEANUP ON THE DATA TABLE
-
--- drop duplicates from the sam data table 
--- (this won't be necessary in the future because it was fixed in the python script that downloads the data)
--- add a temporary serial id
-ALTER TABLE urdb_rates.urdb3_verified_rates_sam_data_20141202
-ADD COLUMN temp_id serial;
-
--- use the temp id to figure out which rows to delete
-with all_rows AS
-(
-	SELECT urdb_rate_id, temp_id, row_number() OVER (partition by urdb_rate_id ORDEr by temp_id) as row_number
-	FROM urdb_rates.urdb3_verified_rates_sam_data_20141202
-),
-dupes as
-(
-	SELECT *
-	FROM all_rows
-	where row_number = 2
-)
-DELETE FROM urdb_rates.urdb3_verified_rates_sam_data_20141202 a
-USING dupes b
-where a.urdb_rate_id = b.urdb_rate_id
-and a.temp_id = b.temp_id;
--- 8 rows deleted
+-- are there any duplicates?
+SELECT urdb_rate_id, count(*)
+FROM urdb_rates.urdb3_verified_rates_sam_data_20141202
+group by urdb_rate_id
+order by count desc;
+-- 
+-- 
+-- -- drop duplicates from the sam data table 
+-- -- (this won't be necessary in the future because it was fixed in the python script that downloads the data)
+-- -- add a temporary serial id
+-- ALTER TABLE urdb_rates.urdb3_verified_rates_sam_data_20141202
+-- ADD COLUMN temp_id serial;
+-- 
+-- -- use the temp id to figure out which rows to delete
+-- with all_rows AS
+-- (
+-- 	SELECT urdb_rate_id, temp_id, row_number() OVER (partition by urdb_rate_id ORDEr by temp_id) as row_number
+-- 	FROM urdb_rates.urdb3_verified_rates_sam_data_20141202
+-- ),
+-- dupes as
+-- (
+-- 	SELECT *
+-- 	FROM all_rows
+-- 	where row_number = 2
+-- )
+-- DELETE FROM urdb_rates.urdb3_verified_rates_sam_data_20141202 a
+-- USING dupes b
+-- where a.urdb_rate_id = b.urdb_rate_id
+-- and a.temp_id = b.temp_id;
+-- -- 8 rows deleted
+-- 
+-- -- drop the temp_id
+-- ALTER TABLE urdb_rates.urdb3_verified_rates_sam_data_20141202
+-- DROP COLUMN temp_id; 
 
 -- add primary key
 ALTER TABLE urdb_rates.urdb3_verified_rates_sam_data_20141202

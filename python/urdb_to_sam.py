@@ -9,10 +9,66 @@ import json
 import urllib
 import urllib2
 import numpy as np
+import pandas as pd
 #import os
 
 
-def get_urdb(rate_key):
+def get_urdb_rate_keys_by_sector(sector):
+    ### MAKE THE REQUEST TO OPENEI FOR THE RATE DATA OF THE SPECIFIED RATE KEY
+    
+    # API LINKS:
+    # http://en.openei.org/services/doc/rest/util_rates?version=3
+    # http://en.openei.org/wiki/Help:US_Utility_Rate_Database_API_Tutorial#Requesting_Utility_Company_Data_with_OpenEI_API
+
+    if sector.lower() not in ['residential', 'commercial', 'industrial', 'lighting']:
+        raise ValueError("sector must be one of ['residential', 'commercial', 'industrial', 'lighting']")
+
+    api = 'http://en.openei.org/services/rest/utility_rates?'
+    
+    params = {'version' : 3,
+              'format' : 'json',
+              'detail' : 'minimal',
+              'approved': 'true',
+              'sector': sector.lower().title()
+              }
+    
+    # initialize a list to hold all of the results
+    # set the initial values for the while boolean variable and for the offset
+    raw_rates = []
+    more = True
+    offset = 0
+    while more:
+        # update the offset parameter
+        params['offset'] = offset      
+        params_encode = urllib.urlencode(params)
+        
+        url = api+params_encode
+        o = urllib2.urlopen(url)
+        response = json.loads(o.read())
+        o.close()
+        
+        # check how many rates were returned
+        if len(response['items']) == 0: 
+            more = False
+        else:
+            raw_rates.extend(response['items'])
+            offset = len(raw_rates)
+
+    # extract just the utility name and rate_key
+    all_rates = []
+    for rate in raw_rates:
+        d = {}
+        d['utility_name'] = rate['utility']
+        d['rate_key'] = rate['label']
+        all_rates.append(d)
+    
+    # convert to a dataframe
+    rates_df = pd.DataFrame.from_dict(all_rates)    
+    
+    return rates_df
+
+
+def get_urdb_by_key(rate_key):
     ### MAKE THE REQUEST TO OPENEI FOR THE RATE DATA OF THE SPECIFIED RATE KEY
     
     # API LINKS:
@@ -397,7 +453,7 @@ def extract_sam_fields(raw_json):
 
 def urdb_rate_to_sam_structure(rate_key):
 
-    raw_json = get_urdb(rate_key)
+    raw_json = get_urdb_by_key(rate_key)
     out_json = extract_sam_fields(raw_json)
 
     return out_json

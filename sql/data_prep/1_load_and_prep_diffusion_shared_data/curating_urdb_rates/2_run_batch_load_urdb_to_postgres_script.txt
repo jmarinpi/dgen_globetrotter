@@ -1,1 +1,0 @@
-- run diffusion/python/batch_load_urdb_to_postgres.py to ingest rate data from urdb into postgres, reformatting for consistency with the SAM utilityrate3 module

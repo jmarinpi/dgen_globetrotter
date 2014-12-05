@@ -26,10 +26,10 @@ def pg_connect(pg_params):
     return con, cur
 
 
-def get_rate_keys(cur):
+def get_rate_keys(cur, lookup_table):
     # get rate ids that we want to load
     sql = """SELECT DISTINCT(urdb_rate_id) as rate_key
-             FROM urdb_rates.urdb3_verified_rates_lookup_20141202;"""
+             FROM %s;""" % lookup_table
     cur.execute(sql)
     rate_keys = [row['rate_key'] for row in cur.fetchall()]
     
@@ -101,6 +101,7 @@ def open_log():
     log.write('Log of errors for batch_load_urdb_to_postgres.py (%s)\n' % cdate)
     
     return(log)
+    
 #==============================================================================
 # INPUT PARAMETERS
 
@@ -112,28 +113,39 @@ pg_params = {'host'     : 'gispgdb',
              'role'     : 'urdb_rates-writers'
              }
 
-# output table to contain the sam-formatted rate data
-output_table = 'urdb_rates.urdb3_verified_rates_sam_data_20141202'       
-sql_params = {'output_table' : output_table}    
 
  
 #==============================================================================
 
-# OPEN LOG FILE
-log = open_log()
+def main(rate_type):
+    
+    # OPEN LOG FILE
+    log = open_log()
+    
+    # CONNECT TO POSTGRES
+    con, cur = pg_connect(pg_params)
+    
+    # SET THE OUTPUT TABLE AND LOOKUP TABLE NAMES BASED ON THE RATE TYPE    
+    lookup_table = 'urdb_rates.urdb3_%s_rates_lookup_20141202' % rate_type
+    output_table = 'urdb_rates.urdb3_%s_rates_sam_data_20141202' % rate_type
+    sql_params = {'output_table' : output_table}    
+    
+    # GET URDB IDS FOR THE RATES TO COLLECT
+    rate_keys = get_rate_keys(cur, lookup_table)
+    
+    # CREATE (EMPTY) OUTPUT TABLE
+    create_output_table(cur, con, sql_params)
+    
+    # RUN THE CONVERSION PROCESS
+    urdb_to_pg(rate_keys, cur, con, sql_params, log)
+    
+    # CLOSE THE LOGGER
+    log.close()
 
-# CONNECT TO POSTGRES
-con, cur = pg_connect(pg_params)
+if __name__ == '__main__':
+    
+    rate_type = 'singular'
+#    rate_type = 'verified'    
 
-
-# GET URDB IDS FOR THE RATES TO COLLECT
-rate_keys = get_rate_keys(cur)
-
-# CREATE (EMPTY) OUTPUT TABLE
-create_output_table(cur, con, sql_params)
-
-# RUN THE CONVERSION PROCESS
-urdb_to_pg(rate_keys, cur, con, sql_params, log)
-
-# CLOSE THE LOGGER
-log.close()
+    main(rate_type)
+    
