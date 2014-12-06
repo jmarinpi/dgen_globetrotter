@@ -144,8 +144,8 @@ def main(rate_type):
 
 if __name__ == '__main__':
     
-    rate_type = 'singular'
-#    rate_type = 'verified'    
+#    rate_type = 'singular'
+    rate_type = 'verified'    
 
     main(rate_type)
     

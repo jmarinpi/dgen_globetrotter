@@ -3,6 +3,9 @@
 -- for details on why the failed)
 
 ALTER TABLE urdb_rates.urdb3_verified_rates_lookup_20141202
+DROP COLUMN if exists missing_from_urdb;
+
+ALTER TABLE urdb_rates.urdb3_verified_rates_lookup_20141202
 ADD COLUMN missing_from_urdb boolean default false;
 
 with missing AS
@@ -17,5 +20,5 @@ UPDATE urdb_rates.urdb3_verified_rates_lookup_20141202 a
 SET missing_from_urdb = true
 FROM missing b
 WHERE a.urdb_rate_id = b.urdb_rate_id;
--- 11 rows are missing
+-- 10 rows are missing
 
