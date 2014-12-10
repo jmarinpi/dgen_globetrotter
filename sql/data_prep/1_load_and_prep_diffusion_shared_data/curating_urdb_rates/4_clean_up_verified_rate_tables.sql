@@ -1,6 +1,13 @@
 ﻿------------------------------------------------------------------------
 -- CLEANUP ON THE LOOKUP TABLE
 
+-- rename the min_app and max_app
+alter table urdb_rates.urdb3_verified_rates_lookup_20141202
+RENAME column min_app TO demand_min;
+
+alter table urdb_rates.urdb3_verified_rates_lookup_20141202
+RENAME column max_app TO demand_max;
+
 -- are there any duplicate ids?
 with a AS
 (

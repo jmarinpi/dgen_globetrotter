@@ -76,10 +76,32 @@ SET census_region =
 	     WHEN region8 = 4 then 'West'
 	END;
 
+
+ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003
+ADD COLUMN census_division_abbr text;
+
+UPDATE diffusion_shared.eia_microdata_cbecs_2003
+SET census_division_abbr = 
+	CASE WHEN cendiv8 = 1 THEN 'NE'
+		WHEN cendiv8 = 2 THEN 'MA'
+		WHEN cendiv8 = 3 THEN 'ENC'
+		WHEN cendiv8 = 4 THEN 'WNC'
+		WHEN cendiv8 = 5 THEN 'SA'
+		WHEN cendiv8 = 6 THEN 'ESC'
+		WHEN cendiv8 = 7 THEN 'WSC'
+		WHEN cendiv8 = 8 THEN 'MTN'
+		WHEN cendiv8 = 9 THEN 'PAC'
+	END;
+
+
 -- add index
 CREATE INDEX eia_microdata_cbecs_2003_census_region_btree 
 ON diffusion_shared.eia_microdata_cbecs_2003
 USING btree(census_region);
+
+CREATE INDEX eia_microdata_cbecs_2003_census_division_abbr_btree 
+ON diffusion_shared.eia_microdata_cbecs_2003
+USING btree(census_division_abbr);
 
 -----------------------------------------------------------------
 -- Residential Energy Consumption Survey
@@ -120,10 +142,36 @@ SET census_region =
 	     WHEN regionc = 4 then 'West'
 	END;
 
+
+ALTER TABLE diffusion_shared.eia_microdata_recs_2009
+ADD COLUMN census_division_abbr text;
+
+UPDATE diffusion_shared.eia_microdata_recs_2009
+SET census_division_abbr = 
+	CASE WHEN division = 1 THEN 'NE'
+		WHEN division = 2 THEN 'MA'
+		WHEN division = 3 THEN 'ENC'
+		WHEN division = 4 THEN 'WNC'
+		WHEN division = 5 THEN 'SA'
+		WHEN division = 6 THEN 'ESC'
+		WHEN division = 7 THEN 'WSC'
+		WHEN division = 8 THEN 'MTN' -- NOTE: RECS breaks the MTN into N and S subdivision, but for consistency w CbECS, we will stick with one
+		WHEN division = 9 THEN 'MTN' -- (see above)
+		WHEN division = 10 THEN 'PAC'
+	END;
+
+
 -- add index
 CREATE INDEX eia_microdata_recs_2009_census_region_btree 
 ON diffusion_shared.eia_microdata_recs_2009
 USING btree(census_region);
 
+CREATE INDEX eia_microdata_recs_2009_census_division_abbr_btree 
+ON diffusion_shared.eia_microdata_recs_2009
+USING btree(census_division_abbr);
+
 SELECT distinct(census_region)
+fROM diffusion_shared.eia_microdata_recs_2009;
+
+SELECT distinct(census_division_abbr)
 fROM diffusion_shared.eia_microdata_recs_2009;

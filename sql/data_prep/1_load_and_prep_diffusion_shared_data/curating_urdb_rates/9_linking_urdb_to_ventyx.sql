@@ -386,6 +386,10 @@ FROM a
 where count > 1;
 -- do we need to unalias them, or is it okay because we can just associate each urdb rate with a company id?
 
+-- add a primary key to the utility name field
+ALTER TABLE urdb_rates.urdb3_verified_and_singular_ur_names_20141202
+ADD PRIMARY KEY (ur_name);
+
 -- take a look at the spatial coverage
 -- DROP tABLE IF EXISTS urdb_rates.ventyx_coverage;
 -- CREATE TABLE urdb_rates.ventyx_coverage as
