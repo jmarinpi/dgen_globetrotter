@@ -175,3 +175,26 @@ fROM diffusion_shared.eia_microdata_recs_2009;
 
 SELECT distinct(census_division_abbr)
 fROM diffusion_shared.eia_microdata_recs_2009;
+
+-- ingest lookup table to translate recs reportable domain to states
+set role 'diffusion-writers';
+DrOP TABLE IF EXISTS diffusion_shared.eia_reportable_domain_to_state_recs_2009;
+CREATE TABLE diffusion_shared.eia_reportable_domain_to_state_recs_2009
+(
+	reportable_domain integer,
+	state_name text primary key
+);
+
+SET ROLE 'server-superusers';
+COPY  diffusion_shared.eia_reportable_domain_to_state_recs_2009
+FROM '/srv/home/mgleason/data/dg_wind/recs_reportable_dominain_to_state.csv' with csv header;
+set role 'diffusion-writers';
+
+-- create index for reportable domai column in this table and the recs table
+CREATE INDEX eia_reportable_domain_to_state_recs_2009_reportable_domain_btree 
+ON diffusion_shared.eia_reportable_domain_to_state_recs_2009
+USING btree(reportable_domain);
+
+CREATE INDEX eia_microdata_recs_2009_reportable_domain_btree 
+ON diffusion_shared.eia_microdata_recs_2009
+USING btree(reportable_domain);
