@@ -22,3 +22,21 @@ FROM missing b
 WHERE a.urdb_rate_id = b.urdb_rate_id;
 -- 10 rows are missing
 
+-- delete the missing rows for easier interpretation
+DELETE FROM urdb_rates.urdb3_verified_rates_lookup_20141202
+where missing_from_urdb = true;
+
+-- counts should now match
+SELECT count(*)
+FROM urdb_rates.urdb3_verified_rates_lookup_20141202;
+--1135
+SELECT count(*)
+FROM urdb_rates.urdb3_verified_rates_sam_data_20141202;
+--1133
+
+-- they don't match exactly because urdb_rates.urdb3_verified_rates_lookup_20141202 
+-- has two dupes for rates that apply to res and com
+Select urdb_Rate_id, count(*)
+FROM urdb_rates.urdb3_verified_rates_lookup_20141202
+group by urdb_Rate_id
+order by count desc;
