@@ -48,7 +48,10 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
         # Rename columns to match names in SolarDS
         distPVCurtailment.columns = ['pca_reg','curtailment_rate']
         #retail_elec_price.columns = ['pca_reg','elec_price_ReEDS']
-        change_elec_price.columns = ['pca_reg','elec_price_change']        
+        change_elec_price.columns = ['pca_reg','ReEDS_elec_price_mult'] 
+        # Remove Mexico BAs
+        change_elec_price = change_elec_price[change_elec_price.pca_reg != 'p135']
+        change_elec_price = change_elec_price[change_elec_price.pca_reg != 'p136']
         
         if resume_year == 2014:
             cfg.init_model = True
@@ -130,7 +133,14 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
 
             # 6. Read in scenario option variables
             scenario_opts = datfunc.get_scenario_options(cur, schema) 
-                        
+            
+            if mode == 'ReEDS' and scenario_opts['region'] != 'United States':
+                msg = 'Linked model can only run nationally. Select United States in input sheet'      
+                logger.error(msg)
+                msg = 'Model aborted'
+                logger.error(msg)
+                sys.exit(-1)
+                    
             logger.info('Scenario Name: %s' % scenario_opts['scenario_name'])
             t0 = time.time()
             exclusions = datfunc.get_exclusions(cur, cfg.technology) # get exclusions
@@ -171,7 +181,8 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             # 8. Set up the Main Data Frame for each sector
             outputs = pd.DataFrame()
             t0 = time.time()
-            datfunc.clear_outputs(con, cur, schema) # clear results from previous run
+            if mode != 'ReEDS' or resume_year == 2014:
+                datfunc.clear_outputs(con, cur, schema) # clear results from previous run
             logger.info('datfunc.clear_outputs took: %0.1fs' %(time.time() - t0))
               
             for sector_abbr, sector in sectors.iteritems():
@@ -198,16 +209,16 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                 for year in model_years:
                     logger.info('Working on %s for %s sector' %(year, sector_abbr))               
                     df = datfunc.get_main_dataframe(con, main_table, year)
-                    print df
                     if mode == 'ReEDS':
                         # When in ReEDS mode add the values from ReEDS to df
                         df = pd.merge(df,distPVCurtailment, how = 'left', on = 'pca_reg')
+                        df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
                         #df = pd.merge(df,retail_elec_price, how = 'left', on = 'pca_reg')
                         df = pd.merge(df,change_elec_price, how = 'left', on = 'pca_reg')
                     else:
                         # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
                         df['curtailment_rate'] = 0
-                        df['elec_price_change'] = 1
+                        df['ReEDS_elec_price_mult'] = 1
 
                     # 9. Calculate economics 
                     ''' Calculates the economics of DER adoption through cash-flow analysis. 
@@ -238,7 +249,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                                                                                market_projections, financial_parameters, 
                                                                                cfg, scenario_opts, max_market_share, cur, con, year, 
                                                                                dsire_incentives, deprec_schedule, logger, rate_escalations, 
-                                                                               ann_system_degradation)
+                                                                               ann_system_degradation, mode)
                     
                     # 10. Calulate diffusion
                     ''' Calculates the market share (ms) added in the solve year. Market share must be less
@@ -247,7 +258,6 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     decrease if economics deterioriate.
                     '''             
                     df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
-                    df.to_csv("temp3.csv")
                     
                     # 11. Save outputs from this year and update parameters for next solve       
                     t0 = time.time()                 
@@ -255,7 +265,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             ## 12. Outputs & Visualization
             # set output subfolder
             if mode == 'ReEDS':
-                reeds_out = sqlio.read_frame('SELECT * FROM %s.outputs_all' % schema, con)
+                reeds_out = datfunc.combine_outputs_reeds(schema, sectors, cur, con)
                 #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()
                 market_last_year.to_pickle("market_last_year.pkl")
                 saved_vars = {'out_dir': out_dir, 'input_scenarios':input_scenarios}
@@ -311,7 +321,6 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
     finally:
         datfunc.shutdown_log(logger)
         datfunc.code_profiler(out_dir)
-        df.to_csv("temp2.csv")
     
 if __name__ == '__main__':
     main()

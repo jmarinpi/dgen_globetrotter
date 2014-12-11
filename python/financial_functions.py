@@ -18,7 +18,7 @@ import time
 #==============================================================================
 def calc_economics(df, schema, sector, sector_abbr, market_projections, 
                    financial_parameters, cfg, scenario_opts, max_market_share, cur, con, 
-                   year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation):
+                   year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation, mode):
     '''
     Calculates economics of system adoption (cashflows, payback, irr, etc.)
     
@@ -40,8 +40,16 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     df = pd.merge(df,financial_parameters, how = 'left', on = ['sector','business_model'])
     
     # get customer expected rate escalations
-    rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector_abbr)    
-    
+    if mode == 'ReEDS':
+        # if in ReEDS mode, use the electricity rate multipliers from ReEDS
+        temp = np.array(df['ReEDS_elec_price_mult'])
+        rate_growth_mult = temp
+        for n in range(1,30):
+            rate_growth_mult = np.c_[rate_growth_mult,temp]
+    else:
+        # if not in ReEDS mode, use the calc_expected_rate_escal function
+        rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector_abbr)    
+
     # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
     if scenario_opts['overwrite_exist_inc']:
         value_of_incentives = datfunc.calc_manual_incentives(df,con, year, schema)
@@ -186,7 +194,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     inflow_gen_kwh = aep * (1 - per_excess_gen)
     
     # Value of inflows (generation that is offsetting load)
-    inflow_rate_dol_kwh   = 0.01 * df.elec_rate_cents_per_kwh * df.elec_price_change
+    inflow_rate_dol_kwh   = 0.01 * df.elec_rate_cents_per_kwh
     value_inflows_dol = inflow_gen_kwh * inflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
      
     # Set the rate the excess generation is credited

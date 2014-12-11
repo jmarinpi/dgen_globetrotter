@@ -555,6 +555,44 @@ def combine_outputs_solar(schema, sectors, cur, con):
     cur.execute(sql)
     con.commit()
 
+def combine_outputs_reeds(schema, sectors, cur, con):
+    
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs = locals().copy()   
+
+    sql = '''DROP TABLE IF EXISTS %(schema)s.reeds_outputs;
+            CREATE TABLE %(schema)s.reeds_outputs AS  ''' % inputs  
+    
+    for i, sector_abbr in enumerate(sectors.keys()):
+        inputs['sector'] = sectors[sector_abbr].lower()
+        inputs['sector_abbr'] = sector_abbr
+        if i > 0:
+            inputs['union'] = 'UNION ALL '
+        else:
+            inputs['union'] = ''
+        
+        sub_sql = '''%(union)s 
+                    SELECT '%(sector)s'::text as sector, 
+
+                    a.micro_id, a.county_id, a.bin_id, a.year, a.new_capacity, a.installed_capacity, 
+                     
+                    b.state_abbr, b.pca_reg, b.reeds_reg
+                                        
+                    FROM %(schema)s.outputs_%(sector_abbr)s a
+                    
+                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_best_option_each_year b
+                    ON a.county_id = b.county_id
+                    AND a.bin_id = b.bin_id
+                    and a.year = b.year
+
+                    ''' % inputs
+        sql += sub_sql
+    sql += ';'
+    cur.execute(sql)
+    con.commit()
+    sql2 = 'SELECT * FROM %s.reeds_outputs' % schema
+    return sqlio.read_frame(sql2,con)
+
 def copy_outputs_to_csv(technology, schema, out_path, sectors, cur, con):
     
     if technology == 'wind':
