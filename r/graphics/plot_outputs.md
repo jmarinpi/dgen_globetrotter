@@ -25,8 +25,9 @@ diffusion_sectors_map(df)
 ```
 # Economics
 ```{r Economics}
-national_pp_line(df,scen_name)
-print_table(mean_value_by_state_table(df,'payback_period'), caption = "Mean Payback Period (years")
+national_econ_attractiveness_line(df,scen_name)
+print_table(mean_value_by_state_table(filter(df, metric == 'payback_period'),'metric_value'), caption = "Mean Payback Period")
+print_table(mean_value_by_state_table(filter(df, metric == 'percent_monthly_bill_savings'),'metric_value'), caption = "Mean Monthly Bill Savings (%)")
 lcoe_contour(df, schema, start_year, end_year, dr = 0.05, n = 30)
 
 lcoe_boxplot(df)

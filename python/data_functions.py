@@ -684,11 +684,13 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
         inputs['load_columns'] = 'b.doeid as load_id, b.nweight as weight, b.kwh as ann_cons_kwh'
         inputs['load_pkey'] = 'doeid'
         inputs['load_weight_column'] = 'nweight'
+        inputs['load_region'] = 'reportable_domain'
     else:
         inputs['load_table'] = 'diffusion_shared.eia_microdata_cbecs_2003'
         inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh'
         inputs['load_pkey'] = 'pubid8'
         inputs['load_weight_column'] = 'adjwt8'
+        inputs['load_region'] = 'census_division_abbr'
     return inputs
 
 
@@ -736,7 +738,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, exclusion_type, resour
                      %(load_columns)s
              FROM %(schema)s.counties_to_model a
              LEFT JOIN %(load_table)s b
-             ON a.census_region = b.census_region
+             ON a.%(load_region)s = b.%(load_region)s
              WHERE a.county_id in  (%(chunk_place_holder)s)
         ),
         sampled_bins AS 
@@ -1884,7 +1886,6 @@ def assign_business_model(df, method = 'prob', alpha = 2):
         # trade-off of market market shares. Then we draw a random number to determine if
         # the customer leases (# < prob of leasing). A ranking method is used as a mask to
         # identify which rows to drop 
-        
         
         # Calculate the logit value and sum of logit values for the bin id
         df['mkt_exp'] = df['max_market_share']**alpha

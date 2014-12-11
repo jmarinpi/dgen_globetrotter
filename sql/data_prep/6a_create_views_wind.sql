@@ -2,7 +2,7 @@
 
 -- create view of the valid counties
 CREATE OR REPLACE VIEW diffusion_wind.counties_to_model AS
-SELECT county_id, census_region
+SELECT county_id, census_region, census_division_abbr, recs_2009_reportable_domain as reportable_domain
 FROM diffusion_shared.county_geom a
 INNER JOIN diffusion_wind.scenario_options b
 ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)
