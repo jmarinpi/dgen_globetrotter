@@ -390,11 +390,4 @@ where count > 1;
 ALTER TABLE urdb_rates.urdb3_verified_and_singular_ur_names_20141202
 ADD PRIMARY KEY (ur_name);
 
--- take a look at the spatial coverage
--- DROP tABLE IF EXISTS urdb_rates.ventyx_coverage;
--- CREATE TABLE urdb_rates.ventyx_coverage as
--- SELECT *
--- FROM ventyx.electric_service_territories_20130422 a
--- INNER JOIN urdb_rates.urdb3_verified_and_singular_ur_names_20141202 b
--- ON b.ventyx_company_id_2014 = a.company_id::text;
 
