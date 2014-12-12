@@ -63,7 +63,36 @@ SELECT distinct(ur_name) as ur_name
 FROM urdb_rates.urdb3_singular_rates_sam_data_20141202;
 -- there are 1258 unique utility district names
 
--- try to link these to the lookup table
+
+-- are there different utility names in the lookup tables?
+-- for singular rates, there shouldn't be any since both tables come from the same source
+SELECT a.ur_name, b.utility_name
+FROM urdb_rates.urdb3_singular_rates_sam_data_20141202  a
+LEFT JOIN urdb_rates.urdb3_singular_rates_lookup_20141202 b
+on a.urdb_rate_id = b.urdb_rate_id
+where a.ur_name <> b.utility_name
+GROUP BY a.ur_name, b.utility_name;
+-- none returned
+
+-- for verified -- yes, there are some
+SELECT a.ur_name, b.utility_name
+FROM urdb_rates.urdb3_verified_rates_sam_data_20141202  a
+LEFT JOIN urdb_rates.urdb3_verified_rates_lookup_20141202 b
+on a.urdb_rate_id = b.urdb_rate_id
+where a.ur_name <> b.utility_name
+GROUP BY a.ur_name, b.utility_name
+order by a.ur_name;
+-- yes, there are 110 different ones
+
+-- update the lookup table to reflect the names from the urdb
+UPDATE urdb_rates.urdb3_verified_rates_lookup_20141202 a
+SET utility_name = b.ur_name
+FROM urdb_rates.urdb3_verified_rates_sam_data_20141202 b
+where a.urdb_rate_id = b.urdb_rate_id
+and a.utility_name <> b.ur_name;
+
+
+-- try to link the distinct urdb names to the lookup table
 -- how many don't have a match?
 SELECT *
 FROM urdb_rates.urdb3_verified_and_singular_ur_names_20141202 a
