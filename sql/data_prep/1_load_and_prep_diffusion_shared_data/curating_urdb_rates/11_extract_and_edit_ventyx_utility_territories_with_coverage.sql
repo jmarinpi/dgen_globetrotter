@@ -450,3 +450,11 @@ using btree(company_type_general);
 
 select distinct(company_type_general)
 FROM urdb_rates.ventyx_electric_service_territories_w_vs_rates_20141202;
+
+
+-- add a new gid column as the primary key
+ALTER TABLE urdb_rates.ventyx_electric_service_territories_w_vs_rates_20141202
+DROP COLUMN gid;
+
+ALTER TABLE urdb_rates.ventyx_electric_service_territories_w_vs_rates_20141202
+ADD COLUMN gid serial primary key;

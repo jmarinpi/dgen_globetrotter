@@ -648,12 +648,16 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
         inputs['load_pkey'] = 'doeid'
         inputs['load_weight_column'] = 'nweight'
         inputs['load_region'] = 'reportable_domain'
+        # limit to single-family (attached or detached), owner-occupied homes
+        inputs['load_where'] = ' AND b.typehuq in (1,2) AND b.kownrent = 1'
     else:
         inputs['load_table'] = 'diffusion_shared.eia_microdata_cbecs_2003'
         inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh'
         inputs['load_pkey'] = 'pubid8'
         inputs['load_weight_column'] = 'adjwt8'
         inputs['load_region'] = 'census_division_abbr'
+        # limit to non-vacant buildings
+        inputs['load_where'] = " AND b.pba8 <> 1"
     return inputs
 
 
@@ -703,6 +707,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, exclusion_type, resour
              LEFT JOIN %(load_table)s b
              ON a.%(load_region)s = b.%(load_region)s
              WHERE a.county_id in  (%(chunk_place_holder)s)
+                   %(load_where)s
         ),
         sampled_bins AS 
         (

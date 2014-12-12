@@ -1,5 +1,5 @@
 ﻿-- load commercial building microdata
-SET ROLE 'diffusion_shared-writers';
+SET ROLE 'diffusion-writers';
 DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_2003;
 CREATE TABLE diffusion_shared.eia_microdata_cbecs_2003 
 (
@@ -63,8 +63,165 @@ COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.zelexp8 IS 'Imputed 
 
 SET ROLE 'server-superusers';
 COPY diffusion_shared.eia_microdata_cbecs_2003	 FROM '/srv/home/mgleason/data/dg_wind/cbecs_file15.csv' with csv header;
-SET ROLE 'diffusion_shared-writers';
+SET ROLE 'diffusion-writers';
 
+-- add in the ownocc8 data (detailed building activity info)
+DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_ownocc8;
+CREATE TABLE  diffusion_shared.eia_microdata_cbecs_ownocc8 (
+	pubid8	integer primary key,	--building identifier
+	ownocc8 text
+);
+SET ROLE 'server-superusers';
+COPY diffusion_shared.eia_microdata_cbecs_ownocc8 
+FROM '/srv/home/mgleason/data/dg_wind/cbecs_ownocc8.csv' with csv header;
+SET ROLE 'diffusion-writers';
+
+-- replace ' ' with NULL and cast to integer
+UPDATE diffusion_shared.eia_microdata_cbecs_ownocc8
+set ownocc8 = null
+where ownocc8 = ' ';
+
+alter table diffusion_shared.eia_microdata_cbecs_ownocc8
+alter column ownocc8 type integer using ownocc8::integer;
+
+-- make sure there is data for every building in the main cbecs table
+SELECT *
+FROM diffusion_shared.eia_microdata_cbecs_2003 a
+lEFT JOIN diffusion_shared.eia_microdata_cbecs_ownocc8  b
+ON a.pubid8 = b.pubid8
+where b.pubid8 is null;
+-- 0 rows, all is good
+
+-- add this information into the main cbecs table
+ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003
+add column ownocc8 integer;
+
+UPDATE diffusion_shared.eia_microdata_cbecs_2003 a
+SET ownocc8 = b.ownocc8
+from diffusion_shared.eia_microdata_cbecs_ownocc8  b
+where a.pubid8 = b.pubid8;
+
+-- check that all values were transferred
+select count(*)
+FROM diffusion_shared.eia_microdata_cbecs_2003 
+where ownocc8 is null;
+
+select count(*)
+FROM diffusion_shared.eia_microdata_cbecs_ownocc8 
+where ownocc8 is null;
+-- 395 null in both -- all set
+
+-- drop the pbaplus 8 table -- no longer needed
+DROP TABLE diffusion_shared.eia_microdata_cbecs_ownocc8;
+
+-- add a comment to describe this column
+COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.ownocc8 
+IS 'Owner occupies space';
+
+-- add indices on pba8 and pbaplus8
+CREATE INDEX eia_microdata_cbecs_2003_ownocc8_btree
+ON diffusion_shared.eia_microdata_cbecs_2003
+using btree(ownocc8);
+
+-- add in the pbaplus 8 data (detailed building activity info)
+DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_pbaplus8;
+CREATE TABLE  diffusion_shared.eia_microdata_cbecs_pbaplus8 (
+	pubid8	integer primary key,	--building identifier
+	pbaplus8 integer
+);
+SET ROLE 'server-superusers';
+COPY diffusion_shared.eia_microdata_cbecs_pbaplus8 
+FROM '/srv/home/mgleason/data/dg_wind/cbecs_pba_plus8.csv' with csv header;
+SET ROLE 'diffusion-writers';
+
+-- make sure there is data for every building in the main cbecs table
+SELECT *
+FROM diffusion_shared.eia_microdata_cbecs_2003 a
+lEFT JOIN diffusion_shared.eia_microdata_cbecs_pbaplus8  b
+ON a.pubid8 = b.pubid8
+where b.pubid8 is null;
+-- 0 rows, all is good
+
+-- add this information into the main cbecs table
+ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003
+add column pbaplus8 integer;
+
+UPDATE diffusion_shared.eia_microdata_cbecs_2003 a
+SET pbaplus8 = b.pbaplus8
+from diffusion_shared.eia_microdata_cbecs_pbaplus8  b
+where a.pubid8 = b.pubid8;
+
+-- check that all values were transferred
+select *
+FROM diffusion_shared.eia_microdata_cbecs_2003 
+where pbaplus8 is null;
+-- all set
+
+-- drop the pbaplus 8 table -- no longer needed
+DROP TABLE diffusion_shared.eia_microdata_cbecs_pbaplus8;
+
+-- add a comment to describe this column
+COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.pbaplus8 
+IS 'More specific building activity';
+
+-- add indices on pba8 and pbaplus8
+CREATE INDEX eia_microdata_cbecs_2003_pba8_btree
+ON diffusion_shared.eia_microdata_cbecs_2003
+using btree(pba8);
+
+CREATE INDEX eia_microdata_cbecs_2003_pbaplus8_btree
+ON diffusion_shared.eia_microdata_cbecs_2003
+using btree(pbaplus8);
+
+-- add lookup table for pba8
+DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_2003_pba_lookup;
+CREATE TABLE  diffusion_shared.eia_microdata_cbecs_2003_pba_lookup (
+	pba8	integer primary key,
+	description text
+);
+SET ROLE 'server-superusers';
+COPY diffusion_shared.eia_microdata_cbecs_2003_pba_lookup 
+FROM '/srv/home/mgleason/data/dg_wind/pba8_lookup.csv' with csv header QUOTE '''';
+SET ROLE 'diffusion-writers';
+
+-- add lookup table for pbaplus8
+DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_2003_pbaplus8_lookup;
+CREATE TABLE  diffusion_shared.eia_microdata_cbecs_2003_pbaplus8_lookup (
+	pbaplus8	integer primary key,
+	description text
+);
+SET ROLE 'server-superusers';
+COPY diffusion_shared.eia_microdata_cbecs_2003_pbaplus8_lookup 
+FROM '/srv/home/mgleason/data/dg_wind/pbaplus8_lookup.csv' with csv header QUOTE '''';
+SET ROLE 'diffusion-writers';
+
+-- extract all of the disctinct pba/pbaplus8 building uses
+SET ROLE 'server-superusers';
+COPY 
+(
+	with a as
+	(
+		SELECT pba8, pbaplus8
+		from diffusion_shared.eia_microdata_cbecs_2003
+		group by pba8, pbaplus8
+	)
+	SELECT a.pba8, b.description as pba8_desc,
+	       a.pbaplus8, c.description as pbaplus8_desc
+	FROM a
+	left join diffusion_shared.eia_microdata_cbecs_2003_pba_lookup b
+	ON a.pba8 = b.pba8
+	LEFT JOIN diffusion_shared.eia_microdata_cbecs_2003_pbaplus8_lookup c
+	on a.pbaplus8 = c.pbaplus8
+	order by a.pba8, a.pbaplus8
+) TO '/srv/home/mgleason/data/dg_wind/cbecs_to_eplus_commercial_building_types.csv' with csv header;
+SET ROLE 'diffusion-writers';
+
+-- manually edit this table to identify the DOE Commercial Building Type (there 16)
+-- associated with each pba8/pbaplus8 combination
+-- use http://www.nrel.gov/docs/fy11osti/46861.pdf as a starting point
+-- then reload the resulting lookup table to diffusion_shared.cbecs_pba8_pbaplus8_to_eplus_bldg_types
+
+-- add descriptions for census region
 ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003
 ADD COLUMN census_region text;
 
@@ -114,6 +271,7 @@ CREATE TABLE diffusion_shared.eia_microdata_recs_2009
 	reportable_domain	integer,	--Reportable states and groups of states
 	typehuq			integer,	--Type of housing unit
 	nweight			numeric,	--Final sample weight
+	kownrent		integer,        --Housing unit is owned, rented, or occupied without payment of rent
 	kwh			numeric 	--Total Site Electricity usage, in kilowatt-hours, 2009	
 );
 
@@ -124,12 +282,25 @@ COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.division IS 'Census D
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.reportable_domain IS 'Reportable states and groups of states';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.typehuq IS 'Type of housing unit';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.nweight IS 'Final sample weight';
+COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.kownrent IS 'Housing unit is owned, rented, or occupied without payment of rent';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.kwh IS 'Total Site Electricity usage, in kilowatt-hours, 2009';
 
 
 SET ROLE 'server-superusers';
 COPY diffusion_shared.eia_microdata_recs_2009	 FROM '/srv/home/mgleason/data/dg_wind/recs2009_selected_columns.csv' with csv header;
-SET ROLE 'diffusion_shared-writers';
+SET ROLE 'diffusion-writers';
+
+
+-- add indices on kownrent and typehuq
+CREATE INDEX eia_microdata_recs_2009_typehuq_btree
+ON diffusion_shared.eia_microdata_recs_2009
+using btree(typehuq)
+where typehuq in (1,2);
+
+CREATE INDEX eia_microdata_recs_2009_kownrent_btree
+ON diffusion_shared.eia_microdata_recs_2009
+using btree(kownrent)
+where kownrent = 1;
 
 ALTER TABLE diffusion_shared.eia_microdata_recs_2009
 ADD COLUMN census_region text;

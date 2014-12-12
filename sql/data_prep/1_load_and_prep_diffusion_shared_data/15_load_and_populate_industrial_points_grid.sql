@@ -873,7 +873,7 @@ using btree(hdf_load_index);
 SELECT *
 FROM diffusion_shared.pt_grid_us_ind
 where hdf_load_index is null;
---20640 rows
+--10106 rows
 
 -- find the value of the nearest neighbor
 DROP TABLE IF EXISTS  diffusion_solar_data.pt_grid_us_ind_missing_hdf_load_lookup;
