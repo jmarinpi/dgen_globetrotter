@@ -123,6 +123,9 @@ CREATE INDEX eia_microdata_cbecs_2003_ownocc8_btree
 ON diffusion_shared.eia_microdata_cbecs_2003
 using btree(ownocc8);
 
+select distinct(ownocc8)
+FROM diffusion_shared.eia_microdata_cbecs_2003
+
 -- add in the pbaplus 8 data (detailed building activity info)
 DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_pbaplus8;
 CREATE TABLE  diffusion_shared.eia_microdata_cbecs_pbaplus8 (
