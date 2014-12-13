@@ -263,6 +263,69 @@ CREATE INDEX eia_microdata_cbecs_2003_census_division_abbr_btree
 ON diffusion_shared.eia_microdata_cbecs_2003
 USING btree(census_division_abbr);
 
+-- load cbecs pba/pbaplus to Energy Plus Commercial Reference Buildings
+-- lookup table
+SET role 'diffusion-writers';
+DROP TABLE IF EXISTS diffusion_shared.cbecs_2003_pba_to_eplus_crbs;
+CREATE TABLE diffusion_shared.cbecs_2003_pba_to_eplus_crbs
+(
+	pba8 integer,
+	pba8_desc text,
+	pbaplus8 integer,
+	pbaplus8_desc text,
+	sqft_min numeric,
+	sqft_max numeric,
+	crb_model text,
+	defined_by text,
+	notes text
+);
+
+SET ROLE 'server-superusers';
+COPY diffusion_shared.cbecs_2003_pba_to_eplus_crbs 
+FROM '/srv/home/mgleason/data/dg_wind/cbecs_to_eplus_commercial_building_types.csv' 
+with csv header;
+SET ROLE 'diffusion-writers';
+
+-- create indices on pba8 and pbaplus 8
+CREATE INDEX cbecs_2003_pba_to_eplus_crbs_pba8_btree
+ON diffusion_shared.cbecs_2003_pba_to_eplus_crbs 
+using btree(pba8);
+
+CREATE INDEX cbecs_2003_pba_to_eplus_crbs_pbaplus8_btree
+ON diffusion_shared.cbecs_2003_pba_to_eplus_crbs 
+using btree(pbaplus8);
+
+-- create a simple lookup table for all non-vacant
+-- cbecs buildings that gives the commercial reference building model
+DROP TABLE IF EXISTS diffusion_shared.cbecs_2003_crb_lookup;
+CREATE TABLE diffusion_shared.cbecs_2003_crb_lookup AS
+with a AS
+(
+	SELECT a.pubid8, a.sqft8, b.*
+	FROM diffusion_shared.eia_microdata_cbecs_2003 a
+	LEFT JOIN diffusion_shared.cbecs_2003_pba_to_eplus_crbs b
+	ON a.pba8 = b.pba8
+	and a.pbaplus8 = b.pbaplus8
+	where a.pba8 <> 1 -- ignore vacant buildings
+)
+select pubid8, crb_model
+FROM a
+where (sqft_min is null and sqft_max is null)
+or (sqft8 >= sqft_min and sqft8 < sqft_max);
+-- 5019 rows
+
+-- does that match the count of nonvacant buldings?
+select count(*)
+FROM diffusion_shared.eia_microdata_cbecs_2003
+where pba8 <> 1;
+-- yes-- 5019
+
+-- do all buildings have a crb?
+SELECT count(*)
+FROM diffusion_shared.cbecs_2003_crb_lookup
+where crb_model is null;
+-- yes
+
 -----------------------------------------------------------------
 -- Residential Energy Consumption Survey
 DROP TABLE IF EXISTS diffusion_shared.eia_microdata_recs_2009;
