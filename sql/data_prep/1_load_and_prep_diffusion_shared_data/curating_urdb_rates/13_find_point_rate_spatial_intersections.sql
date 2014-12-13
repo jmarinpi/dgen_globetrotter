@@ -93,7 +93,7 @@ using btree(urdb_rate_id);
 
 CREATE INDEX curated_urdb_rates_lookup_pts_com_urdb_utility_type_btree
 ON diffusion_shared.curated_urdb_rates_lookup_pts_com
-using btree(utility_type);
+using btree(urdb_utility_type);
 
 
 -- intersect against industrial point grid to get a lookup table
@@ -152,7 +152,7 @@ using btree(urdb_rate_id);
 
 CREATE INDEX curated_urdb_rates_lookup_pts_ind_urdb_utility_type_btree
 ON diffusion_shared.curated_urdb_rates_lookup_pts_ind
-using btree(utility_type);
+using btree(urdb_utility_type);
 
 --------------------------------------------------------------------------------
 
@@ -253,4 +253,4 @@ using btree(urdb_rate_id);
 
 CREATE INDEX curated_urdb_rates_lookup_pts_res_urdb_utility_type_btree
 ON diffusion_shared.curated_urdb_rates_lookup_pts_res
-using btree(utility_type);
+using btree(urdb_utility_type);
