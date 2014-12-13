@@ -5,15 +5,10 @@ CREATE TABLE diffusion_shared.curated_urdb_rates_com AS
 with a as
 (
 	-- collect all of the commercial rates
-	SELECT urdb_rate_id, utility_name as ur_name, sub_territory_name
-	FROM urdb_rates.urdb3_verified_rates_lookup_20141202
+	SELECT urdb_rate_id, utility_name as ur_name, sub_territory_name,
+	       demand_min, demand_max, rate_type
+	FROM urdb_rates.combined_singular_verified_rates_lookup
 	where res_com = 'C'
-	UNION ALl
-	SELECT urdb_rate_id, utility_name as ur_name, sub_territory_name
-	FROM urdb_rates.urdb3_singular_rates_lookup_20141202	
-	where res_com = 'C'
-	and verified = False
-
 ),
 b as 
 (
@@ -29,7 +24,7 @@ ON b.ventyx_company_id_2014 = c.company_id::text
 and b.sub_territory_name = c.sub_territory_name;
 
 -- make sure there are no nulls
-select *
+select count(*)
 FROM diffusion_shared.curated_urdb_rates_com
 where the_geom_4326 is null;
 
@@ -47,22 +42,31 @@ DROP TABLE IF EXISTS diffusion_shared.curated_urdb_rates_lookup_pts_com;
 CREATE TABLE diffusion_shared.curated_urdb_rates_lookup_pts_com
 (
 	pt_gid integer,
+	state_abbr character varying(2),
 	hdf_load_index integer,
 	census_division_abbr text,
 	urdb_rate_id text,
-	utility_type text
+	urdb_utility_type text,
+	urdb_rate_type text,
+	urdb_demand_min numeric,
+	urdb_demand_max numeric
 );
 
 SELECT parsel_2('dav-gis','mgleason','mgleason',
 		'diffusion_shared.pt_grid_us_com','gid',
 		'SELECT a.gid as pt_gid, 
+			c.state_abbr,
 			a.hdf_load_index,
 			c.census_division_abbr,
-			b.urdb_rate_id, b.utility_type
+			b.urdb_rate_id, 
+			b.utility_type as urdb_utility_type,
+			b.rate_type as urdb_rate_type,
+			b.demand_min as urdb_demand_min,
+			b.demand_max as urdb_demand_max
 		FROM diffusion_shared.pt_grid_us_com a
-		LEFT JOIN diffusion_shared.curated_urdb_rates_com b
+		INNER JOIN diffusion_shared.curated_urdb_rates_com b
 		ON ST_Intersects(a.the_geom_4326, b.the_geom_4326)
-		LEFT JOIN diffusion_shared.county_geom c
+		INNER JOIN diffusion_shared.county_geom c
 		ON a.county_id = c.county_id;',
 		'diffusion_shared.curated_urdb_rates_lookup_pts_com', 'a',16);
 
@@ -70,6 +74,10 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 CREATE INDEX curated_urdb_rates_lookup_pts_com_pt_gid_btree
 ON diffusion_shared.curated_urdb_rates_lookup_pts_com
 using btree(pt_gid);
+
+CREATE INDEX curated_urdb_rates_lookup_pts_com_state_abbr_btree
+ON diffusion_shared.curated_urdb_rates_lookup_pts_com
+using btree(state_abbr);
 
 CREATE INDEX curated_urdb_rates_lookup_pts_com_hdf_load_index_btree
 ON diffusion_shared.curated_urdb_rates_lookup_pts_com
@@ -93,21 +101,31 @@ DROP TABLE IF EXISTS diffusion_shared.curated_urdb_rates_lookup_pts_ind;
 CREATE TABLE diffusion_shared.curated_urdb_rates_lookup_pts_ind
 (
 	pt_gid integer,
+	state_abbr character varying(2),
 	hdf_load_index integer,
 	census_division_abbr text,
 	urdb_rate_id text,
-	utility_type text
+	urdb_utility_type text,
+	urdb_rate_type text,
+	urdb_demand_min numeric,
+	urdb_demand_max numeric
 );
 
 SELECT parsel_2('dav-gis','mgleason','mgleason',
 		'diffusion_shared.pt_grid_us_ind','gid',
-		'SELECT a.gid as pt_gid, a.hdf_load_index,
+		'SELECT a.gid as pt_gid, 
+			c.state_abbr,
+			a.hdf_load_index,
 			c.census_division_abbr,
-			b.urdb_rate_id, b.utility_type
+			b.urdb_rate_id, 
+			b.utility_type as urdb_utility_type,
+			b.rate_type as urdb_rate_type,
+			b.demand_min as urdb_demand_min,
+			b.demand_max as urdb_demand_max
 		FROM diffusion_shared.pt_grid_us_ind a
-		LEFT JOIN diffusion_shared.curated_urdb_rates_com b
+		INNER JOIN diffusion_shared.curated_urdb_rates_com b
 		ON ST_Intersects(a.the_geom_4326, b.the_geom_4326)
-		LEFT JOIN diffusion_shared.county_geom c
+		INNER JOIN diffusion_shared.county_geom c
 		ON a.county_id = c.county_id;',
 		'diffusion_shared.curated_urdb_rates_lookup_pts_ind', 'a', 16);
 
@@ -115,6 +133,10 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 CREATE INDEX curated_urdb_rates_lookup_pts_ind_pt_gid_btree
 ON diffusion_shared.curated_urdb_rates_lookup_pts_ind
 using btree(pt_gid);
+
+CREATE INDEX curated_urdb_rates_lookup_pts_ind_state_abbr_btree
+ON diffusion_shared.curated_urdb_rates_lookup_pts_ind
+using btree(state_abbr);
 
 CREATE INDEX curated_urdb_rates_lookup_pts_ind_hdf_load_index_btree
 ON diffusion_shared.curated_urdb_rates_lookup_pts_ind
@@ -141,14 +163,11 @@ CREATE TABLE diffusion_shared.curated_urdb_rates_res AS
 with a as
 (
 	-- collect all of the residential rates
-	SELECT urdb_rate_id, utility_name as ur_name, sub_territory_name
-	FROM urdb_rates.urdb3_verified_rates_lookup_20141202
+	-- collect all of the commercial rates
+	SELECT urdb_rate_id, utility_name as ur_name, sub_territory_name,
+	       demand_min, demand_max, rate_type
+	FROM urdb_rates.combined_singular_verified_rates_lookup
 	where res_com = 'R'
-	UNION ALl
-	SELECT urdb_rate_id, utility_name as ur_name, sub_territory_name
-	FROM urdb_rates.urdb3_singular_rates_lookup_20141202	
-	where res_com = 'R'
-	and verified = False
 
 ),
 b as 
@@ -165,7 +184,7 @@ ON b.ventyx_company_id_2014 = c.company_id::text
 and b.sub_territory_name = c.sub_territory_name;
 
 -- make sure there are no nulls
-select *
+select count(*)
 FROM diffusion_shared.curated_urdb_rates_res
 where the_geom_4326 is null;
 
@@ -183,21 +202,31 @@ DROP TABLE IF EXISTS diffusion_shared.curated_urdb_rates_lookup_pts_res;
 CREATE TABLE diffusion_shared.curated_urdb_rates_lookup_pts_res
 (
 	pt_gid integer,
+	state_abbr character varying(2),
 	hdf_load_index integer,
 	recs_2009_reportable_domain text,
 	urdb_rate_id text,
-	utility_type text
+	urdb_utility_type text,
+	urdb_rate_type text,
+	urdb_demand_min numeric,
+	urdb_demand_max numeric
 );
 
 SELECT parsel_2('dav-gis','mgleason','mgleason',
 		'diffusion_shared.pt_grid_us_res','gid',
-		'SELECT a.gid as pt_gid, a.hdf_load_index,
+		'SELECT a.gid as pt_gid, 
+			c.state_abbr,
+			a.hdf_load_index,
 			c.recs_2009_reportable_domain,
-			b.urdb_rate_id, b.utility_type
+			b.urdb_rate_id, 
+			b.utility_type as urdb_utility_type,
+			b.rate_type as urdb_rate_type,
+			b.demand_min as urdb_demand_min,
+			b.demand_max as urdb_demand_max
 		FROM diffusion_shared.pt_grid_us_res a
-		LEFT JOIN diffusion_shared.curated_urdb_rates_res b
+		INNER JOIN diffusion_shared.curated_urdb_rates_res b
 		ON ST_Intersects(a.the_geom_4326, b.the_geom_4326)
-		LEFT JOIN diffusion_shared.county_geom c
+		INNER JOIN diffusion_shared.county_geom c
 		ON a.county_id = c.county_id;',
 		'diffusion_shared.curated_urdb_rates_lookup_pts_res', 'a',16);
 
@@ -205,6 +234,10 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 CREATE INDEX curated_urdb_rates_lookup_pts_res_pt_gid_btree
 ON diffusion_shared.curated_urdb_rates_lookup_pts_res
 using btree(pt_gid);
+
+CREATE INDEX curated_urdb_rates_lookup_pts_res_state_abbr_btree
+ON diffusion_shared.curated_urdb_rates_lookup_pts_res
+using btree(state_abbr);
 
 CREATE INDEX curated_urdb_rates_lookup_pts_res_hdf_load_index_btree
 ON diffusion_shared.curated_urdb_rates_lookup_pts_res
@@ -221,56 +254,3 @@ using btree(urdb_rate_id);
 CREATE INDEX curated_urdb_rates_lookup_pts_res_urdb_utility_type_btree
 ON diffusion_shared.curated_urdb_rates_lookup_pts_res
 using btree(utility_type);
-
-
-------------------------------------------------------------------------
--- find all multiplicative combinations by state: 
--- rates (assume each rate could apply anywhere in the state)
--- hdf indices
--- eia regions
-with a as
-(
-	SELECT state_abbr, census_division_abbr
-	from diffusion_shared.county_geom
-	where state_abbr not in ('HI','AK')
-	group by state_abbr, census_division_abbr
-),
-b as 
-(
-	SELECT b.state_abbr, a.hdf_load_index
-	from diffusion_shared.pt_grid_us_com a
-	left join diffusion_shared.county_geom b
-	on a.county_id = b.county_id
-	group by b.state_abbr, a.hdf_load_index
-),
-c as
-(
-	select c.state_abbr, a.urdb_rate_id, a.utility_type
-	FROM diffusion_shared.curated_urdb_rates_lookup_pts_com a
-	LEFT JOIN diffusion_shared.pt_grid_us_com b
-	ON a.pt_gid = b.gid
-	left join diffusion_shared.county_geom c
-	on b.county_id = c.county_id 
-	where a.urdb_rate_id is not null
-	group by c.state_abbr, a.urdb_rate_id, a.utility_type
-)
-SELECT a.state_abbr, a.census_division_abbr, 
-	b.hdf_load_index,
-	c.urdb_rate_id, c.utility_type,
-	d.demand_min, d.demand_max,
-	d.rate_type
-FROM a
-left join b
-on a.state_abbr = b.state_abbr
-LEFT JOIN c
-on b.state_abbr = c.state_abbr
-LEFT JOIN urdb_rates.combined_singular_verified_rates_lookup d
-ON c.urdb_rate_id = d.urdb_rate_id
-and d.res_com = 'C';
-
-
-select a.hdf_load_index, b.census_division_abbr
-from diffusion_shared.pt_grid_us_com a
-left join diffusion_shared.county_geom b
-on a.county_id = b.county_id 
-group by a.hdf_load_index, b.census_division_abbr
