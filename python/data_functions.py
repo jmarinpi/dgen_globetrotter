@@ -153,7 +153,7 @@ def make_con(connection_string, async = False):
     
     return con, cur
 
-def combine_temporal_data(cur, con, technology, start_year, end_year, sector_abbrs, sectors, preprocess, logger):
+def combine_temporal_data(cur, con, technology, start_year, end_year, sector_abbrs, preprocess, logger):
 
     msg = "Combining Temporal Factors"    
     logger.info(msg)
@@ -162,7 +162,7 @@ def combine_temporal_data(cur, con, technology, start_year, end_year, sector_abb
         return 1
         
     if technology == 'wind':
-        combine_temporal_data_wind(cur, con, start_year, end_year, sectors, preprocess, logger)
+        combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, preprocess, logger)
     elif technology == 'solar':
         combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, preprocess, logger)
     
@@ -238,7 +238,7 @@ def combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, pr
     
     return 1
 
-def combine_temporal_data_wind(cur, con, start_year, end_year, sectors, preprocess, logger):
+def combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, preprocess, logger):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
     
@@ -275,7 +275,7 @@ def combine_temporal_data_wind(cur, con, start_year, end_year, sectors, preproce
             ON a.year = g.year
             AND  a.turbine_size_kw = g.turbine_size_kw
             WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
-            AND d.sector in (%(sectors)s);""" % inputs
+            AND d.sector in (%(sector_abbrs)s);""" % inputs
     cur.execute(sql)
     con.commit()
     
@@ -347,9 +347,9 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
                 'value_of_rebate',
                 'value_of_tax_credit_or_deduction',
                 'ic',
-                #'payback_period',
+                'metric',
+                'metric_value',
                 'lcoe',
-                #'payback_key',
                 'max_market_share',
                 'diffusion_market_share',
                 'new_market_share',
@@ -424,12 +424,12 @@ def combine_outputs_wind(schema, sectors, cur, con):
         sub_sql = '''%(union)s 
                     SELECT '%(sector)s'::text as sector, 
 
-                    a.micro_id, a.county_id, a.bin_id, a.year, a.customer_expec_elec_rates, a.ownership_model, a.loan_term_yrs, 
+                    a.micro_id, a.county_id, a.bin_id, a.year, a.customer_expec_elec_rates, a.business_model, a.loan_term_yrs, 
                     a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
                     a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
                     a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
                     a.value_of_ptc, a.pbi_fit_length, a.ptc_length, a.value_of_rebate, a.value_of_tax_credit_or_deduction, 
-                    a.ic, a.payback_period, a.lcoe, a.payback_key, a.max_market_share, 
+                    a.ic, a.metric, a.metric_value, a.lcoe, a.max_market_share, 
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
                     a.market_value,
@@ -646,11 +646,17 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
         inputs['load_columns'] = 'b.doeid as load_id, b.nweight as weight, b.kwh as ann_cons_kwh'
         inputs['load_pkey'] = 'doeid'
         inputs['load_weight_column'] = 'nweight'
+        inputs['load_region'] = 'reportable_domain'
+        # limit to single-family (attached or detached), owner-occupied homes
+        inputs['load_where'] = ' AND b.typehuq in (1,2) AND b.kownrent = 1'
     else:
         inputs['load_table'] = 'diffusion_shared.eia_microdata_cbecs_2003'
         inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh'
         inputs['load_pkey'] = 'pubid8'
         inputs['load_weight_column'] = 'adjwt8'
+        inputs['load_region'] = 'census_division_abbr'
+        # limit to non-vacant buildings
+        inputs['load_where'] = " AND b.pba8 <> 1"
     return inputs
 
 
@@ -698,8 +704,9 @@ def sample_customers_and_load(inputs_dict, county_chunks, exclusion_type, resour
                      %(load_columns)s
              FROM %(schema)s.counties_to_model a
              LEFT JOIN %(load_table)s b
-             ON a.census_region = b.census_region
+             ON a.%(load_region)s = b.%(load_region)s
              WHERE a.county_id in  (%(chunk_place_holder)s)
+                   %(load_where)s
         ),
         sampled_bins AS 
         (
@@ -1191,7 +1198,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 ON a.turbine_height_m = b.turbine_height_m
                 AND a.power_curve_id = b.power_curve_id
                 AND a.census_division_abbr = b.census_division_abbr
-                WHERE b.sector = '%(sector)s'
+                WHERE b.sector = '%(sector_abbr)s'
                 AND b.rate_escalation_source = '%(rate_escalation_source)s'
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
@@ -1436,90 +1443,77 @@ def get_main_dataframe(con, main_table, year):
     df = sqlio.read_frame(sql, con, coerce_float = False)
     return df
     
-def get_financial_parameters(con, schema, res_model = 'Host Owned', com_model = 'Host Owned', ind_model = 'Host Owned'):
-    ''' Pull financial parameters dataframe from dB. Use passed parameters to subset for new/existing home/leasing/host-owned
+def get_financial_parameters(con, schema):
+    ''' Pull financial parameters dataframe from dB. We used to filter by business model here, but with leasing we will join
+    on sector and business_model later in calc_economics.
     
         IN: con - pg con object - connection object
-            res - string - which residential ownership structure to use (assume 100%)
-            com - string - which commercial ownership structure to use (assume 100%)
-            ind - string - which industrial ownership structure to use (assume 100%)
+            schema - string - schema for technology i.e. diffusion_solar
             
         OUT: fin_param  - pd dataframe - pre-processed resource,bins, rates, etc. for all years:
     '''
     
-    # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()   
-    
-    # Get data, filtering based on ownership models selected
-    sql = """SELECT lower(sector) as sector, ownership_model, loan_term_yrs, loan_rate, down_payment, 
-           discount_rate, tax_rate, length_of_irr_analysis_yrs
-           FROM %(schema)s.financial_parameters
-           WHERE (lower(sector) = 'residential' AND ownership_model = '%(res_model)s')
-           OR (lower(sector) = 'commercial' AND ownership_model = '%(com_model)s')
-           OR (lower(sector) = 'industrial' AND ownership_model = '%(ind_model)s');""" % inputs
+    sql = """SELECT * FROM %s.financial_parameters;"""%schema
     df = sqlio.read_frame(sql, con)
+    
+    # minor formatting for table joins later on
+    df.sector = df.sector.str.lower()
+    df['business_model'] = df.ownership_model.str.lower().str.replace(" ", "_").str.replace("leased","tpo")
+    df = df.drop('ownership_model', axis = 1)
     
     return df
  
 #==============================================================================
    
-def get_max_market_share(con, schema, sectors, scenario_opts, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit'):
+def get_max_market_share(con, schema):
     ''' Pull max market share from dB, select curve based on scenario_options, and interpolate to tenth of a year. 
         Use passed parameters to determine ownership type
     
         IN: con - pg con object - connection object
-            residential_type - string - which residential ownership structure to use (new or retrofit)
-            commercial_type - string - which commercial ownership structure to use (new or retrofit)
-            industrial_type - string - which industrial ownership structure to use (new or retrofit)
+            schema - string - schema for technology i.e. diffusion_solar
+
             
         OUT: max_market_share  - pd dataframe - dataframe to join on main df to determine max share 
                                                 keys are sector & payback period 
     '''
-    
-    '''Temp fix -- this will be overwritten by the add-leasing branch'''
-    sql = """SELECT (metric_value * 10) as payback_key, max_market_share, sector, business_model
-                    FROM %s.max_market_curves_to_model
-                    WHERE metric = 'payback_period' AND source = 'Navigant' AND business_model = 'host_owned';""" %(schema)
-                    
-    max_market_share = sqlio.read_frame(sql, con)
 
-        #    # create a dictionary out of the input arguments -- this is used through sql queries    
-        #    inputs = locals().copy()       
-        #
-        #    # the max market curves need to be interpolated to a finer temporal resolution of 1/10ths of years
-        #    # initialize a list for time steps at that inverval for a max 30 year payback period
-        #    yrs = np.linspace(0,30,301)
-        #    
-        #    # initialize a data frame to hold all of the interpolated max market curves (1 for each sector)
-        #    max_market_share = pd.DataFrame()
-        #    # loop through sectors
-        #    for sector in sectors:
-        #        # define the ownership type based on the current sector
-        #        ownership_type = inputs['%s_type' % sector.lower()]
-        #        short_sector = sector[:3].lower()        
-        
-             
-        
-        ##        # Whether to use default or user fit max market share curves
-        ##        if scenario_opts[short_sector + '_max_market_curve'] == 'User Fit':
-        ##            sql = """SELECT * 
-        ##            FROM %s.user_defined_max_market_share
-        ##            WHERE lower(sector) = '%s';""" % (schema, sector.lower())
-        ##            mm = sqlio.read_frame(sql, con)
-        ##        else:
-        ##            # get the data for this sector from postgres (this will handle all of the selection based on scenario inputs)
-        #        sql = """SELECT *
-        #                 FROM %s.max_market_curves_to_model
-        #                 WHERE lower(sector) = '%s';""" % (schema, sector.lower())
-        #            mm = sqlio.read_frame(sql, con)
-        #        ## create an interpolation function to interpolate max market share (for either retrofit or new) based on the year
-        #        #interp_func = interp1d(mm['year'], mm[ownership_type]);
-        #        ## create a data frame of max market values for yrs using this interpolation function
-        #        #interpolated_mm = pd.DataFrame({'max_market_share': interp_func(yrs),'payback_key': np.arange(301)})
-        #        # add in the sector to the data frame
-        #        #interpolated_mm['sector'] = sector.lower()
-        #        # append to the main data frame
-        #        max_market_share = max_market_share.append(interpolated_mm, ignore_index = True)
+    sql = """SELECT * FROM %s.max_market_curves_to_model;""" %schema
+    max_market_share = sqlio.read_frame(sql, con)
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    #    inputs = locals().copy()       
+    #
+    #    # the max market curves need to be interpolated to a finer temporal resolution of 1/10ths of years
+    #    # initialize a list for time steps at that inverval for a max 30 year payback period
+    #    yrs = np.linspace(0,30,301)
+    #    
+    #    # initialize a data frame to hold all of the interpolated max market curves (1 for each sector)
+    #    max_market_share = pd.DataFrame()
+    #    # loop through sectors
+    #    for sector in sectors:
+    #        # define the ownership type based on the current sector
+    #        ownership_type = inputs['%s_type' % sector.lower()]
+    #        short_sector = sector[:3].lower()        
+    #        
+    #        # Whether to use default or user fit max market share curves
+    #        if scenario_opts[short_sector + '_max_market_curve'] == 'User Fit':
+    #            sql = """SELECT * 
+    #            FROM %s.user_defined_max_market_share
+    #            WHERE lower(sector) = '%s';""" % (schema, sector.lower())
+    #            mm = sqlio.read_frame(sql, con)
+    #        else:
+    #            # get the data for this sector from postgres (this will handle all of the selection based on scenario inputs)
+    #            sql = """SELECT *
+    #                     FROM %s.max_market_curves_to_model
+    #                     WHERE lower(sector) = '%s';""" % (schema, sector.lower())
+    #            mm = sqlio.read_frame(sql, con)
+    #        # create an interpolation function to interpolate max market share (for either retrofit or new) based on the year
+    #        interp_func = interp1d(mm['year'], mm[ownership_type]);
+    #        # create a data frame of max market values for yrs using this interpolation function
+    #        interpolated_mm = pd.DataFrame({'max_market_share': interp_func(yrs),'payback_key': np.arange(301)})
+    #        # add in the sector to the data frame
+    #        interpolated_mm['sector'] = sector.lower()
+    #        # append to the main data frame
+    #        max_market_share = max_market_share.append(interpolated_mm, ignore_index = True)
     return max_market_share
     
 
@@ -1742,7 +1736,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
         value_of_tax_credit_or_deduction = tax_pcnt_cost * ic + inc['tax_credit_dlrs_kw'] * inc['system_size_kw']
         value_of_tax_credit_or_deduction = np.minimum(max_tax_credit_or_deduction_value, value_of_tax_credit_or_deduction)
         value_of_tax_credit_or_deduction = np.where(inc.tax_credit_max_size_kw < inc['system_size_kw'], tax_pcnt_cost * inc.tax_credit_max_size_kw * inc.installed_costs_dollars_per_kw, value_of_tax_credit_or_deduction)
-        value_of_tax_credit_or_deduction = value_of_tax_credit_or_deduction.fillna(0)        
+        value_of_tax_credit_or_deduction = pd.Series(value_of_tax_credit_or_deduction).fillna(0)        
         #value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
         inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction.astype(float)
     
@@ -1770,6 +1764,18 @@ def get_rate_escalations(con, schema):
     rate_escalations = sqlio.read_frame(sql, con)
     return rate_escalations
     
+def get_lease_availability(con, schema):
+    '''
+    Get leasing availability by state and year, based on options selected in input sheet
+    
+    IN: con - connection to server
+    OUT: DataFrame with state, year, and availability (True/False) as columns
+    '''  
+    sql = """SELECT state as state_abbr, year, leasing_allowed
+                FROM %s.leasing_availability;""" % schema
+    df = sqlio.read_frame(sql, con)
+    return df
+    
 def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr): 
     '''
     Append the expected rate escalation to the main dataframe.
@@ -1788,11 +1794,11 @@ def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr):
     
     # Need to join expected escalations on df without sorting, thus remerge with original frame
     # see: http://stackoverflow.com/questions/20206615/how-can-a-pandas-merge-preserve-order
-    temp_df = df[['county_id','bin_id','census_division_abbr']]
+    temp_df = df[['county_id','bin_id','business_model','census_division_abbr']]
     customer_expected_escalations = temp_df.merge(temp_df.merge(rate_pivot, how = 'left', on = 'census_division_abbr', sort = False))
     
-    if (df[['county_id','bin_id']] == customer_expected_escalations[['county_id','bin_id']]).all().all():
-        return customer_expected_escalations.ix[:,3:].values
+    if (df[['county_id','bin_id','business_model']] == customer_expected_escalations[['county_id','bin_id','business_model']]).all().all():
+        return customer_expected_escalations.ix[:,4:].values
     else:
         raise Exception("rate_escalations_have been reordered!")
 
@@ -1823,6 +1829,58 @@ def fill_jagged_array(vals,lens, cols = 30):
     # use the repeate function to repeate elements in az by the factors in bz, then reshape to the final array size and shape
     r = np.repeat(az,bz).reshape((rows,cols))
     return r
+            
+def assign_business_model(df, method = 'prob', alpha = 2):
+    
+    if method == 'prob':
+        
+        # The method here is to calculate a probability of leasing based on the relative
+        # trade-off of market market shares. Then we draw a random number to determine if
+        # the customer leases (# < prob of leasing). A ranking method is used as a mask to
+        # identify which rows to drop 
+        
+        # Calculate the logit value and sum of logit values for the bin id
+        df['mkt_exp'] = df['max_market_share']**alpha
+        gb = df.groupby(['county_id','bin_id'])
+        gb = pd.DataFrame({'mkt_sum': gb['mkt_exp'].sum()})
+        
+        # Draw a random number for both business models in the bin
+        gb['rnd'] = np.random.random(len(gb)) 
+        df = df.merge(gb, left_on=['county_id','bin_id'],right_index = True)
+        
+        # Determine the probability of leasing
+        df['prob_of_leasing'] = df['mkt_exp']/df['mkt_sum']
+        df.loc[(df['business_model'] == 'tpo') & ~(df['leasing_allowed']),'prob_of_leasing'] = 0 #Restrict leasing if not allowed by state
+        
+        # Both business models are still in the df, so we use a ranking algorithm after the random draw
+        # To determine whether to buy or lease 
+        df['rank'] =0
+        df.loc[(df['business_model'] == 'host_owned'),'rank'] = 1
+        df.loc[(df['business_model'] == 'tpo') & (df['rnd']< df['prob_of_leasing']),'rank'] = 2
+        
+        #df[['county_id','bin_id','business_model','max_market_share','rnd','prob_of_leasing','rank']].head(10)
+        
+        gb = df.groupby(['county_id','bin_id'])
+        rb = gb['rank'].rank(ascending = False)
+        df['econ_rank'] = rb    
+        df = df[df.econ_rank == 1]
+        
+        df = df.drop(['mkt_exp','mkt_sum','rnd','rank','econ_rank'],axis = 1)
+        #df[['county_id','bin_id','business_model','max_market_share','rnd','prob_of_leasing','econ_rank']].head(10)
+        
+    if method == 'rank':
+        
+        # just pick the business model with a higher max market share
+        df['mms'] = df['max_market_share']
+        df.loc[(df['business_model'] == 'tpo') & ~(df['leasing_allowed']),'mms'] = 0
+        gb = df.groupby(['county_id','bin_id'])
+       
+        rb = gb['mms'].rank(ascending = False)
+        df['econ_rank'] = rb    
+        df = df[df.econ_rank == 1]
+        df = df.drop(['econ_rank','mms'], axis = 1)
+        
+    return df
     
 def code_profiler(out_dir):
     lines = [ line for line in open(out_dir + '/dg_model.log') if 'took:' in line]
@@ -1838,3 +1896,95 @@ def code_profiler(out_dir):
     profile = pd.DataFrame({'process': process, 'time':time})
     profile = profile.sort('time', ascending = False)
     profile.to_csv(out_dir + '/code_profiler.csv') 
+    
+#def assign_business_model(df, year, start_year, alpha = 2):
+#    ''' Assign a business model (host_owned or tpo) to a customer bin. The assignment is
+#    based on (i) whether that bin's state permits leasing or buying; (ii) a comparison
+#    of the weighted meanmax market share for each model. Based on these means, a logit
+#    function assigns a probability of leasing or buying, which is then randomly simulated.
+#    
+#    This function should be applied before calc_economics and after the first 
+#    year's solve because it uses the market shares calculated in the previous year. 
+#    
+#        IN: df - pd pataframe - the main dataframe 
+#            alpha - float - a scalar in the logit function-- higher alphas make the larger option exponentially more likely
+#        OUT: df - pd pataframe - the main dataframe w/ an assigned business model
+#    '''
+#    if year == start_year:
+#        df['prob_of_leasing'] = 0.68 # Nationally 68% of new installs were leased in 2014
+#    else:
+#        # Calculate the weighted-average max market share by state and business model
+#        leasing_df = df.groupby(['state_abbr','business_model']).apply(wavg('max_market_share_last_year','customers_in_bin')).reset_index()
+#        leasing_df['max_market_share_last_year'] = leasing_df[0]
+#        leasing_df = leasing_df.drop(0,axis = 1)
+#    
+#        # Calculate the probability of leasing based on an logit equation:
+#        # p(Lease) = (max_market_share | leasing)**alpha/ [(max_market_share | leasing)**alpha + (max_market_share | buying)**alpha]
+#        leasing_df['mkt_exp'] = leasing_df['max_market_share_last_year']**alpha
+#        temp_df = leasing_df.groupby(['state_abbr'])['mkt_exp'].sum().reset_index()
+#        temp_df.columns = ['state_abbr', 'sum_mkt_exp']
+#        leasing_df = pd.merge(leasing_df,temp_df,how = 'left', on = ['state_abbr'])
+#        leasing_df['prob_of_leasing'] = leasing_df['mkt_exp'] /leasing_df['sum_mkt_exp']
+#        
+#        # Don't let prob of leasing or buying exceed 95%    
+#        leasing_df = leasing_df[(leasing_df['business_model'] == 'tpo')][['state_abbr','prob_of_leasing']]    
+#        leasing_df['prob_of_leasing'] = np.where(leasing_df['prob_of_leasing'] > 0.95, 0.95,leasing_df['prob_of_leasing'])
+#        leasing_df['prob_of_leasing'] = np.where(leasing_df['prob_of_leasing'] < 0.05, 0.05,leasing_df['prob_of_leasing'])
+#        
+#        # Join leasing_df st. each customer now has a probability of leasing given their state
+#        df = pd.merge(df, leasing_df, how = 'left', on = ['state_abbr'])
+#    
+#    # Random assign business model and metric given probability of leasing                   
+#    tmp = df['leasing_allowed'] * (np.random.rand(df.shape[0]) > df.prob_of_leasing)
+#    df['business_model'] = np.where(tmp,'host_owned','tpo')
+#    df['metric'] = np.where(tmp,'payback_period','monthly_bill_savings')
+#    return df
+    #def calc_lease_availability(df,con, leasing_avail_status_by_state,leasing_availability, year,start_year,market_threshold = 5):
+    #    
+    #        # For the first year start with existing policies
+    #    #    if year == start_year:
+    #    #        sql = """SELECT state as state_abbr, leasing_allowed FROM diffusion_shared.states_allowing_leasing_in_2013;"""
+    #    #        leasing_avail_status_by_state = sqlio.read_frame(sql, con, coerce_float = False)
+    #    #        leasing_avail_status_by_state['leasing_allowed'] = np.where(leasing_avail_status_by_state['leasing_allowed'] == 'Not Allowed',False, True)
+    #    #        df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
+    #    #    else:
+    #    #        df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
+    #    
+    #    # Makes leasing allowed everywhere    
+    #    if leasing_availability == 'Full_Leasing_Everywhere':
+    #        df['leasing_allowed'] = True
+    #        
+    #    # Makes leasing allowed nowhere      
+    #    elif leasing_availability == 'No_Leasing_Anywhere':
+    #        df['leasing_allowed'] = False
+    #    
+    #    # Leasing only in markets defined in first year   
+    #    elif leasing_availability == 'No_New_Markets':                 
+    #        pass
+    #    
+    #    # Leasing allowed in existing markets, or if the cumulative installed capacity exceed the threshold i.e 5 MW 
+    #    elif leasing_availability == 'Market_Threshold':
+    #
+    #        # Does the state's avg max market share exceed the market_threshold i.e 1%?
+    #        market_availability = df.groupby(['state_abbr'])['installed_capacity_last_year'].sum().reset_index()
+    #        market_availability['leasing_market_availability'] = market_availability['installed_capacity_last_year'] > market_threshold
+    #        market_availability = market_availability.drop('installed_capacity_last_year',axis = 1)
+    #        
+    #        # Join with main on state; ignore falses if the state already permits leasing
+    #        df = pd.merge(df, market_availability, how = 'left', on = ['state_abbr'])
+    #        df['leasing_allowed'] = np.where(df['leasing_allowed'], True, df['leasing_market_availability'])
+    #        df = df.drop('leasing_market_availability', axis = 1)
+    #    
+    #    # Update the leasing_avail_status_by_state dataframe
+    #    leasing_avail_status_by_state = df.groupby(['state_abbr'])['leasing_allowed'].all().reset_index()
+    #    leasing_avail_status_by_state['leasing_allowed'] = leasing_avail_status_by_state[0]
+    #    leasing_avail_status_by_state = leasing_avail_status_by_state.drop(0,axis = 1)
+    #            
+    #    return df, leasing_avail_status_by_state
+    
+    #def get_initial_lease_status(df,con):
+    #    sql = """SELECT state as state_abbr, leasing_allowed FROM diffusion_shared.states_allowing_leasing_in_2013;"""
+    #    leasing_avail_status_by_state = sqlio.read_frame(sql, con, coerce_float = False)
+    #    leasing_avail_status_by_state['leasing_allowed'] = np.where(leasing_avail_status_by_state['leasing_allowed'] == 'Not Allowed',False, True)
+    #    
+    #    return leasing_avail_status_by_state

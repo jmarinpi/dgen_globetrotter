@@ -140,7 +140,7 @@ lcoe_contour<-function(df, schema, start_year, end_year, dr = 0.05, n = 30){
 
 excess_gen_figs<-function(df, con, schema){
   
-  df = collect(select(df,excess_generation_factor,payback_period, nem_system_limit_kw,system_size_kw))
+  df = collect(select(df,excess_generation_factor,metric, metric_value,nem_system_limit_kw,system_size_kw))
   
   # Get the scenario options
   table<-dbGetQuery(con,sprintf("SELECT * FROM %s.scenario_options", schema))
@@ -160,12 +160,13 @@ excess_gen_figs<-function(df, con, schema){
     df[df$nem_system_limit_kw >= df$cap,'percent_of_gen_monetized'] <- 1
   }
   
-  excess_gen_pt<-ggplot(df, aes(x = percent_of_gen_monetized, y = payback_period, color = nem_system_limit_kw>0))+
+  excess_gen_pt<-ggplot(df, aes(x = percent_of_gen_monetized, y = metric_value, color = nem_system_limit_kw>0))+
+    facet_wrap(~metric, scales = "free")+
     geom_point()+
     theme_few()+
     scale_x_continuous(name = 'Percent of Generation Value at Retail Rate', labels = percent)+
-    scale_y_continuous(name = 'Payback Period (years)')+
-    ggtitle('Relationship Between NEM Availability and Payback Period')
+    scale_y_continuous(name = 'Economic Attractiveness')+
+    ggtitle('Relationship Between NEM Availability and Economic Attractiveness')
   
   excess_gen_cdf<-ggplot(data = df, aes(x = percent_of_gen_monetized))+
     stat_ecdf()+
@@ -274,31 +275,31 @@ dist_of_height_selected<-function(df,scen_name,start_year){
   return(p)
 }
 
-national_pp_line<-function(df,scen_name){
+national_econ_attractiveness_line<-function(df,scen_name){
   # Median payback period over time and sector
-  g = group_by(df, year, sector)
+  g = group_by(df, year, sector,metric)
   data = collect(summarise(g, 
-                           uql = r_quantile(array_agg(payback_period), 0.95),
-                           median = r_quantile(array_agg(payback_period), 0.5),
-                           lql = r_quantile(array_agg(payback_period), 0.05)
+                           uql = r_quantile(array_agg(metric_value), 0.95),
+                           median = r_quantile(array_agg(metric_value), 0.5),
+                           lql = r_quantile(array_agg(metric_value), 0.05)
   )
   )
   
   p<-ggplot(data, aes(x = year, y = median, ymin = lql, ymax = uql, color = sector, fill = sector), size = 0.75)+
     geom_smooth(stat = 'identity')+
     geom_line()+
-    facet_wrap(~sector)+
+    facet_wrap(~sector+metric,scales = "free")+
     scale_color_manual(values = sector_col) +
     scale_fill_manual(values = sector_fil) +
-    scale_y_continuous(name ='Payback Period (years)', lim = c(0,30))+
+    scale_y_continuous(name ='Median Metric Value')+
     scale_x_continuous(name ='Year')+
     theme_few()+
     theme(strip.text.x = element_text(size=12, angle=0,))+
     guides(color = FALSE, fill=FALSE)+
-    ggtitle('National Payback Period (Median and Inner-Quartile Range)')
+    ggtitle('National Economic Attractiveness (Median and Inner-Quartile Range)')
   data$scenario<-scen_name
 #   write.csv(data,paste0(runpath,'/payback_period_trends.csv'),row.names = FALSE)
-    save(data,file = paste0(runpath,'/payback_period_trends.RData'),compress = T, compression_level = 1)
+    save(data,file = paste0(runpath,'/metric_value_trends.RData'),compress = T, compression_level = 1)
   return(p)
 }
 
@@ -727,4 +728,68 @@ dist_of_azimuth_selected<-function(df, start_year){
     theme_few()+
     theme(strip.text.x = element_text(size=12, angle=0,))+
     ggtitle('Optimal system orientations in 2014')
+}
+
+leasing_mkt_share<-function(df){
+data = collect(df) %>%
+  select(year,sector,business_model,new_capacity) %>%
+  group_by(year,sector,business_model)%>%
+  summarise(annual_capacity_gw = sum(new_capacity)/1e6)
+
+data2 = group_by(data, year, sector) %>%
+  summarise(tot_cap = sum(annual_capacity_gw))
+
+data3 = join(data,data2) %>%
+  mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
+  filter(business_model == 'tpo')
+
+plot<-ggplot(data3, aes(x = year, y = per_mkt_share, color = sector, fill = sector))+
+  geom_area(alpha = 0.5)+
+  facet_wrap(~sector)+
+  theme_few()+
+  scale_color_manual(values = sector_col)+
+  scale_fill_manual(values = sector_fil)+
+  xlab("")+
+  scale_y_continuous("% of New Capacity", label = percent)+
+  ggtitle("Leasing Market Share: Percent of New Capacity Added")
+
+# Table of market share by state and year (aggregating sectors)
+data = collect(df)%>%
+  select(year,state = state_abbr,business_model,new_capacity) %>%
+  group_by(year,state,business_model)%>%
+  summarise(annual_capacity_gw = sum(new_capacity)/1e6)
+
+data2 = group_by(data, year, state) %>%
+  summarise(tot_cap = sum(annual_capacity_gw))
+
+table <- join(data,data2) %>%
+  mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
+  filter(business_model == 'tpo')%>%
+  select(year, state, market_share = per_mkt_share)%>%
+  spread(year,market_share)
+
+l = list("plot" = plot, "table" = table)  
+return(l)
+}
+
+cum_installed_capacity_by_bm<-function(df){
+  
+  data = collect(df) %>%
+    select(year,sector,business_model,new_capacity) %>%
+    group_by(year, sector, business_model) %>%
+    summarise(cap = sum(new_capacity/1e6))
+  
+  data2 = group_by(data, business_model, sector) %>%
+    mutate(cs = cumsum(cap))
+    
+  plot<-ggplot(data2,aes(x = year, y = cs, color = sector, fill = business_model))+
+    geom_area(position = 'stack', color = 'black')+
+    facet_wrap(~sector)+
+    theme_few()+
+    xlab("")+
+    scale_y_continuous("Cumulative Installed Capacity since 2014 (GW)")+
+    ggtitle("Cumulative Installed Capacity Since 2014\n [Data on ownership trends prior to 2014 not available]")
+  
+ return(plot)
+ 
 }

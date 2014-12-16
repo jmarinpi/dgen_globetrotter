@@ -22,3 +22,6 @@ data_share/NREL_max_market_share.csv
 python/.Rhistory
 python/.RData
 excel/~$scenario_inputs_wind.xlsm
+battery_model/battery_model.gpr
+battery_model/z_batt_DR_dis.csv
+battery_model/z_batt_DR_sum.csv

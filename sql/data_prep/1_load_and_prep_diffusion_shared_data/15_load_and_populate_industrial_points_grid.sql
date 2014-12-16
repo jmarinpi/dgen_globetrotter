@@ -168,14 +168,15 @@ CREATE TABLE diffusion_wind_data.pt_grid_us_ind_iiijjjicf_id_lookup (
 	iiijjjicf_id integer);
 
 	--run in parallel for speed (100x100 tiles are necessary for it ti finishin in about 7 mins -- 1000x1000 tiles would take several hours even in parallel)
-	SELECT parsel_2('dav-gis','diffusion_shared.pt_grid_us_ind','gid',
-	'SELECT a.gid, ST_Value(b.rast,a.the_geom_900914) as iiijjjicf_id
+	SELECT parsel_2('dav-gis','mgleason','mgleason','diffusion_shared.pt_grid_us_ind','gid',
+	'SELECT a.gid, ST_Value(b.rast,a.the_geom_4326) as iiijjjicf_id
 	FROM  diffusion_shared.pt_grid_us_ind a
-	INNER JOIN diffusion_wind_data.iiijjjicf_us_100x100 b
-	ON ST_Intersects(b.rast,a.the_geom_900914);',
+	INNER JOIN aws_2014.iiijjjicf_200m_raster_100x100 b
+	ON ST_Intersects(b.rast,a.the_geom_4326);',
 		'diffusion_wind_data.pt_grid_us_ind_iiijjjicf_id_lookup', 'a',16);
 
 	-- join the info back in
+	ALTER TABLE diffusion_shared.pt_grid_us_ind DROP COLUMN if exists iiijjjicf_id;
 	ALTER TABLE diffusion_shared.pt_grid_us_ind ADD COLUMN iiijjjicf_id integer;
 
 	CREATE INDEX pt_grid_us_ind_iiijjjicf_id_lookup_gid_btree ON diffusion_wind_data.pt_grid_us_ind_iiijjjicf_id_lookup using btree(gid);
@@ -191,7 +192,8 @@ CREATE TABLE diffusion_wind_data.pt_grid_us_ind_iiijjjicf_id_lookup (
 	SELECT count(*)
 	FROM diffusion_shared.pt_grid_us_ind
 	where iiijjjicf_id is null;
-
+	-- 143
+	
 	-- isolate the unjoined points
 	-- and fix them by assigning value from their nearest neighbor that is not null
 	DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_ind_iiijjjicf_id_lookup_no_id;
@@ -847,6 +849,64 @@ and a.solar_re_9809_gid is null;
 select count(*)
 FROM diffusion_shared.pt_grid_us_ind 
 where solar_re_9809_gid is null;
+
+
+-- load in the energy plus hdf index associated with each point
+-- the energy plus simulations are based on TMY3 stations
+-- for each nsrdb grid, we know the "best match" TMY3 station, so we can just link
+-- to that off of the nsrdb_gid
+-- there will be gaps due to missing stations, which will fix with a nearest neighbor search
+ALTER TABLE diffusion_shared.pt_grid_us_ind
+add column hdf_load_index integer;
+
+UPDATE diffusion_shared.pt_grid_us_ind a
+SET hdf_load_index = b.hdf_index
+FROM diffusion_shared.solar_re_9809_to_eplus_load_com b
+where a.solar_re_9809_gid = b.solar_re_9809_gid;
+
+-- create index on the hdf_load_index
+CREATE INDEX pt_grid_us_ind_hdf_load_index
+ON diffusion_shared.pt_grid_us_ind
+using btree(hdf_load_index);
+
+-- check for nulls
+SELECT *
+FROM diffusion_shared.pt_grid_us_ind
+where hdf_load_index is null;
+--10106 rows
+
+-- find the value of the nearest neighbor
+DROP TABLE IF EXISTS  diffusion_solar_data.pt_grid_us_ind_missing_hdf_load_lookup;
+CREATE TABLE  diffusion_solar_data.pt_grid_us_ind_missing_hdf_load_lookup AS
+with a AS
+(
+	select gid, the_geom_900914
+	FROM diffusion_shared.pt_grid_us_ind
+	where hdf_load_index is null
+)
+SELECT a.gid, a.the_geom_900914, 
+	(
+		SELECT b.hdf_load_index
+		 FROM diffusion_shared.pt_grid_us_ind b
+		 where b.hdf_load_index is not null
+		 ORDER BY a.the_geom_900914 <#> b.the_geom_900914
+		 LIMIT 1
+	 ) as hdf_load_index
+	FROM a;
+
+
+UPDATE diffusion_shared.pt_grid_us_ind a
+SET hdf_load_index = b.hdf_load_index
+FROM  diffusion_solar_data.pt_grid_us_ind_missing_hdf_load_lookup b
+where a.gid = b.gid
+and a.hdf_load_index is null;
+
+-- check for nulls again
+SELECT *
+FROM diffusion_shared.pt_grid_us_ind
+where hdf_load_index is null;
+
+
 
 
 -- add foreign keys

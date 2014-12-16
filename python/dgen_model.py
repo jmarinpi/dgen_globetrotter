@@ -74,7 +74,6 @@ def main(mode = None, resume_year = None):
     logger = datfunc.init_log(os.path.join(out_dir,'dg_model.log'))
     logger.info('Initiating model (%s)' %time.ctime())
 
-
     try:       
         # if parallelization is off, reduce npar to 1
         if not cfg.parallelize:
@@ -120,9 +119,10 @@ def main(mode = None, resume_year = None):
             else:
                 logger.warning("Warning: Skipping Import of Input Scenario Worksheet. This should only be done in resume mode.")
             
-            
+
             # 6. Read in scenario option variables
             scenario_opts = datfunc.get_scenario_options(cur, schema) 
+                        
             logger.info('Scenario Name: %s' % scenario_opts['scenario_name'])
             t0 = time.time()
             exclusions = datfunc.get_exclusions(cur, cfg.technology) # get exclusions
@@ -147,9 +147,9 @@ def main(mode = None, resume_year = None):
             t0 = time.time()
             
             sectors = datfunc.get_sectors(cur, schema)
-            deprec_schedule = datfunc.get_depreciation_schedule(con, schema, type = 'standard').values
-            financial_parameters = datfunc.get_financial_parameters(con, schema, res_model = 'Host Owned', com_model = 'Host Owned', ind_model = 'Host Owned')
-            max_market_share = datfunc.get_max_market_share(con, schema, sectors.values(), scenario_opts, residential_type = 'retrofit', commercial_type = 'retrofit', industrial_type = 'retrofit')
+            deprec_schedule = datfunc.get_depreciation_schedule(con, schema, type = 'macrs').values
+            financial_parameters = datfunc.get_financial_parameters(con, schema)
+            max_market_share = datfunc.get_max_market_share(con, schema)
             market_projections = datfunc.get_market_projections(con, schema)
             rate_escalations = datfunc.get_rate_escalations(con, schema)
 
@@ -158,7 +158,7 @@ def main(mode = None, resume_year = None):
             # 7. Combine All of the Temporally Varying Data in a new Table in Postgres
             if cfg.init_model:
                 t0 = time.time()
-                datfunc.combine_temporal_data(cur, con, cfg.technology, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), datfunc.pylist_2_pglist(sectors.values()), cfg.preprocess, logger)
+                datfunc.combine_temporal_data(cur, con, cfg.technology, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), cfg.preprocess, logger)
                 logger.info('datfunc.combine_temporal_data took: %0.1fs' %(time.time() - t0))
             # 8. Set up the Main Data Frame for each sector
             outputs = pd.DataFrame()
@@ -188,36 +188,52 @@ def main(mode = None, resume_year = None):
                 logger.info('datfunc.get_dsire_incentives took: %0.1fs' %(time.time() - t0))                  
                 # Pull data from the Main Table to a Data Frame for each year
                 for year in model_years:
-                    t_loop = time.time()
-                    logger.info('Working on %s for %s sector' %(year, sector_abbr))
-                    
-                    t0 = time.time()                    
+                    logger.info('Working on %s for %s sector' %(year, sector_abbr))               
                     df = datfunc.get_main_dataframe(con, main_table, year)
-                    logger.info('datfunc.get_main_dataframe for %s took: %0.1fs' %(year, time.time() - t0))
+
+                    # 9. Calculate economics 
+                    ''' Calculates the economics of DER adoption through cash-flow analysis. 
+                    This involves staging necessary calculations including: determining business model, 
+                    determining incentive value and eligibility, defining market in the previous year. 
+                    '''                        
                     
-                    # 9. Calculate economics including incentives
-                    if year == cfg.start_year:
-                        market_last_year = 0 #market_last_year is actually initialized in calc_economics
+                    # Market characteristics from previous year
+                    if year == cfg.start_year: 
+                        # get the initial market share per bin by county
+                        initial_market_shares = datfunc.get_initial_market_shares(cur, con, sector_abbr, sector, schema)
+                        df = pd.merge(df, initial_market_shares, how = 'left', on = ['county_id','bin_id'])
+                        df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']
                         
-                    t_calc_econ = time.time()    
-                    df = finfunc.calc_economics(df, schema, sector, sector_abbr, market_projections, market_last_year, financial_parameters, cfg, scenario_opts, max_market_share, cur, con, year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation)
-                    logger.info('finfunc.calc_economics for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t_calc_econ))
+                        ## get the initial lease availability by state
+                        #leasing_avail_status_by_state = datfunc.get_initial_lease_status(df,con)
+                        #df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
+                    else:    
+                        df = pd.merge(df,market_last_year, how = 'left', on = ['county_id','bin_id'])
+                        #df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
+                    
+                    # Determine whether leasing is permitted in given year
+                    lease_availability = datfunc.get_lease_availability(con, schema)
+                    df = pd.merge(df, lease_availability, on = ['state_abbr','year'])
+                                        
+                    # Calculate economics of adoption given system cofiguration and business model
+                    df = finfunc.calc_economics(df, schema, sector, sector_abbr, 
+                                                                               market_projections, financial_parameters, 
+                                                                               cfg, scenario_opts, max_market_share, cur, con, year, 
+                                                                               dsire_incentives, deprec_schedule, logger, rate_escalations, 
+                                                                               ann_system_degradation)
                     
                     # 10. Calulate diffusion
                     ''' Calculates the market share (ms) added in the solve year. Market share must be less
                     than max market share (mms) except initial ms is greater than the calculated mms.
                     For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
-                    decrease if economics deteroriate.
+                    decrease if economics deterioriate.
                     '''             
-                    t_calc_diffusion = time.time() 
                     df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
-                    logger.info('The entire diffunc.calc_diffusion for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t_calc_diffusion))
                     
                     # 11. Save outputs from this year and update parameters for next solve       
-                    t0 = time.time()                 
-                    datfunc.write_outputs(con, cur, df, sector_abbr, schema)
-                    logger.info('datfunc.write_outputs for %s took: %0.1fs' % (year, time.time() - t0))                        
-                    logger.info('Doing the entire %s model year for %s sector took: %0.1fs' %(year, sector, time.time() - t_loop))   
+                    t0 = time.time()                    
+                    datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
+
             ## 12. Outputs & Visualization
             # set output subfolder
             if mode == 'ReEDS':

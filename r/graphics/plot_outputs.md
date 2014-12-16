@@ -23,16 +23,26 @@ national_installed_capacity_by_system_size_bar(df,tech)
 diffusion_all_map(df)
 diffusion_sectors_map(df)
 ```
-
 # Economics
 ```{r Economics}
-national_pp_line(df,scen_name)
-print_table(mean_value_by_state_table(df,'payback_period'), caption = "Mean Payback Period (years")
+national_econ_attractiveness_line(df,scen_name)
+print_table(mean_value_by_state_table(filter(df, metric == 'payback_period'),'metric_value'), caption = "Mean Payback Period")
+print_table(mean_value_by_state_table(filter(df, metric == 'percent_monthly_bill_savings'),'metric_value'), caption = "Mean Monthly Bill Savings (%)")
 lcoe_contour(df, schema, start_year, end_year, dr = 0.05, n = 30)
 
 lcoe_boxplot(df)
 lcoe_cdf(df, start_year, end_year)
 print_table(mean_value_by_state_table(df,'lcoe'), caption = "Mean LCOE by State and Year")
+```
+
+# Buy vs Lease
+```{r Business_Model}
+
+out<-leasing_mkt_share(df)
+out$plot
+print_table(out$table, caption = "Annual Lease Market Share: Fraction of New Systems That Were Leased")
+cum_installed_capacity_by_bm(df)
+
 ```
 # System Characteristics
 ```{r System_Characteristics}

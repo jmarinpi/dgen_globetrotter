@@ -81,3 +81,22 @@ where ST_Isvalid(the_geom_900916) = false;
 UPDATE diffusion_shared.county_geom
 SET the_geom_96703 = ST_Buffer(the_geom_96703,0)
 where ST_Isvalid(the_geom_96703) = false;
+
+
+-- add column that corresponds to recs data "reportable_domain"
+ALTER TABLE diffusion_shared.county_geom
+ADD COLUMN recs_2009_reportable_domain integer;
+
+UPDATE diffusion_shared.county_geom a
+SET recs_2009_reportable_domain = b.reportable_domain
+FROM diffusion_shared.eia_reportable_domain_to_state_recs_2009 b
+where a.state = b.state_name;
+
+-- add an index
+CREATE INDEX county_geom_recs_2009_reportable_domain_btree 
+ON diffusion_shared.county_geom 
+using btree(recs_2009_reportable_domain);
+
+SELECT *
+FROM diffusion_shared.county_geom
+where recs_2009_reportable_domain is null;
