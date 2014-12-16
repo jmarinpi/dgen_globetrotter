@@ -40,8 +40,8 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     df = pd.merge(df,financial_parameters, how = 'left', on = ['sector','business_model'])
     
     # get customer expected rate escalations
-    if mode == 'ReEDS':
-        # if in ReEDS mode, use the electricity rate multipliers from ReEDS
+    # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
+    if mode == 'ReEDS' and max(df['ReEDS_elec_price_mult'])>0:
         temp = np.array(df['ReEDS_elec_price_mult'])
         rate_growth_mult = temp
         for n in range(1,30):
