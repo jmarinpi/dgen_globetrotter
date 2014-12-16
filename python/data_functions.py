@@ -1514,6 +1514,7 @@ def get_max_market_share(con, schema):
         OUT: max_market_share  - pd dataframe - dataframe to join on main df to determine max share 
                                                 keys are sector & payback period 
     '''
+
     sql = """SELECT * FROM %s.max_market_curves_to_model;""" %schema
     max_market_share = sqlio.read_frame(sql, con)
     #    inputs = locals().copy()       
@@ -1550,7 +1551,6 @@ def get_max_market_share(con, schema):
     #        interpolated_mm['sector'] = sector.lower()
     #        # append to the main data frame
     #        max_market_share = max_market_share.append(interpolated_mm, ignore_index = True)
-        ##            FROM %s.user_defined_max_market_share
         ##            WHERE lower(sector) = '%s';""" % (schema, sector.lower())
         ##            mm = sqlio.read_frame(sql, con)
         ##        else:

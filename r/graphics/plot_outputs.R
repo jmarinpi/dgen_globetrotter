@@ -9,7 +9,7 @@ library(ggthemes)
 library(reshape2)
 library(xtable)
 library(RPostgreSQL)
-library(tidyr)
+# library(tidyr)
 library (dplyr,quietly = T)
 
 # use for testing/debugging only:

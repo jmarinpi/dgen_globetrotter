@@ -53,7 +53,8 @@ for hf_file in hf_files:
              (
                  hdf_index integer,
                  crb_model text,
-                 normalized_max_demand_kw_per_kw numeric
+                 normalized_max_demand_kw_per_kw numeric,
+                 annual_sum_Kwh numeric
              );""" % sql_params
     cur.execute(sql)
     con.commit()
@@ -83,6 +84,7 @@ for hf_file in hf_files:
         df['hdf_index'] = hdf_index
         df['crb_model'] = bldg_type
         df['normalized_max_demand_kw_per_kw'] = normalized_max_hours
+        df['annual_sum_kwh'] = sum_year.data[unmasked]
         # dump the data to the stringio file
         df.to_csv(f, index = False, header = False, mode = 'a')
     # close the hdf
