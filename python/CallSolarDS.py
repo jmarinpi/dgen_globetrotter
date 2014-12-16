@@ -1,104 +1,50 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jun 16 09:27:45 2014
+Created on Fri Nov 07 11:26:31 2014
 
-@author: bsigrin
+@author: wcole
 """
-
-import numpy as np
-import pandas as pd
 import sys
-import gdxcc
+import gdxpds
+import pandas as pd
+import dgen_model
 import os
-import dg_wind_model
-reload(dg_wind_model)
 
-#print 'length of arguments: %s' %len(sys.argv)
-#script_name = sys.argv[0]
-#year = sys.argv[1]
-#reeds_path = sys.argv[2]
-#gams_path = sys.argv[3]
+def main(year, reeds_path, gams_path):
 
-
-def main():
-
-#marg_pv_curtail = pd.read_csv('marg_pv_curtail_%s.csv' % year)
-#reeds_elec_price = pd.read_csv('elec_price_%s.csv' % year)
-
-
-
-#        
-#    
-#    ''' Run full data prep and model for 2014
-#    return: -> installed capacity grouped by n
-#    '''
-#elif year > 2014:
-#    
-#    
-#    ''' Run for one year only
-#    return: -> installed capacity grouped by n
-    os.chdir('SolarDS/python')
-    df = dg_wind_model.main(mode = 'ReEDS', resume_year = 2014)
-    df = df[(df['year'] == 2014)]
-    installed_capacity = 0.001* df.groupby('pca_reg')['installed_capacity'].sum() #output currently in kW
-    installed_capacity = installed_capacity.to_dict()
-    make_1d_gdx(installed_capacity, name = 'installed_capacity', savepath = "installed_capacity.gdx")
-#if year == 2014:
-
-def make_1d_gdx(symbol, name = None, savepath = None, sysDir = 'C:/GAMS/win64/24.1') :   
+    # Path to the gdx files that hold the SolarDS inputs
+    gdxfile_in = reeds_path + "/gdxfiles/SolarDS_Input_%s.gdx" % year
     
-    # savepath should be passed as full file path i.e. "/ReEDS/installed_capacity.gdx'
-    if savepath is None:
-        gdxFileOut = 'SolarDSOutput.gdx'
-    else:
-        gdxFileOut = savepath
-    if name is None:
-        name = 'Unknown_Symbol'
-
-
-        
-    value = gdxcc.doubleArray(5)
-    dim = 1
-
-    # prepare gdx file
-    gdxHandleOut = gdxcc.new_gdxHandle_tp()
-    assert gdxcc.gdxCreateD(gdxHandleOut, sysDir, gdxcc.GMS_SSSIZE)[0]
-    assert gdxcc.gdxOpenWrite(gdxHandleOut, gdxFileOut, "")[0]
+    # Pull the SolarDS inputs from ReEDS
+    ReEDS_df = gdxpds.to_dataframes(gdxfile_in)
     
-    assert gdxcc.gdxDataWriteStrStart(gdxHandleOut, name, "", dim, gdxcc.GMS_DT_PAR, 0)
-
-    for dim in symbol :
-
-            keys = ['%s' % (dim)]
-            value[gdxcc.GMS_VAL_LEVEL] = [symbol[dim], 0.0, 0.0, 0.0, 0.0][gdxcc.GMS_VAL_LEVEL]
-            gdxcc.gdxDataWriteStr(gdxHandleOut, keys, value)                                        
-
-    assert not gdxcc.gdxClose(gdxHandleOut)
-    assert gdxcc.gdxFree(gdxHandleOut)
-    print 'GDX Write: %s successful' %gdxFileOut
-
-def make_2d_gdx(symbol, name, sysDir = 'C:/GAMS/win64/24.1') :   
+    # Change working directory to where SolarDS is
+    os.chdir('../SolarDS/python')
     
-    gdxFileOut = name + '.gdx'        
-    value = gdxcc.doubleArray(5)
-    dim = 2
-
-    # prepare gdx file
-    gdxHandleOut = gdxcc.new_gdxHandle_tp()
-    assert gdxcc.gdxCreateD(gdxHandleOut, sysDir, gdxcc.GMS_SSSIZE)[0]
-    assert gdxcc.gdxOpenWrite(gdxHandleOut, gdxFileOut, "")[0]
+    # Run SolarDS
+    df = dgen_model.main(mode = 'ReEDS', resume_year = year, ReEDS_inputs = ReEDS_df)
+    df = df[(df['year'] == year)]
+    df.to_csv("temp.csv")
+    SolarDSPVcapacity = 0.001* df.groupby('pca_reg')['installed_capacity'].sum() # Convert output from kW to MW and sum to the PCA level   
+    SolarDSPVcapacity = SolarDSPVcapacity.reset_index()    
     
-    assert gdxcc.gdxDataWriteStrStart(gdxHandleOut, name, "", dim, gdxcc.GMS_DT_PAR, 0)
-
-    for p in pca :
-        for t in ts:
-            keys = ['%s' % (p), '%s' % (t)]
-            value[gdxcc.GMS_VAL_LEVEL] = [d[p][t], 0.0, 0.0, 0.0, 0.0][gdxcc.GMS_VAL_LEVEL]
-            gdxcc.gdxDataWriteStr(gdxHandleOut, keys, value)                                        
-
-    assert not gdxcc.gdxClose(gdxHandleOut)
-    assert gdxcc.gdxFree(gdxHandleOut)
-    print 'GDX Write: %s successful' %gdxFileOut
+    # The data column has to be named "value" in order for gdxpds to work properly
+    SolarDSPVcapacity = SolarDSPVcapacity.rename(columns = {'installed_capacity':'value'})
+    data = {'SolarDSPVcapacity': SolarDSPVcapacity}
     
+    gdxfile_out = reeds_path + "/gdxfiles/SolarDS_Output_%s.gdx" % year
+    
+    gdx = gdxpds.to_gdx(data, gdxfile_out)
+
 if __name__ == '__main__':
-    main()
+    # Solve year most recenlty completed in ReEDS
+    year = sys.argv[1]
+    year = int(year)
+    
+    # Path to current ReEDS run
+    reeds_path = sys.argv[2]
+    #reeds_path = "C:/ReEDS/OtherReEDSProject/inout"
+    
+    # Path to GAMS
+    gams_path = sys.argv[3]    
+    main(year, reeds_path, gams_path)
