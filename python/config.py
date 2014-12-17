@@ -6,16 +6,16 @@ Created on Wed Mar 26 13:01:56 2014
 """
 
 import os
+import json
 
 #==============================================================================
 # these are all variables that we can change, but don't want to expose to non-expert users
 #==============================================================================
 
-pg_params = {'host'     : 'gispgdb',
-             'dbname'   : 'diffusion_clone',
-             'user'     : 'mgleason',
-             'password' : 'mgleason'
-                }
+# load pg params from pg_params.json
+pg_params_json = file('./pg_params.json','r')
+pg_params = json.load(pg_params_json)
+pg_params_json.close()
 
 pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s' % pg_params
 
