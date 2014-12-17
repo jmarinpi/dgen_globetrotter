@@ -12,7 +12,7 @@ import os
 #==============================================================================
 
 pg_params = {'host'     : 'gispgdb',
-             'dbname'   : 'dav-gis',
+             'dbname'   : 'diffusion_clone',
              'user'     : 'mgleason',
              'password' : 'mgleason'
                 }

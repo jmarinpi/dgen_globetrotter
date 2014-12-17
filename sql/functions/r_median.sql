@@ -8,7 +8,7 @@ $BODY$
 $BODY$
   LANGUAGE plr VOLATILE
   COST 100;
-ALTER FUNCTION public.r_quantile(numeric[], numeric)
+ALTER FUNCTION public.r_median(numeric[])
   OWNER TO "server-superusers";
 
 --   select r_median(array[1,2,3,3,3,5])

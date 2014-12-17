@@ -10,7 +10,8 @@ RESET ROLE;
 
 
 SET ROLE 'server-superusers';
-DROP FUNCTION if exists diffusion_wind.scoe(numeric, numeric, numeric, numeric, numeric, numeric, double precision, numeric, text, numeric, numeric);
+DROP FUNCTION diffusion_wind.scoe(numeric, numeric, numeric, numeric, numeric, numeric, double precision, numeric, text, numeric, numeric);
+
 CREATE OR REPLACE FUNCTION diffusion_wind.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, nem_system_limit_kw double precision, excess_generation_factor numeric, nem_availability text, oversize_factor numeric DEFAULT 1.15, undersize_factor numeric DEFAULT 0.5)
   RETURNS diffusion_wind.scoe_return AS
 $BODY$
@@ -57,8 +58,9 @@ $BODY$
     elif cap == 1500 and naep * cap < ann_elec_cons * percent_of_gen_monetized:
         # This indicates we want a project larger than 1500 kW. Return -inf scoe
         # and the optimal continuous number of turbines
-        scoe = -float('inf')
+        scoe = -1000
         nturb  = (ann_elec_cons * percent_of_gen_monetized) / (naep * cap)
+        nturb = min(4, nturb) #Don't allow projects larger than 6 MW
     else:
         scoe = (ic + 30 * fom + 30 * naep * vom) / (30 * naep) # $/kWh
         # add in a penalty for oversizing that scales with the degree of oversizing
