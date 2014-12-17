@@ -26,8 +26,8 @@ tech = commandArgs(T)[3]
 schema = commandArgs(T)[4]
 
 # two different connetions to postgres (1 used by RPostgreSQL and the other by dplyr)
-con<-make_con(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
-src = src_postgres(host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin')
+con<-make_con(driver = "PostgreSQL", host = 'gispgdb', dbname="diffusion_clone", user = 'bsigrin', password = 'bsigrin')
+src = src_postgres(host = 'gispgdb', dbname="diffusion_clone", user = 'bsigrin', password = 'bsigrin')
 
 # lazy load the output table from postgres
 if (tech == 'wind'){

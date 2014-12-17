@@ -3,7 +3,7 @@ sector_fil <- c(residential = "#4daf4a", commercial = "#377eb8", industrial = "#
 turb_size_fil <- c('Small: < 50 kW' = "#a1dab4", 'Mid: 51 - 500 kW' = "#41b6c4", 'Large: 501 - 3,000 kW' = "#253494") 
 # ======================= DATA FUNCTIONS =================================================
 
-make_con<-function(driver = "PostgreSQL", host = 'gispgdb', dbname="dav-gis", user = 'bsigrin', password = 'bsigrin'){
+make_con<-function(driver = "PostgreSQL", host = 'gispgdb', dbname="diffusion_clone", user = 'bsigrin', password = 'bsigrin'){
   # Make connection to dav-gis database
   dbConnect(dbDriver(driver), host = host, dbname = dbname, user = user, password = password)  
 }
