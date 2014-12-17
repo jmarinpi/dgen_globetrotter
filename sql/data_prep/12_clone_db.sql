@@ -35,10 +35,6 @@ CREAte extension plpythonu;
 -- ssh to gispgdb, then:
 -- pg_dump -h localhost -U mgleason -O -n diffusion_shared -n geo_incentives -n diffusion_wind -n diffusion_wind_config -n diffusion_solar -n diffusion_solar_config dav-gis | psql -h localhost -U mgleason diffusion_clone
 
--- create multiple copies:
--- CREATE DATABASE diffusion_clone_2 WITH TEMPLATE diffusion_clone;
--- pg_dump -h localhost -U mgleason -O diffusion_clone | psql -h localhost -U mgleason diffusion_clone_2 
-
 -- set ownership in all schemas, tables, views, and sequences
 ALTER SCHEMA diffusion_shared owner to "diffusion-writers";
 ALTER SCHEMA diffusion_solar owner to "diffusion-writers";
@@ -71,3 +67,9 @@ where sequence_schema in ('diffusion_shared','diffusion_solar','diffusion_solar_
 -- r_median.sql
 -- r_bin_equal_interval.sql
 -- r_sample.sql
+
+
+
+-------------------
+-- create multiple copies:
+-- CREATE DATABASE diffusion_clone_2 WITH TEMPLATE diffusion_clone;
