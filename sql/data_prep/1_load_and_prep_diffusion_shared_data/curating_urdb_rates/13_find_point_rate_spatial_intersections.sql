@@ -32,10 +32,26 @@ where the_geom_4326 is null;
 ALTER TABLE diffusion_shared.curated_urdb_rates_com
 ADD PRIMARY KEY (urdb_rate_id, geom_gid);
 
+-- create index on utility_type
+CREATE INDEX curated_urdb_rates_com_utility_type_btree
+ON  diffusion_shared.curated_urdb_rates_com
+using btree(utility_type);
+
 -- create index on the geometry
 CREATE INDEX curated_urdb_rates_com_the_geom_4326_gist
 ON  diffusion_shared.curated_urdb_rates_com
 using gist(the_geom_4326);
+
+-- add a geom for 900914
+ALTER TABLE diffusion_shared.curated_urdb_rates_com
+ADD column the_geom_900914 geometry;
+
+UPDATE diffusion_shared.curated_urdb_rates_com
+SET the_geom_900914 = ST_Transform(the_geom_4326, 900914);
+
+CREATE INDEX curated_urdb_rates_com_the_geom_900914_gist
+ON  diffusion_shared.curated_urdb_rates_com
+using gist(the_geom_900914);
 
 -- intersect against commercial point grid to get a lookup table
 DROP TABLE IF EXISTS diffusion_shared.curated_urdb_rates_lookup_pts_com;
@@ -196,6 +212,24 @@ ADD PRIMARY KEY (urdb_rate_id, geom_gid);
 CREATE INDEX curated_urdb_rates_res_the_geom_4326_gist
 ON  diffusion_shared.curated_urdb_rates_res
 using gist(the_geom_4326);
+
+-- create index on utility_type
+CREATE INDEX curated_urdb_rates_res_utility_type_btree
+ON  diffusion_shared.curated_urdb_rates_res
+using btree(utility_type);
+
+
+-- add a geom for 900914
+ALTER TABLE diffusion_shared.curated_urdb_rates_res
+ADD column the_geom_900914 geometry;
+
+UPDATE diffusion_shared.curated_urdb_rates_res
+SET the_geom_900914 = ST_Transform(the_geom_4326, 900914);
+
+CREATE INDEX curated_urdb_rates_res_the_geom_900914_gist
+ON  diffusion_shared.curated_urdb_rates_res
+using gist(the_geom_900914);
+
 
 -- intersect against commercial point grid to get a lookup table
 DROP TABLE IF EXISTS diffusion_shared.curated_urdb_rates_lookup_pts_res;
