@@ -1,5 +1,5 @@
 {	
-	"dbname": "diffusion_clone", 
+	"dbname": "dav-gis", 
 	"host": "gispgdb", 
 	"password": "bsigrin", 
 	"user": "bsigrin"

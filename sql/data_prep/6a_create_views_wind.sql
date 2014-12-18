@@ -54,7 +54,7 @@ where keep = True;
 -- ind
 DROP VIEW IF EXISTS diffusion_wind.point_microdata_ind_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_ind_us_joined AS
-SELECT a.micro_id, a.county_id, a.utility_type, 
+SELECT a.micro_id, a.county_id, a.utility_type, 166::integer as hdf_load_index, -- ** NOTE: this is temporary for testing only
 	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
 	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id,
         c.ind_cents_per_kwh * (1-n.ind_demand_charge_rate) as elec_rate_cents_per_kwh, 
@@ -96,7 +96,7 @@ CROSS JOIN diffusion_wind.scenario_options n;
 -- res
 DROP VIEW IF EXISTS diffusion_wind.point_microdata_res_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_res_us_joined AS
-SELECT a.micro_id, a.county_id, a.utility_type, 
+SELECT a.micro_id, a.county_id, a.utility_type, 166::integer as hdf_load_index, -- ** NOTE: this is temporary for testing only
 	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
 	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id,
 	c.res_cents_per_kwh as elec_rate_cents_per_kwh, 
@@ -138,7 +138,7 @@ AND a.utility_type = m.utility_type;
 -- comm
 DROP VIEW IF EXISTS diffusion_wind.point_microdata_com_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_com_us_joined AS
-SELECT a.micro_id, a.county_id, a.utility_type, 
+SELECT a.micro_id, a.county_id, a.utility_type, 166::integer as hdf_load_index, -- ** NOTE: this is temporary for testing only
 	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
 	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id,
 	c.comm_cents_per_kwh * (1-n.com_demand_charge_rate) as elec_rate_cents_per_kwh, 

@@ -434,14 +434,14 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
                     a.market_value,
                     
-                    b.state_abbr, b.census_division_abbr, b.utility_type, 
+                    b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.max_height, b.elec_rate_cents_per_kwh, 
                     b.carbon_price_cents_per_kwh, 
                     b.fixed_om_dollars_per_kw_per_yr, 
                     b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
                     b.ann_cons_kwh, 
                     b.customers_in_bin, b.initial_customers_in_bin, 
-                    b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
+                    b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, b.max_demand_kw,
                     b.nem_system_limit_kw, b.excess_generation_factor, 
                     b.naep, b.aep, b.system_size_kw,
                     b.nturb, b.turbine_size_kw, 
@@ -508,7 +508,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
                     a.market_value,
                     
-                    b.state_abbr, b.census_division_abbr, b.utility_type, 
+                    b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.elec_rate_cents_per_kwh, 
                     b.carbon_price_cents_per_kwh, 
                     b.fixed_om_dollars_per_kw_per_yr, 
@@ -516,7 +516,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     b.inverter_cost_dollars_per_kw, 
                     b.ann_cons_kwh, 
                     b.customers_in_bin, b.initial_customers_in_bin, 
-                    b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
+                    b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, b.max_demand_kw,
                     b.nem_system_limit_kw, b.excess_generation_factor, 
                     b.naep, b.aep, b.system_size_kw, 
                     b.npanels, 
@@ -681,20 +681,23 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
     inputs['seed_str'] = str(seed).replace('.','p')
     if sector_abbr == 'res':
         inputs['load_table'] = 'diffusion_shared.eia_microdata_recs_2009'
-        inputs['load_columns'] = 'b.doeid as load_id, b.nweight as weight, b.kwh as ann_cons_kwh'
+        inputs['load_columns'] = 'b.doeid as load_id, b.nweight as weight, b.kwh as ann_cons_kwh, b.crb_model'
         inputs['load_pkey'] = 'doeid'
         inputs['load_weight_column'] = 'nweight'
         inputs['load_region'] = 'reportable_domain'
         # limit to single-family (attached or detached), owner-occupied homes
         inputs['load_where'] = ' AND b.typehuq in (1,2) AND b.kownrent = 1'
+        # lookup table for finding the normalized max demand
+        inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_res'
     else:
         inputs['load_table'] = 'diffusion_shared.eia_microdata_cbecs_2003'
-        inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh'
+        inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh, b.crb_model'
         inputs['load_pkey'] = 'pubid8'
         inputs['load_weight_column'] = 'adjwt8'
         inputs['load_region'] = 'census_division_abbr'
         # limit to non-vacant buildings
         inputs['load_where'] = " AND b.pba8 <> 1"
+        inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_com'
     return inputs
 
 
@@ -769,7 +772,9 @@ def sample_customers_and_load(inputs_dict, county_chunks, exclusion_type, resour
     
     # add an index on county id and row_number
     sql = """CREATE INDEX county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s_join_fields_btree 
-            ON %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s USING BTREE(county_id, bin_id);""" % inputs_dict
+            ON %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s USING BTREE(county_id, bin_id);
+            CREATE INDEX county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s_crb_model_btree 
+            ON %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s USING BTREE(crb_model);""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
    
     #==============================================================================
@@ -782,7 +787,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, exclusion_type, resour
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s;
             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
             WITH binned as(
-            SELECT a.*, b.ann_cons_kwh, b.weight,
+            SELECT a.*, b.crb_model, b.ann_cons_kwh, b.weight,
             	a.county_total_customers_2011 * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
             	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
             FROM %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
@@ -798,28 +803,46 @@ def sample_customers_and_load(inputs_dict, county_chunks, exclusion_type, resour
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
 
+    # **** ADD INDICES ****
+    sql = """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_join_fields_btree 
+            ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s USING BTREE(hdf_load_index, crb_model);""" % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)
+    
+    #==============================================================================
+    #     find the max demand for each bin based on the applicable energy plus building model
+    #==============================================================================
+    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s;
+            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s AS
+            SELECT a.*, b.normalized_max_demand_kw_per_kw * a.load_kwh_per_customer_in_bin AS max_demand_kw
+            FROM %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s a
+            LEFT JOIN %(load_demand_lkup)s b
+            ON a.crb_model = b.crb_model
+            AND a.hdf_load_index = b.hdf_index;""" % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)
+    print time.time()-t0       
+
     if inputs_dict['technology'] == 'wind':
         # query for indices creation    
-        sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_census_division_abbr_btree 
-                  ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
+        sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s_census_division_abbr_btree 
+                  ON %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s 
                   USING BTREE(census_division_abbr);
                   
-                  CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_resource_key_btree 
-                  ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
+                  CREATE INDEX pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s_resource_key_btree 
+                  ON %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s
                   USING BTREE(%(resource_key)s);""" % inputs_dict
         p_run(pg_conn_string, sql, county_chunks, npar)
     
         # add index for exclusions (if they apply)
         if exclusion_type is not None:
-            sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_%(exclusion_type)s_btree 
-                      ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s 
+            sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s_%(exclusion_type)s_btree 
+                      ON %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s
                       USING BTREE(%(exclusion_type)s)
                       WHERE %(exclusion_type)s > 0;""" % inputs_dict
             p_run(pg_conn_string, sql, county_chunks, npar)
     elif inputs_dict['technology'] == 'solar':
         # add an index on county id and row_number
-        sql = """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_join_fields_btree 
-                ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s  USING BTREE(county_id, bin_id);""" % inputs_dict
+        sql = """CREATE INDEX pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s_join_fields_btree 
+                ON %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s  USING BTREE(county_id, bin_id);""" % inputs_dict
         p_run(pg_conn_string, sql, county_chunks, npar)
 
 
@@ -909,7 +932,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s;
             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s AS
                 SELECT a.*, b.pct_shaded, b.tilt, b.azimuth, b.weight as rooftop_weight
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s a
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s a
                 LEFT JOIN %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s b
                 ON a.county_id = b.county_id
                 AND a.bin_id = b.bin_id""" % inputs
@@ -966,6 +989,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   state_abbr character varying(2),
                   census_division_abbr text,
                   utility_type character varying(9),
+                  hdf_load_index integer,
                   pca_reg text,
                   reeds_reg integer,
                   incentive_array_id integer,
@@ -981,6 +1005,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   load_kwh_in_bin double precision,
                   initial_load_kwh_in_bin double precision,
                   load_kwh_per_customer_in_bin numeric,
+                  max_demand_kw numeric,
                   nem_system_limit_kw double precision,
                   excess_generation_factor numeric,
                   naep numeric,
@@ -1008,6 +1033,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.state_abbr, 
                   a.census_division_abbr, 
                   a.utility_type, 
+                  a.hdf_load_index,
                   a.pca_reg, a.reeds_reg,
                   a.incentive_array_id,
                 	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
@@ -1022,6 +1048,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                 	b.load_multiplier * a.load_kwh_in_bin * (1-a.pct_shaded) AS load_kwh_in_bin,
                 	a.load_kwh_in_bin * (1-a.pct_shaded) AS initial_load_kwh_in_bin,
                 	a.load_kwh_per_customer_in_bin,
+                  a.max_demand_kw,
                   a.nem_system_limit_kw,
                   a.excess_generation_factor,
                 	a.naep * b.efficiency_improvement_factor as naep,
@@ -1049,7 +1076,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                 AND b.rate_escalation_source = '%(rate_escalation_source)s'
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
-                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
+                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
                    pca_reg, reeds_reg, incentive_array_id, elec_rate_cents_per_kwh, 
                    carbon_price_cents_per_kwh, 
             
@@ -1060,7 +1087,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
             
                    ann_cons_kwh, 
                    customers_in_bin, initial_customers_in_bin, 
-                   load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
+                   load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, max_demand_kw,
                    nem_system_limit_kw, excess_generation_factor, 
     
                    naep,
@@ -1108,7 +1135,8 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                             '%(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s' % inputs,
                             '%(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s' % inputs,
                             '%(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s' % inputs,
-                            '%(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs]
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s' % inputs]
         
     sql = 'DROP TABLE IF EXISTS %s;'
     for intermediate_table in intermediate_tables:
@@ -1171,7 +1199,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 c.turbine_id as power_curve_id, 
                 c.height as turbine_height_m,
                 c.excess_gen_factor as excess_generation_factor
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s a
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s a
                 LEFT JOIN %(schema)s.wind_resource_annual c
                 ON a.i = c.i
                 AND a.j = c.j
@@ -1207,7 +1235,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
             (
                 SELECT
                  	a.micro_id, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
-                      a.utility_type, 
+                      a.utility_type, a.hdf_load_index,
                       a.pca_reg, a.reeds_reg,
                       a.incentive_array_id,
                       %(exclusions_insert)s
@@ -1240,7 +1268,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 AND b.rate_escalation_source = '%(rate_escalation_source)s'
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
-                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, 
+                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
                    pca_reg, reeds_reg, incentive_array_id, max_height, elec_rate_cents_per_kwh, 
                    carbon_price_cents_per_kwh, 
             
