@@ -6,7 +6,7 @@
 ---------------------------------------------------------------------------
 -- check that the outputs make sense
 
---first check that # of stations and building types is correct
+-- first check that # of stations and building types is correct
 -- there are 936 stations with 3 missing for com and 5 missing for res
 -- there are 3 reference building for res -- expect 3*(936-5) = 2793 rows
 -- there are 16 reference buildings for com -- expect 16*(936-3) = 14928 rows
