@@ -49,6 +49,7 @@ CREATE INDEX pt_ranked_rate_arrays_com_rank_btree
 ON diffusion_shared.pt_ranked_rate_arrays_com
 using btree(rank_array);
 
+
 ------------------------------------------------------------------------------------------------------------
 -- find the distinct ranked rate arrays across all points
 CREATE TABLE diffusion_shared.unique_urdb_rate_rank_arrays_com AS
