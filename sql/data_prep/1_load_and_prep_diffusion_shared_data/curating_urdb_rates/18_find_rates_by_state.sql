@@ -119,3 +119,24 @@ using btree(urdb_demand_min);
 CREATE INDEX urdb_rates_by_state_ind_urdb_demand_max_btree
 ON diffusion_shared.urdb_rates_by_state_ind
 using btree(urdb_demand_max);
+
+-- check how many rates there are in each state
+SELECT state_abbr, count(*)
+FROM diffusion_shared.urdb_rates_by_state_ind
+GROUP BY state_abbr
+order by count;
+-- 8 to 77
+
+SELECT state_abbr, count(*)
+FROM diffusion_shared.urdb_rates_by_state_com
+GROUP BY state_abbr
+order by count;
+-- 8 to 79
+
+SELECT state_abbr, count(*)
+FROM diffusion_shared.urdb_rates_by_state_res
+GROUP BY state_abbr
+order by count;
+-- 4 to 71
+
+-- all 48 states + DC are represented in all cases

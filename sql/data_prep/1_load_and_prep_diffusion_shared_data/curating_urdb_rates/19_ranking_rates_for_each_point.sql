@@ -60,6 +60,7 @@ using btree(rate_id_alias);
 
 select count(*)
 FROM diffusion_shared.pt_ranked_rates_lkup_com;
+-- 217,945,490
 ------------------------------------------------------------------------------
 
 -- INDUSTRIAL
