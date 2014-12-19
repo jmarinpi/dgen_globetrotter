@@ -1,14 +1,14 @@
-﻿-- create simple tables with each urdb_rate_id linked to the appropriate ventyx geom(s)
+﻿-- create simple tables with each rate_id_alias linked to the appropriate ventyx geom(s)
 -- note: may be one-to-main because ventyx geoms are exploded for each company id
 
 -- COMMERCIAL/INDUSTRIAL
--- create a simple table with each urdb_rate_id linked to a ventyx geom
-DROP TABLE IF EXISTS diffusion_shared.curated_urdb_rates_com;
-CREATE TABLE diffusion_shared.curated_urdb_rates_com AS
+-- create a simple table with each rate_id_alias linked to a ventyx geom
+DROP TABLE IF EXISTS diffusion_shared.urdb_rates_geoms_com;
+CREATE TABLE diffusion_shared.urdb_rates_geoms_com AS
 with a as
 (
 	-- collect all of the commercial rates
-	SELECT urdb_rate_id, utility_name as ur_name, sub_territory_name,
+	SELECT rate_id_alias, utility_name as ur_name, sub_territory_name,
 	       demand_min, demand_max, rate_type
 	FROM urdb_rates.combined_singular_verified_rates_lookup
 	where res_com = 'C'
@@ -28,35 +28,38 @@ and b.sub_territory_name = c.sub_territory_name;
 
 -- make sure there are no nulls
 select count(*)
-FROM diffusion_shared.curated_urdb_rates_com
+FROM diffusion_shared.urdb_rates_geoms_com
 where the_geom_4326 is null;
 
--- create primary key on the urdb_rate_id
-ALTER TABLE diffusion_shared.curated_urdb_rates_com
-ADD PRIMARY KEY (urdb_rate_id, geom_gid);
+-- create primary key on the rate_id_alias
+ALTER TABLE diffusion_shared.urdb_rates_geoms_com
+ADD PRIMARY KEY (rate_id_alias, geom_gid);
 
 -- create index on the geometry
-CREATE INDEX curated_urdb_rates_com_the_geom_4326_gist
-ON  diffusion_shared.curated_urdb_rates_com
+CREATE INDEX urdb_rates_geoms_com_the_geom_4326_gist
+ON  diffusion_shared.urdb_rates_geoms_com
 using gist(the_geom_4326);
 
 -- add 900914 geom
-ALTER TABLE diffusion_shared.curated_urdb_rates_com
+ALTER TABLE diffusion_shared.urdb_rates_geoms_com
 ADD column the_geom_900914 geometry;
 
-UPDATE diffusion_shared.curated_urdb_rates_com
+UPDATE diffusion_shared.urdb_rates_geoms_com
 SET the_geom_900914 = ST_Transform(the_geom_4326, 900914);
 
+CREATE INDEX urdb_rates_geoms_com_the_geom_900914_gist
+ON  diffusion_shared.urdb_rates_geoms_com
+using gist(the_geom_900914);
 
 -- RESIDENTIAL
--- create a simple table with each urdb_rate_id linked to a ventyx geom
-DROP TABLE IF EXISTS diffusion_shared.curated_urdb_rates_res;
-CREATE TABLE diffusion_shared.curated_urdb_rates_res AS
+-- create a simple table with each rate_id_alias linked to a ventyx geom
+DROP TABLE IF EXISTS diffusion_shared.urdb_rates_geoms_res;
+CREATE TABLE diffusion_shared.urdb_rates_geoms_res AS
 with a as
 (
 	-- collect all of the residential rates
 	-- collect all of the commercial rates
-	SELECT urdb_rate_id, utility_name as ur_name, sub_territory_name,
+	SELECT rate_id_alias, utility_name as ur_name, sub_territory_name,
 	       demand_min, demand_max, rate_type
 	FROM urdb_rates.combined_singular_verified_rates_lookup
 	where res_com = 'R'
@@ -77,21 +80,25 @@ and b.sub_territory_name = c.sub_territory_name;
 
 -- make sure there are no nulls
 select count(*)
-FROM diffusion_shared.curated_urdb_rates_res
+FROM diffusion_shared.urdb_rates_geoms_res
 where the_geom_4326 is null;
 
--- create primary key on the urdb_rate_id
-ALTER TABLE diffusion_shared.curated_urdb_rates_res
-ADD PRIMARY KEY (urdb_rate_id, geom_gid);
+-- create primary key on the rate_id_alias
+ALTER TABLE diffusion_shared.urdb_rates_geoms_res
+ADD PRIMARY KEY (rate_id_alias, geom_gid);
 
 -- create index on the geometry
-CREATE INDEX curated_urdb_rates_res_the_geom_4326_gist
-ON  diffusion_shared.curated_urdb_rates_res
+CREATE INDEX urdb_rates_geoms_res_the_geom_4326_gist
+ON  diffusion_shared.urdb_rates_geoms_res
 using gist(the_geom_4326);
 
 -- add 900914 geom
-ALTER TABLE diffusion_shared.curated_urdb_rates_res
+ALTER TABLE diffusion_shared.urdb_rates_geoms_res
 ADD column the_geom_900914 geometry;
 
-UPDATE diffusion_shared.curated_urdb_rates_res
+UPDATE diffusion_shared.urdb_rates_geoms_res
 SET the_geom_900914 = ST_Transform(the_geom_4326, 900914);
+
+CREATE INDEX urdb_rates_geoms_res_the_geom_900914_gist
+ON  diffusion_shared.urdb_rates_geoms_res
+using gist(the_geom_900914);
