@@ -7,6 +7,7 @@ WITH a AS
 	SELECT a.county_id, 
 		a.annual_rate_gid, 
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.incentive_array_id,
+		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
 		a.solar_re_9809_gid,
 		count(*)::integer as point_weight
@@ -14,6 +15,7 @@ WITH a AS
 	GROUP BY a.county_id, 
 		a.annual_rate_gid, 
 		a.pca_reg, a.reeds_reg, a.incentive_array_id,
+		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
 		a.solar_re_9809_gid
 )
@@ -53,6 +55,7 @@ WITH a AS
 	SELECT a.county_id, 
 		a.annual_rate_gid, 
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.incentive_array_id,
+		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
 		a.solar_re_9809_gid,
 		count(*)::integer as point_weight
@@ -60,6 +63,7 @@ WITH a AS
 	GROUP BY a.county_id, 
 		a.annual_rate_gid, 
 		a.pca_reg, a.reeds_reg, a.incentive_array_id,
+		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
 		a.solar_re_9809_gid
 )
@@ -100,6 +104,7 @@ WITH a AS
 	SELECT a.county_id, 
 		a.annual_rate_gid, 
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.incentive_array_id,
+		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
 		a.solar_re_9809_gid,
 		count(*)::integer as point_weight
@@ -107,6 +112,7 @@ WITH a AS
 	GROUP BY a.county_id, 
 		a.annual_rate_gid, 
 		a.pca_reg, a.reeds_reg, a.incentive_array_id,
+		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
 		a.solar_re_9809_gid
 )

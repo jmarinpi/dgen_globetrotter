@@ -126,7 +126,7 @@ UPDATE diffusion_shared.pt_grid_us_com a
 set ranked_rate_array_id = b.ranked_rate_array_id
 from diffusion_shared.pt_ranked_rate_array_lkup_com b
 where a.gid = b.pt_gid;
-
+-- ** make sure to update microdata and pt join view to account for ranked_rate_array_id now **
 ------------------------------------------------------------------------------------------------------------
 -- unnest the unique ranked rate arrays into normal table structure
 DROP TABLE IF EXISTS diffusion_shared.ranked_rate_array_lkup_com;
@@ -150,6 +150,7 @@ CREATE INDEX ranked_rate_array_lkup_com_rank_btree
 ON diffusion_shared.ranked_rate_array_lkup_com
 using btree(rank);
 ------------------------------------------------------------------------------------------------------------
+
 
 
 -- do some testing:

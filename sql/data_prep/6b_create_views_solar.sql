@@ -54,8 +54,8 @@ where keep = True;
 -- ind
 DROP VIEW IF EXISTS diffusion_solar.point_microdata_ind_us_joined;
 CREATE OR REPLACE VIEW diffusion_solar.point_microdata_ind_us_joined AS
-SELECT a.micro_id, a.county_id, a.utility_type, 166::integer as hdf_load_index, -- ** NOTE: this is temporary for testing only
-	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id,
+SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
+	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
         c.ind_cents_per_kwh * (1-n.ind_demand_charge_rate) as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
@@ -95,8 +95,8 @@ CROSS JOIN diffusion_solar.scenario_options n;
 -- res
 DROP VIEW IF EXISTS diffusion_solar.point_microdata_res_us_joined;
 CREATE OR REPLACE VIEW diffusion_solar.point_microdata_res_us_joined AS
-SELECT a.micro_id, a.county_id, a.utility_type, 166::integer as hdf_load_index, -- ** NOTE: this is temporary for testing only
-	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id,
+SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
+	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
 	c.res_cents_per_kwh as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
@@ -137,8 +137,8 @@ AND a.utility_type = m.utility_type;
 -- comm
 DROP VIEW IF EXISTS diffusion_solar.point_microdata_com_us_joined;
 CREATE OR REPLACE VIEW diffusion_solar.point_microdata_com_us_joined AS
-SELECT a.micro_id, a.county_id, a.utility_type, 166::integer as hdf_load_index, -- ** NOTE: this is temporary for testing only
-	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id,
+SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
+	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
 	c.comm_cents_per_kwh * (1-n.com_demand_charge_rate) as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
