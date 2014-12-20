@@ -154,16 +154,38 @@ using btree(rank);
 
 
 -- do some testing:
+with a AS
+(
+	SELECT a.county_id, a.bin_id, 
+		a.ranked_rate_array_id,
+		a.max_demand_kw, 
+		a.state_abbr,
+		b.rate_id_alias,
+		c.rank as rate_rank,
+		d.rate_type
+	FROM diffusion_solar.pt_com_best_option_each_year a
+	LEFT JOIN diffusion_shared.urdb_rates_by_state_com b
+	ON a.max_demand_kw <= b.urdb_demand_max
+	and a.max_demand_kw >= b.urdb_demand_min
+	and a.state_abbr = b.state_abbr
+	LEFT JOIN diffusion_shared.ranked_rate_array_lkup_com c
+	ON a.ranked_rate_array_id = c.ranked_rate_array_id
+	and b.rate_id_alias = c.rate_id_alias
+	LEFT JOIN urdb_rates.combined_singular_verified_rates_lookup d
+	on b.rate_id_alias = d.rate_id_alias
+	and d.res_com = 'C'
+	where a.year = 2014
+),
+b as
+(
+	SELECT *, row_number() OVER (partition by county_id, bin_id order by rate_rank asc) as rank
+		-- *** THIS SHOULD BE A RANK WITH A SUBSEQUENT TIE BREAKER BASED ON USER DEFINED RATE TYPE PROBABILITIES
+	FROM a
+)
+SELECT *
+FROM b 
+where rank = 1;
 
-SELECT a.micro_id, a.max_demand_kw, b.rate_id_alias, c.ranked_rate_array_id,
-	d.rate_id_alias
-FROM diffusion_solar.pt_com_best_option_each_year a
-LEFT JOIN diffusion_shared.urdb_rates_by_state_com b
-ON a.max_demand_kw <= b.urdb_demand_max
-and a.max_demand_kw >= b.urdb_demand_min
-and a.state_abbr = b.state_abbr
-LEFT JOIN diffusion_shared.pt_ranked_rate_array_lkup_com c
-ON a.micro_id = c.pt_gid
-INNER JOIN diffusion_shared.ranked_rate_array_lkup_com d
-ON c.ranked_rate_array_id = d.ranked_rate_array_id
-and b.rate_id_alias = d.rate_id_alias;
+select distinct(rate_type)
+FROM urdb_rates.combined_singular_verified_rates_lookup
+order by 1;

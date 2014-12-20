@@ -435,7 +435,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.market_value,
                     
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
-                    b.pca_reg, b.reeds_reg, b.incentive_array_id, b.max_height, b.elec_rate_cents_per_kwh, 
+                    b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id, b.max_height, b.elec_rate_cents_per_kwh, 
                     b.carbon_price_cents_per_kwh, 
                     b.fixed_om_dollars_per_kw_per_yr, 
                     b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
@@ -509,7 +509,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     a.market_value,
                     
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
-                    b.pca_reg, b.reeds_reg, b.incentive_array_id, b.elec_rate_cents_per_kwh, 
+                    b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id, b.elec_rate_cents_per_kwh, 
                     b.carbon_price_cents_per_kwh, 
                     b.fixed_om_dollars_per_kw_per_yr, 
                     b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
@@ -993,6 +993,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   pca_reg text,
                   reeds_reg integer,
                   incentive_array_id integer,
+                  ranked_rate_array_id integer,
                   elec_rate_cents_per_kwh numeric,
                   carbon_price_cents_per_kwh numeric,
                   fixed_om_dollars_per_kw_per_yr numeric,
@@ -1036,6 +1037,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.hdf_load_index,
                   a.pca_reg, a.reeds_reg,
                   a.incentive_array_id,
+                  a.ranked_rate_array_id,
                 	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
                   b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
                 	b.fixed_om_dollars_per_kw_per_yr, 
@@ -1077,7 +1079,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
-                   pca_reg, reeds_reg, incentive_array_id, elec_rate_cents_per_kwh, 
+                   pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, elec_rate_cents_per_kwh, 
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 
@@ -1123,6 +1125,10 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_state_abbr_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
              USING BTREE(state_abbr);   
+             
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_ranked_rate_array_id_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(ranked_rate_array_id);   
             """ % inputs
     cur.execute(sql)
     con.commit()
@@ -1242,6 +1248,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                       a.utility_type, a.hdf_load_index,
                       a.pca_reg, a.reeds_reg,
                       a.incentive_array_id,
+                      a.ranked_rate_array_id,
                       %(exclusions_insert)s
                 	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
                 b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
@@ -1273,7 +1280,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
-                   pca_reg, reeds_reg, incentive_array_id, max_height, elec_rate_cents_per_kwh, 
+                   pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, max_height, elec_rate_cents_per_kwh, 
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 
@@ -1341,7 +1348,11 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
              
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_state_abbr_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
-             USING BTREE(state_abbr);   
+             USING BTREE(state_abbr);  
+
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_ranked_rate_array_id_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(ranked_rate_array_id);              
             """ % inputs
     cur.execute(sql)
     con.commit()

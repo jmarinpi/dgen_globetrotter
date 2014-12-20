@@ -165,6 +165,13 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             t0 = time.time()
             
             sectors = datfunc.get_sectors(cur, schema)
+            ###########
+            # ONLY ALLOW COMMERCIAL SECTOR FOR TESTING RIGHT NOW
+            print '\n\n\n\n'
+            print 'WARNING: THIS BRANCH IS IN DEVELOPMENT AND CAN ONLY BE RUN FOR \nCOMMERCIAL SECTOR'
+            print '\n\n\n\n'
+            sectors = {'com' : 'commercial'}
+            ###########
             deprec_schedule = datfunc.get_depreciation_schedule(con, schema, type = 'macrs').values
             financial_parameters = datfunc.get_financial_parameters(con, schema)
             max_market_share = datfunc.get_max_market_share(con, schema)
@@ -184,7 +191,8 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             if mode != 'ReEDS' or resume_year == 2014:
                 datfunc.clear_outputs(con, cur, schema) # clear results from previous run
             logger.info('datfunc.clear_outputs took: %0.1fs' %(time.time() - t0))
-              
+            
+            
             for sector_abbr, sector in sectors.iteritems():
 
                 # define the rate escalation source and max market curve for the current sector

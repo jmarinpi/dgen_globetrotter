@@ -49,6 +49,9 @@ VACUUM ANALYZE diffusion_wind.point_microdata_res_us;
 
 ----------------------------------------------------------------------------------------------------
 -- commercial
+-- select count(*)
+-- FROM diffusion_wind.point_microdata_com_us;--426113
+
 DROP TABLE IF EXISTS diffusion_wind.point_microdata_com_us CASCADE;
 SET seed to 1;
 CREATE TABLE diffusion_wind.point_microdata_com_us AS
