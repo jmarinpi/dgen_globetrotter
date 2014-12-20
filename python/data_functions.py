@@ -1118,7 +1118,11 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
              
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_incentive_array_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
-             USING BTREE(incentive_array_id);             
+             USING BTREE(incentive_array_id);    
+             
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_state_abbr_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(state_abbr);   
             """ % inputs
     cur.execute(sql)
     con.commit()
@@ -1334,6 +1338,10 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_incentive_array_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
              USING BTREE(incentive_array_id);             
+             
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_state_abbr_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(state_abbr);   
             """ % inputs
     cur.execute(sql)
     con.commit()
