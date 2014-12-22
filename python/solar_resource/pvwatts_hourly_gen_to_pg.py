@@ -127,18 +127,6 @@ for hdf in hdfs:
         sql = 'INSERT INTO %s VALUES %s;' % (out_table, tuple(df.ix[i].values))
         cur.execute(sql)
         con.commit()
-
-#    f = file(os.path.join(hdf_path, 'temp.csv'),'w+')
-#    # write the data to the stringI
-#    df.to_csv(f, index = False, header = False)
-#    # seek back to the beginning of the stringIO file
-#    f.seek(0)
-#    # copy the data from the stringio file to the postgres table
-#    cur.copy_expert('COPY %s FROM STDOUT WITH CSV' % out_table, f)
-#    # commit the additions and close the stringio file (clears memory)
-#    con.commit()    
-#    f.close()   
-
     
 
         
