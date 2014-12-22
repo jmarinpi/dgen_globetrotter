@@ -50,6 +50,7 @@ end_year = as.numeric(collect(summarise(df, max(year))))
 opts_knit$set(base.dir = runpath)
 report_title = sprintf('d%s Report', tech)
 report_filepath = sprintf('%s/d%s_Report.html', runpath, tech)
+opts_chunk$set(fig.path = sprintf('%s/figure/',runpath ))
 knit2html("../r/graphics/plot_outputs.md", output = report_filepath, title = report_title, 
             stylesheet = "../r/graphics/plot_outputs.css",
             options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
