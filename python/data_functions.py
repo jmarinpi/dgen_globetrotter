@@ -1261,6 +1261,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 	b.load_multiplier * a.load_kwh_in_bin AS load_kwh_in_bin,
                 	a.load_kwh_in_bin AS initial_load_kwh_in_bin,
                 	a.load_kwh_per_customer_in_bin,
+                  a.max_demand_kw,
                 a.nem_system_limit_kw,
                 a.excess_generation_factor,
                 	a.naep_no_derate * b.derate_factor as naep,
@@ -1289,7 +1290,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
             
                    ann_cons_kwh, 
                    customers_in_bin, initial_customers_in_bin, 
-                   load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
+                   load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, max_demand_kw,
                    nem_system_limit_kw, excess_generation_factor, 
     
                    naep,
