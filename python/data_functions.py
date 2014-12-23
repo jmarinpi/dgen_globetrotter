@@ -701,7 +701,7 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
     return inputs
 
 
-def sample_customers_and_load(inputs_dict, county_chunks, exclusion_type, resource_key, npar, pg_conn_string, logger):
+def sample_customers_and_load(inputs_dict, county_chunks, exclusion_type, npar, pg_conn_string, logger):
     
     #==============================================================================
     #     randomly sample  N points from each county 
@@ -846,6 +846,10 @@ def sample_customers_and_load(inputs_dict, county_chunks, exclusion_type, resour
         p_run(pg_conn_string, sql, county_chunks, npar)
 
 
+def find_rates(inputs_dict, county_chunks, exclusion_type, npar, pg_conn_string, logger):
+    pass
+
+
 def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, 
                            oversize_system_factor, undersize_system_factor,
@@ -873,7 +877,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     #==============================================================================
     #     sample customer locations and load. and link together    
     #==============================================================================
-    sample_customers_and_load(inputs, county_chunks, exclusion_type, resource_key, npar, pg_conn_string, logger)
+    sample_customers_and_load(inputs, county_chunks, exclusion_type, npar, pg_conn_string, logger)
 
     #==============================================================================
     #     Sample set of rooftop orientations for each county
@@ -1195,7 +1199,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     #==============================================================================
     #     sample customer locations and load. and link together    
     #==============================================================================
-    sample_customers_and_load(inputs, county_chunks, exclusion_type, resource_key, npar, pg_conn_string, logger)
+    sample_customers_and_load(inputs, county_chunks, exclusion_type, npar, pg_conn_string, logger)
     
     #==============================================================================
     #     Find All Combinations of Points and Wind Resource

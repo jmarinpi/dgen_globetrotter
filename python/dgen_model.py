@@ -165,13 +165,6 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             t0 = time.time()
             
             sectors = datfunc.get_sectors(cur, schema)
-            ###########
-            # ONLY ALLOW COMMERCIAL SECTOR FOR TESTING RIGHT NOW
-            print '\n\n\n\n'
-            print 'WARNING: THIS BRANCH IS IN DEVELOPMENT AND CAN ONLY BE RUN FOR \nCOMMERCIAL SECTOR'
-            print '\n\n\n\n'
-            sectors = {'com' : 'commercial'}
-            ###########
             deprec_schedule = datfunc.get_depreciation_schedule(con, schema, type = 'macrs').values
             financial_parameters = datfunc.get_financial_parameters(con, schema)
             max_market_share = datfunc.get_max_market_share(con, schema)
