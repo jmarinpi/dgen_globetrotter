@@ -1,16 +1,9 @@
-﻿-- create return data type
-SET ROLE 'diffusion-writers';
-DROP tYPE if EXISTS diffusion_solar.system_sizing_return;
-CREATE TYPE diffusion_solar.system_sizing_return AS
-   (system_size_kw numeric,
-    npanels numeric);
-RESET ROLE;
+﻿-- Function: diffusion_solar.system_sizing(text, numeric, numeric, numeric, numeric, text, numeric)
 
-SET ROLE 'server-superusers';
-DROP FUNCTION IF EXISTS diffusion_solar.system_sizing(text, numeric, numeric, numeric, numeric, text, numeric);
-CREATE OR REPLACE FUNCTION diffusion_solar.system_sizing(sector text, load_kwh_per_customer_in_bin numeric, naep numeric, available_rooftop_space_sqm numeric, density_w_per_sqft numeric,
-								nem_availability text, excess_generation_factor numeric)
-RETURNS diffusion_solar.system_sizing_return AS
+-- DROP FUNCTION diffusion_solar.system_sizing(text, numeric, numeric, numeric, numeric, text, numeric);
+set role 'server-superusers';
+CREATE OR REPLACE FUNCTION diffusion_solar.system_sizing(sector text, load_kwh_per_customer_in_bin numeric, naep numeric, available_rooftop_space_sqm numeric, density_w_per_sqft numeric, nem_availability text, excess_generation_factor numeric)
+  RETURNS diffusion_solar.system_sizing_return AS
 $BODY$
 
     """ Calculate optimal system size, number of panels, and other (future) configurations
@@ -48,11 +41,13 @@ $BODY$
     max_system_size_allowed_kw =  0.001 * available_rooftop_space_sqft * density_w_per_sqft
     ideal_system_size_kw = (load_kwh_per_customer_in_bin/naep) * percent_of_gen_monetized * sector_size_mult
     
-    system_size_kw = min(max_system_size_allowed_kw, ideal_system_size_kw)
+    system_size_kw = round(min(max_system_size_allowed_kw, ideal_system_size_kw),1)
     npanels = system_size_kw/(0.001 * density_w_per_sqft * default_panel_size_sqft) # Denom is kW of a panel
     
     return system_size_kw, npanels
     
 $BODY$
-LANGUAGE plpythonu STABLE
-COST 100;
+  LANGUAGE plpythonu STABLE
+  COST 100;
+ALTER FUNCTION diffusion_solar.system_sizing(text, numeric, numeric, numeric, numeric, text, numeric)
+  OWNER TO "server-superusers";
