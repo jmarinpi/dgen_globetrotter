@@ -75,8 +75,9 @@ class PySSC:
 	def data_set_array(self,p_data,name,parr):
 		count = len(parr)
 		arr = (c_number*count)()
-		for i in range(count):
-			arr[i] = c_number(parr[i])
+		arr[:] = parr
+#            for i in range(count):
+#			arr[i] = c_number(parr[i])
 		return self.pdll.ssc_data_set_array( c_void_p(p_data), c_char_p(name),pointer(arr), c_int(count))
 
 	def data_set_matrix(self,p_data,name,mat):
@@ -105,9 +106,10 @@ class PySSC:
 		count = c_int()
 		self.pdll.ssc_data_get_array.restype = POINTER(c_number)
 		parr = self.pdll.ssc_data_get_array( c_void_p(p_data), c_char_p(name), byref(count))
-		arr = []
-		for i in range(count.value):
-			arr.append( float(parr[i]) )
+		arr = parr[0:count.value]
+#            arr = []
+#		for i in range(count.value):
+#			arr.append( float(parr[i]) )
 		return arr
 
 	def data_get_matrix(self,p_data,name):

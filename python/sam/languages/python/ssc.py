@@ -83,8 +83,9 @@ class SSCAPI:
 	def ssc_data_set_array(p_data,name,parr):
 		count = len(parr)
 		arr = (c_number*count)()
-		for i in range(count):
-			arr[i] = c_number(parr[i])
+		arr[:] = parr # set all at once instead of looping
+#            for i in range(count):
+#			arr[i] = c_number(parr[i])
 		return SSCAPI._dll.ssc_data_set_array( c_void_p(p_data), c_char_p(name),pointer(arr), c_int(count))
 
 	@staticmethod
@@ -121,9 +122,10 @@ class SSCAPI:
 		count = c_int()
 		SSCAPI._dll.ssc_data_get_array.restype = POINTER(c_number)
 		parr = SSCAPI._dll.ssc_data_get_array( c_void_p(p_data), c_char_p(name), byref(count))
-		arr = []
-		for i in range(count.value):
-			arr.append( float(parr[i]) )
+		arr = parr[0:count.value] 
+#            arr = []
+#		for i in range(count.value):
+#			arr.append( float(parr[i]) )
 		return arr
 
 	@staticmethod
