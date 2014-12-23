@@ -43,10 +43,11 @@ total_value_by_state_table<-function(df,val,unit_factor = 1){
   # Use unit_factor to convert units if needed i.e. unit_factor = 1e-6 will convert kW to GW
   val = as.symbol(val)
   g = group_by(df, year, state_abbr)
-  by_state = collect(summarise(g,
+  by_state = as.data.frame(collect(summarise(g,
                                sum(val * unit_factor)
-                              )
-                      )
+                                            )
+                                  )
+                          )
   names(by_state)<-c('year','State',val)
   g = group_by(by_state,year)
   national = summarise(g, 
@@ -739,7 +740,7 @@ data = collect(df) %>%
 data2 = group_by(data, year, sector) %>%
   summarise(tot_cap = sum(annual_capacity_gw))
 
-data3 = join(data,data2) %>%
+data3 = merge(data,data2) %>%
   mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
   filter(business_model == 'tpo')
 
@@ -762,11 +763,11 @@ data = collect(df)%>%
 data2 = group_by(data, year, state) %>%
   summarise(tot_cap = sum(annual_capacity_gw))
 
-table <- join(data,data2) %>%
+table <- merge(data,data2) %>%
   mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
   filter(business_model == 'tpo')%>%
   select(year, state, market_share = per_mkt_share)%>%
-  spread(year,market_share)
+  dcast(state ~ year, value.var = 'market_share')
 
 l = list("plot" = plot, "table" = table)  
 return(l)
