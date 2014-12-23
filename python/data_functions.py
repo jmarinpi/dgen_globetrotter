@@ -1524,8 +1524,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                            '%(schema)s.pt_%(sector_abbr)s_sample_load_applicable_rates_%(i_place_holder)s' % inputs,
                            '%(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s' % inputs    ]
 
-# check for demand max kw table in solar/wind
-#         
+      
          
     sql = 'DROP TABLE IF EXISTS %s;'
     for intermediate_table in intermediate_tables:

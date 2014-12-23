@@ -208,10 +208,12 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             logger.info('Finding unique combinations of rates, load, and generation')
             datfunc.get_unique_parameters_for_urdb3(cur, con, cfg.technology, schema, sectors)
             # calculate value for all unique combinations
-#            logger.info('Collecting unique combinations of rates, load, and generation')
-#            t0 = time.time()
-#            ut3_data = datfunc.get_utilityrate3_inputs(cur, con, cfg.technology, schema)
-#            logger.info('datfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t0),)        
+            logger.info('Collecting unique combinations of rates, load, and generation')
+            t0 = time.time()
+            ut3_data = datfunc.get_utilityrate3_inputs(cur, con, cfg.technology, schema)
+            logger.info('datfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t0),)        
+
+
 
             # loop through sectors and time steps to calculate full economics and diffusion                
             for sector_abbr, sector in sectors.iteritems():  
