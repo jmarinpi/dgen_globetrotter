@@ -1935,7 +1935,7 @@ def fill_jagged_array(vals,lens, cols = 30):
     r = np.repeat(az,bz).reshape((rows,cols))
     return r
             
-def assign_business_model(df, method = 'prob', alpha = 2):
+def assign_business_model(df, prng, method = 'prob', alpha = 2):
     
     if method == 'prob':
         
@@ -1950,7 +1950,7 @@ def assign_business_model(df, method = 'prob', alpha = 2):
         gb = pd.DataFrame({'mkt_sum': gb['mkt_exp'].sum()})
         
         # Draw a random number for both business models in the bin
-        gb['rnd'] = np.random.random(len(gb)) 
+        gb['rnd'] = prng.rand(len(gb)) 
         df = df.merge(gb, left_on=['county_id','bin_id'],right_index = True)
         
         # Determine the probability of leasing

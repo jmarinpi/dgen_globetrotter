@@ -149,6 +149,9 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             net_metering = scenario_opts['net_metering_availability']
             inflation = scenario_opts['ann_inflation']
             end_year = scenario_opts['end_year']
+            # Generate a pseudo-random number generator to generate random numbers in numpy.
+            # This method is better than np.random.seed() because it is thread-safe
+            prng = np.random.RandomState(scenario_opts['random_generator_seed'])
             
             if cfg.technology == 'solar':
                 ann_system_degradation = datfunc.get_system_degradation(cur,schema)
@@ -250,7 +253,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                                                                                market_projections, financial_parameters, 
                                                                                cfg, scenario_opts, max_market_share, cur, con, year, 
                                                                                dsire_incentives, deprec_schedule, logger, rate_escalations, 
-                                                                               ann_system_degradation, mode)
+                                                                               ann_system_degradation, mode,prng)
                     
                     # 10. Calulate diffusion
                     ''' Calculates the market share (ms) added in the solve year. Market share must be less
