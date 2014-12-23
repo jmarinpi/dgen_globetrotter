@@ -58,7 +58,7 @@ def utilityrate3(generation_hourly, consumption_hourly, rate_json,
     for x, y in (('analysis_period', analysis_period),
                  ('inflation_rate', inflation_rate),
                  ('degradation', degradation)):
-        logger.debug('Checking for %s' % x)
+        # logger.debug('Checking for %s' % x)
         if not x in rate_json:
             logger.debug('Setting %(x)s to %(y)s' % dict(x=x, y=y))
             rate_json[x] = y
@@ -96,20 +96,20 @@ def utilityrate3(generation_hourly, consumption_hourly, rate_json,
             msg = ssc.module_log(utilityrate, idx)
             idx += 1
     else:
-        logger.info('UtilityRate v3 Simulation complete')
+        # logger.info('UtilityRate v3 Simulation complete')
 
         # # collect return values
         # # @TODO: convert to map()
         for v in return_values:
-            logger.debug('Collecting %s' % v)
+            # logger.debug('Collecting %s' % v)
             return_value[v] = dat_get[pssc_utils.output_types[v]](dat, v)
 
     # free the module
-    logger.debug('Freeing utilityrate module')
+    # logger.debug('Freeing utilityrate module')
     ssc.module_free(utilityrate)
 
     # free the data
-    logger.debug('Freeing data')
+    # logger.debug('Freeing data')
     ssc.data_free(dat)
 
     # return calculated energy value

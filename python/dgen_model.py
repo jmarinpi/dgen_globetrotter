@@ -205,9 +205,11 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
 
 
+            #==============================================================================
+            # DISABLED FOR DEV BRANCH
             # break from the loop to find all unique combinations of rates, load, and generation
             logger.info('Finding unique combinations of rates, load, and generation')
-            datfunc.get_unique_parameters_for_urdb3(cur, con, cfg.technology, schema, sectors)
+            datfunc.get_unique_parameters_for_urdb3(cur, con, cfg.technology, schema, sectors)            
             # collect data for all unique combinations
             logger.info('Collecting unique combinations of rates, load, and generation')
             t0 = time.time()
@@ -218,6 +220,8 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             t0 = time.time()
             sam_output_df = datfunc.run_utilityrate3(rate_input_df, logger)
             logger.info('datfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t0),)  
+            #==============================================================================
+             
 
 
             # loop through sectors and time steps to calculate full economics and diffusion                
