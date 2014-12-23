@@ -1595,6 +1595,71 @@ def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
     cur.execute(sql)
     con.commit()
     
+    # add a unique id/primary key
+    sql = """ALTER TABLE %(schema)s.unique_rate_gen_load_combinations
+             ADD COLUMN uid serial PRIMARY KEY;""" % inputs_dict
+    cur.execute(sql)
+    con.commit()
+    
+    
+
+def get_utilityrate3_inputs(cur, con, technology, schema):
+    
+    inputs_dict = locals().copy()     
+       
+    inputs_dict['load_scale_offset'] = 1e8
+    if technology == 'wind':
+        inputs_dict['gen_join_clause'] = """a.i = d.i
+                                            AND a.j = d.j
+                                            AND a.cf_bin = d.cf_bin
+                                            AND a.turbine_height_m = d.height
+                                            AND a.turbine_id = d.turbine_id"""
+        inputs_dict['gen_scale_offset'] = 1e3
+    elif technology == 'solar':
+        inputs_dict['gen_join_clause'] = """a.solar_re_9809_gid = d.solar_re_9809_gid
+                                            AND a.tilt = d.tilt
+                                            AND a.azimuth = d.azimuth"""
+        inputs_dict['gen_scale_offset'] = 1e6
+        
+        
+    
+    
+    sql = """
+            -- COMBINE LOAD DATA FOR RES AND COM INTO SINGLE TABLE
+            WITH eplus as 
+            (
+                	SELECT hdf_index, crb_model, nkwh
+                	FROM diffusion_shared.energy_plus_normalized_load_res
+                	WHERE crb_model = 'reference'
+                	UNION ALL
+                	SELECT hdf_index, crb_model, nkwh
+                	FROM diffusion_shared.energy_plus_normalized_load_com
+            )
+                   
+            SELECT 	a.uid, 
+                    	b.sam_json, 
+                         r_array_multiply(c.nkwh, 1/%(load_scale_offset)s * a.load_kwh_per_customer_in_bin)::FLOAT[] as hourly_load_kwh,	
+                        r_array_multiply(d.cf, 1/%(gen_scale_offset)s * a.system_size_kw)::FLOAT[] as hourly_gen_kwh
+            	
+            FROM %(schema)s.unique_rate_gen_load_combinations a
+            
+            -- JOIN THE RATE DATA
+            LEFT JOIN diffusion_shared.urdb3_rate_sam_jsons b 
+                    ON a.rate_id_alias = b.rate_id_alias
+            
+            -- JOIN THE LOAD DATA
+            LEFT JOIN eplus c
+                    ON a.crb_model = c.crb_model
+                    AND a.hdf_load_index = c.hdf_index
+            
+            -- JOIN THE RESOURCE DATA
+            LEFT JOIN %(schema)s.%(technology)s_resource_hourly d
+                    ON %(gen_join_clause)s;""" % inputs_dict
+    
+    df = sqlio.read_frame(sql, con, coerce_float = False)
+    return df
+    
+    
 
 def get_sectors(cur, schema):
     '''Return the sectors to model from table view in postgres.
