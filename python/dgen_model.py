@@ -28,6 +28,7 @@ import datetime
 import config as cfg
 import shutil
 import sys
+from sam.languages.python import sscapi
 import getopt
 import pickle
 if cfg.technology == 'wind':
