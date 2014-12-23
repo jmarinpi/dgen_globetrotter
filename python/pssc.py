@@ -3,16 +3,14 @@ __author__ = 'dhetting'
 """
 Wrapper for SAM utilityrate3 module.
 """
-
-from pssc_utils import param_types
-from pssc_utils import logger
-from pssc_utils import output_types
-from pssc_utils import param_types
+import pssc_utils
+from sam.languages.python import sscapi
 
 
 def utilityrate3(generation_hourly, consumption_hourly, rate_json,
                  analysis_period=1., inflation_rate=0., degradation=(0.,),
-                 return_values=('annual_energy_value', 'elec_cost_with_system_year1', 'elec_cost_without_system_year1')):
+                 return_values=('annual_energy_value', 'elec_cost_with_system_year1', 'elec_cost_without_system_year1'),
+                 logger = None):
     """
     Run SAM utilityrate3 function.
 
@@ -35,11 +33,14 @@ def utilityrate3(generation_hourly, consumption_hourly, rate_json,
                                                            elec_cost_without_system: ssc.Data.elec_cost_without_system}
     """
 
+    # if no logger provided, create one:
+    if logger is None:
+        from pssc_utils import logger
+
     # define return container
     return_value = dict()
 
     # init data container
-    import sscapi
     ssc = sscapi.PySSC()
     dat = ssc.data_create()
 
@@ -64,13 +65,18 @@ def utilityrate3(generation_hourly, consumption_hourly, rate_json,
 
     # set rate and function-level paramater values
     for k, v in rate_json.iteritems():
-        logger.debug('setting %s' % k)
+        # temporary fix for incorrectly named keys in rates json
+        if k == 'ec_enable':
+            k = 'ur_ec_enable'
+        if k == 'dc_enable':
+            k = 'ur_dc_enable'
+        # logger.debug('setting %s' % k)
         try:
-            dat_set[param_types[k]](dat, k, v)
+            dat_set[pssc_utils.param_types[k]](dat, k, v)
         except KeyError:
-            logger.error('No datatype defined for %(u)s in %(f)s' % dict(u=k, f=config.filename))
+            logger.error('No datatype defined for %(u)s in %(f)s' % dict(u=k, f=pssc_utils.__file__))
         except TypeError:
-            logger.error('Incorrect datatype provided _or_ no datatype defined for %(u)s in %(f)s' % dict(u=k, f=config.filename))
+            logger.error('Incorrect datatype provided _or_ no datatype defined for %(u)s in %(f)s' % dict(u=k, f=pssc_utils.__file__))
         except:
             raise
 
@@ -96,7 +102,7 @@ def utilityrate3(generation_hourly, consumption_hourly, rate_json,
         # # @TODO: convert to map()
         for v in return_values:
             logger.debug('Collecting %s' % v)
-            return_value[v] = dat_get[output_types[v]](dat, v)
+            return_value[v] = dat_get[pssc_utils.output_types[v]](dat, v)
 
     # free the module
     logger.debug('Freeing utilityrate module')

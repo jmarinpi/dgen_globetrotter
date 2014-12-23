@@ -25,6 +25,7 @@ import gzip
 import subprocess
 import os
 import sys, getopt
+from sam.languages.python import sscapi
 
 # configure psycopg2 to treat numeric values as floats (improves performance of pulling data from the database)
 DEC2FLOAT = pg.extensions.new_type(
@@ -1653,11 +1654,27 @@ def get_utilityrate3_inputs(cur, con, technology, schema):
             
             -- JOIN THE RESOURCE DATA
             LEFT JOIN %(schema)s.%(technology)s_resource_hourly d
-                    ON %(gen_join_clause)s;""" % inputs_dict
+                    ON %(gen_join_clause)s
+            LIMIT 10""" % inputs_dict
     
-    df = sqlio.read_frame(sql, con, coerce_float = False)
+    df = pd.read_sql(sql, con, coerce_float = False)
     return df
     
+
+def run_utilityrate3(df, logger):
+    from pssc import utilityrate3
+    results = []
+    for i in range(0, df.shape[0]):
+        generation_hourly = df['hourly_gen_kwh'][i]
+        consumption_hourly = df['hourly_load_kwh'][i]
+        rate_json = df['sam_json'][i]
+        sam_out = utilityrate3(generation_hourly, consumption_hourly, rate_json, analysis_period=1., inflation_rate=0., degradation=(0.,),
+                 return_values=('elec_cost_with_system_year1', 'elec_cost_without_system_year1'), logger = logger)
+        results.append(sam_out)
+    
+    results_df = pd.DataFrame.from_dict(results)
+    
+    return results_df
     
 
 def get_sectors(cur, schema):
