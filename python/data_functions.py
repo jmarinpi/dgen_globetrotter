@@ -1543,6 +1543,59 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
 
     return final_table
 
+def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
+    
+    
+    inputs_dict = locals().copy()     
+       
+    if technology == 'wind':
+        inputs_dict['resource_keys'] = 'i, j, cf_bin, turbine_height_m, turbine_id'
+    elif technology == 'solar':
+        inputs_dict['resource_keys'] = 'solar_re_9809_gid, tilt, azimuth'
+
+
+    sqls = []
+    for sector_abbr, sector in sectors.iteritems():
+        inputs_dict['sector'] = sector
+        inputs_dict['sector_abbr'] = sector_abbr
+        sql = """SELECT  rate_id_alias,
+                    	hdf_load_index, crb_model, load_kwh_per_customer_in_bin,
+                        %(resource_keys)s, system_size_kw
+                FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+                GROUP BY  rate_id_alias,
+                    	 hdf_load_index, crb_model, load_kwh_per_customer_in_bin,
+                    	 %(resource_keys)s, system_size_kw""" % inputs_dict
+        sqls.append(sql)      
+    
+    
+    inputs_dict['sql'] = ' UNION '.join(sqls)    
+    sql = """DROP TABLE IF EXISTS %(schema)s.unique_rate_gen_load_combinations;
+             CREATE TABLE %(schema)s.unique_rate_gen_load_combinations AS
+             %(sql)s;""" % inputs_dict
+    cur.execute(sql)
+    con.commit()
+    
+    
+    # create indices on: rate_id_alias, hdf_load_index, crb_model, resource keys
+    sql = """CREATE INDEX unique_rate_gen_load_combinations_rate_id_alias_btree
+             ON %(schema)s.unique_rate_gen_load_combinations
+             USING BTREE(rate_id_alias);
+             
+             CREATE INDEX unique_rate_gen_load_combinations_hdf_load_index_btree
+             ON %(schema)s.unique_rate_gen_load_combinations
+             USING BTREE(hdf_load_index);
+             
+             CREATE INDEX unique_rate_gen_load_combinations_crb_model_btree
+             ON %(schema)s.unique_rate_gen_load_combinations
+             USING BTREE(crb_model);
+             
+             CREATE INDEX unique_rate_gen_load_combinations_resource_keys_btree
+             ON %(schema)s.unique_rate_gen_load_combinations
+             USING BTREE(%(resource_keys)s);""" % inputs_dict
+    cur.execute(sql)
+    con.commit()
+    
+
 def get_sectors(cur, schema):
     '''Return the sectors to model from table view in postgres.
         Returned as a dictionary.
