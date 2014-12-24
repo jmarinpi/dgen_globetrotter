@@ -583,13 +583,19 @@ get_csv_data<-function(scen_folders, file_name){
 get_r_data<-function(scen_folders, file_name){
   df<-data.frame()
   for(path in scen_folders){
-    tmp_name<-load(paste0(path,'/',file_name,'.RData'))
-    df<-rbind(df,get(tmp_name))
-    rm(list = c(tmp_name))
+    full_path = paste0(path,'/',file_name,'.RData')
+    if(file.exists(full_path)){
+      
+      tmp_name<-load(full_path)
+      df<-rbind(df,get(tmp_name))
+      rm(list = c(tmp_name))
+      
+    } else {
+      sprintf("file: \'%s\' does not exist", full_path)
+    }
   }
   return(df)
 }
-
 
 all_sectors_diff_trends<-function(df){
   df<-ddply(df,.(year,variable, scenario), summarise, value = sum(value))
@@ -696,18 +702,36 @@ turb_trends_hist<-function(df){
 return(out)
 }
 
-pp_trends_ribbon<-function(df){
-  # Median payback period over time and sector  
-  p<-ggplot(df, aes(x = year, y = median, ymin = lql, ymax = uql, color = scenario, fill = scenario), size = 0.75)+
-    geom_smooth(stat = 'identity', alpha = 0.4)+
+metric_trends_ribbon<-function(df){
+  
+  df = as.data.frame(collect(df))
+  # Create two plots for the two metrics
+  pp<-filter(df, metric == 'payback_period')
+  mbs<-filter(df, metric == 'percent_monthly_bill_savings')
+  
+  # Median econ attractiveness over time and sector  
+  p1<-ggplot(pp, aes(x = year, y = median, ymin = lql, ymax = uql, color = scenario, fill = scenario), size = 0.75)+
+    geom_smooth(stat = 'identity', alpha = 0.2)+
     geom_line()+
     facet_wrap(~sector)+
-    scale_y_continuous(name ='Payback Period (years)', lim = c(0,40))+
+    scale_y_continuous(name ='Median Payback Period (years)', lim=c(0,40))+
     scale_x_continuous(name ='Year')+
     theme_few()+
     theme(strip.text.x = element_text(size=12, angle=0,))+
-    ggtitle('National Payback Period (Median and Inner-Quartile Range)')
-  return(p)
+    ggtitle('National Payback Period Range (Median and Inner-Quartile Range)')
+  
+  p2<-ggplot(mbs, aes(x = year, y = median, ymin = lql, ymax = uql, color = scenario, fill = scenario), size = 0.75)+
+    geom_smooth(stat = 'identity', alpha = 0.2)+
+    geom_line()+
+    facet_wrap(~sector)+
+    scale_y_continuous(name ='Median Monthly Bill Savings (% of pre-adoption bill)', lim=c(0,2), label = percent)+
+    scale_x_continuous(name ='Year')+
+    theme_few()+
+    theme(strip.text.x = element_text(size=12, angle=0,))+
+    ggtitle('National Monthly Bill Savings Range (Median and Inner-Quartile Range)')
+  
+  out = list("p1" = p1, "p2" = p2)
+  return(out)
 }
 
 dist_of_azimuth_selected<-function(df, start_year){

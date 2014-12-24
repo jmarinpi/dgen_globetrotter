@@ -31,10 +31,8 @@ def calc_diffusion(df, logger, year, sector):
         OUT: df - pd dataframe - Main dataframe
             market_last_year - pd dataframe - market to inform diffusion in next year
     '''
-    t0 = time.time()
     df['diffusion_market_share'] = calc_diffusion_market_share(df)
-    logger.info('diffunc.calc_diffusion_market_share for %s for %s sector took: %0.1fs' %(year, sector, time.time() - t0))
-    
+   
     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
     df['new_market_share'] = df['market_share']-df['market_share_last_year']
     df['new_market_share'] = np.where(df['market_share'] > df['max_market_share'], 0, df['new_market_share'])
@@ -55,8 +53,8 @@ def calc_diffusion(df, logger, year, sector):
 # ^^^^  Bass Diffusion Calculator  ^^^^
 def bass_diffusion(p, q, t):
     ''' Calculate the fraction of population that diffuse into the max_market_share.
-        Note that this is different than the fraction of population that have/
-        will adopt.
+        Note that this is different than the fraction of population that will 
+        adopt, which is the max market share
 
         IN: p,q - numpy arrays - Bass diffusion parameters
             t - numpy array - Number of years since diffusion began
