@@ -1638,8 +1638,8 @@ def get_utilityrate3_inputs(cur, con, technology, schema):
                    
             SELECT 	a.uid, 
                     	b.sam_json, 
-                         r_array_multiply(c.nkwh, 1/%(load_scale_offset)s * a.load_kwh_per_customer_in_bin)::FLOAT[] as hourly_load_kwh,	
-                        r_array_multiply(d.cf, 1/%(gen_scale_offset)s * a.system_size_kw)::FLOAT[] as hourly_gen_kwh
+                        a.load_kwh_per_customer_in_bin, c.nkwh,
+                        a.system_size_kw, d.cf
             	
             FROM %(schema)s.unique_rate_gen_load_combinations a
             
@@ -1654,10 +1654,18 @@ def get_utilityrate3_inputs(cur, con, technology, schema):
             
             -- JOIN THE RESOURCE DATA
             LEFT JOIN %(schema)s.%(technology)s_resource_hourly d
-                    ON %(gen_join_clause)s
-            LIMIT 10""" % inputs_dict
-    
+                    ON %(gen_join_clause)s""" % inputs_dict
+
     df = pd.read_sql(sql, con, coerce_float = False)
+    
+    hourly_load_kwh = np.array(list(df['nkwh'])) * np.array(df['load_kwh_per_customer_in_bin']).reshape(df.shape[0],1) / inputs_dict['load_scale_offset']
+    df['hourly_load_kwh'] = hourly_load_kwh.tolist()
+    
+    hourly_gen_kwh = np.array(list(df['cf'])) * np.array(df['system_size_kw']).reshape(df.shape[0],1) / inputs_dict['gen_scale_offset']
+    df['hourly_gen_kwh'] = hourly_gen_kwh.tolist()
+    
+    return_df = df[['uid','sam_json','hourly_load_kwh','hourly_gen_kwh']]
+    
     return df
     
 
@@ -1665,17 +1673,110 @@ def run_utilityrate3(df, logger):
     from pssc import utilityrate3
     results = []
     for i in range(0, df.shape[0]):
+        uid = df['uid'][i]
         generation_hourly = df['hourly_gen_kwh'][i]
         consumption_hourly = df['hourly_load_kwh'][i]
         rate_json = df['sam_json'][i]
         sam_out = utilityrate3(generation_hourly, consumption_hourly, rate_json, analysis_period=1., inflation_rate=0., degradation=(0.,),
                  return_values=('elec_cost_with_system_year1', 'elec_cost_without_system_year1'), logger = logger)
+        sam_out['uid'] = uid
         results.append(sam_out)
     
     results_df = pd.DataFrame.from_dict(results)
+    # round costs to 2 decimal places
+    results_df['elec_cost_with_system_year1'] = results_df['elec_cost_with_system_year1'].round(2)
+    results_df['elec_cost_without_system_year1'] = results_df['elec_cost_without_system_year1'].round(2)
     
     return results_df
     
+
+def write_utilityrate3_to_pg(cur, con, sam_results_df, schema, sectors, technology):
+    
+    inputs_dict = locals().copy()  
+    
+    if technology == 'wind':
+        inputs_dict['resource_join_clause'] = """a.i = b.i
+                                            AND a.j = b.j
+                                            AND a.cf_bin = b.cf_bin
+                                            AND a.turbine_height_m = b.height
+                                            AND a.turbine_id = b.turbine_id """
+    elif technology == 'solar':
+        inputs_dict['resource_join_clause'] = """a.solar_re_9809_gid = b.solar_re_9809_gid
+                                            AND a.tilt = b.tilt
+                                            AND a.azimuth = b.azimuth """
+    
+      
+    #==============================================================================
+    #     CREATE TABLE TO HOLD RESULTS
+    #==============================================================================
+    sql = """DROP TABLE IF EXISTS %(schema)s.utilityrate3_results;
+             CREATE TABLE %(schema)s.utilityrate3_results
+             (
+                uid integer,
+                elec_cost_with_system_year1 NUMERIC,
+                elec_cost_without_system_year1 NUMERIC
+             );
+             """ % inputs_dict
+    cur.execute(sql)
+    con.commit()
+    
+    # open an in memory stringIO file (like an in memory csv)
+    s = StringIO()
+    # write the data to the stringIO
+    sam_results_df[['uid','elec_cost_with_system_year1','elec_cost_without_system_year1']].to_csv(s, index = False, header = False)
+    # seek back to the beginning of the stringIO file
+    s.seek(0)
+    # copy the data from the stringio file to the postgres table
+    cur.copy_expert('COPY %(schema)s.utilityrate3_results FROM STDOUT WITH CSV' % inputs_dict, s)
+    # commit the additions and close the stringio file (clears memory)
+    con.commit()    
+    s.close()
+    
+    # add primary key constraint to uid field
+    sql = """ALTER TABLE %(schema)s.utilityrate3_results ADD PRIMARY KEY (uid);""" % inputs_dict
+    cur.execute(sql)
+    con.commit()
+    
+    #==============================================================================
+    #     APPEND THE RESULTS TO CUSTOMER BINS
+    #==============================================================================
+    for sector_abbr, sector in sectors.iteritems():
+        inputs_dict['sector_abbr'] = sector_abbr
+        inputs_dict['sector'] = sector
+        sql = """   DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_elec_costs;
+                    CREATE TABLE %(schema)s.pt_%(sector_abbr)s_elec_costs AS
+                    
+                    SELECT a.county_id, a.bin_id, a.year, 
+                        c.elec_cost_with_system_year1 as first_year_bill_with_system, 
+                        c.elec_cost_without_system_year1 as first_year_bill_without_system
+                    FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year a
+                
+                    LEFT JOIN %(schema)s.unique_rate_gen_load_combinations b
+                        ON a.rate_id_alias = b.rate_id_alias
+                        AND a.hdf_load_index = b.hdf_load_index
+                        AND a.crb_model = b.crb_model
+                        AND a.load_kwh_per_customer_in_bin = b.load_kwh_per_customer_in_bin
+                        AND a.system_size_kw = b.system_size_kw
+                        AND %(resource_join_clause)s
+                        
+                    LEFT JOIN %(schema)s.utilityrate3_results c
+                        ON b.uid = c.uid
+            
+        """ % inputs_dict
+        
+        cur.execute(sql)
+        con.commit()
+    
+        # add indices on: county_id, bin_id, year
+        sql = """CREATE INDEX pt_%(sector_abbr)s_elec_costs_join_fields_btree 
+                 ON %(schema)s.pt_%(sector_abbr)s_elec_costs
+                 USING BTREE(county_id,bin_id);
+             
+                 CREATE INDEX pt_%(sector_abbr)s_elec_costs_year_btree 
+                 ON %(schema)s.pt_%(sector_abbr)s_elec_costs
+                 USING BTREE(year);""" % inputs_dict
+        cur.execute(sql)
+        con.commit()
 
 def get_sectors(cur, schema):
     '''Return the sectors to model from table view in postgres.
@@ -1806,7 +1907,7 @@ def get_initial_market_shares(cur, con, sector_abbr, sector, schema):
     return df  
 
 
-def get_main_dataframe(con, main_table, year):
+def get_main_dataframe(con, sector_abbr, schema, year):
     ''' Pull main pre-processed dataframe from dB
     
         IN: con - pg con object - connection object
@@ -1814,7 +1915,16 @@ def get_main_dataframe(con, main_table, year):
 
     '''
     
-    sql = 'SELECT * FROM %s WHERE year = %s' % (main_table,year)
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs_dict = locals().copy()     
+    
+    sql = """SELECT a.*, b.first_year_bill_with_system, b.first_year_bill_without_system
+            FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year a
+            LEFT JOIN %(schema)s.pt_%(sector_abbr)s_elec_costs b
+                    ON a.county_id = b.county_id
+                    AND a.bin_id = b.bin_id
+                    AND a.year = b.year
+            WHERE a.year = %(year)s""" % inputs_dict
     df = sqlio.read_frame(sql, con, coerce_float = False)
     return df
     

@@ -45,11 +45,19 @@ FROM diffusion_solar.solar_resource_annual;
 -- 640066
 
 -- check stats seem legit (also map these, if possible)
-select min(array_sum(cf)), max(array_sum(cf)), avg(array_sum(cf))
-from diffusion_solar.solar_resource_hourly;
+with a as 
+(
+	Select r_array_sum(cf) as aep
+	from diffusion_solar.solar_resource_hourly
+)
+select min(aep), max(aep), avg(aep)
+from a;
+-- 754642123 | 1983574854 | 1330267367.36399059
 
 select min(naep), max(naep), avg(naep)
 from diffusion_solar.solar_resource_annual;
 -- 754.6421
 -- 1983.5748
 -- 1330.2673
+
+-- they match exactly
