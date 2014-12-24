@@ -28,6 +28,7 @@ import datetime
 import config as cfg
 import shutil
 import sys
+from sam.languages.python import sscapi
 import getopt
 import pickle
 if cfg.technology == 'wind':
@@ -196,15 +197,37 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                 # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
                 if cfg.init_model:
                     t0 = time.time()
-                    main_table = datfunc.generate_customer_bins(cur, con, cfg.technology, schema, 
+                    datfunc.generate_customer_bins(cur, con, cfg.technology, schema, 
                                                    scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
                                                    cfg.start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
                                                    cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.preprocess, cfg.npar, 
                                                    cfg.pg_conn_string, scenario_opts['net_metering_availability'], logger = logger)
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
-                else:
-                    main_table = '%s.pt_%s_best_option_each_year' % (schema, sector_abbr)
-                
+
+
+            #==============================================================================
+#            # DISABLED FOR DEV BRANCH
+#            # break from the loop to find all unique combinations of rates, load, and generation
+#            logger.info('Finding unique combinations of rates, load, and generation')
+#            datfunc.get_unique_parameters_for_urdb3(cur, con, cfg.technology, schema, sectors)            
+#            # collect data for all unique combinations
+#            logger.info('Collecting unique combinations of rates, load, and generation')
+#            t0 = time.time()
+#            rate_input_df = datfunc.get_utilityrate3_inputs(cur, con, cfg.technology, schema)
+#            logger.info('datfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t0),)        
+#            # calculate value of energy for all unique combinations
+#            logger.info('Calculating value of energy using SAM')
+#            t0 = time.time()
+#            sam_output_df = datfunc.run_utilityrate3(rate_input_df, logger)
+#            logger.info('datfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t0),)  
+            #==============================================================================
+             
+
+
+            # loop through sectors and time steps to calculate full economics and diffusion                
+            for sector_abbr, sector in sectors.iteritems():  
+                # define the name of the customer bins table
+                main_table = '%s.pt_%s_best_option_each_year' % (schema, sector_abbr)
                 # get dsire incentives for the generated customer bins
                 t0 = time.time()
                 dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, sector_abbr, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger)
