@@ -16,9 +16,9 @@ import time
 
 
 #==============================================================================
-def calc_economics(df, schema, sector, sector_abbr, market_projections, 
+def calc_economics(df, schema, sector, sector_abbr, market_projections,
                    financial_parameters, cfg, scenario_opts, max_market_share, cur, con, 
-                   year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation, mode,prng):
+                   year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation, mode, prng):
     '''
     Calculates economics of system adoption (cashflows, payback, irr, etc.)
     
@@ -42,10 +42,10 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     # get customer expected rate escalations
     # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
     if mode == 'ReEDS' and max(df['ReEDS_elec_price_mult'])>0:
-        temp = np.array(df['ReEDS_elec_price_mult'])
-        rate_growth_mult = temp
-        for n in range(1,30):
-            rate_growth_mult = np.c_[rate_growth_mult,temp]
+        
+        rate_growth_mult = np.ones((len(df),30))
+        rate_growth_mult *= df['ReEDS_elec_price_mult'][:,np.newaxis]
+         
     else:
         # if not in ReEDS mode, use the calc_expected_rate_escal function
         rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector_abbr)    
@@ -58,16 +58,10 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id'])
     
-    revenue, costs, cfs, annual_elec_bill_pre_solar_dol = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, yrs = 30)
+    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, yrs = 30)
     
     ## Calc metric value here
-    df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs, annual_elec_bill_pre_solar_dol)
-    
-    #df.to_csv('temp_df_%s_%s.csv' %(year, sector_abbr))
-    #np.savetxt('temp_rev_%s_%s.csv' %(year, sector_abbr), revenue, delimiter = ",")    
-    #np.savetxt('temp_costv_%s_%s.csv' %(year, sector_abbr), costs, delimiter = ",")
-    #np.savetxt('temp_cfs_%s_%s.csv' %(year, sector_abbr), cfs, delimiter = ",")
-    #np.savetxt('temp_bill_%s_%s.csv' %(year, sector_abbr), annual_elec_bill_pre_solar_dol, delimiter = ",")
+    df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs)
         
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate)    
 
@@ -99,7 +93,6 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     df = datfunc.assign_business_model(df, prng, method = 'prob', alpha = 2)
     
     return df
-    
 #==============================================================================    
     
     
@@ -150,10 +143,6 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     df.value_of_increment = df.value_of_increment.fillna(0)
     df.value_of_rebate = df.value_of_rebate.fillna(0)
     
-    # When the incentive payment in first year is larger than the downpayment, 
-    # it distorts the IRR. This increases the down payment to at least 10%> than
-    # the ITC
-
     ## COSTS    
     
     # 1)  Cost of servicing loan/leasing payments
@@ -161,12 +150,12 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     pmt = - (1 - df.down_payment)* df.ic * crf    
     
     loan_cost = datfunc.fill_jagged_array(pmt,df.loan_term_yrs)
-    loan_cost[:,0] -= df.ic * df.down_payment
+    loan_cost[:,0] -= df.ic * df.down_payment # Pay the down payment and the first year loan payment in first year
     
-    # initialize an empty data frame for inverter costs (for wind, this doesn't apply)
-    inverter_cost = np.zeros(shape)
     # wind turbines do not have inverters hence no replacement cost.
     # but for solar, calculate and replace the inverter replacement costs with actual values
+    inverter_cost = np.zeros(shape)
+
     if tech == 'solar':
         # Annualized (undiscounted) inverter replacement cost $/year (includes system size). Applied from year 10 onwards since assume initial 10-year warranty
         inverter_replacement_cost  = df['system_size_kw'] * df.inverter_cost_dollars_per_kw/df.inverter_lifetime_yrs
@@ -194,40 +183,42 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     aep[:,1:]  = 1 - ann_system_degradation
     aep = df.aep[:,np.newaxis] * aep.cumprod(axis = 1) * (1 - df.curtailment_rate[:,np.newaxis])
     
-    # Percentage of excess gen, bounded from 0 - 100%
-    per_excess_gen = np.minimum(np.maximum(df.excess_generation_factor[:,np.newaxis] + 0.31 * (aep/df.load_kwh_per_customer_in_bin[:,np.newaxis] -1), 0),1)
+    # ATTENTION: Make sure generation profile has been curtailed prior to calculating first year bill
+    # i.e. hourly_gen_profile *= (1 - df.curtailment_rate)
     
-    outflow_gen_kwh = aep * per_excess_gen
-    inflow_gen_kwh = aep * (1 - per_excess_gen)
-    
-    # Value of inflows (generation that is offsetting load)
-    inflow_rate_dol_kwh   = 0.01 * df.elec_rate_cents_per_kwh
-    value_inflows_dol = inflow_gen_kwh * inflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
-     
-    # Set the rate the excess generation is credited
-    if scenario_opts['net_metering_availability'] == 'Full_Net_Metering_Everywhere':
-        outflow_rate = inflow_rate_dol_kwh
-    elif scenario_opts['net_metering_availability'] == 'Partial_Avoided_Cost':
-        outflow_rate = 0.5 * inflow_rate_dol_kwh
-    elif scenario_opts['net_metering_availability'] == 'Partial_No_Outflows':
-        outflow_rate = 0 * inflow_rate_dol_kwh
-    elif scenario_opts['net_metering_availability'] == 'No_Net_Metering_Anywhere':
-        outflow_rate = 0 * inflow_rate_dol_kwh
-        df['nem_system_limit_kw'] = 0
-    else:
-        outflow_rate = 0 * inflow_rate_dol_kwh
+    # ATTENTION:  Make sure that excess generation is being appropriately valued.
+    # Test 1: Compare first_year_bill_with_system with net metering on/off. The bill should be lower with NEM on (more savings)
+    # Test 2: Compare first_year_bill_with_system with net metering on and changing year-end credit value [gen probably need to exceed consumption]. The bill should decrease (more savings) as credit increases
+    # Test 3: Compare first_year_bill_with_system with net metering off and changing year-end credit value [gen probably need to exceed consumption]. The bill should not change as credit increases
+    # Test 4: Define a simple flat rate (10c/kWh). Output the 8760 load and consumption profile. Now manually calculate the inflows, outflows, and year-end credit to validate rollover credit.
         
-    outflow_rate_dol_kwh = np.where(df['system_size_kw'] < df.nem_system_limit_kw, inflow_rate_dol_kwh, outflow_rate)
-    value_outflows_dol = outflow_gen_kwh * outflow_rate_dol_kwh[:,np.newaxis] * rate_growth_mult
+    ##
+    # Attention: Code below assumes first_year_bill outputs are lists with length of df.
+    # Attention: Code below assumes first_year_bill outputs are in units of dollars.
+    # synthetic data: first_year_bill_without_system = 100 * rand(len(df)), first_year_bill_with_system = 0.5*first_year_bill_with_system
     
-    # Value of generation is value of offset inflows + value of sold outflows.
-    # Since electricity expenses are tax deductible for commercial & industrial entities, the net annual savings from a PV system is reduced by the marginal tax rate
-    generation_revenue = (value_inflows_dol + value_outflows_dol) * (1 - df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial'))[:,np.newaxis])
-
-    # Need to estimate the electricity bill prior to adoption to estimate percent MBS 
-    annual_elec_bill_pre_solar_dol  = 0.01 * df.load_kwh_per_customer_in_bin * df.elec_rate_cents_per_kwh
     
-    # 4) Revenue from depreciation.  ### THIS NEEDS MORE WORK ###  
+    # Assume that the rate_growth_mult is a cumulative factor i.e. [1,1.02,1.044] instead of [0.02, 0.02, 0.02]
+        
+    # Take the difference of bills in first year, this is the revenue in the first year. Then assume that bill savings will follow
+    # the same trajectories as changes in rate escalation. Output of this should be a data frame of shape (len(df),30)
+    
+    # TODO: curtailments should be applied to the generation, however currently infeasible for SAM integration
+    generation_revenue = (df['first_year_bill_without_system'] - (1+df['curtailment_rate'] * df['first_year_bill_with_system']))[:,np.newaxis] * rate_growth_mult
+    
+    # Decrement the revenue to account for system degradation.
+    system_degradation_factor = np.empty(shape)
+    system_degradation_factor[:,0] = 1
+    system_degradation_factor[:,1:]  = 1 - ann_system_degradation
+    system_degradation_factor = system_degradation_factor.cumprod(axis = 1)
+    
+    generation_revenue *= system_degradation_factor
+    
+    # Since electricity expenses are tax deductible for commercial & industrial 
+    # entities, the net annual savings from a system is reduced by the marginal tax rate
+    generation_revenue *= (1 - df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial'))[:,np.newaxis])
+        
+    # 4) Revenue from depreciation.  
     # Depreciable basis is installed cost less tax incentives
     # Revenue comes from taxable deduction [basis * tax rate * schedule] and cannot be monetized by Residential
     
@@ -238,13 +229,14 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # 5) Interest paid on loans is tax-deductible for commercial & industrial users; 
     # assume can fully monetize. Assume that third-party owners finance system all-cash--thus no interest to deduct. 
     
-    # Calc interest paid
+    # Calc interest paid on serving the loan
     interest_paid = calc_interest_pmt_schedule(df,30)
     interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') & (df.business_model == 'host_owned'))[:,np.newaxis]
     
     # 6) Revenue from other incentives    
     incentive_revenue = np.zeros(shape)
     incentive_revenue[:, 1] = df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction
+    
     
     ptc_revenue = datfunc.fill_jagged_array(df.value_of_ptc,df.ptc_length)
     pbi_fit_revenue = datfunc.fill_jagged_array(df.value_of_pbi_fit,df.pbi_fit_length)    
@@ -254,8 +246,18 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     revenue = generation_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
     costs = loan_cost + om_cost + inverter_cost
     cfs = revenue + costs
-
-    return revenue, costs, cfs, annual_elec_bill_pre_solar_dol
+    
+    # Calculate the monthly bill savings in the first year of ownership in dollars ($)
+    # and in percentage of prior bill
+    first_year_energy_savings = df.first_year_bill_without_system - df.first_year_bill_without_system 
+    avg_annual_payment = loan_cost.sum(axis = 1)/df.loan_term_yrs
+    first_year_bill_savings = first_year_energy_savings - avg_annual_payment
+    monthly_bill_savings = first_year_bill_savings/12
+    percent_monthly_bill_savings = first_year_bill_savings/df.first_year_bill_without_system
+    df['monthly_bill_savings'] = monthly_bill_savings
+    df['percent_monthly_bill_savings'] = percent_monthly_bill_savings
+     
+    return revenue, costs, cfs, df.first_year_bill_without_system, df.first_year_bill_without_system
     
 #==============================================================================
 
@@ -547,7 +549,7 @@ def calc_interest_pmt_schedule(df,yrs):
     
 #==============================================================================
 
-def calc_metric_value(df,cfs,revenue,costs, annual_elec_bill_pre_solar_dol):
+def calc_metric_value(df,cfs,revenue,costs):
     '''
     Calculates the economic value of adoption given the metric chosen. Residential buyers
     use simple payback, non-residential buyers use time-to-double, leasers use monthly bill savings
@@ -562,17 +564,17 @@ def calc_metric_value(df,cfs,revenue,costs, annual_elec_bill_pre_solar_dol):
     payback = calc_payback(cfs)
     ttd = calc_ttd(cfs)
     
-    """ To calculate MBS:
-    MBS = [Avg. monthly bill w/o tech] - [Avg. monthly bill w/ tech] - [Avg. monthly lease payment]
-        = [Avg. monthly revenues]                                    - [Avg. monthly costs (assuming no down payment and incentives amortized into principle)]
-        = [Sum(Revenues) - Sum(Costs)]/[Number of payments]
-    Also, assume lease contract is over 20 years
+    """ MBS is calculated in the calc_cashflows function using this method:
+    Annual bill savings = [First year bill w/o tech] - [First year bill w/ tech] - [Avg. annual system payment]
+    Monthly bill savings = Annual bill savings / 12
+    Percent Monthly Bill Savings = Annual bill savings/ First year bill w/o tech
+
+    Where First year bill w/o tech and  First year bill are outputs of calling SAM
+    and
+    Where Avg. annual system payment = Sum(down payment + monthly system payment (aka loan_cost)) / loan term (20 years for TPO and 15 for HO)
     """ 
+
+    metric_value = np.where(df.business_model == 'tpo',df.percent_monthly_bill_savings, np.where((df.sector == 'Industrial') | (df.sector == 'Commercial'),ttd,payback))
     
-    mbs = (np.sum(revenue[:,:20], axis = 1) + np.sum(costs[:,:20], axis = 1))/(12*20) # Recall that costs are negative values hence Rev + Costs
-    percent_mbs = mbs / (annual_elec_bill_pre_solar_dol/12)
-    metric_value = np.where(df.business_model == 'tpo',percent_mbs, np.where((df.sector == 'Industrial') | (df.sector == 'Commercial'),ttd,payback))
-    
-    return metric_value
-    
+    return metric_value    
 #==============================================================================

@@ -80,6 +80,8 @@ def main(wb, conn, verbose = False):
         maxMarket(curWb,schema,table,conn,cur,verbose)
         table = 'leasing_availability'
         leasingAvail(curWb,schema,table,conn,cur,verbose)
+        table = 'nem_manual_policies'
+        nempolicy(curWb,schema,table,conn,cur,verbose)
         
         # The solar program costs are static, so only need this to manually load the table once.
         # Uncomment to make SPT table dynamic
@@ -893,6 +895,42 @@ def leasingAvail(curWb,schema,table,conn,cur,verbose=False):
     f.seek(0)
     if verbose:
         print 'Exporting leasing_avail'
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+
+def nempolicy(curWb,schema,table,conn,cur,verbose=False):
+    
+    f = StringIO.StringIO()
+    rname = 'NEM_Values'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist.' % rname)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    #states = cells[r][0]
+    #years = cells[0][c]
+    columns = len(cells[0])
+    rows = len(cells)
+    r = 1
+    while r < rows:
+        c = 1
+        while c < (columns-1):
+            if cells[r][c].value == None:
+                nem_val = False
+                sellback_val = 0.
+            else:
+                nem_val = cells[r][c].value
+                sellback_val = cells[r][columns-1].value
+            l = [cells[r][0].value, cells[0][c].value, nem_val, nem_val*sellback_val]
+            f.write(list2line(l))
+            c += 1
+        r += 1
+    f.seek(0)
+    if verbose:
+        print 'Exporting NEM manual policies'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')

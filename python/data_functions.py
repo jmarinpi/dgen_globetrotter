@@ -360,7 +360,9 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
                 'market_share',
                 'number_of_adopters',
                 'installed_capacity',
-                'market_value']    
+                'market_value',
+                'first_year_bill_with_system',
+                'first_year_bill_without_system']    
     # convert formatting of fields list
     fields_str = pylist_2_pglist(fields).replace("'","")       
     # open an in memory stringIO file (like an in memory csv)
@@ -433,8 +435,8 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.ic, a.metric, a.metric_value, a.lcoe, a.max_market_share, 
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-                    a.market_value,
-                    
+                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system,
+
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id, b.max_height, b.elec_rate_cents_per_kwh, 
                     b.carbon_price_cents_per_kwh, 
@@ -510,7 +512,8 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     a.ic, a.metric, a.metric_value, a.lcoe, a.max_market_share, 
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-                    a.market_value,
+                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system,
+
                     
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id, b.elec_rate_cents_per_kwh, 
