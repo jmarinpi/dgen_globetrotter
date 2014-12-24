@@ -206,20 +206,20 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
 
 
             #==============================================================================
-            # DISABLED FOR DEV BRANCH
-            # break from the loop to find all unique combinations of rates, load, and generation
-            logger.info('Finding unique combinations of rates, load, and generation')
-            datfunc.get_unique_parameters_for_urdb3(cur, con, cfg.technology, schema, sectors)            
-            # collect data for all unique combinations
-            logger.info('Collecting unique combinations of rates, load, and generation')
-            t0 = time.time()
-            rate_input_df = datfunc.get_utilityrate3_inputs(cur, con, cfg.technology, schema)
-            logger.info('datfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t0),)        
-            # calculate value of energy for all unique combinations
-            logger.info('Calculating value of energy using SAM')
-            t0 = time.time()
-            sam_output_df = datfunc.run_utilityrate3(rate_input_df, logger)
-            logger.info('datfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t0),)  
+#            # DISABLED FOR DEV BRANCH
+#            # break from the loop to find all unique combinations of rates, load, and generation
+#            logger.info('Finding unique combinations of rates, load, and generation')
+#            datfunc.get_unique_parameters_for_urdb3(cur, con, cfg.technology, schema, sectors)            
+#            # collect data for all unique combinations
+#            logger.info('Collecting unique combinations of rates, load, and generation')
+#            t0 = time.time()
+#            rate_input_df = datfunc.get_utilityrate3_inputs(cur, con, cfg.technology, schema)
+#            logger.info('datfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t0),)        
+#            # calculate value of energy for all unique combinations
+#            logger.info('Calculating value of energy using SAM')
+#            t0 = time.time()
+#            sam_output_df = datfunc.run_utilityrate3(rate_input_df, logger)
+#            logger.info('datfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t0),)  
             #==============================================================================
              
 

@@ -15,12 +15,23 @@ diff_trends_table(diff_trends)
 
 # Economics
 ```{r Economics_Trends}
-pp_trends_ribbon(payback_period_trends)
+out<-metric_trends_ribbon(metric_value_trends)
+out$p1
+out$p2
 ```
 # Systems Installed
 ```{r Systems_Installed_Trends}
 
-out<-turb_trends_hist(cap_selected_trends)
+out<-tryCatch(
+{
+turb_trends_hist(cap_selected_trends)
 out$p1
 out$p2
+},
+error = function(cond){
+  message('Unable to compare turbine trends')
+}
+)
+
 ```
+
