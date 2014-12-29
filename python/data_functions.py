@@ -1657,19 +1657,24 @@ def get_utilityrate3_inputs(cur, con, technology, schema):
             
             -- JOIN THE RESOURCE DATA
             LEFT JOIN %(schema)s.%(technology)s_resource_hourly d
-                    ON %(gen_join_clause)s""" % inputs_dict
+                    ON %(gen_join_clause)s;""" % inputs_dict
 
     df = pd.read_sql(sql, con, coerce_float = False)
     
+    # scale the normalized hourly load based on the annual load
     hourly_load_kwh = np.array(list(df['nkwh'])) * np.array(df['load_kwh_per_customer_in_bin']).reshape(df.shape[0],1) / inputs_dict['load_scale_offset']
+    # add the scaled hourly load back to the data frame    
     df['hourly_load_kwh'] = hourly_load_kwh.tolist()
     
+    # scale the hourly cfs into hourly kw using the system size
     hourly_gen_kwh = np.array(list(df['cf'])) * np.array(df['system_size_kw']).reshape(df.shape[0],1) / inputs_dict['gen_scale_offset']
+    # add the scaled hourly generation back to the data frame    
     df['hourly_gen_kwh'] = hourly_gen_kwh.tolist()
     
+    # extract a dataframe with only the columns of interest for running the sam calcs
     return_df = df[['uid','sam_json','hourly_load_kwh','hourly_gen_kwh']]
     
-    return df
+    return return_df
     
 
 def run_utilityrate3(df, logger):
@@ -1686,7 +1691,7 @@ def run_utilityrate3(df, logger):
         results.append(sam_out)
     
     results_df = pd.DataFrame.from_dict(results)
-    # round costs to 2 decimal places
+    # round costs to 2 decimal places (i.e., pennies)
     results_df['elec_cost_with_system_year1'] = results_df['elec_cost_with_system_year1'].round(2)
     results_df['elec_cost_without_system_year1'] = results_df['elec_cost_without_system_year1'].round(2)
     
@@ -1701,7 +1706,7 @@ def write_utilityrate3_to_pg(cur, con, sam_results_df, schema, sectors, technolo
         inputs_dict['resource_join_clause'] = """a.i = b.i
                                             AND a.j = b.j
                                             AND a.cf_bin = b.cf_bin
-                                            AND a.turbine_height_m = b.height
+                                            AND a.turbine_height_m = b.turbine_height_m
                                             AND a.turbine_id = b.turbine_id """
     elif technology == 'solar':
         inputs_dict['resource_join_clause'] = """a.solar_re_9809_gid = b.solar_re_9809_gid
