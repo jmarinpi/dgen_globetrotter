@@ -27,7 +27,6 @@ tech = commandArgs(T)[3]
 schema = commandArgs(T)[4]
 
 # get pg connection params
-library(rjson)
 pg_params = fromJSON(txt = '../python/pg_params.json')
 
 
