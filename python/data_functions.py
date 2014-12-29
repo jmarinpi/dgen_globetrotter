@@ -25,6 +25,7 @@ import gzip
 import subprocess
 import os
 import sys, getopt
+import json
 from sam.languages.python import sscapi
 
 # configure psycopg2 to treat numeric values as floats (improves performance of pulling data from the database)

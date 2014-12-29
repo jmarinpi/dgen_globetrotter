@@ -9,7 +9,7 @@ library(ggthemes)
 library(reshape2)
 library(xtable)
 library(RPostgreSQL)
-library(rjson)
+library(jsonlite)
 # library(tidyr)
 library (dplyr,quietly = T)
 
@@ -28,7 +28,7 @@ schema = commandArgs(T)[4]
 
 # get pg connection params
 library(rjson)
-pg_params = fromJSON(file = '../python/pg_params.json')
+pg_params = fromJSON(txt = '../python/pg_params.json')
 
 
 
