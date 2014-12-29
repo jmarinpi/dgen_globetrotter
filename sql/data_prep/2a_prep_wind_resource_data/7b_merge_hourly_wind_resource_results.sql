@@ -243,7 +243,7 @@ with a as
 )
 select min(aep), max(aep), avg(aep)
 from a;
--- 
+-- 0.00000000000000000000 | 6782.0140000000000000 | 1897.01693073421459710308
 
 select min(naep), max(naep), avg(naep)
 from diffusion_wind.wind_resource_annual;
