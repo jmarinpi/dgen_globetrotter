@@ -1685,6 +1685,7 @@ def run_utilityrate3(df, logger):
         generation_hourly = df['hourly_gen_kwh'][i]
         consumption_hourly = df['hourly_load_kwh'][i]
         rate_json = df['sam_json'][i]
+        print type(rate_json)
         sam_out = utilityrate3(generation_hourly, consumption_hourly, rate_json, analysis_period=1., inflation_rate=0., degradation=(0.,),
                  return_values=('elec_cost_with_system_year1', 'elec_cost_without_system_year1'), logger = logger)
         sam_out['uid'] = uid
