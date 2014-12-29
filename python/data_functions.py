@@ -1660,6 +1660,9 @@ def get_utilityrate3_inputs(cur, con, technology, schema):
             LEFT JOIN %(schema)s.%(technology)s_resource_hourly d
                     ON %(gen_join_clause)s;""" % inputs_dict
 
+#    cur.execute(sql)
+#    df = pd.DataFrame.from_dict(cur.fetchall())    
+    
     df = pd.read_sql(sql, con, coerce_float = False)
     
     # scale the normalized hourly load based on the annual load
