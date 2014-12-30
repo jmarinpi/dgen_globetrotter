@@ -9,6 +9,7 @@ library(ggthemes)
 library(reshape2)
 library(xtable)
 library(RPostgreSQL)
+library(rjson)
 # library(tidyr)
 library (dplyr,quietly = T)
 
@@ -25,9 +26,15 @@ scen_name<-commandArgs(T)[2]
 tech = commandArgs(T)[3]
 schema = commandArgs(T)[4]
 
+# get pg connection params
+library(rjson)
+pg_params = fromJSON(file = '../python/pg_params.json')
+
+
+
 # two different connetions to postgres (1 used by RPostgreSQL and the other by dplyr)
-con<-make_con(driver = "PostgreSQL", host = 'gispgdb', dbname="diffusion_clone", user = 'bsigrin', password = 'bsigrin')
-src = src_postgres(host = 'gispgdb', dbname="diffusion_clone", user = 'bsigrin', password = 'bsigrin')
+con<-make_con(driver = "PostgreSQL", host = pg_params[['host']], pg_params[['dbname']], user = pg_params[['user']], password = pg_params[['password']])
+src = src_postgres(host = pg_params[['host']], dbname=pg_params[['dbname']], user = pg_params[['user']], password = pg_params[['password']])
 
 # lazy load the output table from postgres
 if (tech == 'wind'){

@@ -18,7 +18,7 @@ import time
 #==============================================================================
 def calc_economics(df, schema, sector, sector_abbr, market_projections, 
                    financial_parameters, cfg, scenario_opts, max_market_share, cur, con, 
-                   year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation, mode):
+                   year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation, mode,prng):
     '''
     Calculates economics of system adoption (cashflows, payback, irr, etc.)
     
@@ -96,7 +96,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     # Join the max_market_share table and df in order to select the ultimate mms based on the metric value. 
     df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'metric','metric_value_as_factor','business_model'])
     
-    df = datfunc.assign_business_model(df, method = 'prob', alpha = 2)
+    df = datfunc.assign_business_model(df, prng, method = 'prob', alpha = 2)
     
     return df
     

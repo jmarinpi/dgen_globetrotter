@@ -23,11 +23,12 @@ out_folder <- commandArgs(T)[2]
 diff_trends<-get_r_data(scen_folders,'diffusion_trends')
 cap_selected_trends<-get_r_data(scen_folders,'cap_selected_trends')
 height_selected_trends<-get_r_data(scen_folders,'height_selected_trends')
-payback_period_trends<-get_r_data(scen_folders,'payback_period_trends')
+metric_value_trends<-get_r_data(scen_folders,'metric_value_trends')
 
 
 dir.create(out_folder)
 opts_knit$set(base.dir = out_folder)
+opts_chunk$set(fig.path = sprintf('%s/figure/',out_folder ))
 knit2html("../r/graphics/scenario_analysis.md", output = sprintf("%s/Scenario Analysis Report.html",out_folder), title = "DG Wind Scenario Analysis Report", stylesheet = "../r/graphics/plot_outputs.css",
             options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
 

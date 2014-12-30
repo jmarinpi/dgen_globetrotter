@@ -326,6 +326,25 @@ FROM diffusion_shared.cbecs_2003_crb_lookup
 where crb_model is null;
 -- yes
 
+-- add this information back into the main table
+ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003
+ADD COLUMN crb_model text;
+
+UPDATE diffusion_shared.eia_microdata_cbecs_2003 a
+SET crb_model = b.crb_model
+FROM diffusion_shared.cbecs_2003_crb_lookup b
+where a.pubid8 = b.pubid8;
+-- 5019 updated
+
+-- add an index
+CREATE INDEX eia_microdata_cbecs_2003_crb_model_btree
+ON diffusion_shared.eia_microdata_cbecs_2003 
+using btree(crb_model);
+
+-- drop the lookup table
+DROP TABLE IF EXIStS diffusion_shared.cbecs_2003_crb_lookup;
+
+
 -----------------------------------------------------------------
 -- Residential Energy Consumption Survey
 DROP TABLE IF EXISTS diffusion_shared.eia_microdata_recs_2009;
@@ -435,3 +454,13 @@ USING btree(reportable_domain);
 CREATE INDEX eia_microdata_recs_2009_reportable_domain_btree 
 ON diffusion_shared.eia_microdata_recs_2009
 USING btree(reportable_domain);
+
+
+-- add the "crb_model" to this table (should be "reference" for all single family, owner occ homes)
+ALTER TABLE diffusion_shared.eia_microdata_recs_2009
+ADD COLUMN crb_model text;
+
+UPDATE diffusion_shared.eia_microdata_recs_2009 a
+SET crb_model = 'reference'
+where typehuq in (1,2) AND kownrent = 1;
+-- 7266 updated

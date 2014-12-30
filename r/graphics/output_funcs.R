@@ -3,7 +3,7 @@ sector_fil <- c(residential = "#4daf4a", commercial = "#377eb8", industrial = "#
 turb_size_fil <- c('Small: < 50 kW' = "#a1dab4", 'Mid: 51 - 500 kW' = "#41b6c4", 'Large: 501 - 3,000 kW' = "#253494") 
 # ======================= DATA FUNCTIONS =================================================
 
-make_con<-function(driver = "PostgreSQL", host = 'gispgdb', dbname="diffusion_clone", user = 'bsigrin', password = 'bsigrin'){
+make_con<-function(driver = "PostgreSQL", host, dbname, user, password){
   # Make connection to dav-gis database
   dbConnect(dbDriver(driver), host = host, dbname = dbname, user = user, password = password)  
 }
@@ -43,10 +43,11 @@ total_value_by_state_table<-function(df,val,unit_factor = 1){
   # Use unit_factor to convert units if needed i.e. unit_factor = 1e-6 will convert kW to GW
   val = as.symbol(val)
   g = group_by(df, year, state_abbr)
-  by_state = collect(summarise(g,
+  by_state = as.data.frame(collect(summarise(g,
                                sum(val * unit_factor)
-                              )
-                      )
+                                            )
+                                  )
+                          )
   names(by_state)<-c('year','State',val)
   g = group_by(by_state,year)
   national = summarise(g, 
@@ -582,13 +583,19 @@ get_csv_data<-function(scen_folders, file_name){
 get_r_data<-function(scen_folders, file_name){
   df<-data.frame()
   for(path in scen_folders){
-    tmp_name<-load(paste0(path,'/',file_name,'.RData'))
-    df<-rbind(df,get(tmp_name))
-    rm(list = c(tmp_name))
+    full_path = paste0(path,'/',file_name,'.RData')
+    if(file.exists(full_path)){
+      
+      tmp_name<-load(full_path)
+      df<-rbind(df,get(tmp_name))
+      rm(list = c(tmp_name))
+      
+    } else {
+      sprintf("file: \'%s\' does not exist", full_path)
+    }
   }
   return(df)
 }
-
 
 all_sectors_diff_trends<-function(df){
   df<-ddply(df,.(year,variable, scenario), summarise, value = sum(value))
@@ -695,18 +702,36 @@ turb_trends_hist<-function(df){
 return(out)
 }
 
-pp_trends_ribbon<-function(df){
-  # Median payback period over time and sector  
-  p<-ggplot(df, aes(x = year, y = median, ymin = lql, ymax = uql, color = scenario, fill = scenario), size = 0.75)+
-    geom_smooth(stat = 'identity', alpha = 0.4)+
+metric_trends_ribbon<-function(df){
+  
+  df = as.data.frame(collect(df))
+  # Create two plots for the two metrics
+  pp<-filter(df, metric == 'payback_period')
+  mbs<-filter(df, metric == 'percent_monthly_bill_savings')
+  
+  # Median econ attractiveness over time and sector  
+  p1<-ggplot(pp, aes(x = year, y = median, ymin = lql, ymax = uql, color = scenario, fill = scenario), size = 0.75)+
+    geom_smooth(stat = 'identity', alpha = 0.2)+
     geom_line()+
     facet_wrap(~sector)+
-    scale_y_continuous(name ='Payback Period (years)', lim = c(0,40))+
+    scale_y_continuous(name ='Median Payback Period (years)', lim=c(0,40))+
     scale_x_continuous(name ='Year')+
     theme_few()+
     theme(strip.text.x = element_text(size=12, angle=0,))+
-    ggtitle('National Payback Period (Median and Inner-Quartile Range)')
-  return(p)
+    ggtitle('National Payback Period Range (Median and Inner-Quartile Range)')
+  
+  p2<-ggplot(mbs, aes(x = year, y = median, ymin = lql, ymax = uql, color = scenario, fill = scenario), size = 0.75)+
+    geom_smooth(stat = 'identity', alpha = 0.2)+
+    geom_line()+
+    facet_wrap(~sector)+
+    scale_y_continuous(name ='Median Monthly Bill Savings (% of pre-adoption bill)', lim=c(0,2), label = percent)+
+    scale_x_continuous(name ='Year')+
+    theme_few()+
+    theme(strip.text.x = element_text(size=12, angle=0,))+
+    ggtitle('National Monthly Bill Savings Range (Median and Inner-Quartile Range)')
+  
+  out = list("p1" = p1, "p2" = p2)
+  return(out)
 }
 
 dist_of_azimuth_selected<-function(df, start_year){
@@ -739,7 +764,7 @@ data = collect(df) %>%
 data2 = group_by(data, year, sector) %>%
   summarise(tot_cap = sum(annual_capacity_gw))
 
-data3 = join(data,data2) %>%
+data3 = merge(data,data2) %>%
   mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
   filter(business_model == 'tpo')
 
@@ -762,11 +787,11 @@ data = collect(df)%>%
 data2 = group_by(data, year, state) %>%
   summarise(tot_cap = sum(annual_capacity_gw))
 
-table <- join(data,data2) %>%
+table <- merge(data,data2) %>%
   mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
   filter(business_model == 'tpo')%>%
   select(year, state, market_share = per_mkt_share)%>%
-  spread(year,market_share)
+  dcast(state ~ year, value.var = 'market_share')
 
 l = list("plot" = plot, "table" = table)  
 return(l)

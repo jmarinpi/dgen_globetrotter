@@ -28,6 +28,7 @@ import datetime
 import config as cfg
 import shutil
 import sys
+from sam.languages.python import sscapi
 import getopt
 import pickle
 if cfg.technology == 'wind':
@@ -149,6 +150,9 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             net_metering = scenario_opts['net_metering_availability']
             inflation = scenario_opts['ann_inflation']
             end_year = scenario_opts['end_year']
+            # Generate a pseudo-random number generator to generate random numbers in numpy.
+            # This method is better than np.random.seed() because it is thread-safe
+            prng = np.random.RandomState(scenario_opts['random_generator_seed'])
             
             if cfg.technology == 'solar':
                 ann_system_degradation = datfunc.get_system_degradation(cur,schema)
@@ -184,7 +188,8 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             if mode != 'ReEDS' or resume_year == 2014:
                 datfunc.clear_outputs(con, cur, schema) # clear results from previous run
             logger.info('datfunc.clear_outputs took: %0.1fs' %(time.time() - t0))
-              
+            
+            
             for sector_abbr, sector in sectors.iteritems():
 
                 # define the rate escalation source and max market curve for the current sector
@@ -192,15 +197,37 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                 # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
                 if cfg.init_model:
                     t0 = time.time()
-                    main_table = datfunc.generate_customer_bins(cur, con, cfg.technology, schema, 
+                    datfunc.generate_customer_bins(cur, con, cfg.technology, schema, 
                                                    scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
                                                    cfg.start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
                                                    cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.preprocess, cfg.npar, 
                                                    cfg.pg_conn_string, scenario_opts['net_metering_availability'], logger = logger)
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
-                else:
-                    main_table = '%s.pt_%s_best_option_each_year' % (schema, sector_abbr)
-                
+
+
+            #==============================================================================
+#            # DISABLED FOR DEV BRANCH
+#            # break from the loop to find all unique combinations of rates, load, and generation
+#            logger.info('Finding unique combinations of rates, load, and generation')
+#            datfunc.get_unique_parameters_for_urdb3(cur, con, cfg.technology, schema, sectors)            
+#            # collect data for all unique combinations
+#            logger.info('Collecting unique combinations of rates, load, and generation')
+#            t0 = time.time()
+#            rate_input_df = datfunc.get_utilityrate3_inputs(cur, con, cfg.technology, schema)
+#            logger.info('datfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t0),)        
+#            # calculate value of energy for all unique combinations
+#            logger.info('Calculating value of energy using SAM')
+#            t0 = time.time()
+#            sam_output_df = datfunc.run_utilityrate3(rate_input_df, logger)
+#            logger.info('datfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t0),)  
+            #==============================================================================
+             
+
+
+            # loop through sectors and time steps to calculate full economics and diffusion                
+            for sector_abbr, sector in sectors.iteritems():  
+                # define the name of the customer bins table
+                main_table = '%s.pt_%s_best_option_each_year' % (schema, sector_abbr)
                 # get dsire incentives for the generated customer bins
                 t0 = time.time()
                 dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, sector_abbr, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger)
@@ -249,7 +276,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                                                                                market_projections, financial_parameters, 
                                                                                cfg, scenario_opts, max_market_share, cur, con, year, 
                                                                                dsire_incentives, deprec_schedule, logger, rate_escalations, 
-                                                                               ann_system_degradation, mode)
+                                                                               ann_system_degradation, mode,prng)
                     
                     # 10. Calulate diffusion
                     ''' Calculates the market share (ms) added in the solve year. Market share must be less

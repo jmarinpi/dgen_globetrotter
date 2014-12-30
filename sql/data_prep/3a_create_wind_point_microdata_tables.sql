@@ -8,6 +8,7 @@ WITH a AS
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
 		a.annual_rate_gid, 
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id,
+		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor,
 		count(*)::integer as point_weight
@@ -18,6 +19,7 @@ WITH a AS
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
 		a.annual_rate_gid, 
 		a.pca_reg, a.reeds_reg, a.wind_incentive_array_id,
+		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor
 )
@@ -47,6 +49,9 @@ VACUUM ANALYZE diffusion_wind.point_microdata_res_us;
 
 ----------------------------------------------------------------------------------------------------
 -- commercial
+-- select count(*)
+-- FROM diffusion_wind.point_microdata_com_us;--426113
+
 DROP TABLE IF EXISTS diffusion_wind.point_microdata_com_us CASCADE;
 SET seed to 1;
 CREATE TABLE diffusion_wind.point_microdata_com_us AS
@@ -56,6 +61,7 @@ WITH a AS
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
 		a.annual_rate_gid, 
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id,
+		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor,
 		count(*)::integer as point_weight
@@ -66,6 +72,7 @@ WITH a AS
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
 		a.annual_rate_gid, 
 		a.pca_reg, a.reeds_reg, a.wind_incentive_array_id,
+		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor
 )
@@ -105,6 +112,7 @@ WITH a AS
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
 		a.annual_rate_gid, 
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id,
+		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor,
 		count(*)::integer as point_weight
@@ -115,6 +123,7 @@ WITH a AS
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
 		a.annual_rate_gid, 
 		a.pca_reg, a.reeds_reg, a.wind_incentive_array_id,
+		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
 		b.i, b.j, b.cf_bin, b.aep_scale_factor
 )
