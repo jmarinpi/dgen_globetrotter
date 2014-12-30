@@ -27,6 +27,7 @@ import os
 import sys, getopt
 import json
 from sam.languages.python import sscapi
+import pssc_mp
 
 # configure psycopg2 to treat numeric values as floats (improves performance of pulling data from the database)
 DEC2FLOAT = pg.extensions.new_type(
@@ -1607,7 +1608,8 @@ def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
     
     
 
-def get_utilityrate3_inputs(cur, con, technology, schema):
+def get_utilityrate3_inputs(cur, con, technology, schema, npar, pg_conn_string):
+    
     
     inputs_dict = locals().copy()     
        
@@ -1625,9 +1627,17 @@ def get_utilityrate3_inputs(cur, con, technology, schema):
                                             AND a.azimuth = d.azimuth"""
         inputs_dict['gen_scale_offset'] = 1e6
         
-        
-    
-    
+   # find the set of uids     
+    sql =   """SELECT uid 
+               FROM %(schema)s.unique_rate_gen_load_combinations
+               ORDER BY uid;""" % inputs_dict
+    cur.execute(sql)
+    uids = [row['uid'] for row in cur.fetchall()]
+    # split the uids into npar chunks
+    uid_chunks = map(list, np.array_split(uids, npar))    
+    inputs_dict['chunk_place_holder'] = '%(uids)s'        
+
+    # build out the sql query that will be used to collect the data
     sql = """
             -- COMBINE LOAD DATA FOR RES AND COM INTO SINGLE TABLE
             WITH eplus as 
@@ -1658,24 +1668,63 @@ def get_utilityrate3_inputs(cur, con, technology, schema):
             
             -- JOIN THE RESOURCE DATA
             LEFT JOIN %(schema)s.%(technology)s_resource_hourly d
-                    ON %(gen_join_clause)s;""" % inputs_dict
+                    ON %(gen_join_clause)s
+            WHERE a.uid IN (%(chunk_place_holder)s);""" % inputs_dict
+        
+   
+    results = JoinableQueue()    
+    jobs = []
+ 
+    for i in range(npar):
+        place_holders = {'uids': pylist_2_pglist(uid_chunks[i])}
+        isql = sql % place_holders
+        proc = Process(target = p_get_utilityrate3_inputs, args = (inputs_dict, pg_conn_string, isql, results))
+        jobs.append(proc)
+        proc.start()
     
-    df = pd.read_sql(sql, con, coerce_float = False)
+    # get the results from the parallel processes (this method avoids deadlocks)
+    results_list = []
+    for i in range(0, npar):
+        result = results.get()
+        results_list.append(result)
+
+    # concatenate all of the dataframes into a single data frame
+    results_df = pd.concat(results_list)
+    # reindex the dataframe
+    results_df.reset_index(drop = True, inplace = True)
     
-    # scale the normalized hourly load based on the annual load
-    hourly_load_kwh = np.array(list(df['nkwh'])) * np.array(df['load_kwh_per_customer_in_bin']).reshape(df.shape[0],1) / inputs_dict['load_scale_offset']
-    # add the scaled hourly load back to the data frame    
-    df['consumption_hourly'] = hourly_load_kwh.tolist()
-    
-    # scale the hourly cfs into hourly kw using the system size
-    hourly_gen_kwh = np.array(list(df['cf'])) * np.array(df['system_size_kw']).reshape(df.shape[0],1) / inputs_dict['gen_scale_offset']
-    # add the scaled hourly generation back to the data frame    
-    df['generation_hourly'] = hourly_gen_kwh.tolist()
-    
-    # extract a dataframe with only the columns of interest for running the sam calcs
-    return_df = df[['uid','rate_json','consumption_hourly','generation_hourly']]
-    
-    return return_df
+    return results_df
+
+
+def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
+    try:
+        # create cursor and connection
+        con, cur = make_con(pg_conn_string)  
+        # get the data from postgres
+        df = pd.read_sql(sql, con, coerce_float = False)
+        # close cursor and connection
+        con.close()
+        cur.close()
+        
+        # scale the normalized hourly load based on the annual load
+        hourly_load_kwh = np.array(list(df['nkwh'])) * np.array(df['load_kwh_per_customer_in_bin']).reshape(df.shape[0],1) / inputs_dict['load_scale_offset']
+        # add the scaled hourly load back to the data frame    
+        df['consumption_hourly'] = hourly_load_kwh.tolist()
+        
+        # scale the hourly cfs into hourly kw using the system size
+        hourly_gen_kwh = np.array(list(df['cf'])) * np.array(df['system_size_kw']).reshape(df.shape[0],1) / inputs_dict['gen_scale_offset']
+        # add the scaled hourly generation back to the data frame    
+        df['generation_hourly'] = hourly_gen_kwh.tolist()
+        
+        # extract a dataframe with only the columns of interest for running the sam calcs
+        return_df = df[['uid','rate_json','consumption_hourly','generation_hourly']]
+        
+        # add the results to the queue
+        queue.put(return_df)
+        
+    except Exception, e:
+        print 'Error: %s' % e
+        print sql
     
 
 def run_utilityrate3(df, logger):

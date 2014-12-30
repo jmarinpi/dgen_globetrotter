@@ -214,7 +214,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             # collect data for all unique combinations
             logger.info('Collecting unique combinations of rates, load, and generation')
             t0 = time.time()
-            rate_input_df = datfunc.get_utilityrate3_inputs(cur, con, cfg.technology, schema)
+            rate_input_df = datfunc.get_utilityrate3_inputs(cur, con, cfg.technology, schema, cfg.npar, cfg.pg_conn_string)
             logger.info('datfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t0),)        
             # calculate value of energy for all unique combinations
             logger.info('Calculating value of energy using SAM')
