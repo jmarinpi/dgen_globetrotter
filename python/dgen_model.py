@@ -175,6 +175,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             max_market_share = datfunc.get_max_market_share(con, schema)
             market_projections = datfunc.get_market_projections(con, schema)
             rate_escalations = datfunc.get_rate_escalations(con, schema)
+            rate_structures = datfunc.get_rate_structures(con, schema)
 
             logger.info('Getting various parameters took: %0.1fs' %(time.time() - t0))
 
@@ -202,7 +203,8 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                                                    scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
                                                    cfg.start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
                                                    cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.preprocess, cfg.npar, 
-                                                   cfg.pg_conn_string, scenario_opts['net_metering_availability'], logger = logger)
+                                                   cfg.pg_conn_string, scenario_opts['net_metering_availability'], 
+                                                   rate_structures[sector_abbr], logger = logger)
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
 
 
