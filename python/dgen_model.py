@@ -31,6 +31,7 @@ import sys
 from sam.languages.python import sscapi
 import getopt
 import pickle
+import pssc_mp
 if cfg.technology == 'wind':
     import load_excel_wind as loadXL
 elif cfg.technology == 'solar':
@@ -218,7 +219,12 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             # calculate value of energy for all unique combinations
             logger.info('Calculating value of energy using SAM')
             t0 = time.time()
-            sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
+            # run sam calcs in serial if only one core is available
+            if cfg.local_cores == 1:
+                sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
+            # otherwise run in parallel
+            else:
+                sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)
             logger.info('datfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t0),)  
             # write results to postgres
             t0 = time.time()

@@ -1641,7 +1641,7 @@ def get_utilityrate3_inputs(cur, con, technology, schema):
             )
                    
             SELECT 	a.uid, 
-                    	b.sam_json, 
+                    	b.sam_json as rate_json, 
                         a.load_kwh_per_customer_in_bin, c.nkwh,
                         a.system_size_kw, d.cf
             	
@@ -1665,27 +1665,31 @@ def get_utilityrate3_inputs(cur, con, technology, schema):
     # scale the normalized hourly load based on the annual load
     hourly_load_kwh = np.array(list(df['nkwh'])) * np.array(df['load_kwh_per_customer_in_bin']).reshape(df.shape[0],1) / inputs_dict['load_scale_offset']
     # add the scaled hourly load back to the data frame    
-    df['hourly_load_kwh'] = hourly_load_kwh.tolist()
+    df['consumption_hourly'] = hourly_load_kwh.tolist()
     
     # scale the hourly cfs into hourly kw using the system size
     hourly_gen_kwh = np.array(list(df['cf'])) * np.array(df['system_size_kw']).reshape(df.shape[0],1) / inputs_dict['gen_scale_offset']
     # add the scaled hourly generation back to the data frame    
-    df['hourly_gen_kwh'] = hourly_gen_kwh.tolist()
+    df['generation_hourly'] = hourly_gen_kwh.tolist()
     
     # extract a dataframe with only the columns of interest for running the sam calcs
-    return_df = df[['uid','sam_json','hourly_load_kwh','hourly_gen_kwh']]
+    return_df = df[['uid','rate_json','consumption_hourly','generation_hourly']]
     
     return return_df
     
 
 def run_utilityrate3(df, logger):
+    # NOTE: This method is slower than pssc_mp.pssc_mp()
+    # unless there is only one core available, in which case
+    # this method will run faster due to no overhead of setting
+    # up multiprocessing
     from pssc import utilityrate3
     results = []
     for i in range(0, df.shape[0]):
         uid = df['uid'][i]
-        generation_hourly = df['hourly_gen_kwh'][i]
-        consumption_hourly = df['hourly_load_kwh'][i]
-        rate_json = df['sam_json'][i]
+        generation_hourly = df['generation_hourly'][i]
+        consumption_hourly = df['consumption_hourly'][i]
+        rate_json = df['rate_json'][i]
         sam_out = utilityrate3(generation_hourly, consumption_hourly, rate_json, analysis_period=1., inflation_rate=0., degradation=(0.,),
                  return_values=('elec_cost_with_system_year1', 'elec_cost_without_system_year1'), logger = logger)
         sam_out['uid'] = uid
