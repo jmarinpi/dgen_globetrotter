@@ -54,7 +54,7 @@ parallelize = True
 npar = 10
 
 # local cores
-local_cores = multiprocessing.cpu_count()-1
+local_cores = multiprocessing.cpu_count()/2
 
 # load scenario input sheet?
 load_scenario_inputs = True
