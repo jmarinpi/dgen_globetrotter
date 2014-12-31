@@ -962,10 +962,19 @@ def ud_elec_rates(curWb,schema,table,conn,cur,verbose=False):
         print 'Exporting User-Defined Flat Electric Rates'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
-    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.copy_expert("""COPY %s.%s (state_abbr, res_rate_dlrs_per_kwh, com_rate_dlrs_per_kwh, ind_rate_dlrs_per_kwh) 
+                FROM STDOUT WITH CSV""" % (schema, table), f)     
     cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
     conn.commit()
     f.close()
+    
+    # add in the FIPS codes
+    sql = """UPDATE %s.%s a
+             SET state_fips = b.state_fips
+             FROM diffusion_shared.state_fips_lkup b
+             WHERE a.state_abbr = b.state_abbr;""" % (schema, table)
+    cur.execute(sql)
+    conn.commit()
 
 if __name__ == '__main__':
     input_xls = '../excel/scenario_inputs_solar.xlsm'
