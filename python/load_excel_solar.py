@@ -990,8 +990,8 @@ def rate_type_weights(curWb,schema,table,conn,cur,verbose=False):
     rows = len(cells)
     for r in range(0, rows):
         rate_type = cells[r][0].value
-        res_weight = cells[r][1].value or 0
-        com_ind_weight = cells[r][2].value or 0
+        res_weight = cells[r][1].value or 0.01 # replace zero or null weights for sampling in the model to work correctly
+        com_ind_weight = cells[r][2].value or 0.01 # replace zero or null weights for sampling in the model to work correctly
         l = [rate_type, res_weight, com_ind_weight, com_ind_weight]
         f.write(list2line(l))
     f.seek(0)
