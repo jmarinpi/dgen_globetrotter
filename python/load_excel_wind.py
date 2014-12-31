@@ -77,6 +77,8 @@ def main(wb, conn, verbose = False):
         leasingAvail(curWb,schema,table,conn,cur,verbose)
         table = 'user_defined_electric_rates'
         ud_elec_rates(curWb,schema,table,conn,cur,verbose)
+        table = 'rate_type_weights'
+        rate_type_weights(curWb,schema,table,conn,cur,verbose)
 
 
         if close_conn:
@@ -771,6 +773,41 @@ def ud_elec_rates(curWb,schema,table,conn,cur,verbose=False):
              WHERE a.state_abbr = b.state_abbr;""" % (schema, table)
     cur.execute(sql)
     conn.commit()
+
+def rate_type_weights(curWb,schema,table,conn,cur,verbose=False):
+    
+    f = StringIO.StringIO()
+    rname = 'rate_type_weights'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist.' % rname)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    rows = len(cells)
+    for r in range(0, rows):
+        rate_type = cells[r][0].value
+        res_weight = cells[r][1].value or 0
+        com_ind_weight = cells[r][2].value or 0
+        l = [rate_type, res_weight, com_ind_weight]
+        f.write(list2line(l))
+    f.seek(0)
+    if verbose:
+        print 'Exporting Rate Type Weights'
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_expert("""COPY %s.%s (rate_type_desc, res_weight, com_ind_weight) 
+                FROM STDOUT WITH CSV""" % (schema, table), f)     
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+    
+    # add in the FIPS codes
+    sql = """UPDATE %s.%s a
+             SET rate_type = b.rate_type
+             FROM diffusion_shared.rate_type_desc_lkup b
+             WHERE a.rate_type_desc = b.rate_type_desc;""" % (schema, table)
+    cur.execute(sql)
+    conn.commit()
+
 
 if __name__ == '__main__':
     input_xls = '../excel/scenario_inputs_wind.xlsm'
