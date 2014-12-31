@@ -860,6 +860,7 @@ def find_rates(inputs_dict, county_chunks, exclusion_type, npar, pg_conn_string,
                 (
                     	SELECT a.county_id, a.bin_id, 
                     		b.rate_id_alias,
+                              b.rate_type,
                     		c.rank as rate_rank
                     	FROM %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s a
                     	LEFT JOIN diffusion_shared.urdb_rates_by_state_%(sector_abbr)s b
@@ -875,9 +876,11 @@ def find_rates(inputs_dict, county_chunks, exclusion_type, npar, pg_conn_string,
                     	SELECT *, rank() OVER (partition by county_id, bin_id order by rate_rank asc, random() asc) as rank
                     	FROM a
                 )
-                SELECT *
+                SELECT b.*, c.%(sector_abbr)s_weight as rate_type_weight
                 FROM b 
-                where rank = 1;""" % inputs_dict
+                LEFT JOIN %(schema)s.rate_type_weights c
+                ON b.rate_type = c.rate_type
+                WHERE b.rank = 1;""" % inputs_dict
         p_run(pg_conn_string, sql, county_chunks, npar)
         
         # add indices on county id, bin id
@@ -896,7 +899,8 @@ def find_rates(inputs_dict, county_chunks, exclusion_type, npar, pg_conn_string,
                 (
                     SELECT a.county_id, a.bin_id,
                             unnest(sample(array_agg(a.rate_id_alias ORDER BY a.rate_id_alias), 1, 
-                                          (%(seed)s * a.county_id * a.bin_id), False)) as rate_id_alias
+                                          (%(seed)s * a.county_id * a.bin_id), False,
+                                          array_agg(a.rate_type_weight ORDER BY a.rate_id_alias))) as rate_id_alias
                     FROM %(schema)s.pt_%(sector_abbr)s_sample_load_applicable_rates_%(i_place_holder)s a
                     GROUP BY a.county_id, a.bin_id
                 )
