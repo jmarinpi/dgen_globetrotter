@@ -82,6 +82,8 @@ def main(wb, conn, verbose = False):
         leasingAvail(curWb,schema,table,conn,cur,verbose)
         table = 'nem_manual_policies'
         nempolicy(curWb,schema,table,conn,cur,verbose)
+        table = 'user_defined_electric_rates'
+        ud_elec_rates(curWb,schema,table,conn,cur,verbose)
         
         # The solar program costs are static, so only need this to manually load the table once.
         # Uncomment to make SPT table dynamic
@@ -931,6 +933,33 @@ def nempolicy(curWb,schema,table,conn,cur,verbose=False):
     f.seek(0)
     if verbose:
         print 'Exporting NEM manual policies'
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+
+
+def ud_elec_rates(curWb,schema,table,conn,cur,verbose=False):
+    
+    f = StringIO.StringIO()
+    rname = 'ud_rates'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist.' % rname)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    rows = len(cells)
+    for r in range(0, rows):
+        state_abbr = cells[r][0].value or 0
+        res_rate = cells[r][1].value or 0
+        com_rate = cells[r][2].value or 0
+        ind_rate = cells[r][3].value or 0
+        l = [state_abbr, res_rate, com_rate, ind_rate]
+        f.write(list2line(l))
+    f.seek(0)
+    if verbose:
+        print 'Exporting User-Defined Flat Electric Rates'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
