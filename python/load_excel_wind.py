@@ -787,14 +787,14 @@ def rate_type_weights(curWb,schema,table,conn,cur,verbose=False):
         rate_type = cells[r][0].value
         res_weight = cells[r][1].value or 0
         com_ind_weight = cells[r][2].value or 0
-        l = [rate_type, res_weight, com_ind_weight]
+        l = [rate_type, res_weight, com_ind_weight, com_ind_weight]
         f.write(list2line(l))
     f.seek(0)
     if verbose:
         print 'Exporting Rate Type Weights'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
-    cur.copy_expert("""COPY %s.%s (rate_type_desc, res_weight, com_ind_weight) 
+    cur.copy_expert("""COPY %s.%s (rate_type_desc, res_weight, com_weight, ind_weight) 
                 FROM STDOUT WITH CSV""" % (schema, table), f)     
     cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
     conn.commit()
