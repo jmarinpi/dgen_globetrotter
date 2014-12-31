@@ -415,14 +415,14 @@ UNION ALL
 -- annual average flat rates (residential)
 SELECT 'aares'::character varying(5) as rate_source,
 	a.gid as rate_id_alias, 
-	('{"ur_flat_buy_rate" : ' || round(res_cents_per_kwh,2)::text || '}')::JSON as sam_json
+	('{"ur_flat_buy_rate" : ' || round(res_cents_per_kwh/100,2)::text || '}')::JSON as sam_json
 FROM diffusion_shared.annual_ave_elec_rates_2011 a
 where a.res_cents_per_kwh is not null
 UNION ALL
 -- annual average flat rates (commercial)
 SELECT 'aacom'::character varying(5) as rate_source,
 	a.gid as rate_id_alias, 
-	('{"ur_flat_buy_rate" : ' || round(comm_cents_per_kwh * (1-b.com_demand_charge_rate),2)::text || '}')::JSON as sam_json
+	('{"ur_flat_buy_rate" : ' || round(comm_cents_per_kwh/100 * (1-b.com_demand_charge_rate),2)::text || '}')::JSON as sam_json
 FROM diffusion_shared.annual_ave_elec_rates_2011 a
 CROSS JOIN diffusion_solar.scenario_options b
 where a.comm_cents_per_kwh is not null
@@ -430,7 +430,7 @@ UNION ALL
 -- annual average flat rates (industrial)
 SELECT 'aaind'::character varying(5) as rate_source,
 	a.gid as rate_id_alias, 
-	('{"ur_flat_buy_rate" : ' || round(ind_cents_per_kwh * (1-b.ind_demand_charge_rate),2)::text || '}')::JSON as sam_json
+	('{"ur_flat_buy_rate" : ' || round(ind_cents_per_kwh/100 * (1-b.ind_demand_charge_rate),2)::text || '}')::JSON as sam_json
 FROM diffusion_shared.annual_ave_elec_rates_2011 a
 CROSS JOIN diffusion_solar.scenario_options b
 where a.ind_cents_per_kwh is not null;
