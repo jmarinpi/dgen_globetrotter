@@ -61,7 +61,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
-	e.state_abbr, e.census_division_abbr, e.census_region,
+	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
 	a.i, a.j, a.cf_bin, a.aep_scale_factor, 
 	l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
@@ -103,7 +103,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
-	e.state_abbr, e.census_division_abbr, e.census_region,
+	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
 	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
 FROM diffusion_wind.point_microdata_res_us a
@@ -145,7 +145,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
-	e.state_abbr, e.census_division_abbr, e.census_region, 
+	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region, 
 	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
 FROM diffusion_wind.point_microdata_com_us a
@@ -397,4 +397,24 @@ SELECT 'aaind'::character varying(5) as rate_source,
 	('{"ur_flat_buy_rate" : ' || round(ind_cents_per_kwh/100 * (1-b.ind_demand_charge_rate),2)::text || '}')::JSON as sam_json
 FROM diffusion_shared.annual_ave_elec_rates_2011 a
 CROSS JOIN diffusion_wind.scenario_options b
-where a.ind_cents_per_kwh is not null;
+where a.ind_cents_per_kwh is not null
+UNION ALL
+-- user-defined flat rates (residential)
+SELECT 'udres'::character varying(5) as rate_source,
+	a.state_fips as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(res_rate_dlrs_per_kwh,2)::text || '}')::JSON as sam_json
+FROM diffusion_wind.user_defined_electric_rates a
+UNION ALL
+-- user-defined flat rates (commercial)
+SELECT 'udcom'::character varying(5) as rate_source,
+	a.state_fips as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(com_rate_dlrs_per_kwh* (1-b.com_demand_charge_rate),2)::text || '}')::JSON as sam_json
+FROM diffusion_wind.user_defined_electric_rates a
+CROSS JOIN diffusion_wind.scenario_options b
+UNION ALL
+-- user-defined flat rates (industrial)
+SELECT 'udind'::character varying(5) as rate_source,
+	a.state_fips as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(ind_rate_dlrs_per_kwh* (1-b.ind_demand_charge_rate),2)::text || '}')::JSON as sam_json
+FROM diffusion_wind.user_defined_electric_rates a
+CROSS JOIN diffusion_wind.scenario_options b;

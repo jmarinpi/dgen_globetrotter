@@ -60,7 +60,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier,
-	e.state_abbr, e.census_division_abbr, e.census_region,
+	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
 	a.solar_re_9809_gid, 
 	l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
@@ -101,7 +101,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier,
-	e.state_abbr, e.census_division_abbr, e.census_region,
+	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
 	a.solar_re_9809_gid, 
 	l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
@@ -143,7 +143,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier,
-	e.state_abbr, e.census_division_abbr, e.census_region, 
+	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region, 
 	a.solar_re_9809_gid,
 	l.carbon_intensity_t_per_kwh,
 	m.nem_system_limit_kw
@@ -403,6 +403,7 @@ and a.source = b.source;
 -- ON a.turbine_size_kw = b.turbine_size_kw;
 
 
+set role 'diffusion-writers';
 -- create a view of all of the different types of rates
 DROP VIEW IF EXISTS diffusion_solar.all_rate_jsons;
 CREATE VIEW diffusion_solar.all_rate_jsons AS
@@ -433,4 +434,24 @@ SELECT 'aaind'::character varying(5) as rate_source,
 	('{"ur_flat_buy_rate" : ' || round(ind_cents_per_kwh/100 * (1-b.ind_demand_charge_rate),2)::text || '}')::JSON as sam_json
 FROM diffusion_shared.annual_ave_elec_rates_2011 a
 CROSS JOIN diffusion_solar.scenario_options b
-where a.ind_cents_per_kwh is not null;
+where a.ind_cents_per_kwh is not null
+UNION ALL
+-- user-defined flat rates (residential)
+SELECT 'udres'::character varying(5) as rate_source,
+	a.state_fips as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(res_rate_dlrs_per_kwh,2)::text || '}')::JSON as sam_json
+FROM diffusion_solar.user_defined_electric_rates a
+UNION ALL
+-- user-defined flat rates (commercial)
+SELECT 'udcom'::character varying(5) as rate_source,
+	a.state_fips as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(com_rate_dlrs_per_kwh* (1-b.com_demand_charge_rate),2)::text || '}')::JSON as sam_json
+FROM diffusion_solar.user_defined_electric_rates a
+CROSS JOIN diffusion_solar.scenario_options b
+UNION ALL
+-- user-defined flat rates (industrial)
+SELECT 'udind'::character varying(5) as rate_source,
+	a.state_fips as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(ind_rate_dlrs_per_kwh* (1-b.ind_demand_charge_rate),2)::text || '}')::JSON as sam_json
+FROM diffusion_solar.user_defined_electric_rates a
+CROSS JOIN diffusion_solar.scenario_options b;
