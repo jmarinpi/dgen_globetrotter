@@ -65,12 +65,6 @@ def utilityrate3(generation_hourly, consumption_hourly, rate_json,
 
     # set rate and function-level paramater values
     for k, v in rate_json.iteritems():
-        # temporary fix for incorrectly named keys in rates json
-        if k == 'ec_enable':
-            k = 'ur_ec_enable'
-        if k == 'dc_enable':
-            k = 'ur_dc_enable'
-        # logger.debug('setting %s' % k)
         try:
             dat_set[pssc_utils.param_types[k]](dat, k, v)
         except KeyError:

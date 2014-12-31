@@ -1,7 +1,7 @@
 ﻿-- copy the rate sam_json data over to diffusion_shared with the rate alias id
 set role 'diffusion-writers';
 
-DROP TABLE IF EXISTS diffusion_shared.urdb3_rate_sam_jsons;
+DROP TABLE IF EXISTS diffusion_shared.urdb3_rate_sam_jsons CASCADE;
 CREATE TABLE diffusion_shared.urdb3_rate_sam_jsons AS
 with a AS
 (
@@ -23,4 +23,4 @@ on a.rate_id_alias = b.rate_id_alias;
 
 -- add primary key on rate_id_alias
 ALTER TABLE diffusion_shared.urdb3_rate_sam_jsons
-add primary key(rate_id_alias)
+add primary key(rate_id_alias);
