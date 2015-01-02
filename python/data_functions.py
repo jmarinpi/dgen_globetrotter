@@ -806,8 +806,8 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
             AND a.bin_id = b.bin_id
             WHERE county_total_load_mwh_2011 > 0)
             SELECT a.*,
-            	CASE WHEN a.customers_in_bin > 0 THEN ROUND(a.load_kwh_in_bin/a.customers_in_bin, 0)::INTEGER
-            	ELSE 0::INTEGER
+            	CASE WHEN a.customers_in_bin > 0 THEN ROUND(a.load_kwh_in_bin/a.customers_in_bin, 0)::BIGINT
+            	ELSE 0::BIGINT
             	END AS load_kwh_per_customer_in_bin
             FROM binned a;""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
@@ -1123,7 +1123,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   initial_customers_in_bin double precision,
                   load_kwh_in_bin double precision,
                   initial_load_kwh_in_bin double precision,
-                  load_kwh_per_customer_in_bin INTEGER,
+                  load_kwh_per_customer_in_bin BIGINT,
                   crb_model text,
                   max_demand_kw integer,
                   rate_id_alias integer,
