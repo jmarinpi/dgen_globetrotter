@@ -56,8 +56,8 @@ DROP VIEW IF EXISTS diffusion_wind.point_microdata_ind_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_ind_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
-        c.ind_cents_per_kwh * (1-n.ind_demand_charge_rate) as elec_rate_cents_per_kwh, 
+	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
+        c.ind_rate_cents_per_kwh * (1-n.ind_demand_charge_rate) as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
@@ -70,8 +70,8 @@ FROM diffusion_wind.point_microdata_ind_us a
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
 -- rates
-LEFT JOIN diffusion_shared.annual_ave_elec_rates_2011 c
-ON a.annual_rate_gid = c.gid
+LEFT JOIN diffusion_shared.ann_ave_elec_rates_by_county_2012 c
+ON a.county_id = c.county_id
 -- capital_costs
 LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
 ON a.county_id = d.county_id
@@ -98,8 +98,8 @@ DROP VIEW IF EXISTS diffusion_wind.point_microdata_res_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_res_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
-	c.res_cents_per_kwh as elec_rate_cents_per_kwh, 
+	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
+	c.res_rate_cents_per_kwh as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
@@ -114,8 +114,8 @@ ON a.county_id = b.county_id
 LEFT JOIN diffusion_shared.county_housing_units k
 ON a.county_id = k.county_id
 -- rates
-LEFT JOIN diffusion_shared.annual_ave_elec_rates_2011 c
-ON a.annual_rate_gid = c.gid
+LEFT JOIN diffusion_shared.ann_ave_elec_rates_by_county_2012 c
+ON a.county_id = c.county_id
 -- capital_costs
 LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
 ON a.county_id = d.county_id
@@ -140,8 +140,8 @@ DROP VIEW IF EXISTS diffusion_wind.point_microdata_com_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_com_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
-	c.comm_cents_per_kwh * (1-n.com_demand_charge_rate) as elec_rate_cents_per_kwh, 
+	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
+	c.com_rate_cents_per_kwh * (1-n.com_demand_charge_rate) as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
@@ -153,8 +153,8 @@ FROM diffusion_wind.point_microdata_com_us a
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
 -- rates
-LEFT JOIN diffusion_shared.annual_ave_elec_rates_2011 c
-ON a.annual_rate_gid = c.gid
+LEFT JOIN diffusion_shared.ann_ave_elec_rates_by_county_2012 c
+ON a.county_id = c.county_id
 -- capital_costs
 LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
 ON a.county_id = d.county_id
@@ -378,26 +378,23 @@ FROM diffusion_shared.urdb3_rate_sam_jsons
 UNION ALL
 -- annual average flat rates (residential)
 SELECT 'aares'::character varying(5) as rate_source,
-	a.gid as rate_id_alias, 
-	('{"ur_flat_buy_rate" : ' || round(res_cents_per_kwh/100,2)::text || '}')::JSON as sam_json
-FROM diffusion_shared.annual_ave_elec_rates_2011 a
-where a.res_cents_per_kwh is not null
+	a.county_id as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(res_rate_cents_per_kwh/100,2)::text || '}')::JSON as sam_json
+FROM diffusion_shared.ann_ave_elec_rates_by_county_2012 a
 UNION ALL
 -- annual average flat rates (commercial)
 SELECT 'aacom'::character varying(5) as rate_source,
-	a.gid as rate_id_alias, 
-	('{"ur_flat_buy_rate" : ' || round(comm_cents_per_kwh/100 * (1-b.com_demand_charge_rate),2)::text || '}')::JSON as sam_json
-FROM diffusion_shared.annual_ave_elec_rates_2011 a
+	a.county_id as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(com_rate_cents_per_kwh/100 * (1-b.com_demand_charge_rate),2)::text || '}')::JSON as sam_json
+FROM diffusion_shared.ann_ave_elec_rates_by_county_2012 a
 CROSS JOIN diffusion_wind.scenario_options b
-where a.comm_cents_per_kwh is not null
 UNION ALL
 -- annual average flat rates (industrial)
 SELECT 'aaind'::character varying(5) as rate_source,
-	a.gid as rate_id_alias, 
-	('{"ur_flat_buy_rate" : ' || round(ind_cents_per_kwh/100 * (1-b.ind_demand_charge_rate),2)::text || '}')::JSON as sam_json
-FROM diffusion_shared.annual_ave_elec_rates_2011 a
+	a.county_id as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(ind_rate_cents_per_kwh/100 * (1-b.ind_demand_charge_rate),2)::text || '}')::JSON as sam_json
+FROM diffusion_shared.ann_ave_elec_rates_by_county_2012 a
 CROSS JOIN diffusion_wind.scenario_options b
-where a.ind_cents_per_kwh is not null
 UNION ALL
 -- user-defined flat rates (residential)
 SELECT 'udres'::character varying(5) as rate_source,

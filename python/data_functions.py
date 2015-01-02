@@ -912,11 +912,11 @@ def find_rates(inputs_dict, county_chunks, exclusion_type, npar, pg_conn_string,
         p_run(pg_conn_string, sql, county_chunks, npar)
 
     elif rate_structure.lower() == 'flat (annual average)':
-        # flat annual average rate ids are already stored in the demandmax table as annual_rate_gid
+        # flat annual average rate ids are already stored in the demandmax table as county_id
         # we simply need to duplicate and rename that field to rate_id_alias and specify the rate_source
         sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s;
                 CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s AS
-                SELECT b.*, b.annual_rate_gid as rate_id_alias, 'aa%(sector_abbr)s'::CHARACTER VARYING(5) as rate_source
+                SELECT b.*, b.county_id as rate_id_alias, 'aa%(sector_abbr)s'::CHARACTER VARYING(5) as rate_source
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s b;""" % inputs_dict
         p_run(pg_conn_string, sql, county_chunks, npar)
                      

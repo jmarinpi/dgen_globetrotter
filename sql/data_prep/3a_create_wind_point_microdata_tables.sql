@@ -6,7 +6,6 @@ WITH a AS
 (
 	SELECT a.county_id, 
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
-		a.annual_rate_gid, 
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id,
 		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
@@ -17,7 +16,6 @@ WITH a AS
 	ON a.gid = b.pt_gid
 	GROUP BY a.county_id, 
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
-		a.annual_rate_gid, 
 		a.pca_reg, a.reeds_reg, a.wind_incentive_array_id,
 		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
@@ -37,10 +35,6 @@ CREATE INDEX point_microdata_res_us_county_id_btree
   ON diffusion_wind.point_microdata_res_us
   USING btree (county_id);
 
-CREATE INDEX point_microdata_res_us_annual_rate_gid_btree
-  ON diffusion_wind.point_microdata_res_us
-  USING btree (annual_rate_gid);
-
 CREATE INDEX point_microdata_res_us_utility_type_btree
   ON diffusion_wind.point_microdata_res_us
   USING btree (utility_type);
@@ -59,7 +53,6 @@ WITH a AS
 (
 	SELECT a.county_id, 
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
-		a.annual_rate_gid, 
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id,
 		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
@@ -70,7 +63,6 @@ WITH a AS
 	ON a.gid = b.pt_gid
 	GROUP BY a.county_id, 
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
-		a.annual_rate_gid, 
 		a.pca_reg, a.reeds_reg, a.wind_incentive_array_id,
 		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
@@ -90,10 +82,6 @@ CREATE INDEX point_microdata_com_us_county_id_btree
   ON diffusion_wind.point_microdata_com_us
   USING btree (county_id);
 
-CREATE INDEX point_microdata_com_us_annual_rate_gid_btree
-  ON diffusion_wind.point_microdata_com_us
-  USING btree (annual_rate_gid);
-
 CREATE INDEX point_microdata_com_us_utility_type_btree
   ON diffusion_wind.point_microdata_com_us
   USING btree (utility_type);
@@ -110,7 +98,6 @@ WITH a AS
 (
 	SELECT a.county_id, 
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
-		a.annual_rate_gid, 
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id,
 		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
@@ -121,7 +108,6 @@ WITH a AS
 	ON a.gid = b.pt_gid
 	GROUP BY a.county_id, 
 		a.maxheight_m_popdens, a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc,
-		a.annual_rate_gid, 
 		a.pca_reg, a.reeds_reg, a.wind_incentive_array_id,
 		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
@@ -141,13 +127,8 @@ CREATE INDEX point_microdata_ind_us_county_id_btree
   ON diffusion_wind.point_microdata_ind_us
   USING btree (county_id);
 
-CREATE INDEX point_microdata_ind_us_annual_rate_gid_btree
-  ON diffusion_wind.point_microdata_ind_us
-  USING btree (annual_rate_gid);
-
 CREATE INDEX point_microdata_ind_us_utility_type_btree
   ON diffusion_wind.point_microdata_ind_us
   USING btree (utility_type);
-
 
 VACUUM ANALYZE diffusion_wind.point_microdata_ind_us;

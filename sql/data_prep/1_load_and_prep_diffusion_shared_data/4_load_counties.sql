@@ -100,3 +100,21 @@ using btree(recs_2009_reportable_domain);
 SELECT *
 FROM diffusion_shared.county_geom
 where recs_2009_reportable_domain is null;
+
+-- add county fips
+ALTER TABLE diffusion_shared.county_geom 
+ADD column county_fips character varying(3);
+
+UPDATE diffusion_shared.county_geom  a
+SET county_fips = b.cnty_fips
+from esri.dtl_cnty_all_multi_20110101 b
+where a.county_id = b.gid;
+
+select count(*)
+FROM diffusion_shared.county_geom
+where county_fips is null;
+
+-- add index
+CREATE INDEX county_geom_county_fips_btree 
+ON diffusion_shared.county_geom 
+using btree(county_fips);
