@@ -385,16 +385,14 @@ UNION ALL
 -- annual average flat rates (commercial)
 SELECT 'aacom'::character varying(5) as rate_source,
 	a.county_id as rate_id_alias, 
-	('{"ur_flat_buy_rate" : ' || round(com_rate_cents_per_kwh/100 * (1-b.com_demand_charge_rate),2)::text || '}')::JSON as sam_json
+	('{"ur_flat_buy_rate" : ' || round(com_rate_cents_per_kwh/100,2)::text || '}')::JSON as sam_json
 FROM diffusion_shared.ann_ave_elec_rates_by_county_2012 a
-CROSS JOIN diffusion_wind.scenario_options b
 UNION ALL
 -- annual average flat rates (industrial)
 SELECT 'aaind'::character varying(5) as rate_source,
 	a.county_id as rate_id_alias, 
-	('{"ur_flat_buy_rate" : ' || round(ind_rate_cents_per_kwh/100 * (1-b.ind_demand_charge_rate),2)::text || '}')::JSON as sam_json
+	('{"ur_flat_buy_rate" : ' || round(ind_rate_cents_per_kwh/100,2)::text || '}')::JSON as sam_json
 FROM diffusion_shared.ann_ave_elec_rates_by_county_2012 a
-CROSS JOIN diffusion_wind.scenario_options b
 UNION ALL
 -- user-defined flat rates (residential)
 SELECT 'udres'::character varying(5) as rate_source,
@@ -405,13 +403,11 @@ UNION ALL
 -- user-defined flat rates (commercial)
 SELECT 'udcom'::character varying(5) as rate_source,
 	a.state_fips as rate_id_alias, 
-	('{"ur_flat_buy_rate" : ' || round(com_rate_dlrs_per_kwh* (1-b.com_demand_charge_rate),2)::text || '}')::JSON as sam_json
+	('{"ur_flat_buy_rate" : ' || round(com_rate_dlrs_per_kwh,2)::text || '}')::JSON as sam_json
 FROM diffusion_wind.user_defined_electric_rates a
-CROSS JOIN diffusion_wind.scenario_options b
 UNION ALL
 -- user-defined flat rates (industrial)
 SELECT 'udind'::character varying(5) as rate_source,
 	a.state_fips as rate_id_alias, 
-	('{"ur_flat_buy_rate" : ' || round(ind_rate_dlrs_per_kwh* (1-b.ind_demand_charge_rate),2)::text || '}')::JSON as sam_json
-FROM diffusion_wind.user_defined_electric_rates a
-CROSS JOIN diffusion_wind.scenario_options b;
+	('{"ur_flat_buy_rate" : ' || round(ind_rate_dlrs_per_kwh,2)::text || '}')::JSON as sam_json
+FROM diffusion_wind.user_defined_electric_rates a;
