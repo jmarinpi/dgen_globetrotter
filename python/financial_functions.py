@@ -257,7 +257,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     df['monthly_bill_savings'] = monthly_bill_savings
     df['percent_monthly_bill_savings'] = percent_monthly_bill_savings
      
-    return revenue, costs, cfs, df.first_year_bill_without_system, df.first_year_bill_without_system
+    return revenue, costs, cfs, df.first_year_bill_with_system, df.first_year_bill_without_system
     
 #==============================================================================
 
