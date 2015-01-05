@@ -7,19 +7,19 @@ Created on Fri Nov 07 11:26:31 2014
 import sys
 import gdxpds
 import pandas as pd
-import dgen_model
 import os
 
 def main(year, reeds_path, gams_path):
-
     # Path to the gdx files that hold the SolarDS inputs
     gdxfile_in = reeds_path + "/gdxfiles/SolarDS_Input_%s.gdx" % year
     
     # Pull the SolarDS inputs from ReEDS
     ReEDS_df = gdxpds.to_dataframes(gdxfile_in)
     
-    # Change working directory to where SolarDS is
+    # Change working directory to where SolarDS is (must be done before importing dgen_model)
     os.chdir('../SolarDS/python')
+
+    import dgen_model
     
     # Run SolarDS
     df = dgen_model.main(mode = 'ReEDS', resume_year = year, ReEDS_inputs = ReEDS_df)
@@ -46,5 +46,5 @@ if __name__ == '__main__':
     #reeds_path = "C:/ReEDS/OtherReEDSProject/inout"
     
     # Path to GAMS
-    gams_path = sys.argv[3]    
+    gams_path = sys.argv[3]   
     main(year, reeds_path, gams_path)
