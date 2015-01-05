@@ -873,7 +873,7 @@ def find_rates(inputs_dict, county_chunks, exclusion_type, npar, pg_conn_string,
                     ),
                 b as
                 (
-                    	SELECT *, rank() OVER (partition by county_id, bin_id order by rate_rank asc, random() asc) as rank
+                    	SELECT *, rank() OVER (PARTITION BY county_id, bin_id ORDER BY rate_rank ASC) as rank
                     	FROM a
                 )
                 SELECT b.*, c.%(sector_abbr)s_weight as rate_type_weight
