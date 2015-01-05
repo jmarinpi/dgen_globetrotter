@@ -1,4 +1,5 @@
 ﻿set role 'server-superusers';
+DROP DATABASE IF EXISTS "diffusion_clone";
 CREATE DATABASE "diffusion_clone";
 ALTER DATABASe diffusion_clone with CONNECTION LIMIT 100;
 GRANT ALL ON DATABASE "diffusion_clone" TO "server-superusers" WITH GRANT OPTION;
@@ -10,6 +11,7 @@ GRANT CONNECT, TEMPORARY ON DATABASE "diffusion_clone" TO "diffusion_shared-writ
 GRANT CONNECT, TEMPORARY ON DATABASE "diffusion_clone" TO "wind_ds-writers";
 
 
+-- CHANGE DATABASE CONNECTION MANUALLY BEFORE PROCEEDING!!!!!!
 
 -- add extensions
  CREATE EXTENSION plr;
@@ -33,7 +35,7 @@ CREAte extension plpythonu;
 
 -- clone the schemas that we need to the new database
 -- ssh to gispgdb, then:
--- pg_dump -h localhost -U mgleason -O -n diffusion_shared -n geo_incentives -n diffusion_wind -n diffusion_wind_config -n diffusion_solar -n diffusion_solar_config dav-gis | psql -h localhost -U mgleason diffusion_clone
+-- pg_dump -h localhost -U mgleason -O -n diffusion_shared -n geo_incentives -n urdb_rates -n diffusion_wind -n diffusion_wind_config -n diffusion_solar -n diffusion_solar_config dav-gis | psql -h localhost -U mgleason diffusion_clone
 
 -- set ownership in all schemas, tables, views, and sequences
 ALTER SCHEMA diffusion_shared owner to "diffusion-writers";
