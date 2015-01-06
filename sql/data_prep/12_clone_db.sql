@@ -48,17 +48,17 @@ ALTER SCHEMA geo_incentives owner to "diffusion-writers";
 select 'ALTER TABLE ' || table_schema || '.' || table_name || ' OWNER TO "diffusion-writers";' 
 from information_schema.tables 
 where table_schema in ('diffusion_shared','diffusion_solar','diffusion_solar_config',
-			'diffusion_wind','diffusion_wind_config','geo_incentives');
+			'diffusion_wind','diffusion_wind_config','geo_incentives','urdb_rates');
 
 select 'ALTER TABLE ' || table_schema || '.' || table_name || ' OWNER TO "diffusion-writers";' 
 from information_schema.views
 where table_schema in ('diffusion_shared','diffusion_solar','diffusion_solar_config',
-			'diffusion_wind','diffusion_wind_config','geo_incentives');
+			'diffusion_wind','diffusion_wind_config','geo_incentives','urdb_rates');
 
 select 'ALTER SEQUENCE ' || sequence_schema || '.' || sequence_name || ' OWNER TO "diffusion-writers";' 
 from information_schema.sequences
 where sequence_schema in ('diffusion_shared','diffusion_solar','diffusion_solar_config',
-			'diffusion_wind','diffusion_wind_config','geo_incentives');
+			'diffusion_wind','diffusion_wind_config','geo_incentives','urdb_rates');
 
 --------------------------------------------------------------------------------
 -- functions were not copied over
