@@ -1110,10 +1110,16 @@ def nem_scenario(curWb,schema,table,conn,cur,verbose=False):
             for row in range(0, rows):
                 state_abbr = state_abbrs[row]
                 system_size_limit_kw = cells[row][0].value
-                if system_size_limit_kw < 0:
-                    system_size_limit_kw = 0
                 year_end_excess_sell_rate_dlrs_per_kwh = cells[row][2].value
                 hourly_excess_sell_rate_dlrs_per_kwh = cells[row][3].value
+                if system_size_limit_kw <= 0:
+                    # don't allow negative values
+                    system_size_limit_kw = 0
+                    # overwrite year_end_excess_sell_rate_dlrs_per_kwh (it won't apply if there is no net metering)
+                    year_end_excess_sell_rate_dlrs_per_kwh = 0
+                else:
+                    # overwrite hourly_excess_sell_rate_dlrs_per_kwh (it won't apply if there is net metering)
+                    hourly_excess_sell_rate_dlrs_per_kwh = 0
                 first_year = year_ranges[row][0]
                 last_year = year_ranges[row][1]
                 for utility_type in utility_types:
