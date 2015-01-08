@@ -24,29 +24,8 @@ CROSS JOIN diffusion_solar.scenario_options b;
 -- view for net metering
 DROP VIEW IF EXISTS diffusion_solar.net_metering_to_model;
 CREATE OR REPLACE VIEW diffusion_solar.net_metering_to_model AS
-WITH combined as (
-SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr,
-	CASE WHEN b.overwrite_exist_nm = TRUE THEN False
-	ELSE TRUE
-	END as keep, 'ftg' as source
-	
-FROM diffusion_shared.net_metering_availability_2013 a
-CROSS JOIN diffusion_solar.scenario_options b
-
-UNION ALL
-
-SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr,
-	CASE WHEN b.overwrite_exist_nm = TRUE THEN TRUE
-	ELSE FALSE
-	END as keep, 'man' as source
-
-
-FROM diffusion_solar.manual_net_metering_availability a
-CROSS JOIN diffusion_solar.scenario_options b)
-
-SELECT sector, utility_type, nem_system_limit_kw, state_abbr
-FROM combined
-where keep = True;
+SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr
+FROM diffusion_shared.net_metering_availability_2013 a;
 
 
 

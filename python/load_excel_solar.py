@@ -327,12 +327,6 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
     if named_range == None:
         raise ExcelError('overwrite_exist_inc named range does not exist')
     overwrite_exist_inc = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
-    
-    input_named_range = 'overwrite_exist_nm'
-    named_range = curWb.get_named_range(input_named_range)
-    if named_range == None:
-        raise ExcelError('overwrite_exist_nm named range does not exist')
-    overwrite_exist_nm = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
 
     input_named_range = 'incent_start_year'
     named_range = curWb.get_named_range(input_named_range)
@@ -378,7 +372,7 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             r += 1
         c += 1
 
-    in_l = l + ann_inf + ann_sys_deg+ sc_name + overwrite_exist_inc + incent_startyear + incent_utility + overwrite_exist_nm
+    in_l = l + ann_inf + ann_sys_deg+ sc_name + overwrite_exist_inc + incent_startyear + incent_utility
     f.write(str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1])
     f.seek(0)
     if verbose:
@@ -418,8 +412,7 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             utility_type_iou,
             utility_type_muni,
             utility_type_coop,
-            utility_type_allother,
-            overwrite_exist_nm
+            utility_type_allother
         ) 
         FROM STDOUT WITH CSV;''' % (schema,table)
     cur.copy_expert(sql, f)        

@@ -259,56 +259,6 @@ def rate_type_weights(curWb,schema,conn,cur,verbose=False):
     cur.execute(sql)
     conn.commit()
     
-@decorators.shared
-def manNetMetering(curWb,schema,conn,cur,verbose=False):
-
-    table = 'manual_net_metering_availability'
-
-    def findUtilityTypes():
-        ut_nr = curWb.get_named_range("Incentives_Utility_Type")
-        if ut_nr == None:
-            raise ExcelError('Incentives_Utility_Type named range does not exist')
-        all_utility_types = ['IOU','Muni','Coop', 'All Other']
-        ut_cells =  ut_nr.destinations[0][0].range(ut_nr.destinations[0][1])
-        selected_utility_types = {}
-        for i, ut_cell in enumerate(ut_cells):
-            selected_utility_types[all_utility_types[i]] = ut_cell[0].value
-                
-        return selected_utility_types
-        
-    selected_utility_types = findUtilityTypes()
-    
-    f = StringIO()
-    named_range = curWb.get_named_range('man_net_metering')
-    if named_range == None:
-        raise ExcelError('man_net_metering named range does not exist')
-    state_cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
-    data_cells = named_range.destinations[1][0].range(named_range.destinations[1][1])
-    
-    sectors = ['res','com','ind']
-    for i, state_cell in enumerate(state_cells):  
-        state_abbr = state_cell[0].value
-        for j, sector in enumerate(sectors):
-            for utility_type in selected_utility_types.keys():
-                if selected_utility_types[utility_type]:
-                    cell_value = data_cells[i][j].value
-                    if cell_value is not None:
-                        nem_limit = cell_value
-                    else:
-                        nem_limit = 0
-                else:
-                    nem_limit = 0
-                row = [sector, utility_type, nem_limit, state_abbr]
-                f.write(str(row).replace("u'","").replace(" '","").replace("'","").replace(', ',',')[1:-1]+'\n')
-    f.seek(0)
-    if verbose:
-        print 'Exporting Manual Net Metering'
-    # use "COPY" to dump the data to the staging table in PG
-    cur.execute('DELETE FROM %s.%s;' % (schema, table))
-    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
-    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
-    conn.commit()
-    f.close()
 
 @decorators.shared
 def leasingAvail(curWb,schema,conn,cur,verbose=False):

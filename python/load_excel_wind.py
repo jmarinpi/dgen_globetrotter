@@ -199,12 +199,6 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
     if named_range == None:
         raise ExcelError('overwrite_exist_inc named range does not exist')
     overwrite_exist_inc = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
-    
-    input_named_range = 'overwrite_exist_nm'
-    named_range = curWb.get_named_range(input_named_range)
-    if named_range == None:
-        raise ExcelError('overwrite_exist_nm named range does not exist')
-    overwrite_exist_nm = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
 
     input_named_range = 'incent_start_year'
     named_range = curWb.get_named_range(input_named_range)
@@ -249,7 +243,7 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             r += 1
         c += 1
 
-    in_l = l + ann_inf + sc_name + overwrite_exist_inc + incent_startyear + incent_utility + overwrite_exist_nm
+    in_l = l + ann_inf + sc_name + overwrite_exist_inc + incent_startyear + incent_utility
     f.write(str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1])
     #print str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1]
     f.seek(0)
@@ -257,35 +251,39 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
         print 'Exporting scenario_options'
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
-    cur.copy_expert('''COPY %s.%s (region, 
-        end_year, 
-        markets, 
-        cust_exp_elec_rates, 
-        load_growth_scenario, 
-        res_rate_structure, 
-        res_rate_escalation, 
-        res_max_market_curve, 
-        com_rate_structure, 
-        com_rate_escalation, 
-        com_max_market_curve, 
-        com_demand_charge_rate, 
-        ind_rate_structure, 
-        ind_rate_escalation, 
-        ind_max_market_curve, 
-        ind_demand_charge_rate,
-        net_metering_availability, 
-        carbon_price, 
-        height_exclusions, 
-        random_generator_seed,
-        ann_inflation, 
-        scenario_name, 
-        overwrite_exist_inc, 
-        incentive_start_year, 
-        utility_type_iou, 
-        utility_type_muni, 
-        utility_type_coop, 
-        utility_type_allother, 
-        overwrite_exist_nm) FROM STDOUT WITH CSV;''' % (schema,table), f)        
+    cur.copy_expert('''
+        COPY %s.%s 
+        (
+            region, 
+            end_year, 
+            markets, 
+            cust_exp_elec_rates, 
+            load_growth_scenario, 
+            res_rate_structure, 
+            res_rate_escalation, 
+            res_max_market_curve, 
+            com_rate_structure, 
+            com_rate_escalation, 
+            com_max_market_curve, 
+            com_demand_charge_rate, 
+            ind_rate_structure, 
+            ind_rate_escalation, 
+            ind_max_market_curve, 
+            ind_demand_charge_rate,
+            net_metering_availability, 
+            carbon_price, 
+            height_exclusions, 
+            random_generator_seed,
+            ann_inflation, 
+            scenario_name, 
+            overwrite_exist_inc, 
+            incentive_start_year, 
+            utility_type_iou, 
+            utility_type_muni, 
+            utility_type_coop, 
+            utility_type_allother
+        ) 
+        FROM STDOUT WITH CSV;''' % (schema,table), f)        
 #    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
     cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
     conn.commit()
