@@ -440,7 +440,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system,
 
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
-                    b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id, b.max_height, b.elec_rate_cents_per_kwh, 
+                    b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id, b.max_height,
                     b.carbon_price_cents_per_kwh, 
                     b.fixed_om_dollars_per_kw_per_yr, 
                     b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
@@ -518,7 +518,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
 
                     
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
-                    b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id, b.elec_rate_cents_per_kwh, 
+                    b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id,
                     b.carbon_price_cents_per_kwh, 
                     b.fixed_om_dollars_per_kw_per_yr, 
                     b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
@@ -1112,7 +1112,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   reeds_reg integer,
                   incentive_array_id integer,
                   ranked_rate_array_id integer,
-                  elec_rate_cents_per_kwh numeric,
                   carbon_price_cents_per_kwh numeric,
                   fixed_om_dollars_per_kw_per_yr numeric,
                   variable_om_dollars_per_kwh numeric,
@@ -1159,7 +1158,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.pca_reg, a.reeds_reg,
                   a.incentive_array_id,
                   a.ranked_rate_array_id,
-                	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
                   b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
                 	b.fixed_om_dollars_per_kw_per_yr, 
                 	b.variable_om_dollars_per_kwh,
@@ -1203,7 +1201,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
-                   pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, elec_rate_cents_per_kwh, 
+                   pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id,
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 
@@ -1407,7 +1405,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                       a.incentive_array_id,
                       a.ranked_rate_array_id,
                       %(exclusions_insert)s
-                	(a.elec_rate_cents_per_kwh * b.rate_escalation_factor) + (b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh) as elec_rate_cents_per_kwh, 
                 b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
                 	b.fixed_om_dollars_per_kw_per_yr, 
                 	b.variable_om_dollars_per_kwh,
@@ -1443,7 +1440,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
-                   pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, max_height, elec_rate_cents_per_kwh, 
+                   pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, max_height,
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 

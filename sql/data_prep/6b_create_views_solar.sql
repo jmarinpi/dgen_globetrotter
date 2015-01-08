@@ -35,7 +35,6 @@ DROP VIEW IF EXISTS diffusion_solar.point_microdata_ind_us_joined;
 CREATE OR REPLACE VIEW diffusion_solar.point_microdata_ind_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
-        c.ind_rate_cents_per_kwh as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier,
@@ -47,9 +46,6 @@ FROM diffusion_solar.point_microdata_ind_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
--- rates
-LEFT JOIN diffusion_shared.ann_ave_elec_rates_by_county_2012 c
-ON a.county_id = c.county_id
 -- capital_costs
 LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
 ON a.county_id = d.county_id
@@ -76,7 +72,6 @@ DROP VIEW IF EXISTS diffusion_solar.point_microdata_res_us_joined;
 CREATE OR REPLACE VIEW diffusion_solar.point_microdata_res_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
-	c.res_rate_cents_per_kwh as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier,
@@ -91,9 +86,6 @@ ON a.county_id = b.county_id
 -- county % owner occ housing
 LEFT JOIN diffusion_shared.county_housing_units k
 ON a.county_id = k.county_id
--- rates
-LEFT JOIN diffusion_shared.ann_ave_elec_rates_by_county_2012 c
-ON a.county_id = c.county_id
 -- capital_costs
 LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
 ON a.county_id = d.county_id
@@ -118,7 +110,6 @@ DROP VIEW IF EXISTS diffusion_solar.point_microdata_com_us_joined;
 CREATE OR REPLACE VIEW diffusion_solar.point_microdata_com_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
-	c.com_rate_cents_per_kwh as elec_rate_cents_per_kwh, 
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier,
@@ -130,9 +121,6 @@ FROM diffusion_solar.point_microdata_com_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
--- rates
-LEFT JOIN diffusion_shared.ann_ave_elec_rates_by_county_2012 c
-ON a.county_id = c.county_id
 -- capital_costs
 LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
 ON a.county_id = d.county_id
