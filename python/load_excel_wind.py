@@ -10,31 +10,19 @@
 #-------------------------------------------------------------------------------
 
 
-import openpyxl as xl, traceback, os, glob, sys, psycopg2 as pg,logging, argparse, csv
-import sys
-import StringIO
+import openpyxl as xl, os, psycopg2 as pg
+from cStringIO import StringIO
 from config import pg_conn_string
-#from config import excelAlpha
+import load_excel_shared_functions as lex
+from load_excel_shared_functions import ExcelError, list2line
 
-class ExcelError(Exception):
-    pass
-
-def makeConn(connection_string, autocommit=True):
-    conn = pg.connect(pg_conn_string)
-    if autocommit:
-        conn.set_isolation_level(pg.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-    return conn
-
-def list2line(l):
-    s = str(l).replace(" u'","").replace("u'","").replace("'","").replace(', ',',')[1:-1]+'\n'
-    return s
 
 def main(wb, conn, verbose = False):
     try:
         # check connection to PG
         if not conn:
             close_conn = True
-            conn = makeConn(pg_conn_string)
+            conn = lex.makeConn(pg_conn_string)
         else:
             iso_level = conn.isolation_level
             conn.set_isolation_level(pg.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
@@ -52,6 +40,7 @@ def main(wb, conn, verbose = False):
         # line #86 in refers_to_range: print range_string, bool(NAMED_RANGE_RE.match(range_string)) 
         # hopefully this is fixed in more up-to-date version of openpyxl
         curWb = xl.load_workbook(wb, data_only = True)
+
 
         table = 'wind_cost_projections'
         windCost(curWb,schema,table,conn,cur,verbose)
@@ -76,9 +65,11 @@ def main(wb, conn, verbose = False):
         table = 'leasing_availability'
         leasingAvail(curWb,schema,table,conn,cur,verbose)
         table = 'user_defined_electric_rates'
-        ud_elec_rates(curWb,schema,table,conn,cur,verbose)
+        lex.ud_elec_rates(curWb,schema,table,conn,cur,verbose)
         table = 'rate_type_weights'
-        rate_type_weights(curWb,schema,table,conn,cur,verbose)
+        lex.rate_type_weights(curWb,schema,table,conn,cur,verbose)
+        table = 'nem_scenario'
+        lex.nem_scenario(curWb,schema,table,conn,cur,verbose=False)
 
 
         if close_conn:
@@ -97,7 +88,7 @@ def main(wb, conn, verbose = False):
 
 def windCost(curWb,schema,table,conn,cur,verbose=False):
     sizes = [['2.5'],['5'],['10'],['20'],['50'],['100'],['250'],['500'],['750'],['1000'],['1500']]
-    f = StringIO.StringIO()
+    f = StringIO()
     for item in sizes:
         rname = 'Wind_Cost_Projections_' + item[0] + '_kw'
         named_range = curWb.get_named_range(rname)
@@ -132,7 +123,7 @@ def windCost(curWb,schema,table,conn,cur,verbose=False):
 
 
 def windPerf(curWb,schema,table,conn,cur,verbose=False):
-    f = StringIO.StringIO()
+    f = StringIO()
     named_range = curWb.get_named_range('Wind_Performance_Improvements')
     if named_range == None:
         raise ExcelError('Wind_Performance_Improvements named range does not exist')
@@ -176,7 +167,7 @@ def windPerf(curWb,schema,table,conn,cur,verbose=False):
     f.close()
 
 def windDerate(curWb,schema,table,conn,cur,verbose=False):
-    f = StringIO.StringIO()
+    f = StringIO()
     named_range = curWb.get_named_range('Wind_Derate_Factors')
     if named_range == None:
         raise ExcelError('Wind_Derate_Factors named range does not exist')
@@ -208,7 +199,7 @@ def windDerate(curWb,schema,table,conn,cur,verbose=False):
 
 
 def marketProj(curWb,schema,table,conn,cur,verbose=False):
-    f = StringIO.StringIO()
+    f = StringIO()
     named_range = curWb.get_named_range('Market_Projections')
     if named_range == None:
         raise ExcelError('Market_Projections named range does not exist')
@@ -241,7 +232,7 @@ def marketProj(curWb,schema,table,conn,cur,verbose=False):
 
 
 def finParams(curWb,schema,table,conn,cur,verbose=False):
-    f = StringIO.StringIO()
+    f = StringIO()
     #Residential
     named_range = curWb.get_named_range('Inputs_Residential')
     if named_range == None:
@@ -372,7 +363,7 @@ def finParams(curWb,schema,table,conn,cur,verbose=False):
     f.close()
 
 def depSched(curWb,schema,table,conn,cur,verbose=False):
-    f = StringIO.StringIO()
+    f = StringIO()
     named_range = curWb.get_named_range('Depreciation_Schedule')
     if named_range == None:
         raise ExcelError('Depreciation_Schedule named range does not exist')
@@ -406,7 +397,7 @@ def depSched(curWb,schema,table,conn,cur,verbose=False):
 
 def inpOpts(curWb,schema,table,conn,cur,verbose=False):
     global sc_name
-    f = StringIO.StringIO()
+    f = StringIO()
 
     input_named_range = 'Input_Scenario_Name'
     named_range = curWb.get_named_range(input_named_range)
@@ -559,7 +550,7 @@ def manIncents(curWb,schema,table,conn,cur,verbose=False):
     selected_utility_types = findUtilityTypes()
 
 
-    f = StringIO.StringIO()
+    f = StringIO()
     named_range = curWb.get_named_range('Incentives_Values')
     if named_range == None:
         raise ExcelError('Incentives_Values named range does not exist')
@@ -634,10 +625,10 @@ def manNetMetering(curWb,schema,table,conn,cur,verbose=False):
         
     selected_utility_types = findUtilityTypes()
     
-    f = StringIO.StringIO()
-    named_range = curWb.get_named_range('Net_Metering')
+    f = StringIO()
+    named_range = curWb.get_named_range('man_net_metering')
     if named_range == None:
-        raise ExcelError('Incentives_Values named range does not exist')
+        raise ExcelError('man_net_metering named range does not exist')
     state_cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
     data_cells = named_range.destinations[1][0].range(named_range.destinations[1][1])
     
@@ -668,7 +659,7 @@ def manNetMetering(curWb,schema,table,conn,cur,verbose=False):
 
 
 def maxMarket(curWb,schema,table,conn,cur,verbose=False):
-    f = StringIO.StringIO()
+    f = StringIO()
     named_range = curWb.get_named_range('user_defined_max_market_share')
     if named_range == None:
         raise ExcelError('user_defined_max_market_share named range does not exist')
@@ -707,7 +698,7 @@ def maxMarket(curWb,schema,table,conn,cur,verbose=False):
 
 def leasingAvail(curWb,schema,table,conn,cur,verbose=False):
     
-    f = StringIO.StringIO()
+    f = StringIO()
     rname = 'leasing_avail'
     named_range = curWb.get_named_range(rname)
     if named_range == None:
@@ -737,76 +728,6 @@ def leasingAvail(curWb,schema,table,conn,cur,verbose=False):
     cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
     conn.commit()
     f.close()
-
-
-def ud_elec_rates(curWb,schema,table,conn,cur,verbose=False):
-    
-    f = StringIO.StringIO()
-    rname = 'ud_rates'
-    named_range = curWb.get_named_range(rname)
-    if named_range == None:
-        raise ExcelError('%s named range does not exist.' % rname)
-    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
-    rows = len(cells)
-    for r in range(0, rows):
-        state_abbr = cells[r][0].value or 0
-        res_rate = cells[r][1].value or 0
-        com_rate = cells[r][2].value or 0
-        ind_rate = cells[r][3].value or 0
-        l = [state_abbr, res_rate, com_rate, ind_rate]
-        f.write(list2line(l))
-    f.seek(0)
-    if verbose:
-        print 'Exporting User-Defined Flat Electric Rates'
-    # use "COPY" to dump the data to the staging table in PG
-    cur.execute('DELETE FROM %s.%s;' % (schema, table))
-    cur.copy_expert("""COPY %s.%s (state_abbr, res_rate_dlrs_per_kwh, com_rate_dlrs_per_kwh, ind_rate_dlrs_per_kwh) 
-                FROM STDOUT WITH CSV""" % (schema, table), f)     
-    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
-    conn.commit()
-    f.close()
-    
-    # add in the FIPS codes
-    sql = """UPDATE %s.%s a
-             SET state_fips = b.state_fips
-             FROM diffusion_shared.state_fips_lkup b
-             WHERE a.state_abbr = b.state_abbr;""" % (schema, table)
-    cur.execute(sql)
-    conn.commit()
-
-def rate_type_weights(curWb,schema,table,conn,cur,verbose=False):
-    
-    f = StringIO.StringIO()
-    rname = 'rate_type_weights'
-    named_range = curWb.get_named_range(rname)
-    if named_range == None:
-        raise ExcelError('%s named range does not exist.' % rname)
-    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
-    rows = len(cells)
-    for r in range(0, rows):
-        rate_type = cells[r][0].value
-        res_weight = cells[r][1].value or 0.01 # replace zero or null weights for sampling in the model to work correctly
-        com_ind_weight = cells[r][2].value or 0.01 # replace zero or null weights for sampling in the model to work correctly
-        l = [rate_type, res_weight, com_ind_weight, com_ind_weight]
-        f.write(list2line(l))
-    f.seek(0)
-    if verbose:
-        print 'Exporting Rate Type Weights'
-    # use "COPY" to dump the data to the staging table in PG
-    cur.execute('DELETE FROM %s.%s;' % (schema, table))
-    cur.copy_expert("""COPY %s.%s (rate_type_desc, res_weight, com_weight, ind_weight) 
-                FROM STDOUT WITH CSV""" % (schema, table), f)     
-    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
-    conn.commit()
-    f.close()
-    
-    # add in the FIPS codes
-    sql = """UPDATE %s.%s a
-             SET rate_type = b.rate_type
-             FROM diffusion_shared.rate_type_desc_lkup b
-             WHERE a.rate_type_desc = b.rate_type_desc;""" % (schema, table)
-    cur.execute(sql)
-    conn.commit()
 
 
 if __name__ == '__main__':
