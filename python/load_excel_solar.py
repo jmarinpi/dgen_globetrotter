@@ -41,7 +41,7 @@ def main(wb, conn, verbose = False):
         # hopefully this is fixed in more up-to-date version of openpyxl
         curWb = xl.load_workbook(wb, data_only = True)
 
-
+        # create a list of the shared functions/tables that will be looped through
         table = 'scenario_options'
         inpOpts(curWb,schema,table,conn,cur,verbose)
         table = 'solar_cost_projections'
@@ -52,28 +52,11 @@ def main(wb, conn, verbose = False):
         learningRates(curWb,schema,table,conn,cur,verbose)
         table = 'solar_performance_improvements'
         perfImp(curWb,schema,table,conn,cur,verbose)
-        table = 'market_projections'
-        lex.marketProj(curWb,schema,table,conn,cur,verbose)
         table = 'manual_carbon_intensities'
         manualCarbonIntensities(curWb,schema,table,conn,cur,verbose)
-        table = 'financial_parameters'
-        lex.finParams(curWb,schema,table,conn,cur,verbose)
-        table = 'depreciation_schedule'
-        lex.depSched(curWb,schema,table,conn,cur,verbose)
-        table = 'manual_incentives'
-        lex.manIncents(curWb,schema,table,conn,cur,verbose)
-        table = 'manual_net_metering_availability'
-        lex.manNetMetering(curWb,schema,table,conn,cur,verbose)
-        table = 'user_defined_max_market_share'
-        lex.maxMarket(curWb,schema,table,conn,cur,verbose)
-        table = 'leasing_availability'
-        lex.leasingAvail(curWb,schema,table,conn,cur,verbose)
-        table = 'user_defined_electric_rates'
-        lex.ud_elec_rates(curWb,schema,table,conn,cur,verbose)
-        table = 'rate_type_weights'
-        lex.rate_type_weights(curWb,schema,table,conn,cur,verbose)
-        table = 'nem_scenario'
-        lex.nem_scenario(curWb,schema,table,conn,cur,verbose=False)
+
+        for func in lex.shared_table_functions:
+            func(curWb,schema,conn,cur,verbose)
         
         # The solar program costs are static, so only need this to manually load the table once.
         # Uncomment to make SPT table dynamic

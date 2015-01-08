@@ -8,25 +8,32 @@ Created on Thu Jan  8 11:11:21 2015
 import openpyxl as xl, os, sys, psycopg2 as pg
 from cStringIO import StringIO
 from config import pg_conn_string
+import decorators
 
+
+
+@decorators.unshared
 class ExcelError(Exception):
     pass
 
 
+@decorators.unshared
 def makeConn(connection_string, autocommit=True):
     conn = pg.connect(pg_conn_string)
     if autocommit:
         conn.set_isolation_level(pg.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
     return conn
     
-    
+@decorators.unshared 
 def list2line(l):
     s = str(l).replace(" u'","").replace("u'","").replace("'","").replace(', ',',')[1:-1]+'\n'
     return s
 
     
-def nem_scenario(curWb,schema,table,conn,cur,verbose=False):
+@decorators.shared    
+def nem_scenario(curWb,schema,conn,cur,verbose=False):
     
+    table = 'nem_scenario'
     
     def findUtilityTypes():
         ut_nr = curWb.get_named_range("nem_util_types")
@@ -177,8 +184,10 @@ def nem_scenario(curWb,schema,table,conn,cur,verbose=False):
         cur.execute(sql)
         conn.commit()
         
-
-def ud_elec_rates(curWb,schema,table,conn,cur,verbose=False):
+@decorators.shared
+def ud_elec_rates(curWb,schema,conn,cur,verbose=False):
+    
+    table = 'user_defined_electric_rates'    
     
     f = StringIO()
     rname = 'ud_rates'
@@ -213,8 +222,10 @@ def ud_elec_rates(curWb,schema,table,conn,cur,verbose=False):
     cur.execute(sql)
     conn.commit()
 
-
-def rate_type_weights(curWb,schema,table,conn,cur,verbose=False):
+@decorators.shared
+def rate_type_weights(curWb,schema,conn,cur,verbose=False):
+    
+    table = 'rate_type_weights'    
     
     f = StringIO()
     rname = 'rate_type_weights'
@@ -248,8 +259,10 @@ def rate_type_weights(curWb,schema,table,conn,cur,verbose=False):
     cur.execute(sql)
     conn.commit()
     
+@decorators.shared
+def manNetMetering(curWb,schema,conn,cur,verbose=False):
 
-def manNetMetering(curWb,schema,table,conn,cur,verbose=False):
+    table = 'manual_net_metering_availability'
 
     def findUtilityTypes():
         ut_nr = curWb.get_named_range("Incentives_Utility_Type")
@@ -297,8 +310,10 @@ def manNetMetering(curWb,schema,table,conn,cur,verbose=False):
     conn.commit()
     f.close()
 
-
-def leasingAvail(curWb,schema,table,conn,cur,verbose=False):
+@decorators.shared
+def leasingAvail(curWb,schema,conn,cur,verbose=False):
+    
+    table = 'leasing_availability'    
     
     f = StringIO()
     rname = 'leasing_avail'
@@ -331,8 +346,11 @@ def leasingAvail(curWb,schema,table,conn,cur,verbose=False):
     conn.commit()
     f.close()
 
-
-def maxMarket(curWb,schema,table,conn,cur,verbose=False):
+@decorators.shared
+def maxMarket(curWb,schema,conn,cur,verbose=False):
+    
+    table = 'user_defined_max_market_share'    
+    
     f = StringIO()
     named_range = curWb.get_named_range('user_defined_max_market_share')
     if named_range == None:
@@ -370,8 +388,10 @@ def maxMarket(curWb,schema,table,conn,cur,verbose=False):
     conn.commit()
     f.close()
 
+@decorators.shared    
+def manIncents(curWb,schema,conn,cur,verbose=False):
     
-def manIncents(curWb,schema,table,conn,cur,verbose=False):
+    table = 'manual_incentives'
 
     def findIncen(cells,c,incen_type):
         try:
@@ -471,8 +491,12 @@ def manIncents(curWb,schema,table,conn,cur,verbose=False):
     conn.commit()
     f.close()
     
+
+@decorators.shared    
+def depSched(curWb,schema,conn,cur,verbose=False):
     
-def depSched(curWb,schema,table,conn,cur,verbose=False):
+    table = 'depreciation_schedule'    
+    
     f = StringIO()
     named_range = curWb.get_named_range('Depreciation_Schedule')
     if named_range == None:
@@ -503,9 +527,13 @@ def depSched(curWb,schema,table,conn,cur,verbose=False):
     cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
     conn.commit()
     f.close()
+
     
-    
-def finParams(curWb,schema,table,conn,cur,verbose=False):
+@decorators.shared      
+def finParams(curWb,schema,conn,cur,verbose=False):
+        
+    table = 'financial_parameters'    
+
     f = StringIO()
     #Residential
     named_range = curWb.get_named_range('Inputs_Residential')
@@ -604,8 +632,11 @@ def finParams(curWb,schema,table,conn,cur,verbose=False):
 
     f.close()
 
-
-def marketProj(curWb,schema,table,conn,cur,verbose=False):
+@decorators.shared    
+def marketProj(curWb,schema,conn,cur,verbose=False):
+    
+    table = 'market_projections'    
+    
     f = StringIO()
     named_range = curWb.get_named_range('Market_Projections')
     if named_range == None:
@@ -636,3 +667,11 @@ def marketProj(curWb,schema,table,conn,cur,verbose=False):
     cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
     conn.commit()
     f.close()
+    
+    
+    
+# NOTE: THIS MUST ALWAYS GO LAST
+shared_table_functions = []
+for key, value in locals().items():
+    if callable(value) and value.__module__ == __name__ and value.shared == True:
+        shared_table_functions.append(value)

@@ -41,35 +41,17 @@ def main(wb, conn, verbose = False):
         # hopefully this is fixed in more up-to-date version of openpyxl
         curWb = xl.load_workbook(wb, data_only = True)
 
-
+        table = 'scenario_options'
+        inpOpts(curWb,schema,table,conn,cur,verbose)
         table = 'wind_cost_projections'
         windCost(curWb,schema,table,conn,cur,verbose)
         table = 'wind_performance_improvements'
         windPerf(curWb,schema,table,conn,cur,verbose)
-        table = 'market_projections'
-        lex.marketProj(curWb,schema,table,conn,cur,verbose)
-        table = 'financial_parameters'
-        lex.finParams(curWb,schema,table,conn,cur,verbose)
-        table = 'depreciation_schedule'
-        lex.depSched(curWb,schema,table,conn,cur,verbose)
-        table = 'scenario_options'
-        inpOpts(curWb,schema,table,conn,cur,verbose)
-        table = 'manual_incentives'
-        lex.manIncents(curWb,schema,table,conn,cur,verbose)
-        table = 'manual_net_metering_availability'
-        lex.manNetMetering(curWb,schema,table,conn,cur,verbose)
-        table = 'user_defined_max_market_share'
-        lex.maxMarket(curWb,schema,table,conn,cur,verbose)
         table = 'wind_generation_derate_factors'
         windDerate(curWb,schema,table,conn,cur,verbose)
-        table = 'leasing_availability'
-        lex.leasingAvail(curWb,schema,table,conn,cur,verbose)
-        table = 'user_defined_electric_rates'
-        lex.ud_elec_rates(curWb,schema,table,conn,cur,verbose)
-        table = 'rate_type_weights'
-        lex.rate_type_weights(curWb,schema,table,conn,cur,verbose)
-        table = 'nem_scenario'
-        lex.nem_scenario(curWb,schema,table,conn,cur,verbose=False)
+
+        for func in lex.shared_table_functions:
+            func(curWb,schema,conn,cur,verbose)
 
 
         if close_conn:
