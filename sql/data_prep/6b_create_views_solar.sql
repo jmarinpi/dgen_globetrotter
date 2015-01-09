@@ -27,6 +27,20 @@ CREATE OR REPLACE VIEW diffusion_solar.net_metering_to_model AS
 SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr
 FROM diffusion_shared.net_metering_availability_2013 a;
 
+-- view for system sizing
+DROP VIEW IF EXISTS diffusion_solar.system_sizing_factors;
+CREATE VIEW diffusion_solar.system_sizing_factors AS
+SELECT 'res'::character varying(3) as sector_abbr, 
+	res_sys_size_target as sys_size_target
+FROM diffusion_solar.scenario_options
+UNION
+SELECT 'com'::character varying(3) as sector_abbr, 
+	com_sys_size_target as sys_size_target
+FROM diffusion_solar.scenario_options
+UNION
+SELECT 'ind'::character varying(3) as sector_abbr, 
+	ind_sys_size_target as sys_size_target
+FROM diffusion_solar.scenario_options;
 
 
 -- views of point data
