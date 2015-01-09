@@ -61,6 +61,14 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             os.makedirs(out_dir)
             input_scenarios = None
             market_last_year = None
+            # Read in ReEDS UPV Capital Costs
+            Convert2004_dollars = 1.2343 #Conversion from 2004$ to 2013$
+            ReEDS_PV_CC = ReEDS_inputs['UPVCC_all']
+            ReEDS_PV_CC.columns = ['year','Capital_Cost']
+            ReEDS_PV_CC.year = ReEDS_PV_CC.year.convert_objects(convert_numeric=True)
+            valid_years = np.arange(2014,2051,2)
+            ReEDS_PV_CC = ReEDS_PV_CC.loc[ReEDS_PV_CC.year.isin(valid_years)]
+            ReEDS_PV_CC['Capital_Cost'] = ReEDS_PV_CC['Capital_Cost']*Convert2004_dollars # ReEDS capital costs for UPV converted from 2004 dollars
         else:
             cfg.init_model = False
             # Load files here
@@ -74,6 +82,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
         cdate = time.strftime('%Y%m%d_%H%M%S')    
         out_dir = '%s/runs_%s/results_%s' %(os.path.dirname(os.getcwd()), cfg.technology, cdate)        
         os.makedirs(out_dir)
+        ReEDS_PV_CC = None
     
                         
     # check that number of customer bins is in the acceptable range
@@ -120,7 +129,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                 logger.info('Loading input data from Input Scenario Worksheet')
                 t0 = time.time()
                 try:
-                    loadXL.main(input_scenario, con, verbose = False)
+                    loadXL.main(input_scenario, con, mode, ReEDS_PV_CC, verbose = False)
                 except loadXL.ExcelError, e:
                     msg = 'Loading failed with the following error: %s' % e      
                     logger.error(msg)

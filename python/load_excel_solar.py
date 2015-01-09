@@ -29,7 +29,7 @@ def list2line(l):
     s = str(l).replace(" u'","").replace("u'","").replace("'","").replace(', ',',')[1:-1]+'\n'
     return s
 
-def main(wb, conn, verbose = False):
+def main(wb, conn, mode = None, ReEDS_PV_CC = None, verbose = False):
     try:
         # check connection to PG
         if not conn:
@@ -57,7 +57,7 @@ def main(wb, conn, verbose = False):
         table = 'scenario_options'
         inpOpts(curWb,schema,table,conn,cur,verbose)
         table = 'solar_cost_projections'
-        costProj(curWb,schema,table,conn,cur,verbose)
+        costProj(curWb,schema,table,conn,cur,mode,ReEDS_PV_CC,verbose)
         table = 'cost_multipliers'
         costMultipliers(curWb,schema,table,conn,cur,verbose)
         table = 'learning_rates'
@@ -101,11 +101,15 @@ def main(wb, conn, verbose = False):
         raise ExcelError(e)
     
 
-def costProj(curWb,schema,table,conn,cur,verbose=False):
+def costProj(curWb,schema,table,conn,cur,mode=None,ReEDS_PV_CC=None,verbose=False):
     
     f = StringIO.StringIO()
     sectors = ['res','com','ind']
     for sector in sectors:
+        if sector == 'res':
+            multiplier = 1.5 # The ReEDS PV Capital Costs are for UPV, Residential prices are assumed to be 1.5 times greater than UPV
+        else:
+            multiplier = 1.25 # The ReEDS PV Capital Costs are for UPV, Industrial and Commercial prices are assumed to be 1.5 times greater than UPV
         rname = 'costs_%s' % sector
         named_range = curWb.get_named_range(rname)
         if named_range == None:
@@ -118,14 +122,17 @@ def costProj(curWb,schema,table,conn,cur,verbose=False):
             r = 0
             l = []
             while r < rows:
-                if cells[r][c].value == None:
-                    val = '0'
+                if r == 1 and mode == 'ReEDS':
+                    # When in ReEDS mode overwrite the capital costs (row 2) with the ReEDS capital costs
+                    val = ReEDS_PV_CC.Capital_Cost[9+2*c]*multiplier
                 else:
-                    val = cells[r][c].value
+                    if cells[r][c].value == None:
+                        val = '0'
+                    else:
+                        val = cells[r][c].value
                 l += [val]
                 r += 1
             in_l = l + [sector]
-            
             f.write(list2line(in_l))
             #print l
             c += 1
