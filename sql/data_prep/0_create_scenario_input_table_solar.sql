@@ -32,13 +32,7 @@ CREATE TABLE diffusion_solar.scenario_options
   utility_type_iou boolean,
   utility_type_muni boolean,
   utility_type_coop boolean,
-  utility_type_allother boolean,
-  res_sys_size_target numeric,
-  com_sys_size_target numeric,
-  ind_sys_size_target numeric,
-  CONSTRAINT com_sys_size_target_check CHECK (com_sys_size_target >= 0.01 AND com_sys_size_target <= 1::numeric),
-  CONSTRAINT ind_sys_size_target_check CHECK (ind_sys_size_target >= 0.01 AND ind_sys_size_target <= 1::numeric),
-  CONSTRAINT res_sys_size_target_check CHECK (res_sys_size_target >= 0.01 AND res_sys_size_target <= 1::numeric)
+  utility_type_allother boolean
 );
 
 -- create config constraint tables for these

@@ -54,6 +54,8 @@ def main(wb, conn, verbose = False):
         perfImp(curWb,schema,table,conn,cur,verbose)
         table = 'manual_carbon_intensities'
         manualCarbonIntensities(curWb,schema,table,conn,cur,verbose)
+        table = 'system_sizing_factors'
+        systemSizing(curWb,schema,table,conn,cur,verbose)
 
         for func in lex.shared_table_functions:
             func(curWb,schema,conn,cur,verbose)
@@ -298,7 +300,40 @@ def perfImp(curWb,schema,table,conn,cur,verbose=False):
     cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
     conn.commit()
     f.close()
-   
+
+
+def systemSizing(curWb,schema,table,conn,cur,verbose=False):
+    
+    
+    sectors = {'residential': 'res', 'commercial': 'com', 'industrial': 'ind'}    
+    f = StringIO()
+    rname = 'sys_sizing'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    rows = len(cells)
+    for row in range(0, rows):
+        sector = sectors[cells[row][0].value.lower()]
+        sys_size_target = cells[row][1].value
+        nm_available = True
+        l = [sector, sys_size_target, nm_available]
+        f.write(list2line(l))
+        sys_size_target = cells[row][2].value
+        nm_available = False
+        l = [sector, sys_size_target, nm_available]
+        f.write(list2line(l))        
+        
+    f.seek(0)
+    if verbose:
+        print 'Exporting system_sizing_factors'
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+
 
 def inpOpts(curWb,schema,table,conn,cur,verbose=False):
     global sc_name
@@ -400,9 +435,6 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             net_metering_availability,
             carbon_price,
             rooftop_availability,
-            res_sys_size_target,
-            com_sys_size_target,
-            ind_sys_size_target,
             random_generator_seed,
             ann_inflation,
             ann_system_degradation,

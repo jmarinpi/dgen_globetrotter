@@ -1196,6 +1196,9 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                 INNER JOIN %(schema)s.temporal_factors b
                 ON a.derate = b.derate
                 AND a.census_division_abbr = b.census_division_abbr
+                LEFT JOIN %(schema)s.system_sizing_factors c
+                ON c.sector_abbr = '%(sector_abbr)s'
+                AND c.nm_available = True
                 WHERE b.sector = '%(sector_abbr)s'
                 AND b.rate_escalation_source = '%(rate_escalation_source)s'
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
@@ -1435,6 +1438,9 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 ON a.turbine_height_m = b.turbine_height_m
                 AND a.power_curve_id = b.power_curve_id
                 AND a.census_division_abbr = b.census_division_abbr
+                LEFT JOIN %(schema)s.system_sizing_factors c
+                ON c.sector_abbr = '%(sector_abbr)s'
+                AND c.nm_available = True
                 WHERE b.sector = '%(sector_abbr)s'
                 AND b.rate_escalation_source = '%(rate_escalation_source)s'
                 AND b.load_growth_scenario = '%(load_growth_scenario)s'
