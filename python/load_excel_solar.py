@@ -315,14 +315,10 @@ def systemSizing(curWb,schema,table,conn,cur,verbose=False):
     rows = len(cells)
     for row in range(0, rows):
         sector = sectors[cells[row][0].value.lower()]
-        sys_size_target = cells[row][1].value
-        nm_available = True
-        l = [sector, sys_size_target, nm_available]
+        sys_size_target_nem = cells[row][1].value
+        sys_size_target_no_nem = cells[row][2].value
+        l = [sector, sys_size_target_nem, sys_size_target_no_nem]
         f.write(list2line(l))
-        sys_size_target = cells[row][2].value
-        nm_available = False
-        l = [sector, sys_size_target, nm_available]
-        f.write(list2line(l))        
         
     f.seek(0)
     if verbose:

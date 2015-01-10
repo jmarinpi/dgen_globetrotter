@@ -193,16 +193,12 @@ def systemSizing(curWb,schema,table,conn,cur,verbose=False):
     rows = len(cells)
     for row in range(0, rows):
         sector = sectors[cells[row][0].value.lower()]
-        sys_size_target = cells[row][1].value
-        oversize_limit = cells[row][2].value
-        nm_available = True
-        l = [sector, sys_size_target, oversize_limit, nm_available]
+        sys_size_target_nem = cells[row][1].value
+        oversize_limit_nem = cells[row][2].value
+        sys_size_target_no_nem = cells[row][3].value
+        oversize_limit_no_nem = cells[row][4].value        
+        l = [sector, sys_size_target_nem, oversize_limit_nem, sys_size_target_no_nem, oversize_limit_no_nem]
         f.write(list2line(l))
-        sys_size_target = cells[row][3].value
-        oversize_limit = cells[row][4].value
-        nm_available = False
-        l = [sector, sys_size_target,  oversize_limit, nm_available]
-        f.write(list2line(l))        
         
     f.seek(0)
     if verbose:
