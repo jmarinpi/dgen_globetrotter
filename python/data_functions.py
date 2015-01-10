@@ -1084,9 +1084,13 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     p_run(pg_conn_string, sql, county_chunks, npar)
 
     # create indices for subsequent joins
-    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_join_fields_btree 
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_temporal_join_fields_btree 
               ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s 
-              USING BTREE(derate, census_division_abbr);""" % inputs
+              USING BTREE(derate, census_division_abbr);
+              
+              CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_nem_join_fields_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s 
+              USING BTREE(state_abbr, utility_type);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
 
 
@@ -1194,14 +1198,18 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                                                 ) as system_sizing_return
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s a
                 INNER JOIN %(schema)s.temporal_factors b
-                ON a.derate = b.derate
-                AND a.census_division_abbr = b.census_division_abbr
-                LEFT JOIN %(schema)s.system_sizing_factors c
-                ON c.sector_abbr = '%(sector_abbr)s'
-                AND c.nm_available = True
+                    ON a.derate = b.derate
+                    AND a.census_division_abbr = b.census_division_abbr
+                LEFT JOIN %(schema)s.nem_scenario c
+                    ON c.state_abbr = a.state_abbr
+                    AND c.utility_type = a.utility_type
+                    AND c.year = b.year
+                    AND c.sector_abbr = '%(sector_abbr)s'
+                LEFT JOIN %(schema)s.system_sizing_factors d
+                    ON d.sector_abbr = '%(sector_abbr)s'
                 WHERE b.sector = '%(sector_abbr)s'
-                AND b.rate_escalation_source = '%(rate_escalation_source)s'
-                AND b.load_growth_scenario = '%(load_growth_scenario)s'
+                    AND b.rate_escalation_source = '%(rate_escalation_source)s'
+                    AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
                    pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id,
@@ -1380,9 +1388,13 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     p_run(pg_conn_string, sql, county_chunks, npar)
 
     # create indices for subsequent joins
-    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s_join_fields_btree 
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s_temporal_join_fields_btree 
               ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s 
-              USING BTREE(turbine_height_m, census_division_abbr, power_curve_id);""" % inputs
+              USING BTREE(turbine_height_m, census_division_abbr, power_curve_id);
+              
+              CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s_nem_join_fields_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s 
+              USING BTREE(state_abbr, utility_type);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
 
 
@@ -1435,15 +1447,19 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                               '%(nem_availability)s', %(oversize_system_factor)s, %(undersize_system_factor)s) as scoe_return
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
                 INNER JOIN %(schema)s.temporal_factors b
-                ON a.turbine_height_m = b.turbine_height_m
-                AND a.power_curve_id = b.power_curve_id
+                    ON a.turbine_height_m = b.turbine_height_m
+                    AND a.power_curve_id = b.power_curve_id
                 AND a.census_division_abbr = b.census_division_abbr
-                LEFT JOIN %(schema)s.system_sizing_factors c
-                ON c.sector_abbr = '%(sector_abbr)s'
-                AND c.nm_available = True
+                LEFT JOIN %(schema)s.nem_scenario c
+                    ON c.state_abbr = a.state_abbr
+                    AND c.utility_type = a.utility_type
+                    AND c.year = b.year
+                    AND c.sector_abbr = '%(sector_abbr)s'
+                LEFT JOIN %(schema)s.system_sizing_factors d
+                    ON d.sector_abbr = '%(sector_abbr)s'
                 WHERE b.sector = '%(sector_abbr)s'
-                AND b.rate_escalation_source = '%(rate_escalation_source)s'
-                AND b.load_growth_scenario = '%(load_growth_scenario)s'
+                    AND b.rate_escalation_source = '%(rate_escalation_source)s'
+                    AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
                    pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, max_height,
