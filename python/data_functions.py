@@ -1304,6 +1304,10 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_load_kwh_per_customer_in_bin_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
              USING BTREE(load_kwh_per_customer_in_bin);    
+             
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_nem_fields_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate);
             """ % inputs
     cur.execute(sql)
     con.commit()
@@ -1586,8 +1590,13 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
 
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_load_kwh_per_customer_in_bin_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
-             USING BTREE(load_kwh_per_customer_in_bin);               
-            """ % inputs
+             USING BTREE(load_kwh_per_customer_in_bin);      
+             
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_nem_fields_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             USING BTREE(ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate);                  
+             
+             """ % inputs
     cur.execute(sql)
     con.commit()
     
@@ -1642,11 +1651,13 @@ def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
         inputs_dict['sector_abbr'] = sector_abbr
         sql = """SELECT  rate_id_alias, rate_source,
                     	hdf_load_index, crb_model, load_kwh_per_customer_in_bin,
-                        %(resource_keys)s, system_size_kw
+                        %(resource_keys)s, system_size_kw, 
+                        ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate
                 FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year
                 GROUP BY  rate_id_alias, rate_source,
                     	 hdf_load_index, crb_model, load_kwh_per_customer_in_bin,
-                    	 %(resource_keys)s, system_size_kw""" % inputs_dict
+                    	 %(resource_keys)s, system_size_kw,
+                         ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate""" % inputs_dict
         sqls.append(sql)      
     
     
