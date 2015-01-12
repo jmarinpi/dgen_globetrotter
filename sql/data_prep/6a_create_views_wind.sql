@@ -62,9 +62,7 @@ ON e.state_abbr = l.state_abbr
 LEFT JOIN diffusion_wind.net_metering_to_model m
 ON e.state_abbr = m.state_abbr
 AND m.sector = 'ind'
-AND a.utility_type = m.utility_type
--- manual demand charges
-CROSS JOIN diffusion_wind.scenario_options n;
+AND a.utility_type = m.utility_type;
 
 
 -- res
@@ -137,9 +135,7 @@ ON e.state_abbr = l.state_abbr
 LEFT JOIN diffusion_wind.net_metering_to_model m
 ON e.state_abbr = m.state_abbr
 AND m.sector = 'com'
-AND a.utility_type = m.utility_type
--- manual demand charges
-CROSS JOIN diffusion_wind.scenario_options n;
+AND a.utility_type = m.utility_type;
 
 
 -- create view of sectors to model

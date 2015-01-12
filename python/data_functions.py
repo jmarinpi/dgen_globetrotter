@@ -527,9 +527,11 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     b.customers_in_bin, b.initial_customers_in_bin, 
                     b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
                     b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source,
-                    b.nem_system_limit_kw, b.excess_generation_factor, 
+                    b.excess_generation_factor, 
                     b.naep, b.aep, b.system_size_kw, 
                     b.npanels, 
+                    b.nem_available, b.nem_system_size_limit_kw,
+                    b.year_end_excess_sell_rate_dlrs_per_kwh, b.hourly_excess_sell_rate_dlrs_per_kwh,                        
                     b.tilt, b.azimuth, b.derate, 
                     b.pct_shaded, b.solar_re_9809_gid, 
                     b.density_w_per_sqft, b.inverter_lifetime_yrs, 
@@ -1131,12 +1133,15 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   max_demand_kw integer,
                   rate_id_alias integer,
                   rate_source CHARACTER VARYING(5),
-                  nem_system_limit_kw double precision,
                   excess_generation_factor numeric,
                   naep numeric,
                   aep numeric,
                   system_size_kw numeric,
                   npanels numeric,
+                  nem_available boolean,
+                  nem_system_size_limit_kw double precision,
+                  year_end_excess_sell_rate_dlrs_per_kwh numeric,
+                  hourly_excess_sell_rate_dlrs_per_kwh numeric,                  
                   tilt integer,
                   azimuth text,
                   derate numeric,
@@ -1177,7 +1182,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.max_demand_kw,
                   a.rate_id_alias,
                   a.rate_source,
-                  a.nem_system_limit_kw,
                   a.excess_generation_factor,
                 	a.naep * b.efficiency_improvement_factor as naep,
                   a.tilt,
@@ -1187,15 +1191,17 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.solar_re_9809_gid,
                   b.density_w_per_sqft, 
                   b.inverter_lifetime_yrs,
+                  c.system_size_limit_kw as nem_system_size_limit_kw,
+                  c.year_end_excess_sell_rate_dlrs_per_kwh,
+                  c.hourly_excess_sell_rate_dlrs_per_kwh,
                   --OPTIMAL SIZING ALGORITHM THAT RETURNS A SYSTEM SIZE AND NUMBER OF PANELS:
-                  diffusion_solar.system_sizing( lower('%(sector)s')::TEXT,
-                                                (b.load_multiplier * a.load_kwh_per_customer_in_bin * (1-a.pct_shaded))::NUMERIC, 
-                                                a.naep * b.efficiency_improvement_factor, 
+                  diffusion_solar.system_sizing(a.load_kwh_per_customer_in_bin,
+                                                a.naep * b.efficiency_improvement_factor,
                                                 1000::NUMERIC, -- replace with actual available_rooftop_space_sqm 
                                                 b.density_w_per_sqft,
-                                                '%(nem_availability)s'::TEXT, 
-                                                a.excess_generation_factor
-                                                ) as system_sizing_return
+                                                c.system_size_limit_kw,
+                                                d.sys_size_target_nem,
+                                                d.sys_size_target_no_nem) as system_sizing_return
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s a
                 INNER JOIN %(schema)s.temporal_factors b
                     ON a.derate = b.derate
@@ -1224,12 +1230,17 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    customers_in_bin, initial_customers_in_bin, 
                    load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
                    crb_model, max_demand_kw, rate_id_alias, rate_source,
-                   nem_system_limit_kw, excess_generation_factor, 
+                   excess_generation_factor, 
     
                    naep,
                    naep * (system_sizing_return).system_size_kw as aep,
                    (system_sizing_return).system_size_kw as system_size_kw,
                    (system_sizing_return).npanels as npanels,
+                   
+                   (system_sizing_return).nem_available as nem_available,
+                   nem_system_size_limit_kw,
+                   year_end_excess_sell_rate_dlrs_per_kwh,
+                   hourly_excess_sell_rate_dlrs_per_kwh,
     
                    tilt,
                    azimuth,
