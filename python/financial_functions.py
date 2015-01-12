@@ -177,12 +177,6 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail    
     """
     
-    # Annual system production (kWh) including degradation and curtailments
-    aep = np.empty(shape)
-    aep[:,0] = 1
-    aep[:,1:]  = 1 - ann_system_degradation
-    aep = df.aep[:,np.newaxis] * aep.cumprod(axis = 1) * (1 - df.curtailment_rate[:,np.newaxis])
-    
     # ATTENTION: Make sure generation profile has been curtailed prior to calculating first year bill
     # i.e. hourly_gen_profile *= (1 - df.curtailment_rate)
     
@@ -217,23 +211,46 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # Since electricity expenses are tax deductible for commercial & industrial 
     # entities, the net annual savings from a system is reduced by the marginal tax rate
     generation_revenue *= (1 - df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial'))[:,np.newaxis])
-        
-    # 4) Revenue from depreciation.  
-    # Depreciable basis is installed cost less tax incentives
-    # Revenue comes from taxable deduction [basis * tax rate * schedule] and cannot be monetized by Residential
     
+    """
+    4) Revenue from carbon price.
+    
+    Revenue from a carbon price is based on the value of offset generation from 
+    conventional thermal generation. The value of offset generation equals the 
+    product of offset generation (kWh), applicable carbon intensity (t CO2/kWh),
+    and carbon price ($/t CO2) at year of adoption, constant over ownership period.
+    Note that this assumes that carbon intensities (gen mix) don't change over time
+    and that the revenue for consumer is the same in all years of ownership. 
+    Instead of state avg. CO2 intensity, user can select NGCC intensity
+    
+    Annual revenue is ~$6-12/kW/year per $10/t
+    """
+    
+    carbon_tax_revenue = np.empty(shape)
+    carbon_tax_revenue[:] = 100 * (df.carbon_price_cents_per_kwh * df.aep)[:,np.newaxis] * system_degradation_factor
+        
+    '''
+    5) Revenue from depreciation.  
+    Depreciable basis is installed cost less tax incentives
+    Revenue comes from taxable deduction [basis * tax rate * schedule] and cannot be monetized by Residential
+    '''
     depreciation_revenue = np.zeros(shape)
     deprec_basis = np.maximum(df.ic - 0.5 * (df.value_of_tax_credit_or_deduction  + df.value_of_rebate),0)[:,np.newaxis] # depreciable basis reduced by half the incentive
     depreciation_revenue[:,:20] = deprec_basis * deprec_schedule.reshape(1,20) * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | (df.business_model == 'tpo'))[:,np.newaxis]   
 
-    # 5) Interest paid on loans is tax-deductible for commercial & industrial users; 
-    # assume can fully monetize. Assume that third-party owners finance system all-cash--thus no interest to deduct. 
+    '''
+    6) Interest paid on loans is tax-deductible for commercial & industrial users; 
+    assume can fully monetize. Assume that third-party owners finance system all-cash--thus no interest to deduct. 
+    '''
     
     # Calc interest paid on serving the loan
     interest_paid = calc_interest_pmt_schedule(df,30)
     interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') & (df.business_model == 'host_owned'))[:,np.newaxis]
     
-    # 6) Revenue from other incentives    
+    '''
+    7) Revenue from other incentives
+    '''
+    
     incentive_revenue = np.zeros(shape)
     incentive_revenue[:, 1] = df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction
     
@@ -243,7 +260,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
 
     incentive_revenue += ptc_revenue + pbi_fit_revenue
     
-    revenue = generation_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
+    revenue = generation_revenue + carbon_tax_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
     costs = loan_cost + om_cost + inverter_cost
     cfs = revenue + costs
     
