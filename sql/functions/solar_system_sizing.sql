@@ -11,8 +11,8 @@ ALTER TYPE diffusion_solar.system_sizing_return
 set role 'server-superusers';
 -- DROP FUNCTION diffusion_solar.system_sizing(numeric, numeric,  numeric,  numeric, 
 -- 							   double precision,  numeric,  numeric); 
-CREATE OR REPLACE FUNCTION diffusion_solar.system_sizing(load_kwh_per_customer_in_bin numeric, naep numeric, available_rooftop_space_sqm numeric, density_w_per_sqft numeric, 
-							  system_size_limit_kw double precision, sys_size_target_nem numeric, sys_size_target_no_nem numeric)
+	CREATE OR REPLACE FUNCTION diffusion_solar.system_sizing(load_kwh_per_customer_in_bin numeric, naep numeric, available_rooftop_space_sqm numeric, density_w_per_sqft numeric, 
+								  system_size_limit_kw double precision, sys_size_target_nem numeric, sys_size_target_no_nem numeric)
   RETURNS diffusion_solar.system_sizing_return AS
 $BODY$
 

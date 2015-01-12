@@ -40,8 +40,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
 	a.i, a.j, a.cf_bin, a.aep_scale_factor, 
-	l.carbon_intensity_t_per_kwh,
-	m.nem_system_limit_kw
+	l.carbon_intensity_t_per_kwh
 FROM diffusion_wind.point_microdata_ind_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
@@ -57,12 +56,7 @@ INNER JOIN diffusion_wind.counties_to_model h
 ON a.county_id = h.county_id
 -- carbon intensities
 LEFT JOIN diffusion_wind.carbon_intensities_to_model l
-ON e.state_abbr = l.state_abbr
--- net metering policies
-LEFT JOIN diffusion_wind.net_metering_to_model m
-ON e.state_abbr = m.state_abbr
-AND m.sector = 'ind'
-AND a.utility_type = m.utility_type;
+ON e.state_abbr = l.state_abbr;
 
 
 -- res
@@ -75,8 +69,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
-	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh,
-	m.nem_system_limit_kw
+	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh
 FROM diffusion_wind.point_microdata_res_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
@@ -95,12 +88,7 @@ INNER JOIN diffusion_wind.counties_to_model h
 ON a.county_id = h.county_id
 -- carbon intensities
 LEFT JOIN diffusion_wind.carbon_intensities_to_model l
-ON e.state_abbr = l.state_abbr
--- net metering policies
-LEFT JOIN diffusion_wind.net_metering_to_model m
-ON e.state_abbr = m.state_abbr
-AND m.sector = 'res'
-AND a.utility_type = m.utility_type;
+ON e.state_abbr = l.state_abbr;
 
 
 -- comm
@@ -113,8 +101,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region, 
-	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh,
-	m.nem_system_limit_kw
+	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh
 FROM diffusion_wind.point_microdata_com_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
@@ -130,12 +117,7 @@ INNER JOIN diffusion_wind.counties_to_model h
 ON a.county_id = h.county_id
 -- carbon intensities
 LEFT JOIN diffusion_wind.carbon_intensities_to_model l
-ON e.state_abbr = l.state_abbr
--- net metering policies
-LEFT JOIN diffusion_wind.net_metering_to_model m
-ON e.state_abbr = m.state_abbr
-AND m.sector = 'com'
-AND a.utility_type = m.utility_type;
+ON e.state_abbr = l.state_abbr;
 
 
 -- create view of sectors to model
