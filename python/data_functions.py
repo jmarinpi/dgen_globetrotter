@@ -1745,7 +1745,8 @@ def get_utilityrate3_inputs(cur, con, technology, schema, npar, pg_conn_string):
             SELECT 	a.uid, 
                     	b.sam_json as rate_json, 
                         a.load_kwh_per_customer_in_bin, c.nkwh,
-                        a.system_size_kw, d.cf
+                        a.system_size_kw, d.cf,
+                        a.ur_enable_net_metering, a.ur_nm_yearend_sell_rate, a.ur_flat_sell_rate
             	
             FROM %(schema)s.unique_rate_gen_load_combinations a
             
@@ -1808,6 +1809,11 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
         hourly_gen_kwh = np.array(list(df['cf'])) * np.array(df['system_size_kw']).reshape(df.shape[0],1) / inputs_dict['gen_scale_offset']
         # add the scaled hourly generation back to the data frame    
         df['generation_hourly'] = hourly_gen_kwh.tolist()
+        
+        # update the net metering fields in the rate_json
+        nem_fields = ['ur_enable_net_metering', 'ur_nm_yearend_sell_rate', 'ur_flat_sell_rate']
+        for nem_field in nem_fields:
+            df['rate_json'][nem_field] = df[nem_field]
         
         # extract a dataframe with only the columns of interest for running the sam calcs
         return_df = df[['uid','rate_json','consumption_hourly','generation_hourly']]
