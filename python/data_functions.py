@@ -447,8 +447,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     b.ann_cons_kwh, 
                     b.customers_in_bin, b.initial_customers_in_bin, 
                     b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
-                    b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source,
-                    b.excess_generation_factor, 
+                    b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source, 
                     b.ur_enable_net_metering
 , b.nem_system_size_limit_kw,
                     b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,
@@ -529,8 +528,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     b.ann_cons_kwh, 
                     b.customers_in_bin, b.initial_customers_in_bin, 
                     b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
-                    b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source,
-                    b.excess_generation_factor, 
+                    b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source, 
                     b.ur_enable_net_metering
 , b.nem_system_size_limit_kw,
                     b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,   
@@ -1080,8 +1078,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                 CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s AS
                 SELECT a.*,
                         b.derate,
-                        b.naep,
-                        b.excess_gen_factor as excess_generation_factor
+                        b.naep
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s a
                 LEFT JOIN %(schema)s.solar_resource_annual b
                 ON a.solar_re_9809_gid = b.solar_re_9809_gid
@@ -1137,13 +1134,11 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   max_demand_kw integer,
                   rate_id_alias integer,
                   rate_source CHARACTER VARYING(5),
-                  excess_generation_factor numeric,
                   naep numeric,
                   aep numeric,
                   system_size_kw numeric,
                   npanels numeric,
-                  ur_enable_net_metering
- boolean,
+                  ur_enable_net_metering boolean,
                   nem_system_size_limit_kw double precision,
                   ur_nm_yearend_sell_rate numeric,
                   ur_flat_sell_rate numeric,                  
@@ -1187,7 +1182,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.max_demand_kw,
                   a.rate_id_alias,
                   a.rate_source,
-                  a.excess_generation_factor,
                 	a.naep * b.efficiency_improvement_factor as naep,
                   a.tilt,
                   a.azimuth,
@@ -1235,7 +1229,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    customers_in_bin, initial_customers_in_bin, 
                    load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
                    crb_model, max_demand_kw, rate_id_alias, rate_source,
-                   excess_generation_factor, 
     
                    naep,
                    naep * (system_sizing_return).system_size_kw as aep,
@@ -1394,8 +1387,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 SELECT a.*,
                 c.aep*a.aep_scale_factor as naep_no_derate,
                 c.turbine_id as power_curve_id, 
-                c.height as turbine_height_m,
-                c.excess_gen_factor as excess_generation_factor
+                c.height as turbine_height_m
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
                 LEFT JOIN %(schema)s.wind_resource_annual c
                 ON a.i = c.i
@@ -1455,7 +1447,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                   a.max_demand_kw,
                   a.rate_id_alias,
                   a.rate_source,
-                  a.excess_generation_factor,
                 	a.naep_no_derate * b.derate_factor as naep,
                   a.power_curve_id as turbine_id,
                   a.i, a.j, a.cf_bin,
@@ -1500,7 +1491,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                    customers_in_bin, initial_customers_in_bin, 
                    load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
                    crb_model, max_demand_kw, rate_id_alias, rate_source,
-                   excess_generation_factor, 
                    (scoe_return).nem_available as ur_enable_net_metering,
                    nem_system_size_limit_kw,
                    ur_nm_yearend_sell_rate,
