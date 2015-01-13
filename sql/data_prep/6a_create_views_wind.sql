@@ -21,12 +21,6 @@ SELECT state_abbr,
 FROM diffusion_shared.carbon_intensities a
 CROSS JOIN diffusion_wind.scenario_options b;
 
--- view for net metering
-DROP VIEW IF EXISTS diffusion_wind.net_metering_to_model;
-CREATE OR REPLACE VIEW diffusion_wind.net_metering_to_model AS
-SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr
-FROM diffusion_shared.net_metering_availability_2013 a;
-
 
 -- views of point data
 -- ind
