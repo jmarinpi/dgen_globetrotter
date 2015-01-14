@@ -1678,7 +1678,13 @@ def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
              
              CREATE INDEX unique_rate_gen_load_combinations_resource_keys_btree
              ON %(schema)s.unique_rate_gen_load_combinations
-             USING BTREE(%(resource_keys)s);""" % inputs_dict
+             USING BTREE(%(resource_keys)s);
+             
+             CREATE INDEX unique_rate_gen_load_combinations_nem_fields_btree
+             ON %(schema)s.unique_rate_gen_load_combinations
+             USING BTREE(ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate);
+             """ % inputs_dict
+             
     cur.execute(sql)
     con.commit()
     
@@ -1909,6 +1915,9 @@ def write_utilityrate3_to_pg(cur, con, sam_results_df, schema, sectors, technolo
                         AND a.load_kwh_per_customer_in_bin = b.load_kwh_per_customer_in_bin
                         AND a.system_size_kw = b.system_size_kw
                         AND %(resource_join_clause)s
+                        AND a.ur_enable_net_metering = b.ur_enable_net_metering
+                        AND a.ur_nm_yearend_sell_rate = b.ur_nm_yearend_sell_rate
+                        AND a.ur_flat_sell_rate = b.ur_flat_sell_rate
                         
                     LEFT JOIN %(schema)s.utilityrate3_results c
                         ON b.uid = c.uid
