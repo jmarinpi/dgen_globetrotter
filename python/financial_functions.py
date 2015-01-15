@@ -266,7 +266,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     
     # Calculate the monthly bill savings in the first year of ownership in dollars ($)
     # and in percentage of prior bill
-    first_year_energy_savings = df.first_year_bill_without_system - df.first_year_bill_without_system 
+    first_year_energy_savings = df.first_year_bill_without_system - df.first_year_bill_with_system 
     avg_annual_payment = loan_cost.sum(axis = 1)/df.loan_term_yrs
     first_year_bill_savings = first_year_energy_savings - avg_annual_payment
     monthly_bill_savings = first_year_bill_savings/12
