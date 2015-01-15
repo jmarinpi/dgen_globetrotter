@@ -1,4 +1,5 @@
-﻿-- DROP TYPE diffusion_solar.system_sizing_return CASCADE;
+﻿
+-- DROP TYPE diffusion_solar.system_sizing_return;
 
 CREATE TYPE diffusion_solar.system_sizing_return AS
    (system_size_kw numeric,
@@ -8,11 +9,11 @@ ALTER TYPE diffusion_solar.system_sizing_return
   OWNER TO "diffusion-writers";
 
 
-set role 'server-superusers';
--- DROP FUNCTION diffusion_solar.system_sizing(numeric, numeric,  numeric,  numeric, 
--- 							   double precision,  numeric,  numeric); 
-	CREATE OR REPLACE FUNCTION diffusion_solar.system_sizing(load_kwh_per_customer_in_bin numeric, naep numeric, available_rooftop_space_sqm numeric, density_w_per_sqft numeric, 
-								  system_size_limit_kw double precision, sys_size_target_nem numeric, sys_size_target_no_nem numeric)
+-- Function: diffusion_solar.system_sizing(numeric, numeric, numeric, numeric, double precision, numeric, numeric)
+
+-- DROP FUNCTION diffusion_solar.system_sizing(numeric, numeric, numeric, numeric, double precision, numeric, numeric);
+
+CREATE OR REPLACE FUNCTION diffusion_solar.system_sizing(load_kwh_per_customer_in_bin numeric, naep numeric, available_rooftop_space_sqm numeric, density_w_per_sqft numeric, system_size_limit_kw double precision, sys_size_target_nem numeric, sys_size_target_no_nem numeric)
   RETURNS diffusion_solar.system_sizing_return AS
 $BODY$
 
@@ -48,15 +49,5 @@ $BODY$
 $BODY$
   LANGUAGE plpythonu STABLE
   COST 100;
-
-
---   select diffusion_solar.system_sizing(
--- 		1000, -- load_kwh_per_customer_in_bin, 
--- 		999, -- naep, 
--- 		1000, -- available_rooftop_space_sqm, 
--- 		13.9, --density_w_per_sqft, 
--- 		 'Inf'::double precision, -- system_size_limit_kw, 
--- 		.85, -- sys_size_target_nem, 
--- 		.25) -- sys_size_target_no_nem)
-
-
+ALTER FUNCTION diffusion_solar.system_sizing(numeric, numeric, numeric, numeric, double precision, numeric, numeric)
+  OWNER TO "server-superusers";
