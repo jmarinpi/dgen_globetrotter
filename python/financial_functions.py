@@ -198,7 +198,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # the same trajectories as changes in rate escalation. Output of this should be a data frame of shape (len(df),30)
     
     # TODO: curtailments should be applied to the generation, however currently infeasible for SAM integration
-    generation_revenue = (df['first_year_bill_without_system'] - (1+df['curtailment_rate'] * df['first_year_bill_with_system']))[:,np.newaxis] * rate_growth_mult
+    generation_revenue = (df['first_year_bill_without_system'] - ((1+df['curtailment_rate']) * df['first_year_bill_with_system']))[:,np.newaxis] * rate_growth_mult
     
     # Decrement the revenue to account for system degradation.
     system_degradation_factor = np.empty(shape)
