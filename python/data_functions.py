@@ -1785,6 +1785,13 @@ def get_utilityrate3_inputs(cur, con, technology, schema, npar, pg_conn_string):
     
     return results_df
 
+def update_rate_json_w_nem_fields(row):
+    
+    nem_fields = ['ur_enable_net_metering', 'ur_nm_yearend_sell_rate', 'ur_flat_sell_rate']
+    nem_dict = dict((k, row[k]) for k in nem_fields)
+    row['rate_json'].update(nem_dict)
+    
+    return row
 
 def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
     try:
@@ -1807,9 +1814,7 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
         df['generation_hourly'] = hourly_gen_kwh.tolist()
         
         # update the net metering fields in the rate_json
-        nem_fields = ['ur_enable_net_metering', 'ur_nm_yearend_sell_rate', 'ur_flat_sell_rate']
-        for nem_field in nem_fields:
-            df['rate_json'][nem_field] = df[nem_field]
+        df = df.apply(update_rate_json_w_nem_fields, axis = 1)
         
         # extract a dataframe with only the columns of interest for running the sam calcs
         return_df = df[['uid','rate_json','consumption_hourly','generation_hourly']]
