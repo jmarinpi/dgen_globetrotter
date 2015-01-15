@@ -34,7 +34,7 @@ def list2line(l):
 def nem_scenario(curWb,schema,conn,cur,verbose=False):
     
     table = 'nem_scenario'
-    
+    valid_values = ['iou','muni','coop','all other']
     def findUtilityTypes():
         ut_nr = curWb.get_named_range("nem_util_types")
         if ut_nr == None:
@@ -44,6 +44,8 @@ def nem_scenario(curWb,schema,conn,cur,verbose=False):
         applicable_utility_types = []
         for row in range(0, rows):
             utility_type = str(cells[row][0].value)
+            if utility_type.lower() not in valid_values:
+                raise ExcelError('invalid utility type specified in Net Metering sheet. Valid values are %s' % valid_values)                
             if cells[row][1].value == True:
                 applicable_utility_types.append(utility_type)
                 
@@ -107,13 +109,14 @@ def nem_scenario(curWb,schema,conn,cur,verbose=False):
         conn.commit()        
 
     if selected_scenario == 'User-Defined':
-        f = StringIO()
         # get the applicable utility types        
         utility_types = findUtilityTypes()
         # get the states
         state_abbrs = findStates()
         # get the years
         year_ranges = findYears()
+        
+        f = StringIO()
         
         sector_abbrs = ['res','com','ind']
         for sector_abbr in sector_abbrs:
