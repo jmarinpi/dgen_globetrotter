@@ -1740,8 +1740,8 @@ def get_utilityrate3_inputs(cur, con, technology, schema, npar, pg_conn_string):
                    
             SELECT 	a.uid, 
                     	b.sam_json as rate_json, 
-                        a.load_kwh_per_customer_in_bin, c.nkwh,
-                        a.system_size_kw, d.cf,
+                        a.load_kwh_per_customer_in_bin, c.nkwh as consumption_hourly,
+                        a.system_size_kw, d.cf as generation_hourly,
                         a.ur_enable_net_metering, a.ur_nm_yearend_sell_rate, a.ur_flat_sell_rate
             	
             FROM %(schema)s.unique_rate_gen_load_combinations a
@@ -1793,6 +1793,13 @@ def update_rate_json_w_nem_fields(row):
     
     return row
 
+
+def scale_array(row, array_col, scale_col, prec_offset_value):
+    
+    row[array_col] = (np.array(row[array_col]) * row[scale_col])/prec_offset_value
+    
+    return row
+
 def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
     try:
         # create cursor and connection
@@ -1803,24 +1810,17 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
         con.close()
         cur.close()
         
-        # scale the normalized hourly load based on the annual load
-        hourly_load_kwh = np.array(list(df['nkwh'])) * np.array(df['load_kwh_per_customer_in_bin']).reshape(df.shape[0],1) / inputs_dict['load_scale_offset']
-        # add the scaled hourly load back to the data frame    
-        df['consumption_hourly'] = hourly_load_kwh.tolist()
+        # scale the normalized hourly load based on the annual load and scale offset factor
+        df = df.apply(scale_array, axis = 1, args = ('consumption_hourly','load_kwh_per_customer_in_bin', inputs_dict['load_scale_offset']))
         
         # scale the hourly cfs into hourly kw using the system size
-        hourly_gen_kwh = np.array(list(df['cf'])) * np.array(df['system_size_kw']).reshape(df.shape[0],1) / inputs_dict['gen_scale_offset']
-        # add the scaled hourly generation back to the data frame    
-        df['generation_hourly'] = hourly_gen_kwh.tolist()
+        df = df.apply(scale_array, axis = 1, args = ('generation_hourly','system_size_kw', inputs_dict['gen_scale_offset']))
         
         # update the net metering fields in the rate_json
         df = df.apply(update_rate_json_w_nem_fields, axis = 1)
-        
-        # extract a dataframe with only the columns of interest for running the sam calcs
-        return_df = df[['uid','rate_json','consumption_hourly','generation_hourly']]
-        
+               
         # add the results to the queue
-        queue.put(return_df)
+        queue.put(df[['uid','rate_json','consumption_hourly','generation_hourly']])
         
     except Exception, e:
         print 'Error: %s' % e
