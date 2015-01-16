@@ -1695,9 +1695,9 @@ def get_max_row_count_for_utilityrate3():
     
     # find the total size of memory on the system
     mem = psutil.virtual_memory()
-    avail_mem = mem.total - mem.used
+    free_mem = mem.total - mem.used
     # target to fill up only half of the total memory
-    target_mem = int(avail_mem/2)
+    target_mem = int(free_mem/4)
     
     # how large is a 2 x 8760 array?
     # (2x8760 because we need to store both cons and gen arrays for each record)

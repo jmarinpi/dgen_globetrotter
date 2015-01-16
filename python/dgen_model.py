@@ -218,6 +218,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             sam_results_list = []
             # set up chunks
             uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema)
+            print len(uid_lists)
             for uids in uid_lists: 
                 # collect data for all unique combinations
                 logger.info('Collecting unique combinations of rates, load, and generation')
