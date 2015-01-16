@@ -212,25 +212,34 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             # DISABLED FOR DEV BRANCH
             # break from the loop to find all unique combinations of rates, load, and generation
             logger.info('Finding unique combinations of rates, load, and generation')
-            datfunc.get_unique_parameters_for_urdb3(cur, con, cfg.technology, schema, sectors)            
-            # collect data for all unique combinations
-            logger.info('Collecting unique combinations of rates, load, and generation')
-            t0 = time.time()
-            rate_input_df = datfunc.get_utilityrate3_inputs(cur, con, cfg.technology, schema, cfg.npar, cfg.pg_conn_string)
-            logger.info('datfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t0),)        
-            # calculate value of energy for all unique combinations
-            logger.info('Calculating value of energy using SAM')
-            t0 = time.time()
-            # run sam calcs in serial if only one core is available
-            if cfg.local_cores == 1:
-                sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
-            # otherwise run in parallel
-            else:
-                sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)
-            logger.info('datfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t0),)  
+            datfunc.get_unique_parameters_for_urdb3(cur, con, cfg.technology, schema, sectors)         
+            # determine how many rate/load/gen combinations can be processed given the local memory resources
+            row_count_limit = datfunc.get_max_row_count_for_utilityrate3()            
+            sam_results_list = []
+            # set up chunks
+            uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema)
+            for uids in uid_lists: 
+                # collect data for all unique combinations
+                logger.info('Collecting unique combinations of rates, load, and generation')
+                t0 = time.time()
+                rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, cfg.technology, schema, cfg.npar, cfg.pg_conn_string)
+                logger.info('datfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t0),)        
+                # calculate value of energy for all unique combinations
+                logger.info('Calculating value of energy using SAM')
+                t0 = time.time()
+                # run sam calcs in serial if only one core is available
+                if cfg.local_cores == 1:
+                    sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
+                # otherwise run in parallel
+                else:
+                    sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)
+                logger.info('datfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t0),)  
+            
+                sam_results_list.append(sam_results_df)
+       
             # write results to postgres
             t0 = time.time()
-            datfunc.write_utilityrate3_to_pg(cur, con, sam_results_df, schema, sectors, cfg.technology)
+            datfunc.write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, cfg.technology)
             logger.info('datfunc.write_utilityrate3_to_pg took: %0.1fs' % (time.time() - t0),)  
             #==============================================================================
              

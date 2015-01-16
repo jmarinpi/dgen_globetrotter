@@ -10,7 +10,6 @@ import psycopg2.extensions as pgxt
 import pandas.io.sql as sqlio
 import time   
 import numpy as np
-from scipy.interpolate import interp1d as interp1d
 import pandas as pd
 import datetime
 from multiprocessing import Process, Queue, JoinableQueue
@@ -25,9 +24,7 @@ import gzip
 import subprocess
 import os
 import sys, getopt
-import json
-from sam.languages.python import sscapi
-import pssc_mp
+import psutil
 
 # configure psycopg2 to treat numeric values as floats (improves performance of pulling data from the database)
 DEC2FLOAT = pg.extensions.new_type(
@@ -1694,9 +1691,50 @@ def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
     cur.execute(sql)
     con.commit()
     
+def get_max_row_count_for_utilityrate3():
+    
+    # find the total size of memory on the system
+    sys_mem = psutil.virtual_memory().total
+    # target to fill up only half of the total memory
+    target_mem = int(sys_mem/2)
+    
+    # how large is a 2 x 8760 array?
+    # (2x8760 because we need to store both cons and gen arrays for each record)
+    # create array of correct size and dtype
+    a = np.zeros((2,8760), float)
+    # how big is it?
+    row_mem = a.nbytes
+    
+    # how many rows can be stored in the target mem?
+    total_rows = target_mem/row_mem
+    
+    return total_rows
     
 
-def get_utilityrate3_inputs(cur, con, technology, schema, npar, pg_conn_string):
+def split_utilityrate3_inputs(row_count_limit, cur, con, schema):
+
+    inputs_dict = locals().copy()    
+    
+   # find the set of uids     
+    sql =   """SELECT uid 
+               FROM %(schema)s.unique_rate_gen_load_combinations
+               ORDER BY uid;""" % inputs_dict
+    cur.execute(sql)
+    uids = [row['uid'] for row in cur.fetchall()]
+    # find how many total uids there are
+    total_row_count = len(uids)
+    # determine the approximate chunk size
+    num_chunks = np.ceil(float(total_row_count)/row_count_limit)
+    
+    # split the uids into npar chunks
+    uid_chunks = np.array_split(uids, num_chunks)
+    
+    return uid_chunks
+
+    
+    
+
+def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_string):
     
     
     inputs_dict = locals().copy()     
@@ -1714,14 +1752,8 @@ def get_utilityrate3_inputs(cur, con, technology, schema, npar, pg_conn_string):
                                             AND a.tilt = d.tilt
                                             AND a.azimuth = d.azimuth"""
         inputs_dict['gen_scale_offset'] = 1e6
-        
-   # find the set of uids     
-    sql =   """SELECT uid 
-               FROM %(schema)s.unique_rate_gen_load_combinations
-               ORDER BY uid;""" % inputs_dict
-    cur.execute(sql)
-    uids = [row['uid'] for row in cur.fetchall()]
-    # split the uids into npar chunks
+
+    # split the uids up into chunks for parallel processing        
     uid_chunks = map(list, np.array_split(uids, npar))    
     inputs_dict['chunk_place_holder'] = '%(uids)s'        
 
@@ -1852,10 +1884,16 @@ def run_utilityrate3(df, logger):
     return results_df
     
 
-def write_utilityrate3_to_pg(cur, con, sam_results_df, schema, sectors, technology):
+def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, technology):
     
     inputs_dict = locals().copy()  
+
+    # concatenate all of the dataframes into a single data frame
+    sam_results_df = pd.concat(sam_results_list)
+    # reindex the dataframe
+    sam_results_df.reset_index(drop = True, inplace = True)     
     
+    # set the join clauses depending on the technology
     if technology == 'wind':
         inputs_dict['resource_join_clause'] = """a.i = b.i
                                             AND a.j = b.j
