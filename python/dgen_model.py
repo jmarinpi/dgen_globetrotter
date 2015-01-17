@@ -235,8 +235,9 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                 else:
                     sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)
                 logger.info('datfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t0),)  
-            
                 sam_results_list.append(sam_results_df)
+                # drop the rate_input_df to save on memory
+                del rate_input_df
        
             # write results to postgres
             t0 = time.time()
