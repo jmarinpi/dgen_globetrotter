@@ -202,6 +202,9 @@ def pssc_mp(data, num_consumers):
 
 #    logger.info('Completed %i of %i job(s)' % (result_count, num_iterations))
 
+    # delete consumer objects to free memory
+    del consumers
+
     # convert results list to pandas a dataframe
     results_df = pd.DataFrame.from_dict(results_all)
     # round costs to 2 decimal places (i.e., pennies)
