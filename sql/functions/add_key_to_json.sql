@@ -1,16 +1,13 @@
 ﻿
-DROP FUNCTION IF EXISTS public.add_key(j json, k text, value integer[]);
+DROP FUNCTION IF EXISTS public.add_key(j json, k text, v integer[]);
 SET ROLE 'server-superusers';
-CREATE OR REPLACE FUNCTION public.add_key(j json, k text, value integer[])
+CREATE OR REPLACE FUNCTION public.add_key(j json, k text, v integer[])
   RETURNS json AS
   $BODY$
 
 	import json
 	d = json.loads(j)
-	if k in d.keys():
-		del d[k]
-	else:
-		plpy.warning("KeyError: Key '%s' does not exist in json" % k) 
+	d[k] = v
 	s = json.dumps(d)
 
 	return s
