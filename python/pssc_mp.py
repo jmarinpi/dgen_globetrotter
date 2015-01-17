@@ -176,7 +176,8 @@ def pssc_mp(data, num_consumers):
         uid = data['uid'][i]  # @TODO: get from config
         rate_json = data['rate_json'][i]
         generation_hourly = data['generation_hourly'][i]
-        consumption_hourly = data['consumption_hourly'][i]      
+        consumption_hourly = data['consumption_hourly'][i]   
+        data.drop(i, inplace = True)
         
         tasks.put(Task(uid=uid, generation_hourly=generation_hourly,
                        consumption_hourly=consumption_hourly, rate_json=rate_json,
