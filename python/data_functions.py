@@ -1696,15 +1696,12 @@ def get_max_row_count_for_utilityrate3():
     # find the total size of memory on the system
     mem = psutil.virtual_memory()
     free_mem = mem.total - mem.used
-    # target to fill up only half of the total memory
-    target_mem = int(free_mem/4)
+    # target to fill up only an eighth of the total memory 
+    # (this gives a buffer)
+    target_mem = int(free_mem/12)
     
-    # how large is a 2 x 8760 array?
-    # (2x8760 because we need to store both cons and gen arrays for each record)
-    # create array of correct size and dtype
-    a = np.zeros((2,8760), float)
-    # how big is it?
-    row_mem = a.nbytes
+    # previous runs suggest that the size of each row in bytes will generally be less than:
+    row_mem = 300000
     
     # how many rows can be stored in the target mem?
     total_rows = target_mem/row_mem
