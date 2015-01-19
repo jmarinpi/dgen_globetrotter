@@ -1,4 +1,5 @@
-﻿
+﻿set role 'server-superusers';
+
 -- DROP TYPE diffusion_solar.system_sizing_return;
 
 CREATE TYPE diffusion_solar.system_sizing_return AS

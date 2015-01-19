@@ -11,7 +11,7 @@ ALTER TYPE diffusion_wind.scoe_return
 -- Function: diffusion_wind.scoe(numeric, numeric, numeric, double precision, numeric, numeric, numeric, numeric)
 
 -- DROP FUNCTION diffusion_wind.scoe(numeric, numeric, numeric, double precision, numeric, numeric, numeric, numeric);
-
+set role 'server-superusers';
 CREATE OR REPLACE FUNCTION diffusion_wind.scoe(load_kwh_per_customer_in_bin numeric, naep numeric, turbine_size_kw numeric, system_size_limit_kw double precision, sys_size_target_nem numeric, sys_oversize_limit_nem numeric, sys_size_target_no_nem numeric, sys_oversize_limit_no_nem numeric)
   RETURNS diffusion_wind.scoe_return AS
 $BODY$
