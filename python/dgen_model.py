@@ -218,26 +218,30 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             sam_results_list = []
             # set up chunks
             uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema)
-            print len(uid_lists)
-            for uids in uid_lists: 
+            nbatches = len(uid_lists)
+            t0 = time.time()
+            logger.info("SAM Calculations will be run in %s batches to prevent memory overflow" % nbatches)
+            for i, uids in enumerate(uid_lists): 
+                logger.info("Working on SAM Batch %s of %s" % (i+1, nbatches))
                 # collect data for all unique combinations
-                logger.info('Collecting unique combinations of rates, load, and generation')
-                t0 = time.time()
+                logger.info('\tCollecting SAM inputs')
+                t1 = time.time()
                 rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, cfg.technology, schema, cfg.npar, cfg.pg_conn_string)
-                logger.info('datfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t0),)        
+                logger.info('\tdatfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t1),)        
                 # calculate value of energy for all unique combinations
-                logger.info('Calculating value of energy using SAM')
-                t0 = time.time()
+                logger.info('\tCalculating value of energy using SAM')
+                t1 = time.time()
                 # run sam calcs in serial if only one core is available
                 if cfg.local_cores == 1:
                     sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
                 # otherwise run in parallel
                 else:
                     sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)
-                logger.info('datfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t0),)  
+                logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)  
                 sam_results_list.append(sam_results_df)
                 # drop the rate_input_df to save on memory
                 del rate_input_df
+            logger.info('All SAM calculations completed in: %0.1fs' % (time.time() - t0),)
        
             # write results to postgres
             t0 = time.time()
