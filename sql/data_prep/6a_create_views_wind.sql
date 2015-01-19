@@ -21,34 +21,6 @@ SELECT state_abbr,
 FROM diffusion_shared.carbon_intensities a
 CROSS JOIN diffusion_wind.scenario_options b;
 
--- view for net metering
-DROP VIEW IF EXISTS diffusion_wind.net_metering_to_model;
-CREATE OR REPLACE VIEW diffusion_wind.net_metering_to_model AS
-WITH combined as (
-SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr,
-	CASE WHEN b.overwrite_exist_nm = TRUE THEN False
-	ELSE TRUE
-	END as keep, 'ftg' as source
-	
-FROM diffusion_share.net_metering_availability_2013 a
-CROSS JOIN diffusion_wind.scenario_options b
-
-UNION ALL
-
-SELECT a.sector, a.utility_type, a.nem_system_limit_kw, a.state_abbr,
-	CASE WHEN b.overwrite_exist_nm = TRUE THEN TRUE
-	ELSE FALSE
-	END as keep, 'man' as source
-
-
-FROM diffusion_wind.manual_net_metering_availability a
-CROSS JOIN diffusion_wind.scenario_options b)
-
-SELECT sector, utility_type, nem_system_limit_kw, state_abbr
-FROM combined
-where keep = True;
-
-
 
 -- views of point data
 -- ind
@@ -56,22 +28,17 @@ DROP VIEW IF EXISTS diffusion_wind.point_microdata_ind_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_ind_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
-        c.ind_cents_per_kwh * (1-n.ind_demand_charge_rate) as elec_rate_cents_per_kwh, 
+	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
-	e.state_abbr, e.census_division_abbr, e.census_region,
+	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
 	a.i, a.j, a.cf_bin, a.aep_scale_factor, 
-	l.carbon_intensity_t_per_kwh,
-	m.nem_system_limit_kw
+	l.carbon_intensity_t_per_kwh
 FROM diffusion_wind.point_microdata_ind_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
--- rates
-LEFT JOIN diffusion_shared.annual_ave_elec_rates_2011 c
-ON a.annual_rate_gid = c.gid
 -- capital_costs
 LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
 ON a.county_id = d.county_id
@@ -83,14 +50,7 @@ INNER JOIN diffusion_wind.counties_to_model h
 ON a.county_id = h.county_id
 -- carbon intensities
 LEFT JOIN diffusion_wind.carbon_intensities_to_model l
-ON e.state_abbr = l.state_abbr
--- net metering policies
-LEFT JOIN diffusion_wind.net_metering_to_model m
-ON e.state_abbr = m.state_abbr
-AND m.sector = 'ind'
-AND a.utility_type = m.utility_type
--- manual demand charges
-CROSS JOIN diffusion_wind.scenario_options n;
+ON e.state_abbr = l.state_abbr;
 
 
 -- res
@@ -98,14 +58,12 @@ DROP VIEW IF EXISTS diffusion_wind.point_microdata_res_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_res_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
-	c.res_cents_per_kwh as elec_rate_cents_per_kwh, 
+	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
-	e.state_abbr, e.census_division_abbr, e.census_region,
-	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh,
-	m.nem_system_limit_kw
+	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
+	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh
 FROM diffusion_wind.point_microdata_res_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
@@ -113,9 +71,6 @@ ON a.county_id = b.county_id
 -- county % owner occ housing
 LEFT JOIN diffusion_shared.county_housing_units k
 ON a.county_id = k.county_id
--- rates
-LEFT JOIN diffusion_shared.annual_ave_elec_rates_2011 c
-ON a.annual_rate_gid = c.gid
 -- capital_costs
 LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
 ON a.county_id = d.county_id
@@ -127,12 +82,7 @@ INNER JOIN diffusion_wind.counties_to_model h
 ON a.county_id = h.county_id
 -- carbon intensities
 LEFT JOIN diffusion_wind.carbon_intensities_to_model l
-ON e.state_abbr = l.state_abbr
--- net metering policies
-LEFT JOIN diffusion_wind.net_metering_to_model m
-ON e.state_abbr = m.state_abbr
-AND m.sector = 'res'
-AND a.utility_type = m.utility_type;
+ON e.state_abbr = l.state_abbr;
 
 
 -- comm
@@ -140,21 +90,16 @@ DROP VIEW IF EXISTS diffusion_wind.point_microdata_com_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_com_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
-	a.annual_rate_gid, a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
-	c.comm_cents_per_kwh * (1-n.com_demand_charge_rate) as elec_rate_cents_per_kwh, 
+	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
-	e.state_abbr, e.census_division_abbr, e.census_region, 
-	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh,
-	m.nem_system_limit_kw
+	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region, 
+	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh
 FROM diffusion_wind.point_microdata_com_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
--- rates
-LEFT JOIN diffusion_shared.annual_ave_elec_rates_2011 c
-ON a.annual_rate_gid = c.gid
 -- capital_costs
 LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
 ON a.county_id = d.county_id
@@ -166,14 +111,7 @@ INNER JOIN diffusion_wind.counties_to_model h
 ON a.county_id = h.county_id
 -- carbon intensities
 LEFT JOIN diffusion_wind.carbon_intensities_to_model l
-ON e.state_abbr = l.state_abbr
--- net metering policies
-LEFT JOIN diffusion_wind.net_metering_to_model m
-ON e.state_abbr = m.state_abbr
-AND m.sector = 'com'
-AND a.utility_type = m.utility_type
--- manual demand charges
-CROSS JOIN diffusion_wind.scenario_options n;
+ON e.state_abbr = l.state_abbr;
 
 
 -- create view of sectors to model
@@ -364,3 +302,50 @@ LEFT JOIN diffusion_wind.wind_cost_projections b  --this join will repeat the co
 ON a.turbine_size_kw = b.turbine_size_kw;
 
 
+
+
+set role 'diffusion-writers';
+-- create a view of all of the different types of rates
+DROP VIEW IF EXISTS diffusion_wind.all_rate_jsons;
+CREATE VIEW diffusion_wind.all_rate_jsons AS
+-- urdb3 complex rates
+SELECT 'urdb3'::character varying(5) as rate_source,
+	rate_id_alias, 
+	sam_json
+FROM diffusion_shared.urdb3_rate_sam_jsons
+UNION ALL
+-- annual average flat rates (residential)
+SELECT 'aares'::character varying(5) as rate_source,
+	a.county_id as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(res_rate_cents_per_kwh/100,2)::text || '}')::JSON as sam_json
+FROM diffusion_shared.ann_ave_elec_rates_by_county_2012 a
+UNION ALL
+-- annual average flat rates (commercial)
+SELECT 'aacom'::character varying(5) as rate_source,
+	a.county_id as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(com_rate_cents_per_kwh/100,2)::text || '}')::JSON as sam_json
+FROM diffusion_shared.ann_ave_elec_rates_by_county_2012 a
+UNION ALL
+-- annual average flat rates (industrial)
+SELECT 'aaind'::character varying(5) as rate_source,
+	a.county_id as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(ind_rate_cents_per_kwh/100,2)::text || '}')::JSON as sam_json
+FROM diffusion_shared.ann_ave_elec_rates_by_county_2012 a
+UNION ALL
+-- user-defined flat rates (residential)
+SELECT 'udres'::character varying(5) as rate_source,
+	a.state_fips as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(res_rate_dlrs_per_kwh,2)::text || '}')::JSON as sam_json
+FROM diffusion_wind.user_defined_electric_rates a
+UNION ALL
+-- user-defined flat rates (commercial)
+SELECT 'udcom'::character varying(5) as rate_source,
+	a.state_fips as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(com_rate_dlrs_per_kwh,2)::text || '}')::JSON as sam_json
+FROM diffusion_wind.user_defined_electric_rates a
+UNION ALL
+-- user-defined flat rates (industrial)
+SELECT 'udind'::character varying(5) as rate_source,
+	a.state_fips as rate_id_alias, 
+	('{"ur_flat_buy_rate" : ' || round(ind_rate_dlrs_per_kwh,2)::text || '}')::JSON as sam_json
+FROM diffusion_wind.user_defined_electric_rates a;

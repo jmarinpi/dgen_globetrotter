@@ -33,11 +33,11 @@ LANGUAGE 'plr'
 COST 100;
 
 
-SELECT unnest(bin_equal_interval(array_agg(system_size_kw), 10))
-FROM diffusion_solar.outputs_all
-
-SELECT system_size_kw, bin_manual_breaks(system_size_kw, array[0,5,10,15,20,30,40,50,100,150,round(max(system_size_kw) OVER (PARTITION BY sector),0)])
-FROM diffusion_solar.outputs_all
+-- SELECT unnest(bin_equal_interval(array_agg(system_size_kw), 10))
+-- FROM diffusion_solar.outputs_all
+-- 
+-- SELECT system_size_kw, bin_manual_breaks(system_size_kw, array[0,5,10,15,20,30,40,50,100,150,round(max(system_size_kw) OVER (PARTITION BY sector),0)])
+-- FROM diffusion_solar.outputs_all
 
 
 

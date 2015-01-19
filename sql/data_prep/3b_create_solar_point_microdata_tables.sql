@@ -5,7 +5,6 @@ CREATE TABLE diffusion_solar.point_microdata_res_us AS
 WITH a AS
 (
 	SELECT a.county_id, 
-		a.annual_rate_gid, 
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.solar_incentive_array_id as incentive_array_id,
 		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
@@ -13,7 +12,6 @@ WITH a AS
 		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_res a
 	GROUP BY a.county_id, 
-		a.annual_rate_gid, 
 		a.pca_reg, a.reeds_reg, a.solar_incentive_array_id,
 		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
@@ -32,10 +30,6 @@ ADD primary key (micro_id);
 CREATE INDEX point_microdata_res_us_county_id_btree
   ON diffusion_solar.point_microdata_res_us
   USING btree (county_id);
-
-CREATE INDEX point_microdata_res_us_annual_rate_gid_btree
-  ON diffusion_solar.point_microdata_res_us
-  USING btree (annual_rate_gid);
 
 CREATE INDEX point_microdata_res_us_utility_type_btree
   ON diffusion_solar.point_microdata_res_us
@@ -56,7 +50,6 @@ CREATE TABLE diffusion_solar.point_microdata_com_us AS
 WITH a AS
 (
 	SELECT a.county_id, 
-		a.annual_rate_gid, 
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.solar_incentive_array_id as incentive_array_id,
 		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
@@ -64,7 +57,6 @@ WITH a AS
 		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_com a
 	GROUP BY a.county_id, 
-		a.annual_rate_gid, 
 		a.pca_reg, a.reeds_reg, a.solar_incentive_array_id,
 		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
@@ -84,10 +76,6 @@ CREATE INDEX point_microdata_com_us_county_id_btree
   ON diffusion_solar.point_microdata_com_us
   USING btree (county_id);
 
-CREATE INDEX point_microdata_com_us_annual_rate_gid_btree
-  ON diffusion_solar.point_microdata_com_us
-  USING btree (annual_rate_gid);
-
 CREATE INDEX point_microdata_com_us_utility_type_btree
   ON diffusion_solar.point_microdata_com_us
   USING btree (utility_type);
@@ -103,7 +91,6 @@ CREATE TABLE diffusion_solar.point_microdata_ind_us AS
 WITH a AS
 (
 	SELECT a.county_id, 
-		a.annual_rate_gid, 
 		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.solar_incentive_array_id as incentive_array_id,
 		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
@@ -111,7 +98,6 @@ WITH a AS
 		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_ind a
 	GROUP BY a.county_id, 
-		a.annual_rate_gid, 
 		a.pca_reg, a.reeds_reg, a.solar_incentive_array_id,
 		a.ranked_rate_array_id, a.hdf_load_index,
 		a.utility_type, 
@@ -130,10 +116,6 @@ ADD primary key (micro_id);
 CREATE INDEX point_microdata_ind_us_county_id_btree
   ON diffusion_solar.point_microdata_ind_us
   USING btree (county_id);
-
-CREATE INDEX point_microdata_ind_us_annual_rate_gid_btree
-  ON diffusion_solar.point_microdata_ind_us
-  USING btree (annual_rate_gid);
 
 CREATE INDEX point_microdata_ind_us_utility_type_btree
   ON diffusion_solar.point_microdata_ind_us

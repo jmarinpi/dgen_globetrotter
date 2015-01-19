@@ -1,19 +1,28 @@
-def scoe(load_kwh_per_customer_in_bin, 
-        naep, 
-        turbine_size_kw,
-        system_size_limit_kw, 
-        sys_size_target_nem, 
-        sys_oversize_limit_nem,
-        sys_size_target_no_nem,
-        sys_oversize_limit_no_nem ):
-    # -*- coding: utf-8 -*-
-    """
-    Created on Mon Jan 12 15:37:16 2015
-    
-    @author: mgleason
+﻿-- DROP TYPE diffusion_wind.scoe_return;
+
+CREATE TYPE diffusion_wind.scoe_return AS
+   (scoe numeric,
+    nturb numeric,
+    nem_available boolean);
+ALTER TYPE diffusion_wind.scoe_return
+  OWNER TO "diffusion-writers";
+
+
+-- Function: diffusion_wind.scoe(numeric, numeric, numeric, double precision, numeric, numeric, numeric, numeric)
+
+-- DROP FUNCTION diffusion_wind.scoe(numeric, numeric, numeric, double precision, numeric, numeric, numeric, numeric);
+set role 'server-superusers';
+CREATE OR REPLACE FUNCTION diffusion_wind.scoe(load_kwh_per_customer_in_bin numeric, naep numeric, turbine_size_kw numeric, system_size_limit_kw double precision, sys_size_target_nem numeric, sys_oversize_limit_nem numeric, sys_size_target_no_nem numeric, sys_oversize_limit_no_nem numeric)
+  RETURNS diffusion_wind.scoe_return AS
+$BODY$
+
+    """ Calculate simple metric for evaluating optimal capacity-height among several
+        possibilities. The metric does not caclulate value of incentives, which are 
+        assumed to scale btw choices. In sizing, allow production to exceed annual 
+        generation by default 15%, and undersize by 50%.
     """
 
-    
+
     if system_size_limit_kw == 0:
         # if not net metering, the target percentage of load is sys_size_target_no_nem
         # and the oversize limit is the sys_oversize_limit_no_nem
@@ -42,7 +51,7 @@ def scoe(load_kwh_per_customer_in_bin,
 
     # check whether the aep is equal to zero or whether the system is above the oversize limit
     if aep == 0 or aep > oversize_limit_kwh:
-            # if so, return very high cost
+            # if so,  return very high cost
             scoe = load_kwh_per_customer_in_bin * 10
             nturb = 1
             nem_available = False
@@ -63,3 +72,10 @@ def scoe(load_kwh_per_customer_in_bin,
         nturb = 1    
 
     return scoe, nturb, nem_available
+
+
+  $BODY$
+  LANGUAGE plpythonu STABLE
+  COST 100;
+ALTER FUNCTION diffusion_wind.scoe(numeric, numeric, numeric, double precision, numeric, numeric, numeric, numeric)
+  OWNER TO "server-superusers";

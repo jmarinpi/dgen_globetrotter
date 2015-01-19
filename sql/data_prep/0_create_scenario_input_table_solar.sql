@@ -1,14 +1,14 @@
 ﻿SET ROLE 'diffusion-writers';
 
 -- main scenarion options table
-DROP TABLE IF EXISTS diffusion_solar.scenario_options;
+DROP TABLE diffusion_solar.scenario_options;
 
 CREATE TABLE diffusion_solar.scenario_options
 (
   region text,
   end_year integer,
   markets text,
-  cost_assumptions text, -- added
+  cost_assumptions text,
   cust_exp_elec_rates text,
   load_growth_scenario text,
   res_rate_structure text,
@@ -17,15 +17,12 @@ CREATE TABLE diffusion_solar.scenario_options
   com_rate_structure text,
   com_rate_escalation text,
   com_max_market_curve text,
-  com_demand_charge_rate numeric,
   ind_rate_structure text,
   ind_rate_escalation text,
   ind_max_market_curve text,
-  ind_demand_charge_rate numeric,
   net_metering_availability text,
   carbon_price text,
   rooftop_availability text,
-  system_sizing text,
   random_generator_seed integer,
   ann_inflation numeric,
   ann_system_degradation numeric,
@@ -35,8 +32,7 @@ CREATE TABLE diffusion_solar.scenario_options
   utility_type_iou boolean,
   utility_type_muni boolean,
   utility_type_coop boolean,
-  utility_type_allother boolean,
-  overwrite_exist_nm boolean
+  utility_type_allother boolean
 );
 
 -- create config constraint tables for these

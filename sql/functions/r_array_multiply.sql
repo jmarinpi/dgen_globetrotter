@@ -1,4 +1,4 @@
-﻿DROP FUNCTION public.r_array_multiply(numeric[], numeric);
+﻿-- DROP FUNCTION public.r_array_multiply(numeric[], numeric);
 
 CREATE OR REPLACE FUNCTION public.r_array_multiply(numarr numeric[], scalar numeric)
   RETURNS numeric[] AS

@@ -7,6 +7,7 @@ Created on Wed Mar 26 13:01:56 2014
 
 import os
 import json
+import multiprocessing
 
 #==============================================================================
 # these are all variables that we can change, but don't want to expose to non-expert users
@@ -49,8 +50,11 @@ if Rscript_path == None:
 
 # set boolean variable for parallelization
 parallelize = True
-# set number of parallel processes to run (this is ignored if parallelize = F)
-npar = 4
+# set number of parallel processes to run postgres queries (this is ignored if parallelize = F)
+npar = 10
+
+# local cores
+local_cores = multiprocessing.cpu_count()/2
 
 # load scenario input sheet?
 load_scenario_inputs = True

@@ -1,4 +1,14 @@
-﻿DROP FUNCTION diffusion_wind.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, nem_system_limit_kw float, oversize_factor numeric, undersize_factor numeric);
+﻿DROP TYPE diffusion_wind.scoe_return;
+
+CREATE TYPE diffusion_wind.scoe_return AS
+   (scoe numeric,
+    nturb numeric,
+    nem_available boolean);
+ALTER TYPE diffusion_wind.scoe_return
+  OWNER TO "diffusion-writers";
+
+
+DROP FUNCTION diffusion_wind.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, nem_system_limit_kw float, oversize_factor numeric, undersize_factor numeric);
 SET ROLE 'server-superusers';
 CREATE OR REPLACE FUNCTION diffusion_wind.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, nem_system_limit_kw float, excess_generation_factor numeric, oversize_factor numeric default 1.15, undersize_factor numeric default 0.5)
   RETURNS float AS

@@ -10,7 +10,7 @@ RESET ROLE;
 
 
 SET ROLE 'server-superusers';
-DROP FUNCTION diffusion_wind.scoe(numeric, numeric, numeric, numeric, numeric, numeric, double precision, numeric, text, numeric, numeric);
+DROP FUNCTION IF EXISTS diffusion_wind.scoe(numeric, numeric, numeric, numeric, numeric, numeric, double precision, numeric, text, numeric, numeric);
 
 CREATE OR REPLACE FUNCTION diffusion_wind.scoe(ic numeric, fom numeric, vom numeric, naep numeric, cap numeric, ann_elec_cons numeric, nem_system_limit_kw double precision, excess_generation_factor numeric, nem_availability text, oversize_factor numeric DEFAULT 1.15, undersize_factor numeric DEFAULT 0.5)
   RETURNS diffusion_wind.scoe_return AS

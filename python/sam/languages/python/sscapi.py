@@ -23,10 +23,19 @@ class PySSC:
 
     def set_lib(self):
         cwd = os.getcwd()
-        os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__))))
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+        
         if sys.platform == 'win32' or sys.platform == 'cygwin':
             if 8*struct.calcsize("P") == 64:
-                self.pdll = CDLL("../../win64/ssc.dll") 
+                try:
+                    CDLL("../../win64/msvcr120.dll")
+                    CDLL("../../win64/msvcp120.dll")
+                    self.pdll = CDLL("../../win64/ssc.dll")
+                    # CDLL("C:/Users/bsigrin/Desktop/diffusion/python/sam/win64/msvcr120.dll")
+                    # CDLL("C:/Users/bsigrin/Desktop/diffusion/python/sam/win64/msvcp120.dll")
+                    # self.pdll = CDLL("C:/Users/bsigrin/Desktop/diffusion/python/sam/win64/ssc.dll")
+                except WindowsError:
+                    print 'Cannot read ssc.dll check for relative path issues'
             else:
                 self.pdll = CDLL("../../win32/ssc.dll") 
         elif sys.platform == 'darwin':

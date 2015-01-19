@@ -17,7 +17,7 @@ CREATE TABLE diffusion_shared.urdb_rates_by_state_ind AS
 SELECT a.state_abbr, a.rate_id_alias
 from diffusion_shared.pt_rate_isect_lkup_ind a
 group by a.state_abbr, a.rate_id_alias;
-
+----------------------------------------------------------------------
 
 -- add indices
 -- RESIDENTIAL
@@ -46,6 +46,7 @@ using btree(rate_id_alias);
 CREATE INDEX urdb_rates_by_state_ind_state_abbr_btree
 ON diffusion_shared.urdb_rates_by_state_ind
 using btree(state_abbr);
+----------------------------------------------------------------------
 
 -- add in demand ranges
 -- RESIDENTIAL
@@ -119,7 +120,68 @@ using btree(urdb_demand_min);
 CREATE INDEX urdb_rates_by_state_ind_urdb_demand_max_btree
 ON diffusion_shared.urdb_rates_by_state_ind
 using btree(urdb_demand_max);
+----------------------------------------------------------------------
 
+-- add in rate types (where known)
+-- RESIDENTIAL
+-- add columns
+ALTER TABLE diffusion_shared.urdb_rates_by_state_res
+ADD COLUMN rate_type character varying(4);
+-- update values
+UPDATE diffusion_shared.urdb_rates_by_state_res a
+SET rate_type = b.rate_type
+FROM urdb_rates.combined_singular_verified_rates_lookup b
+where a.rate_id_alias = b.rate_id_alias
+and b.res_com = 'R';
+-- make sure no nulls
+SELECT *
+FROM diffusion_shared.urdb_rates_by_state_res
+where rate_type is null;
+-- add indices
+CREATE INDEX urdb_rates_by_state_res_rate_type_btree
+ON diffusion_shared.urdb_rates_by_state_res
+using btree(rate_type);
+
+-- COMMERCIAL
+-- add columns
+ALTER TABLE diffusion_shared.urdb_rates_by_state_com
+ADD COLUMN rate_type character varying(4);
+-- update values
+UPDATE diffusion_shared.urdb_rates_by_state_com a
+SET rate_type = b.rate_type
+FROM urdb_rates.combined_singular_verified_rates_lookup b
+where a.rate_id_alias = b.rate_id_alias
+and b.res_com = 'C';
+-- make sure no nulls
+SELECT *
+FROM diffusion_shared.urdb_rates_by_state_com
+where rate_type is null;
+-- add indices
+CREATE INDEX urdb_rates_by_state_com_rate_type_btree
+ON diffusion_shared.urdb_rates_by_state_com
+using btree(rate_type);
+
+-- INDUSTRIAL
+-- add columns
+ALTER TABLE diffusion_shared.urdb_rates_by_state_ind
+ADD COLUMN rate_type character varying(4);
+-- update values
+UPDATE diffusion_shared.urdb_rates_by_state_ind a
+SET rate_type = b.rate_type
+FROM urdb_rates.combined_singular_verified_rates_lookup b
+where a.rate_id_alias = b.rate_id_alias
+and b.res_com = 'C';
+-- make sure no nulls
+SELECT *
+FROM diffusion_shared.urdb_rates_by_state_ind
+where rate_type is null;
+-- add indices
+CREATE INDEX urdb_rates_by_state_ind_rate_type_btree
+ON diffusion_shared.urdb_rates_by_state_ind
+using btree(rate_type);
+
+
+----------------------------------------------------------------------
 -- check how many rates there are in each state
 SELECT state_abbr, count(*)
 FROM diffusion_shared.urdb_rates_by_state_ind

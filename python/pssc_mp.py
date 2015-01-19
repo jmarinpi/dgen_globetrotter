@@ -43,13 +43,13 @@ class Consumer(multiprocessing.Process):
 
 class Task(object):
 
-    def __init__(self, customer_id, generation_hourly, consumption_hourly, rate_json,
+    def __init__(self, uid, generation_hourly, consumption_hourly, rate_json,
                  analysis_period=1., inflation_rate=0., degradation=(0.,),
                  return_values=('annual_energy_value',
                                 'elec_cost_with_system_year1',
                                 'elec_cost_without_system_year1')):  # , **kwargs):
 
-        self.customer_id = customer_id
+        self.uid = uid
         self.generation_hourly = generation_hourly
         self.consumption_hourly = consumption_hourly
         self.rate_json = rate_json
@@ -73,8 +73,8 @@ class Task(object):
                                                degradation=self.degradation,
                                                return_values=self.return_values)
 
-        # merge with self.customer_id
-        r = {'customer_id': self.customer_id}
+        # merge with self.uid
+        r = {'uid': self.uid}
         r.update(self.utilityrates3)
 
         # return value
@@ -143,48 +143,52 @@ def load_test_data(test_id=True):
     return {'rate_json': rates_json, 'generation_hourly': generation_hourly, 'consumption_hourly': consumption_hourly}  # @TODO: change to pandas dataframe
 
 
-def pssc_mp(data):
+def pssc_mp(data, num_consumers):
     # @TODO: convert to loop
     """
         Distribute pssc processing across workers.
 
-        :param data: Pandas dataframe with: customer_id, rate_json, generation_hourly, and consumption_hourly
-        :return: list of dict; customer_id with output values
+        :param data: Pandas dataframe with: 
+                uid, rate_json, generation_hourly, and consumption_hourly
+        :return: list of dict; uid with output values
         """
 
-    # get data
-    # @TODO: rewrite for pandas dataframe in conjunction with load_test_data return value rewrite
-    customer_id = -999  # @TODO: get from config
-    rate_json = data['rate_json']
-    generation_hourly = data['generation_hourly']
-    consumption_hourly = data['consumption_hourly']
+
 
     # set number of iterations
-    num_iterations = config.get('test_runs') or 1
-    logger.debug('Found %s locations to process' % num_iterations)
+    num_iterations = data.shape[0]
+#    logger.debug('Found %s locations to process' % num_iterations)
 
     tasks = multiprocessing.JoinableQueue()
     results = multiprocessing.Queue()
-
-    num_consumers = config.as_int('num_processors') or multiprocessing.cpu_count() - 1
 
     num_jobs = num_iterations
 
     consumers = [Consumer(tasks, results) for i in xrange(num_consumers)]
     for i, consumer in enumerate(consumers):
-        logger.debug('Starting consumer %s (%i/%i)' % (consumer.name, i + 1, num_consumers))
+#        logger.debug('Starting consumer %s (%i/%i)' % (consumer.name, i + 1, num_consumers))
         consumer.start()
 
-    logger.info('Loading %i task(s)' % num_jobs)
+#    logger.info('Loading %i task(s)' % num_jobs)
     for i in xrange(num_jobs):
-        tasks.put(Task(customer_id=customer_id, generation_hourly=generation_hourly,
-                       consumption_hourly=consumption_hourly, rate_json=rate_json))
+        # get data
+        # @TODO: rewrite for pandas dataframe in conjunction with load_test_data return value rewrite
+        uid = data['uid'][i]  # @TODO: get from config
+        rate_json = data['rate_json'][i]
+        generation_hourly = data['generation_hourly'][i]
+        consumption_hourly = data['consumption_hourly'][i]   
+        data.drop(i, inplace = True)
+        
+        tasks.put(Task(uid=uid, generation_hourly=generation_hourly,
+                       consumption_hourly=consumption_hourly, rate_json=rate_json,
+                       analysis_period=1., inflation_rate=0., degradation=(0.,),
+                 return_values=('elec_cost_with_system_year1', 'elec_cost_without_system_year1')))
 
-    logger.debug('Loading %i NULL job(s) to signal Consumers there are no more tasks' % num_consumers)
+#    logger.debug('Loading %i NULL job(s) to signal Consumers there are no more tasks' % num_consumers)
     for i in xrange(num_consumers):
         tasks.put(None)
 
-    logger.info('Waiting for %i job(s) across %i worker(s) to finish' % (num_jobs, num_consumers))
+#    logger.info('Waiting for %i job(s) across %i worker(s) to finish' % (num_jobs, num_consumers))
 
     # get results as they are returned
     result_count = 0
@@ -193,44 +197,65 @@ def pssc_mp(data):
         result = results.get()
         results_all.append(result)
         result_count += 1
-        logger.info('Recieved results for %i tasks' % result_count)
+#        logger.info('Recieved results for %i tasks' % result_count)
         num_jobs -= 1
 
-    logger.info('Completed %i of %i job(s)' % (result_count, num_iterations))
+#    logger.info('Completed %i of %i job(s)' % (result_count, num_iterations))
 
-    return results_all
+    # delete consumer objects to free memory
+    del consumers
+
+    # convert results list to pandas a dataframe
+    results_df = pd.DataFrame.from_dict(results_all)
+    # round costs to 2 decimal places (i.e., pennies)
+    results_df['elec_cost_with_system_year1'] = results_df['elec_cost_with_system_year1'].round(2)
+    results_df['elec_cost_without_system_year1'] = results_df['elec_cost_without_system_year1'].round(2)
+    
+    return results_df
 
 
 def test():
     # get test data
     test_data = load_test_data(test_id=True)
+    # convert this into a pandas data frame with 50 rows
+    test_df = pd.DataFrame.from_dict([test_data]*50)
+    # add a customer id field
+    test_df['uid'] = -999
     logger.debug('Testing with: %s' % test_data)
+
+    # get/set the number of processors
+    num_consumers = config.as_int('num_processors') or multiprocessing.cpu_count() - 1
+
 
     # run test
     t0 = time.time()
-    test_results = pssc_mp(data=test_data)[0]
+    test_results_df = pssc_mp(data=test_df, num_consumers=num_consumers)
+    # extract just a single row
+    test_results = test_results_df.ix[0]
     t1 = time.time()
 
     # set expected results  # @TODO: get from config
-    customer_id = -999
+    uid = -999
     urdb_rate_id = '539fc010ec4f024c27d8984b'
-    cost_with_result = 806012
+    cost_with_result = 806011
     cost_without_result = 838430
 
     # test results
     try:
-        assert test_results['customer_id'] == customer_id
+        assert test_results['uid'] == uid
     except KeyError:
-        logger.error('customer_id key missing from test results')
+        logger.error('uid key missing from test results')
     except AssertionError:
-        logger.error('Customer ID test failed with ID: %s and should have been' % (test_results['customer_id']), customer_id)
+        logger.error('UID test failed with ID: %s and should have been' % (test_results['uid']), uid)
 
-    try:
-        assert test_results['urdb_rate_id'] == urdb_rate_id
-    except KeyError:
-        logger.error('urdb_rate_id key missing from test results')
-    except AssertionError:
-        logger.error('URDB Rate ID test failed with ID: %s and should have been %s' % (test_results['urdb_rate_id'], urdb_rate_id))
+# Note to Dylan: test_results is never attributed with urdb_rate_id so this test will always fail
+#    try:
+#        assert test_results['urdb_rate_id'] == urdb_rate_id
+#    except KeyError:
+#        logger.error('urdb_rate_id key missing from test results')
+#    except AssertionError:
+#        logger.error('URDB Rate ID test failed with ID: %s and should have been %s' % (test_results['urdb_rate_id'], urdb_rate_id))
+    
 
     try:
         assert int(test_results['elec_cost_with_system_year1']) == cost_with_result
