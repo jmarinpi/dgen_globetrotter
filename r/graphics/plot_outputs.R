@@ -43,7 +43,10 @@ if (tech == 'wind'){
                   END as system_size_factors 
                 FROM %s.outputs_all",schema)
 } else if (tech == 'solar'){
-  sql = sprintf("SELECT *
+  sql = sprintf("SELECT *, 
+                    r_cut(system_size_kw, 
+                          array[0,2.5,5.0,10.0,20.0,50.0,100.0,250.0,500.0,750.0,1000.0,1500.0]) 
+                          as system_size_factors 
                 FROM %s.outputs_all",schema)
 }
 df = tbl(src,sql(sql))

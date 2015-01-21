@@ -408,10 +408,10 @@ print_table <- function(...){
 national_installed_capacity_by_system_size_bar<-function(df,tech){
   
   if(tech == 'solar'){
-    data<-collect(df)
-    data$system_size_factors <- cut(data$system_size_kw, breaks = c(0,2.5,5.0,10.0,20.0,50.0,100.0,250.0,500.0,750.0,1000.0,1500.0))
-    data <- group_by(data, sector,year, system_size_factors) %.%
-      summarise(nat_installed_capacity = sum(installed_capacity)/1e6)
+    data <- collect(group_by(df, sector,year, system_size_factors) %.%
+      summarise(nat_installed_capacity = sum(installed_capacity)/1e6))
+    data$system_size_factors <- ordered( data$system_size_factors, levels = c("(0,2.5]", "(2.5,5]", "(5,10]", "(10,20]", "(20,50]", "(50,100]", "(100,250]", "(250,500]", "(500,750]", "(750,1e+03]", "(1e+03,1.5e+03]"))
+    data = data[order(data$year,data$system_size_factors),]
       
   } else {
   
@@ -756,10 +756,10 @@ dist_of_azimuth_selected<-function(df, start_year){
 }
 
 leasing_mkt_share<-function(df){
-data = collect(df) %>%
-  select(year,sector,business_model,new_capacity) %>%
+data = collect(
+  select(df, year,sector,business_model,new_capacity) %>%
   group_by(year,sector,business_model)%>%
-  summarise(annual_capacity_gw = sum(new_capacity)/1e6)
+  summarise(annual_capacity_gw = sum(new_capacity)/1e6))
 
 data2 = group_by(data, year, sector) %>%
   summarise(tot_cap = sum(annual_capacity_gw))
@@ -779,19 +779,19 @@ plot<-ggplot(data3, aes(x = year, y = per_mkt_share, color = sector, fill = sect
   ggtitle("Leasing Market Share: Percent of New Capacity Added")
 
 # Table of market share by state and year (aggregating sectors)
-data = collect(df)%>%
-  select(year,state = state_abbr,business_model,new_capacity) %>%
-  group_by(year,state,business_model)%>%
-  summarise(annual_capacity_gw = sum(new_capacity)/1e6)
+data = collect(
+  select(df, year, state_abbr,business_model,new_capacity) %>%
+  group_by(year,state_abbr,business_model)%>%
+  summarise(annual_capacity_gw = sum(new_capacity)/1e6))
 
-data2 = group_by(data, year, state) %>%
+data2 = group_by(data, year, state_abbr) %>%
   summarise(tot_cap = sum(annual_capacity_gw))
 
 table <- merge(data,data2) %>%
   mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
   filter(business_model == 'tpo')%>%
-  select(year, state, market_share = per_mkt_share)%>%
-  dcast(state ~ year, value.var = 'market_share')
+  select(year, state_abbr, market_share = per_mkt_share)%>%
+  dcast(state_abbr ~ year, value.var = 'market_share')
 
 l = list("plot" = plot, "table" = table)  
 return(l)
@@ -806,7 +806,7 @@ cum_installed_capacity_by_bm<-function(df){
   
   data2 = group_by(data, business_model, sector) %>%
     mutate(cs = cumsum(cap))
-    
+  
   plot<-ggplot(data2,aes(x = year, y = cs, color = sector, fill = business_model))+
     geom_area(position = 'stack', color = 'black')+
     facet_wrap(~sector)+
@@ -815,6 +815,6 @@ cum_installed_capacity_by_bm<-function(df){
     scale_y_continuous("Cumulative Installed Capacity since 2014 (GW)")+
     ggtitle("Cumulative Installed Capacity Since 2014\n [Data on ownership trends prior to 2014 not available]")
   
- return(plot)
- 
+  return(plot)
+  
 }
