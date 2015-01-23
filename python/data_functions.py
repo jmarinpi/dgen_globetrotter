@@ -2496,7 +2496,7 @@ def get_lease_availability(con, schema):
     df = sqlio.read_frame(sql, con)
     return df
     
-def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr): 
+def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr,tech_lifetime): 
     '''
     Append the expected rate escalation to the main dataframe.
     Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
@@ -2507,7 +2507,7 @@ def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr):
     '''  
     
     # Only use the escalation multiplier over the next 30 years
-    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + 30)) & (rate_escalations['year'] >=  year) & (rate_escalations['sector'] == sector_abbr.lower())]
+    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + tech_lifetime)) & (rate_escalations['year'] >=  year) & (rate_escalations['sector'] == sector_abbr.lower())]
     
     rate_pivot = projected_rate_escalations.pivot(index = 'census_division_abbr',columns = 'year', values = 'escalation_factor')    
     rate_pivot['census_division_abbr'] = rate_pivot.index
@@ -2522,7 +2522,7 @@ def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr):
     else:
         raise Exception("rate_escalations_have been reordered!")
 
-def fill_jagged_array(vals,lens, cols = 30):
+def fill_jagged_array(vals,lens, cols):
     '''
     Create a 'jagged' array filling each row with a value of variable length.
     vals and lens must be equal length; cols gives the number of columns of the
