@@ -798,14 +798,17 @@ return(l)
 }
 
 cum_installed_capacity_by_bm<-function(df){
-  
-  data = collect(df) %>%
-    select(year,sector,business_model,new_capacity) %>%
+    
+  data = collect(
+    select(df, year,sector,business_model,new_capacity) %>%
     group_by(year, sector, business_model) %>%
-    summarise(cap = sum(new_capacity/1e6))
+    summarise(cap = sum(new_capacity/1e6)) %>%
+    arrange(year)
+    )
   
   data2 = group_by(data, business_model, sector) %>%
-    mutate(cs = cumsum(cap))
+    mutate(cs = cumsum(cap)) %>%
+    arrange(year, business_model, sector)
   
   plot<-ggplot(data2,aes(x = year, y = cs, color = sector, fill = business_model))+
     geom_area(position = 'stack', color = 'black')+
