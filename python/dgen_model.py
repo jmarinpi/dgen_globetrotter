@@ -119,7 +119,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             input_scenarios = [s for s in glob.glob("../input_scenarios_%s/*.xls*" % cfg.technology) if not '~$' in s]
             if len(input_scenarios) == 0:
                 raise ValueError("""No input scenario spreadsheet were found in the input_scenarios_%s folder.""" % cfg.technology)
-        else:
+        elif mode != 'ReEDS':
             input_scenarios = ['']
             
         # run the model for each input scenario spreadsheet
@@ -344,16 +344,6 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
             ## 12. Outputs & Visualization
             # set output subfolder
-            if mode == 'ReEDS':
-                reeds_out = datfunc.combine_outputs_reeds(schema, sectors, cur, con)
-                #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()
-                market_last_year_res.to_pickle("market_last_year_res.pkl")
-                market_last_year_ind.to_pickle("market_last_year_ind.pkl")
-                market_last_year_com.to_pickle("market_last_year_com.pkl")
-                saved_vars = {'out_dir': out_dir, 'input_scenarios':input_scenarios}
-                with open('saved_vars.pickle', 'wb') as handle:
-                    pickle.dump(saved_vars, handle)  
-                return reeds_out
                 
             if mode != 'ReEDS' or resume_year == 2050:
                 dup_n = 1
@@ -365,7 +355,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                 scenario_names.append(scen_name)
                 out_path = os.path.join(out_dir,scen_name)
                 out_subfolders.append(out_path)
-                os.makedirs(out_path)            
+                os.makedirs(out_path)  
                         
                 # copy outputs to csv     
                 logger.info('Writing outputs')
@@ -380,6 +370,17 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                 logger.info('datfunc.create_scenario_report took: %0.1fs' %(time.time() - t0))
                 #logger.info('Model completed at %s run took: %.1f seconds' % (time.ctime(), time.time() - model_init))
                 logger.info('The entire model run took: %.1f seconds' % (time.time() - model_init))
+                
+             if mode == 'ReEDS':
+                reeds_out = datfunc.combine_outputs_reeds(schema, sectors, cur, con)
+                #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()
+                market_last_year_res.to_pickle("market_last_year_res.pkl")
+                market_last_year_ind.to_pickle("market_last_year_ind.pkl")
+                market_last_year_com.to_pickle("market_last_year_com.pkl")
+                saved_vars = {'out_dir': out_dir, 'input_scenarios':input_scenarios}
+                with open('saved_vars.pickle', 'wb') as handle:
+                    pickle.dump(saved_vars, handle)  
+                return reeds_out
                 
         if len(input_scenarios) > 1:
             # assemble report to compare scenarios
