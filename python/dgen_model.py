@@ -224,42 +224,43 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             #==============================================================================
             # DISABLED FOR DEV BRANCH
             # break from the loop to find all unique combinations of rates, load, and generation
-            logger.info('Finding unique combinations of rates, load, and generation')
-            datfunc.get_unique_parameters_for_urdb3(cur, con, cfg.technology, schema, sectors)         
-            # determine how many rate/load/gen combinations can be processed given the local memory resources
-            row_count_limit = datfunc.get_max_row_count_for_utilityrate3()            
-            sam_results_list = []
-            # set up chunks
-            uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema)
-            nbatches = len(uid_lists)
-            t0 = time.time()
-            logger.info("SAM Calculations will be run in %s batches to prevent memory overflow" % nbatches)
-            for i, uids in enumerate(uid_lists): 
-                logger.info("Working on SAM Batch %s of %s" % (i+1, nbatches))
-                # collect data for all unique combinations
-                logger.info('\tCollecting SAM inputs')
-                t1 = time.time()
-                rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, cfg.technology, schema, cfg.npar, cfg.pg_conn_string)
-                logger.info('\tdatfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t1),)        
-                # calculate value of energy for all unique combinations
-                logger.info('\tCalculating value of energy using SAM')
-                t1 = time.time()
-                # run sam calcs in serial if only one core is available
-                if cfg.local_cores == 1:
-                    sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
-                # otherwise run in parallel
-                else:
-                    sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)
-                logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)  
-                sam_results_list.append(sam_results_df)
-                # drop the rate_input_df to save on memory
-                del rate_input_df
-            logger.info('All SAM calculations completed in: %0.1fs' % (time.time() - t0),)
-       
-            # write results to postgres
-            t0 = time.time()
-            datfunc.write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, cfg.technology)
-            logger.info('datfunc.write_utilityrate3_to_pg took: %0.1fs' % (time.time() - t0),)  
+            if cfg.init_model:
+                logger.info('Finding unique combinations of rates, load, and generation')
+                datfunc.get_unique_parameters_for_urdb3(cur, con, cfg.technology, schema, sectors)         
+                # determine how many rate/load/gen combinations can be processed given the local memory resources
+                row_count_limit = datfunc.get_max_row_count_for_utilityrate3()            
+                sam_results_list = []
+                # set up chunks
+                uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema)
+                nbatches = len(uid_lists)
+                t0 = time.time()
+                logger.info("SAM Calculations will be run in %s batches to prevent memory overflow" % nbatches)
+                for i, uids in enumerate(uid_lists): 
+                    logger.info("Working on SAM Batch %s of %s" % (i+1, nbatches))
+                    # collect data for all unique combinations
+                    logger.info('\tCollecting SAM inputs')
+                    t1 = time.time()
+                    rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, cfg.technology, schema, cfg.npar, cfg.pg_conn_string)
+                    logger.info('\tdatfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t1),)        
+                    # calculate value of energy for all unique combinations
+                    logger.info('\tCalculating value of energy using SAM')
+                    t1 = time.time()
+                    # run sam calcs in serial if only one core is available
+                    if cfg.local_cores == 1:
+                        sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
+                    # otherwise run in parallel
+                    else:
+                        sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)
+                    logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)  
+                    sam_results_list.append(sam_results_df)
+                    # drop the rate_input_df to save on memory
+                    del rate_input_df
+                logger.info('All SAM calculations completed in: %0.1fs' % (time.time() - t0),)
+           
+                # write results to postgres
+                t0 = time.time()
+                datfunc.write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, cfg.technology)
+                logger.info('datfunc.write_utilityrate3_to_pg took: %0.1fs' % (time.time() - t0),)  
             #==============================================================================
              
 
@@ -370,8 +371,8 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                 logger.info('datfunc.create_scenario_report took: %0.1fs' %(time.time() - t0))
                 #logger.info('Model completed at %s run took: %.1f seconds' % (time.ctime(), time.time() - model_init))
                 logger.info('The entire model run took: %.1f seconds' % (time.time() - model_init))
-                
-             if mode == 'ReEDS':
+            
+            if mode == 'ReEDS':
                 reeds_out = datfunc.combine_outputs_reeds(schema, sectors, cur, con)
                 #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()
                 market_last_year_res.to_pickle("market_last_year_res.pkl")
