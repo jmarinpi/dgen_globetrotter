@@ -61,7 +61,9 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             out_dir = '%s/runs_%s/results_%s' %(os.path.dirname(os.getcwd()), cfg.technology, cdate)        
             os.makedirs(out_dir)
             input_scenarios = None
-            market_last_year = None
+            market_last_year_res = None
+            market_last_year_ind = None
+            market_last_year_com = None
             # Read in ReEDS UPV Capital Costs
             Convert2004_dollars = 1.2343 #Conversion from 2004$ to 2013$
             ReEDS_PV_CC = ReEDS_inputs['UPVCC_all']
@@ -73,7 +75,9 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
         else:
             cfg.init_model = False
             # Load files here
-            market_last_year = pd.read_pickle("market_last_year.pkl")   
+            market_last_year_res = pd.read_pickle("market_last_year_res.pkl")
+            market_last_year_ind = pd.read_pickle("market_last_year_ind.pkl")   
+            market_last_year_com = pd.read_pickle("market_last_year_com.pkl")   
             with open('saved_vars.pickle', 'rb') as handle:
                 saved_vars = pickle.load(handle)
             out_dir = saved_vars['out_dir']
@@ -276,6 +280,13 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                         df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
                         #df = pd.merge(df,retail_elec_price, how = 'left', on = 'pca_reg')
                         df = pd.merge(df,change_elec_price, how = 'left', on = 'pca_reg')
+                        if sector_abbr == 'res':
+                            market_last_year = market_last_year_res
+                        if sector_abbr == 'ind':
+                            market_last_year = market_last_year_ind
+                        if sector_abbr == 'com':
+                            market_last_year = market_last_year_com
+                            
                     else:
                         # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
                         df['curtailment_rate'] = 0
@@ -320,6 +331,14 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     '''             
                     df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
                     
+                    if mode == 'ReEDS':
+                        if sector_abbr == 'res':
+                            market_last_year_res = market_last_year
+                        if sector_abbr == 'ind':
+                            market_last_year_ind = market_last_year
+                        if sector_abbr == 'com':
+                            market_last_year_com = market_last_year
+                    
                     # 11. Save outputs from this year and update parameters for next solve       
                     t0 = time.time()                 
                     datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
@@ -328,7 +347,9 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             if mode == 'ReEDS':
                 reeds_out = datfunc.combine_outputs_reeds(schema, sectors, cur, con)
                 #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()
-                market_last_year.to_pickle("market_last_year.pkl")
+                market_last_year_res.to_pickle("market_last_year_res.pkl")
+                market_last_year_ind.to_pickle("market_last_year_ind.pkl")
+                market_last_year_com.to_pickle("market_last_year_com.pkl")
                 saved_vars = {'out_dir': out_dir, 'input_scenarios':input_scenarios}
                 with open('saved_vars.pickle', 'wb') as handle:
                     pickle.dump(saved_vars, handle)  
