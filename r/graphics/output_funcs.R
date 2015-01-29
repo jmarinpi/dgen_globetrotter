@@ -198,9 +198,10 @@ cf_supply_curve<-function(df, start_year){
 
 elec_rate_supply_curve<-function(df, start_year){
   #' National electricity rate supply curve
-  # filter to only the start year, returning only the cost_of_elec_dols_per_kwh and load_kwh_in_bin cols
-  data = collect(select(filter(df, year == start_year),cost_of_elec_dols_per_kwh,load_kwh_in_bin))  
-  data <- transform(data, load = load_kwh_in_bin/(1e6 * 8760), rate = cost_of_elec_dols_per_kwh) %>% arrange(desc(rate))
+  # filter to only the start year, returning only the elec_rate_cents_per_kwh and load_kwh_in_bin cols
+  data = collect(select(filter(df, year == start_year),elec_rate_cents_per_kwh,load_kwh_in_bin))  
+  data <- transform(data, load = load_kwh_in_bin/(1e6 * 8760), rate = elec_rate_cents_per_kwh)
+  data<-data[order(-data$rate),]
   data$load<-cumsum(data$load)
   
   ggplot(data,aes(x = rate, y = load, size = 0.75))+
@@ -208,14 +209,14 @@ elec_rate_supply_curve<-function(df, start_year){
     theme_few()+
     guides(size = FALSE)+
     scale_y_continuous(name ='Customer Load (GW)')+
-    scale_x_continuous(name ='Average Electric Rate ($/kWh)', lim = c(0,max(data$rate)))+
+    scale_x_continuous(name ='Average Electric Rate (c/kWh)', lim = c(0,25))+
     ggtitle('Electricity Rate Supply Curve (Available Cust Load in 2014)')
 }
 
 dist_of_cap_selected<-function(df,scen_name, start_year, end_year){
   # What size system are customers selecting in 2014?
   
-  # filter to only the start year, returning only the cost_of_elec_dols_per_kwh and load_kwh_in_bin cols
+  # filter to only the start year, returning only the elec_rate_cents_per_kwh and load_kwh_in_bin cols
   f = filter(df, year %in% c(start_year,end_year))  
   g = group_by(f, system_size_factors, sector, year)
   cap_picked = collect(summarise(g,
@@ -472,11 +473,11 @@ lcoe_cdf<-function(df, start_year, end_year){
   yrs = c(start_year, end_year)
   
   # filter the data to rows in the start or end year
-  f = select(filter(df, year %in% yrs),year, sector, lcoe, cost_of_elec_dols_per_kwh)
+  f = select(filter(df, year %in% yrs),year, sector, lcoe, elec_rate_cents_per_kwh)
   data = collect(f)
   g = group_by(f, year, sector)
   prices = collect(summarise(g,
-                             price = r_median(array_agg(cost_of_elec_dols_per_kwh))
+                             price = r_median(array_agg(elec_rate_cents_per_kwh))
   )
   )
   
