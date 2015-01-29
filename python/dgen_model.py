@@ -230,10 +230,10 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             nbatches = len(uid_lists)
             t0 = time.time()
             logger.info("SAM Calculations will be run in %s batches to prevent memory overflow" % nbatches)
+            # create multiprocessing objects before loading inputs to improve memory efficiency
+#            consumers, tasks, results = pssc_mp.create_consumers(cfg.local_cores)
             for i, uids in enumerate(uid_lists): 
                 logger.info("Working on SAM Batch %s of %s" % (i+1, nbatches))
-                # create multiprocessing objects before loading inputs to improve memory efficiency
-#                consumers, tasks, results = pssc_mp.create_consumers(cfg.local_cores)                
                 # collect data for all unique combinations
                 logger.info('\tCollecting SAM inputs')
                 t1 = time.time()
@@ -253,7 +253,8 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                 sam_results_list.append(sam_results_df)
                 # drop the rate_input_df to save on memory
                 del rate_input_df
-#                del consumers, tasks, results
+            # delete the multiprocssing objects
+#            del consumers, tasks, results
             logger.info('All SAM calculations completed in: %0.1fs' % (time.time() - t0),)
        
             # write results to postgres
