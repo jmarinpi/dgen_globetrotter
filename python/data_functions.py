@@ -445,14 +445,16 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     b.customers_in_bin, b.initial_customers_in_bin, 
                     b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
                     b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source, 
-                    b.ur_enable_net_metering
-, b.nem_system_size_limit_kw,
+                    b.ur_enable_net_metering, b.nem_system_size_limit_kw,
                     b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,
                     b.naep, b.aep, b.system_size_kw,
                     b.turbine_id,
                     b.i, b.j, b.cf_bin,
                     b.nturb, b.turbine_size_kw, 
                     b.turbine_height_m, b.scoe,
+                    b.rate_escalation_factor,
+                    
+                    (b.rate_escalation_factor * a.first_year_bill_without_system)/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
                     c.initial_capacity_mw
@@ -526,8 +528,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     b.customers_in_bin, b.initial_customers_in_bin, 
                     b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
                     b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source, 
-                    b.ur_enable_net_metering
-, b.nem_system_size_limit_kw,
+                    b.ur_enable_net_metering, b.nem_system_size_limit_kw,
                     b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,   
                     b.naep, b.aep, b.system_size_kw, 
                     b.npanels, 
@@ -535,6 +536,9 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     b.pct_shaded, b.solar_re_9809_gid, 
                     b.density_w_per_sqft, b.inverter_lifetime_yrs, 
                     b.available_rooftop_space_sqm,
+                    b.rate_escalation_factor,
+                    
+                    (b.rate_escalation_factor * a.first_year_bill_without_system)/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
                     c.initial_capacity_mw
@@ -1114,6 +1118,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   hdf_load_index integer,
                   pca_reg text,
                   reeds_reg integer,
+                  rate_escalation_factor numeric,
                   incentive_array_id integer,
                   ranked_rate_array_id integer,
                   carbon_price_cents_per_kwh numeric,
@@ -1162,6 +1167,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.utility_type, 
                   a.hdf_load_index,
                   a.pca_reg, a.reeds_reg,
+                  b.rate_escalation_factor,
                   a.incentive_array_id,
                   a.ranked_rate_array_id,
                   b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
@@ -1214,7 +1220,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                     AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
-                   pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id,
+                   pca_reg, reeds_reg, rate_escalation_factor, incentive_array_id, ranked_rate_array_id,
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 
@@ -1427,6 +1433,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                  	a.micro_id, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
                       a.utility_type, a.hdf_load_index,
                       a.pca_reg, a.reeds_reg,
+                      b.rate_escalation_factor,
                       a.incentive_array_id,
                       a.ranked_rate_array_id,
                       %(exclusions_insert)s
@@ -1477,7 +1484,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                     AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
-                   pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, max_height,
+                   pca_reg, reeds_reg, rate_escalation_factor, incentive_array_id, ranked_rate_array_id, max_height,
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 
