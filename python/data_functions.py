@@ -12,7 +12,7 @@ import time
 import numpy as np
 import pandas as pd
 import datetime
-from multiprocessing import Process, Queue, JoinableQueue
+from multiprocessing import Process, Queue, JoinableQueue, Pool
 import select
 from cStringIO import StringIO
 import logging
@@ -1797,23 +1797,14 @@ def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_st
             LEFT JOIN %(schema)s.%(technology)s_resource_hourly d
                     ON %(gen_join_clause)s
             WHERE a.uid IN (%(chunk_place_holder)s);""" % inputs_dict
-        
-   
-    results = JoinableQueue()    
-    jobs = []
- 
+
+    pool = Pool(npar)
+    inputs = []
     for i in range(npar):
         place_holders = {'uids': pylist_2_pglist(uid_chunks[i])}
         isql = sql % place_holders
-        proc = Process(target = p_get_utilityrate3_inputs, args = (inputs_dict, pg_conn_string, isql, results))
-        jobs.append(proc)
-        proc.start()
-    
-    # get the results from the parallel processes (this method avoids deadlocks)
-    results_list = []
-    for i in range(0, npar):
-        result = results.get()
-        results_list.append(result)
+        inputs.append((inputs_dict, pg_conn_string, isql))
+    results_list = pool.map(p_get_utilityrate3_inputs, inputs)
 
     # concatenate all of the dataframes into a single data frame
     results_df = pd.concat(results_list)
@@ -1837,8 +1828,10 @@ def scale_array(row, array_col, scale_col, prec_offset_value):
     
     return row
 
-def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
+def p_get_utilityrate3_inputs(args):
     try:
+        inputs_dict, pg_conn_string, sql = args
+        
         # create cursor and connection
         con, cur = make_con(pg_conn_string)  
         # get the data from postgres
@@ -1855,9 +1848,9 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
         
         # update the net metering fields in the rate_json
         df = df.apply(update_rate_json_w_nem_fields, axis = 1)
-               
-        # add the results to the queue
-        queue.put(df[['uid','rate_json','consumption_hourly','generation_hourly']])
+        
+        return df[['uid','rate_json','consumption_hourly','generation_hourly']]
+
         
     except Exception, e:
         print 'Error: %s' % e
