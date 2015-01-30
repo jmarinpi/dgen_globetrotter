@@ -448,6 +448,9 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     b.ur_enable_net_metering, b.nem_system_size_limit_kw,
                     b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,
                     b.naep, b.aep, b.system_size_kw,
+                    CASE WHEN b.turbine_size_kw = 1500 AND b.nturb > 1 THEN '1500+'::TEXT 
+                    ELSE b.turbine_size_kw::TEXT 
+                    END as system_size_factors,
                     b.turbine_id,
                     b.i, b.j, b.cf_bin,
                     b.nturb, b.turbine_size_kw, 
@@ -458,6 +461,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     
                     c.initial_market_share, c.initial_number_of_adopters,
                     c.initial_capacity_mw
+                                        
                     
                     FROM %(schema)s.outputs_%(sector_abbr)s a
                     
@@ -531,6 +535,8 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     b.ur_enable_net_metering, b.nem_system_size_limit_kw,
                     b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,   
                     b.naep, b.aep, b.system_size_kw, 
+                    r_cut(b.system_size_kw, ARRAY[0,2.5,5.0,10.0,20.0,50.0,100.0,250.0,500.0,750.0,1000.0,1500.0]) 
+                        as system_size_factors,
                     b.npanels, 
                     b.tilt, b.azimuth, b.derate, 
                     b.pct_shaded, b.solar_re_9809_gid, 
