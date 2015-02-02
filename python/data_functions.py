@@ -484,7 +484,9 @@ def combine_outputs_wind(schema, sectors, cur, con):
     sql = '''CREATE INDEX outputs_all_year_btree ON %(schema)s.outputs_all USING BTREE(year);
              CREATE INDEX outputs_all_state_abbr_btree ON %(schema)s.outputs_all USING BTREE(state_abbr);
              CREATE INDEX outputs_all_sector_btree ON %(schema)s.outputs_all USING BTREE(sector);
-             CREATE INDEX outputs_all_turbine_size_kw_btree ON %(schema)s.outputs_all USING BTREE(turbine_size_kw);
+             CREATE INDEX outputs_all_business_model_btree ON %(schema)s.outputs_all USING BTREE(business_model);
+             CREATE INDEX outputs_all_system_size_factors_btree ON %(schema)s.outputs_all USING BTREE(system_size_factors);                          
+             CREATE INDEX outputs_all_metric_btree ON %(schema)s.outputs_all USING BTREE(metric);             
              CREATE INDEX outputs_all_turbine_height_m_btree ON %(schema)s.outputs_all USING BTREE(turbine_height_m);''' % inputs
     cur.execute(sql)
     con.commit()
@@ -570,9 +572,9 @@ def combine_outputs_solar(schema, sectors, cur, con):
     sql = '''CREATE INDEX outputs_all_year_btree ON %(schema)s.outputs_all USING BTREE(year);
              CREATE INDEX outputs_all_state_abbr_btree ON %(schema)s.outputs_all USING BTREE(state_abbr);
              CREATE INDEX outputs_all_sector_btree ON %(schema)s.outputs_all USING BTREE(sector);
-             CREATE INDEX outputs_all_system_size_kw_btree ON %(schema)s.outputs_all USING BTREE(system_size_kw);
-             CREATE INDEX outputs_all_npanels_btree ON %(schema)s.outputs_all USING BTREE(npanels);
-             CREATE INDEX outputs_all_rooftop_availability_btree ON %(schema)s.outputs_all USING BTREE(available_rooftop_space_sqm);''' % inputs
+             CREATE INDEX outputs_all_business_model_btree ON %(schema)s.outputs_all USING BTREE(business_model);
+             CREATE INDEX outputs_all_system_size_factors_btree ON %(schema)s.outputs_all USING BTREE(system_size_factors);                          
+             CREATE INDEX outputs_all_metric_btree ON %(schema)s.outputs_all USING BTREE(metric);''' % inputs
     cur.execute(sql)
     con.commit()
 
