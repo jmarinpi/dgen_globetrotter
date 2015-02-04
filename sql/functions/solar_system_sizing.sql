@@ -14,7 +14,7 @@ ALTER TYPE diffusion_solar.system_sizing_return
 
 -- DROP FUNCTION diffusion_solar.system_sizing(numeric, numeric, numeric, numeric, double precision, numeric, numeric);
 
-CREATE OR REPLACE FUNCTION diffusion_solar.system_sizing(load_kwh_per_customer_in_bin numeric, naep numeric, available_rooftop_space_sqm numeric, density_w_per_sqft numeric, system_size_limit_kw double precision, sys_size_target_nem numeric, sys_size_target_no_nem numeric)
+CREATE OR REPLACE FUNCTION diffusion_solar.system_sizing(load_kwh_per_customer_in_bin numeric, naep numeric, available_rooftop_space_sqft numeric, density_w_per_sqft numeric, system_size_limit_kw double precision, sys_size_target_nem numeric, sys_size_target_no_nem numeric)
   RETURNS diffusion_solar.system_sizing_return AS
 $BODY$
 
@@ -22,7 +22,6 @@ $BODY$
 
     # determine the maximum size of the system taht can be built for this customer based on physical rooftop available
     default_panel_size_sqft = 17.5 # Assume panel size of 17.5 sqft
-    available_rooftop_space_sqft = available_rooftop_space_sqm * 10.7639
     max_buildable_system_kw =  0.001 * available_rooftop_space_sqft * density_w_per_sqft
 
     ideal_system_size_kw_no_nem = (load_kwh_per_customer_in_bin *  sys_size_target_no_nem)/naep
