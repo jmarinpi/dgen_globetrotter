@@ -543,7 +543,8 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     b.tilt, b.azimuth, b.derate, 
                     b.pct_shaded, b.solar_re_9809_gid, 
                     b.density_w_per_sqft, b.inverter_lifetime_yrs, 
-                    b.available_rooftop_space_sqm,
+                    b.roof_sqft,
+                    b.roof_style,
                     b.rate_escalation_factor,
                     
                     (b.rate_escalation_factor * a.first_year_bill_without_system)/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
@@ -704,7 +705,7 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
     inputs['seed_str'] = str(seed).replace('.','p')
     if sector_abbr == 'res':
         inputs['load_table'] = 'diffusion_shared.eia_microdata_recs_2009'
-        inputs['load_columns'] = 'b.doeid as load_id, b.nweight as weight, b.kwh as ann_cons_kwh, b.crb_model'
+        inputs['load_columns'] = 'b.doeid as load_id, b.nweight as weight, b.kwh as ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft'
         inputs['load_pkey'] = 'doeid'
         inputs['load_weight_column'] = 'nweight'
         inputs['load_region'] = 'reportable_domain'
@@ -714,7 +715,7 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
         inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_res'
     else:
         inputs['load_table'] = 'diffusion_shared.eia_microdata_cbecs_2003'
-        inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh, b.crb_model'
+        inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft'
         inputs['load_pkey'] = 'pubid8'
         inputs['load_weight_column'] = 'adjwt8'
         inputs['load_region'] = 'census_division_abbr'
@@ -810,9 +811,9 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s;
             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
             WITH binned as(
-            SELECT a.*, b.crb_model, b.ann_cons_kwh, b.weight,
-            	a.county_total_customers_2011 * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
-            	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
+            SELECT a.*, b.crb_model, b.ann_cons_kwh, b.weight, b.roof_sqft, b.roof_style,
+                	a.county_total_customers_2011 * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
+                	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
             FROM %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
             LEFT JOIN %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s b
             ON a.county_id = b.county_id
@@ -1159,7 +1160,8 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   solar_re_9809_gid integer,
                   density_w_per_sqft numeric,
                   inverter_lifetime_yrs integer,
-                  available_rooftop_space_sqm numeric
+                  roof_sqft integer,
+                  roof_style text
                 );""" % inputs
     cur.execute(sql)
     con.commit()
@@ -1204,6 +1206,8 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   c.system_size_limit_kw as nem_system_size_limit_kw,
                   c.year_end_excess_sell_rate_dlrs_per_kwh as ur_nm_yearend_sell_rate,
                   c.hourly_excess_sell_rate_dlrs_per_kwh as ur_flat_sell_rate,
+                  a.roof_sqft,
+                  a.roof_style,
                   --OPTIMAL SIZING ALGORITHM THAT RETURNS A SYSTEM SIZE AND NUMBER OF PANELS:
                   diffusion_solar.system_sizing(a.load_kwh_per_customer_in_bin,
                                                 a.naep * b.efficiency_improvement_factor,
@@ -1259,7 +1263,8 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    solar_re_9809_gid,
                    density_w_per_sqft,
                    inverter_lifetime_yrs,
-                   1000::NUMERIC as available_rooftop_space_sqm -- replace with actual available_rooftop_space_sqm 
+                   roof_sqft,
+                   roof_style
           FROM combined;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time() - t0
