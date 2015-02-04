@@ -971,6 +971,107 @@ def find_rates(inputs_dict, county_chunks, exclusion_type, npar, pg_conn_string,
         p_run(pg_conn_string, sql, county_chunks, npar)
 
 
+def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string, logger):
+    
+    msg = "Assigning rooftop characteristics"
+    logger.info(msg)
+    
+    #==============================================================================
+    #     Sample set of rooftop orientations for each county
+    #==============================================================================
+    t0 = time.time()
+    sql = """DROP TABLE IF EXISTS %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s;
+             CREATE TABLE %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s AS
+            WITH all_bins AS
+             (
+                 SELECT a.county_id, 
+                         b.uid as orientation_uid,
+                         b.weight::numeric as weight
+                 FROM %(schema)s.counties_to_model a
+                 LEFT JOIN %(schema)s.solar_ds_rooftop_availability b
+                 ON a.state_abbr = b.state_abbr
+                 and b.sector = '%(sector_abbr)s'
+                 WHERE a.county_id IN (%(chunk_place_holder)s)
+            ),
+            sampled_bins AS 
+            (
+                SELECT a.county_id, 
+                        unnest(sample(array_agg(a.orientation_uid ORDER BY a.orientation_uid), %(n_bins)s, %(seed)s * a.county_id,True, array_agg(a.weight ORDER BY a.orientation_uid))) as orientation_uid
+                FROM all_bins a
+                GROUP BY a.county_id
+                ORDER BY a.county_id, orientation_uid
+            ), 
+            numbered_samples AS
+            (
+                SELECT a.county_id, a.orientation_uid,
+                       ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.orientation_uid) as bin_id 
+                FROM sampled_bins a
+            )
+            SELECT  a.county_id, a.bin_id,
+                        b.pct_shaded, b.tilt, b.azimuth, b.weight
+            FROM numbered_samples a
+            LEFT JOIN %(schema)s.solar_ds_rooftop_availability b
+            ON a.orientation_uid = b.uid;""" % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)   
+    
+    # add an index on county id and row_number
+    sql = """CREATE INDEX county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s_join_fields_btree 
+            ON %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s USING BTREE(county_id, bin_id);""" % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)
+    print time.time()-t0
+
+    #==============================================================================
+    #     link each point to a rooftop orientation
+    #==============================================================================
+    # use random weighted sampling on the load bins to ensure that countyies with <N points
+    # have a representative sample of load bins 
+    msg = 'Associating Customer Bins with Rooftop Availability'    
+    logger.info(msg)
+    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s;
+            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s AS
+                SELECT a.*, b.pct_shaded, b.tilt, b.azimuth, b.weight as rooftop_weight
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
+                LEFT JOIN %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s b
+                ON a.county_id = b.county_id
+                AND a.bin_id = b.bin_id""" % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)
+
+    # query for indices creation    
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s_census_division_abbr_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s 
+              USING BTREE(census_division_abbr);
+              
+              CREATE INDEX pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s_resource_key_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s 
+              USING BTREE(solar_re_9809_gid, tilt, azimuth);""" % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)
+    
+    # join to resource
+    msg = "Finding Resource for Each Customer Bin"
+    logger.info(msg)
+    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s;
+                CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s AS
+                SELECT a.*,
+                        b.derate,
+                        b.naep
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s a
+                LEFT JOIN %(schema)s.solar_resource_annual b
+                ON a.solar_re_9809_gid = b.solar_re_9809_gid
+                AND a.tilt = b.tilt
+                AND a.azimuth = b.azimuth""" % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)
+
+    # create indices for subsequent joins
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_temporal_join_fields_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s 
+              USING BTREE(derate, census_division_abbr);
+              
+              CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_nem_join_fields_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s 
+              USING BTREE(state_abbr, utility_type);""" % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)
+    print time.time()-t0
+
 
 def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, 
@@ -1006,105 +1107,12 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     #==============================================================================
     find_rates(inputs, county_chunks, exclusion_type, npar, pg_conn_string, rate_structure, logger)
 
-
     #==============================================================================
-    #     Sample set of rooftop orientations for each county
+    #     Assign rooftop characterisics
     #==============================================================================  
-    msg = "Sampling from distribution of rooftop availability"
-    logger.info(msg)
-    
-    t0 = time.time()
-    sql = """DROP TABLE IF EXISTS %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s;
-             CREATE TABLE %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s AS
-            WITH all_bins AS
-             (
-                 SELECT a.county_id, 
-                         b.uid as orientation_uid,
-                         b.weight::numeric as weight
-                 FROM %(schema)s.counties_to_model a
-                 LEFT JOIN %(schema)s.solar_ds_rooftop_availability b
-                 ON a.state_abbr = b.state_abbr
-                 and b.sector = '%(sector_abbr)s'
-                 WHERE a.county_id IN (%(chunk_place_holder)s)
-            ),
-            sampled_bins AS 
-            (
-                SELECT a.county_id, 
-                        unnest(sample(array_agg(a.orientation_uid ORDER BY a.orientation_uid), %(n_bins)s, %(seed)s * a.county_id,True, array_agg(a.weight ORDER BY a.orientation_uid))) as orientation_uid
-                FROM all_bins a
-                GROUP BY a.county_id
-                ORDER BY a.county_id, orientation_uid
-            ), 
-            numbered_samples AS
-            (
-                SELECT a.county_id, a.orientation_uid,
-                       ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.orientation_uid) as bin_id 
-                FROM sampled_bins a
-            )
-            SELECT  a.county_id, a.bin_id,
-                        b.pct_shaded, b.tilt, b.azimuth, b.weight
-            FROM numbered_samples a
-            LEFT JOIN %(schema)s.solar_ds_rooftop_availability b
-            ON a.orientation_uid = b.uid;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)   
-    print time.time()-t0
-    
-    # add an index on county id and row_number
-    sql = """CREATE INDEX county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s_join_fields_btree 
-            ON %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s USING BTREE(county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)
+    assign_roof_characteristics(inputs, county_chunks, npar, pg_conn_string, logger)
    
-    #==============================================================================
-    #     link each point to a rooftop orientation
-    #==============================================================================
-    # use random weighted sampling on the load bins to ensure that countyies with <N points
-    # have a representative sample of load bins 
-    msg = 'Associating Customer Bins with Rooftop Availability'    
-    logger.info(msg)
-    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s;
-            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s AS
-                SELECT a.*, b.pct_shaded, b.tilt, b.azimuth, b.weight as rooftop_weight
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
-                LEFT JOIN %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s b
-                ON a.county_id = b.county_id
-                AND a.bin_id = b.bin_id""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)
-    print time.time()-t0
 
-    # query for indices creation    
-    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s_census_division_abbr_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s 
-              USING BTREE(census_division_abbr);
-              
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s_resource_key_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s 
-              USING BTREE(solar_re_9809_gid, tilt, azimuth);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)
-    
-    # join to resource
-    msg = "Finding Resource for Each Customer Bin"
-    logger.info(msg)
-    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s;
-                CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s AS
-                SELECT a.*,
-                        b.derate,
-                        b.naep
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s a
-                LEFT JOIN %(schema)s.solar_resource_annual b
-                ON a.solar_re_9809_gid = b.solar_re_9809_gid
-                AND a.tilt = b.tilt
-                AND a.azimuth = b.azimuth""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)
-
-    # create indices for subsequent joins
-    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_temporal_join_fields_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s 
-              USING BTREE(derate, census_division_abbr);
-              
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_nem_join_fields_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s 
-              USING BTREE(state_abbr, utility_type);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)
 
 
     #==============================================================================
