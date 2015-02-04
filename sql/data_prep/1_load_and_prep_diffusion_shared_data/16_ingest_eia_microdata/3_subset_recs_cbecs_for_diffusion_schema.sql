@@ -8,7 +8,7 @@ select a.pubid8, a.region8, a.cendiv8,
 	a.sqft8,
 	a.nfloor8,
 	a.rfcns8,
-	a.adjwt8,
+	a.adjwt8::NUMERIC,
 	c.elcns8
 from eia.cbecs_2003_microdata_file_01 a
 left join eia.cbecs_2003_microdata_file_02 b
@@ -225,7 +225,7 @@ DROP TABLE IF EXISTS diffusion_shared.eia_microdata_recs_2009;
 CREATE TABLE diffusion_shared.eia_microdata_recs_2009 AS
 SELECT doeid, regionc, division, reportable_domain,
 	typehuq,
-	nweight,
+	nweight::NUMERIC,
 	kownrent,
 	kwh,
 	rooftype,
@@ -254,7 +254,7 @@ COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.totsqft IS 'Total squ
 CREATE INDEX eia_microdata_recs_2009_typehuq_btree
 ON diffusion_shared.eia_microdata_recs_2009
 using btree(typehuq)
-where typehuq in (1,2);
+where typehuq in (1,2,3);
 
 CREATE INDEX eia_microdata_recs_2009_kownrent_btree
 ON diffusion_shared.eia_microdata_recs_2009
@@ -312,7 +312,7 @@ ADD COLUMN crb_model text;
 
 UPDATE diffusion_shared.eia_microdata_recs_2009 a
 SET crb_model = 'reference'
-where typehuq in (1,2) AND kownrent = 1;
+where typehuq in (1,2,3) AND kownrent = 1;
 -- 7266 updated
 
 -- ingest lookup table to translate recs reportable domain to states
