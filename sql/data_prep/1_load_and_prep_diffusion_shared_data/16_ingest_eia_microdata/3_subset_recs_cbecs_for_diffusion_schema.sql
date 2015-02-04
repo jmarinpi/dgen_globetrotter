@@ -16,6 +16,10 @@ on a.pubid8 = b.pubid8
 left join eia.cbecs_2003_microdata_file_15 c
 on a.pubid8 = c.pubid8;
 
+-- drop any records where elcns8 is null
+delete from diffusion_shared.eia_microdata_cbecs_2003
+where elcns8 is null;
+
 -- add primary key
 ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003
 ADD PRIMARY KEY (pubid8);
