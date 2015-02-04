@@ -708,8 +708,8 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
         inputs['load_pkey'] = 'doeid'
         inputs['load_weight_column'] = 'nweight'
         inputs['load_region'] = 'reportable_domain'
-        # limit to single-family (attached or detached), owner-occupied homes
-        inputs['load_where'] = ' AND b.typehuq in (1,2) AND b.kownrent = 1'
+        # limit to mobilehomes (1) single-family (3 - attached or 2 - detached), owner-occupied homes
+        inputs['load_where'] = ' AND b.typehuq in (1,2,3 ) AND b.kownrent = 1'
         # lookup table for finding the normalized max demand
         inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_res'
     else:
