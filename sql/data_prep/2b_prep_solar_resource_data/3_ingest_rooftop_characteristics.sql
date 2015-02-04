@@ -27,3 +27,10 @@ using btree(sector_abbr);
 CREATE INDEX rooftop_characteristics_roof_style_btree
 ON diffusion_solar.rooftop_characteristics 
 using btree(roof_style);
+
+-- add an integer primary key (need these for stable sampling later)
+ALTER TABLE diffusion_solar.rooftop_characteristics 
+ADD COLUMN uid serial;
+
+ALTER TABLE diffusion_solar.rooftop_characteristics 
+add primary key (uid); 
