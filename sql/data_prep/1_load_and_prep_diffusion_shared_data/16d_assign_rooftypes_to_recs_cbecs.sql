@@ -1,39 +1,11 @@
-﻿--- load table with various characteristics and probabilities
-set role 'diffusion-writers';
-DROP tABLE IF EXISTS diffusion_solar.rooftop_characteristics;
-CREATE TABLE diffusion_solar.rooftop_characteristics
-(
-	sector_abbr character varying(3),
-	tilt integer,
-	azimuth character varying(2),
-	prob_weight numeric,
-	roof_style text,
-	roof_planes integer,
-	rooftop_portion numeric,
-	slope_area_multiplier numeric,
-	unshaded_multiplier numeric
-);
-
-set role 'server-superusers';
-COPY diffusion_solar.rooftop_characteristics 
-FROM '/home/mgleason/data/dg_solar/roof_orientations_updated.csv' with csv header;
-set role 'diffusion-writers';
-
--- add indices
-CREATE INDEX rooftop_characteristics_sector_abbr_btree
-ON diffusion_solar.rooftop_characteristics 
-using btree(sector_abbr);
-
-CREATE INDEX rooftop_characteristics_roof_style_btree
-ON diffusion_solar.rooftop_characteristics 
-using btree(roof_style);
+﻿-- NOTE: These lookup tables are based on SolarDS (CBECS) and my interpretation (RECS)
 
 --- load lookup table for CBECS roof material to roof style
 set role 'diffusion-writers';
 DROP tABLE IF EXISTS diffusion_solar.roof_material_to_roof_style_cbecs;
 CREATE TABLE diffusion_solar.roof_material_to_roof_style_cbecs
 (
-	rcfns integer,
+	rfcns8 integer,
 	description text,
 	roof_style text
 );
@@ -44,9 +16,9 @@ FROM '/home/mgleason/data/dg_solar/cbecs_roof_material_to_roof_style.csv' with c
 set role 'diffusion-writers';
 
 -- add indices
-CREATE INDEX roof_material_to_roof_style_cbecs_rcfns_btree
+CREATE INDEX roof_material_to_roof_style_cbecs_rfcns8_btree
 ON diffusion_solar.roof_material_to_roof_style_cbecs 
-using btree(rcfns);
+using btree(rfcns8);
 
 CREATE INDEX roof_material_to_roof_style_cbecs_roof_style_btree
 ON diffusion_solar.roof_material_to_roof_style_cbecs 
@@ -75,4 +47,42 @@ using btree(rooftype);
 CREATE INDEX roof_material_to_roof_style_recs_roof_style_btree
 ON diffusion_solar.roof_material_to_roof_style_recs 
 using btree(roof_style);
+
+------------------------------------------------------------------------------------------------
+--- add roof style to cbecs
+ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003
+ADD COLUMN roof_style text;
+
+UPDATE diffusion_shared.eia_microdata_cbecs_2003 a
+SET roof_style = b.roof_style
+from diffusion_solar.roof_material_to_roof_style_cbecs
+where a.rfcns8 = b.rfcns8;
+
+-- strip malls are null
+select *
+FROM diffusion_shared.eia_microdata_cbecs_2003
+where roof_style is null;
+
+-- manually set these to flat
+UPDATE diffusion_shared.eia_microdata_cbecs_2003
+set roof_style = 'flat'
+where crb_model = 'strip_mall';
+
+select distinct(roof_style)
+FROM diffusion_shared.eia_microdata_cbecs_2003;
+
+------------------------------------------------------------------------------------------------
+--- add roof style to recs
+ALTER TABLE diffusion_shared.eia_microdata_recs_2009
+ADD COLUMN roof_style text;
+
+UPDATE diffusion_shared.eia_microdata_recs_2009 a
+SET roof_style = b.roof_style
+from diffusion_solar.roof_material_to_roof_style_recs b
+where a.rooftype = b.rooftype;
+
+-- only nulls should be where rooftype = -2 (-->non-single family homes)
+select distinct(rooftype)
+FROM diffusion_shared.eia_microdata_recs_2009
+where roof_style is null;
 
