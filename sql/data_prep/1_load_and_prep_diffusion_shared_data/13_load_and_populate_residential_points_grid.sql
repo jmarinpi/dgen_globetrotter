@@ -868,6 +868,36 @@ FROM diffusion_shared.pt_grid_us_res
 where hdf_load_index is null;
 
 
+-- add block id
+DROP TABLE IF EXISTS  diffusion_wind_data.pt_grid_us_res_census_2010_block_lkup;
+CREATE TABLE  diffusion_wind_data.pt_grid_us_res_census_2010_block_lkup 
+(
+	gid integer,
+	block_gisjoin character varying(18)
+);
+
+SELECT parsel_2('dav-gis','mgleason','mgleason',
+		'diffusion_shared.pt_grid_us_res',
+		'gid',
+		'SELECT a.gid, c.gisjoin as block_gisjoin
+		FROM diffusion_shared.pt_grid_us_res a
+		LEFT JOIN diffusion_shared.county_geom b
+			ON a.county_id = b.county_id
+		LEFT JOIN census_2010.block_geom_parent c
+			ON b.state_abbr = c.state_abbr
+			AND ST_Intersects(a.the_geom_4326, c.the_geom_4326)',
+		'diffusion_wind_data.pt_grid_us_res_census_2010_block_lkup', 
+		'a',16);
+
+-- check for nulls
+select count(*)
+FROM diffusion_wind_data.pt_grid_us_res_census_2010_block_lkup
+where block_gisjoin is null;
+-- 6749
+
+
+
+
 
 -- add foreign keys
 	-- for county_id to county_geom.county id

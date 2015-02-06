@@ -10,8 +10,9 @@ GRANT CONNECT, TEMPORARY ON DATABASE "diffusion_clone" TO "diffusion-writers";
 GRANT CONNECT, TEMPORARY ON DATABASE "diffusion_clone" TO "diffusion_shared-writers";
 GRANT CONNECT, TEMPORARY ON DATABASE "diffusion_clone" TO "wind_ds-writers";
 
-
+-- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** 
 -- CHANGE DATABASE CONNECTION MANUALLY BEFORE PROCEEDING!!!!!!
+-- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** 
 
 -- add extensions
  CREATE EXTENSION plr;
@@ -23,11 +24,6 @@ GRANT CONNECT, TEMPORARY ON DATABASE "diffusion_clone" TO "wind_ds-writers";
   VERSION "2.0.2";
   
 CREAte extension plpythonu;
-
- CREATE SCHEMA topology;
- CREATE EXTENSION postgis_topology
-  SCHEMA topology
-  VERSION "2.0.3";
 
    CREATE EXTENSION dblink
   SCHEMA public
@@ -75,3 +71,4 @@ where sequence_schema in ('diffusion_shared','diffusion_solar','diffusion_solar_
 -------------------
 -- create multiple copies:
 -- CREATE DATABASE diffusion_clone_2 WITH TEMPLATE diffusion_clone;
+-- CREATE DATABASE diffusion_clone WITH TEMPLATE diffusion_clone_2;

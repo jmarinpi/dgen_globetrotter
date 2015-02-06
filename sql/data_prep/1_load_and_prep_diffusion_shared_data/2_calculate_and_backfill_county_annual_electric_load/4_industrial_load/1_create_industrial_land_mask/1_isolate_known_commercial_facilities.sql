@@ -26,7 +26,7 @@ CREATE TABLE dg_wind.hsip_industrial_facility_buffers
 
 SELECT parsel_2('dav-gis','mgleason','mgleason','hsip_2012.all_hsip_industrial_facilities','gid',
 	'SELECT a.gid,
-		CASE WHEN ST_GeometryType(a.the_geom_4326) = ''ST_Point'' THEN ST_Buffer(a.the_geom_4326::geography, 200)::geometry
+		CASE WHEN ST_GeometryType(a.the_geom_4326) = ''ST_Point'' THEN ST_Buffer(a.the_geom_4326::geography, 90)::geometry
 		else a.the_geom_4326
 		END as the_geom_4326, 
 		a.table_name, a.table_number
