@@ -17,7 +17,7 @@ import load_excel_shared_functions as lex
 from load_excel_shared_functions import ExcelError, list2line
 
 
-def main(wb, conn, verbose = False):
+def main(wb, conn, mode = None, ReEDS_PV_CC = None, verbose = False):
     try:
         # check connection to PG
         if not conn:
@@ -323,5 +323,5 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
 
 if __name__ == '__main__':
     input_xls = '../excel/scenario_inputs_wind.xlsm'
-    main(input_xls,None, True)
+    main(input_xls, conn = None, verbose = True)
 
