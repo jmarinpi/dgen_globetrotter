@@ -59,13 +59,18 @@ where sequence_schema in ('diffusion_shared','diffusion_solar','diffusion_solar_
 --------------------------------------------------------------------------------
 -- functions were not copied over
 -- run:
--- solar_system_sizing.sql
--- scoe_final.sql
--- r_quantile.sql
--- r_median.sql
+-- add_key_to_json.sql
+-- archive
+-- get_key_from_json.sql
+-- r_array_multiply.sql
 -- r_bin_equal_interval.sql
+-- r_cut.sql
+-- r_median.sql
+-- r_quantile.sql
 -- r_sample.sql
-
+-- remove_key_from_json.sql
+-- solar_system_sizing.sql
+-- wind_scoe.sql
 
 
 -------------------
