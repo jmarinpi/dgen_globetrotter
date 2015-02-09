@@ -1,4 +1,7 @@
-﻿set role 'diffusion-writers';
+﻿------------------------------------------------------------------------------------------------------------
+-- INGEST PTS AND SIMPLE CLEANUP
+------------------------------------------------------------------------------------------------------------
+set role 'diffusion-writers';
 -- DROP TABLE IF EXISTS diffusion_shared.pt_grid_us_com_new;
 CREATE TABLE diffusion_shared.pt_grid_us_com_new (
 	x numeric,
@@ -7,17 +10,24 @@ CREATE TABLE diffusion_shared.pt_grid_us_com_new (
 
 SET ROLE "server-superusers";
 COPY diffusion_shared.pt_grid_us_com_new 
-FROM '/srv/home/mgleason/data/dg_wind/com_ind_land_masks_20140205/com_mask.csv' with csv header;
+FROM '/srv/home/mgleason/data/dg_wind/land_masks_20140205/com_mask.csv' with csv header;
 set role 'diffusion-writers';
 
 -- drop this column -- it means nothing
-ALTER TABLE diffusion_shared.pt_grid_us_com_new DROP COLUMN temp_col;
+ALTER TABLE diffusion_shared.pt_grid_us_com_new 
+DROP COLUMN temp_col;
+------------------------------------------------------------------------------------------------------------
 
-ALTER TABLE diffusion_shared.pt_grid_us_com_new ADD COLUMN the_geom_4326 geometry;
+
+------------------------------------------------------------------------------------------------------------
+-- GEOM (4326)
+------------------------------------------------------------------------------------------------------------
+ALTER TABLE diffusion_shared.pt_grid_us_com_new 
+ADD COLUMN the_geom_4326 geometry;
 
 UPDATE diffusion_shared.pt_grid_us_com_new
 SET the_geom_4326= ST_SetSRID(ST_MakePoint(x,y),4326);
--- 1603958 rows
+-- 1,603,958 rows
 
 CREATE INDEX pt_grid_us_com_new_the_geom_4326_gist 
 ON diffusion_shared.pt_grid_us_com_new 
@@ -27,16 +37,23 @@ CLUSTER diffusion_shared.pt_grid_us_com_new
 USING pt_grid_us_com_new_the_geom_4326_gist;
 
 VACUUM ANALYZE diffusion_shared.pt_grid_us_com_new;
+------------------------------------------------------------------------------------------------------------
 
--- add:
--- gid (serial) and pkey
+
+------------------------------------------------------------------------------------------------------------
+-- GID (PRIMARY KEY)
+------------------------------------------------------------------------------------------------------------
 ALTER TABLE diffusion_shared.pt_grid_us_com_new 
 ADD COLUMN gid serial;
 
 ALTER TABLE diffusion_shared.pt_grid_us_com_new 
 ADD PRIMARY KEY (gid);
+------------------------------------------------------------------------------------------------------------
 
--- county id (from polygons) and index (foreign key)?
+
+------------------------------------------------------------------------------------------------------------
+-- COUNTY ID
+------------------------------------------------------------------------------------------------------------
 DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_com_new_county_lkup;
 CREATE TABLE diffusion_wind_data.pt_grid_us_com_new_county_lkup
 (
@@ -83,6 +100,7 @@ where county_id is null;
 -- inspect in Q - all along edges of the country
 
 -- pick county based on nearest
+DROP TABLE IF EXIStS diffusion_wind_data.no_county_pts_com_closest;
 CREATE TABLE diffusion_wind_data.no_county_pts_com_closest AS
 with candidates as (
 
@@ -117,9 +135,12 @@ where county_id is null;
 -- drop the other tables
 DROP TABLE IF EXISTS diffusion_wind_data.no_county_pts_com;
 DROP TABLE IF EXISTS diffusion_wind_data.no_county_pts_com_closest;
+------------------------------------------------------------------------------------------------------------
 
 
--- utility type
+------------------------------------------------------------------------------------------------------------
+-- UTILITY TYPE
+------------------------------------------------------------------------------------------------------------
 DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_com_new_utiltype_lookup;
 CREATE TABLE diffusion_wind_data.pt_grid_us_com_new_utiltype_lookup 
 (
@@ -196,10 +217,12 @@ SELECT count(*)
 FROM diffusion_shared.pt_grid_us_com_new
 where utility_type is null;
 -- 0 rows
+------------------------------------------------------------------------------------------------------------
 
 
-
--- iii, jjj, icf (from raster)
+------------------------------------------------------------------------------------------------------------
+-- WIND RESOURCE IDS (III, JJJ, ICF)
+------------------------------------------------------------------------------------------------------------
 DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_com_new_iiijjjicf_id_lookup;
 CREATE TABLE diffusion_wind_data.pt_grid_us_com_new_iiijjjicf_id_lookup (
 	gid integer,
@@ -226,7 +249,8 @@ SET iiijjjicf_id = b.iiijjjicf_id
 FROM diffusion_wind_data.pt_grid_us_com_new_iiijjjicf_id_lookup b
 where a.gid = b.gid;
 
-CREATE INDEX pt_grid_us_com_new_iiijjjicf_id_btree ON diffusion_shared.pt_grid_us_com_new 
+CREATE INDEX pt_grid_us_com_new_iiijjjicf_id_btree 
+ON diffusion_shared.pt_grid_us_com_new 
 USING btree(iiijjjicf_id);
 
 -- check for points with no iiijjjicf -- there shouldnt be any since the land mask is clipped to the raster
@@ -234,189 +258,186 @@ SELECT count(*)
 FROM diffusion_shared.pt_grid_us_com_new
 where iiijjjicf_id is null;
 -- 0
+------------------------------------------------------------------------------------------------------------
 
-------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------
--- create dsire incentives lookup table
-	-- WIND
-	--create the lookup table	
-	DROP TABLE IF EXISTS diffusion_wind.dsire_incentives_lookup_com;
-	CREATE TABLE diffusion_wind.dsire_incentives_lookup_com AS
 
-	with a as 
-	(
-		SELECT b.gid, b.the_geom, d.uid as wind_incentives_uid
-		FROM dg_wind.incentives_geoms_copy_diced b
-		inner JOIN geo_incentives.incentives c
-		ON b.gid = c.geom_id
-		INNER JOIN geo_incentives.wind_incentives d
-		ON c.gid = d.incentive_id
-	)
+------------------------------------------------------------------------------------------------------------
+-- DSIRE INCENTIVES (WIND)
+------------------------------------------------------------------------------------------------------------
+--create the lookup table	
+DROP TABLE IF EXISTS diffusion_wind.dsire_incentives_lookup_com;
+CREATE TABLE diffusion_wind.dsire_incentives_lookup_com AS
+with a as 
+(
+	SELECT b.gid, b.the_geom, d.uid as wind_incentives_uid
+	FROM dg_wind.incentives_geoms_copy_diced b
+	inner JOIN geo_incentives.incentives c
+	ON b.gid = c.geom_id
+	INNER JOIN geo_incentives.wind_incentives d
+	ON c.gid = d.incentive_id
+)
+SELECT e.gid as pt_gid, a.wind_incentives_uid
+FROM a
+INNER JOIN diffusion_shared.pt_grid_us_com_new e
+ON ST_Intersects(a.the_geom,e.the_geom_4326);
 
-	SELECT e.gid as pt_gid, a.wind_incentives_uid
-	FROM a
+CREATE INDEX dsire_incentives_lookup_com_pt_gid_btree 
+ON diffusion_wind.dsire_incentives_lookup_com 
+using btree(pt_gid);
 
-	INNER JOIN diffusion_shared.pt_grid_us_com_new e
-	ON ST_Intersects(a.the_geom,e.the_geom_4326);
+-- group the incentives into arrays so that there is just one row for each pt_gid
+DROP TABLE IF EXISTS diffusion_wind_data.dsire_incentives_combos_lookup_com;
+CREATE TABLE diffusion_wind_data.dsire_incentives_combos_lookup_com AS
+SELECT pt_gid, array_agg(wind_incentives_uid order by wind_incentives_uid) as wind_incentives_uid_array
+FROM diffusion_wind.dsire_incentives_lookup_com
+group by pt_gid;
 
-	CREATE INDEX dsire_incentives_lookup_com_pt_gid_btree ON diffusion_wind.dsire_incentives_lookup_com using btree(pt_gid);
+-- find the unique set of incentive arrays
+DROP TABLE IF EXISTS diffusion_wind_data.dsire_incentives_unique_combos_com;
+CREATE TABLE diffusion_wind_data.dsire_incentives_unique_combos_com AS
+SELECT distinct(wind_incentives_uid_array) as wind_incentives_uid_array
+FROM diffusion_wind_data.dsire_incentives_combos_lookup_com;
 
-	SELECT pt_gid, count(*)
-	FROM diffusion_wind.dsire_incentives_lookup_com
-	GROUP BY pt_gid
-	ORDER by count desc;	
+-- add a primary key to the table of incentive arrays
+ALTER TABLE diffusion_wind_data.dsire_incentives_unique_combos_com
+ADD column incentive_array_id serial primary key;
 
-	-- group the incentives into arrays so that there is just one row for each pt_gid
-	DROP TABLE IF EXISTS diffusion_wind_data.dsire_incentives_combos_lookup_com;
-	CREATE TABLE diffusion_wind_data.dsire_incentives_combos_lookup_com AS
-	SELECT pt_gid, array_agg(wind_incentives_uid order by wind_incentives_uid) as wind_incentives_uid_array
-	FROM diffusion_wind.dsire_incentives_lookup_com
-	group by pt_gid;
+-- join the incentive array primary key back into the combos_lookup_table
+ALTER TABLE diffusion_wind_data.dsire_incentives_combos_lookup_com
+ADD column incentive_array_id integer;
 
-	-- find the unique set of incentive arrays
-	DROP TABLE IF EXISTS diffusion_wind_data.dsire_incentives_unique_combos_com;
-	CREATE TABLE diffusion_wind_data.dsire_incentives_unique_combos_com AS
-	SELECT distinct(wind_incentives_uid_array) as wind_incentives_uid_array
-	FROM diffusion_wind_data.dsire_incentives_combos_lookup_com;
+UPDATE diffusion_wind_data.dsire_incentives_combos_lookup_com a
+SET incentive_array_id = b.incentive_array_id
+FROM diffusion_wind_data.dsire_incentives_unique_combos_com b
+where a.wind_incentives_uid_array = b.wind_incentives_uid_array;
 
-	-- add a primary key to the table of incentive arrays
-	ALTER TABLE diffusion_wind_data.dsire_incentives_unique_combos_com
-	ADD column incentive_array_id serial primary key;
+-- join this info back into the main points table
+ALTER TABLE diffusion_shared.pt_grid_us_com_new
+ADD COLUMN wind_incentive_array_id integer;
 
-	-- join the incentive array primary key back into the combos_lookup_table
-	ALTER TABLE diffusion_wind_data.dsire_incentives_combos_lookup_com
-	ADD column incentive_array_id integer;
+UPDATE diffusion_shared.pt_grid_us_com_new a
+SET wind_incentive_array_id = b.incentive_array_id
+FROM diffusion_wind_data.dsire_incentives_combos_lookup_com b
+WHere a.gid = b.pt_gid;
 
-	UPDATE diffusion_wind_data.dsire_incentives_combos_lookup_com a
-	SET incentive_array_id = b.incentive_array_id
-	FROM diffusion_wind_data.dsire_incentives_unique_combos_com b
-	where a.wind_incentives_uid_array = b.wind_incentives_uid_array;
+-- add an index
+CREATE INDEX pt_grid_us_com_new_wind_incentive_btree 
+ON diffusion_shared.pt_grid_us_com_new
+USING btree(wind_incentive_array_id);
 
-	-- join this info back into the main points table
-	ALTER TABLE diffusion_shared.pt_grid_us_com_new
-	ADD COLUMN wind_incentive_array_id integer;
+--unnest the data from the unique combos table
+DROP TABLE IF EXISTS diffusion_wind.dsire_incentives_simplified_lkup_com;
+CREATE TABLE diffusion_wind.dsire_incentives_simplified_lkup_com AS
+SELECT incentive_array_id as incentive_array_id, 
+	unnest(wind_incentives_uid_array) as incentives_uid
+FROM diffusion_wind_data.dsire_incentives_unique_combos_com;
 
-	UPDATE diffusion_shared.pt_grid_us_com_new a
-	SET wind_incentive_array_id = b.incentive_array_id
-	FROM diffusion_wind_data.dsire_incentives_combos_lookup_com b
-	WHere a.gid = b.pt_gid;
-	--**
-	-- add an index
-	CREATE INDEX pt_grid_us_com_new_wind_incentive_btree 
-	ON diffusion_shared.pt_grid_us_com_new
-	USING btree(wind_incentive_array_id);
+-- create index
+CREATE INDEX dsire_incentives_simplified_lkup_com_inc_id_btree
+ON diffusion_wind.dsire_incentives_simplified_lkup_com
+USING btree(incentive_array_id);
+------------------------------------------------------------------------------------------------------------
 
-	--unnest the data from the unique combos table
-	DROP TABLE IF EXISTS diffusion_wind.dsire_incentives_simplified_lkup_com;
-	CREATE TABLE diffusion_wind.dsire_incentives_simplified_lkup_com AS
-	SELECT incentive_array_id as incentive_array_id, 
-		unnest(wind_incentives_uid_array) as incentives_uid
-	FROM diffusion_wind_data.dsire_incentives_unique_combos_com;
 
-	-- create index
-	CREATE INDEX dsire_incentives_simplified_lkup_com_inc_id_btree
-	ON diffusion_wind.dsire_incentives_simplified_lkup_com
-	USING btree(incentive_array_id);
+------------------------------------------------------------------------------------------------------------
+-- DSIRE INCENTIVES (SOLAR)
+------------------------------------------------------------------------------------------------------------
+--create the lookup table		
+DROP TABLE IF EXISTS diffusion_solar.dsire_incentives_lookup_com;
+CREATE TABLE diffusion_solar.dsire_incentives_lookup_com AS
+with a as 
+(
+	SELECT b.gid, b.the_geom, d.uid as solar_incentives_uid
+	FROM dg_wind.incentives_geoms_copy_diced b
+	inner JOIN geo_incentives.incentives c
+	ON b.gid = c.geom_id
+	INNER JOIN geo_incentives.pv_incentives d
+	ON c.gid = d.incentive_id
+)
+SELECT e.gid as pt_gid, a.solar_incentives_uid
+FROM a
+INNER JOIN diffusion_shared.pt_grid_us_com_new e
+ON ST_Intersects(a.the_geom,e.the_geom_4326);
 
-	-- SOLAR
-	--create the lookup table		
-	DROP TABLE IF EXISTS diffusion_solar.dsire_incentives_lookup_com;
-	CREATE TABLE diffusion_solar.dsire_incentives_lookup_com AS
+CREATE INDEX dsire_incentives_lookup_com_pt_gid_btree 
+ON diffusion_solar.dsire_incentives_lookup_com 
+using btree(pt_gid);
 
-	with a as 
-	(
-		SELECT b.gid, b.the_geom, d.uid as solar_incentives_uid
-		FROM dg_wind.incentives_geoms_copy_diced b
-		inner JOIN geo_incentives.incentives c
-		ON b.gid = c.geom_id
-		INNER JOIN geo_incentives.pv_incentives d
-		ON c.gid = d.incentive_id
-	)
+-- group the incentives into arrays so that there is just one row for each pt_gid
+DROP TABLE IF EXISTS diffusion_solar_data.dsire_incentives_combos_lookup_com;
+CREATE TABLE diffusion_solar_data.dsire_incentives_combos_lookup_com AS
+SELECT pt_gid, array_agg(solar_incentives_uid order by solar_incentives_uid) as solar_incentives_uid_array
+FROM diffusion_solar.dsire_incentives_lookup_com
+group by pt_gid;
 
-	SELECT e.gid as pt_gid, a.solar_incentives_uid
-	FROM a
+-- find the unique set of incentive arrays
+DROP TABLE IF EXISTS diffusion_solar_data.dsire_incentives_unique_combos_com;
+CREATE TABLE diffusion_solar_data.dsire_incentives_unique_combos_com AS
+SELECT distinct(solar_incentives_uid_array) as solar_incentives_uid_array
+FROM diffusion_solar_data.dsire_incentives_combos_lookup_com;
 
-	INNER JOIN diffusion_shared.pt_grid_us_com_new e
-	ON ST_Intersects(a.the_geom,e.the_geom_4326);
+-- add a primary key to the table of incentive arrays
+ALTER TABLE diffusion_solar_data.dsire_incentives_unique_combos_com
+ADD column incentive_array_id serial primary key;
 
-	CREATE INDEX dsire_incentives_lookup_com_pt_gid_btree ON diffusion_solar.dsire_incentives_lookup_com using btree(pt_gid);
+-- join the incentive array primary key back into the combos_lookup_table
+ALTER TABLE diffusion_solar_data.dsire_incentives_combos_lookup_com
+ADD column incentive_array_id integer;
 
-	SELECT pt_gid, count(*)
-	FROM diffusion_solar.dsire_incentives_lookup_com
-	GROUP BY pt_gid
-	ORDER by count desc;
+UPDATE diffusion_solar_data.dsire_incentives_combos_lookup_com a
+SET incentive_array_id = b.incentive_array_id
+FROM diffusion_solar_data.dsire_incentives_unique_combos_com b
+where a.solar_incentives_uid_array = b.solar_incentives_uid_array;
 
-	-- group the incentives into arrays so that there is just one row for each pt_gid
-	DROP TABLE IF EXISTS diffusion_solar_data.dsire_incentives_combos_lookup_com;
-	CREATE TABLE diffusion_solar_data.dsire_incentives_combos_lookup_com AS
-	SELECT pt_gid, array_agg(solar_incentives_uid order by solar_incentives_uid) as solar_incentives_uid_array
-	FROM diffusion_solar.dsire_incentives_lookup_com
-	group by pt_gid;
+-- join this info back into the main points table
+ALTER TABLE diffusion_shared.pt_grid_us_com_new
+ADD COLUMN solar_incentive_array_id integer;
 
-	-- find the unique set of incentive arrays
-	DROP TABLE IF EXISTS diffusion_solar_data.dsire_incentives_unique_combos_com;
-	CREATE TABLE diffusion_solar_data.dsire_incentives_unique_combos_com AS
-	SELECT distinct(solar_incentives_uid_array) as solar_incentives_uid_array
-	FROM diffusion_solar_data.dsire_incentives_combos_lookup_com;
+UPDATE diffusion_shared.pt_grid_us_com_new a
+SET solar_incentive_array_id = b.incentive_array_id
+FROM diffusion_solar_data.dsire_incentives_combos_lookup_com b
+WHere a.gid = b.pt_gid;
 
-	-- add a primary key to the table of incentive arrays
-	ALTER TABLE diffusion_solar_data.dsire_incentives_unique_combos_com
-	ADD column incentive_array_id serial primary key;
+-- add an index
+CREATE INDEX pt_grid_us_com_new_solar_incentive_btree 
+ON diffusion_shared.pt_grid_us_com_new
+USING btree(solar_incentive_array_id);
 
-	-- join the incentive array primary key back into the combos_lookup_table
-	ALTER TABLE diffusion_solar_data.dsire_incentives_combos_lookup_com
-	ADD column incentive_array_id integer;
+-- check that we got tem all
+SELECT count(*)
+FROM diffusion_shared.pt_grid_us_com_new
+where solar_incentive_array_id is not null;
+--1603945
 
-	UPDATE diffusion_solar_data.dsire_incentives_combos_lookup_com a
-	SET incentive_array_id = b.incentive_array_id
-	FROM diffusion_solar_data.dsire_incentives_unique_combos_com b
-	where a.solar_incentives_uid_array = b.solar_incentives_uid_array;
+SELECT count(*)
+FROM diffusion_solar_data.dsire_incentives_combos_lookup_com
+where incentive_array_id is not null;
+--1603945
 
-	-- join this info back into the main points table
-	ALTER TABLE diffusion_shared.pt_grid_us_com_new
-	ADD COLUMN solar_incentive_array_id integer;
+--unnest the data from the unique combos table
+DROP TABLE IF EXISTS diffusion_solar.dsire_incentives_simplified_lkup_com;
+CREATE TABLE diffusion_solar.dsire_incentives_simplified_lkup_com AS
+SELECT incentive_array_id as incentive_array_id, 
+	unnest(solar_incentives_uid_array) as incentives_uid
+FROM diffusion_solar_data.dsire_incentives_unique_combos_com;
 
-	UPDATE diffusion_shared.pt_grid_us_com_new a
-	SET solar_incentive_array_id = b.incentive_array_id
-	FROM diffusion_solar_data.dsire_incentives_combos_lookup_com b
-	WHere a.gid = b.pt_gid;
-	
-	-- add an index
-	CREATE INDEX pt_grid_us_com_new_solar_incentive_btree 
-	ON diffusion_shared.pt_grid_us_com_new
-	USING btree(solar_incentive_array_id);
+-- create index
+CREATE INDEX dsire_incentives_simplified_lkup_com_inc_id_btree
+ON diffusion_solar.dsire_incentives_simplified_lkup_com
+USING btree(incentive_array_id);
+------------------------------------------------------------------------------------------------------------
 
-	-- check that we got tem all
-	SELECT count(*)
-	FROM diffusion_shared.pt_grid_us_com_new
-	where solar_incentive_array_id is not null;
-	--6273172
 
-	SELECT count(*)
-	FROM diffusion_solar_data.dsire_incentives_combos_lookup_com
-	where incentive_array_id is not null;
-	--6273172
-
-	--unnest the data from the unique combos table
-	DROP TABLE IF EXISTS diffusion_solar.dsire_incentives_simplified_lkup_com;
-	CREATE TABLE diffusion_solar.dsire_incentives_simplified_lkup_com AS
-	SELECT incentive_array_id as incentive_array_id, 
-		unnest(solar_incentives_uid_array) as incentives_uid
-	FROM diffusion_solar_data.dsire_incentives_unique_combos_com;
-
-	-- create index
-	CREATE INDEX dsire_incentives_simplified_lkup_com_inc_id_btree
-	ON diffusion_solar.dsire_incentives_simplified_lkup_com
-	USING btree(incentive_array_id);
-------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------
-
--- add pca region
+------------------------------------------------------------------------------------------------------------
+-- REEDS REGIONS AND PCAS
+------------------------------------------------------------------------------------------------------------
 DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_com_new_pca_reg_lookup;
-CREATE TABLE diffusion_wind_data.pt_grid_us_com_new_pca_reg_lookup (
+CREATE TABLE diffusion_wind_data.pt_grid_us_com_new_pca_reg_lookup 
+(
 	gid integer,
 	pca_reg integer,
-	reeds_reg integer);
+	reeds_reg integer
+);
 
 SELECT parsel_2('dav-gis','mgleason','mgleason','diffusion_shared.pt_grid_us_com_new','gid',
 		'SELECT a.gid, b.pca_reg, b.demreg as reeds_reg
@@ -441,8 +462,13 @@ FROM diffusion_wind_data.pt_grid_us_com_new_pca_reg_lookup b
 where a.gid = b.gid;
 
 -- how many are null?
-CREATE INDEX pt_grid_us_com_new_pca_reg_btree ON diffusion_shared.pt_grid_us_com_new USING btree(pca_reg);
-CREATE INDEX pt_grid_us_com_new_reeds_reg_btree ON diffusion_shared.pt_grid_us_com_new USING btree(reeds_reg);
+CREATE INDEX pt_grid_us_com_new_pca_reg_btree 
+ON diffusion_shared.pt_grid_us_com_new 
+USING btree(pca_reg);
+
+CREATE INDEX pt_grid_us_com_new_reeds_reg_btree 
+ON diffusion_shared.pt_grid_us_com_new 
+USING btree(reeds_reg);
 
 -- any missing?
 select count(*)
@@ -463,23 +489,26 @@ where reeds_reg is null;
 -- fix the missing based on the closest
 DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_com_new_pca_reg_missing_lookup;
 CREATE TABLE diffusion_wind_data.pt_grid_us_com_new_pca_reg_missing_lookup AS
-with a AS(
+with a AS
+(
 	select gid, the_geom_4326
 	FROM diffusion_shared.pt_grid_us_com_new
-	where pca_reg is null),
-b as (
+	where pca_reg is null
+),
+b as 
+(
 	SELECT a.gid, a.the_geom_4326, 
 		(SELECT b.gid
 		 FROM diffusion_shared.pt_grid_us_com_new b
 		 where b.pca_reg is not null
 		 ORDER BY a.the_geom_4326 <#> b.the_geom_4326
 		 LIMIT 1) as nn_gid
-	FROM a)
+	FROM a
+)
 SELECT b.gid, b.the_geom_4326, b.nn_gid, c.pca_reg, c.reeds_reg
 from b
 LEFT JOIN diffusion_shared.pt_grid_us_com_new c
 ON b.nn_gid = c.gid;
---
 
 --update the points table
 UPDATE diffusion_shared.pt_grid_us_com_new a
@@ -492,10 +521,12 @@ and a.pca_reg is null;
 select count(*)
 FROM diffusion_shared.pt_grid_us_com_new 
 where pca_reg is null or reeds_reg is null;
+------------------------------------------------------------------------------------------------------------
 
 
-
--- add nsrdb grid gids
+------------------------------------------------------------------------------------------------------------
+-- NSRDB GRID GIDs
+------------------------------------------------------------------------------------------------------------
 DROP TABLE IF EXISTS  diffusion_solar_data.pt_grid_us_com_new_solar_re_9809_lookup;
 CREATE TABLE  diffusion_solar_data.pt_grid_us_com_new_solar_re_9809_lookup 
 (
@@ -538,10 +569,12 @@ where solar_re_9809_gid is null;
 -- fix the missing based on the closest
 DROP TABLE IF EXISTS  diffusion_solar_data.pt_grid_us_solar_re_9809_gid_missing_lookup;
 CREATE TABLE  diffusion_solar_data.pt_grid_us_solar_re_9809_gid_missing_lookup AS
-with a AS(
+with a AS
+(
 	select gid, the_geom_4326
 	FROM diffusion_shared.pt_grid_us_com_new
-	where solar_re_9809_gid is null)
+	where solar_re_9809_gid is null
+)
 SELECT a.gid, a.the_geom_4326, 
 	(SELECT b.solar_re_9809_gid
 	 FROM diffusion_shared.pt_grid_us_com_new b
@@ -549,7 +582,6 @@ SELECT a.gid, a.the_geom_4326,
 	 ORDER BY a.the_geom_4326 <#> b.the_geom_4326
 	 LIMIT 1) as solar_re_9809_gid
 	FROM a;
--- 
   
 --update the points table
 UPDATE diffusion_shared.pt_grid_us_com_new a
@@ -562,8 +594,12 @@ and a.solar_re_9809_gid is null;
 select count(*)
 FROM diffusion_shared.pt_grid_us_com_new 
 where solar_re_9809_gid is null;
+------------------------------------------------------------------------------------------------------------
 
 
+------------------------------------------------------------------------------------------------------------
+-- ENERGY PLUS HDF INDEX
+------------------------------------------------------------------------------------------------------------
 -- load in the energy plus hdf index associated with each point
 -- the energy plus simulations are based on TMY3 stations
 -- for each nsrdb grid, we know the "best match" TMY3 station, so we can just link
@@ -583,7 +619,7 @@ ON diffusion_shared.pt_grid_us_com_new
 using btree(hdf_load_index);
 
 -- check for nulls
-SELECT *
+SELECT count(*)
 FROM diffusion_shared.pt_grid_us_com_new
 where hdf_load_index is null;
 --6141 rows
@@ -607,7 +643,6 @@ SELECT a.gid, a.the_geom_4326,
 	 ) as hdf_load_index
 	FROM a;
 
-
 UPDATE diffusion_shared.pt_grid_us_com_new a
 SET hdf_load_index = b.hdf_load_index
 FROM  diffusion_solar_data.pt_grid_us_com_new_missing_hdf_load_lookup b
@@ -619,10 +654,12 @@ SELECT count(*)
 FROM diffusion_shared.pt_grid_us_com_new
 where hdf_load_index is null;
 -- 0 rows
+------------------------------------------------------------------------------------------------------------
 
 
-
--- -- add foreign keys
+------------------------------------------------------------------------------------------------------------
+-- FOREIGN KEYS
+------------------------------------------------------------------------------------------------------------
 -- 	-- for county_id to county_geom.county id
 -- ALTER TABLE diffusion_shared.pt_grid_us_com_new ADD CONSTRAINT county_id_fkey FOREIGN KEY (county_id) 
 -- REFERENCES diffusion_shared.county_geom (county_id) MATCH FULL 
