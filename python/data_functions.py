@@ -2599,14 +2599,14 @@ def assign_business_model(df, prng, method = 'prob', alpha = 2):
         # Determine the probability of leasing
         df['prob_of_leasing'] = df['mkt_exp']/df['mkt_sum']
         df.loc[(df['business_model'] == 'tpo') & ~(df['leasing_allowed']),'prob_of_leasing'] = 0 #Restrict leasing if not allowed by state
+        df.loc[(df['prob_of_leasing'] == np.inf),'prob_of_leasing'] = 0 # If max_market_share is 0 for both business models, then default to buying.
         
         # Both business models are still in the df, so we use a ranking algorithm after the random draw
-        # To determine whether to buy or lease 
+        # to determine whether to buy or lease 
         df['rank'] =0
         df.loc[(df['business_model'] == 'host_owned'),'rank'] = 1
         df.loc[(df['business_model'] == 'tpo') & (df['rnd']< df['prob_of_leasing']),'rank'] = 2
         
-        #df[['county_id','bin_id','business_model','max_market_share','rnd','prob_of_leasing','rank']].head(10)
         
         gb = df.groupby(['county_id','bin_id'])
         rb = gb['rank'].rank(ascending = False)
