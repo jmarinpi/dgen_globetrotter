@@ -1,173 +1,46 @@
-﻿-- load commercial building microdata
-SET ROLE 'diffusion-writers';
+﻿SET ROLE 'diffusion-writers';
 DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_2003;
-CREATE TABLE diffusion_shared.eia_microdata_cbecs_2003 
-(
-	pubid8	integer primary key,	--building identifier
-	region8	integer,	--Census region 
-	cendiv8	integer,	--Census division
-	sqft8	integer,	--Square footage
-	sqftc8	integer,	--Square footage category
-	yrconc8	integer,	--year of construction category
-	pba8	integer,	--principal building activity
-	elused8	integer,	--electricity used
-	ngused8	integer,	--natural gas used
-	fkused8	integer,	--Fuel oil/diesel/kerosene used 
-	prused8	integer,	--Bottled gas/LPG/propane used 
-	stused8	integer,	--District steam used
-	hwused8	integer,	--District hot water used
-	adjwt8	numeric,	--Final full sample building weight
-	stratum8 integer,	--Variance stratum
-	pair8	integer,	--Variance unit 
-	hdd658	integer,	--Heating degree days (base 65)
-	cdd658	integer,	--Cooling degree days (base 65)
-	mfused8	integer,	--Any major fuel used 
-	mfbtu8	integer,	--Annual maj fuel consumption (thous Btu)
-	mfexp8	integer,	--Annual major fuel expenditures ($)
-	elcns8	integer,	--Annual electricity consumption (kWh)
-	elbtu8	integer,	--Annual elec consumption (thous Btu)
-	elexp8	integer,	--Annual electricity expenditures ($)
-	zelcns8	integer,	--Imputed electricity consumption
-	zelexp8	integer		--Imputed electricity expenditures 		
-);
+CREATE TABLE diffusion_shared.eia_microdata_cbecs_2003 AS
+select a.pubid8, a.region8, a.cendiv8, 
+	a.pba8,
+	b.pbaplus8,
+	a.ownocc8,
+	a.sqft8,
+	a.nfloor8,
+	a.rfcns8,
+	a.adjwt8::NUMERIC,
+	c.elcns8
+from eia.cbecs_2003_microdata_file_01 a
+left join eia.cbecs_2003_microdata_file_02 b
+on a.pubid8 = b.pubid8
+left join eia.cbecs_2003_microdata_file_15 c
+on a.pubid8 = c.pubid8;
 
+-- drop any records where elcns8 is null
+delete from diffusion_shared.eia_microdata_cbecs_2003
+where elcns8 is null;
 
-COMMENT ON TABLE diffusion_shared.eia_microdata_cbecs_2003 IS
-'Data dictionary available at: http://www.eia.gov/consumption/commercial/data/2003/pdf/layouts&formats.pdf';
+-- add primary key
+ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003
+ADD PRIMARY KEY (pubid8);
+
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.pubid8 IS 'building identifier';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.region8 IS 'Census region ';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.cendiv8 IS 'Census division';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.sqft8 IS 'Square footage';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.sqftc8 IS 'Square footage category';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.yrconc8 IS 'year of construction category';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.pba8 IS 'principal building activity';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.elused8 IS 'electricity used';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.ngused8 IS 'natural gas used';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.fkused8 IS 'Fuel oil/diesel/kerosene used ';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.prused8 IS 'Bottled gas/LPG/propane used ';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.stused8 IS 'District steam used';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.hwused8 IS 'District hot water used';
+COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.pbaplus8 IS 'More specific building activity';
+COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.ownocc8 IS 'Owner occupies space';
+COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.sqft8 IS 'Square footage';
+COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.nfloor8 IS 'Number of floors';
+COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.rfcns8 IS 'Roof construction material';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.adjwt8 IS 'Final full sample building weight';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.stratum8 IS 'Variance stratum';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.pair8 IS 'Variance unit ';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.hdd658 IS 'Heating degree days (base 65)';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.cdd658 IS 'Cooling degree days (base 65)';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.mfused8 IS 'Any major fuel used ';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.mfbtu8 IS 'Annual maj fuel consumption (thous Btu)';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.mfexp8 IS 'Annual major fuel expenditures ($)';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.elcns8 IS 'Annual electricity consumption (kWh)';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.elbtu8 IS 'Annual elec consumption (thous Btu)';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.elexp8 IS 'Annual electricity expenditures ($)';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.zelcns8 IS 'Imputed electricity consumption';
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.zelexp8 IS 'Imputed electricity expenditures ';
 
-SET ROLE 'server-superusers';
-COPY diffusion_shared.eia_microdata_cbecs_2003	 FROM '/srv/home/mgleason/data/dg_wind/cbecs_file15.csv' with csv header;
-SET ROLE 'diffusion-writers';
-
--- add in the ownocc8 data (detailed building activity info)
-DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_ownocc8;
-CREATE TABLE  diffusion_shared.eia_microdata_cbecs_ownocc8 (
-	pubid8	integer primary key,	--building identifier
-	ownocc8 text
-);
-SET ROLE 'server-superusers';
-COPY diffusion_shared.eia_microdata_cbecs_ownocc8 
-FROM '/srv/home/mgleason/data/dg_wind/cbecs_ownocc8.csv' with csv header;
-SET ROLE 'diffusion-writers';
-
--- replace ' ' with NULL and cast to integer
-UPDATE diffusion_shared.eia_microdata_cbecs_ownocc8
-set ownocc8 = null
-where ownocc8 = ' ';
-
-alter table diffusion_shared.eia_microdata_cbecs_ownocc8
-alter column ownocc8 type integer using ownocc8::integer;
-
--- make sure there is data for every building in the main cbecs table
-SELECT *
-FROM diffusion_shared.eia_microdata_cbecs_2003 a
-lEFT JOIN diffusion_shared.eia_microdata_cbecs_ownocc8  b
-ON a.pubid8 = b.pubid8
-where b.pubid8 is null;
--- 0 rows, all is good
-
--- add this information into the main cbecs table
-ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003
-add column ownocc8 integer;
-
-UPDATE diffusion_shared.eia_microdata_cbecs_2003 a
-SET ownocc8 = b.ownocc8
-from diffusion_shared.eia_microdata_cbecs_ownocc8  b
-where a.pubid8 = b.pubid8;
-
--- check that all values were transferred
-select count(*)
-FROM diffusion_shared.eia_microdata_cbecs_2003 
-where ownocc8 is null;
-
-select count(*)
-FROM diffusion_shared.eia_microdata_cbecs_ownocc8 
-where ownocc8 is null;
--- 395 null in both -- all set
-
--- drop the pbaplus 8 table -- no longer needed
-DROP TABLE diffusion_shared.eia_microdata_cbecs_ownocc8;
-
--- add a comment to describe this column
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.ownocc8 
-IS 'Owner occupies space';
-
--- add indices on pba8 and pbaplus8
+-- add indices on ownocc8, pba, and pbaplus
 CREATE INDEX eia_microdata_cbecs_2003_ownocc8_btree
 ON diffusion_shared.eia_microdata_cbecs_2003
 using btree(ownocc8);
 
-select distinct(ownocc8)
-FROM diffusion_shared.eia_microdata_cbecs_2003
-
--- add in the pbaplus 8 data (detailed building activity info)
-DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_pbaplus8;
-CREATE TABLE  diffusion_shared.eia_microdata_cbecs_pbaplus8 (
-	pubid8	integer primary key,	--building identifier
-	pbaplus8 integer
-);
-SET ROLE 'server-superusers';
-COPY diffusion_shared.eia_microdata_cbecs_pbaplus8 
-FROM '/srv/home/mgleason/data/dg_wind/cbecs_pba_plus8.csv' with csv header;
-SET ROLE 'diffusion-writers';
-
--- make sure there is data for every building in the main cbecs table
-SELECT *
-FROM diffusion_shared.eia_microdata_cbecs_2003 a
-lEFT JOIN diffusion_shared.eia_microdata_cbecs_pbaplus8  b
-ON a.pubid8 = b.pubid8
-where b.pubid8 is null;
--- 0 rows, all is good
-
--- add this information into the main cbecs table
-ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003
-add column pbaplus8 integer;
-
-UPDATE diffusion_shared.eia_microdata_cbecs_2003 a
-SET pbaplus8 = b.pbaplus8
-from diffusion_shared.eia_microdata_cbecs_pbaplus8  b
-where a.pubid8 = b.pubid8;
-
--- check that all values were transferred
-select *
-FROM diffusion_shared.eia_microdata_cbecs_2003 
-where pbaplus8 is null;
--- all set
-
--- drop the pbaplus 8 table -- no longer needed
-DROP TABLE diffusion_shared.eia_microdata_cbecs_pbaplus8;
-
--- add a comment to describe this column
-COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.pbaplus8 
-IS 'More specific building activity';
-
--- add indices on pba8 and pbaplus8
 CREATE INDEX eia_microdata_cbecs_2003_pba8_btree
 ON diffusion_shared.eia_microdata_cbecs_2003
 using btree(pba8);
@@ -254,7 +127,7 @@ SET census_division_abbr =
 	END;
 
 
--- add index
+-- add indices
 CREATE INDEX eia_microdata_cbecs_2003_census_region_btree 
 ON diffusion_shared.eia_microdata_cbecs_2003
 USING btree(census_region);
@@ -312,19 +185,20 @@ select pubid8, crb_model
 FROM a
 where (sqft_min is null and sqft_max is null)
 or (sqft8 >= sqft_min and sqft8 < sqft_max);
--- 5019 rows
+-- 5081 rows
+
 
 -- does that match the count of nonvacant buldings?
 select count(*)
 FROM diffusion_shared.eia_microdata_cbecs_2003
 where pba8 <> 1;
--- yes-- 5019
+-- yes-- 5081
 
 -- do all buildings have a crb?
 SELECT count(*)
 FROM diffusion_shared.cbecs_2003_crb_lookup
 where crb_model is null;
--- yes
+-- 0 -- yes
 
 -- add this information back into the main table
 ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003
@@ -334,7 +208,7 @@ UPDATE diffusion_shared.eia_microdata_cbecs_2003 a
 SET crb_model = b.crb_model
 FROM diffusion_shared.cbecs_2003_crb_lookup b
 where a.pubid8 = b.pubid8;
--- 5019 updated
+-- 5081 updated
 
 -- add an index
 CREATE INDEX eia_microdata_cbecs_2003_crb_model_btree
@@ -344,23 +218,29 @@ using btree(crb_model);
 -- drop the lookup table
 DROP TABLE IF EXIStS diffusion_shared.cbecs_2003_crb_lookup;
 
+SELECT count(*)
+FROM diffusion_shared.eia_microdata_cbecs_2003
+where crb_model is null
+and pba8 <> 1;
 
 -----------------------------------------------------------------
 -- Residential Energy Consumption Survey
 DROP TABLE IF EXISTS diffusion_shared.eia_microdata_recs_2009;
-CREATE TABLE diffusion_shared.eia_microdata_recs_2009 
-(
-	doeid			integer primary key,	--Unique identifier for each respondent
-	regionc			integer,	--Census Region
-	division		integer,	--Census Division
-	reportable_domain	integer,	--Reportable states and groups of states
-	typehuq			integer,	--Type of housing unit
-	nweight			numeric,	--Final sample weight
-	kownrent		integer,        --Housing unit is owned, rented, or occupied without payment of rent
-	kwh			numeric 	--Total Site Electricity usage, in kilowatt-hours, 2009	
-);
+CREATE TABLE diffusion_shared.eia_microdata_recs_2009 AS
+SELECT doeid, regionc, division, reportable_domain,
+	typehuq,
+	nweight::NUMERIC,
+	kownrent,
+	kwh,
+	rooftype,
+	stories,
+	totsqft
+FROM eia.recs_2009_microdata;
 
-COMMENT ON TABLE diffusion_shared.eia_microdata_recs_2009 iS 'Note: This is just a subset of the available columns. Data Dictionary available at: http://www.eia.gov/consumption/residential/data/2009/csv/public_layout.csv';
+-- add primary key
+ALTER TABLE diffusion_shared.eia_microdata_recs_2009
+ADD PRIMARY KEY (doeid);
+
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.doeid IS 'Unique identifier for each respondent';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.regionc IS 'Census Region';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.division IS 'Census Division';
@@ -369,18 +249,16 @@ COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.typehuq IS 'Type of h
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.nweight IS 'Final sample weight';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.kownrent IS 'Housing unit is owned, rented, or occupied without payment of rent';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.kwh IS 'Total Site Electricity usage, in kilowatt-hours, 2009';
-
-
-SET ROLE 'server-superusers';
-COPY diffusion_shared.eia_microdata_recs_2009	 FROM '/srv/home/mgleason/data/dg_wind/recs2009_selected_columns.csv' with csv header;
-SET ROLE 'diffusion-writers';
+COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.rooftype IS 'Major roofing material';
+COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.stories IS 'Number of stories in a single-family home';
+COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.totsqft IS 'Total square footage (includes all attached garages, all basements, and finished/heated/cooled attics)';
 
 
 -- add indices on kownrent and typehuq
 CREATE INDEX eia_microdata_recs_2009_typehuq_btree
 ON diffusion_shared.eia_microdata_recs_2009
 using btree(typehuq)
-where typehuq in (1,2);
+where typehuq in (1,2,3);
 
 CREATE INDEX eia_microdata_recs_2009_kownrent_btree
 ON diffusion_shared.eia_microdata_recs_2009
@@ -432,6 +310,15 @@ fROM diffusion_shared.eia_microdata_recs_2009;
 SELECT distinct(census_division_abbr)
 fROM diffusion_shared.eia_microdata_recs_2009;
 
+-- add the "crb_model" to this table (should be "reference" for all single family, owner occ homes)
+ALTER TABLE diffusion_shared.eia_microdata_recs_2009
+ADD COLUMN crb_model text;
+
+UPDATE diffusion_shared.eia_microdata_recs_2009 a
+SET crb_model = 'reference'
+where typehuq in (1,2,3) AND kownrent = 1;
+-- 7266 updated
+
 -- ingest lookup table to translate recs reportable domain to states
 set role 'diffusion-writers';
 DrOP TABLE IF EXISTS diffusion_shared.eia_reportable_domain_to_state_recs_2009;
@@ -456,11 +343,3 @@ ON diffusion_shared.eia_microdata_recs_2009
 USING btree(reportable_domain);
 
 
--- add the "crb_model" to this table (should be "reference" for all single family, owner occ homes)
-ALTER TABLE diffusion_shared.eia_microdata_recs_2009
-ADD COLUMN crb_model text;
-
-UPDATE diffusion_shared.eia_microdata_recs_2009 a
-SET crb_model = 'reference'
-where typehuq in (1,2) AND kownrent = 1;
--- 7266 updated

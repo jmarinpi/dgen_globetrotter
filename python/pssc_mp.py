@@ -143,6 +143,71 @@ def load_test_data(test_id=True):
     return {'rate_json': rates_json, 'generation_hourly': generation_hourly, 'consumption_hourly': consumption_hourly}  # @TODO: change to pandas dataframe
 
 
+
+
+def create_consumers(num_consumers):
+
+    tasks = multiprocessing.JoinableQueue()
+    results = multiprocessing.Queue()
+
+    consumers = [Consumer(tasks, results) for i in xrange(num_consumers)]
+    for i, consumer in enumerate(consumers):
+#        logger.debug('Starting consumer %s (%i/%i)' % (consumer.name, i + 1, num_consumers))
+        consumer.start()    
+    
+    return consumers, tasks, results
+
+    
+def run_pssc(data, consumers, tasks, results):
+
+    # set number of iterations
+    num_jobs = data.shape[0] 
+    num_consumers = len(consumers)
+
+    for i in xrange(num_jobs):
+        # get data
+        # @TODO: rewrite for pandas dataframe in conjunction with load_test_data return value rewrite
+        uid = data['uid'][i]  # @TODO: get from config
+        rate_json = data['rate_json'][i]
+        generation_hourly = data['generation_hourly'][i]
+        consumption_hourly = data['consumption_hourly'][i]   
+        data.drop(i, inplace = True)
+        
+        tasks.put(Task(uid=uid, generation_hourly=generation_hourly,
+                       consumption_hourly=consumption_hourly, rate_json=rate_json,
+                       analysis_period=1., inflation_rate=0., degradation=(0.,),
+                 return_values=('elec_cost_with_system_year1', 'elec_cost_without_system_year1')))
+
+#    logger.debug('Loading %i NULL job(s) to signal Consumers there are no more tasks' % num_consumers)
+    for i in xrange(num_consumers):
+        tasks.put(None)
+
+#    logger.info('Waiting for %i job(s) across %i worker(s) to finish' % (num_jobs, num_consumers))
+
+    # get results as they are returned
+    result_count = 0
+    results_all = []
+    while num_jobs:
+        result = results.get()
+        results_all.append(result)
+        result_count += 1
+#        logger.info('Recieved results for %i tasks' % result_count)
+        num_jobs -= 1
+
+#    logger.info('Completed %i of %i job(s)' % (result_count, num_iterations))
+
+    # delete consumer objects to free memory
+    del consumers
+
+    # convert results list to pandas a dataframe
+    results_df = pd.DataFrame.from_dict(results_all)
+    # round costs to 2 decimal places (i.e., pennies)
+    results_df['elec_cost_with_system_year1'] = results_df['elec_cost_with_system_year1'].round(2)
+    results_df['elec_cost_without_system_year1'] = results_df['elec_cost_without_system_year1'].round(2)
+    
+    return results_df
+
+
 def pssc_mp(data, num_consumers):
     # @TODO: convert to loop
     """

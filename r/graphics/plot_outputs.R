@@ -36,16 +36,8 @@ con<-make_con(driver = "PostgreSQL", host = pg_params[['host']], pg_params[['dbn
 src = src_postgres(host = pg_params[['host']], dbname=pg_params[['dbname']], user = pg_params[['user']], password = pg_params[['password']])
 
 # lazy load the output table from postgres
-if (tech == 'wind'){
-  sql = sprintf("SELECT *,  
-                  CASE WHEN turbine_size_kw = 1500 AND nturb > 1 THEN '1500+'::TEXT 
-                  ELSE turbine_size_kw::TEXT 
-                  END as system_size_factors 
+sql = sprintf("SELECT *
                 FROM %s.outputs_all",schema)
-} else if (tech == 'solar'){
-  sql = sprintf("SELECT *
-                FROM %s.outputs_all",schema)
-}
 df = tbl(src,sql(sql))
 
 # get the start year and end year for the model run

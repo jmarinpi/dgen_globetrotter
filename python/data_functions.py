@@ -12,7 +12,7 @@ import time
 import numpy as np
 import pandas as pd
 import datetime
-from multiprocessing import Process, Queue, JoinableQueue
+from multiprocessing import Process, Queue, JoinableQueue, Pool
 import select
 from cStringIO import StringIO
 import logging
@@ -445,17 +445,23 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     b.customers_in_bin, b.initial_customers_in_bin, 
                     b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
                     b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source, 
-                    b.ur_enable_net_metering
-, b.nem_system_size_limit_kw,
+                    b.ur_enable_net_metering, b.nem_system_size_limit_kw,
                     b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,
                     b.naep, b.aep, b.system_size_kw,
+                    CASE WHEN b.turbine_size_kw = 1500 AND b.nturb > 1 THEN '1500+'::TEXT 
+                    ELSE b.turbine_size_kw::TEXT 
+                    END as system_size_factors,
                     b.turbine_id,
                     b.i, b.j, b.cf_bin,
                     b.nturb, b.turbine_size_kw, 
                     b.turbine_height_m, b.scoe,
+                    b.rate_escalation_factor,
+                    
+                    (b.rate_escalation_factor * a.first_year_bill_without_system)/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
                     c.initial_capacity_mw
+                                        
                     
                     FROM %(schema)s.outputs_%(sector_abbr)s a
                     
@@ -478,7 +484,9 @@ def combine_outputs_wind(schema, sectors, cur, con):
     sql = '''CREATE INDEX outputs_all_year_btree ON %(schema)s.outputs_all USING BTREE(year);
              CREATE INDEX outputs_all_state_abbr_btree ON %(schema)s.outputs_all USING BTREE(state_abbr);
              CREATE INDEX outputs_all_sector_btree ON %(schema)s.outputs_all USING BTREE(sector);
-             CREATE INDEX outputs_all_turbine_size_kw_btree ON %(schema)s.outputs_all USING BTREE(turbine_size_kw);
+             CREATE INDEX outputs_all_business_model_btree ON %(schema)s.outputs_all USING BTREE(business_model);
+             CREATE INDEX outputs_all_system_size_factors_btree ON %(schema)s.outputs_all USING BTREE(system_size_factors);                          
+             CREATE INDEX outputs_all_metric_btree ON %(schema)s.outputs_all USING BTREE(metric);             
              CREATE INDEX outputs_all_turbine_height_m_btree ON %(schema)s.outputs_all USING BTREE(turbine_height_m);''' % inputs
     cur.execute(sql)
     con.commit()
@@ -526,15 +534,21 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     b.customers_in_bin, b.initial_customers_in_bin, 
                     b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
                     b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source, 
-                    b.ur_enable_net_metering
-, b.nem_system_size_limit_kw,
+                    b.ur_enable_net_metering, b.nem_system_size_limit_kw,
                     b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,   
                     b.naep, b.aep, b.system_size_kw, 
+                    r_cut(b.system_size_kw, ARRAY[0,2.5,5.0,10.0,20.0,50.0,100.0,250.0,500.0,750.0,1000.0,1500.0]) 
+                        as system_size_factors,
                     b.npanels, 
                     b.tilt, b.azimuth, b.derate, 
                     b.pct_shaded, b.solar_re_9809_gid, 
                     b.density_w_per_sqft, b.inverter_lifetime_yrs, 
-                    b.available_rooftop_space_sqm,
+                    b.roof_sqft, b.roof_style, b.roof_planes, b.rooftop_portion,
+                    b.slope_area_multiplier, b.unshaded_multiplier, b.available_roof_sqft,
+                                        
+                    b.rate_escalation_factor,
+                    
+                    (b.rate_escalation_factor * a.first_year_bill_without_system)/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
                     c.initial_capacity_mw
@@ -560,9 +574,9 @@ def combine_outputs_solar(schema, sectors, cur, con):
     sql = '''CREATE INDEX outputs_all_year_btree ON %(schema)s.outputs_all USING BTREE(year);
              CREATE INDEX outputs_all_state_abbr_btree ON %(schema)s.outputs_all USING BTREE(state_abbr);
              CREATE INDEX outputs_all_sector_btree ON %(schema)s.outputs_all USING BTREE(sector);
-             CREATE INDEX outputs_all_system_size_kw_btree ON %(schema)s.outputs_all USING BTREE(system_size_kw);
-             CREATE INDEX outputs_all_npanels_btree ON %(schema)s.outputs_all USING BTREE(npanels);
-             CREATE INDEX outputs_all_rooftop_availability_btree ON %(schema)s.outputs_all USING BTREE(available_rooftop_space_sqm);''' % inputs
+             CREATE INDEX outputs_all_business_model_btree ON %(schema)s.outputs_all USING BTREE(business_model);
+             CREATE INDEX outputs_all_system_size_factors_btree ON %(schema)s.outputs_all USING BTREE(system_size_factors);                          
+             CREATE INDEX outputs_all_metric_btree ON %(schema)s.outputs_all USING BTREE(metric);''' % inputs
     cur.execute(sql)
     con.commit()
 
@@ -692,17 +706,17 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
     inputs['seed_str'] = str(seed).replace('.','p')
     if sector_abbr == 'res':
         inputs['load_table'] = 'diffusion_shared.eia_microdata_recs_2009'
-        inputs['load_columns'] = 'b.doeid as load_id, b.nweight as weight, b.kwh as ann_cons_kwh, b.crb_model'
+        inputs['load_columns'] = 'b.doeid as load_id, b.nweight as weight, b.kwh as ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft'
         inputs['load_pkey'] = 'doeid'
         inputs['load_weight_column'] = 'nweight'
         inputs['load_region'] = 'reportable_domain'
-        # limit to single-family (attached or detached), owner-occupied homes
-        inputs['load_where'] = ' AND b.typehuq in (1,2) AND b.kownrent = 1'
+        # limit to mobilehomes (1) single-family (3 - attached or 2 - detached), owner-occupied homes
+        inputs['load_where'] = ' AND b.typehuq in (1,2,3) AND b.kownrent = 1'
         # lookup table for finding the normalized max demand
         inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_res'
     else:
         inputs['load_table'] = 'diffusion_shared.eia_microdata_cbecs_2003'
-        inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh, b.crb_model'
+        inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft'
         inputs['load_pkey'] = 'pubid8'
         inputs['load_weight_column'] = 'adjwt8'
         inputs['load_region'] = 'census_division_abbr'
@@ -798,9 +812,9 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s;
             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
             WITH binned as(
-            SELECT a.*, b.crb_model, b.ann_cons_kwh, b.weight,
-            	a.county_total_customers_2011 * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
-            	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
+            SELECT a.*, b.crb_model, b.ann_cons_kwh, b.weight, b.roof_sqft, b.roof_style,
+                	a.county_total_customers_2011 * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
+                	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
             FROM %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
             LEFT JOIN %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s b
             ON a.county_id = b.county_id
@@ -954,9 +968,72 @@ def find_rates(inputs_dict, county_chunks, exclusion_type, npar, pg_conn_string,
     elif inputs_dict['technology'] == 'solar':
         # add an index on county id and row_number
         sql = """CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_join_fields_btree 
-                ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s  USING BTREE(county_id, bin_id);""" % inputs_dict
+                ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s USING BTREE(county_id, bin_id);
+                
+                CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_roof_style_btree 
+                ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s USING BTREE(roof_style);
+                
+                CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_state_abbr_btree 
+                ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s USING BTREE(state_abbr);""" % inputs_dict
         p_run(pg_conn_string, sql, county_chunks, npar)
 
+
+def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string, logger):
+    
+    msg = "Assigning rooftop characteristics"
+    logger.info(msg)
+    
+    #=============================================================================================================
+    #     link each point to a rooftop orientation based on roof_style and prob weights in rooftop_characteristics
+    #=============================================================================================================
+    t0 = time.time()
+    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s;
+            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s AS
+            WITH all_roof_options AS
+            (
+                	SELECT a.county_id, a.bin_id, 
+                         b.uid as roof_char_uid, b.prob_weight
+                	FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
+                	LEFT JOIN diffusion_solar.rooftop_characteristics b
+                	ON b.sector_abbr = '%(sector_abbr)s'
+                  AND a.roof_style = b.roof_style
+            ),
+            selected_roof_options AS 
+            (
+                	select county_id, bin_id, 
+                		 unnest(sample(array_agg(roof_char_uid ORDER BY roof_char_uid),
+                			1, -- sample size
+                			%(seed)s * county_id * bin_id, -- random generator seed
+                			False, -- sample w/o replacement
+                			array_agg(prob_weight ORDER BY roof_char_uid))) as roof_char_uid
+                	FROM all_roof_options
+                	GROUP BY county_id, bin_id
+            )
+            SELECT a.*,
+                	c.tilt, c.azimuth, d.pct_shaded,
+                  c.roof_planes, c.rooftop_portion, c.slope_area_multiplier, c.unshaded_multiplier,
+                	a.roof_sqft * c.rooftop_portion * c.slope_area_multiplier * c.unshaded_multiplier as available_roof_sqft
+            FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
+            LEFT JOIN selected_roof_options b
+                    ON a.county_id = b.county_id 
+                    AND a.bin_id = b.bin_id
+            LEFT JOIN diffusion_solar.rooftop_characteristics c
+                    ON b.roof_char_uid = c.uid
+            LEFT JOIN diffusion_solar.solar_ds_regional_shading_assumptions d
+                    ON a.state_abbr = d.state_abbr;""" % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)
+
+    # query for indices creation    
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s_census_division_abbr_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s 
+              USING BTREE(census_division_abbr);
+              
+              CREATE INDEX pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s_resource_key_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s 
+              USING BTREE(solar_re_9809_gid, tilt, azimuth);""" % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)
+    
+    print time.time()-t0
 
 
 def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
@@ -993,82 +1070,14 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     #==============================================================================
     find_rates(inputs, county_chunks, exclusion_type, npar, pg_conn_string, rate_structure, logger)
 
-
     #==============================================================================
-    #     Sample set of rooftop orientations for each county
+    #     Assign rooftop characterisics
     #==============================================================================  
-    msg = "Sampling from distribution of rooftop availability"
-    logger.info(msg)
-    
-    t0 = time.time()
-    sql = """DROP TABLE IF EXISTS %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s;
-             CREATE TABLE %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s AS
-            WITH all_bins AS
-             (
-                 SELECT a.county_id, 
-                         b.uid as orientation_uid,
-                         b.weight::numeric as weight
-                 FROM %(schema)s.counties_to_model a
-                 LEFT JOIN %(schema)s.solar_ds_rooftop_availability b
-                 ON a.state_abbr = b.state_abbr
-                 and b.sector = '%(sector_abbr)s'
-                 WHERE a.county_id IN (%(chunk_place_holder)s)
-            ),
-            sampled_bins AS 
-            (
-                SELECT a.county_id, 
-                        unnest(sample(array_agg(a.orientation_uid ORDER BY a.orientation_uid), %(n_bins)s, %(seed)s * a.county_id,True, array_agg(a.weight ORDER BY a.orientation_uid))) as orientation_uid
-                FROM all_bins a
-                GROUP BY a.county_id
-                ORDER BY a.county_id, orientation_uid
-            ), 
-            numbered_samples AS
-            (
-                SELECT a.county_id, a.orientation_uid,
-                       ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.orientation_uid) as bin_id 
-                FROM sampled_bins a
-            )
-            SELECT  a.county_id, a.bin_id,
-                        b.pct_shaded, b.tilt, b.azimuth, b.weight
-            FROM numbered_samples a
-            LEFT JOIN %(schema)s.solar_ds_rooftop_availability b
-            ON a.orientation_uid = b.uid;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)   
-    print time.time()-t0
-    
-    # add an index on county id and row_number
-    sql = """CREATE INDEX county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s_join_fields_btree 
-            ON %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s USING BTREE(county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)
-   
-    #==============================================================================
-    #     link each point to a rooftop orientation
-    #==============================================================================
-    # use random weighted sampling on the load bins to ensure that countyies with <N points
-    # have a representative sample of load bins 
-    msg = 'Associating Customer Bins with Rooftop Availability'    
-    logger.info(msg)
-    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s;
-            CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s AS
-                SELECT a.*, b.pct_shaded, b.tilt, b.azimuth, b.weight as rooftop_weight
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
-                LEFT JOIN %(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s b
-                ON a.county_id = b.county_id
-                AND a.bin_id = b.bin_id""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)
-    print time.time()-t0
+    assign_roof_characteristics(inputs, county_chunks, npar, pg_conn_string, logger)
 
-    # query for indices creation    
-    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s_census_division_abbr_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s 
-              USING BTREE(census_division_abbr);
-              
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s_resource_key_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s 
-              USING BTREE(solar_re_9809_gid, tilt, azimuth);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)
-    
-    # join to resource
+    #==============================================================================
+    #     Join to Resource
+    #==============================================================================
     msg = "Finding Resource for Each Customer Bin"
     logger.info(msg)
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s;
@@ -1093,7 +1102,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
               USING BTREE(state_abbr, utility_type);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
 
-
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
     #==============================================================================
@@ -1114,6 +1122,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   hdf_load_index integer,
                   pca_reg text,
                   reeds_reg integer,
+                  rate_escalation_factor numeric,
                   incentive_array_id integer,
                   ranked_rate_array_id integer,
                   carbon_price_cents_per_kwh numeric,
@@ -1146,7 +1155,13 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   solar_re_9809_gid integer,
                   density_w_per_sqft numeric,
                   inverter_lifetime_yrs integer,
-                  available_rooftop_space_sqm numeric
+                  roof_sqft integer,
+                  roof_style text,
+                  roof_planes integer,
+                  rooftop_portion numeric,
+                  slope_area_multiplier numeric,
+                  unshaded_multiplier numeric,
+                  available_roof_sqft integer
                 );""" % inputs
     cur.execute(sql)
     con.commit()
@@ -1162,6 +1177,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.utility_type, 
                   a.hdf_load_index,
                   a.pca_reg, a.reeds_reg,
+                  b.rate_escalation_factor,
                   a.incentive_array_id,
                   a.ranked_rate_array_id,
                   b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
@@ -1190,10 +1206,17 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   c.system_size_limit_kw as nem_system_size_limit_kw,
                   c.year_end_excess_sell_rate_dlrs_per_kwh as ur_nm_yearend_sell_rate,
                   c.hourly_excess_sell_rate_dlrs_per_kwh as ur_flat_sell_rate,
+                  a.roof_sqft,
+                  a.roof_style,
+                  a.roof_planes,
+                  a.rooftop_portion,
+                  a.slope_area_multiplier,
+                  a.unshaded_multiplier,
+                  a.available_roof_sqft,
                   --OPTIMAL SIZING ALGORITHM THAT RETURNS A SYSTEM SIZE AND NUMBER OF PANELS:
                   diffusion_solar.system_sizing(a.load_kwh_per_customer_in_bin,
                                                 a.naep * b.efficiency_improvement_factor,
-                                                1000::NUMERIC, -- replace with actual available_rooftop_space_sqm 
+                                                a.available_roof_sqft,
                                                 b.density_w_per_sqft,
                                                 c.system_size_limit_kw,
                                                 d.sys_size_target_nem,
@@ -1214,7 +1237,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                     AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
-                   pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id,
+                   pca_reg, reeds_reg, rate_escalation_factor, incentive_array_id, ranked_rate_array_id,
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 
@@ -1232,8 +1255,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    (system_sizing_return).system_size_kw as system_size_kw,
                    (system_sizing_return).npanels as npanels,
                    
-                   (system_sizing_return).nem_available as ur_enable_net_metering
-,
+                   (system_sizing_return).nem_available as ur_enable_net_metering,
                    nem_system_size_limit_kw,
                    ur_nm_yearend_sell_rate,
                    ur_flat_sell_rate,
@@ -1245,7 +1267,13 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    solar_re_9809_gid,
                    density_w_per_sqft,
                    inverter_lifetime_yrs,
-                   1000::NUMERIC as available_rooftop_space_sqm -- replace with actual available_rooftop_space_sqm 
+                   roof_sqft,
+                   roof_style,
+                   roof_planes,
+                   rooftop_portion,
+                   slope_area_multiplier,
+                   unshaded_multiplier,
+                   available_roof_sqft
           FROM combined;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time() - t0
@@ -1427,6 +1455,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                  	a.micro_id, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
                       a.utility_type, a.hdf_load_index,
                       a.pca_reg, a.reeds_reg,
+                      b.rate_escalation_factor,
                       a.incentive_array_id,
                       a.ranked_rate_array_id,
                       %(exclusions_insert)s
@@ -1477,7 +1506,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                     AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
-                   pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, max_height,
+                   pca_reg, reeds_reg, rate_escalation_factor, incentive_array_id, ranked_rate_array_id, max_height,
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 
@@ -1790,8 +1819,7 @@ def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_st
             LEFT JOIN %(schema)s.%(technology)s_resource_hourly d
                     ON %(gen_join_clause)s
             WHERE a.uid IN (%(chunk_place_holder)s);""" % inputs_dict
-        
-   
+
     results = JoinableQueue()    
     jobs = []
  
@@ -2496,7 +2524,7 @@ def get_lease_availability(con, schema):
     df = sqlio.read_frame(sql, con)
     return df
     
-def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr): 
+def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr,tech_lifetime): 
     '''
     Append the expected rate escalation to the main dataframe.
     Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
@@ -2507,7 +2535,7 @@ def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr):
     '''  
     
     # Only use the escalation multiplier over the next 30 years
-    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + 30)) & (rate_escalations['year'] >=  year) & (rate_escalations['sector'] == sector_abbr.lower())]
+    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + tech_lifetime)) & (rate_escalations['year'] >=  year) & (rate_escalations['sector'] == sector_abbr.lower())]
     
     rate_pivot = projected_rate_escalations.pivot(index = 'census_division_abbr',columns = 'year', values = 'escalation_factor')    
     rate_pivot['census_division_abbr'] = rate_pivot.index
@@ -2522,7 +2550,7 @@ def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr):
     else:
         raise Exception("rate_escalations_have been reordered!")
 
-def fill_jagged_array(vals,lens, cols = 30):
+def fill_jagged_array(vals,lens, cols):
     '''
     Create a 'jagged' array filling each row with a value of variable length.
     vals and lens must be equal length; cols gives the number of columns of the
@@ -2571,14 +2599,14 @@ def assign_business_model(df, prng, method = 'prob', alpha = 2):
         # Determine the probability of leasing
         df['prob_of_leasing'] = df['mkt_exp']/df['mkt_sum']
         df.loc[(df['business_model'] == 'tpo') & ~(df['leasing_allowed']),'prob_of_leasing'] = 0 #Restrict leasing if not allowed by state
+        df.loc[(df['prob_of_leasing'] == np.inf),'prob_of_leasing'] = 0 # If max_market_share is 0 for both business models, then default to buying.
         
         # Both business models are still in the df, so we use a ranking algorithm after the random draw
-        # To determine whether to buy or lease 
+        # to determine whether to buy or lease 
         df['rank'] =0
         df.loc[(df['business_model'] == 'host_owned'),'rank'] = 1
         df.loc[(df['business_model'] == 'tpo') & (df['rnd']< df['prob_of_leasing']),'rank'] = 2
         
-        #df[['county_id','bin_id','business_model','max_market_share','rnd','prob_of_leasing','rank']].head(10)
         
         gb = df.groupby(['county_id','bin_id'])
         rb = gb['rank'].rank(ascending = False)

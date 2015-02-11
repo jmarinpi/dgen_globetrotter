@@ -53,10 +53,6 @@ if (tech == 'wind'){
 } else if(tech == 'solar'){
   dist_of_azimuth_selected(df, start_year)
 }
-
-excess_gen_out<-excess_gen_figs(df, con, schema)
-excess_gen_out$excess_gen_pt
-excess_gen_out$excess_gen_cdf
 ```
 # Resource Potential
 ``` {r Resource_Potential}

@@ -43,12 +43,12 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
     if mode == 'ReEDS' and max(df['ReEDS_elec_price_mult'])>0:
         
-        rate_growth_mult = np.ones((len(df),30))
+        rate_growth_mult = np.ones((len(df),cfg.tech_lifetime))
         rate_growth_mult *= df['ReEDS_elec_price_mult'][:,np.newaxis]
          
     else:
         # if not in ReEDS mode, use the calc_expected_rate_escal function
-        rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector_abbr)    
+        rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector_abbr,cfg.tech_lifetime)    
 
     # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
     if scenario_opts['overwrite_exist_inc']:
@@ -58,12 +58,12 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id'])
     
-    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, yrs = 30)
+    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, cfg.tech_lifetime)
     
     ## Calc metric value here
-    df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs)
+    df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs,cfg.tech_lifetime)
         
-    df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate)    
+    df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate,cfg.tech_lifetime)    
 
     
     # Convert metric value to integer as a primary key, then bound within max market share ranges
@@ -98,7 +98,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     
     
 #==============================================================================
-def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, ann_system_degradation, yrs = 30):
+def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, ann_system_degradation, tech_lifetime):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 
@@ -128,7 +128,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
         
 """                
     # default is 30 year analysis periods
-    shape=(len(df),yrs); 
+    shape=(len(df),tech_lifetime); 
     df['ic'] = df['installed_costs_dollars_per_kw'] * df['system_size_kw']
     
     # Remove NAs if not rebate are passed in input sheet   
@@ -149,7 +149,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     crf = (df.loan_rate*(1 + df.loan_rate)**df.loan_term_yrs) / ( (1+df.loan_rate)**df.loan_term_yrs - 1);
     pmt = - (1 - df.down_payment)* df.ic * crf    
     
-    loan_cost = datfunc.fill_jagged_array(pmt,df.loan_term_yrs)
+    loan_cost = datfunc.fill_jagged_array(pmt,df.loan_term_yrs,cols = tech_lifetime)
     loan_cost[:,0] -= df.ic * df.down_payment # Pay the down payment and the first year loan payment in first year
     
     # wind turbines do not have inverters hence no replacement cost.
@@ -244,7 +244,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     '''
     
     # Calc interest paid on serving the loan
-    interest_paid = calc_interest_pmt_schedule(df,30)
+    interest_paid = calc_interest_pmt_schedule(df,tech_lifetime)
     interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') & (df.business_model == 'host_owned'))[:,np.newaxis]
     
     '''
@@ -255,8 +255,8 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     incentive_revenue[:, 1] = df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction
     
     
-    ptc_revenue = datfunc.fill_jagged_array(df.value_of_ptc,df.ptc_length)
-    pbi_fit_revenue = datfunc.fill_jagged_array(df.value_of_pbi_fit,df.pbi_fit_length)    
+    ptc_revenue = datfunc.fill_jagged_array(df.value_of_ptc,df.ptc_length, cols = tech_lifetime)
+    pbi_fit_revenue = datfunc.fill_jagged_array(df.value_of_pbi_fit,df.pbi_fit_length, cols = tech_lifetime)    
 
     incentive_revenue += ptc_revenue + pbi_fit_revenue
     
@@ -284,12 +284,12 @@ def calc_fin_metrics(costs, revenues, dr):
     irr = calc_irr(cfs)
     mirr = calc_mirr(cfs, finance_rate = dr, reinvest_rate = dr + 0.02)
     npv = calc_npv(cfs,dr)
-    payback = calc_payback(cfs)
+    payback = calc_payback(cfs,revenue,costs,tech_lifetime)
     ttd = calc_ttd(cfs)
     return
 
 #==============================================================================    
-def calc_lcoe(costs,aep, dr, yrs = 30):
+def calc_lcoe(costs,aep, dr, tech_lifetime):
     ''' LCOE calculation. LCOE is the net present cost, divided by the net present
     energy production. Assume that aep is constant over lifetime of system###
     
@@ -301,7 +301,7 @@ def calc_lcoe(costs,aep, dr, yrs = 30):
     '''
     
     num = -100 * calc_npv(costs, dr)
-    denom = calc_npv(np.repeat(aep[:,np.newaxis],yrs, axis = 1), dr)
+    denom = calc_npv(np.repeat(aep[:,np.newaxis], tech_lifetime, axis = 1), dr)
     return num/denom
 #==============================================================================    
 
@@ -398,17 +398,22 @@ def calc_npv(cfs,dr):
     
 #==============================================================================
     
-def calc_payback(cfs):
+def calc_payback(cfs,revenue,costs,tech_lifetime):
     '''payback calculator ### VECTORIZE THIS ###
     
-    IN: cfs - numpy array - project cash flows ($/yr)
-        
+    IN: cfs - numpy array - project cash flows ($/yr)  
     OUT: pp - numpy array - interpolated payback period (years)
     
     '''
-    cum_cfs = cfs.cumsum(axis = 1)
+
+    shape = (len(cfs),tech_lifetime)
+    cum_revenue = revenue[:,:tech_lifetime].cumsum(axis = 1)
+    total_costs = costs[:,:tech_lifetime].sum(axis = 1)[:,np.newaxis] * np.ones(shape)
+    
+    cumulative_net_cashflow = cum_revenue + total_costs
+    
     out = []
-    for x in cum_cfs:
+    for x in cumulative_net_cashflow:
         if x[-1] < 0: # No payback if the cum. cfs are negative in the final year
             pp = 30
         elif all(x<0): # Is positive cashflow ever achieved?
@@ -566,7 +571,7 @@ def calc_interest_pmt_schedule(df,yrs):
     
 #==============================================================================
 
-def calc_metric_value(df,cfs,revenue,costs):
+def calc_metric_value(df,cfs,revenue,costs, tech_lifetime):
     '''
     Calculates the economic value of adoption given the metric chosen. Residential buyers
     use simple payback, non-residential buyers use time-to-double, leasers use monthly bill savings
@@ -578,7 +583,7 @@ def calc_metric_value(df,cfs,revenue,costs):
             metric_value - pd series - series of values given the business_model and sector
     '''
     
-    payback = calc_payback(cfs)
+    payback = calc_payback(cfs,revenue,costs,tech_lifetime)
     ttd = calc_ttd(cfs)
     
     """ MBS is calculated in the calc_cashflows function using this method:
