@@ -41,6 +41,22 @@ VACUUM ANALYZE diffusion_shared.pt_grid_us_ind_new;
 
 
 ------------------------------------------------------------------------------------------------------------
+-- GEOM (96703)
+------------------------------------------------------------------------------------------------------------
+ALTER TABLE diffusion_shared.pt_grid_us_ind_new 
+ADD COLUMN the_geom_96703 geometry;
+
+UPDATE diffusion_shared.pt_grid_us_ind_new
+SET the_geom_96703= ST_Transform(the_geom_4326, 96703);
+-- 1,603,958 rows
+
+CREATE INDEX pt_grid_us_ind_new_the_geom_96703_gist 
+ON diffusion_shared.pt_grid_us_ind_new 
+USING gist(the_geom_96703);
+------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------------------------
 -- GID (PRIMARY KEY)
 ------------------------------------------------------------------------------------------------------------
 ALTER TABLE diffusion_shared.pt_grid_us_ind_new 
@@ -656,6 +672,343 @@ where hdf_load_index is null;
 -- 0 rows
 ------------------------------------------------------------------------------------------------------------
 
+
+
+------------------------------------------------------------------------------------------------------------
+-- HIGH INTENSITY DEVELOPED LAND (NLCD Class 24)
+------------------------------------------------------------------------------------------------------------
+DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_ind_new_hi_dev_lookup;
+CREATE TABLE diffusion_wind_data.pt_grid_us_ind_new_hi_dev_lookup (
+	gid integer,
+	hi_dev integer);
+
+--run in parallel for speed
+SELECT parsel_2('dav-gis','mgleason','mgleason','diffusion_shared.pt_grid_us_ind_new','gid',
+		'SELECT a.gid, ST_Value(b.rast,a.the_geom_4326) as hi_dev
+		FROM  diffusion_shared.pt_grid_us_ind_new a
+		INNER JOIN diffusion_wind_data.nlcd_2011_class_24_100x100 b
+		ON ST_Intersects(b.rast,a.the_geom_4326);',
+			'diffusion_wind_data.pt_grid_us_ind_new_hi_dev_lookup', 'a',16);
+
+-- add a primary key on the lookup table
+ALTER TABLE diffusion_wind_data.pt_grid_us_ind_new_hi_dev_lookup
+ADD PRIMARY KEY (gid);
+
+-- join the info back in
+ALTER TABLE diffusion_shared.pt_grid_us_ind_new 
+ADD COLUMN hi_dev integer;
+
+UPDATE diffusion_shared.pt_grid_us_ind_new a
+SET hi_dev = b.hi_dev
+FROM diffusion_wind_data.pt_grid_us_ind_new_hi_dev_lookup b
+where a.gid = b.gid;
+
+-- set the remainders to values of zero
+UPDATE diffusion_shared.pt_grid_us_ind_new
+set hi_dev = 0
+where hi_dev is null;
+
+-- cast to type boolean
+ALTER TABLE diffusion_shared.pt_grid_us_ind_new 
+ALTER COLUMN hi_dev TYPE boolean using hi_dev::boolean;
+
+-- create an index
+CREATE INDEX pt_grid_us_ind_new_hi_dev_btree 
+ON diffusion_shared.pt_grid_us_ind_new 
+USING btree(hi_dev);
+
+-- make sure no nulls
+SELECT count(*)
+FROM diffusion_shared.pt_grid_us_ind_new
+where hi_dev is null;
+-- 0
+
+-- check how many pts are excluded
+SELECT count(*)
+FROM diffusion_shared.pt_grid_us_ind_new
+where hi_dev = True;
+-- 104021
+------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------------------------
+-- PERCENT CANOPY COVER
+------------------------------------------------------------------------------------------------------------
+DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_ind_new_canopy_pct_lookup;
+CREATE TABLE diffusion_wind_data.pt_grid_us_ind_new_canopy_pct_lookup (
+	gid integer,
+	canopy_pct integer);
+
+--run in parallel for speed
+SELECT parsel_2('dav-gis','mgleason','mgleason','diffusion_shared.pt_grid_us_ind_new','gid',
+		'SELECT a.gid, ST_Value(b.rast,a.the_geom_4326) as canopy_pct
+		FROM  diffusion_shared.pt_grid_us_ind_new a
+		INNER JOIN diffusion_wind_data.canopy_pct_100x100 b
+		ON ST_Intersects(b.rast,a.the_geom_4326);',
+			'diffusion_wind_data.pt_grid_us_ind_new_canopy_pct_lookup', 'a',16);
+
+-- add a primary key on the lookup table
+ALTER TABLE diffusion_wind_data.pt_grid_us_ind_new_canopy_pct_lookup
+ADD PRIMARY KEY (gid);
+
+-- join the info back in
+ALTER TABLE diffusion_shared.pt_grid_us_ind_new 
+ADD COLUMN canopy_pct integer;
+
+UPDATE diffusion_shared.pt_grid_us_ind_new a
+SET canopy_pct = b.canopy_pct
+FROM diffusion_wind_data.pt_grid_us_ind_new_canopy_pct_lookup b
+where a.gid = b.gid;
+
+-- create an index
+CREATE INDEX pt_grid_us_ind_new_canopy_pct_btree 
+ON diffusion_shared.pt_grid_us_ind_new 
+USING btree(canopy_pct);
+
+-- check for nulls
+SELECT count(*)
+FROM diffusion_shared.pt_grid_us_ind_new
+where canopy_pct is null;
+-- 0
+
+-- check how many pts are >= 25% can cover
+SELECT count(*)
+FROM diffusion_shared.pt_grid_us_ind_new
+where canopy_pct >= 25;
+-- 260934 (out of 1.1 mil)
+------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------------------------
+-- CANOPY HEIGHT
+------------------------------------------------------------------------------------------------------------
+DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_ind_new_canopy_height_lookup;
+CREATE TABLE diffusion_wind_data.pt_grid_us_ind_new_canopy_height_lookup (
+	gid integer,
+	canopy_ht_m integer);
+
+--run in parallel for speed
+SELECT parsel_2('dav-gis','mgleason','mgleason','diffusion_shared.pt_grid_us_ind_new','gid',
+		'SELECT a.gid, ST_Value(b.rast,a.the_geom_4326)/10. as canopy_ht_m
+		FROM  diffusion_shared.pt_grid_us_ind_new a
+		INNER JOIN diffusion_wind_data.canopy_height_100x100 b
+		ON ST_Intersects(b.rast,a.the_geom_4326);',
+			'diffusion_wind_data.pt_grid_us_ind_new_canopy_height_lookup', 'a',16);
+
+-- add a primary key on the lookup table
+ALTER TABLE diffusion_wind_data.pt_grid_us_ind_new_canopy_height_lookup
+ADD PRIMARY KEY (gid);
+
+-- join the info back in
+ALTER TABLE diffusion_shared.pt_grid_us_ind_new 
+ADD COLUMN canopy_ht_m integer;
+
+UPDATE diffusion_shared.pt_grid_us_ind_new a
+SET canopy_ht_m = b.canopy_ht_m
+FROM diffusion_wind_data.pt_grid_us_ind_new_canopy_height_lookup b
+where a.gid = b.gid;
+
+-- create an index
+CREATE INDEX pt_grid_us_ind_new_canopy_ht_m_btree 
+ON diffusion_shared.pt_grid_us_ind_new 
+USING btree(canopy_ht_m);
+
+-- check how many have a null canopy ht where canopy pct is > 0
+DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height;
+CREATE TABLE diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height AS
+SElect gid, the_geom_4326, canopy_ht_m, canopy_pct
+FROM diffusion_shared.pt_grid_us_ind_new
+where canopy_ht_m is null
+and canopy_pct > 0;
+-- 253822 rows
+
+-- fix by buffering points by 600 and running a zonal statistics on them (this will be second order queens contiguity search)
+-- create buffered geometry
+ALTER TABLE diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height
+ADD COLUMN the_buffer_600m_4326 geometry;
+
+UPDATE diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height
+set the_buffer_600m_4326 = ST_Buffer(the_geom_4326::geography, 600)::geometry;
+
+-- create an index
+CREATE INDEX pt_grid_us_ind_new_missing_canopy_height_the_buffer_gist
+ON diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height
+using btree(the_buffer_600m_4326);
+
+-- add primary key
+ALTER TABLE diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height
+ADD PRIMARY KEY (gid);
+
+-- now fix using zonal statistics of the 9 surrounding cells (mean)
+DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height_fixed;
+CREATE TABLE diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height_fixed 
+(
+	gid integer,
+	avg_canopy_ht numeric
+);
+
+select parsel_2('dav-gis','mgleason', 'mgleason',
+		'diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height',
+		'gid',
+		'WITH tile_stats as 
+		(
+			select a.gid,
+				ST_SummaryStats(ST_Clip(b.rast, 1, a.the_buffer_600m_4326, true)) as stats
+			FROM diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height as a
+			INNER JOIN diffusion_wind_data.canopy_height_100x100 b
+				ON ST_Intersects(b.rast, the_buffer_600m_4326)
+		)
+			--aggregate the results from each tile
+		SELECT gid, sum((stats).sum)/sum((stats).count)/10. as avg_canopy_ht
+		FROM tile_stats
+		GROUP by gid',
+		'diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height_fixed ',
+		'a',16);
+
+-- add primary key
+ALTER TABLE diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height_fixed
+ADD PRIMARY KEY (gid);
+
+-- how many were fixed?
+SELECT count(*)
+FROM diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height_fixed
+where avg_canopy_ht is not null;
+-- 231334
+
+-- add these to the main table
+UPDATE diffusion_shared.pt_grid_us_ind_new a
+SET canopy_ht_m = b.avg_canopy_ht
+FROM  diffusion_wind_data.pt_grid_us_ind_new_missing_canopy_height_fixed b
+where a.gid = b.gid
+AND a.canopy_ht_m is null
+and a.canopy_pct > 0
+and b.avg_canopy_ht is not null;
+-- 231334 rows
+
+-- for remaining ones that weren't fixed, set the canopy height to 5 m
+-- This is the minimum height for tree canopy cover in the NLCD pct canopy cover raster
+-- Remaining areas are those that likely had no trees in 2000 (vintage of canopy height raster)
+-- and 2011 (vintage of canopy cover raster), so I am going to assume that they are small trees. 
+UPDATE diffusion_shared.pt_grid_us_ind_new a
+SET canopy_ht_m = 5
+where a.canopy_ht_m is null
+and a.canopy_pct > 0;
+-- 22488 rows
+
+-- set everything that remains (all nulls) to height of zero
+UPDATE diffusion_shared.pt_grid_us_ind_new a
+SET canopy_ht_m = 0
+where a.canopy_ht_m is null
+and a.canopy_pct = 0;
+-- 254156 rows
+
+-- check for nulls
+SELECT count(*)
+FROM diffusion_shared.pt_grid_us_ind_new
+where canopy_ht_m is null;
+--  0 rows
+
+-- make sure no heights of zero where canopy pct >0
+SELECT min(canopy_ht_m)
+FROM diffusion_shared.pt_grid_us_ind_new
+where canopy_pct > 0;
+-- 3
+------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------------------------
+-- CENSUS 2010 BLOCK ID
+------------------------------------------------------------------------------------------------------------
+-- create block id lookup table
+DROP TABLE IF EXISTS  diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup;
+CREATE TABLE  diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup 
+(
+	gid integer,
+	the_geom_96703 geometry,
+	block_gisjoin character varying(18),
+	aland10 numeric
+);
+
+SELECT parsel_2('dav-gis','mgleason','mgleason',
+		'diffusion_shared.pt_grid_us_ind_new',
+		'gid',
+		'SELECT a.gid, a.the_geom_96703, c.gisjoin as block_gisjoin, c.aland10
+		FROM diffusion_shared.pt_grid_us_ind_new a
+		LEFT JOIN diffusion_shared.county_geom b
+			ON a.county_id = b.county_id
+		LEFT JOIN census_2010.block_geom_parent c
+			ON b.state_abbr = c.state_abbr
+			AND ST_Intersects(a.the_geom_4326, c.the_geom_4326)',
+		'diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup', 
+		'a',16);
+
+-- create a primary key on the lookup table
+ALTER tABLE diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup
+ADD PRIMARY KEY (gid);
+
+-- create index on the block_gisjoin col
+CREATE iNDEX pt_grid_us_ind_new_census_2010_block_lkup_gisjoin_btree
+ON diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup
+using btree(block_gisjoin);
+
+-- create index on the block_gisjoin col
+CREATE iNDEX pt_grid_us_ind_new_census_2010_block_lkup_gisjoin_is_not_null_btree
+ON diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup
+using btree((block_gisjoin is not null));
+
+-- check for nulls
+select count(*)
+FROM diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup
+where block_gisjoin is null;
+-- 479
+
+-- fix with nearest neighbor
+DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup_missing_lkup;
+CREATE TABLE diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup_missing_lkup AS
+with a as
+(
+	SELECT gid, the_geom_96703
+	FROM diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup
+	where block_gisjoin is null
+),
+b as 
+(
+	
+	SELECT a.gid,
+	(
+		SELECT array[c.block_gisjoin, c.aland10::text]
+		 FROM diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup c
+		 where c.block_gisjoin is not null
+		 ORDER BY a.the_geom_96703 <#> c.the_geom_96703
+		 LIMIT 1
+	 ) as nn
+	FROM a
+)
+SELECT gid, nn[1] as block_gisjoin, nn[2]::numeric as aland10
+from b;
+
+UPDATE diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup a
+SET block_gisjoin = b.block_gisjoin
+FROM  diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup_missing_lkup b
+where a.gid = b.gid
+and a.block_gisjoin is null;
+
+-- check for nulls again
+select count(*)
+FROM diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup
+where block_gisjoin is null;
+
+-- drop the old block_gisjoin index and create one for all ids
+DROP INDEX diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup_gisjoin_is_not_null_btree;
+CREATE iNDEX pt_grid_us_ind_new_census_2010_block_lkup_gisjoin_ibtree
+ON diffusion_wind_data.pt_grid_us_ind_new_census_2010_block_lkup
+using btree(block_gisjoin);
+------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------------------------
+-- CENSUS 2010 ACRES PER HOUSING UNIT (BLOCKS)
+------------------------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------------------------------------
 -- FOREIGN KEYS
