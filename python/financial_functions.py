@@ -90,6 +90,10 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     # Join the max_market_share table and df in order to select the ultimate mms based on the metric value. 
     df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'metric','metric_value_as_factor','business_model'])
     
+    # Derate the maximum market share for commercial and industrial customers in leased buildings by (1/3)
+    # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
+    df['max_market_share'] = np.where(df.owner_occupancy_status == 2, df.max_market_share/3,df.max_market_share)
+        
     df = datfunc.assign_business_model(df, prng, method = 'prob', alpha = 2)
     
     return df
