@@ -676,59 +676,66 @@ ALTER TABLE diffusion_shared.pt_grid_us_ind_new set (fillfactor = 50);
 VACUUM FULL diffusion_shared.pt_grid_us_ind_new;
 
 ------------------------------------------------------------------------------------------------------------
--- HIGH INTENSITY DEVELOPED LAND (NLCD Class 24)
+-- PERCENT HIGH INTENSITY DEVELOPED LAND (NLCD Class 24)
 ------------------------------------------------------------------------------------------------------------
-DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_ind_new_hi_dev_lookup;
-CREATE TABLE diffusion_wind_data.pt_grid_us_ind_new_hi_dev_lookup (
+DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_com_new_hi_dev_pct_lookup;
+CREATE TABLE diffusion_wind_data.pt_grid_us_ind_new_hi_dev_pct_lookup (
 	gid integer,
-	hi_dev integer);
+	hi_dev_pct integer);
 
 --run in parallel for speed
 SELECT parsel_2('dav-gis','mgleason','mgleason','diffusion_shared.pt_grid_us_ind_new','gid',
 		'SELECT a.gid, ST_Value(b.rast,a.the_geom_4326) as hi_dev
 		FROM  diffusion_shared.pt_grid_us_ind_new a
-		INNER JOIN diffusion_wind_data.nlcd_2011_class_24_100x100 b
+		INNER JOIN diffusion_wind_data.nlcd_2011_cl24_pct_100x100 b
 		ON ST_Intersects(b.rast,a.the_geom_4326);',
-			'diffusion_wind_data.pt_grid_us_ind_new_hi_dev_lookup', 'a',16);
+			'diffusion_wind_data.pt_grid_us_ind_new_hi_dev_pct_lookup', 'a',16);
 
 -- add a primary key on the lookup table
-ALTER TABLE diffusion_wind_data.pt_grid_us_ind_new_hi_dev_lookup
+ALTER TABLE diffusion_wind_data.pt_grid_us_ind_new_hi_dev_pct_lookup
 ADD PRIMARY KEY (gid);
 
 -- join the info back in
 ALTER TABLE diffusion_shared.pt_grid_us_ind_new 
-ADD COLUMN hi_dev integer;
+ADD COLUMN hi_dev_pct integer;
 
 UPDATE diffusion_shared.pt_grid_us_ind_new a
-SET hi_dev = b.hi_dev
-FROM diffusion_wind_data.pt_grid_us_ind_new_hi_dev_lookup b
+SET hi_dev_pct = b.hi_dev_pct
+FROM diffusion_wind_data.pt_grid_us_ind_new_hi_dev_pct_lookup b
 where a.gid = b.gid;
 
 -- set the remainders to values of zero
 UPDATE diffusion_shared.pt_grid_us_ind_new
-set hi_dev = 0
-where hi_dev is null;
-
--- cast to type boolean
-ALTER TABLE diffusion_shared.pt_grid_us_ind_new 
-ALTER COLUMN hi_dev TYPE boolean using hi_dev::boolean;
+set hi_dev_pct = 0
+where hi_dev_pct is null;
 
 -- create an index
-CREATE INDEX pt_grid_us_ind_new_hi_dev_btree 
+CREATE INDEX pt_grid_us_ind_new_hi_dev_pct_btree 
 ON diffusion_shared.pt_grid_us_ind_new 
-USING btree(hi_dev);
+USING btree(hi_dev_pct);
 
 -- make sure no nulls
 SELECT count(*)
 FROM diffusion_shared.pt_grid_us_ind_new
-where hi_dev is null;
+where hi_dev_pct is null;
 -- 0
 
 -- check how many pts are excluded
-SELECT count(*)
-FROM diffusion_shared.pt_grid_us_ind_new
-where hi_dev = True;
--- 104021
+with a as
+(
+	SELECT case 	when hi_dev_pct > 96 then 0 
+			when hi_dev_pct > 91 and hi_dev_pct <= 96 then 20
+			when hi_dev_pct > 84 and hi_dev_pct <= 91 then 30
+			when hi_dev_pct > 75 and hi_dev_pct <= 84 then 40
+			when hi_dev_pct > 26 and hi_dev_pct <= 75 then 50
+			when hi_dev_pct <= 26 then 80
+		end as max_turbine_height
+        from diffusion_shared.pt_grid_us_ind_new
+)
+select max_turbine_height, count(*)
+FROM a
+group by max_turbine_height
+order by 1;
 ------------------------------------------------------------------------------------------------------------
 
 
@@ -1062,24 +1069,22 @@ using btree(acres_per_hu);
 ------------------------------------------------------------------------------------------------------------
 -- indices are geared towards facilitating creation of pt microdata tables
 -- following indices should be kept:
-  -- county_id: diffusion_shared.pt_grid_us_com_new_county_id_btree
-  -- pca_reg: diffusion_shared.pt_grid_us_com_new_pca_reg_btree
-  -- reeds_reg: diffusion_shared.pt_grid_us_com_new_reeds_reg_btree
-  -- hdf_load_index: diffusion_shared.pt_grid_us_com_new_hdf_load_index
-  -- utility_type: diffusion_shared.pt_grid_us_com_new_utility_type_btree
-  -- iiijjjicf_id: diffusion_shared.pt_grid_us_com_new_iiijjjicf_id_btree
-  -- solar_re_9809_gid: diffusion_shared.pt_grid_us_com_new_solar_re_9809_gid_btree
-  -- solar_incentive_array_id: diffusion_shared.pt_grid_us_com_new_solar_incentive_btree
-  -- wind_incentive_array_id: diffusion_shared.pt_grid_us_com_new_wind_incentive_btree
-  -- hi_dev: diffusion_shared.pt_grid_us_com_new_hi_dev_btree
-  -- canopy_ht_m: diffusion_shared.pt_grid_us_com_new_canopy_ht_m_btree
-  -- canopy_pct: diffusion_shared.pt_grid_us_com_new_canopy_pct_btree
-  -- acres_per_hu: diffusion_shared.pt_grid_us_com_new_acres_per_hu_btree
+  -- county_id: diffusion_shared.pt_grid_us_ind_new_county_id_btree
+  -- pca_reg: diffusion_shared.pt_grid_us_ind_new_pca_reg_btree
+  -- reeds_reg: diffusion_shared.pt_grid_us_ind_new_reeds_reg_btree
+  -- hdf_load_index: diffusion_shared.pt_grid_us_ind_new_hdf_load_index
+  -- utility_type: diffusion_shared.pt_grid_us_ind_new_utility_type_btree
+  -- iiijjjicf_id: diffusion_shared.pt_grid_us_ind_new_iiijjjicf_id_btree
+  -- solar_re_9809_gid: diffusion_shared.pt_grid_us_ind_new_solar_re_9809_gid_btree
+  -- solar_incentive_array_id: diffusion_shared.pt_grid_us_ind_new_solar_incentive_btree
+  -- wind_incentive_array_id: diffusion_shared.pt_grid_us_ind_new_wind_incentive_btree
+  -- hi_dev_pct: diffusion_shared.pt_grid_us_ind_new_hi_dev_pct_btree
+  -- canopy_ht_m: diffusion_shared.pt_grid_us_ind_new_canopy_ht_m_btree
+  -- canopy_pct: diffusion_shared.pt_grid_us_ind_new_canopy_pct_btree
+  -- acres_per_hu: diffusion_shared.pt_grid_us_ind_new_acres_per_hu_btree
 
 -- to add:
 	-- ranked_rate_array_id
-	-- sfoo_sample_weight (res only)
-	-- med_dev
 
 ------------------------------------------------------------------------------------------------------------
 

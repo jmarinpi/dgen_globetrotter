@@ -157,6 +157,7 @@ and b.company_id = a.company_id
 where a.company_id is null
 and b.country = 'United States of America'; -- 563 rows failed to match
 
+
 	-- investigate these in Q:
 		-- results suggest that several of the entries in the sales table do not have a corresponding polygon -- so there isn't a simple fix like manually correcting company ids
 		-- this result also indicates that the polygon data may not be fully representative of all service territories
@@ -437,7 +438,7 @@ ON a.state_abbr = b.abbrev;
 	
 
 --3- allocate values from step 1 to values from step 2	
-	DROP TABLE IF EXISTS dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled;
+	DROP TABLE IF EXISTS dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled CASCADE;
 	CREATE TABLE dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled AS
 
 	SELECT company_id, state_abbr, the_geom_4326, company_name, 

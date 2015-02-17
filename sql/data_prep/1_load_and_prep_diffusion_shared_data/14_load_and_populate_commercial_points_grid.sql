@@ -676,59 +676,66 @@ ALTER TABLE diffusion_shared.pt_grid_us_com_new set (fillfactor = 50);
 VACUUM FULL diffusion_shared.pt_grid_us_com_new;
 
 ------------------------------------------------------------------------------------------------------------
--- HIGH INTENSITY DEVELOPED LAND (NLCD Class 24)
+-- PERCENT HIGH INTENSITY DEVELOPED LAND (NLCD Class 24)
 ------------------------------------------------------------------------------------------------------------
-DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_com_new_hi_dev_lookup;
-CREATE TABLE diffusion_wind_data.pt_grid_us_com_new_hi_dev_lookup (
+DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_com_new_hi_dev_pct_lookup;
+CREATE TABLE diffusion_wind_data.pt_grid_us_com_new_hi_dev_pct_lookup (
 	gid integer,
-	hi_dev integer);
+	hi_dev_pct integer);
 
 --run in parallel for speed
 SELECT parsel_2('dav-gis','mgleason','mgleason','diffusion_shared.pt_grid_us_com_new','gid',
 		'SELECT a.gid, ST_Value(b.rast,a.the_geom_4326) as hi_dev
 		FROM  diffusion_shared.pt_grid_us_com_new a
-		INNER JOIN diffusion_wind_data.nlcd_2011_class_24_100x100 b
+		INNER JOIN diffusion_wind_data.nlcd_2011_cl24_pct_100x100 b
 		ON ST_Intersects(b.rast,a.the_geom_4326);',
-			'diffusion_wind_data.pt_grid_us_com_new_hi_dev_lookup', 'a',16);
+			'diffusion_wind_data.pt_grid_us_com_new_hi_dev_pct_lookup', 'a',16);
 
 -- add a primary key on the lookup table
-ALTER TABLE diffusion_wind_data.pt_grid_us_com_new_hi_dev_lookup
+ALTER TABLE diffusion_wind_data.pt_grid_us_com_new_hi_dev_pct_lookup
 ADD PRIMARY KEY (gid);
 
 -- join the info back in
 ALTER TABLE diffusion_shared.pt_grid_us_com_new 
-ADD COLUMN hi_dev integer;
+ADD COLUMN hi_dev_pct integer;
 
 UPDATE diffusion_shared.pt_grid_us_com_new a
-SET hi_dev = b.hi_dev
-FROM diffusion_wind_data.pt_grid_us_com_new_hi_dev_lookup b
+SET hi_dev_pct = b.hi_dev_pct
+FROM diffusion_wind_data.pt_grid_us_com_new_hi_dev_pct_lookup b
 where a.gid = b.gid;
 
 -- set the remainders to values of zero
 UPDATE diffusion_shared.pt_grid_us_com_new
-set hi_dev = 0
-where hi_dev is null;
-
--- cast to type boolean
-ALTER TABLE diffusion_shared.pt_grid_us_com_new 
-ALTER COLUMN hi_dev TYPE boolean using hi_dev::boolean;
+set hi_dev_pct = 0
+where hi_dev_pct is null;
 
 -- create an index
-CREATE INDEX pt_grid_us_com_new_hi_dev_btree 
+CREATE INDEX pt_grid_us_com_new_hi_dev_pct_btree 
 ON diffusion_shared.pt_grid_us_com_new 
-USING btree(hi_dev);
+USING btree(hi_dev_pct);
 
 -- make sure no nulls
 SELECT count(*)
 FROM diffusion_shared.pt_grid_us_com_new
-where hi_dev is null;
+where hi_dev_pct is null;
 -- 0
 
 -- check how many pts are excluded
-SELECT count(*)
-FROM diffusion_shared.pt_grid_us_com_new
-where hi_dev = True;
--- 182570
+with a as
+(
+	SELECT case 	when hi_dev_pct > 96 then 0 
+			when hi_dev_pct > 91 and hi_dev_pct <= 96 then 20
+			when hi_dev_pct > 84 and hi_dev_pct <= 91 then 30
+			when hi_dev_pct > 75 and hi_dev_pct <= 84 then 40
+			when hi_dev_pct > 26 and hi_dev_pct <= 75 then 50
+			when hi_dev_pct <= 26 then 80
+		end as max_turbine_height
+        from diffusion_shared.pt_grid_us_com_new
+)
+select max_turbine_height, count(*)
+FROM a
+group by max_turbine_height
+order by 1;
 ------------------------------------------------------------------------------------------------------------
 
 
@@ -1103,15 +1110,13 @@ using btree(acres_per_hu);
   -- solar_re_9809_gid: diffusion_shared.pt_grid_us_com_new_solar_re_9809_gid_btree
   -- solar_incentive_array_id: diffusion_shared.pt_grid_us_com_new_solar_incentive_btree
   -- wind_incentive_array_id: diffusion_shared.pt_grid_us_com_new_wind_incentive_btree
-  -- hi_dev: diffusion_shared.pt_grid_us_com_new_hi_dev_btree
+  -- hi_dev_pct: diffusion_shared.pt_grid_us_com_new_hi_dev_pct_btree
   -- canopy_ht_m: diffusion_shared.pt_grid_us_com_new_canopy_ht_m_btree
   -- canopy_pct: diffusion_shared.pt_grid_us_com_new_canopy_pct_btree
   -- acres_per_hu: diffusion_shared.pt_grid_us_com_new_acres_per_hu_btree
 
 -- to add:
 	-- ranked_rate_array_id
-	-- sfoo_sample_weight (res only)
-	-- med_dev
 
 ------------------------------------------------------------------------------------------------------------
 
