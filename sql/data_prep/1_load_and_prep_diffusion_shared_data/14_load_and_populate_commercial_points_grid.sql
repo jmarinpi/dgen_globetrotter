@@ -672,6 +672,8 @@ where hdf_load_index is null;
 -- 0 rows
 ------------------------------------------------------------------------------------------------------------
 
+ALTER TABLE diffusion_shared.pt_grid_us_com_new set (fillfactor = 50);
+VACUUM FULL diffusion_shared.pt_grid_us_com_new;
 
 ------------------------------------------------------------------------------------------------------------
 -- HIGH INTENSITY DEVELOPED LAND (NLCD Class 24)
@@ -1018,7 +1020,7 @@ SELECT gid, nn[1] as block_gisjoin, nn[2]::numeric as aland10
 from b;
 
 UPDATE diffusion_wind_data.pt_grid_us_com_new_census_2010_block_lkup a
-SET block_gisjoin = b.block_gisjoin
+SET (block_gisjoin, aland10) = (b.block_gisjoin, b.aland10)
 FROM  diffusion_wind_data.pt_grid_us_com_new_census_2010_block_lkup_missing_lkup b
 where a.gid = b.gid
 and a.block_gisjoin is null;
@@ -1026,7 +1028,8 @@ and a.block_gisjoin is null;
 -- check for nulls again
 select count(*)
 FROM diffusion_wind_data.pt_grid_us_com_new_census_2010_block_lkup
-where block_gisjoin is null;
+where block_gisjoin is null
+or aland10 is null;
 
 -- drop the old block_gisjoin index and create one for all ids
 DROP INDEX diffusion_wind_data.pt_grid_us_com_new_census_2010_block_lkup_gisjoin_is_not_null_btree;
@@ -1039,33 +1042,78 @@ using btree(block_gisjoin);
 ------------------------------------------------------------------------------------------------------------
 -- CENSUS 2010 ACRES PER HOUSING UNIT (BLOCKS)
 ------------------------------------------------------------------------------------------------------------
+ALTER TABLE diffusion_wind_data.pt_grid_us_com_new_census_2010_block_lkup
+ADD COLUMN acres_per_hu numeric;
 
+UPDATE diffusion_wind_data.pt_grid_us_com_new_census_2010_block_lkup a
+SET acres_per_hu = CASE WHEN b.housing_units > 0 THEN (a.aland10/4046.86)::numeric/b.housing_units
+		   else 100
+		   end		
+FROM diffusion_wind_data.census_2010_block_housing_units b
+where a.block_gisjoin = b.gisjoin;
+
+-- check for nulls
+select count(*)
+FROM diffusion_wind_data.pt_grid_us_com_new_census_2010_block_lkup
+where acres_per_hu is null;
+
+-- add this info back to the main table
+ALTER TABLE diffusion_shared.pt_grid_us_com_new
+ADD COLUMN acres_per_hu numeric;
+
+UPDATE diffusion_shared.pt_grid_us_com_new a
+SET acres_per_hu = b.acres_per_hu
+from diffusion_wind_data.pt_grid_us_com_new_census_2010_block_lkup b
+where a.gid = b.gid;
+
+-- ensure no nulls
+select count(*)
+FROM diffusion_shared.pt_grid_us_com_new
+where acres_per_hu is null;
+
+-- how many with restrictions of various amounts?
+select count(*)
+FROM diffusion_shared.pt_grid_us_com_new
+-- where acres_per_hu < 3 -- 891588
+-- where acres_per_hu < 1 -- 663482
+where acres_per_hu < .5 -- 464167
+
+-- round values and add an index
+UPDATE diffusion_shared.pt_grid_us_com_new
+set acres_per_hu = ROUND(acres_per_hu, 1);
+
+-- add an index
+CREATE INDEX pt_grid_us_com_new_acres_per_hu_btree
+ON diffusion_shared.pt_grid_us_com_new
+using btree(acres_per_hu);
+------------------------------------------------------------------------------------------------------------
 
 
 ------------------------------------------------------------------------------------------------------------
--- FOREIGN KEYS
+-- CLEANUP (ADD/REMOVE) INDICES
 ------------------------------------------------------------------------------------------------------------
--- 	-- for county_id to county_geom.county id
--- ALTER TABLE diffusion_shared.pt_grid_us_com_new ADD CONSTRAINT county_id_fkey FOREIGN KEY (county_id) 
--- REFERENCES diffusion_shared.county_geom (county_id) MATCH FULL 
--- ON UPDATE RESTRICT ON DELETE RESTRICT;
--- 	-- for iiijjjicf_id to iiijjjicf_lookup.id
--- ALTER TABLE diffusion_shared.pt_grid_us_com_new ADD CONSTRAINT iiijjjicf_id_fkey FOREIGN KEY (iiijjjicf_id) 
--- REFERENCES diffusion_wind.iiijjjicf_lookup (id) MATCH FULL 
--- ON UPDATE RESTRICT ON DELETE RESTRICT;
--- 	-- for dsire_incentives_lookup_res.pt_gid to pt_grid_us_com_new.gid
--- ALTER TABLE diffusion_wind.dsire_incentives_lookup_com ADD CONSTRAINT pt_gid_fkey FOREIGN KEY (pt_gid) 
--- REFERENCES diffusion_shared.pt_grid_us_com_new (gid) MATCH FULL 
--- ON UPDATE RESTRICT ON DELETE RESTRICT;
--- 	-- for dsire_incentives_lookup_res.wind_incentives_uid to geo_incentives.wind_incentives.uid
--- ALTER TABLE diffusion_wind.dsire_incentives_lookup_com ADD CONSTRAINT wind_incentives_uid_fkey FOREIGN KEY (wind_incentives_uid) 
--- REFERENCES geo_incentives.wind_incentives (uid) MATCH FULL 
--- ON UPDATE RESTRICT ON DELETE RESTRICT;
--- 	-- for annual_rate_gid to annual_ave_elec_rates_2011.gid
--- -- ALTER TABLE diffusion_shared.pt_grid_us_com_new DROP CONSTRAINT annual_rate_gid_fkey;
--- ALTER TABLE diffusion_shared.pt_grid_us_com_new ADD CONSTRAINT annual_rate_gid_fkey FOREIGN KEY (annual_rate_gid) 
--- REFERENCES diffusion_shared.annual_ave_elec_rates_2011 (gid) MATCH FULL 
--- ON UPDATE RESTRICT ON DELETE RESTRICT;
+-- indices are geared towards facilitating creation of pt microdata tables
+-- following indices should be kept:
+  -- county_id: diffusion_shared.pt_grid_us_com_new_county_id_btree
+  -- pca_reg: diffusion_shared.pt_grid_us_com_new_pca_reg_btree
+  -- reeds_reg: diffusion_shared.pt_grid_us_com_new_reeds_reg_btree
+  -- hdf_load_index: diffusion_shared.pt_grid_us_com_new_hdf_load_index
+  -- utility_type: diffusion_shared.pt_grid_us_com_new_utility_type_btree
+  -- iiijjjicf_id: diffusion_shared.pt_grid_us_com_new_iiijjjicf_id_btree
+  -- solar_re_9809_gid: diffusion_shared.pt_grid_us_com_new_solar_re_9809_gid_btree
+  -- solar_incentive_array_id: diffusion_shared.pt_grid_us_com_new_solar_incentive_btree
+  -- wind_incentive_array_id: diffusion_shared.pt_grid_us_com_new_wind_incentive_btree
+  -- hi_dev: diffusion_shared.pt_grid_us_com_new_hi_dev_btree
+  -- canopy_ht_m: diffusion_shared.pt_grid_us_com_new_canopy_ht_m_btree
+  -- canopy_pct: diffusion_shared.pt_grid_us_com_new_canopy_pct_btree
+  -- acres_per_hu: diffusion_shared.pt_grid_us_com_new_acres_per_hu_btree
+
+-- to add:
+	-- ranked_rate_array_id
+	-- sfoo_sample_weight (res only)
+	-- med_dev
+
+------------------------------------------------------------------------------------------------------------
 
 
 
