@@ -90,6 +90,10 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     # Join the max_market_share table and df in order to select the ultimate mms based on the metric value. 
     df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'metric','metric_value_as_factor','business_model'])
     
+    # Derate the maximum market share for commercial and industrial customers in leased buildings by (1/3)
+    # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
+    df['max_market_share'] = np.where(df.owner_occupancy_status == 2, df.max_market_share/3,df.max_market_share)
+        
     df = datfunc.assign_business_model(df, prng, method = 'prob', alpha = 2)
     
     return df
@@ -265,8 +269,10 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     cfs = revenue + costs
     
     # Calculate the monthly bill savings in the first year of ownership in dollars ($)
-    # and in percentage of prior bill
-    first_year_energy_savings = df.first_year_bill_without_system - df.first_year_bill_with_system 
+    # and in percentage of prior bill. Recall that the first_year_bill variables are not updated in each
+    # solve sequence, they are calculated once in the first year of the model. Thus, they are multiplied by the rate growth multiplier
+    # in the current solve year to update for rate changes
+    first_year_energy_savings = (df.first_year_bill_without_system - df.first_year_bill_with_system) * rate_growth_mult[:,0] 
     avg_annual_payment = (loan_cost.sum(axis = 1)/df.loan_term_yrs)*-1
     first_year_bill_savings = first_year_energy_savings - avg_annual_payment
     monthly_bill_savings = first_year_bill_savings/12
