@@ -151,13 +151,19 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     
     # 1)  Cost of servicing loan/leasing payments
     crf = (df.loan_rate*(1 + df.loan_rate)**df.loan_term_yrs) / ( (1+df.loan_rate)**df.loan_term_yrs - 1);
-    pmt = - (1 - df.down_payment)* df.ic * crf    
     
+    # Assume that incentives received in first year are directly credited against installed cost; This help avoid
+    # ITC cash flow imbalances in first year
+    net_installed_cost = df.ic - (df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction)
+    net_installed_cost[net_installed_cost<0] = 0
+    
+    # Calculate the annual payment net the downpayment and upfront incentives
+    pmt = - (1 - df.down_payment) * net_installed_cost * crf    
     annual_loan_pmts = datfunc.fill_jagged_array(pmt,df.loan_term_yrs,cols = tech_lifetime)
-    
+
     # Pay the down payment in year zero and loan payments thereafter. The downpayment is added at
     # the end of the cash flow calculations to make the year zero framing simpler
-    down_payment_cost = (-df.ic * df.down_payment)[:,np.newaxis] 
+    down_payment_cost = (-net_installed_cost * df.down_payment)[:,np.newaxis] 
     
     # wind turbines do not have inverters hence no replacement cost.
     # but for solar, calculate and replace the inverter replacement costs with actual values
@@ -243,8 +249,6 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     '''
     
     incentive_revenue = np.zeros(shape)
-    incentive_revenue[:, 0] = df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction
-    
     
     ptc_revenue = datfunc.fill_jagged_array(df.value_of_ptc,df.ptc_length, cols = tech_lifetime)
     pbi_fit_revenue = datfunc.fill_jagged_array(df.value_of_pbi_fit,df.pbi_fit_length, cols = tech_lifetime)    

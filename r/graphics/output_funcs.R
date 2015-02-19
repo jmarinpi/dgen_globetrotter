@@ -774,7 +774,7 @@ plot<-ggplot(data3, aes(x = year, y = per_mkt_share, color = sector, fill = sect
   scale_color_manual(values = sector_col)+
   scale_fill_manual(values = sector_fil)+
   xlab("")+
-  scale_y_continuous("% of New Capacity", label = percent)+
+  scale_y_continuous("% of New Capacity", label = percent, lim = c(0,1))+
   ggtitle("Leasing Market Share: Percent of New Capacity Added")
 
 # Table of market share by state and year (aggregating sectors)
