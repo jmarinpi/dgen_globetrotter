@@ -208,7 +208,7 @@ elec_rate_supply_curve<-function(df, start_year){
     theme_few()+
     guides(size = FALSE)+
     scale_y_continuous(name ='Customer Load (GW)')+
-    scale_x_continuous(name ='Average Electric Rate ($/kWh)', lim = c(0,max(data$rate)))+
+    scale_x_continuous(name ='Average Electric Rate ($/kWh)', lim = c(0,quantile(data$rate,0.98)))+
     ggtitle('Electricity Rate Supply Curve (Available Cust Load in 2014)')
 }
 
