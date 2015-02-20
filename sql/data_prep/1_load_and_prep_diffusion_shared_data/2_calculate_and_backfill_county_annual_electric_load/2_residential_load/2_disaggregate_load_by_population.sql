@@ -188,14 +188,14 @@ INSERT INTO dg_wind.res_load_by_county_us
 
 -- check load values
 SELECT sum(total_load_mwh_2011_residential)
-FROM dg_wind.res_load_by_county_us; -- 986,246,281.703006
+FROM dg_wind.res_load_by_county_us; -- 1,417,737,535.26282
 
 select sum(total_residential_sales_mwh)
 FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip
-where state_abbr not in ('AK','HI'); -- 986,246,314
+where state_abbr not in ('AK','HI'); -- 1,417,737,928
 
-select 986246314 - 986246281.703006; -- 32.296994 (difference possibly/likely(?) due to rounding)
-select (986246314 - 986246281.703006)/986246314  * 100; -- 0.000003274739133777893100 % load is missing nationally
+select 1417737928 - 1417737535.26282; -- 392.73718 (difference possibly/likely(?) due to rounding)
+select (1417737928 - 1417737535.26282)/1417737928  * 100; --0.000027701676892712713000 % load is missing nationally
 
 -- cehck on state level
 with a as 
@@ -223,27 +223,19 @@ order by perc_diff; --
 -- any counties w/out ind load (other than Grand Isle)
 select *
 FROM dg_wind.res_load_by_county_us_archive
-where total_load_mwh_2011_residential = 0; -- 13 of them 
+where total_load_mwh_2011_residential = 0; -- 1 - nope
 -- reviewed in Q
--- the vast majority of these are in a single cluster in NW South Dakota
--- there is no flaw in the processing of the load, but it seems like these utilities (which are rural coops)
--- don't account for residential load. they must count whatevr residential users they have as commercial
--- likely this is just agricultural users. there is no good way to separate out their commercial load into residential
--- so this will mean that any ag users in these counties are represented in commercial sector, not residential
--- other counties with zero load include a rural county in western West Virginia, and a county in MD along the
--- Chesepeake. Overall, all of these counties appear to have very little residential land (based on land masks),
--- so it is not a huge concern that a single county will have zero industrail load
 
 -- check values for customers
 SELECT sum(total_customers_2011_residential)
-FROM dg_wind.res_load_by_county_us; -- 725,966.744431214
+FROM dg_wind.res_load_by_county_us; -- 125451654.679706
 
 select sum(total_residential_customers)
 FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip
-where state_abbr not in ('AK','HI'); -- 725,967
+where state_abbr not in ('AK','HI'); -- 125451686
 
-select 725967 - 725966.744431214; -- 0.255568786 (difference likely due to rounding)
-select (725967 - 725966.744431214)/17529504  * 100; -- 0.000001457935067643670900 % load is missing nationally
+select 125451686 - 125451654.679706; -- 31.320294 (difference likely due to rounding)
+select (125451686 - 125451654.679706)/125451686  * 100; -- 0.000024966020783491104300 % load is missing nationally
 
 -- cehck on state level
 with a as 
@@ -270,5 +262,5 @@ order by perc_diff; --
 select *
 FROM dg_wind.res_load_by_county_us
 where total_customers_2011_residential = 0; 
--- 13 of these check in q
+-- 1 -- grand isle
 

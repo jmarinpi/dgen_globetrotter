@@ -1,4 +1,6 @@
-﻿------------------------------------------------------------------------------------------------------------
+﻿ALTER TABLE diffusion_shared.pt_grid_us_res_new
+RENAME TO pt_grid_us_res_new_bad;
+------------------------------------------------------------------------------------------------------------
 -- INGEST PTS AND SIMPLE CLEANUP
 ------------------------------------------------------------------------------------------------------------
 set role 'diffusion-writers';
@@ -6,28 +8,46 @@ set role 'diffusion-writers';
 CREATE TABLE diffusion_shared.pt_grid_us_res_new (
 	x numeric,
 	y numeric,
-	temp_col integer);
+	temp_col integer,
+	the_geom_4326 geometry,
+	county_id integer,
+	utility_type character varying(9),
+	iiijjjicf_id integer,
+	wind_incentive_array_id integer,
+	solar_incentive_array_id integer,
+	pca_reg integer,
+	reeds_reg integer,
+	solar_re_9809_gid integer,
+	hdf_load_index integer,
+	the_geom_96703 geometry,
+	canopy_pct integer,
+	canopy_ht_m integer,
+	hi_dev_pct integer,
+	acres_per_hu numeric,
+	hu_portion numeric,
+	blkgrp_ownocc_sf_hu_portion numeric
+	);
 
 SET ROLE "server-superusers";
-COPY diffusion_shared.pt_grid_us_res_new
+COPY diffusion_shared.pt_grid_us_res_new (x, y, temp_col)
 FROM '/srv/home/mgleason/data/dg_wind/land_masks_20140219/res_mask.csv' with csv header;
 set role 'diffusion-writers';
 
 -- drop this column -- it means nothing
 ALTER TABLE diffusion_shared.pt_grid_us_res_new
 DROP COLUMN temp_col;
+
+-- set fill factor
+ALTER TABLE diffusion_shared.pt_grid_us_res_new
+SET (fillfactor = 50);
 ------------------------------------------------------------------------------------------------------------
 
 
 ------------------------------------------------------------------------------------------------------------
 -- GEOM (4326)
 ------------------------------------------------------------------------------------------------------------
-ALTER TABLE diffusion_shared.pt_grid_us_res_new 
-ADD COLUMN the_geom_4326 geometry;
-
 UPDATE diffusion_shared.pt_grid_us_res_new
 SET the_geom_4326= ST_SetSRID(ST_MakePoint(x,y),4326);
--- 1,603,958 rows
 
 CREATE INDEX pt_grid_us_res_new_the_geom_4326_gist 
 ON diffusion_shared.pt_grid_us_res_new 
@@ -36,19 +56,15 @@ USING gist(the_geom_4326);
 CLUSTER diffusion_shared.pt_grid_us_res_new 
 USING pt_grid_us_res_new_the_geom_4326_gist;
 
-VACUUM ANALYZE diffusion_shared.pt_grid_us_res_new;
+VACUUM FULL diffusion_shared.pt_grid_us_res_new;
 ------------------------------------------------------------------------------------------------------------
 
 
 ------------------------------------------------------------------------------------------------------------
 -- GEOM (96703)
 ------------------------------------------------------------------------------------------------------------
-ALTER TABLE diffusion_shared.pt_grid_us_res_new 
-ADD COLUMN the_geom_96703 geometry;
-
 UPDATE diffusion_shared.pt_grid_us_res_new
 SET the_geom_96703= ST_Transform(the_geom_4326, 96703);
--- 1,603,958 rows
 
 CREATE INDEX pt_grid_us_res_new_the_geom_96703_gist 
 ON diffusion_shared.pt_grid_us_res_new 
@@ -93,9 +109,6 @@ ALTER TABLE diffusion_wind_data.pt_grid_us_res_new_county_lkup
 ADD PRIMARY KEY (gid);
 
 -- add the results to the main table
-ALTER TABLE diffusion_shared.pt_grid_us_res_new 
-ADD COLUMN county_id integer;
-
 UPDATE diffusion_shared.pt_grid_us_res_new a
 SET county_id = b.county_id
 FROM diffusion_wind_data.pt_grid_us_res_new_county_lkup b
@@ -112,7 +125,7 @@ CREATE TABLE diffusion_wind_data.no_county_pts_res AS
 SELECT gid, the_geom_4326
 FROM diffusion_shared.pt_grid_us_res_new
 where county_id is null;
--- 1904  rows
+-- 1497  rows
 -- inspect in Q - all along edges of the country
 
 -- pick county based on nearest
@@ -132,7 +145,6 @@ FROM candidates a
 lEFT JOIN diffusion_shared.county_geom b
 ON a.county_id = b.county_id
 ORDER BY gid, ST_Distance(a.the_geom_4326,b.the_geom_4326) asc;
--- inspect in Q
 
 -- update the main table
 UPDATE diffusion_shared.pt_grid_us_res_new a
@@ -186,9 +198,6 @@ ALTER TABLE diffusion_wind_data.pt_grid_us_res_new_utiltype_lookup
 ADD PRIMARY KEY(gid);
 
 -- join the info back in
-ALTER TABLE diffusion_shared.pt_grid_us_res_new 
-ADD COLUMN utility_type character varying(9);
-
 UPDATE diffusion_shared.pt_grid_us_res_new a
 SET utility_type = b.utility_type
 FROM  diffusion_wind_data.pt_grid_us_res_new_utiltype_lookup b
@@ -202,10 +211,12 @@ USING btree(utility_type);
 SELECT count(*) 
 FROM diffusion_shared.pt_grid_us_res_new
 where utility_type is null;
--- 34276 rows
+-- 24537 rows
 
 -- isolate the unjoined points
 -- and fix them by assigning value from their nearest neighbor that is not null
+set enable_seqscan = off;
+VACUUM ANALYZE diffusion_shared.pt_grid_us_res_new
 DROP TABLE IF EXISTS  diffusion_wind_data.pt_grid_us_res_new_utiltype_missing;
 CREATE TABLE  diffusion_wind_data.pt_grid_us_res_new_utiltype_missing AS
 with a AS(
@@ -256,9 +267,6 @@ ALTER TABLE diffusion_wind_data.pt_grid_us_res_new_iiijjjicf_id_lookup
 ADD PRIMARY KEY (gid);
 
 -- join the info back in
-ALTER TABLE diffusion_shared.pt_grid_us_res_new 
-ADD COLUMN iiijjjicf_id integer;
-
 UPDATE diffusion_shared.pt_grid_us_res_new a
 SET iiijjjicf_id = b.iiijjjicf_id
 FROM  diffusion_wind_data.pt_grid_us_res_new_iiijjjicf_id_lookup b
@@ -352,9 +360,6 @@ FROM diffusion_wind_data.dsire_incentives_unique_combos_res b
 where a.wind_incentives_uid_array = b.wind_incentives_uid_array;
 
 -- join this info back into the main points table
-ALTER TABLE diffusion_shared.pt_grid_us_res_new
-ADD COLUMN wind_incentive_array_id integer;
-
 UPDATE diffusion_shared.pt_grid_us_res_new a
 SET wind_incentive_array_id = b.incentive_array_id
 FROM diffusion_wind_data.dsire_incentives_combos_lookup_res b
@@ -430,9 +435,6 @@ FROM diffusion_solar_data.dsire_incentives_unique_combos_res b
 where a.solar_incentives_uid_array = b.solar_incentives_uid_array;
 
 -- join this info back into the main points table
-ALTER TABLE diffusion_shared.pt_grid_us_res_new
-ADD COLUMN solar_incentive_array_id integer;
-
 UPDATE diffusion_shared.pt_grid_us_res_new a
 SET solar_incentive_array_id = b.incentive_array_id
 FROM diffusion_solar_data.dsire_incentives_combos_lookup_res b
@@ -492,10 +494,6 @@ ALTER TABLE diffusion_wind_data.pt_grid_us_res_new_pca_reg_lookup
 ADD PRIMARY KEY (gid);
 
 -- join the info back in
-ALTER TABLE diffusion_shared.pt_grid_us_res_new 
-ADD COLUMN pca_reg integer,
-ADD COLUMN reeds_reg integer;
-
 UPDATE diffusion_shared.pt_grid_us_res_new a
 SET (pca_reg,reeds_reg) = (b.pca_reg,b.reeds_reg)
 FROM  diffusion_wind_data.pt_grid_us_res_new_pca_reg_lookup b
@@ -514,19 +512,20 @@ USING btree(reeds_reg);
 select count(*)
 FROM diffusion_shared.pt_grid_us_res_new 
 where pca_reg is null or reeds_reg is null;
---3116
+--2549
 
 select count(*)
 FROM diffusion_shared.pt_grid_us_res_new 
 where pca_reg is null;
--- 3116
+-- 2549
 
 select count(*)
 FROM diffusion_shared.pt_grid_us_res_new 
 where reeds_reg is null;
--- 3116
+-- 2549
 
 -- fix the missing based on the closest
+VACUUM ANALYZE diffusion_shared.pt_grid_us_res_new ;
 DROP TABLE IF EXISTS  diffusion_wind_data.pt_grid_us_res_new_pca_reg_missing_lookup;
 CREATE TABLE  diffusion_wind_data.pt_grid_us_res_new_pca_reg_missing_lookup AS
 with a AS
@@ -587,9 +586,6 @@ ALTER TABLE diffusion_solar_data.pt_grid_us_res_new_solar_re_9809_lookup
 ADD PRIMARY KEY (gid);
 
 -- join the info back in
-ALTER TABLE diffusion_shared.pt_grid_us_res_new 
-ADD COLUMN solar_re_9809_gid integer;
-
 UPDATE diffusion_shared.pt_grid_us_res_new a
 SET solar_re_9809_gid = b.solar_re_9809_gid
 FROM  diffusion_solar_data.pt_grid_us_res_new_solar_re_9809_lookup  b
@@ -604,9 +600,10 @@ USING btree(solar_re_9809_gid);
 select count(*)
 FROM diffusion_shared.pt_grid_us_res_new 
 where solar_re_9809_gid is null;
---550
+-- 361
 
 -- fix the missing based on the closest
+VACUUM ANALYZE diffusion_shared.pt_grid_us_res_new;
 DROP TABLE IF EXISTS  diffusion_solar_data.pt_grid_us_solar_re_9809_gid_missing_lookup;
 CREATE TABLE  diffusion_solar_data.pt_grid_us_solar_re_9809_gid_missing_lookup AS
 with a AS
@@ -645,9 +642,6 @@ where solar_re_9809_gid is null;
 -- for each nsrdb grid, we know the "best match" TMY3 station, so we can just link
 -- to that off of the nsrdb_gid
 -- there will be gaps due to missing stations, which will fix with a nearest neighbor search
-ALTER TABLE diffusion_shared.pt_grid_us_res_new 
-add column hdf_load_index integer;
-
 UPDATE diffusion_shared.pt_grid_us_res_new a
 SET hdf_load_index = b.hdf_index
 FROM diffusion_shared.solar_re_9809_to_eplus_load_res b
@@ -659,12 +653,13 @@ ON diffusion_shared.pt_grid_us_res_new
 using btree(hdf_load_index);
 
 -- check for nulls
-SELECT *
+SELECT count(*)
 FROM diffusion_shared.pt_grid_us_res_new
 where hdf_load_index is null;
--- 18294 rows
+-- 14024 rows
 
 -- find the value of the nearest neighbor
+VACUUM ANALYZE diffusion_shared.pt_grid_us_res_new;
 DROP TABLE IF EXISTS  diffusion_solar_data.pt_grid_us_res_new_missing_hdf_load_lookup;
 CREATE TABLE  diffusion_solar_data.pt_grid_us_res_new_missing_hdf_load_lookup AS
 with a AS
@@ -696,8 +691,6 @@ where hdf_load_index is null;
 --
 ------------------------------------------------------------------------------------------------------------
 
-ALTER TABLE diffusion_shared.pt_grid_us_res_new set (fillfactor = 50);
-VACUUM FULL diffusion_shared.pt_grid_us_res_new;
 
 ------------------------------------------------------------------------------------------------------------
 -- PERCENT HIGH INTENSITY DEVELOPED LAND (NLCD Class 24)
@@ -720,9 +713,6 @@ ALTER TABLE diffusion_wind_data.pt_grid_us_res_new_hi_dev_pct_lookup
 ADD PRIMARY KEY (gid);
 
 -- join the info back in
-ALTER TABLE diffusion_shared.pt_grid_us_res_new 
-ADD COLUMN hi_dev_pct integer;
-
 UPDATE diffusion_shared.pt_grid_us_res_new a
 SET hi_dev_pct = b.hi_dev_pct
 FROM diffusion_wind_data.pt_grid_us_res_new_hi_dev_pct_lookup b
@@ -784,9 +774,6 @@ ALTER TABLE diffusion_wind_data.pt_grid_us_res_new_canopy_pct_lookup
 ADD PRIMARY KEY (gid);
 
 -- join the info back in
-ALTER TABLE diffusion_shared.pt_grid_us_res_new 
-ADD COLUMN canopy_pct integer;
-
 UPDATE diffusion_shared.pt_grid_us_res_new a
 SET canopy_pct = b.canopy_pct
 FROM diffusion_wind_data.pt_grid_us_res_new_canopy_pct_lookup b
@@ -807,7 +794,7 @@ where canopy_pct is null;
 SELECT count(*)
 FROM diffusion_shared.pt_grid_us_res_new
 where canopy_pct >= 25;
--- 3,433,885 (out of ~8 mil)
+-- 2,472,185 (out of ~6 mil)
 ------------------------------------------------------------------------------------------------------------
 
 
@@ -832,9 +819,6 @@ ALTER TABLE diffusion_wind_data.pt_grid_us_res_new_canopy_height_lookup
 ADD PRIMARY KEY (gid);
 
 -- join the info back in
-ALTER TABLE diffusion_shared.pt_grid_us_res_new 
-ADD COLUMN canopy_ht_m integer;
-
 UPDATE diffusion_shared.pt_grid_us_res_new a
 SET canopy_ht_m = b.canopy_ht_m
 FROM diffusion_wind_data.pt_grid_us_res_new_canopy_height_lookup b
@@ -852,7 +836,7 @@ SElect gid, the_geom_4326, canopy_ht_m, canopy_pct
 FROM diffusion_shared.pt_grid_us_res_new
 where canopy_ht_m is null
 and canopy_pct > 0;
--- 1204659 rows
+-- 903523 rows
 
 -- fix by buffering points by 600 and running a zonal statistics on them (this will be second order queens contiguity search)
 -- create buffered geometry
@@ -905,7 +889,7 @@ ADD PRIMARY KEY (gid);
 SELECT count(*)
 FROM diffusion_wind_data.pt_grid_us_res_new_missing_canopy_height_fixed
 where avg_canopy_ht is not null;
--- 1118049
+-- 835342
 
 -- add these to the main table
 UPDATE diffusion_shared.pt_grid_us_res_new a
@@ -915,7 +899,7 @@ where a.gid = b.gid
 AND a.canopy_ht_m is null
 and a.canopy_pct > 0
 and b.avg_canopy_ht is not null;
--- 1118049 rows
+-- 835342 rows
 
 -- for remaining ones that weren't fixed, set the canopy height to 5 m
 -- This is the minimum height for tree canopy cover in the NLCD pct canopy cover raster
@@ -925,14 +909,14 @@ UPDATE diffusion_shared.pt_grid_us_res_new a
 SET canopy_ht_m = 5
 where a.canopy_ht_m is null
 and a.canopy_pct > 0;
--- 86610 rows
+-- 68181 rows
 
 -- set everything that remains (all nulls) to height of zero
 UPDATE diffusion_shared.pt_grid_us_res_new a
 SET canopy_ht_m = 0
 where a.canopy_ht_m is null
 and a.canopy_pct = 0;
--- 250748 rows
+-- 662751 rows
 
 -- check for nulls
 SELECT count(*)
@@ -979,13 +963,9 @@ ALTER tABLE diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup
 ADD PRIMARY KEY (gid);
 
 -- create index on the block_gisjoin col
-CREATE iNDEX pt_grid_us_res_new_census_2010_block_lkup_gisjoin_is_not_null_btree
+CREATE iNDEX pt_grid_us_res_new_census_2010_block_lkup_gisjoin_btree
 ON diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup
-using btree((block_gisjoin is not null));
-
-CREATE iNDEX pt_grid_us_res_new_census_2010_block_lkup_gisjoin_is_null_btree
-ON diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup
-using btree((block_gisjoin is null));
+using btree(block_gisjoin);
 
 -- create index on geometry too
 CREATE iNDEX pt_grid_us_res_new_census_2010_block_lkup_the_geom_4326_gist
@@ -1001,14 +981,11 @@ VACUUM ANALYZE diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup;
 select count(*)
 FROM diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup
 where block_gisjoin is null;
--- 2798
-
-SET enable_seqscan = OFF;
+-- 2411
 
 -- fix with nearest neighbor
 DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup_missing_lkup;
 CREATE TABLE diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup_missing_lkup AS
-EXPLAIN
 with a as
 (
 	SELECT gid, the_geom_96703
@@ -1037,8 +1014,6 @@ c as
 SELECT gid, nn[1] as block_gisjoin, nn[2]::numeric as aland10
 from c;
 
-SET enable_seqscan = ON;
-
 UPDATE diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup a
 SET (block_gisjoin, aland10) = (b.block_gisjoin, b.aland10)
 FROM  diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup_missing_lkup b
@@ -1049,13 +1024,6 @@ and a.block_gisjoin is null;
 select count(*)
 FROM diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup
 where block_gisjoin is null;
-
--- drop the old block_gisjoin index and create one for all ids
-DROP INDEX diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup_gisjoin_is_not_null_btree;
-DROP INDEX diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup_gisjoin_is_null_btree;
-CREATE iNDEX pt_grid_us_res_new_census_2010_block_lkup_gisjoin_ibtree
-ON diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup
-using btree(block_gisjoin);
 ------------------------------------------------------------------------------------------------------------
 
 
@@ -1075,7 +1043,8 @@ SET (housing_units,
 			CASE WHEN b.housing_units > 0 THEN (a.aland10/4046.86)::numeric/b.housing_units
 				   else 100
 				   end)		
-FROM diffusion_wind_data.census_2010_block_housing_units b;
+FROM diffusion_wind_data.census_2010_block_housing_units b
+where a.block_gisjoin = b.gisjoin;
 
 -- check for nulls
 select count(*)
@@ -1084,20 +1053,32 @@ where acres_per_hu is null
 or housing_units is null;
 -- 0
 
--- add this info back to the main table
-ALTER TABLE diffusion_shared.pt_grid_us_res_new
-ADD COLUMN housing_units integer,
-ADD COLUMN acres_per_hu numeric;
+-- calculate the hu portion
+ALTER TABLE diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup
+ADD COLUMN hu_portion numeric;
 
+with b as
+(
+	SELEct block_gisjoin, count(gid)
+	from diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup
+	group by block_gisjoin
+)
+UPDATE diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup a
+set hu_portion = housing_units::numeric/b.count
+from b
+where a.block_gisjoin = b.block_gisjoin;
+
+-- add this info back to the main table
 UPDATE diffusion_shared.pt_grid_us_res_new a
-SET (housing_units, acres_per_hu) = (b.housing_unit, b.acres_per_hu)
+SET (hu_portion, acres_per_hu) = (b.hu_portion, b.acres_per_hu)
 from diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup b
 where a.gid = b.gid;
 
 -- ensure no nulls
 select count(*)
 FROM diffusion_shared.pt_grid_us_res_new
-where acres_per_hu is null;
+where acres_per_hu is null
+and hu_portion is null;
 
 -- how many with restrictions of various amounts?
 select count(*)
@@ -1111,42 +1092,11 @@ DROP TABLE IF EXISTS diffusion_shared.pt_grid_us_res_new_no_hu;
 CREATE TABLE diffusion_shared.pt_grid_us_res_new_no_hu AS
 SELECT *
 FROM diffusion_shared.pt_grid_us_res_new
-where housing_units = 0;
+where hu_portion = 0;
+-- 204821
 
 DELETE FROM diffusion_shared.pt_grid_us_res_new
-where housing_units = 0;
-------------------------------------------------------------------------------------------------------------
-
-
-------------------------------------------------------------------------------------------------------------
--- ACS 2012 BLOCKGROUP ID
-------------------------------------------------------------------------------------------------------------
--- create block id lookup table
-DROP TABLE IF EXISTS  diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup;
-CREATE TABLE  diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup 
-(
-	gid integer,
-	blockgroup_gisjoin character varying(18)
-);
-
-SELECT parsel_2('dav-gis','mgleason','mgleason',
-		'diffusion_shared.pt_grid_us_res_new',
-		'gid',
-		'SELECT a.gid, c.gisjoin as block_gisjoin
-		FROM diffusion_shared.pt_grid_us_res_new a
-		LEFT JOIN diffusion_shared.county_geom b
-			ON a.county_id = b.county_id
-		LEFT JOIN acs_2012.blockgroup_geom_parent c
-			ON b.state_abbr = c.state_abbr
-			AND ST_Intersects(a.the_geom_4326, c.the_geom_4326)',
-		'diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup', 
-		'a',16);
-
--- check for nulls
-select count(*)
-FROM diffusion_wind_data.pt_grid_us_res_new_census_2010_block_lkup
-where block_gisjoin is null;
--- 6749
+where hu_portion = 0;
 ------------------------------------------------------------------------------------------------------------
 
 
@@ -1183,13 +1133,9 @@ ALTER tABLE diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup
 ADD PRIMARY KEY (gid);
 
 -- create index on the block_gisjoin col
-CREATE iNDEX pt_grid_us_res_new_acs_2012_blockgroup_lkup_gisjoin_is_not_null_btree
+CREATE iNDEX pt_grid_us_res_new_acs_2012_blockgroup_lkup_gisjoin_btree
 ON diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup
-using btree((blockgroup_gisjoin is not null));
-
-CREATE iNDEX pt_grid_us_res_new_acs_2012_blockgroup_lkup_gisjoin_is_null_btree
-ON diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup
-using btree((blockgroup_gisjoin is null));
+using btree(blockgroup_gisjoin);
 
 -- create index on geometry too
 CREATE iNDEX pt_grid_us_res_new_acs_2012_blockgroup_lkup_the_geom_96703_gist
@@ -1205,12 +1151,11 @@ VACUUM ANALYZE diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup;
 select count(*)
 FROM diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup
 where blockgroup_gisjoin is null;
--- 2705
-
-SET enable_seqscan = OFF;
+-- 2318
 
 -- fix with nearest neighbor
 DROP TABLE IF EXISTS diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup_missing_lkup;
+explain
 CREATE TABLE diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup_missing_lkup AS
 with a as
 (
@@ -1218,29 +1163,20 @@ with a as
 	FROM diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup
 	where blockgroup_gisjoin is null
 ),
-b AS
-(
-	SELECT gid, the_geom_96703, array[blockgroup_gisjoin, aland::text] as nn
-	FROM diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup
-	where blockgroup_gisjoin is NOT null
-
-),
 c as 
 (
-	
 	SELECT a.gid,
 	(
-		SELECT b.nn
-		 FROM b
+		SELECT array[b.blockgroup_gisjoin, b.aland::text] as nn
+		 FROM diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup b
+		 where b.blockgroup_gisjoin is NOT null
 		 ORDER BY a.the_geom_96703 <-> b.the_geom_96703
 		 LIMIT 1
 	 ) as nn
-	FROM a
+	 from a
 )
 SELECT gid, nn[1] as blockgroup_gisjoin, nn[2]::numeric as aland
 from c;
--- **
-SET enable_seqscan = ON;
 
 UPDATE diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup a
 SET (blockgroup_gisjoin, aland) = (b.blockgroup_gisjoin, b.aland)
@@ -1253,13 +1189,6 @@ select count(*)
 FROM diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup
 where blockgroup_gisjoin is null
 or aland is null;
-
--- drop the old block_gisjoin index and create one for all ids
-DROP INDEX diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup_gisjoin_is_not_null_btree;
-DROP INDEX diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup_gisjoin_is_null_btree;
-CREATE iNDEX pt_grid_us_res_new_acs_2012_blockgroup_lkup_gisjoin_ibtree
-ON diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup
-using btree(blockgroup_gisjoin);
 ------------------------------------------------------------------------------------------------------------
 
 
@@ -1271,42 +1200,54 @@ set (fillfactor = 50);
 VACUUM FULL diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup;
 
 ALTER TABLE diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup
-ADD COLUMN blkgrp_ownocc_sf_hu integer;
+ADD COLUMN blkgrp_ownocc_sf_hu integer,
+add column blkgrp_ownocc_sf_hu_portion numeric;
 
 UPDATE diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup a
 SET blkgrp_ownocc_sf_hu = b.total_own_occ_1str_and_mobile
 FROM diffusion_wind_data.acs_2012_blockgroup_tenure_by_units_in_structure b
 where a.blockgroup_gisjoin = b.gisjoin;
 
+-- add sf_hu_portion
+with b as
+(
+	SELEct blockgroup_gisjoin, count(gid)
+	from diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup
+	group by blockgroup_gisjoin
+)
+UPDATE diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup a
+set blkgrp_ownocc_sf_hu_portion = blkgrp_ownocc_sf_hu::numeric/b.count
+from b
+where a.blockgroup_gisjoin = b.blockgroup_gisjoin;
+
 -- check for nulls
 select count(*)
 FROM diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup
-where blkgrp_ownocc_sf_hu is null;
+where blkgrp_ownocc_sf_hu is null
+or blkgrp_ownocc_sf_hu_portion is null;
 -- 0
+
 
 ALTER TABLE diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup 
 set (fillfactor = 100);
 VACUUM FULL diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup;
 
 -- add this info back to the main table
-ALTER TABLE diffusion_shared.pt_grid_us_res_new
-ADD COLUMN blkgrp_ownocc_sf_hu integer;
-
 UPDATE diffusion_shared.pt_grid_us_res_new a
-SET blkgrp_ownocc_sf_hu = b.blkgrp_ownocc_sf_hu
+SET blkgrp_ownocc_sf_hu_portion = b.blkgrp_ownocc_sf_hu_portion
 from diffusion_wind_data.pt_grid_us_res_new_acs_2012_blockgroup_lkup b
 where a.gid = b.gid;
 
 -- ensure no nulls
 select count(*)
 FROM diffusion_shared.pt_grid_us_res_new
-where blkgrp_ownocc_sf_hu is null;
+where blkgrp_ownocc_sf_hu_portion is null;
 -- 0
 
 -- add an index
-CREATE INDEX pt_grid_us_res_new_blkgrp_ownocc_sf_hu_btree
+CREATE INDEX pt_grid_us_res_new_blkgrp_ownocc_sf_hu_portion_btree
 ON diffusion_shared.pt_grid_us_res_new
-using btree(blkgrp_ownocc_sf_hu);
+using btree(blkgrp_ownocc_sf_hu_portion);
 ------------------------------------------------------------------------------------------------------------
 
 
@@ -1334,7 +1275,6 @@ using btree(blkgrp_ownocc_sf_hu);
 	-- ranked_rate_array_id
 
 ------------------------------------------------------------------------------------------------------------
-
 
 
 
