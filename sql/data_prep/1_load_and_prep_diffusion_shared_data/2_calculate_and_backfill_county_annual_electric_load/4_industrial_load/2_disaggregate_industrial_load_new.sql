@@ -160,7 +160,7 @@ SELECT county_id,
 	sum(total_customers_2011_industrial) as total_customers_2011_industrial
 FROM a
 group by county_id;
--- 3107 rows
+-- 3108 rows
 
 -- add a primary key on county_id
 ALTER TABLE dg_wind.ind_load_by_county_us
@@ -171,7 +171,7 @@ ADD PRIMARY KEY (county_id);
 
 -- how many rows were returned?
 select count(*)
-FROM dg_wind.ind_load_by_county_us; --3107
+FROM dg_wind.ind_load_by_county_us; --3108
 
 -- how many are there total?
 select count(*)
@@ -184,11 +184,7 @@ FROM diffusion_shared.county_geom a
 LEFT JOIN dg_wind.ind_load_by_county_us b
 on a.county_id = b.county_id
 where b.county_id is null
-and a.state_abbr not in ('AK', 'HI');
-
-select *
-FROM dg_wind.ind_load_by_county_us_archive
-where county_id = 1864
+and a.state_abbr not in ('AK', 'HI'); -- just grand isle vermont
 -- only missing county is a small island in lake champlain (VT) -- this doesnt seem too unreasonable
 
 -- add this county in with a value of zero for load and customers
@@ -198,14 +194,14 @@ INSERT INTO dg_wind.ind_load_by_county_us
 
 -- check load values
 SELECT sum(total_load_mwh_2011_industrial)
-FROM dg_wind.ind_load_by_county_us; -- 1,321,813,102.12185
+FROM dg_wind.ind_load_by_county_us; -- 986,246,281.703006
 
 select sum(total_industrial_sales_mwh)
 FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip
-where state_abbr not in ('AK','HI'); -- 1,321,813,207
+where state_abbr not in ('AK','HI'); -- 986,246,314
 
-select 1321813207 - 1321813102.12185; -- 104.87815 (difference possibly/likely(?) due to rounding)
-select (1321813207 - 1321813102.12185)/1321813207  * 100; -- 0.000007934415350413426500 % load is missing nationally
+select 986246314 - 986246281.703006; -- 32.296994 (difference possibly/likely(?) due to rounding)
+select (986246314 - 986246281.703006)/986246314  * 100; -- 0.000003274739133777893100 % load is missing nationally
 
 -- cehck on state level
 with a as 
@@ -227,24 +223,33 @@ SELECT a.state_abbr, a.sum as est_total, b.sum as county_total, b.sum-a.sum as d
 FROM a
 LEFT JOIN b
 on a.state_abbr = b.state_abbr
-order by a.state_abbr; --
+order by perc_diff; --
 -- looks good -- these differcnces are probably due to incongruencies between county_geoms and the ventyx state boundaries
 
 -- any counties w/out ind load (other than Grand Isle)
 select *
-FROM dg_wind.ind_load_by_county_us
-where total_load_mwh_2011_industrial = 0; -- nope
+FROM dg_wind.ind_load_by_county_us_archive
+where total_load_mwh_2011_industrial = 0; -- 13 of them 
+-- reviewed in Q
+-- the vast majority of these are in a single cluster in NW South Dakota
+-- there is no flaw in the processing of the load, but it seems like these utilities (which are rural coops)
+-- don't account for industrial load. they must count whatevr industrial users they have as commercial
+-- likely this is just agricultural users. there is no good way to separate out their commercial load into industrial
+-- so this will mean that any ag users in these counties are represented in commercial sector, not industrial
+-- other counties with zero load include a rural county in western West Virginia, and a county in MD along the
+-- Chesepeake. Overall, all of these counties appear to have very little industrial land (based on land masks),
+-- so it is not a huge concern that a single county will have zero industrail load
 
 -- check values for customers
 SELECT sum(total_customers_2011_industrial)
-FROM dg_wind.ind_load_by_county_us; -- 17,529,501.0606915
+FROM dg_wind.ind_load_by_county_us; -- 725,966.744431214
 
 select sum(total_industrial_customers)
 FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip
-where state_abbr not in ('AK','HI'); -- 17,529,504
+where state_abbr not in ('AK','HI'); -- 725,967
 
-select 17529504 - 17529501.0606915; -- 2.9393085 (difference likely due to rounding)
-select (17529504 - 17529501.0606915)/17529504  * 100; -- 0.000016767779054102158300 % load is missing nationally
+select 725967 - 725966.744431214; -- 0.255568786 (difference likely due to rounding)
+select (725967 - 725966.744431214)/17529504  * 100; -- 0.000001457935067643670900 % load is missing nationally
 
 -- cehck on state level
 with a as 
@@ -270,5 +275,6 @@ order by perc_diff; --
 
 select *
 FROM dg_wind.ind_load_by_county_us
-where total_customers_2011_industrial = 0; -- just grand isle
--- looks good -- these differcnces are probably due to incongruencies between county_geoms and the ventyx state boundaries
+where total_customers_2011_industrial = 0; 
+-- 13 of these check in q
+

@@ -10,7 +10,7 @@ CREATE TABLE diffusion_shared.pt_grid_us_res_new (
 
 SET ROLE "server-superusers";
 COPY diffusion_shared.pt_grid_us_res_new
-FROM '/srv/home/mgleason/data/dg_wind/land_masks_20140205/res_mask.csv' with csv header;
+FROM '/srv/home/mgleason/data/dg_wind/land_masks_20140219/res_mask.csv' with csv header;
 set role 'diffusion-writers';
 
 -- drop this column -- it means nothing
