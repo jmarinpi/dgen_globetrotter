@@ -59,10 +59,12 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id'])
     
     revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, cfg.tech_lifetime)
-    
+    np.savetxt('revenue.csv', revenue, delimiter = ',')
+    np.savetxt('costs.csv', costs, delimiter = ',')
+    np.savetxt('cfs.csv', cfs, delimiter = ',')
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs,cfg.tech_lifetime)
-        
+    df.to_csv('main_df.csv') 
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate,cfg.tech_lifetime)    
 
     
