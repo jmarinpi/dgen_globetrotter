@@ -17,7 +17,7 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 			(
 				SELECT a.gid as pt_gid, d.rate_id_alias, 
 					(a.utility_type = d.utility_type) as utility_type_match,
-					ST_Distance(a.the_geom_900914, d.the_geom_900914) as distance_m
+					ST_Distance(a.the_geom_96703, d.the_geom_96703) as distance_m
 				FROM diffusion_shared.pt_grid_us_com a
 				INNER JOIN diffusion_shared.county_geom b
 				ON a.county_id = b.county_id
@@ -80,7 +80,7 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 			(
 				SELECT a.gid as pt_gid, d.rate_id_alias, 
 					(a.utility_type = d.utility_type) as utility_type_match,
-					ST_Distance(a.the_geom_900914, d.the_geom_900914) as distance_m
+					ST_Distance(a.the_geom_96703, d.the_geom_96703) as distance_m
 				FROM diffusion_shared.pt_grid_us_ind a
 				INNER JOIN diffusion_shared.county_geom b
 				ON a.county_id = b.county_id
@@ -142,7 +142,7 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 			(
 				SELECT a.gid as pt_gid, d.rate_id_alias, 
 					(a.utility_type = d.utility_type) as utility_type_match,
-					ST_Distance(a.the_geom_900914, d.the_geom_900914) as distance_m
+					ST_Distance(a.the_geom_96703, d.the_geom_96703) as distance_m
 				FROM diffusion_shared.pt_grid_us_res a
 				INNER JOIN diffusion_shared.county_geom b
 				ON a.county_id = b.county_id

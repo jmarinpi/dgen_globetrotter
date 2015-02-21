@@ -11,11 +11,11 @@ CREATE TABLE diffusion_shared.pt_rate_isect_lkup_com
 );
 
 SELECT parsel_2('dav-gis','mgleason','mgleason',
-		'diffusion_shared.pt_grid_us_com','gid',
+		'diffusion_shared.pt_grid_us_com_new','gid',
 		'SELECT a.gid as pt_gid, 
 			c.state_abbr,
 			b.rate_id_alias
-		FROM diffusion_shared.pt_grid_us_com a
+		FROM diffusion_shared.pt_grid_us_com_new a
 		INNER JOIN diffusion_shared.urdb_rates_geoms_com b
 		ON ST_Intersects(a.the_geom_4326, b.the_geom_4326)
 		INNER JOIN diffusion_shared.county_geom c
@@ -31,12 +31,11 @@ CREATE INDEX pt_rate_isect_lkup_com_state_abbr_btree
 ON diffusion_shared.pt_rate_isect_lkup_com
 using btree(state_abbr);
 
-ALTER TABLE diffusion_shared.pt_rate_isect_lkup_com
-ALTER COLUMN rate_id_alias type integer using rate_id_alias::integer;
-
 CREATE INDEX pt_rate_isect_lkup_com_rate_id_alias_btree
 ON diffusion_shared.pt_rate_isect_lkup_com
 using btree(rate_id_alias);
+
+VACUUM ANALYZE diffusion_shared.pt_rate_isect_lkup_com;
 
 -- intersect against industrial point grid to get a lookup table
 DROP TABLE IF EXISTS diffusion_shared.pt_rate_isect_lkup_ind;
@@ -48,11 +47,11 @@ CREATE TABLE diffusion_shared.pt_rate_isect_lkup_ind
 );
 
 SELECT parsel_2('dav-gis','mgleason','mgleason',
-		'diffusion_shared.pt_grid_us_ind','gid',
+		'diffusion_shared.pt_grid_us_ind_new','gid',
 		'SELECT a.gid as pt_gid, 
 			c.state_abbr,
 			b.rate_id_alias
-		FROM diffusion_shared.pt_grid_us_ind a
+		FROM diffusion_shared.pt_grid_us_ind_new a
 		INNER JOIN diffusion_shared.urdb_rates_geoms_com b
 		ON ST_Intersects(a.the_geom_4326, b.the_geom_4326)
 		INNER JOIN diffusion_shared.county_geom c
@@ -72,6 +71,8 @@ CREATE INDEX pt_rate_isect_lkup_ind_rate_id_alias_btree
 ON diffusion_shared.pt_rate_isect_lkup_ind
 using btree(rate_id_alias);
 
+VACUUM ANALYZE diffusion_shared.pt_rate_isect_lkup_ind;
+
 --------------------------------------------------------------------------------
 -- intersect against residential point grid to get a lookup table
 DROP TABLE IF EXISTS diffusion_shared.pt_rate_isect_lkup_res;
@@ -83,11 +84,11 @@ CREATE TABLE diffusion_shared.pt_rate_isect_lkup_res
 );
 
 SELECT parsel_2('dav-gis','mgleason','mgleason',
-		'diffusion_shared.pt_grid_us_res','gid',
+		'diffusion_shared.pt_grid_us_res_new','gid',
 		'SELECT a.gid as pt_gid, 
 			c.state_abbr,
 			b.rate_id_alias
-		FROM diffusion_shared.pt_grid_us_res a
+		FROM diffusion_shared.pt_grid_us_res_new a
 		INNER JOIN diffusion_shared.urdb_rates_geoms_res b
 		ON ST_Intersects(a.the_geom_4326, b.the_geom_4326)
 		INNER JOIN diffusion_shared.county_geom c
@@ -95,9 +96,6 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 		'diffusion_shared.pt_rate_isect_lkup_res', 'a',22);
 
 -- add indices
-ALTER TABLE diffusion_shared.pt_rate_isect_lkup_res
-ALTER COLUMN rate_id_alias type integer using rate_id_alias::integer;
-
 CREATE INDEX pt_rate_isect_lkup_res_pt_gid_btree
 ON diffusion_shared.pt_rate_isect_lkup_res
 using btree(pt_gid);
@@ -110,3 +108,4 @@ CREATE INDEX pt_rate_isect_lkup_res_rate_id_alias_btree
 ON diffusion_shared.pt_rate_isect_lkup_res
 using btree(rate_id_alias);
 
+VACUUM ANALYZE diffusion_shared.pt_rate_isect_lkup_res;
