@@ -132,10 +132,17 @@ from diffusion_shared.pt_ranked_rate_array_lkup_com b
 where a.gid = b.pt_gid;
 -- ** make sure to update microdata and pt join view to account for ranked_rate_array_id now **
 
+-- add an index
+CREATE INDEX pt_grid_us_com_new_ranked_rate_array_id_btree
+ON diffusion_shared.pt_grid_us_com_new
+USING btree(ranked_rate_array_id);
+
 -- check no nulls
 SELECT count(*)
-FROM diffusion_shared.pt_ranked_rate_array_lkup_com
+FROM diffusion_shared.pt_grid_us_com_new
 where ranked_rate_array_id is null;
+
+VACUUM ANALYZE diffusion_shared.pt_grid_us_com_new;
 ------------------------------------------------------------------------------------------------------------
 -- unnest the unique ranked rate arrays into normal table structure
 DROP TABLE IF EXISTS diffusion_shared.ranked_rate_array_lkup_com;
@@ -330,9 +337,17 @@ set ranked_rate_array_id = b.ranked_rate_array_id
 from diffusion_shared.pt_ranked_rate_array_lkup_res b
 where a.gid = b.pt_gid;
 
-select count(*)
+-- add an index
+CREATE INDEX pt_grid_us_res_new_ranked_rate_array_id_btree
+ON diffusion_shared.pt_grid_us_res_new
+USING btree(ranked_rate_array_id);
+
+-- check no nulls
+SELECT count(*)
 FROM diffusion_shared.pt_grid_us_res_new
 where ranked_rate_array_id is null;
+
+VACUUM ANALYZE diffusion_shared.pt_grid_us_res_new;
 -- ** make sure to update microdata and pt join view to account for ranked_rate_array_id now **
 ------------------------------------------------------------------------------------------------------------
 -- unnest the unique ranked rate arrays into normal table structure
@@ -489,9 +504,17 @@ set ranked_rate_array_id = b.ranked_rate_array_id
 from diffusion_shared.pt_ranked_rate_array_lkup_ind b
 where a.gid = b.pt_gid;
 
+-- add an index
+CREATE INDEX pt_grid_us_ind_new_ranked_rate_array_id_btree
+ON diffusion_shared.pt_grid_us_ind_new
+USING btree(ranked_rate_array_id);
+
+-- check no nulls
 SELECT count(*)
 FROM diffusion_shared.pt_grid_us_ind_new
 where ranked_rate_array_id is null;
+
+VACUUM ANALYZE diffusion_shared.pt_grid_us_ind_new;
 -- ** make sure to update microdata and pt join view to account for ranked_rate_array_id now **
 ------------------------------------------------------------------------------------------------------------
 -- unnest the unique ranked rate arrays into normal table structure

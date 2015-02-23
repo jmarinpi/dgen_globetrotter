@@ -1,7 +1,7 @@
 ﻿-- find all the points without valid i, j, icf combos
 DROP TABLE IF EXISTS diffusion_wind_data.missing_ij_icf_res_points;
 CREATE TABLE diffusion_wind_data.missing_ij_icf_res_points AS
-SELECT a.gid, a.the_geom_900914, 
+SELECT a.gid, a.the_geom_96703, 
 	b.raster_value, b.i, b.j, b.cf_bin
 FROM diffusion_shared.pt_grid_us_res a
 
@@ -14,11 +14,14 @@ and b.j = c.j
 and b.cf_bin = c.cf_bin
 
 where c.i is null; -- this filters down to the ones for which there is no matching i, j, icf combo with elev and tmy data
--- 540   points
+-- 0   points
 
-CREATE INDEX missing_ij_icf_res_points_the_geom_900914_gist 
+-- ****** IF 0 PTS RETURNED, SKIP TO FINAL BLOCK OF QUERIES
+-- ****** OTHERWISE, RUN EVEYTHING EXCEPT THE FINAL BLOCK OF QUERIES
+
+CREATE INDEX missing_ij_icf_res_points_the_geom_96703_gist 
 ON diffusion_wind_data.missing_ij_icf_res_points 
-using gist(the_geom_900914);
+using gist(the_geom_96703);
 
 -- find which points can be fixed by going up or down one cfbin in the same i j cell
 DROP TABLE IF EXISTS diffusion_wind_data.res_points_adjusted_1cfbin;
@@ -50,7 +53,7 @@ DROP TABLE IF EXISTS diffusion_wind_data.res_points_adjusted_ij;
 CREATE TABLE diffusion_wind_data.res_points_adjusted_ij AS
 with unfixed as 
 (
-	SELECT a.gid, a.the_geom_900914, a.i, a.j, a.cf_bin
+	SELECT a.gid, a.the_geom_96703, a.i, a.j, a.cf_bin
 	FROM diffusion_wind_data.missing_ij_icf_res_points a
 	LEFT JOIN diffusion_wind_data.res_points_adjusted_1cfbin b
 	ON a.gid = b.gid
@@ -60,18 +63,18 @@ near_cells As
 (
 	SELECT a.*, unnest((select array(SELECT b.gid
 			 FROM aws_2014.ij_polygons b
-			 ORDER BY a.the_geom_900914 <#> b.the_geom_900914 LIMIT 9))) -- do 9 because the first one will always be the cell the point is located within
+			 ORDER BY a.the_geom_96703 <#> b.the_geom_96703 LIMIT 9))) -- do 9 because the first one will always be the cell the point is located within
 			as aws_gid
 	FROM unfixed a
 ),
 nn_ordered AS 
 (
-	select a.gid, a.the_geom_900914, 
+	select a.gid, a.the_geom_96703, 
 		a.i, a.j, a.cf_bin,
 		a.aws_gid, 
 		b.i as near_i, 
 		b.j as near_j, 
-		row_number() OVER (PARTITION BY a.gid ORDER BY ST_Distance(a.the_geom_900914,b.the_geom_900914) asc) as nn_rank
+		row_number() OVER (PARTITION BY a.gid ORDER BY ST_Distance(a.the_geom_96703,b.the_geom_96703) asc) as nn_rank
 	FROM near_cells a
 	LEFT JOIN aws_2014.ij_polygons b
 	ON a.aws_gid = b.gid
@@ -103,7 +106,7 @@ nn_cfs as
 	and a.near_j = d.j
 	and lpad((a.cf_bin::integer - 30)::text, 4, '0') = d.cf_bin
 )
-SELECT distinct on (a.gid) a.gid, a.the_geom_900914, 
+SELECT distinct on (a.gid) a.gid, a.the_geom_96703, 
 			   a.i, a.j, a.cf_bin, a.aws_gid, a.near_i, a.near_j, a.nn_rank, adjusted_cf_bin
 FROM nn_cfs a
 where adjusted_cf_bin is NOT null
@@ -127,7 +130,7 @@ where b.gid is null and c.gid is null;
 -- -- for the remaining points, pick the closest cfbin in the same ij cell
 -- DROP TABLE IF EXISTS diffusion_wind_data.res_points_adjusted_multi_cfbins;
 -- CREATE TABLE diffusion_wind_data.res_points_adjusted_multi_cfbins AS
--- SELECT distinct ON (a.gid) a.gid, a.the_geom_900914, a.i, a.j, a.cf_bin, 
+-- SELECT distinct ON (a.gid) a.gid, a.the_geom_96703, a.i, a.j, a.cf_bin, 
 --        b.cf_bin as adjusted_cf_bin
 -- FROM diffusion_wind_data.remaining_missing_res_points a
 -- LEFT JOIN aws_2014.ij_onshore_cf_bins b
@@ -242,3 +245,51 @@ and c.turbine_id = 1
 -- and c.aep is null; -- none are returned, so all points are being linked to aep values!!!
 
 
+------------------------------------------------------------------------------------------
+-- SKIP TO HERE IF 0 MISSING PTS; IGNORE IF >0 MISSING PTS
+------------------------------------------------------------------------------------------
+DROP TABLE IF EXISTS diffusion_wind.ij_cfbin_lookup_res_pts_us;
+CREATE TABLE diffusion_wind.ij_cfbin_lookup_res_pts_us AS
+SELECT a.gid as pt_gid, 
+	b.i, b.j, 
+	b.cf_bin::integer/10 as cf_bin
+FROM diffusion_shared.pt_grid_us_res a
+LEFT JOIN aws_2014.iii_jjj_cfbin_raster_lookup b
+	ON a.iiijjjicf_id = b.raster_value
+LEFT JOIN aws_2014.ij_onshore_cf_bins c
+	ON b.i = c.i
+	and b.j = c.j
+	and b.cf_bin = c.cf_bin;
+-- 5751859 rows
+
+-- add primary
+ALTER TABLE diffusion_wind.ij_cfbin_lookup_res_pts_us ADD PRIMARY KEY (pt_gid);
+
+
+-- add indices
+CREATE INDEX ij_cfbin_lookup_res_pts_us_i_btree ON diffusion_wind.ij_cfbin_lookup_res_pts_us using btree(i);
+CREATE INDEX ij_cfbin_lookup_res_pts_us_j_btree ON diffusion_wind.ij_cfbin_lookup_res_pts_us using btree(j);
+CREATE INDEX ij_cfbin_lookup_res_pts_us_cf_bin_btree ON diffusion_wind.ij_cfbin_lookup_res_pts_us using btree(cf_bin);
+
+-- check for no nulls
+SELECT count(*)
+FROM diffusion_wind.ij_cfbin_lookup_res_pts_us
+where i is null
+or j is null
+or cf_bin is null;
+-- 0
+
+-- check that it links to resource data
+SELECT a.gid, b.i, b.j, b.cf_bin, 
+	c.aep
+FROM diffusion_shared.pt_grid_us_res a
+LEFT JOIN diffusion_wind.ij_cfbin_lookup_res_pts_us b
+	on a.gid = b.pt_gid
+LEFT JOIN diffusion_wind.wind_resource_annual c
+	ON b.i = c.i
+	and b.j = c.j
+	and b.cf_bin = c.cf_bin
+where c.height = 50
+and c.turbine_id = 1
+and c.aep is null; -- none are returned, so all points are being linked to aep values!!!
+------------------------------------------------------------------------------------------

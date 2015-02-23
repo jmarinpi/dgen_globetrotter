@@ -1252,6 +1252,13 @@ using btree(blkgrp_ownocc_sf_hu_portion);
 
 
 ------------------------------------------------------------------------------------------------------------
+-- RANKED RATE ARRAY ID
+------------------------------------------------------------------------------------------------------------
+-- this is added later as part of ./19_curating_urdb_rates/21_find_unique_rate_rank_arrays.sql
+------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------------------------
 -- RESET THE FILL FACTOR
 ------------------------------------------------------------------------------------------------------------
 ALTER TABLE diffusion_shared.pt_grid_us_res_new
@@ -1281,6 +1288,17 @@ VACUUM FULL diffusion_shared.pt_grid_us_res_new;
   -- acres_per_hu: diffusion_shared.pt_grid_us_res_new_acres_per_hu_btree
   -- housing_units: diffusion_shared.pt_grid_us_res_new_housing_units_btree
   -- blkgrp_ownocc_sf_hu: pt_grid_us_res_new_blkgrp_ownocc_sf_hu_btree
+  -- ranked_rate_array_id: pt_grid_us_res_new_ranked_rate_array_id_btree
+------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------------------------
+-- REPLACE THE OLD VERSION OF THE TABLE
+------------------------------------------------------------------------------------------------------------
+DROP TABLE diffusion_shared.pt_grid_us_res CASCADE;
+
+ALTER TABLE diffusion_shared.pt_grid_us_res_new
+RENAME TO pt_grid_us_res;
 ------------------------------------------------------------------------------------------------------------
 
 

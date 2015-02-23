@@ -1066,6 +1066,14 @@ using btree(acres_per_hu);
 
 
 ------------------------------------------------------------------------------------------------------------
+-- RANKED RATE ARRAY ID
+------------------------------------------------------------------------------------------------------------
+-- this is added later as part of ./19_curating_urdb_rates/21_find_unique_rate_rank_arrays.sql
+
+------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------------------------
 -- RESET THE FILL FACTOR
 ------------------------------------------------------------------------------------------------------------
 ALTER TABLE diffusion_shared.pt_grid_us_ind_new
@@ -1093,13 +1101,17 @@ VACUUM FULL diffusion_shared.pt_grid_us_ind_new;
   -- canopy_ht_m: diffusion_shared.pt_grid_us_ind_new_canopy_ht_m_btree
   -- canopy_pct: diffusion_shared.pt_grid_us_ind_new_canopy_pct_btree
   -- acres_per_hu: diffusion_shared.pt_grid_us_ind_new_acres_per_hu_btree
+  -- ranked_rate_array_id: diffusion_shared.pt_grid_us_ind_new_ranked_rate_array_id_btree
 ------------------------------------------------------------------------------------------------------------
 
 
+------------------------------------------------------------------------------------------------------------
+-- REPLACE THE OLD VERSION OF THE TABLE
+------------------------------------------------------------------------------------------------------------
+DROP TABLE diffusion_shared.pt_grid_us_ind CASCADE;
 
-
-
-
-
+ALTER TABLE diffusion_shared.pt_grid_us_ind_new
+RENAME TO pt_grid_us_ind;
+------------------------------------------------------------------------------------------------------------
 
 

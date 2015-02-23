@@ -4,24 +4,37 @@ SET seed to 1;
 CREATE TABLE diffusion_solar.point_microdata_res_us AS
 WITH a AS
 (
-	SELECT a.county_id, 
-		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.solar_incentive_array_id as incentive_array_id,
-		a.ranked_rate_array_id, a.hdf_load_index,
+	SELECT 	a.county_id, 
+		'p'::text || a.pca_reg::text AS pca_reg, 
+		a.reeds_reg, 
+		a.solar_incentive_array_id as incentive_array_id,
+		a.ranked_rate_array_id, 
+		a.hdf_load_index,
 		a.utility_type, 
-		a.solar_re_9809_gid,
-		count(*)::integer as point_weight
+		-- solar only
+		solar_re_9809_gid,
+		-- res only		
+		sum(a.blkgrp_ownocc_sf_hu_portion) as point_weight
 	FROM diffusion_shared.pt_grid_us_res a
-	GROUP BY a.county_id, 
-		a.pca_reg, a.reeds_reg, a.solar_incentive_array_id,
-		a.ranked_rate_array_id, a.hdf_load_index,
-		a.utility_type, 
+	GROUP BY a.county_id,
+		a.pca_reg,
+		a.reeds_reg,
+		a.solar_incentive_array_id,
+		a.ranked_rate_array_id,
+		a.hdf_load_index,
+		a.utility_type,
+		-- solar only
 		a.solar_re_9809_gid
 )
 SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
 FROM a
 ORDER BY county_id;
 --use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
-
+-- previous version had 1,007,879 rows
+-- new version has:
+select count(*)
+FROM diffusion_solar.point_microdata_res_us;
+-- 788,514 rows
 
 -- primary key and indices
 ALTER TABLE diffusion_solar.point_microdata_res_us
@@ -50,23 +63,35 @@ CREATE TABLE diffusion_solar.point_microdata_com_us AS
 WITH a AS
 (
 	SELECT a.county_id, 
-		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.solar_incentive_array_id as incentive_array_id,
-		a.ranked_rate_array_id, a.hdf_load_index,
+		'p'::text || a.pca_reg::text AS pca_reg, 
+		a.reeds_reg, 
+		a.solar_incentive_array_id as incentive_array_id,
+		a.ranked_rate_array_id, 
+		a.hdf_load_index,
 		a.utility_type, 
-		a.solar_re_9809_gid,
+		-- solar only
+		solar_re_9809_gid,
 		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_com a
-	GROUP BY a.county_id, 
-		a.pca_reg, a.reeds_reg, a.solar_incentive_array_id,
-		a.ranked_rate_array_id, a.hdf_load_index,
-		a.utility_type, 
+	GROUP BY a.county_id,
+		a.pca_reg,
+		a.reeds_reg,
+		a.solar_incentive_array_id,
+		a.ranked_rate_array_id,
+		a.hdf_load_index,
+		a.utility_type,
+		-- solar only
 		a.solar_re_9809_gid
 )
 SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
 FROM a
 ORDER BY county_id;
 --use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
-
+-- previous version had 347,490 rows
+-- new version has:
+select count(*)
+FROM diffusion_solar.point_microdata_com_us;
+-- 125,703 rows
 
 -- primary key and indices
 ALTER TABLE diffusion_solar.point_microdata_com_us
@@ -91,22 +116,35 @@ CREATE TABLE diffusion_solar.point_microdata_ind_us AS
 WITH a AS
 (
 	SELECT a.county_id, 
-		'p'::text || a.pca_reg::text AS pca_reg, a.reeds_reg, a.solar_incentive_array_id as incentive_array_id,
-		a.ranked_rate_array_id, a.hdf_load_index,
+		'p'::text || a.pca_reg::text AS pca_reg, 
+		a.reeds_reg, 
+		a.solar_incentive_array_id as incentive_array_id,
+		a.ranked_rate_array_id, 
+		a.hdf_load_index,
 		a.utility_type, 
-		a.solar_re_9809_gid,
+		-- solar only
+		solar_re_9809_gid,
 		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_ind a
-	GROUP BY a.county_id, 
-		a.pca_reg, a.reeds_reg, a.solar_incentive_array_id,
-		a.ranked_rate_array_id, a.hdf_load_index,
-		a.utility_type, 
+	GROUP BY a.county_id,
+		a.pca_reg,
+		a.reeds_reg,
+		a.solar_incentive_array_id,
+		a.ranked_rate_array_id,
+		a.hdf_load_index,
+		a.utility_type,
+		-- solar only
 		a.solar_re_9809_gid
 )
 SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
 FROM a
 ORDER BY county_id;
 --use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
+-- previous version had 225,119 rows
+-- new version has:
+select count(*)
+FROM diffusion_solar.point_microdata_ind_us;
+-- 174,056 rows
 
 
 -- primary key and indices
