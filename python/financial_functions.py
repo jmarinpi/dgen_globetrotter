@@ -275,7 +275,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     
     
     # If monthly_bill_savings is zero, percent_mbs will be non-finite
-    percent_monthly_bill_savings = np.where(monthly_bill_savings == 0, 0, percent_monthly_bill_savings)
+    #percent_monthly_bill_savings = np.where(monthly_bill_savings == 0, 0, percent_monthly_bill_savings)
     df['monthly_bill_savings'] = monthly_bill_savings
     df['percent_monthly_bill_savings'] = percent_monthly_bill_savings
     
