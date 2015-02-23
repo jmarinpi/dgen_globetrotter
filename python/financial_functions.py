@@ -272,9 +272,21 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     first_year_bill_savings = first_year_energy_savings - avg_annual_payment
     monthly_bill_savings = first_year_bill_savings/12
     percent_monthly_bill_savings = first_year_bill_savings/df.first_year_bill_without_system
+    
+    
+    # If monthly_bill_savings is zero, percent_mbs will be non-finite
+    percent_monthly_bill_savings = np.where(monthly_bill_savings == 0, 0, percent_monthly_bill_savings)
     df['monthly_bill_savings'] = monthly_bill_savings
     df['percent_monthly_bill_savings'] = percent_monthly_bill_savings
-     
+    
+    #Don't commit this    
+    df['first_year_energy_savings'] = first_year_energy_savings
+    df['avg_annual_payment'] = avg_annual_payment
+    df['first_year_bill_savings'] = first_year_bill_savings
+    df['monthly_bill_savings2'] = first_year_bill_savings/12
+    df['percent_monthly_bill_savings2'] = first_year_bill_savings/df.first_year_bill_without_system
+    #Don't commit this  
+    
     return revenue, costs, cfs, df.first_year_bill_with_system, df.first_year_bill_without_system
 
 #==============================================================================    
