@@ -59,12 +59,9 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id'])
     
     revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, cfg.tech_lifetime)
-    np.savetxt('revenue.csv', revenue, delimiter = ',')
-    np.savetxt('costs.csv', costs, delimiter = ',')
-    np.savetxt('cfs.csv', cfs, delimiter = ',')
+    
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs,cfg.tech_lifetime)
-    df.to_csv('main_df.csv') 
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate,cfg.tech_lifetime)    
 
     
@@ -267,25 +264,16 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # solve sequence, they are calculated once in the first year of the model. Thus, they are multiplied by the rate growth multiplier
     # in the current solve year to update for rate changes
     first_year_energy_savings = (df.first_year_bill_without_system - df.first_year_bill_with_system) * rate_growth_mult[:,0] 
-    avg_annual_payment = (annual_loan_pmts.sum(axis = 1)/df.loan_term_yrs) + down_payment_cost/20
+    avg_annual_payment = (annual_loan_pmts.sum(axis = 1)/df.loan_term_yrs) + down_payment_cost.sum(axis = 1)/20
     first_year_bill_savings = first_year_energy_savings + avg_annual_payment # first_year_energy_savings is positive, avg_annual_payment is a negative
     monthly_bill_savings = first_year_bill_savings/12
     percent_monthly_bill_savings = first_year_bill_savings/df.first_year_bill_without_system
     
     
     # If monthly_bill_savings is zero, percent_mbs will be non-finite
-    !!percent_monthly_bill_savings = np.where(df.first_year_bill_without_system.values == 0, 0, percent_monthly_bill_savings)
+    percent_monthly_bill_savings = np.where(df.first_year_bill_without_system.values == 0, 0, percent_monthly_bill_savings)
     df['monthly_bill_savings'] = monthly_bill_savings
     df['percent_monthly_bill_savings'] = percent_monthly_bill_savings
-    
-    #Don't commit this    
-    df['first_year_energy_savings'] = first_year_energy_savings
-    df['avg_annual_payment'] = avg_annual_payment
-    df['first_year_bill_savings'] = first_year_bill_savings
-    df['monthly_bill_savings2'] = first_year_bill_savings/12
-    df['percent_monthly_bill_savings2'] = first_year_bill_savings/df.first_year_bill_without_system
-    df['pmt'] = pmt
-    #Don't commit this  
     
     return revenue, costs, cfs, df.first_year_bill_with_system, df.first_year_bill_without_system
 
