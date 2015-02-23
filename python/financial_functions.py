@@ -157,7 +157,6 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # Assume that incentives received in first year are directly credited against installed cost; This help avoid
     # ITC cash flow imbalances in first year
     net_installed_cost = df.ic - (df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction)
-    #net_installed_cost[net_installed_cost<0] = 0
     
     # Calculate the annual payment net the downpayment and upfront incentives
     pmt = - (1 - df.down_payment) * net_installed_cost * crf    
@@ -275,7 +274,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     
     
     # If monthly_bill_savings is zero, percent_mbs will be non-finite
-    percent_monthly_bill_savings = np.where(monthly_bill_savings == 0, 0, percent_monthly_bill_savings)
+    percent_monthly_bill_savings = np.where(df.first_year_bill_without_system.values == 0, 0, percent_monthly_bill_savings)
     df['monthly_bill_savings'] = monthly_bill_savings
     df['percent_monthly_bill_savings'] = percent_monthly_bill_savings
     
