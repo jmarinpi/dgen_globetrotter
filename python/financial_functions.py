@@ -157,7 +157,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # Assume that incentives received in first year are directly credited against installed cost; This help avoid
     # ITC cash flow imbalances in first year
     net_installed_cost = df.ic - (df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction)
-    net_installed_cost[net_installed_cost<0] = 0
+    #net_installed_cost[net_installed_cost<0] = 0
     
     # Calculate the annual payment net the downpayment and upfront incentives
     pmt = - (1 - df.down_payment) * net_installed_cost * crf    
@@ -268,14 +268,14 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # solve sequence, they are calculated once in the first year of the model. Thus, they are multiplied by the rate growth multiplier
     # in the current solve year to update for rate changes
     first_year_energy_savings = (df.first_year_bill_without_system - df.first_year_bill_with_system) * rate_growth_mult[:,0] 
-    avg_annual_payment = (annual_loan_pmts.sum(axis = 1)/df.loan_term_yrs)*-1
+    avg_annual_payment = (annual_loan_pmts.sum(axis = 1)/df.loan_term_yrs)*-1 + down_payment_cost/20
     first_year_bill_savings = first_year_energy_savings - avg_annual_payment
     monthly_bill_savings = first_year_bill_savings/12
     percent_monthly_bill_savings = first_year_bill_savings/df.first_year_bill_without_system
     
     
     # If monthly_bill_savings is zero, percent_mbs will be non-finite
-    #percent_monthly_bill_savings = np.where(monthly_bill_savings == 0, 0, percent_monthly_bill_savings)
+    percent_monthly_bill_savings = np.where(monthly_bill_savings == 0, 0, percent_monthly_bill_savings)
     df['monthly_bill_savings'] = monthly_bill_savings
     df['percent_monthly_bill_savings'] = percent_monthly_bill_savings
     
@@ -285,6 +285,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     df['first_year_bill_savings'] = first_year_bill_savings
     df['monthly_bill_savings2'] = first_year_bill_savings/12
     df['percent_monthly_bill_savings2'] = first_year_bill_savings/df.first_year_bill_without_system
+    df['pmt'] = pmt
     #Don't commit this  
     
     return revenue, costs, cfs, df.first_year_bill_with_system, df.first_year_bill_without_system
