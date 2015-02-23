@@ -1252,6 +1252,16 @@ using btree(blkgrp_ownocc_sf_hu_portion);
 
 
 ------------------------------------------------------------------------------------------------------------
+-- RESET THE FILL FACTOR
+------------------------------------------------------------------------------------------------------------
+ALTER TABLE diffusion_shared.pt_grid_us_res_new
+SET (fillfactor = 100);
+
+VACUUM FULL diffusion_shared.pt_grid_us_res_new;
+------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------------------------
 -- CLEANUP (ADD/REMOVE) INDICES
 ------------------------------------------------------------------------------------------------------------
 -- indices are geared towards facilitating creation of pt microdata tables
@@ -1271,9 +1281,6 @@ using btree(blkgrp_ownocc_sf_hu_portion);
   -- acres_per_hu: diffusion_shared.pt_grid_us_res_new_acres_per_hu_btree
   -- housing_units: diffusion_shared.pt_grid_us_res_new_housing_units_btree
   -- blkgrp_ownocc_sf_hu: pt_grid_us_res_new_blkgrp_ownocc_sf_hu_btree
--- to add:
-	-- ranked_rate_array_id
-
 ------------------------------------------------------------------------------------------------------------
 
 

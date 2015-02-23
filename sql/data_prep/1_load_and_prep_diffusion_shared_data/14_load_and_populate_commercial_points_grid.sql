@@ -1097,6 +1097,16 @@ using btree(acres_per_hu);
 
 
 ------------------------------------------------------------------------------------------------------------
+-- RESET THE FILL FACTOR
+------------------------------------------------------------------------------------------------------------
+ALTER TABLE diffusion_shared.pt_grid_us_com_new
+SET (fillfactor = 100);
+
+VACUUM FULL diffusion_shared.pt_grid_us_com_new;
+------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------------------------
 -- CLEANUP (ADD/REMOVE) INDICES
 ------------------------------------------------------------------------------------------------------------
 -- indices are geared towards facilitating creation of pt microdata tables
@@ -1114,10 +1124,6 @@ using btree(acres_per_hu);
   -- canopy_ht_m: diffusion_shared.pt_grid_us_com_new_canopy_ht_m_btree
   -- canopy_pct: diffusion_shared.pt_grid_us_com_new_canopy_pct_btree
   -- acres_per_hu: diffusion_shared.pt_grid_us_com_new_acres_per_hu_btree
-
--- to add:
-	-- ranked_rate_array_id
-
 ------------------------------------------------------------------------------------------------------------
 
 
