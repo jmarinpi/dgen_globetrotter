@@ -706,7 +706,7 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
     inputs['seed_str'] = str(seed).replace('.','p')
     if sector_abbr == 'res':
         inputs['load_table'] = 'diffusion_shared.eia_microdata_recs_2009'
-        inputs['load_columns'] = 'b.doeid as load_id, b.nweight as weight, b.kwh as ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft'
+        inputs['load_columns'] = 'b.doeid as load_id, b.nweight as weight, b.kwh as ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft, 1 as ownocc8'
         inputs['load_pkey'] = 'doeid'
         inputs['load_weight_column'] = 'nweight'
         inputs['load_region'] = 'reportable_domain'
@@ -716,7 +716,7 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
         inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_res'
     else:
         inputs['load_table'] = 'diffusion_shared.eia_microdata_cbecs_2003'
-        inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft'
+        inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft, b.ownocc8'
         inputs['load_pkey'] = 'pubid8'
         inputs['load_weight_column'] = 'adjwt8'
         inputs['load_region'] = 'census_division_abbr'
@@ -812,7 +812,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s;
             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
             WITH binned as(
-            SELECT a.*, b.crb_model, b.ann_cons_kwh, b.weight, b.roof_sqft, b.roof_style,
+            SELECT a.*, b.crb_model, b.ann_cons_kwh, b.weight, b.roof_sqft, b.roof_style, b.ownocc8,
                 	a.county_total_customers_2011 * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
                 	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
             FROM %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
@@ -1161,7 +1161,8 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   rooftop_portion numeric,
                   slope_area_multiplier numeric,
                   unshaded_multiplier numeric,
-                  available_roof_sqft integer
+                  available_roof_sqft integer,
+                  owner_occupancy_status integer
                 );""" % inputs
     cur.execute(sql)
     con.commit()
@@ -1213,6 +1214,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.slope_area_multiplier,
                   a.unshaded_multiplier,
                   a.available_roof_sqft,
+                  a.ownocc8,
                   --OPTIMAL SIZING ALGORITHM THAT RETURNS A SYSTEM SIZE AND NUMBER OF PANELS:
                   diffusion_solar.system_sizing(a.load_kwh_per_customer_in_bin,
                                                 a.naep * b.efficiency_improvement_factor,
@@ -1273,7 +1275,8 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    rooftop_portion,
                    slope_area_multiplier,
                    unshaded_multiplier,
-                   available_roof_sqft
+                   available_roof_sqft,
+                   ownocc8 as owner_occupancy_state
           FROM combined;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time() - t0
@@ -1459,6 +1462,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                       a.incentive_array_id,
                       a.ranked_rate_array_id,
                       %(exclusions_insert)s
+                      a.ownocc8,
                 b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
                 	b.fixed_om_dollars_per_kw_per_yr, 
                 	b.variable_om_dollars_per_kwh,
@@ -1533,7 +1537,8 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                    i, j, cf_bin,
                    turbine_size_kw, 
                    turbine_height_m, 
-                   (round((scoe_return).scoe,4)*1000)::BIGINT as scoe
+                   (round((scoe_return).scoe,4)*1000)::BIGINT as scoe,
+                   ownocc8 as owner_occupancy_status
           FROM combined;
           
           CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s_sort_fields_btree
@@ -2606,7 +2611,6 @@ def assign_business_model(df, prng, method = 'prob', alpha = 2):
         df.loc[(df['business_model'] == 'host_owned'),'rank'] = 1
         df.loc[(df['business_model'] == 'tpo') & (df['rnd']< df['prob_of_leasing']),'rank'] = 2
         
-        #df[['county_id','bin_id','business_model','max_market_share','rnd','prob_of_leasing','rank']].head(10)
         
         gb = df.groupby(['county_id','bin_id'])
         rb = gb['rank'].rank(ascending = False)
