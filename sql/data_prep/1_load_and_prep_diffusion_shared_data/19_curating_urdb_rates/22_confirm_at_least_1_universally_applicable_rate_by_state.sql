@@ -51,13 +51,14 @@ FROM diffusion_shared.urdb_rates_by_state_com
 group by state_abbr
 order by 1 asc;
 -- should all be the same huge number
+-- not quite: in ME, coverage is only up to 10000000000 kw (10000 GW), but this is so high, it should be fine
 
 select state_abbr, max(urdb_demand_max-urdb_demand_min)
 FROM diffusion_shared.urdb_rates_by_state_com
 group by state_abbr
 order by 2 asc;
 -- should all be the same huge number
-
+-- not quite: in ME, coverage is only up to 10000000000 kw (10000 GW), but this is so high, it should be fine
 
 -- check that htere is full coverage from 0 to 1e99
 with a AS
@@ -79,6 +80,7 @@ SELECT *
 FROM b 
 where covers = false;
 
+-- not quite: in ME, coverage is only up to 10000000000 kw (10000 GW), but this is so high, it should be fine
 
 -- INDUSTRIAL
 --check mins
@@ -119,3 +121,4 @@ b as
 SELECT *
 FROM b 
 where covers = false;
+-- same issue as COM, but should be fine since only ME has a smaller demand max, and it is still 10,000 GW

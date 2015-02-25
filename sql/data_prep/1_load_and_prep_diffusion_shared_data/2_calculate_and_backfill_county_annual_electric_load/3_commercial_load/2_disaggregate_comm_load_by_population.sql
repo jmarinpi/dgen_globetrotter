@@ -4,159 +4,224 @@
 
 -- sum the total population in each electric service territory
 -- create output table
+ALTER TABLE dg_wind.ventyx_comm_cell_counts_us
+RENAME TO ventyx_comm_cell_counts_us_archive;
+
 DROP TABLE IF EXISTS dg_wind.ventyx_comm_cell_counts_us CASCADE;
 CREATE TABLE dg_wind.ventyx_comm_cell_counts_us
-(gid integer,
-comm_count numeric,
-cell_count numeric);
+(
+	gid integer,
+	cell_count numeric
+);
 
 -- use dg_wind.ventyx_ests_backfilled_geoms_clipped
 -- run parsel
 
 -- if its still too slow, need to try to split up on something other than gid
 
-select parsel_2('dav-gis','dg_wind.ventyx_backfilled_ests_diced','state_id',
-'WITH tile_stats as (
-	select a.est_gid as gid,
-		ST_SummaryStats(ST_Clip(b.rast, 1, a.the_geom_4326, true)) as stats
-	FROM dg_wind.ventyx_backfilled_ests_diced as a
-	INNER JOIN dg_wind.commercial_land_mask_100x100 b
-	ON ST_Intersects(a.the_geom_4326,b.rast)
-)
-	--aggregate the results from each tile
-SELECT gid, sum((stats).sum) as comm_count, sum((stats).count) as cell_count
-FROM tile_stats
-GROUP by gid;'
-,'dg_wind.ventyx_comm_cell_counts_us','a',16);
+select parsel_2('dav-gis','mgleason','mgleason','dg_wind.ventyx_backfilled_ests_diced','state_id',
+		'select a.est_gid as gid, 
+			count(b.gid) as cell_count
+		FROM dg_wind.ventyx_backfilled_ests_diced as a
+		INNER JOIN diffusion_shared.pt_grid_us_com_new b
+		ON ST_Intersects(a.the_geom_4326,b.the_geom_4326)
+		GROUP BY a.est_gid;',
+		'dg_wind.ventyx_comm_cell_counts_us',
+		'a',16);
 -- run time = 728645.530 ms
 
-select *
-FROM dg_wind.ventyx_comm_cell_counts_us
-where comm_count <> cell_count;
+-- check for service territories that do not have any commercial points
+ALTER TABLE dg_wind.ests_w_no_commercial 
+RENAME TO ests_w_no_commercial_archive;
 
--- check for service territories that do not have population
 DROP TABLE IF EXISTS dg_wind.ests_w_no_commercial;
 CREATE TABLE dg_wind.ests_w_no_commercial AS
-	SELECT a.gid, a.state_abbr,
-		a.the_geom_4326, 
-		a.total_commercial_sales_mwh, c.cell_count, c.comm_count
-	FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip a
-	left join dg_wind.ventyx_comm_cell_counts_us c
-	ON a.gid = c.gid
-	where (c.comm_count is null or c.comm_count = 0)
-	and a.state_abbr not in ('AK','HI');
+SELECT a.gid, a.state_abbr,
+	a.the_geom_4326, 
+	a.total_commercial_sales_mwh, 
+	a.total_commercial_customers, 
+	c.cell_count
+FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip a
+left join dg_wind.ventyx_comm_cell_counts_us c
+ON a.gid = c.gid
+where (c.cell_count is null or c.cell_count = 0)
+and a.state_abbr not in ('AK','HI')
+and (a.total_commercial_sales_mwh > 0 or a.total_commercial_customers > 0);
+-- 28 total
 -- review in Q
 -- these are all just slivers or small territories with no comm land
--- in these cases, just spread the data around evenly
+-- in these cases, just spread the data around evenly between intersecting counties
 
+-- how much load is in these areas?
+SELECT *
+FROM dg_wind.ests_w_no_commercial;
 
--- perform map algebra to estimate the percent of each raster
+-- intersect with counties
+
+-- disaggregate the load to pts
+ALTER TABLE dg_wind.disaggregated_load_commercial_us
+RENAME TO disaggregated_load_commercial_us_archive;
+
 DROP TABLE IF EXISTS dg_wind.disaggregated_load_commercial_us;
-CREATE TABLE dg_wind.disaggregated_load_commercial_us (
-	tile_id integer,
-	rast raster);
+CREATE TABLE dg_wind.disaggregated_load_commercial_us
+(
+	pt_gid integer,
+	county_id integer,
+	est_gid integer,
+	commercial_sales_mwh numeric,
+	commercial_customers numeric
+);
 
--- need to add something in here to use the diced geoms with state_id
+select parsel_2('dav-gis','mgleason','mgleason',
+		'diffusion_shared.pt_grid_us_com_new','gid',
+		'select a.gid as pt_gid, a.county_id,
+			b.est_gid as est_gid,
+			(1::numeric/d.cell_count) * c.total_commercial_sales_mwh as commercial_sales_mwh,
+			(1::numeric/d.cell_count) * c.total_commercial_customers as commercial_customers
+		FROM diffusion_shared.pt_grid_us_com_new a
+		INNER JOIN dg_wind.ventyx_backfilled_ests_diced b
+			ON ST_Intersects(a.the_geom_4326, b.the_geom_4326)
+		LEFT JOIN dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip c
+			ON b.est_gid = c.gid
+		LEFT JOIN dg_wind.ventyx_comm_cell_counts_us d
+			on b.est_gid = d.gid',
+			'dg_wind.disaggregated_load_commercial_us',
+			'a',16);
 
---- run parsel
-select parsel_2('dav-gis',' dg_wind.ventyx_backfilled_ests_diced','state_id',
-'WITH clip as (
-select a.gid, c.comm_count, b.rid,
-	ST_Clip(b.rast, 1, x.the_geom_4326, true) as rast,
-	CASE WHEN c.comm_count is null or c.comm_count = 0 THEN ''([rast]+1.)/'' || c.cell_count || ''*'' || a.total_commercial_sales_mwh
-	ELSE ''[rast]/'' || c.comm_count || ''*'' || a.total_commercial_sales_mwh 
-	END as map_alg_expr
+-- add index on the county id column
+CREATE INDEX disaggregated_load_commercial_us_county_id_btree
+ON  dg_wind.disaggregated_load_commercial_us
+USING btree(county_id);
 
-FROM dg_wind.ventyx_backfilled_ests_diced x
+-- aggregate the results to counties
 
-LEFT JOIN dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip as a
-ON x.est_gid = a.gid
 
-INNER JOIN dg_wind.commercial_land_mask_100x100 b
-ON ST_Intersects(x.the_geom_4326,b.rast)
+DROP TABLE IF EXISTS dg_wind.com_load_by_county_us_incomplete;
+CREATE TABLE dg_wind.com_load_by_county_us_incomplete
+(
+	county_id integer,
+	total_load_mwh_2011_commercial numeric,
+	total_customers_2011_commercial numeric
+);
 
-LEFT JOIN dg_wind.ventyx_comm_cell_counts_us c
-ON x.est_gid = c.gid
+select parsel_2('dav-gis','mgleason','mgleason',
+		'dg_wind.disaggregated_load_commercial_us','county_id',
+		'select a.county_id,
+			sum(commercial_sales_mwh) as total_load_mwh_2011_commercial,
+			sum(commercial_customers) as total_customers_2011_commercial
+		FROM dg_wind.disaggregated_load_commercial_us a
+		GROUP BY a.county_id',
+			'dg_wind.com_load_by_county_us_incomplete',
+			'a',16);
 
-where c.cell_count > 0 and a.total_commercial_sales_mwh >= 0) 
-SELECT rid as tile_id, ST_MapAlgebraExpr(rast, ''32BF'', map_alg_expr) as rast
-FROM clip;','dg_wind.disaggregated_load_commercial_us','x',16);
---  runtime =  3225846.647 ms
+-- need to add in the portions of Ventyx territories with no commercial pts
+-- add indices
+CREATE INDEX ests_w_no_commercial_the_geom_4326_gist
+ON  dg_wind.ests_w_no_commercial
+using gist(the_geom_4326);
 
--- add rid primary key column
-ALTER TABLE dg_wind.disaggregated_load_commercial_us
-ADD COLUMN rid serial;
+CREATE INDEX ests_w_no_commercial_state_abbr_btree
+ON  dg_wind.ests_w_no_commercial
+using btree(state_abbr);
 
-ALTER TABLE dg_wind.disaggregated_load_commercial_us
-ADD PRIMARY KEY (rid);
-
--- aggregate the results into tiles
-DROP TABLE IF EXISTS dg_wind.mosaic_load_commercial_us;
-CREATE TABLE dg_wind.mosaic_load_commercial_us 
-	(rid integer,
-	rast raster);
-
-select parsel_2('dav-gis','dg_wind.disaggregated_load_commercial_us','tile_id',
-'SELECT a.tile_id as rid, ST_Union(a.rast,''SUM'') as rast
-FROM dg_wind.disaggregated_load_commercial_us a
-GROUP BY a.tile_id;','dg_wind.mosaic_load_commercial_us','a',16);
--- run time = 830647.564 ms (14 mins)
-
--- create spatial index on this file
-CREATE INDEX mosaic_load_commercial_us_rast_gist
-  ON dg_wind.mosaic_load_commercial_us
-  USING gist
-  (st_convexhull(rast));
-
--- then sum to counties
--- create output table
-DROP TABLE IF EXISTS dg_wind.com_load_by_county_us;
-CREATE TABLE dg_wind.com_load_by_county_us
-(county_id integer,
-total_load_mwh_2011_commercial numeric);
-
--- run parsel
-select parsel_2('dav-gis','diffusion_shared.county_geom','county_id',
-'WITH tile_stats as (
-	select a.county_id,
-		ST_SummaryStats(ST_Clip(b.rast, 1, a.the_geom_4326, true)) as stats
-	FROM diffusion_shared.county_geom as a
-	INNER JOIN dg_wind.mosaic_load_commercial_us b
-	ON ST_Intersects(a.the_geom_4326,b.rast)
+DROP TABLE IF EXISTS dg_wind.ests_w_no_commercial_disaggregated;
+CREATE TABLE dg_wind.ests_w_no_commercial_disaggregated AS
+with a as
+(
+	select a.gid as est_gid,
+		b.county_id,
+		a.total_commercial_sales_mwh, 
+		a.total_commercial_customers,
+		ST_Area(ST_Transform(ST_Intersection(a.the_geom_4326, b.the_geom_4326),96703))/ST_Area(ST_Transform(a.the_geom_4326, 96703)) as ratio
+	FROM dg_wind.ests_w_no_commercial a
+	INNER JOIN diffusion_shared.county_geom b
+	ON ST_Intersects(a.the_geom_4326, b.the_geom_4326)
+	and a.state_abbr = b.state_abbr
 )
-	--aggregate the results from each tile
-SELECT county_id, sum((stats).sum) as total_load_mwh_2011_commercial
-FROM tile_stats
-GROUP by county_id;'
-,'dg_wind.com_load_by_county_us','a',16);
--- 629988.529 ms
+select a.est_gid,
+	county_id,
+	total_commercial_sales_mwh * ratio as total_load_mwh_2011_commercial,
+	total_commercial_customers * ratio as total_customers_2011_commercial
+from a;
 
--- do some additional verification
+-- combine with the data from points to form the final county load table
+ALTER TABLE dg_wind.com_load_by_county_us 
+RENAME TO com_load_by_county_us_archive;
+
+DROP TABLE IF EXISTS dg_wind.com_load_by_county_us;
+CREATE TABLE dg_wind.com_load_by_county_us AS
+with a as
+(
+	SELECT county_id, total_load_mwh_2011_commercial, total_customers_2011_commercial
+	FROM dg_wind.com_load_by_county_us_incomplete 
+	UNION ALL
+	SELECT county_id, total_load_mwh_2011_commercial, total_customers_2011_commercial
+	FROM dg_wind.ests_w_no_commercial_disaggregated
+)
+SELECT county_id, 
+	sum(total_load_mwh_2011_commercial) as total_load_mwh_2011_commercial, 
+	sum(total_customers_2011_commercial) as total_customers_2011_commercial
+FROM a
+group by county_id;
+-- 3108 rows
+
+-- add a primary key on county_id
+ALTER TABLE dg_wind.com_load_by_county_us
+ADD PRIMARY KEY (county_id);
+
+---------------------------------------------------------------------------------------------------
+-- PERFORM SOME VERIFICATION OF THE RESULTS
+
+-- how many rows were returned?
+select count(*)
+FROM dg_wind.com_load_by_county_us; --3108
+
+-- how many are there total?
+select count(*)
+FROM diffusion_shared.county_geom
+where state_abbr not in ('AK','HI'); -- 3109
+
+-- what is missing
+SELECT a.*
+FROM diffusion_shared.county_geom a
+LEFT JOIN dg_wind.com_load_by_county_us b
+on a.county_id = b.county_id
+where b.county_id is null
+and a.state_abbr not in ('AK', 'HI');
+-- only missing county is a small island in lake champlain (VT) -- this doesnt seem too unreasonable
+
+-- add this county in with a value of zero for load and customers
+INSERT INTO dg_wind.com_load_by_county_us
+ (county_id, total_load_mwh_2011_commercial, total_customers_2011_commercial)  VALUES (2988, 0, 0);
+
+
+-- check load values
 SELECT sum(total_load_mwh_2011_commercial)
-FROM dg_wind.com_load_by_county_us; -- 1,321,813,204.5154683796833
+FROM dg_wind.com_load_by_county_us; -- 1,321,813,102.12185
 
 select sum(total_commercial_sales_mwh)
 FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip
 where state_abbr not in ('AK','HI'); -- 1,321,813,207
 
-select 1321813207 - 1321813204.5154683796833; -- 2.4845316203167 (difference likely due to rounding)
-select (1321813207 - 1321813204.5154683796833)/1321813207  * 100; -- 0.0000001879638974069276340600 % load is missing nationally
+select 1321813207 - 1321813102.12185; -- 104.87815 (difference possibly/likely(?) due to rounding)
+select (1321813207 - 1321813102.12185)/1321813207  * 100; -- 0.000007934415350413426500 % load is missing nationally
 
 -- cehck on state level
-with a as (
-select state_abbr, sum(total_commercial_sales_mwh)
-FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip
-where state_abbr not in ('AK','HI')
-GROUP BY state_abbr),
-
-b as (
-
-SELECT k.state_abbr, sum(total_load_mwh_2011_commercial)
-FROM dg_wind.com_load_by_county_us j
-LEFT join diffusion_shared.county_geom k
-ON j.county_id = k.county_id
-GROUP BY k.state_abbr)
-
+with a as 
+(
+	select state_abbr, sum(total_commercial_sales_mwh)
+	FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip
+	where state_abbr not in ('AK','HI')
+	GROUP BY state_abbr
+),
+b as 
+(
+	SELECT k.state_abbr, sum(total_load_mwh_2011_commercial)
+	FROM dg_wind.com_load_by_county_us j
+	LEFT join diffusion_shared.county_geom k
+	ON j.county_id = k.county_id
+	GROUP BY k.state_abbr
+)
 SELECT a.state_abbr, a.sum as est_total, b.sum as county_total, b.sum-a.sum as diff, (b.sum-a.sum)/a.sum * 100 as perc_diff
 FROM a
 LEFT JOIN b
@@ -164,125 +229,38 @@ on a.state_abbr = b.state_abbr
 order by a.state_abbr; --
 -- looks good -- these differcnces are probably due to incongruencies between county_geoms and the ventyx state boundaries
 
--- any counties w/out comm load?
+-- any counties w/out comm load (other than Grand Isle)
 select *
 FROM dg_wind.com_load_by_county_us
 where total_load_mwh_2011_commercial = 0; -- nope
 
-
-----------------------------------------------------------------------------------------------------
--- repeat for number of customers
-----------------------------------------------------------------------------------------------------
--- check that there aren't any territories with residential customers but zero load
-SELECT count(*)
-FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip
-where total_commercial_customers > 0 and (total_commercial_sales_mwh <= 0 or total_commercial_sales_mwh is null)
-
--- 1 - create the disag raster table
-DROP TABLE IF EXISTS dg_wind.disaggregated_customers_commercial_us;
-CREATE TABLE dg_wind.disaggregated_customers_commercial_us (
-	tile_id integer,
-	rast raster);
-
---- run parsel
-select parsel_2('dav-gis',' dg_wind.ventyx_backfilled_ests_diced','state_id',
-'WITH clip as (
-select a.gid, c.cell_count, b.rid,
-	ST_Clip(b.rast, 1, x.the_geom_4326, true) as rast,
-	CASE WHEN c.comm_count is null or c.comm_count = 0 THEN ''([rast]+1.)/'' || c.cell_count || ''*'' || a.total_commercial_customers
-	ELSE ''[rast]/'' || c.comm_count || ''*'' || a.total_commercial_customers 
-	END as map_alg_expr
-
-FROM dg_wind.ventyx_backfilled_ests_diced x
-
-LEFT JOIN dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip as a
-ON x.est_gid = a.gid
-
-INNER JOIN dg_wind.commercial_land_mask_100x100 b
-ON ST_Intersects(x.the_geom_4326,b.rast)
-
-LEFT JOIN dg_wind.ventyx_comm_cell_counts_us c
-ON x.est_gid = c.gid
-
-where c.cell_count > 0 and a.total_commercial_customers >= 0) 
-SELECT rid as tile_id, ST_MapAlgebraExpr(rast, ''32BF'', map_alg_expr) as rast
-FROM clip;','dg_wind.disaggregated_customers_commercial_us','x',16);
---  runtime = ~74 minutes (3950668.635 ms)
-
--- add rid primary key column
-ALTER TABLE dg_wind.disaggregated_customers_commercial_us
-ADD COLUMN rid serial;
-
-ALTER TABLE dg_wind.disaggregated_customers_commercial_us
-ADD PRIMARY KEY (rid);
-
--- 2 - aggregate the results into tiles
-DROP TABLE IF EXISTS dg_wind.mosaic_customers_commercial_us;
-CREATE TABLE dg_wind.mosaic_customers_commercial_us 
-	(rid integer,
-	rast raster);
-
-select parsel_2('dav-gis','dg_wind.disaggregated_customers_commercial_us','tile_id',
-'SELECT a.tile_id as rid, ST_Union(a.rast,''SUM'') as rast
-FROM dg_wind.disaggregated_customers_commercial_us a
-GROUP BY a.tile_id;','dg_wind.mosaic_customers_commercial_us','a',16);
--- run time =  839042.650 ms
-
--- create spatial index on this file
-CREATE INDEX mosaic_customers_commercial_us_rast_gist
-  ON dg_wind.mosaic_customers_commercial_us
-  USING gist
-  (st_convexhull(rast));
-
--- 3- then sum to counties
--- create output table
-DROP TABLE IF EXISTS dg_wind.com_customers_by_county_us;
-CREATE TABLE dg_wind.com_customers_by_county_us
-(county_id integer,
-total_customers_2011_commercial numeric);
-
--- run parsel
-select parsel_2('dav-gis','diffusion_shared.county_geom','county_id',
-'WITH tile_stats as (
-	select a.county_id,
-		ST_SummaryStats(ST_Clip(b.rast, 1, a.the_geom_4326, true)) as stats
-	FROM diffusion_shared.county_geom as a
-	INNER JOIN dg_wind.mosaic_customers_commercial_us b
-	ON ST_Intersects(a.the_geom_4326,b.rast)
-)
-	--aggregate the results from each tile
-SELECT county_id, sum((stats).sum) as total_customers_2011_commercial
-FROM tile_stats
-GROUP by county_id;'
-,'dg_wind.com_customers_by_county_us','a',16);
--- run time =  624568.142 ms
-
--- 4 - do some verification
+-- check values for customers
 SELECT sum(total_customers_2011_commercial)
-FROM dg_wind.com_customers_by_county_us; -- 17,529,503.97530562476658
+FROM dg_wind.com_load_by_county_us; -- 17,529,501.0606915
 
 select sum(total_commercial_customers)
 FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip
 where state_abbr not in ('AK','HI'); -- 17,529,504
 
-select 17529504 - 17529503.97530562476658; -- 0.02469437523342 (difference likely due to rounding)
-select (17529504 - 17529503.97530562476658)/17529504  * 100; -- 0.0000001408732114349613086600 % load is missing nationally
+select 17529504 - 17529501.0606915; -- 2.9393085 (difference likely due to rounding)
+select (17529504 - 17529501.0606915)/17529504  * 100; -- 0.000016767779054102158300 % load is missing nationally
 
 -- cehck on state level
-with a as (
-select state_abbr, sum(total_commercial_customers)
-FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip
-where state_abbr not in ('AK','HI')
-GROUP BY state_abbr),
-
-b as (
-
-SELECT k.state_abbr, sum(total_customers_2011_commercial)
-FROM dg_wind.com_customers_by_county_us j
-LEFT join diffusion_shared.county_geom k
-ON j.county_id = k.county_id
-GROUP BY k.state_abbr)
-
+with a as 
+(
+	select state_abbr, sum(total_commercial_customers)
+	FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip
+	where state_abbr not in ('AK','HI')
+	GROUP BY state_abbr
+),
+b as 
+(
+	SELECT k.state_abbr, sum(total_customers_2011_commercial)
+	FROM dg_wind.com_load_by_county_us j
+	LEFT join diffusion_shared.county_geom k
+	ON j.county_id = k.county_id
+	GROUP BY k.state_abbr
+)
 SELECT a.state_abbr, a.sum as est_total, b.sum as county_total, b.sum-a.sum as diff, (b.sum-a.sum)/a.sum * 100 as perc_diff
 FROM a
 LEFT JOIN b
@@ -290,6 +268,6 @@ on a.state_abbr = b.state_abbr
 order by perc_diff; --
 
 select *
-FROM dg_wind.com_customers_by_county_us
-where total_customers_2011_commercial = 0;
+FROM dg_wind.com_load_by_county_us
+where total_customers_2011_commercial = 0; -- just grand isle
 -- looks good -- these differcnces are probably due to incongruencies between county_geoms and the ventyx state boundaries

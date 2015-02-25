@@ -187,13 +187,13 @@ SELECT state_abbr, count(*)
 FROM diffusion_shared.urdb_rates_by_state_ind
 GROUP BY state_abbr
 order by count;
--- 8 to 77
+-- 5 to 75
 
 SELECT state_abbr, count(*)
 FROM diffusion_shared.urdb_rates_by_state_com
 GROUP BY state_abbr
 order by count;
--- 8 to 79
+-- 5 to 79
 
 SELECT state_abbr, count(*)
 FROM diffusion_shared.urdb_rates_by_state_res

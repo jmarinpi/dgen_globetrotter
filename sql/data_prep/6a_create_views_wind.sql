@@ -27,13 +27,13 @@ CROSS JOIN diffusion_wind.scenario_options b;
 DROP VIEW IF EXISTS diffusion_wind.point_microdata_ind_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_ind_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
-	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
+	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct,
 	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
-	a.i, a.j, a.cf_bin, a.aep_scale_factor, 
+	a.i, a.j, a.cf_bin,
 	l.carbon_intensity_t_per_kwh
 FROM diffusion_wind.point_microdata_ind_us a
 -- county_load_and_customers
@@ -57,13 +57,13 @@ ON e.state_abbr = l.state_abbr;
 DROP VIEW IF EXISTS diffusion_wind.point_microdata_res_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_res_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
-	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
+	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct,
 	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
-	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh
+	a.i, a.j, a.cf_bin, l.carbon_intensity_t_per_kwh
 FROM diffusion_wind.point_microdata_res_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
@@ -89,13 +89,13 @@ ON e.state_abbr = l.state_abbr;
 DROP VIEW IF EXISTS diffusion_wind.point_microdata_com_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_com_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
-	a.maxheight_m_popdens,a.maxheight_m_popdenscancov20pc, a.maxheight_m_popdenscancov40pc, 
+	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct,
 	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region, 
-	a.i, a.j, a.cf_bin, a.aep_scale_factor, l.carbon_intensity_t_per_kwh
+	a.i, a.j, a.cf_bin, l.carbon_intensity_t_per_kwh
 FROM diffusion_wind.point_microdata_com_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b

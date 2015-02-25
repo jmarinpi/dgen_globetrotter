@@ -1,4 +1,4 @@
--- create fishnet (2 decimal degrees)
+﻿-- create fishnet (2 decimal degrees)
 DROP TABLE IF EXISTS dg_wind.us_fishnet_p5dd;
 CREATE TABLE dg_wind.us_fishnet_p5dd AS
 SELECT ST_SetSrid(ST_Fishnet('dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip','the_geom_4326',0.5),4326) as the_geom_4326;
@@ -7,14 +7,21 @@ CREATE INDEX us_fishnet_p5dd_the_geom_4326_gist ON dg_wind.us_fishnet_p5dd using
 
 -- dice up the backfilled geoms
 DROP TABLE IF EXISTS dg_wind.ventyx_backfilled_ests_diced;
-CREATE TABLE dg_wind.ventyx_backfilled_ests_diced AS
-SELECT a.gid as est_gid, a.state_abbr, ST_Intersection(a.the_geom_4326, b.the_geom_4326) as the_geom_4326
-FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip a
-INNER JOIN dg_wind.us_fishnet_p5dd b
-ON ST_Intersects(a.the_geom_4326, b.the_geom_4326);
+CREATE TABLE dg_wind.ventyx_backfilled_ests_diced 
+(
+	est_gid integer,
+	state_abbr character varying(2),
+	the_geom_4326 geometry
+);
 
--- rename the table -- only have to do this once
-ALTER TABLE dg_wind.ventyx_backfilled_ests_diced2 RENAME TO ventyx_backfilled_ests_diced;
+select parsel_2('dav-gis','mgleason','mgleason',
+		'dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip','gid',
+		'SELECT a.gid as est_gid, a.state_abbr, ST_Intersection(a.the_geom_4326, b.the_geom_4326) as the_geom_4326
+			FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled_clip a
+			INNER JOIN dg_wind.us_fishnet_p5dd b
+			ON ST_Intersects(a.the_geom_4326, b.the_geom_4326);',
+			'dg_wind.ventyx_backfilled_ests_diced',
+		'a', 16);
 
 -- add a new id, called the state_id, which will allow me to parsel the data up more efficiently
 ALTER TABLE dg_wind.ventyx_backfilled_ests_diced ADD COLUMN state_id integer;
@@ -34,7 +41,7 @@ CREATE INDEX  ventyx_backfilled_ests_diced_state_id_btree
 ON dg_wind.ventyx_backfilled_ests_diced
 USING btree(state_id);
 
-CREATE INDEX ventyx_backfilled_ests_diced_the_geom_4326_gist ON dg_wind.ventyx_backfilled_ests_diced USING gist(the_geom_4326);
+CREATE INDEX ventyx_backfilled_ests_diced_the_geom_4326_gist2 ON dg_wind.ventyx_backfilled_ests_diced USING gist(the_geom_4326);
 
 CLUSTER dg_wind.ventyx_backfilled_ests_diced USING ventyx_backfilled_ests_diced_state_id_btree;
 

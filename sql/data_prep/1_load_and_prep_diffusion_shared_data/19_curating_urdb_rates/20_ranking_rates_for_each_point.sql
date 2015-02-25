@@ -12,13 +12,13 @@ CREATE TABLE diffusion_shared.pt_ranked_rates_lkup_com
 
 
 SELECT parsel_2('dav-gis','mgleason','mgleason',
-		'diffusion_shared.pt_grid_us_com','gid',
+		'diffusion_shared.pt_grid_us_com_new','gid',
 		'WITH a as
 			(
 				SELECT a.gid as pt_gid, d.rate_id_alias, 
 					(a.utility_type = d.utility_type) as utility_type_match,
-					ST_Distance(a.the_geom_900914, d.the_geom_900914) as distance_m
-				FROM diffusion_shared.pt_grid_us_com a
+					ST_Distance(a.the_geom_96703, d.the_geom_96703) as distance_m
+				FROM diffusion_shared.pt_grid_us_com_new a
 				INNER JOIN diffusion_shared.county_geom b
 				ON a.county_id = b.county_id
 				INNER JOIN diffusion_shared.urdb_rates_by_state_com c
@@ -60,7 +60,7 @@ using btree(rate_id_alias);
 
 select count(*)
 FROM diffusion_shared.pt_ranked_rates_lkup_com;
--- 217,945,490
+-- 56,567,275
 ------------------------------------------------------------------------------
 
 -- INDUSTRIAL
@@ -75,13 +75,13 @@ CREATE TABLE diffusion_shared.pt_ranked_rates_lkup_ind
 
 
 SELECT parsel_2('dav-gis','mgleason','mgleason',
-		'diffusion_shared.pt_grid_us_ind','gid',
+		'diffusion_shared.pt_grid_us_ind_new','gid',
 		'WITH a as
 			(
 				SELECT a.gid as pt_gid, d.rate_id_alias, 
 					(a.utility_type = d.utility_type) as utility_type_match,
-					ST_Distance(a.the_geom_900914, d.the_geom_900914) as distance_m
-				FROM diffusion_shared.pt_grid_us_ind a
+					ST_Distance(a.the_geom_96703, d.the_geom_96703) as distance_m
+				FROM diffusion_shared.pt_grid_us_ind_new a
 				INNER JOIN diffusion_shared.county_geom b
 				ON a.county_id = b.county_id
 				INNER JOIN diffusion_shared.urdb_rates_by_state_ind c
@@ -123,6 +123,7 @@ using btree(rate_id_alias);
 
 select count(*)
 FROM diffusion_shared.pt_ranked_rates_lkup_ind;
+-- 42,112,773
 ------------------------------------------------------------------------------
 
 -- RESIDENTIAL
@@ -137,13 +138,13 @@ CREATE TABLE diffusion_shared.pt_ranked_rates_lkup_res
 
 
 SELECT parsel_2('dav-gis','mgleason','mgleason',
-		'diffusion_shared.pt_grid_us_res','gid',
+		'diffusion_shared.pt_grid_us_res_new','gid',
 		'WITH a as
 			(
 				SELECT a.gid as pt_gid, d.rate_id_alias, 
 					(a.utility_type = d.utility_type) as utility_type_match,
-					ST_Distance(a.the_geom_900914, d.the_geom_900914) as distance_m
-				FROM diffusion_shared.pt_grid_us_res a
+					ST_Distance(a.the_geom_96703, d.the_geom_96703) as distance_m
+				FROM diffusion_shared.pt_grid_us_res_new a
 				INNER JOIN diffusion_shared.county_geom b
 				ON a.county_id = b.county_id
 				INNER JOIN diffusion_shared.urdb_rates_by_state_res c
@@ -185,3 +186,4 @@ using btree(rate_id_alias);
 
 select count(*)
 FROM diffusion_shared.pt_ranked_rates_lkup_res;
+-- 222,280,019

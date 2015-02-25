@@ -208,7 +208,7 @@ elec_rate_supply_curve<-function(df, start_year){
     theme_few()+
     guides(size = FALSE)+
     scale_y_continuous(name ='Customer Load (GW)')+
-    scale_x_continuous(name ='Average Electric Rate ($/kWh)', lim = c(0,max(data$rate)))+
+    scale_x_continuous(name ='Average Electric Rate ($/kWh)', lim = c(0,quantile(data$rate,0.98)))+
     ggtitle('Electricity Rate Supply Curve (Available Cust Load in 2014)')
 }
 
@@ -309,7 +309,7 @@ diffusion_trends<-function(df,runpath,scen_name){
   data = collect(summarise(g, nat_installed_capacity_gw  = sum(installed_capacity)/1e6, 
   # We have no way calculating CFs for existing capacity, so assume it had a 23% capacity factor
                            nat_market_share = sum(number_of_adopters)/sum(customers_in_bin), 
-                           nat_max_market_share = mean(max_market_share),
+                           nat_max_market_share = sum(max_market_share * customers_in_bin)/sum(customers_in_bin),
                            nat_market_value = sum(market_value),
                            nat_generation_kwh = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (0.23 * 8760 * initial_capacity_mw * 1000)), 
                            nat_number_of_adopters = sum(number_of_adopters)
@@ -774,7 +774,7 @@ plot<-ggplot(data3, aes(x = year, y = per_mkt_share, color = sector, fill = sect
   scale_color_manual(values = sector_col)+
   scale_fill_manual(values = sector_fil)+
   xlab("")+
-  scale_y_continuous("% of New Capacity", label = percent)+
+  scale_y_continuous("% of New Capacity", label = percent, lim = c(0,1))+
   ggtitle("Leasing Market Share: Percent of New Capacity Added")
 
 # Table of market share by state and year (aggregating sectors)

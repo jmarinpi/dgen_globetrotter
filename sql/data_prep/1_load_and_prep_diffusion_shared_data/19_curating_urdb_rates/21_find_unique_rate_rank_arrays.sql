@@ -18,16 +18,16 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 			array_agg(a.rank order by a.rank asc, a.rate_id_alias asc) as rank_array
 		FROM diffusion_shared.pt_ranked_rates_lkup_com a
 		GROUP BY pt_gid;',
-		'diffusion_shared.pt_ranked_rate_arrays_com', 'a', 18);
+		'diffusion_shared.pt_ranked_rate_arrays_com', 'a', 22);
 
--- check that the row count matches the row count of diffusion_shared.pt_grid_us_com
+-- check that the row count matches the row count of diffusion_shared.pt_grid_us_com_new
 SELECT count(*)
-FROM diffusion_shared.pt_grid_us_com;
--- 5159001
+FROM diffusion_shared.pt_grid_us_com_new;
+-- 1603958
 
 select count(*)
 FROM diffusion_shared.pt_ranked_rate_arrays_com;
--- 5159001
+-- 1603958
 
 -- make sure there are no emtpy arrays
 select count(*)
@@ -60,7 +60,7 @@ CREATE TABLE diffusion_shared.unique_ranked_rate_arrays_com AS
 SELECT rate_id_alias_array, rank_array
 FROM diffusion_shared.pt_ranked_rate_arrays_com
 GROUP BY rate_id_alias_array, rank_array;
--- 170442 rows
+-- 56073 rows
 
 -- add a unique id for each unique ranked rate array
 ALTER TABLE diffusion_shared.unique_ranked_rate_arrays_com
@@ -97,12 +97,15 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 		LEFT JOIN diffusion_shared.unique_ranked_rate_arrays_com b
 		ON a.rate_id_alias_array = b.rate_id_alias_array
 		and a.rank_array = b.rank_array;',
-		'diffusion_shared.pt_ranked_rate_array_lkup_com', 'a', 18);
+		'diffusion_shared.pt_ranked_rate_array_lkup_com', 'a', 22);
 
 select count(*)
 FROM diffusion_shared.pt_ranked_rate_array_lkup_com;
--- 5159001 rows
--- matches pt grid com (5159001)
+-- 1603958 rows
+
+select count(*)
+FROM diffusion_shared.pt_grid_us_com_new;
+-- matches pt grid com (1603958)
 
 -- add primary key
 ALTER TABLE diffusion_shared.pt_ranked_rate_array_lkup_com
@@ -120,14 +123,26 @@ where ranked_rate_array_id is null;
 
 ------------------------------------------------------------------------------------------------------------
 -- add the ranked_rate_array_id back to the main pt table
-ALTER TABLE diffusion_shared.pt_grid_us_com
+ALTER TABLE diffusion_shared.pt_grid_us_com_new
 ADD COLUMN ranked_rate_array_id integer;
 
-UPDATE diffusion_shared.pt_grid_us_com a
+UPDATE diffusion_shared.pt_grid_us_com_new a
 set ranked_rate_array_id = b.ranked_rate_array_id
 from diffusion_shared.pt_ranked_rate_array_lkup_com b
 where a.gid = b.pt_gid;
 -- ** make sure to update microdata and pt join view to account for ranked_rate_array_id now **
+
+-- add an index
+CREATE INDEX pt_grid_us_com_new_ranked_rate_array_id_btree
+ON diffusion_shared.pt_grid_us_com_new
+USING btree(ranked_rate_array_id);
+
+-- check no nulls
+SELECT count(*)
+FROM diffusion_shared.pt_grid_us_com_new
+where ranked_rate_array_id is null;
+
+VACUUM ANALYZE diffusion_shared.pt_grid_us_com_new;
 ------------------------------------------------------------------------------------------------------------
 -- unnest the unique ranked rate arrays into normal table structure
 DROP TABLE IF EXISTS diffusion_shared.ranked_rate_array_lkup_com;
@@ -136,7 +151,7 @@ SELECT ranked_rate_array_id,
 	unnest(rate_id_alias_array) as rate_id_alias, 
 	unnest(rank_array) as rank
 FROM diffusion_shared.unique_ranked_rate_arrays_com;
--- 9,536,096
+-- 2,665,185
 
 -- add indices
 CREATE INDEX ranked_rate_array_lkup_com_ranked_rate_array_id_btree
@@ -214,14 +229,14 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 		GROUP BY pt_gid;',
 		'diffusion_shared.pt_ranked_rate_arrays_res', 'a', 22);
 
--- check that the row count matches the row count of diffusion_shared.pt_grid_us_com
+-- check that the row count matches the row count of diffusion_shared.pt_grid_us_com_new
 SELECT count(*)
-FROM diffusion_shared.pt_grid_us_res;
--- 6273234
+FROM diffusion_shared.pt_grid_us_res_new;
+-- 5751859
 
 select count(*)
 FROM diffusion_shared.pt_ranked_rate_arrays_res;
--- 6273234
+-- 5751859
 
 -- make sure there are no emtpy arrays
 select count(*)
@@ -254,7 +269,7 @@ CREATE TABLE diffusion_shared.unique_ranked_rate_arrays_res AS
 SELECT rate_id_alias_array, rank_array
 FROM diffusion_shared.pt_ranked_rate_arrays_res
 GROUP BY rate_id_alias_array, rank_array;
--- 828896 rows
+-- 644052 rows
 
 -- add a unique id for each unique ranked rate array
 ALTER TABLE diffusion_shared.unique_ranked_rate_arrays_res
@@ -295,8 +310,8 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 
 select count(*)
 FROM diffusion_shared.pt_ranked_rate_array_lkup_res;
--- 6273234 rows
--- matches pt grid res (6273234)
+-- 5751859 rows
+-- matches pt grid res (5751859)
 
 -- add primary key
 ALTER TABLE diffusion_shared.pt_ranked_rate_array_lkup_res
@@ -314,13 +329,25 @@ where ranked_rate_array_id is null;
 
 ------------------------------------------------------------------------------------------------------------
 -- add the ranked_rate_array_id back to the main pt table
-ALTER TABLE diffusion_shared.pt_grid_us_res
+ALTER TABLE diffusion_shared.pt_grid_us_res_new
 ADD COLUMN ranked_rate_array_id integer;
 
-UPDATE diffusion_shared.pt_grid_us_res a
+UPDATE diffusion_shared.pt_grid_us_res_new a
 set ranked_rate_array_id = b.ranked_rate_array_id
 from diffusion_shared.pt_ranked_rate_array_lkup_res b
 where a.gid = b.pt_gid;
+
+-- add an index
+CREATE INDEX pt_grid_us_res_new_ranked_rate_array_id_btree
+ON diffusion_shared.pt_grid_us_res_new
+USING btree(ranked_rate_array_id);
+
+-- check no nulls
+SELECT count(*)
+FROM diffusion_shared.pt_grid_us_res_new
+where ranked_rate_array_id is null;
+
+VACUUM ANALYZE diffusion_shared.pt_grid_us_res_new;
 -- ** make sure to update microdata and pt join view to account for ranked_rate_array_id now **
 ------------------------------------------------------------------------------------------------------------
 -- unnest the unique ranked rate arrays into normal table structure
@@ -330,7 +357,7 @@ SELECT ranked_rate_array_id,
 	unnest(rate_id_alias_array) as rate_id_alias, 
 	unnest(rank_array) as rank
 FROM diffusion_shared.unique_ranked_rate_arrays_res;
--- 47,339,748
+-- 35,740,171
 
 -- add indices
 CREATE INDEX ranked_rate_array_lkup_res_ranked_rate_array_id_btree
@@ -369,14 +396,14 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 		'diffusion_shared.pt_ranked_rate_arrays_ind', 'a', 22);
 -- **
 
--- check that the row count matches the row count of diffusion_shared.pt_grid_us_com
+-- check that the row count matches the row count of diffusion_shared.pt_grid_us_com_new
 SELECT count(*)
-FROM diffusion_shared.pt_grid_us_ind;
--- 2726840
+FROM diffusion_shared.pt_grid_us_ind_new;
+-- 1145187
 
 select count(*)
 FROM diffusion_shared.pt_ranked_rate_arrays_ind;
--- 2726840
+-- 1145187
 
 -- make sure there are no emtpy arrays
 select count(*)
@@ -409,7 +436,7 @@ CREATE TABLE diffusion_shared.unique_ranked_rate_arrays_ind AS
 SELECT rate_id_alias_array, rank_array
 FROM diffusion_shared.pt_ranked_rate_arrays_ind
 GROUP BY rate_id_alias_array, rank_array;
--- 111181 rows
+-- 85356 rows
 
 -- add a unique id for each unique ranked rate array
 ALTER TABLE diffusion_shared.unique_ranked_rate_arrays_ind
@@ -450,8 +477,8 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 
 select count(*)
 FROM diffusion_shared.pt_ranked_rate_array_lkup_ind;
--- 2726840 rows
--- matches pt grid ind (2726840)
+-- 1145187 rows
+-- matches pt grid ind (1145187)
 
 -- add primary key
 ALTER TABLE diffusion_shared.pt_ranked_rate_array_lkup_ind
@@ -469,13 +496,25 @@ where ranked_rate_array_id is null;
 
 ------------------------------------------------------------------------------------------------------------
 -- add the ranked_rate_array_id back to the main pt table
-ALTER TABLE diffusion_shared.pt_grid_us_ind
+ALTER TABLE diffusion_shared.pt_grid_us_ind_new
 ADD COLUMN ranked_rate_array_id integer;
 
-UPDATE diffusion_shared.pt_grid_us_ind a
+UPDATE diffusion_shared.pt_grid_us_ind_new a
 set ranked_rate_array_id = b.ranked_rate_array_id
 from diffusion_shared.pt_ranked_rate_array_lkup_ind b
 where a.gid = b.pt_gid;
+
+-- add an index
+CREATE INDEX pt_grid_us_ind_new_ranked_rate_array_id_btree
+ON diffusion_shared.pt_grid_us_ind_new
+USING btree(ranked_rate_array_id);
+
+-- check no nulls
+SELECT count(*)
+FROM diffusion_shared.pt_grid_us_ind_new
+where ranked_rate_array_id is null;
+
+VACUUM ANALYZE diffusion_shared.pt_grid_us_ind_new;
 -- ** make sure to update microdata and pt join view to account for ranked_rate_array_id now **
 ------------------------------------------------------------------------------------------------------------
 -- unnest the unique ranked rate arrays into normal table structure
@@ -485,7 +524,7 @@ SELECT ranked_rate_array_id,
 	unnest(rate_id_alias_array) as rate_id_alias, 
 	unnest(rank_array) as rank
 FROM diffusion_shared.unique_ranked_rate_arrays_ind;
--- 5,887,140
+-- 4,375,650
 
 -- add indices
 CREATE INDEX ranked_rate_array_lkup_ind_ranked_rate_array_id_btree

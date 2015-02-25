@@ -1413,7 +1413,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s;
                 CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s AS
                 SELECT a.*,
-                c.aep*a.aep_scale_factor as naep_no_derate,
+                c.aep as naep_no_derate,
                 c.turbine_id as power_curve_id, 
                 c.height as turbine_height_m
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a

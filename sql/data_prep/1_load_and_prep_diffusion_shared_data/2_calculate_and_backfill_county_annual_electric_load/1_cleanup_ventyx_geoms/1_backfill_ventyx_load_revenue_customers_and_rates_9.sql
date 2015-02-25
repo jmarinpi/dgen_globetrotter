@@ -11,6 +11,8 @@ SELECT *
 FROM ventyx.electric_service_territories_states_split_multipart_20140224
 where country = 'United States of America';
 
+-- MANUAL FIXES TO GEOMETRIES --
+-- 1 -- San Francisco needs to be merged into PGE
 -- find gids for the two polygons using Q
 -- check that i have the right gids
 SELECT *
@@ -28,6 +30,24 @@ SET the_geom_4326 = b.the_geom_4326
 FROM merged b
 where (company_id = 1133 and state_abbr = 'CA');
 -- review in Q
+
+-- 2 - Savannah Needs to be Merged into Georgia Power
+SELECT *
+from dg_wind.ventyx_elec_serv_territories_edit
+where (company_id = 1057 and state_abbr = 'GA') -- Georgia Power Co
+or (company_id = 1156 and state_abbr = 'GA') -- Savannah Electric & Power Co;
+
+-- update the geometry for pge
+with merged as (
+	SELECT ST_Union(the_geom_4326) as the_geom_4326
+	from dg_wind.ventyx_elec_serv_territories_edit
+	where (company_id = 1057 and state_abbr = 'GA') or (company_id = 1156 and state_abbr = 'GA'))
+UPDATE dg_wind.ventyx_elec_serv_territories_edit a
+SET the_geom_4326 = b.the_geom_4326
+FROM merged b
+where (company_id = 1057 and state_abbr = 'GA');
+-- review in Q
+
 
 -- add company type
 ALTER TABLE dg_wind.ventyx_elec_serv_territories_edit
@@ -110,7 +130,7 @@ b.bundled_delivery_only_industrial_customers as total_industrial_customers,
 b.year as data_year
 
 FROM dg_wind.ventyx_elec_serv_territories_edit a
-INNER join ventyx.electric_utility_rates_2011 b -- use inner join to drop out the polygons that don't have matching sales data
+INNER join ventyx.retail_sales_2011 b -- use inner join to drop out the polygons that don't have matching sales data
 ON a.state_abbr = b.customer_state
 and a.company_id = b.company_id; 
 -- 3065  rows (out of 3197 geoms and 3647 sales rows)
@@ -140,7 +160,7 @@ b.year as data_year,
 ST_Perimeter(the_geom_4326::geography)/ST_Area(the_geom_4326::geography) as peri2area
 
 FROM dg_wind.ventyx_elec_serv_territories_edit a
-LEFT join ventyx.electric_utility_rates_2011 b
+LEFT join ventyx.retail_sales_2011 b
 ON a.state_abbr = b.customer_state
 and a.company_id = b.company_id
 where b.company_id is null; -- 132 rows
@@ -150,12 +170,13 @@ DROP TABLE IF EXISTS  dg_wind.ventyx_sales_no_polys;
 CREATE TABLE dg_wind.ventyx_sales_no_polys AS
 SELECT b.*
 
-FROM ventyx.electric_utility_rates_2011 b
+FROM ventyx.retail_sales_2011 b
 LEFT join  dg_wind.ventyx_elec_serv_territories_edit a
 ON b.customer_state = a.state_abbr
 and b.company_id = a.company_id
 where a.company_id is null
 and b.country = 'United States of America'; -- 563 rows failed to match
+
 
 	-- investigate these in Q:
 		-- results suggest that several of the entries in the sales table do not have a corresponding polygon -- so there isn't a simple fix like manually correcting company ids
@@ -174,7 +195,7 @@ and b.country = 'United States of America'; -- 563 rows failed to match
 ---------
 -- how much is in the ventyx sale data?
 select sum(bundled_delivery_only_residential_sales_mwh)
-FROM ventyx.electric_utility_rates_2011
+FROM ventyx.retail_sales_2011
 where country = 'United States of America'; -- 1,422,801,093
 
 -- is this the same as what's in the eia totals?
@@ -199,7 +220,7 @@ select 1371323957+51477136; -- 1422801093
 -- repeat this check for commercial:
 -- how much is in the ventyx sale data?
 select sum(bundled_delivery_only_commercial_sales_mwh)
-FROM ventyx.electric_utility_rates_2011
+FROM ventyx.retail_sales_2011
 where country = 'United States of America'; -- 1,328,035,748
 
 -- is this the same as what's in the eia totals?
@@ -223,7 +244,7 @@ select 1232681917+95353831; -- 1,328,035,748
 -- repeat this check for industrial:
 -- how much is in the ventyx sale data?
 select sum(bundled_delivery_only_industrial_sales_mwh)
-FROM ventyx.electric_utility_rates_2011
+FROM ventyx.retail_sales_2011
 where country = 'United States of America'; -- 991,241,801
 
 -- is this the same as what's in the eia totals?
@@ -249,7 +270,7 @@ select 921736157+69505644; -- 991,241,801
 -- check residential:
 -- how many customers are in the ventyx sales data?
 select sum(bundled_delivery_only_residential_customers)
-FROM ventyx.electric_utility_rates_2011
+FROM ventyx.retail_sales_2011
 where country = 'United States of America'; -- 126,143,072
 
 -- is this the same as what's in the eia totals?
@@ -273,7 +294,7 @@ select 122380833+3762239; -- 126,143,072
 -- repeat this check for commercial:
 -- how many customers are in the ventyx sales data?
 select sum(bundled_delivery_only_commercial_customers)
-FROM ventyx.electric_utility_rates_2011
+FROM ventyx.retail_sales_2011
 where country = 'United States of America'; -- 17,638,050
 
 -- is this the same as what's in the eia totals?
@@ -297,7 +318,7 @@ select 17021104+616946; -- 17,638,050
 -- repeat this check for industrial:
 -- how many customers are in the ventyx sales data?
 select sum(bundled_delivery_only_industrial_customers)
-FROM ventyx.electric_utility_rates_2011
+FROM ventyx.retail_sales_2011
 where country = 'United States of America'; -- 727,915
 
 -- is this the same as what's in the eia totals?
@@ -323,7 +344,7 @@ select 721159+6756 -- 727,915
 -- check residential:
 -- how much revenue is in the ventyx sales data?
 select sum(bundled_energy_only_delivery_only_residential_revenue_000s)
-FROM ventyx.electric_utility_rates_2011
+FROM ventyx.retail_sales_2011
 where country = 'United States of America'; -- 166,714,106.8
 
 -- is this the same as what's in the eia totals?
@@ -346,7 +367,7 @@ select 156667240.2+10046866.6; -- 166,714,106.8
 -- repeate for commercial:
 -- how much revenue is in the ventyx sales data?
 select sum(bundled_energy_only_delivery_only_commercial_revenue_000s)
-FROM ventyx.electric_utility_rates_2011
+FROM ventyx.retail_sales_2011
 where country = 'United States of America'; -- 135,924,384.9
 
 -- is this the same as what's in the eia totals?
@@ -370,7 +391,7 @@ select 110872732.4+25051652.5; -- 135,924,384.9
 -- repeate for industrial:
 -- how much revenue is in the ventyx sales data?
 select sum(bundled_energy_only_delivery_only_industrial_revenue_000s)
-FROM ventyx.electric_utility_rates_2011
+FROM ventyx.retail_sales_2011
 where country = 'United States of America'; -- 67,598,492.7
 
 -- is this the same as what's in the eia totals?
@@ -437,7 +458,7 @@ ON a.state_abbr = b.abbrev;
 	
 
 --3- allocate values from step 1 to values from step 2	
-	DROP TABLE IF EXISTS dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled;
+	DROP TABLE IF EXISTS dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled CASCADE;
 	CREATE TABLE dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled AS
 
 	SELECT company_id, state_abbr, the_geom_4326, company_name, 
@@ -489,7 +510,7 @@ WHERE a.state_abbr = b.state_abbr;
 -- create a view of just the gids and geoms
 CREATE OR REPLACE VIEW  dg_wind.ventyx_ests_backfilled_geoms AS
 SELECT gid as est_gid, the_geom_4326
-FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled ;
+FROM dg_wind.ventyx_elec_serv_territories_w_2011_sales_data_backfilled;
 -- export to shapefile 
 	-- dg_wind.ventyx_ests_backfilled_geoms --> F:\data\mgleason\DG_Wind\Data\Analysis\county_boundaries\ventyx_ests_backfilled_geoms.shp
 	-- diffusion_shared.county_geom --> F:\data\mgleason\DG_Wind\Data\Analysis\county_boundaries\county_geom.shp
@@ -564,7 +585,7 @@ SELECT  'ventyx sales'::text as source, sum(bundled_energy_only_delivery_only_re
 	sum(bundled_delivery_only_industrial_sales_mwh ) as ind_sales_mwh,
 	sum(bundled_delivery_only_industrial_customers) as ind_consumers
 
-FROM ventyx.electric_utility_rates_2011
+FROM ventyx.retail_sales_2011
 where country = 'United States of America';
 
 

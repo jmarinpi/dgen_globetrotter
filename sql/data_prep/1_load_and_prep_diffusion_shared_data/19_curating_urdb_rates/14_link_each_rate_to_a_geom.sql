@@ -51,6 +51,20 @@ CREATE INDEX urdb_rates_geoms_com_the_geom_900914_gist
 ON  diffusion_shared.urdb_rates_geoms_com
 using gist(the_geom_900914);
 
+-- add 96703 geom
+ALTER TABLE diffusion_shared.urdb_rates_geoms_com
+ADD column the_geom_96703 geometry;
+
+UPDATE diffusion_shared.urdb_rates_geoms_com
+SET the_geom_96703 = ST_Transform(the_geom_4326, 96703);
+
+CREATE INDEX urdb_rates_geoms_com_the_geom_96703_gist
+ON  diffusion_shared.urdb_rates_geoms_com
+using gist(the_geom_96703);
+
+
+VACUUM ANALYZE diffusion_shared.urdb_rates_geoms_com;
+
 -- RESIDENTIAL
 -- create a simple table with each rate_id_alias linked to a ventyx geom
 DROP TABLE IF EXISTS diffusion_shared.urdb_rates_geoms_res;
@@ -102,3 +116,16 @@ SET the_geom_900914 = ST_Transform(the_geom_4326, 900914);
 CREATE INDEX urdb_rates_geoms_res_the_geom_900914_gist
 ON  diffusion_shared.urdb_rates_geoms_res
 using gist(the_geom_900914);
+
+-- add 96703 geom
+ALTER TABLE diffusion_shared.urdb_rates_geoms_res
+ADD column the_geom_96703 geometry;
+
+UPDATE diffusion_shared.urdb_rates_geoms_res
+SET the_geom_96703 = ST_Transform(the_geom_4326, 96703);
+
+CREATE INDEX urdb_rates_geoms_res_the_geom_96703_gist
+ON  diffusion_shared.urdb_rates_geoms_res
+using gist(the_geom_96703);
+
+VACUUM ANALYZE diffusion_shared.urdb_rates_geoms_res;

@@ -10,8 +10,9 @@ GRANT CONNECT, TEMPORARY ON DATABASE "diffusion_clone" TO "diffusion-writers";
 GRANT CONNECT, TEMPORARY ON DATABASE "diffusion_clone" TO "diffusion_shared-writers";
 GRANT CONNECT, TEMPORARY ON DATABASE "diffusion_clone" TO "wind_ds-writers";
 
-
+-- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** 
 -- CHANGE DATABASE CONNECTION MANUALLY BEFORE PROCEEDING!!!!!!
+-- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** 
 
 -- add extensions
  CREATE EXTENSION plr;
@@ -24,11 +25,6 @@ GRANT CONNECT, TEMPORARY ON DATABASE "diffusion_clone" TO "wind_ds-writers";
   
 CREAte extension plpythonu;
 
- CREATE SCHEMA topology;
- CREATE EXTENSION postgis_topology
-  SCHEMA topology
-  VERSION "2.0.3";
-
    CREATE EXTENSION dblink
   SCHEMA public
   VERSION "1.0";
@@ -36,6 +32,9 @@ CREAte extension plpythonu;
 -- clone the schemas that we need to the new database
 -- ssh to gispgdb, then:
 -- pg_dump -h localhost -U mgleason -O -n diffusion_shared -n geo_incentives -n urdb_rates -n diffusion_wind -n diffusion_wind_config -n diffusion_solar -n diffusion_solar_config dav-gis | psql -h localhost -U mgleason diffusion_clone
+-- pg_dump -h localhost -U mgleason -O -n diffusion_shared -n geo_incentives -n urdb_rates -n diffusion_wind -n diffusion_wind_config -n diffusion_solar -n diffusion_solar_config diffusion_clone | psql -h dnpdb001.bigde.nrel.gov -p 5433 -U mgleason_su diffusion
+-- to new server:
+-- pg_dump -h localhost -U mgleason -O diffusion_clone| psql -h dnpdb001.bigde.nrel.gov -p 5433 -U mgleason_su diffusion
 
 -- set ownership in all schemas, tables, views, and sequences
 ALTER SCHEMA diffusion_shared owner to "diffusion-writers";
@@ -63,15 +62,21 @@ where sequence_schema in ('diffusion_shared','diffusion_solar','diffusion_solar_
 --------------------------------------------------------------------------------
 -- functions were not copied over
 -- run:
--- solar_system_sizing.sql
--- scoe_final.sql
--- r_quantile.sql
--- r_median.sql
+-- add_key_to_json.sql
+-- archive
+-- get_key_from_json.sql
+-- r_array_multiply.sql
 -- r_bin_equal_interval.sql
+-- r_cut.sql
+-- r_median.sql
+-- r_quantile.sql
 -- r_sample.sql
-
+-- remove_key_from_json.sql
+-- solar_system_sizing.sql
+-- wind_scoe.sql
 
 
 -------------------
 -- create multiple copies:
 -- CREATE DATABASE diffusion_clone_2 WITH TEMPLATE diffusion_clone;
+-- CREATE DATABASE diffusion_clone WITH TEMPLATE diffusion_clone_2;

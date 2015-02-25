@@ -62,7 +62,6 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs,cfg.tech_lifetime)
-        
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate,cfg.tech_lifetime)    
 
     
@@ -131,7 +130,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
         
         
 """                
-    # default is 30 year analysis periods
+    # default is 25 year analysis periods
     shape=(len(df),tech_lifetime); 
     df['ic'] = df['installed_costs_dollars_per_kw'] * df['system_size_kw']
     
@@ -151,10 +150,18 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     
     # 1)  Cost of servicing loan/leasing payments
     crf = (df.loan_rate*(1 + df.loan_rate)**df.loan_term_yrs) / ( (1+df.loan_rate)**df.loan_term_yrs - 1);
-    pmt = - (1 - df.down_payment)* df.ic * crf    
     
-    loan_cost = datfunc.fill_jagged_array(pmt,df.loan_term_yrs,cols = tech_lifetime)
-    loan_cost[:,0] -= df.ic * df.down_payment # Pay the down payment and the first year loan payment in first year
+    # Assume that incentives received in first year are directly credited against installed cost; This help avoid
+    # ITC cash flow imbalances in first year
+    net_installed_cost = df.ic - (df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction)
+    
+    # Calculate the annual payment net the downpayment and upfront incentives
+    pmt = - (1 - df.down_payment) * net_installed_cost * crf    
+    annual_loan_pmts = datfunc.fill_jagged_array(pmt,df.loan_term_yrs,cols = tech_lifetime)
+
+    # Pay the down payment in year zero and loan payments thereafter. The downpayment is added at
+    # the end of the cash flow calculations to make the year zero framing simpler
+    down_payment_cost = (-net_installed_cost * df.down_payment)[:,np.newaxis] 
     
     # wind turbines do not have inverters hence no replacement cost.
     # but for solar, calculate and replace the inverter replacement costs with actual values
@@ -180,23 +187,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     avoided cost, or no credit. Amount of excess energy is aep * excess_gen_factor + 0.31 * (gen/load - 1) 
     See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail    
     """
-    
-    # ATTENTION: Make sure generation profile has been curtailed prior to calculating first year bill
-    # i.e. hourly_gen_profile *= (1 - df.curtailment_rate)
-    
-    # ATTENTION:  Make sure that excess generation is being appropriately valued.
-    # Test 1: Compare first_year_bill_with_system with net metering on/off. The bill should be lower with NEM on (more savings)
-    # Test 2: Compare first_year_bill_with_system with net metering on and changing year-end credit value [gen probably need to exceed consumption]. The bill should decrease (more savings) as credit increases
-    # Test 3: Compare first_year_bill_with_system with net metering off and changing year-end credit value [gen probably need to exceed consumption]. The bill should not change as credit increases
-    # Test 4: Define a simple flat rate (10c/kWh). Output the 8760 load and consumption profile. Now manually calculate the inflows, outflows, and year-end credit to validate rollover credit.
-        
-    ##
-    # Attention: Code below assumes first_year_bill outputs are lists with length of df.
-    # Attention: Code below assumes first_year_bill outputs are in units of dollars.
-    # synthetic data: first_year_bill_without_system = 100 * rand(len(df)), first_year_bill_with_system = 0.5*first_year_bill_with_system
-    
-    
-    # Assume that the rate_growth_mult is a cumulative factor i.e. [1,1.02,1.044] instead of [0.02, 0.02, 0.02]
+    # rate_growth_mult is a cumulative factor i.e. [1,1.02,1.044] instead of [0.02, 0.02, 0.02]
         
     # Take the difference of bills in first year, this is the revenue in the first year. Then assume that bill savings will follow
     # the same trajectories as changes in rate escalation. Output of this should be a data frame of shape (len(df),30)
@@ -256,8 +247,6 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     '''
     
     incentive_revenue = np.zeros(shape)
-    incentive_revenue[:, 1] = df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction
-    
     
     ptc_revenue = datfunc.fill_jagged_array(df.value_of_ptc,df.ptc_length, cols = tech_lifetime)
     pbi_fit_revenue = datfunc.fill_jagged_array(df.value_of_pbi_fit,df.pbi_fit_length, cols = tech_lifetime)    
@@ -265,7 +254,9 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     incentive_revenue += ptc_revenue + pbi_fit_revenue
     
     revenue = generation_revenue + carbon_tax_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
-    costs = loan_cost + om_cost + inverter_cost
+    revenue = np.hstack((np.zeros((len(df),1)),revenue)) # Add a zero column to revenues to reflect year zero
+    costs = annual_loan_pmts + om_cost + inverter_cost
+    costs = np.hstack((down_payment_cost, costs)) # Down payment occurs in year zero
     cfs = revenue + costs
     
     # Calculate the monthly bill savings in the first year of ownership in dollars ($)
@@ -273,26 +264,18 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # solve sequence, they are calculated once in the first year of the model. Thus, they are multiplied by the rate growth multiplier
     # in the current solve year to update for rate changes
     first_year_energy_savings = (df.first_year_bill_without_system - df.first_year_bill_with_system) * rate_growth_mult[:,0] 
-    avg_annual_payment = (loan_cost.sum(axis = 1)/df.loan_term_yrs)*-1
-    first_year_bill_savings = first_year_energy_savings - avg_annual_payment
+    avg_annual_payment = (annual_loan_pmts.sum(axis = 1)/df.loan_term_yrs) + down_payment_cost.sum(axis = 1)/20
+    first_year_bill_savings = first_year_energy_savings + avg_annual_payment # first_year_energy_savings is positive, avg_annual_payment is a negative
     monthly_bill_savings = first_year_bill_savings/12
     percent_monthly_bill_savings = first_year_bill_savings/df.first_year_bill_without_system
+    
+    
+    # If monthly_bill_savings is zero, percent_mbs will be non-finite
+    percent_monthly_bill_savings = np.where(df.first_year_bill_without_system.values == 0, 0, percent_monthly_bill_savings)
     df['monthly_bill_savings'] = monthly_bill_savings
     df['percent_monthly_bill_savings'] = percent_monthly_bill_savings
-     
+    
     return revenue, costs, cfs, df.first_year_bill_with_system, df.first_year_bill_without_system
-    
-#==============================================================================
-
-def calc_fin_metrics(costs, revenues, dr):
-    cfs = costs + revenues
-    
-    irr = calc_irr(cfs)
-    mirr = calc_mirr(cfs, finance_rate = dr, reinvest_rate = dr + 0.02)
-    npv = calc_npv(cfs,dr)
-    payback = calc_payback(cfs,revenue,costs,tech_lifetime)
-    ttd = calc_ttd(cfs)
-    return
 
 #==============================================================================    
 def calc_lcoe(costs,aep, dr, tech_lifetime):
@@ -307,7 +290,9 @@ def calc_lcoe(costs,aep, dr, tech_lifetime):
     '''
     
     num = -100 * calc_npv(costs, dr)
-    denom = calc_npv(np.repeat(aep[:,np.newaxis], tech_lifetime, axis = 1), dr)
+    aep_time_series = np.repeat(aep[:,np.newaxis], tech_lifetime, axis = 1)
+    aep_time_series = np.hstack((np.zeros((len(aep),1)),aep_time_series))
+    denom = calc_npv(aep_time_series, dr)
     return num/denom
 #==============================================================================    
 
@@ -406,20 +391,12 @@ def calc_npv(cfs,dr):
     
 def calc_payback(cfs,revenue,costs,tech_lifetime):
     '''payback calculator ### VECTORIZE THIS ###
-    
-    IN: cfs - numpy array - project cash flows ($/yr)  
+    IN: cfs - numpy array - project cash flows ($/yr)
     OUT: pp - numpy array - interpolated payback period (years)
-    
     '''
-
-    shape = (len(cfs),tech_lifetime)
-    cum_revenue = revenue[:,:tech_lifetime].cumsum(axis = 1)
-    total_costs = costs[:,:tech_lifetime].sum(axis = 1)[:,np.newaxis] * np.ones(shape)
-    
-    cumulative_net_cashflow = cum_revenue + total_costs
-    
+    cum_cfs = cfs.cumsum(axis = 1)
     out = []
-    for x in cumulative_net_cashflow:
+    for x in cum_cfs:
         if x[-1] < 0: # No payback if the cum. cfs are negative in the final year
             pp = 30
         elif all(x<0): # Is positive cashflow ever achieved?
@@ -436,7 +413,6 @@ def calc_payback(cfs,revenue,costs,tech_lifetime):
             else: # If the array is empty i.e. never positive cfs, pp = 30
                 pp = 30
         out.append(pp)
-    
     return np.array(out).round(decimals =1) # must be rounded to nearest 0.1 to join with max_market_share
     
 #==============================================================================
