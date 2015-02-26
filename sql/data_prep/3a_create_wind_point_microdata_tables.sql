@@ -1,4 +1,5 @@
 ﻿-- residential
+set role 'diffusion-writers';
 DROP TABLE IF EXISTS diffusion_wind.point_microdata_res_us CASCADE;
 SET seed to 1;
 CREATE TABLE diffusion_wind.point_microdata_res_us AS
@@ -14,9 +15,9 @@ WITH a AS
 		-- wind only
 		b.i, b.j, b.cf_bin, 
 		a.hi_dev_pct,
-		a.acres_per_hu,
+		ROUND(a.acres_per_hu,2) as acres_per_hu,
 		a.canopy_ht_m,
-		a.canopy_pct,
+		a.canopy_pct >= 25 as canopy_pct_hi,
 		-- res only		
 		sum(a.blkgrp_ownocc_sf_hu_portion) as point_weight
 	FROM diffusion_shared.pt_grid_us_res a
@@ -32,9 +33,9 @@ WITH a AS
 		-- wind only
 		b.i, b.j, b.cf_bin,
 		a.hi_dev_pct,
-		a.acres_per_hu,
+		ROUND(a.acres_per_hu,2),
 		a.canopy_ht_m,
-		a.canopy_pct	
+		a.canopy_pct >= 25	
 )
 SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
 FROM a
@@ -44,7 +45,7 @@ ORDER BY county_id;
 -- new version has:
 select count(*)
 FROM diffusion_wind.point_microdata_res_us;
--- 5,527,728 rows
+-- 4,537,959 rows
 
 -- primary key and indices
 ALTER TABLE diffusion_wind.point_microdata_res_us
@@ -80,9 +81,9 @@ WITH a AS
 		-- wind only
 		b.i, b.j, b.cf_bin, 
 		a.hi_dev_pct,
-		a.acres_per_hu,
+		ROUND(a.acres_per_hu, 2) as acres_per_hu,
 		a.canopy_ht_m,
-		a.canopy_pct,
+		a.canopy_pct >= 25 as canopy_pct_hi,
 		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_com a
 	LEFT JOIN diffusion_wind.ij_cfbin_lookup_com_pts_us b 
@@ -97,9 +98,9 @@ WITH a AS
 		-- wind only
 		b.i, b.j, b.cf_bin,
 		a.hi_dev_pct,
-		a.acres_per_hu,
+		ROUND(a.acres_per_hu, 2),
 		a.canopy_ht_m,
-		a.canopy_pct	
+		a.canopy_pct >= 25
 )
 SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
 FROM a
@@ -109,7 +110,7 @@ ORDER BY county_id;
 -- new version has:
 select count(*)
 FROM diffusion_wind.point_microdata_com_us;
--- 1,495,568  rows
+-- 1,336,444  rows
 -- vs full pt table:
 select count(*)
 FROM diffusion_shared.pt_grid_us_com;
@@ -148,9 +149,9 @@ WITH a AS
 		-- wind only
 		b.i, b.j, b.cf_bin, 
 		a.hi_dev_pct,
-		a.acres_per_hu,
+		ROUND(a.acres_per_hu, 2) as acres_per_hu,
 		a.canopy_ht_m,
-		a.canopy_pct,
+		a.canopy_pct >= 25 as canopy_pct_hi,
 		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_ind a
 	LEFT JOIN diffusion_wind.ij_cfbin_lookup_ind_pts_us b 
@@ -165,9 +166,9 @@ WITH a AS
 		-- wind only
 		b.i, b.j, b.cf_bin,
 		a.hi_dev_pct,
-		a.acres_per_hu,
+		ROUND(a.acres_per_hu, 2),
 		a.canopy_ht_m,
-		a.canopy_pct	
+		a.canopy_pct >= 25
 )
 SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
 FROM a
@@ -177,7 +178,7 @@ ORDER BY county_id;
 -- new version has:
 select count(*)
 FROM diffusion_wind.point_microdata_ind_us;
--- 1077660 rows
+-- 1,002,227 rows
 
 -- primary key and indices
 ALTER TABLE diffusion_wind.point_microdata_ind_us
