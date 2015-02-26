@@ -437,7 +437,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system,
 
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
-                    b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id, b.max_height,
+                    b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id,
                     b.carbon_price_cents_per_kwh, 
                     b.fixed_om_dollars_per_kw_per_yr, 
                     b.variable_om_dollars_per_kwh, b.installed_costs_dollars_per_kw, 
@@ -947,24 +947,25 @@ def find_rates(inputs_dict, county_chunks, exclusion_type, npar, pg_conn_string,
     
     ###############################################################################################
     # regardless of the rate structure, the output table needs indices added for subsequent queries
-    if inputs_dict['technology'] == 'wind':
-        # query for indices creation    
-        sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_census_division_abbr_btree 
-                  ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
-                  USING BTREE(census_division_abbr);
-                  
-                  CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_resource_key_btree 
-                  ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s
-                  USING BTREE(%(resource_key)s);""" % inputs_dict
-        p_run(pg_conn_string, sql, county_chunks, npar)
-    
+    if inputs_dict['technology'] == 'wind':    
         # add index for exclusions (if they apply)
-        if exclusion_type is not None:
-            sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_%(exclusion_type)s_btree 
-                      ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s
-                      USING BTREE(%(exclusion_type)s)
-                      WHERE %(exclusion_type)s > 0;""" % inputs_dict
-            p_run(pg_conn_string, sql, county_chunks, npar)
+        sql =  """  CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_acres_per_hu_btree 
+                    ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
+                    USING btree(acres_per_hu);
+                    
+                    CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_hi_dev_pct_btree 
+                    ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
+                    USING btree(hi_dev_pct);
+                    
+                    CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_canopy_pct_hi_btree 
+                    ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
+                    USING btree(canopy_pct_hi);
+                    
+                    CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_canopy_ht_m_btree 
+                    ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
+                    USING btree(canopy_ht_m);""" % inputs_dict                                  
+        p_run(pg_conn_string, sql, county_chunks, npar)
+        
     elif inputs_dict['technology'] == 'solar':
         # add an index on county id and row_number
         sql = """CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_join_fields_btree 
@@ -1367,6 +1368,59 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
 
     return final_table
 
+
+def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, logger):
+    
+    #==============================================================================
+    #     Find the allowable turbine heights and sizes (kw) for each customer bin
+    #==============================================================================    
+    # (note: some counties will have fewer than N points, in which case, all are returned) 
+    msg = 'Applying Turbine Siting Restrictions'
+    logger.info(msg)
+    t0 = time.time() 
+    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s;
+             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s AS
+             
+             SELECT a.*, 
+                 b.turbine_height_m, 
+                 d.turbine_size_kw
+             FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
+            
+            -- find heights based on min. acres per housing unit
+            INNER JOIN diffusion_wind.min_acres_per_hu_lkup b
+                ON a.acres_per_hu >= b.min_acres_per_hu
+
+            -- further restrict heights based on max. high development percent
+            INNER JOIN diffusion_wind.max_hi_dev_pct_lkup c
+                ON a.hi_dev_pct <= c.max_hi_dev_pct
+                and b.turbine_height_m = c.turbine_height_m
+
+            -- find the allowable turbine sizes (kw) for each height
+            INNER JOIN diffusion_wind.allowable_turbine_sizes d
+                ON b.turbine_height_m = d.turbine_height_m
+
+            -- required clearance
+            INNER JOIN diffusion_wind.required_canopy_clearance_lkup e
+                ON d.turbine_size_kw = e.turbine_size_kw
+                and (a.canopy_pct_hi = false 
+                    or
+                    (b.turbine_height_m >= (a.canopy_ht_m + e.required_clearance_m))
+                    ); 
+             """ % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)
+
+    
+    # create indices for next joins          
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s_turbine_height_m_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s 
+              USING BTREE(turbine_height_m);
+              
+              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s_resource_key_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s
+              USING BTREE(%(resource_key)s);""" % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)              
+    print time.time()-t0
+
 ########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
@@ -1404,37 +1458,38 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     #     get rate for each cusomter bin
     #==============================================================================
     find_rates(inputs, county_chunks, exclusion_type, npar, pg_conn_string, rate_structure, logger)    
+
+    #==============================================================================
+    #     apply turbine siting restrictions
+    #==============================================================================   
+    apply_siting_restrictions(inputs, county_chunks, npar, pg_conn_string, logger)
     
     #==============================================================================
     #     Find All Combinations of Points and Wind Resource
     #==============================================================================  
     msg = "Finding All Wind Resource Combinations for Each Customer Bin"
     logger.info(msg)
-    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s;
-                CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s AS
+    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s;
+                CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s AS
                 SELECT a.*,
-                c.aep as naep_no_derate,
-                c.turbine_id as power_curve_id, 
-                c.height as turbine_height_m
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
-                LEFT JOIN %(schema)s.wind_resource_annual c
-                ON a.i = c.i
-                AND a.j = c.j
-                AND a.cf_bin = c.cf_bin""" % inputs
-    if exclusion_type is not None:
-        sql += """ AND a.%(exclusion_type)s >= c.height
-                WHERE a.%(exclusion_type)s > 0;""" % inputs 
-    else:
-        sql += ';'
+                    b.aep as naep_no_derate,
+                    b.turbine_id as power_curve_id
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s a
+                LEFT JOIN %(schema)s.wind_resource_annual b
+                    ON a.i = b.i
+                    AND a.j = b.j
+                    AND a.cf_bin = b.cf_bin
+                    AND a.turbine_height_m = b.height;
+                    """ % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
-
+    
     # create indices for subsequent joins
-    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s_temporal_join_fields_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s 
-              USING BTREE(turbine_height_m, census_division_abbr, power_curve_id);
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_temporal_join_fields_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
+              USING BTREE(turbine_height_m, turbine_size_kw, census_division_abbr, power_curve_id);
               
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s_nem_join_fields_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s 
+              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_nem_join_fields_btree 
+              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
               USING BTREE(state_abbr, utility_type);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
 
@@ -1444,12 +1499,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     #==============================================================================
     msg = "Finding All Combinations of Cost and Resource for Each Customer Bin and Year"
     t0 = time.time()
-    logger.info(msg)
-    if exclusion_type is not None:
-        inputs['exclusions_insert'] = "a.%(exclusion_type)s as max_height," % inputs
-    else:
-        inputs['exclusions_insert'] = "80::integer as max_height,"
-        
+    logger.info(msg)       
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s AS
             WITH combined AS
@@ -1461,7 +1511,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                       b.rate_escalation_factor,
                       a.incentive_array_id,
                       a.ranked_rate_array_id,
-                      %(exclusions_insert)s
                       a.ownocc8,
                 b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
                 	b.fixed_om_dollars_per_kw_per_yr, 
@@ -1493,9 +1542,10 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                                   d.sys_oversize_limit_nem,
                                   d.sys_size_target_no_nem,
                                   d.sys_oversize_limit_no_nem) as scoe_return
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_and_wind_%(i_place_holder)s a
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s a
                 INNER JOIN %(schema)s.temporal_factors b
                     ON a.turbine_height_m = b.turbine_height_m
+                    AND a.turbine_size_kw = b.turbine_size_kw
                     AND a.power_curve_id = b.power_curve_id
                 AND a.census_division_abbr = b.census_division_abbr
                 LEFT JOIN %(schema)s.nem_scenario c
@@ -1510,7 +1560,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                     AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
-                   pca_reg, reeds_reg, rate_escalation_factor, incentive_array_id, ranked_rate_array_id, max_height,
+                   pca_reg, reeds_reg, rate_escalation_factor, incentive_array_id, ranked_rate_array_id, 
                    carbon_price_cents_per_kwh, 
             
                    fixed_om_dollars_per_kw_per_yr, 
@@ -1545,8 +1595,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
              ON %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s
              USING BTREE(county_id ASC, bin_id ASC, year ASC, scoe ASC, system_size_kw ASC, turbine_height_m ASC);           
           """ % inputs
-
-        
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time() - t0
 
