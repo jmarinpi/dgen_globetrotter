@@ -154,8 +154,6 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     
             logger.info('Scenario Name: %s' % scenario_opts['scenario_name'])
             t0 = time.time()
-            exclusions = datfunc.get_exclusions(cur, cfg.technology) # get exclusions
-            logger.info('Getting exclusions took: %0.1f' % (time.time() - t0))
             load_growth_scenario = scenario_opts['load_growth_scenario'] # get financial variables
             net_metering = scenario_opts['net_metering_availability']
             inflation = scenario_opts['ann_inflation']
@@ -210,7 +208,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     t0 = time.time()
                     datfunc.generate_customer_bins(cur, con, cfg.technology, schema, 
                                                    scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
-                                                   cfg.start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
+                                                   cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
                                                    cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.preprocess, cfg.npar, 
                                                    cfg.pg_conn_string, scenario_opts['net_metering_availability'], 
                                                    rate_structures[sector_abbr], logger = logger)

@@ -664,19 +664,19 @@ def create_scenario_report(technology, schema, scen_name, out_path, cur, con, Rs
     returncode = proc.returncode    
 
 def generate_customer_bins(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
-                           rate_escalation_source, load_growth_scenario, exclusion_type, oversize_system_factor, undersize_system_factor,
+                           rate_escalation_source, load_growth_scenario, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, nem_availability, rate_structure, logger):
                                
                                
     if technology == 'wind':
         resource_key = 'i,j,cf_bin'
         final_table = generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
-                           rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, oversize_system_factor, undersize_system_factor,
+                           rate_escalation_source, load_growth_scenario, resource_key, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, nem_availability, rate_structure, logger)
     elif technology == 'solar':
         resource_key = 'solar_re_9809_gid'
         final_table = generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
-                           rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, oversize_system_factor, undersize_system_factor,
+                           rate_escalation_source, load_growth_scenario, resource_key, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, nem_availability, rate_structure, logger)  
 
     return final_table
@@ -862,7 +862,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
     p_run(pg_conn_string, sql, county_chunks, npar)
 
 
-def find_rates(inputs_dict, county_chunks, exclusion_type, npar, pg_conn_string, rate_structure, logger):
+def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure, logger):
 
 
     if rate_structure.lower() == 'complex rates':
@@ -1038,7 +1038,7 @@ def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string
 
 
 def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
-                           rate_escalation_source, load_growth_scenario, exclusion_type, resource_key, 
+                           rate_escalation_source, load_growth_scenario, resource_key, 
                            oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, nem_availability, rate_structure, logger):
 
@@ -1069,7 +1069,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     #==============================================================================
     #     get rate for each customer bin
     #==============================================================================
-    find_rates(inputs, county_chunks, exclusion_type, npar, pg_conn_string, rate_structure, logger)
+    find_rates(inputs, county_chunks, npar, pg_conn_string, rate_structure, logger)
 
     #==============================================================================
     #     Assign rooftop characterisics
@@ -1378,36 +1378,53 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, 
     msg = 'Applying Turbine Siting Restrictions'
     logger.info(msg)
     t0 = time.time() 
+    
+#    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s;
+#             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s AS
+#             
+#             SELECT a.*, 
+#                 b.turbine_height_m, 
+#                 d.turbine_size_kw
+#             FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
+#            
+#            -- find heights based on min. acres per housing unit
+#            INNER JOIN diffusion_wind.min_acres_per_hu_lkup b
+#                ON a.acres_per_hu >= b.min_acres_per_hu
+#
+#            -- further restrict heights based on max. high development percent
+#            INNER JOIN diffusion_wind.max_hi_dev_pct_lkup c
+#                ON a.hi_dev_pct <= c.max_hi_dev_pct
+#                and b.turbine_height_m = c.turbine_height_m
+#
+#            -- find the allowable turbine sizes (kw) for each height
+#            INNER JOIN diffusion_wind.allowable_turbine_sizes d
+#                ON b.turbine_height_m = d.turbine_height_m
+#
+#            -- required clearance
+#            INNER JOIN diffusion_wind.required_canopy_clearance_lkup e
+#                ON d.turbine_size_kw = e.turbine_size_kw
+#                and (a.canopy_pct_hi = false 
+#                    or
+#                    (b.turbine_height_m >= (a.canopy_ht_m + e.required_clearance_m))
+#                    ); 
+#             """ % inputs_dict
+#    p_run(pg_conn_string, sql, county_chunks, npar)
+    
+    # *** THIS IS JUSt FOR DEBUGGING -- FUNCTION COMMENTED OUT ABOVE NEEDS TO BE FIXED BECAUSe IT IS CAUSING INSTABILITY IN MODEL RESULTS
     sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s;
              CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s AS
              
              SELECT a.*, 
-                 b.turbine_height_m, 
+                 d.turbine_height_m, 
                  d.turbine_size_kw
              FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
             
-            -- find heights based on min. acres per housing unit
-            INNER JOIN diffusion_wind.min_acres_per_hu_lkup b
-                ON a.acres_per_hu >= b.min_acres_per_hu
-
-            -- further restrict heights based on max. high development percent
-            INNER JOIN diffusion_wind.max_hi_dev_pct_lkup c
-                ON a.hi_dev_pct <= c.max_hi_dev_pct
-                and b.turbine_height_m = c.turbine_height_m
-
             -- find the allowable turbine sizes (kw) for each height
-            INNER JOIN diffusion_wind.allowable_turbine_sizes d
-                ON b.turbine_height_m = d.turbine_height_m
+            CROSS JOIN diffusion_wind.allowable_turbine_sizes d
 
-            -- required clearance
-            INNER JOIN diffusion_wind.required_canopy_clearance_lkup e
-                ON d.turbine_size_kw = e.turbine_size_kw
-                and (a.canopy_pct_hi = false 
-                    or
-                    (b.turbine_height_m >= (a.canopy_ht_m + e.required_clearance_m))
-                    ); 
              """ % inputs_dict
-    p_run(pg_conn_string, sql, county_chunks, npar)
+    p_run(pg_conn_string, sql, county_chunks, npar)   
+    
 
     
     # create indices for next joins          
@@ -1425,7 +1442,7 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, 
 ########################################################################################################################
 ########################################################################################################################
 def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
-                           rate_escalation_source, load_growth_scenario, exclusion_type, resource_key,
+                           rate_escalation_source, load_growth_scenario, resource_key,
                            oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, nem_availability, rate_structure, logger):
 
@@ -1457,7 +1474,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     #==============================================================================
     #     get rate for each cusomter bin
     #==============================================================================
-    find_rates(inputs, county_chunks, exclusion_type, npar, pg_conn_string, rate_structure, logger)    
+    find_rates(inputs, county_chunks, npar, pg_conn_string, rate_structure, logger)    
 
     #==============================================================================
     #     apply turbine siting restrictions
@@ -2078,20 +2095,7 @@ def get_system_degradation(cur, schema):
     ann_system_degradation = cur.fetchone()['ann_system_degradation']
     return ann_system_degradation    
     
-    
-def get_exclusions(cur, technology):
-    '''Return the sectors to model from table view in postgres.
-        Returned as a dictionary.
-        '''    
-    if technology == 'wind':
-        sql = 'SELECT * FROM diffusion_wind.exclusions_to_model;'
-        cur.execute(sql)
-        exclusions = cur.fetchone()['exclusions']
-    elif technology == 'solar':
-        exclusions = None
-    
-    return exclusions
-    
+        
 def get_depreciation_schedule(con, schema, type = 'all'):
     ''' Pull depreciation schedule from dB
     
