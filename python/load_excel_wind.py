@@ -51,6 +51,12 @@ def main(wb, conn, mode = None, ReEDS_PV_CC = None, verbose = False):
         windDerate(curWb,schema,table,conn,cur,verbose)
         table = 'system_sizing_factors'
         systemSizing(curWb,schema,table,conn,cur,verbose)
+        table = 'min_acres_per_hu_lkup'
+        sitingParcelSize(curWb,schema,table,conn,cur,verbose)
+        table = 'max_hi_dev_pct_lkup'
+        sitingHiDev(curWb,schema,table,conn,cur,verbose)
+        table = 'required_canopy_clearance_lkup'        
+        sitingCanopyClearance(curWb,schema,table,conn,cur,verbose)
 
         for func in lex.shared_table_functions:
             func(curWb,schema,conn,cur,verbose)
@@ -203,6 +209,93 @@ def systemSizing(curWb,schema,table,conn,cur,verbose=False):
     f.seek(0)
     if verbose:
         print 'Exporting system_sizing_factors'
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+    
+
+def sitingParcelSize(curWb, schema, table, conn, cur, verbose = False):
+    
+    f = StringIO()
+    rname = 'parcel_size'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    rows = len(cells)
+    # loop through values in the first column
+    heights = [cells[r][0].value.lower().replace('m','').strip() for r in range(0,rows)]
+    for r, height in enumerate(heights):
+        if cells[r][1].value == None:
+            val = '0'
+        else:
+            val = cells[r][1].value
+        l = [height, val]
+        f.write(str(l).replace("u'","").replace("'","")[1:-1]+'\n')
+    f.seek(0)
+    if verbose:
+        print 'Exporting %s' % table
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+    
+    
+def sitingHiDev(curWb, schema, table, conn, cur, verbose = False):
+    
+    f = StringIO()
+    rname = 'pct_hi_dev'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    rows = len(cells)
+    # loop through values in the first column
+    heights = [cells[r][0].value.lower().replace('m','').strip() for r in range(0,rows)]
+    for r, height in enumerate(heights):
+        if cells[r][1].value == None:
+            val = '0'
+        else:
+            val = int(cells[r][1].value*100)
+        l = [height, val]
+        f.write(str(l).replace("u'","").replace("'","")[1:-1]+'\n')
+    f.seek(0)
+    if verbose:
+        print 'Exporting %s' % table
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+
+
+def sitingCanopyClearance(curWb, schema, table, conn, cur, verbose = False):
+    
+    f = StringIO()
+    rname = 'canopy_clearance'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    rows = len(cells)
+    # loop through values in the first column
+    sizes = [cells[r][0].value.lower().replace('kw','').strip() for r in range(0,rows)]
+    for r, size in enumerate(sizes):
+        if cells[r][2].value == None:
+            val = '0'
+        else:
+            val = cells[r][2].value
+        l = [size, val]
+        f.write(str(l).replace("u'","").replace("'","")[1:-1]+'\n')
+    f.seek(0)
+    if verbose:
+        print 'Exporting %s' % table
     # use "COPY" to dump the data to the staging table in PG
     cur.execute('DELETE FROM %s.%s;' % (schema, table))
     cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
