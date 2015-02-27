@@ -123,15 +123,6 @@ SELECT CASE WHEN markets = 'All' THEN 'res=>Residential,com=>Commercial,ind=>Ind
 	   end as sectors
 FROM diffusion_wind.scenario_options;
 
--- create view of exclusions to model
-CREATE OR REPLACE VIEW diffusion_wind.exclusions_to_model AS
-SELECT CASE WHEN height_exclusions = 'Population Density Only' THEN 'maxheight_m_popdens'
-	    when height_exclusions = 'Population Density & Canopy Cover (40%)' THEN 'maxheight_m_popdenscancov40pc'
-	    when height_exclusions = 'Population Density & Canopy Cover (20%)' THEN 'maxheight_m_popdenscancov20pc'
-	    when height_exclusions = 'No Exclusions' THEN NULL
-       end as exclusions
-FROM diffusion_wind.scenario_options;
-
 
 -- max market share
 DROP VIEW IF EXISTS diffusion_wind.max_market_curves_to_model;
