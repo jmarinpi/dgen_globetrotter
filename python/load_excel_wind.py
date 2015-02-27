@@ -220,6 +220,13 @@ def systemSizing(curWb,schema,table,conn,cur,verbose=False):
 def sitingParcelSize(curWb, schema, table, conn, cur, verbose = False):
     
     f = StringIO()
+    rname = 'apply_parcel_size'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cell = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    enabled = cell.value      
+    
     rname = 'parcel_size'
     named_range = curWb.get_named_range(rname)
     if named_range == None:
@@ -229,10 +236,15 @@ def sitingParcelSize(curWb, schema, table, conn, cur, verbose = False):
     # loop through values in the first column
     heights = [cells[r][0].value.lower().replace('m','').strip() for r in range(0,rows)]
     for r, height in enumerate(heights):
-        if cells[r][1].value == None:
-            val = '0'
+        if enabled:
+            # get the values specified in the sheet
+            if cells[r][1].value == None:
+                val = '0'
+            else:
+                val = cells[r][1].value
         else:
-            val = cells[r][1].value
+            val = 0 # allow turbines to build even when there are zero acres per hu (condition in model is acres_per_hu >= b.min_acres_per_hu)
+
         l = [height, val]
         f.write(str(l).replace("u'","").replace("'","")[1:-1]+'\n')
     f.seek(0)
@@ -249,6 +261,13 @@ def sitingParcelSize(curWb, schema, table, conn, cur, verbose = False):
 def sitingHiDev(curWb, schema, table, conn, cur, verbose = False):
     
     f = StringIO()
+    rname = 'apply_pct_hi_dev'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cell = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    enabled = cell.value    
+        
     rname = 'pct_hi_dev'
     named_range = curWb.get_named_range(rname)
     if named_range == None:
@@ -258,10 +277,14 @@ def sitingHiDev(curWb, schema, table, conn, cur, verbose = False):
     # loop through values in the first column
     heights = [cells[r][0].value.lower().replace('m','').strip() for r in range(0,rows)]
     for r, height in enumerate(heights):
-        if cells[r][1].value == None:
-            val = '0'
+        if enabled:
+            # get the values specified in the sheet
+            if cells[r][1].value == None:
+                val = '0'
+            else:
+                val = int(cells[r][1].value*100)
         else:
-            val = int(cells[r][1].value*100)
+            val = 100 # allow all turbines to be built even where there is 100% highly developed land (condition in model is a.hi_dev_pct <= b.max_hi_dev_pct)
         l = [height, val]
         f.write(str(l).replace("u'","").replace("'","")[1:-1]+'\n')
     f.seek(0)
@@ -278,6 +301,14 @@ def sitingHiDev(curWb, schema, table, conn, cur, verbose = False):
 def sitingCanopyClearance(curWb, schema, table, conn, cur, verbose = False):
     
     f = StringIO()
+    # check whether the flag is set to apply this
+    rname = 'apply_canopy_clearance'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cell = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    enabled = cell.value
+    
     rname = 'canopy_clearance'
     named_range = curWb.get_named_range(rname)
     if named_range == None:
@@ -287,10 +318,14 @@ def sitingCanopyClearance(curWb, schema, table, conn, cur, verbose = False):
     # loop through values in the first column
     sizes = [cells[r][0].value.lower().replace('kw','').strip() for r in range(0,rows)]
     for r, size in enumerate(sizes):
-        if cells[r][2].value == None:
-            val = '0'
+        if enabled:
+            # get the values specified in the sheet
+            if cells[r][2].value == None:
+                val = '0'
+            else:
+                val = cells[r][2].value
         else:
-            val = cells[r][2].value
+            val = -100 # this works because the siting restriction is turbine height >= (canopy_height_m + canopy_clearance_m) (highest canopy_height_m in the pt grids is ~50 m)
         l = [size, val]
         f.write(str(l).replace("u'","").replace("'","")[1:-1]+'\n')
     f.seek(0)
