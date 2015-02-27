@@ -367,6 +367,24 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
         raise ExcelError('incent_start_year named range does not exist')
     incent_startyear = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
 
+    input_named_range = 'apply_parcel_size'
+    named_range = curWb.get_named_range(input_named_range)
+    if named_range == None:
+        raise ExcelError('apply_parcel_size named range does not exist')
+    siting_parcel_size_enabled = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
+
+    input_named_range = 'apply_pct_hi_dev'
+    named_range = curWb.get_named_range(input_named_range)
+    if named_range == None:
+        raise ExcelError('apply_pct_hi_dev named range does not exist')
+    siting_hi_dev_enabled = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
+
+    input_named_range = 'apply_canopy_clearance'
+    named_range = curWb.get_named_range(input_named_range)
+    if named_range == None:
+        raise ExcelError('apply_canopy_clearance named range does not exist')
+    siting_canopy_clearance_enabled = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
+
     named_range = curWb.get_named_range('Input_Scenario_Options')
     if named_range == None:
         raise ExcelError('Input_Scenario_Options named range does not exist')
@@ -404,7 +422,7 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             r += 1
         c += 1
 
-    in_l = l + ann_inf + sc_name + overwrite_exist_inc + incent_startyear + incent_utility
+    in_l = l + ann_inf + sc_name + overwrite_exist_inc + incent_startyear + incent_utility + siting_parcel_size_enabled + siting_hi_dev_enabled + siting_canopy_clearance_enabled
     f.write(str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1])
     #print str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1]
     f.seek(0)
@@ -431,7 +449,6 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             ind_max_market_curve, 
             net_metering_availability, 
             carbon_price, 
-            height_exclusions, 
             random_generator_seed,
             ann_inflation, 
             scenario_name, 
@@ -440,7 +457,10 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             utility_type_iou, 
             utility_type_muni, 
             utility_type_coop, 
-            utility_type_allother
+            utility_type_allother,
+            siting_parcel_size_enabled,
+            siting_hi_dev_enabled,
+            siting_canopy_clearance_enabled
         ) 
         FROM STDOUT WITH CSV;''' % (schema,table), f)        
 #    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
