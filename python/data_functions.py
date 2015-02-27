@@ -1379,53 +1379,56 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, 
     logger.info(msg)
     t0 = time.time() 
     
+    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s;
+             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s AS
+             
+                WITH restrictions AS
+                (
+                	SELECT a.turbine_height_m, 
+                         a.turbine_size_kw,
+                         b.min_acres_per_hu,
+                         c.max_hi_dev_pct,
+                         d.required_clearance_m
+                	FROM %(schema)s.allowable_turbine_sizes a
+                	-- min. acres per housing unit
+                	LEFT JOIN %(schema)s.min_acres_per_hu_lkup b
+                		ON a.turbine_height_m = b.turbine_height_m
+                	-- max high development percent
+                	LEFT JOIN %(schema)s.max_hi_dev_pct_lkup c
+                		ON a.turbine_height_m = c.turbine_height_m
+                	-- required canopy clearance
+                	LEFT JOIN %(schema)s.required_canopy_clearance_lkup d
+                		ON a.turbine_size_kw = d.turbine_size_kw
+                )
+                SELECT  a.*, 
+                    	b.turbine_height_m, 
+                    	b.turbine_size_kw
+                FROM  %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
+                INNER JOIN restrictions b
+                	ON a.hi_dev_pct <= b.max_hi_dev_pct
+                	and a.acres_per_hu >= b.min_acres_per_hu
+                	and (   a.canopy_pct_hi = false 
+                		   OR
+                	       (b.turbine_height_m >= (a.canopy_ht_m + b.required_clearance_m))
+                	    );
+             """ % inputs_dict
+    p_run(pg_conn_string, sql, county_chunks, npar)
+    
+    # *** THIS IS JUSt FOR DEBUGGING -- FUNCTION COMMENTED OUT ABOVE NEEDS TO BE FIXED BECAUSe IT IS CAUSING INSTABILITY IN MODEL RESULTS
 #    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s;
 #             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s AS
 #             
 #             SELECT a.*, 
-#                 b.turbine_height_m, 
+#                 d.turbine_height_m, 
 #                 d.turbine_size_kw
 #             FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
 #            
-#            -- find heights based on min. acres per housing unit
-#            INNER JOIN diffusion_wind.min_acres_per_hu_lkup b
-#                ON a.acres_per_hu >= b.min_acres_per_hu
-#
-#            -- further restrict heights based on max. high development percent
-#            INNER JOIN diffusion_wind.max_hi_dev_pct_lkup c
-#                ON a.hi_dev_pct <= c.max_hi_dev_pct
-#                and b.turbine_height_m = c.turbine_height_m
-#
 #            -- find the allowable turbine sizes (kw) for each height
-#            INNER JOIN diffusion_wind.allowable_turbine_sizes d
-#                ON b.turbine_height_m = d.turbine_height_m
+#            CROSS JOIN diffusion_wind.allowable_turbine_sizes d
 #
-#            -- required clearance
-#            INNER JOIN diffusion_wind.required_canopy_clearance_lkup e
-#                ON d.turbine_size_kw = e.turbine_size_kw
-#                and (a.canopy_pct_hi = false 
-#                    or
-#                    (b.turbine_height_m >= (a.canopy_ht_m + e.required_clearance_m))
-#                    ); 
 #             """ % inputs_dict
-#    p_run(pg_conn_string, sql, county_chunks, npar)
+#    p_run(pg_conn_string, sql, county_chunks, npar)   
     
-    # *** THIS IS JUSt FOR DEBUGGING -- FUNCTION COMMENTED OUT ABOVE NEEDS TO BE FIXED BECAUSe IT IS CAUSING INSTABILITY IN MODEL RESULTS
-    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s;
-             CREATE TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s AS
-             
-             SELECT a.*, 
-                 d.turbine_height_m, 
-                 d.turbine_size_kw
-             FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
-            
-            -- find the allowable turbine sizes (kw) for each height
-            CROSS JOIN diffusion_wind.allowable_turbine_sizes d
-
-             """ % inputs_dict
-    p_run(pg_conn_string, sql, county_chunks, npar)   
-    
-
     
     # create indices for next joins          
     sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s_turbine_height_m_btree 
@@ -1564,7 +1567,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                     ON a.turbine_height_m = b.turbine_height_m
                     AND a.turbine_size_kw = b.turbine_size_kw
                     AND a.power_curve_id = b.power_curve_id
-                AND a.census_division_abbr = b.census_division_abbr
+                    AND a.census_division_abbr = b.census_division_abbr
                 LEFT JOIN %(schema)s.nem_scenario c
                     ON c.state_abbr = a.state_abbr
                     AND c.utility_type = a.utility_type
@@ -1597,9 +1600,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                    naep*(scoe_return).nturb*turbine_size_kw as aep,
                    (scoe_return).nturb*turbine_size_kw as system_size_kw,
                    (scoe_return).nturb as nturb,
-
-                   
-    
                    turbine_id,
                    i, j, cf_bin,
                    turbine_size_kw, 
@@ -2644,6 +2644,9 @@ def assign_business_model(df, prng, method = 'prob', alpha = 2):
         # the customer leases (# < prob of leasing). A ranking method is used as a mask to
         # identify which rows to drop 
         
+        # sort the dataframe (may not be necessry)
+#        df = df.sort(['county_id', 'bin_id', 'business_model'])
+        
         # Calculate the logit value and sum of logit values for the bin id
         df['mkt_exp'] = df['max_market_share']**alpha
         gb = df.groupby(['county_id','bin_id'])
@@ -2659,7 +2662,7 @@ def assign_business_model(df, prng, method = 'prob', alpha = 2):
         
         # Both business models are still in the df, so we use a ranking algorithm after the random draw
         # To determine whether to buy or lease 
-        df['rank'] =0
+        df['rank'] = 0
         df.loc[(df['business_model'] == 'host_owned'),'rank'] = 1
         df.loc[(df['business_model'] == 'tpo') & (df['rnd']< df['prob_of_leasing']),'rank'] = 2
         

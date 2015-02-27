@@ -326,6 +326,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     # 11. Save outputs from this year and update parameters for next solve       
                     t0 = time.time()                 
                     datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
+                     
             ## 12. Outputs & Visualization
             # set output subfolder
             if mode == 'ReEDS':
