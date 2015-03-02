@@ -292,7 +292,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     # Market characteristics from previous year
                     if year == cfg.start_year: 
                         # get the initial market share per bin by county
-                        initial_market_shares = datfunc.get_initial_market_shares(cur, con, sector_abbr, sector, schema)
+                        initial_market_shares = datfunc.get_initial_market_shares(cur, con, sector_abbr, sector, schema, cfg.technology)
                         df = pd.merge(df, initial_market_shares, how = 'left', on = ['county_id','bin_id'])
                         df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']
                         

@@ -2160,10 +2160,17 @@ def get_dsire_incentives(cur, con, schema, sector_abbr, preprocess, npar, pg_con
     return df
 
 
-def get_initial_market_shares(cur, con, sector_abbr, sector, schema):
+def get_initial_market_shares(cur, con, sector_abbr, sector, schema, technology):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()     
+    
+    if technology == 'solar':
+        inputs['cap_table'] = 'starting_capacities_mw_2012_q4_us'
+    else:
+        inputs['cap_table'] = 'starting_capacities_mw_2014_us'
+    
+    
     
     sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares;
            CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares AS
@@ -2172,7 +2179,7 @@ def get_initial_market_shares(cur, con, sector_abbr, sector, schema):
                 	(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
                 	b.systems_count_%(sector)s/sum(a.customers_in_bin) OVER (PARTITION BY a.county_id) AS initial_market_share
             FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year a
-            LEFT JOIN %(schema)s.starting_capacities_mw_2014_us b
+            LEFT JOIN %(schema)s.%(cap_table)s b
             ON a.county_id = b.county_id
             where a.year = 2014;""" % inputs          
     cur.execute(sql)
