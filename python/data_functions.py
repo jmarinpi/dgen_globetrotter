@@ -2381,7 +2381,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     ic = inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
     
     cur_date = np.array([datetime.date(cur_year, 1, 1)]*len(inc))
-    default_exp_date = np.array([datetime.date(default_exp_yr, 1, 1)]*len(inc))
+    default_exp_date = np.array([datetime.date(default_exp_yr, 12, 31)]*len(inc))
     
     # Column names differ btw the wind and solar tables. 
     # Adding this exception handling so they have common set of columns
@@ -2447,7 +2447,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     
     # 2. # Calculate lifetime value of PBI & FIT
     inc['pbi_fit_min_output_kwh_yr'] = inc['pbi_fit_min_output_kwh_yr'].fillna(0)    
-    inc.pbi_fit_end_date[inc.pbi_fit_end_date.isnull()] = datetime.date(default_exp_yr, 1, 1) # Assign expiry if no date
+    inc.pbi_fit_end_date[inc.pbi_fit_end_date.isnull()] = datetime.date(default_exp_yr, 12, 31) # Assign expiry if no date
     pbi_fit_still_exists = cur_date <= inc.pbi_fit_end_date # Is the incentive still valid
     
     pbi_fit_cap = np.where(inc['system_size_kw'] < inc.pbi_fit_min_size_kw, 0, inc['system_size_kw'])
@@ -2487,8 +2487,9 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     # 4. #Calculate Value of Rebate
 
     # check whether the credits are still active (this can be applied universally because DSIRE does not provide specific info 
-    # about expirations for each tax credit or deduction)
-    if datetime.date(cur_year, 1, 1) >= datetime.date(default_exp_yr, 1, 1):
+    # about expirations for each tax credit or deduction). 
+    #Assume that expiration date is inclusive e.g. consumer receives incentive in 2016 if expiration date of 2016 (or greater)
+    if datetime.date(cur_year, 1, 1) >= datetime.date(default_exp_yr, 12, 31):
         value_of_rebate = 0.0
     else:
         rebate_cap = np.where(inc['system_size_kw'] < inc.rebate_min_size_kw, 0, inc['system_size_kw'])
@@ -2504,8 +2505,9 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     # Assume able to fully monetize tax credits
     
     # check whether the credits are still active (this can be applied universally because DSIRE does not provide specific info 
-    # about expirations for each tax credit or deduction)
-    if datetime.date(cur_year, 1, 1) >= datetime.date(default_exp_yr, 1, 1):
+    # about expirations for each tax credit or deduction). 
+    #Assume that expiration date is inclusive e.g. consumer receives incentive in 2016 if expiration date of 2016 (or greater)
+    if datetime.date(cur_year, 1, 1) >= datetime.date(default_exp_yr, 12, 31):
         inc['value_of_tax_credit_or_deduction'] = 0.0
     else:
         inc.tax_credit_pcnt_cost = np.where(inc.tax_credit_pcnt_cost.isnull(), 0, inc.tax_credit_pcnt_cost)
