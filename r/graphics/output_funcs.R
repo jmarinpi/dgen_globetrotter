@@ -534,7 +534,7 @@ diffusion_sectors_map <- function(df){
   sectors = collect(summarise(df, distinct(sector)))[,1]
   for (sector in sectors){
     f = filter(df, sector == sector)
-    g = group_by(df, state_abbr, year)
+    g = group_by(f, state_abbr, year)
     diffusion_sector = collect(summarise(g,
                                          Market.Share = sum(number_of_adopters)/sum(customers_in_bin)*100,
                                          Market.Value = sum(market_value),
