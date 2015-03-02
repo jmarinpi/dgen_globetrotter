@@ -1,6 +1,6 @@
 ﻿SET ROLE 'dg_wind-writers';
-DROP TABLE IF EXISTS dg_wind.acs_2011_tenure_by_housing_units_in_structure;
-CREATE TABLE dg_wind.acs_2011_tenure_by_housing_units_in_structure
+DROP TABLE IF EXISTS dg_wind.acs_2013_tenure_by_housing_units_in_structure;
+CREATE TABLE dg_wind.acs_2013_tenure_by_housing_units_in_structure
 (
 	gisjoin text,
 	year character varying(9),
@@ -13,14 +13,12 @@ CREATE TABLE dg_wind.acs_2011_tenure_by_housing_units_in_structure
 	own_occu_h integer,
 	own_occu_1str_detached_h integer,
 	own_occu_1str_attached_h integer,
-	renter_occu_h integer,
-	renter_occu_1str_detached integer,
-	renter_occu_1str_attached integer
+	own_occu_mobile_h integer
 );
 
 SET ROLE 'server-superusers';
 SET client_encoding to "LATIN1";
-COPY dg_wind.acs_2011_tenure_by_housing_units_in_structure FROM '/srv/home/mgleason/data/dg_wind/nhgis0006_ds184_20115_2011_county_simplified.csv'
+COPY dg_wind.acs_2013_tenure_by_housing_units_in_structure FROM '/srv/home/mgleason/data/dg_wind/nhgis0014_ds201_20135_2013_county_simplified.csv'
 WITH CSV HEADER;
 SET client_encoding TO 'UNICODE';
 SET ROLE 'dg_wind-writers';
@@ -28,152 +26,95 @@ SET ROLE 'dg_wind-writers';
 -- have to join on fips codes, which requires some prejoins
 DROP TABLE IF EXISTS dg_wind.county_housing_units;
 CREATE TABLE dg_wind.county_housing_units AS
-WITH a as (
-	SELECT a.*, b.name as county_name, b.statefp, b.countyfp
-	FROM dg_wind.acs_2011_tenure_by_housing_units_in_structure a
-	INNER JOIN dg_wind.acs_2011_us_county b
-	ON a.gisjoin = b.gisjoin
-),
-b AS (
-SELECT a.county_id, a.state, a.county, b.state_fips, b.cnty_fips
-FROM wind_shared.county_geom a
-inner JOIN esri.dtl_cnty_all_multi b
-ON a.county_id = b.gid)
-SELECT b.county_id, b.state, b.county, b.state_fips, b.cnty_fips, 
-	 a.tot_occu_h, a.own_occu_h, a.own_occu_1str_detached_h, a.own_occu_1str_attached_h, 
-	-- calculate total 1 structure own occu
-	 a.own_occu_1str_detached_h + a.own_occu_1str_attached_h as own_occu_1str_all, 
-       a.renter_occu_h, a.renter_occu_1str_detached, a.renter_occu_1str_attached
-FROM b
-LEFT JOIN a
-ON b.state_fips = a.statefp
-and b.cnty_fips = a.countyfp;
+SELECT a.county_id, a.state, a.county, 
+	a.state_fips, a.county_fips::integer as county_fips,
+	b.tot_occu_h,
+	b.own_occu_1str_detached_h + b.own_occu_1str_attached_h + b.own_occu_mobile_h as own_occu_1str_all,
+	(b.own_occu_1str_detached_h + b.own_occu_1str_attached_h + b.own_occu_mobile_h)::numeric/tot_occu_h as perc_own_occu_1str_housing
+FROM diffusion_shared.county_geom a
+LEFT JOIN dg_wind.acs_2013_tenure_by_housing_units_in_structure b
+ON a.state_fips = b.statea
+and a.county_fips::integer = b.countya;
 
--- look for unjoined data
-SELECT *
+-- check for nulls
+select *
 FROM dg_wind.county_housing_units
-where tot_occu_h is null;
+where perc_own_occu_1str_housing is null;
+
 -- 3 counties in alaska
--- 3;'Prince of Wales-Outer Ketchikan'
--- 9;'Skagway-Hoonah-Angoon'
--- 4;'Wrangell-Petersburg'
+-- 3;'Prince of Wales-Outer Ketchikan' fips = 201
+-- 9;'Skagway-Hoonah-Angoon' fips = 232
+-- 4;'Wrangell-Petersburg' fips = 280
 
 -- look for these in the acs table
 SELECT *
-FROM dg_wind.acs_2011_tenure_by_housing_units_in_structure
+FROM dg_wind.acs_2013_tenure_by_housing_units_in_structure
 where state = 'Alaska'
 ORDER BY county;
 -- these counties exist -- they are just separate in ACS
 
 
 -- sum them to fix
-WITH b AS (
-SELECT sum(tot_occu_h) as tot_occu_h, 
-       sum(own_occu_h) as own_occu_h, 
-       sum(own_occu_1str_detached_h) as own_occu_1str_detached_h, 
-       sum(own_occu_1str_attached_h) AS own_occu_1str_attached_h, 
-       sum(own_occu_1str_detached_h+own_occu_1str_attached_h) AS own_occu_1str_all,
-       sum(renter_occu_h) as renter_occu_h, 
-       sum(renter_occu_1str_detached) as renter_occu_1str_detached, 
-       sum(renter_occu_1str_attached) as renter_occu_1str_attached
-FROM dg_wind.acs_2011_tenure_by_housing_units_in_structure
-WHERE full_county_name in ('Skagway Municipality, Alaska','Hoonah-Angoon Census Area, Alaska'))
+WITH b AS 
+(
+	SELECT sum(tot_occu_h) as tot_occu_h, 
+	       sum(own_occu_1str_detached_h + own_occu_1str_attached_h + own_occu_mobile_h) as own_occu_1str_all,
+	       sum(own_occu_1str_detached_h + own_occu_1str_attached_h + own_occu_mobile_h)::numeric/sum(tot_occu_h) as perc_own_occu_1str_housing
+
+	FROM dg_wind.acs_2013_tenure_by_housing_units_in_structure
+	WHERE full_county_name in ('Skagway Municipality, Alaska','Hoonah-Angoon Census Area, Alaska')
+)
 UPDATE dg_wind.county_housing_units a
-SET (tot_occu_h, 
-       own_occu_h, own_occu_1str_detached_h, own_occu_1str_attached_h, 
-       own_occu_1str_all, renter_occu_h, renter_occu_1str_detached, 
-       renter_occu_1str_attached) =
-	(b.tot_occu_h, 
-       b.own_occu_h, b.own_occu_1str_detached_h, b.own_occu_1str_attached_h, 
-       b.own_occu_1str_all, b.renter_occu_h, b.renter_occu_1str_detached, 
-       b.renter_occu_1str_attached)
+SET (tot_occu_h, own_occu_1str_all, perc_own_occu_1str_housing) = (b.tot_occu_h, b.own_occu_1str_all, b.perc_own_occu_1str_housing)
 FROM b
 where a.county_id = 9;
 
 
-WITH b AS (
-SELECT sum(tot_occu_h) as tot_occu_h, 
-       sum(own_occu_h) as own_occu_h, 
-       sum(own_occu_1str_detached_h) as own_occu_1str_detached_h, 
-       sum(own_occu_1str_attached_h) AS own_occu_1str_attached_h, 
-       sum(own_occu_1str_detached_h+own_occu_1str_attached_h) AS own_occu_1str_all,
-       sum(renter_occu_h) as renter_occu_h, 
-       sum(renter_occu_1str_detached) as renter_occu_1str_detached, 
-       sum(renter_occu_1str_attached) as renter_occu_1str_attached
-FROM dg_wind.acs_2011_tenure_by_housing_units_in_structure
-WHERE full_county_name in ('Wrangell City and Borough, Alaska','Petersburg Census Area, Alaska'))
+WITH b AS 
+(
+	SELECT sum(tot_occu_h) as tot_occu_h, 
+	       sum(own_occu_1str_detached_h + own_occu_1str_attached_h + own_occu_mobile_h) as own_occu_1str_all,
+	       sum(own_occu_1str_detached_h + own_occu_1str_attached_h + own_occu_mobile_h)::numeric/sum(tot_occu_h) as perc_own_occu_1str_housing
+
+	FROM dg_wind.acs_2013_tenure_by_housing_units_in_structure
+	WHERE full_county_name in ('Wrangell City and Borough, Alaska','Petersburg Census Area, Alaska')
+)
 UPDATE dg_wind.county_housing_units a
-SET (tot_occu_h, 
-       own_occu_h, own_occu_1str_detached_h, own_occu_1str_attached_h, 
-       own_occu_1str_all, renter_occu_h, renter_occu_1str_detached, 
-       renter_occu_1str_attached) =
-	(b.tot_occu_h, 
-       b.own_occu_h, b.own_occu_1str_detached_h, b.own_occu_1str_attached_h, 
-       b.own_occu_1str_all, b.renter_occu_h, b.renter_occu_1str_detached, 
-       b.renter_occu_1str_attached)
+SET (tot_occu_h, own_occu_1str_all, perc_own_occu_1str_housing) = (b.tot_occu_h, b.own_occu_1str_all, b.perc_own_occu_1str_housing)
 FROM b
 where a.county_id = 4;
 
--- this one may not be quite right, but it's likely correct
-WITH b AS (
-SELECT sum(tot_occu_h) as tot_occu_h, 
-       sum(own_occu_h) as own_occu_h, 
-       sum(own_occu_1str_detached_h) as own_occu_1str_detached_h, 
-       sum(own_occu_1str_attached_h) AS own_occu_1str_attached_h, 
-       sum(own_occu_1str_detached_h+own_occu_1str_attached_h) AS own_occu_1str_all,
-       sum(renter_occu_h) as renter_occu_h, 
-       sum(renter_occu_1str_detached) as renter_occu_1str_detached, 
-       sum(renter_occu_1str_attached) as renter_occu_1str_attached
-FROM dg_wind.acs_2011_tenure_by_housing_units_in_structure
-WHERE full_county_name in ('Prince of Wales-Hyder Census Area, Alaska'))
+
+WITH b AS 
+(
+	SELECT sum(tot_occu_h) as tot_occu_h, 
+	       sum(own_occu_1str_detached_h + own_occu_1str_attached_h + own_occu_mobile_h) as own_occu_1str_all,
+	       sum(own_occu_1str_detached_h + own_occu_1str_attached_h + own_occu_mobile_h)::numeric/sum(tot_occu_h) as perc_own_occu_1str_housing
+
+	FROM dg_wind.acs_2013_tenure_by_housing_units_in_structure
+	WHERE full_county_name in ('Prince of Wales-Hyder Census Area, Alaska')
+)
 UPDATE dg_wind.county_housing_units a
-SET (tot_occu_h, 
-       own_occu_h, own_occu_1str_detached_h, own_occu_1str_attached_h, 
-       own_occu_1str_all, renter_occu_h, renter_occu_1str_detached, 
-       renter_occu_1str_attached) =
-	(b.tot_occu_h, 
-       b.own_occu_h, b.own_occu_1str_detached_h, b.own_occu_1str_attached_h, 
-       b.own_occu_1str_all, b.renter_occu_h, b.renter_occu_1str_detached, 
-       b.renter_occu_1str_attached)
+SET (tot_occu_h, own_occu_1str_all, perc_own_occu_1str_housing) = (b.tot_occu_h, b.own_occu_1str_all, b.perc_own_occu_1str_housing)
 FROM b
 where a.county_id = 3;
-
 
 -- confirm nothing is missing now
 -- look for unjoined data
 SELECT *
 FROM dg_wind.county_housing_units
-where tot_occu_h is null;
-
-
-ALTER TABLE dg_wind.county_housing_units
-ADD COLUMN perc_own_occu_1str_housing numeric;
-
-UPDATE dg_wind.county_housing_units
-SET perc_own_occu_1str_housing = own_occu_1str_all::NUMERIC/tot_occu_h::NUMERIC;
-
--- check results against previously calculate owner occupied %
-SELECT a.county_id, a.state, a.county, a.perc_own_occu_1str_housing, b.perc_own_occupied_housing
-FROM dg_wind.county_housing_units a
-LEFT JOIN dg_wind.county_own_occ_housing b
-ON a.county_id = b.county_id
--- where a.state = 'New York'
--- where a.own_occu_h <> b.own_occ_housing_units
-ORDER bY b.perc_own_occupied_housing-a.perc_own_occu_1str_housing;
-
-
+where perc_own_occu_1str_housing is null;
 
 -- copy data to diffusion_shared schema
-SET ROLE 'wind_ds-writers';
-DROP TABLE IF EXISTS diffusion_shared.county_housing_units;
+set role 'server-superusers';
+DROP TABLE IF EXISTS diffusion_shared.county_housing_units CASCADE;
 CREATE TABLE diffusion_shared.county_housing_units AS
 SELECT county_id, perc_own_occu_1str_housing 
 FROM  dg_wind.county_housing_units;
 
+ALTER TABLE diffusion_shared.county_housing_units OWNER TO "diffusion-writers";
+
+
 ALTER TABLE diffusion_shared.county_housing_units
 ADD primary key (county_id);
 
-ALTER TABLE diffusion_shared.county_housing_units
-ADD CONSTRAINT county_id_fkey FOREIGN KEY (county_id)
-      REFERENCES diffusion_shared.county_geom (county_id) MATCH FULL
-      ON UPDATE RESTRICT ON DELETE RESTRICT;
