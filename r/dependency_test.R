@@ -8,7 +8,17 @@ packages = c('ggthemes',
              'devtools',
              'rCharts',
              'rMaps',
-             'RPostgreSQL')
+             'RPostgreSQL',
+             'maps',
+             'reshape2',
+             'RColorBrewer',
+             'lattice',
+             'classInt',
+             'xtable',
+             'jsonlite',
+             'scales',
+             'knitr'
+             )
 
 error = F
 for (package in packages){
