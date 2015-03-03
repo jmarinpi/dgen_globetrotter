@@ -1,6 +1,7 @@
 {	
-	"dbname": "dav-gis", 
-	"host": "gispgdb", 
+	"dbname": "diffusion", 
+	"host": "dnpdb001.bigde.nrel.gov", 
+	"port": "5433",
 	"password": "bsigrin", 
 	"user": "bsigrin"
 }

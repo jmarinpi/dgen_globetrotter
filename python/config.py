@@ -18,7 +18,7 @@ pg_params_json = file('./pg_params.json','r')
 pg_params = json.load(pg_params_json)
 pg_params_json.close()
 
-pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s' % pg_params
+pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s port=%(port)s' % pg_params
 
 # input spreadsheet location (relative to python folder)
 input_xls = '../excel/DG_wind_01_16_2014_named_ranges.xlsm'

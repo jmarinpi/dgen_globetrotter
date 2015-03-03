@@ -32,8 +32,8 @@ pg_params = fromJSON(txt = '../python/pg_params.json')
 
 
 # two different connetions to postgres (1 used by RPostgreSQL and the other by dplyr)
-con<-make_con(driver = "PostgreSQL", host = pg_params[['host']], pg_params[['dbname']], user = pg_params[['user']], password = pg_params[['password']])
-src = src_postgres(host = pg_params[['host']], dbname=pg_params[['dbname']], user = pg_params[['user']], password = pg_params[['password']])
+con<-make_con(driver = "PostgreSQL", host = pg_params[['host']], pg_params[['dbname']], user = pg_params[['user']], password = pg_params[['password']], port = pg_params[['port']])
+src = src_postgres(host = pg_params[['host']], dbname=pg_params[['dbname']], user = pg_params[['user']], password = pg_params[['password']], port = pg_params[['port']])
 
 # lazy load the output table from postgres
 sql = sprintf("SELECT *
