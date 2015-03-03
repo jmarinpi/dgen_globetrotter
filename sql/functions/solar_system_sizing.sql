@@ -49,5 +49,4 @@ $BODY$
 $BODY$
   LANGUAGE plpythonu STABLE
   COST 100;
-ALTER FUNCTION diffusion_solar.system_sizing(numeric, numeric, numeric, numeric, double precision, numeric, numeric)
-  OWNER TO "server-superusers";
+

@@ -34,7 +34,7 @@ CREAte extension plpythonu;
 -- pg_dump -h localhost -U mgleason -O -n diffusion_shared -n geo_incentives -n urdb_rates -n diffusion_wind -n diffusion_wind_config -n diffusion_solar -n diffusion_solar_config dav-gis | psql -h localhost -U mgleason diffusion_clone
 -- pg_dump -h localhost -U mgleason -O -n diffusion_shared -n geo_incentives -n urdb_rates -n diffusion_wind -n diffusion_wind_config -n diffusion_solar -n diffusion_solar_config diffusion_clone | psql -h dnpdb001.bigde.nrel.gov -p 5433 -U mgleason_su diffusion
 -- to new server:
--- pg_dump -h localhost -U mgleason -O diffusion_clone| psql -h dnpdb001.bigde.nrel.gov -p 5433 -U mgleason_su diffusion
+-- pg_dump -h localhost -U mgleason -O diffusion_clone_4 | psql -h dnpdb001.bigde.nrel.gov -p 5433 -U mgleason_su diffusion
 
 -- set ownership in all schemas, tables, views, and sequences
 ALTER SCHEMA diffusion_shared owner to "diffusion-writers";
