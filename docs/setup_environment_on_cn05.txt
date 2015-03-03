@@ -28,6 +28,8 @@ python
 	#Type "help", "copyright", "credits" or "license" for more information.
 	#Anaconda is brought to you by Continuum Analytics.
 	#Please check out: http://continuum.io/thanks and https://binstar.org
+# exit python interpreter
+exit()
 # install additional python module dependencies
 conda install psycopg2
 # confirm package changes: type 'yes' then enter
@@ -54,12 +56,10 @@ install.packages('reshape2')
 install.packages('RColorBrewer')
 install.packages('lattice')
 install.packages('classInt')
-
 install.packages('xtable')
 install.packages('jsonlite')
 install.packages('scales')
 install.packages('knitr')
-
 library(devtools)
 library(httr)
 devtools::install_github('ramnathv/rCharts')
