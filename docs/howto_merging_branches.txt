@@ -12,9 +12,14 @@ git push origin dev
 # have wesley merge REEDS branch
 # merge into dev
 git checkout master
+# check that it is up to date
+git pull origin master
+# merge dev 
 git merge dev
-git tag -a 0.3 -m "Version 0.3"
+# add a tag
+git tag -a 0.3 -m "Version Version 0.3 - Stable for preliminary dWind and SVII model runs"
 # push to remote
 git push origin master
-
+# push the tag to remote too
+git push origin master 0.3
 
