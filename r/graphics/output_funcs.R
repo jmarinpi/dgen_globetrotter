@@ -3,9 +3,9 @@ sector_fil <- c(residential = "#4daf4a", commercial = "#377eb8", industrial = "#
 turb_size_fil <- c('Small: < 50 kW' = "#a1dab4", 'Mid: 51 - 500 kW' = "#41b6c4", 'Large: 501 - 3,000 kW' = "#253494") 
 # ======================= DATA FUNCTIONS =================================================
 
-make_con<-function(driver = "PostgreSQL", host, dbname, user, password){
+make_con<-function(driver = "PostgreSQL", host, dbname, user, password, port = 5432){
   # Make connection to dav-gis database
-  dbConnect(dbDriver(driver), host = host, dbname = dbname, user = user, password = password)  
+  dbConnect(dbDriver(driver), host = host, dbname = dbname, user = user, password = password, port = port)  
 }
 
 
@@ -534,7 +534,7 @@ diffusion_sectors_map <- function(df){
   sectors = collect(summarise(df, distinct(sector)))[,1]
   for (sector in sectors){
     f = filter(df, sector == sector)
-    g = group_by(df, state_abbr, year)
+    g = group_by(f, state_abbr, year)
     diffusion_sector = collect(summarise(g,
                                          Market.Share = sum(number_of_adopters)/sum(customers_in_bin)*100,
                                          Market.Value = sum(market_value),

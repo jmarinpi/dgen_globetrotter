@@ -77,5 +77,4 @@ $BODY$
   $BODY$
   LANGUAGE plpythonu STABLE
   COST 100;
-ALTER FUNCTION diffusion_wind.scoe(numeric, numeric, numeric, double precision, numeric, numeric, numeric, numeric)
-  OWNER TO "server-superusers";
+

@@ -8,5 +8,3 @@ $BODY$
 $BODY$
   LANGUAGE plr STABLE
   COST 100;
-ALTER FUNCTION public.r_array_multiply(numeric[], numeric)
-  OWNER TO "server-superusers";

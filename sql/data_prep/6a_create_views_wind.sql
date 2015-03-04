@@ -27,7 +27,7 @@ CROSS JOIN diffusion_wind.scenario_options b;
 DROP VIEW IF EXISTS diffusion_wind.point_microdata_ind_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_ind_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
-	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct,
+	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct_hi,
 	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
@@ -57,7 +57,7 @@ ON e.state_abbr = l.state_abbr;
 DROP VIEW IF EXISTS diffusion_wind.point_microdata_res_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_res_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
-	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct,
+	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct_hi,
 	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
@@ -89,7 +89,7 @@ ON e.state_abbr = l.state_abbr;
 DROP VIEW IF EXISTS diffusion_wind.point_microdata_com_us_joined;
 CREATE OR REPLACE VIEW diffusion_wind.point_microdata_com_us_joined AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
-	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct,
+	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct_hi,
 	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
@@ -121,15 +121,6 @@ SELECT CASE WHEN markets = 'All' THEN 'res=>Residential,com=>Commercial,ind=>Ind
 	    when markets = 'Only Commercial' then 'com=>Commercial'::hstore
 	    when markets = 'Only Industrial' then 'ind=>Industrial'::hstore
 	   end as sectors
-FROM diffusion_wind.scenario_options;
-
--- create view of exclusions to model
-CREATE OR REPLACE VIEW diffusion_wind.exclusions_to_model AS
-SELECT CASE WHEN height_exclusions = 'Population Density Only' THEN 'maxheight_m_popdens'
-	    when height_exclusions = 'Population Density & Canopy Cover (40%)' THEN 'maxheight_m_popdenscancov40pc'
-	    when height_exclusions = 'Population Density & Canopy Cover (20%)' THEN 'maxheight_m_popdenscancov20pc'
-	    when height_exclusions = 'No Exclusions' THEN NULL
-       end as exclusions
 FROM diffusion_wind.scenario_options;
 
 

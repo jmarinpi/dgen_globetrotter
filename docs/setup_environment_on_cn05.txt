@@ -1,0 +1,147 @@
+# LOG INTO COMPUTE NODE
+ssh cn05.bigde.nrel.gov
+
+
+# SET UP PYTHON
+# make a folder for downloads
+mkdir downloads
+# move into that folder
+cd downloads
+# download anaconda
+wget http://09c8d0b2229f813c1b93-c95ac804525aac4b6dba79b00b39d1d3.r79.cf1.rackcdn.com/Anaconda-2.1.0-Linux-x86_64.sh
+# run the anaconda installer
+bash Anaconda-2.1.0-Linux-x86_64.sh
+	# Sub steps:
+	# review the license: press ENTER, then ENTER again to finish the license
+	# confirm the license: type 'yes' then ENTER
+	# confirm the installation location: press ENTER
+	# prepnd the Anaconda install location to your path: type 'yes' then ENTER
+# log off the server
+exit
+# log back in (need to do this for the system to recognize that Anaconda should now be your default python installation)
+ssh cn05.bigde.nrel.gov
+# test that Anaconda is your default python
+python
+# header should say something like
+	#Python 2.7.8 |Anaconda 2.1.0 (64-bit)| (default, Aug 21 2014, 18:22:21) 
+	#[GCC 4.4.7 20120313 (Red Hat 4.4.7-1)] on linux2
+	#Type "help", "copyright", "credits" or "license" for more information.
+	#Anaconda is brought to you by Continuum Analytics.
+	#Please check out: http://continuum.io/thanks and https://binstar.org
+# exit python interpreter
+exit()
+# install additional python module dependencies
+conda install psycopg2
+# confirm package changes: type 'yes' then enter
+conda install -c https://conda.binstar.org/auto colorlog
+# confirm pacakge changes: type 'yes' then enter
+
+
+# SET UP R
+# launch R
+R
+# install R packages
+install.packages("ggthemes")
+# confirm that you want to install to a personal library: type 'y' then ENTER
+# confirm that you want to create a personal library: type 'y' then ENTER
+# select a CRAN Mirror: type '85' then ENTER
+install.packages("httr")
+install.packages("devtools")
+install.packages("classInt")
+install.packages("data.table")
+install.packages("rjson")
+install.packages("dplyr")
+install.packages('maps')
+install.packages('reshape2')
+install.packages('RColorBrewer')
+install.packages('lattice')
+install.packages('classInt')
+install.packages('xtable')
+install.packages('jsonlite')
+install.packages('scales')
+install.packages('knitr')
+library(devtools)
+library(httr)
+devtools::install_github('ramnathv/rCharts')
+devtools::install_github('ramnathv/rMaps')
+install.packages("RPostgreSQL")
+
+
+# SET UP GIT SSH KEY
+# create an ssh key
+ssh-keygen -t rsa -C "firstname.lastname@nrel.gov" 
+	# "Enter a file in which to save the key": just type ENTER to use the default
+	# create a passphrase for your SSH key: type a pw you will remember and press ENTER
+	# confirm the passphrase: type it again and press ENTER
+# add your key to the ssh-agent
+# ensure ssh-agent is enabled
+eval "$(ssh-agent -s)"
+# confirm something like this is returned: Agent pid 6031
+# add your generated ssh key to the ssh-agent
+	# enter your passphrase (created above) and press ENTER
+# add your ssh key to your account
+# get the ssh key value
+cat ~/.ssh/id_rsa.pub
+# using your mouse, highlight the text that is printed to the screen and copy it to clipboard 
+# open github.nrel.gov on your local
+	# in top right corner, click on "Account Settings"
+	# on left side of next page, click on "SSH keys"
+	# on top right of next page, click "Add SSH Key"
+	# this will open a dialog at the botton of the page:
+		# Title: type "cn05.bigde"
+		# Key: paste the ssh key value from clipboard
+		# click "Add Key
+		# confirm the action by entering your Github Enterprise username and password
+# test the connection
+ssh -T git@github.nrel.gov
+# You may see this warning:
+	# The authenticity of host 'github.com (207.97.227.239)' can't be established.
+	# RSA key fingerprint is 16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48.
+	# Are you sure you want to continue connecting (yes/no)?
+# if so, type 'yes' then ENTER
+# you should receive something like this: 
+	# Hi username! You've successfully authenticated, but GitHub does not provide shell access.
+# if this doesn't work or you have issues, see:
+	# https://help.github.com/articles/generating-ssh-keys/
+	# https://help.github.com/articles/error-permission-denied-publickey/
+
+
+# CLONE THE DIFFUSION GIT REPO
+mkdir github
+# move into the folder
+cd github
+# clone the repo
+git clone git@github.nrel.gov:dg-wind/diffusion.git
+# move into the local cloned repo
+cd diffusion
+# check that you have all branches
+git branch -a
+# should return list of branches matching what's on github
+
+
+# CHECK THAT ALL DEPENDENCIES ARE LOADED CORRECTLY
+# switch git branch
+ git checkout remotes/origin/masks
+ # make sure you up to date
+ git pull origin masks
+ # run the Rsript dependency check
+ Rscript r/dependency_test.R
+ # should return:
+ 	# [1] "Success. All R dependencies are loaded."
+ 	# if you don't get this message, review instructions above for installing R packages
+ # run Python dependency check
+ python python/dependency_check.py 
+  # should return:
+ 	# [1] Success. All Python dependencies are loaded.
+ 	# if you don't get this message, review instructions above for installing Python packages
+
+# CONFIRM pg_params.json IS CONFIGURE RIGHT
+# should be:
+	{	
+		"dbname": "diffusion", 
+		"host": "dnpdb001.bigde.nrel.gov", 
+		"port": "5433",
+		"password": "bsigrin", 
+		"user": "bsigrin"
+	}
+# if not, open the file through WinSCP or mounted drive and edit manually

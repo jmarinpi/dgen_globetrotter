@@ -3,7 +3,8 @@ DROP FUNCTION IF EXISTS public.bin_equal_interval(x numeric[], int_size numeric,
 CREATE OR REPLACE FUNCTION public.bin_equal_interval(x numeric[], int_size numeric, incl_right boolean default false) 
 RETURNS text[] AS 
 $BODY$
-	  .libPaths("/srv/home/mgleason/R/x86_64-redhat-linux-gnu-library/3.0")
+	  #.libPaths("/srv/home/mgleason/R/x86_64-redhat-linux-gnu-library/3.0") # for gispgdb
+	  .libPaths("/home/mgleason/R/x86_64-redhat-linux-gnu-library/3.1") # for dnpdb001
 	  library(plyr)
 	  breaks = seq(0, round_any(max(x, na.rm = T), int_size, f = ceiling), int_size)
 	  break_limits = cbind(start = breaks[1:length(breaks)-1],end = breaks[2:length(breaks)])
@@ -21,7 +22,8 @@ DROP FUNCTION IF EXISTS public.bin_manual_breaks(x numeric, breaks numeric, incl
 CREATE OR REPLACE FUNCTION public.bin_manual_breaks(x numeric, breaks numeric[], incl_right boolean default false) 
 RETURNS text AS 
 $BODY$
-	  .libPaths("/srv/home/mgleason/R/x86_64-redhat-linux-gnu-library/3.0")
+	  #.libPaths("/srv/home/mgleason/R/x86_64-redhat-linux-gnu-library/3.0") # for gispgdb
+	  .libPaths("/home/mgleason/R/x86_64-redhat-linux-gnu-library/3.1") # for dnpdb001
 	  library(plyr)
 	  break_limits = cbind(start = breaks[1:length(breaks)-1],end = breaks[2:length(breaks)])
 	  break_labels = paste(break_limits[,1],break_limits[,2], sep = ' - ')

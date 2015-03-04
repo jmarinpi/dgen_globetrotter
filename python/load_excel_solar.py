@@ -424,7 +424,6 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             end_year,
             markets,
             cost_assumptions,
-            cust_exp_elec_rates,
             load_growth_scenario,
             res_rate_structure,
             res_rate_escalation,
@@ -435,7 +434,6 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             ind_rate_structure,
             ind_rate_escalation,
             ind_max_market_curve,
-            net_metering_availability,
             carbon_price,
             rooftop_availability,
             random_generator_seed,
@@ -458,5 +456,5 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
 
 if __name__ == '__main__':
     input_xls = '../excel/scenario_inputs_solar.xlsm'
-    main(input_xls,None, True)
+    main(input_xls, None, verbose = True)
 

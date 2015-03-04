@@ -158,10 +158,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     
             logger.info('Scenario Name: %s' % scenario_opts['scenario_name'])
             t0 = time.time()
-            exclusions = datfunc.get_exclusions(cur, cfg.technology) # get exclusions
-            logger.info('Getting exclusions took: %0.1f' % (time.time() - t0))
             load_growth_scenario = scenario_opts['load_growth_scenario'] # get financial variables
-            net_metering = scenario_opts['net_metering_availability']
             inflation = scenario_opts['ann_inflation']
             end_year = scenario_opts['end_year']
             # Generate a pseudo-random number generator to generate random numbers in numpy.
@@ -214,9 +211,9 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     t0 = time.time()
                     datfunc.generate_customer_bins(cur, con, cfg.technology, schema, 
                                                    scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
-                                                   cfg.start_year, end_year, rate_escalation_source, load_growth_scenario, exclusions,
+                                                   cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
                                                    cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.preprocess, cfg.npar, 
-                                                   cfg.pg_conn_string, scenario_opts['net_metering_availability'], 
+                                                   cfg.pg_conn_string, 
                                                    rate_structures[sector_abbr], logger = logger)
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
 
@@ -307,7 +304,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     # Market characteristics from previous year
                     if year == cfg.start_year: 
                         # get the initial market share per bin by county
-                        initial_market_shares = datfunc.get_initial_market_shares(cur, con, sector_abbr, sector, schema)
+                        initial_market_shares = datfunc.get_initial_market_shares(cur, con, sector_abbr, sector, schema, cfg.technology)
                         df = pd.merge(df, initial_market_shares, how = 'left', on = ['county_id','bin_id'])
                         df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']
                         
@@ -348,6 +345,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     # 11. Save outputs from this year and update parameters for next solve       
                     t0 = time.time()                 
                     datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
+                     
             ## 12. Outputs & Visualization
             # set output subfolder
                 

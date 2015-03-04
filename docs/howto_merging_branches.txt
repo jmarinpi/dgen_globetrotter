@@ -1,0 +1,20 @@
+# merging branches
+# switch to the dev branch
+git checkout dev
+# make sure it is up to date
+git pull origin dev
+# merge the subbranch
+git merge masks
+# push to the remote
+git push origin dev
+# check that the model works right
+# run a model test run and make sure nothing breaks
+# have wesley merge REEDS branch
+# merge into dev
+git checkout master
+git merge dev
+git tag -a 0.3 -m "Version 0.3"
+# push to remote
+git push origin master
+
+

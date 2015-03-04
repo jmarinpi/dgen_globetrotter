@@ -8,5 +8,3 @@ $BODY$
 $BODY$
   LANGUAGE plr VOLATILE
   COST 100;
-ALTER FUNCTION public.r_quantile(numeric[], numeric)
-  OWNER TO "server-superusers";

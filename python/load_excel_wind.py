@@ -51,6 +51,12 @@ def main(wb, conn, mode = None, ReEDS_PV_CC = None, verbose = False):
         windDerate(curWb,schema,table,conn,cur,verbose)
         table = 'system_sizing_factors'
         systemSizing(curWb,schema,table,conn,cur,verbose)
+        table = 'min_acres_per_hu_lkup'
+        sitingParcelSize(curWb,schema,table,conn,cur,verbose)
+        table = 'max_hi_dev_pct_lkup'
+        sitingHiDev(curWb,schema,table,conn,cur,verbose)
+        table = 'required_canopy_clearance_lkup'        
+        sitingCanopyClearance(curWb,schema,table,conn,cur,verbose)
 
         for func in lex.shared_table_functions:
             func(curWb,schema,conn,cur,verbose)
@@ -211,6 +217,128 @@ def systemSizing(curWb,schema,table,conn,cur,verbose=False):
     f.close()
     
 
+def sitingParcelSize(curWb, schema, table, conn, cur, verbose = False):
+    
+    f = StringIO()
+    rname = 'apply_parcel_size'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cell = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    enabled = cell.value      
+    
+    rname = 'parcel_size'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    rows = len(cells)
+    # loop through values in the first column
+    heights = [cells[r][0].value.lower().replace('m','').strip() for r in range(0,rows)]
+    for r, height in enumerate(heights):
+        if enabled:
+            # get the values specified in the sheet
+            if cells[r][1].value == None:
+                val = '0'
+            else:
+                val = cells[r][1].value
+        else:
+            val = 0 # allow turbines to build even when there are zero acres per hu (condition in model is acres_per_hu >= b.min_acres_per_hu)
+
+        l = [height, val]
+        f.write(str(l).replace("u'","").replace("'","")[1:-1]+'\n')
+    f.seek(0)
+    if verbose:
+        print 'Exporting %s' % table
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+    
+    
+def sitingHiDev(curWb, schema, table, conn, cur, verbose = False):
+    
+    f = StringIO()
+    rname = 'apply_pct_hi_dev'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cell = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    enabled = cell.value    
+        
+    rname = 'pct_hi_dev'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    rows = len(cells)
+    # loop through values in the first column
+    heights = [cells[r][0].value.lower().replace('m','').strip() for r in range(0,rows)]
+    for r, height in enumerate(heights):
+        if enabled:
+            # get the values specified in the sheet
+            if cells[r][1].value == None:
+                val = '0'
+            else:
+                val = int(cells[r][1].value*100)
+        else:
+            val = 100 # allow all turbines to be built even where there is 100% highly developed land (condition in model is a.hi_dev_pct <= b.max_hi_dev_pct)
+        l = [height, val]
+        f.write(str(l).replace("u'","").replace("'","")[1:-1]+'\n')
+    f.seek(0)
+    if verbose:
+        print 'Exporting %s' % table
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+
+
+def sitingCanopyClearance(curWb, schema, table, conn, cur, verbose = False):
+    
+    f = StringIO()
+    # check whether the flag is set to apply this
+    rname = 'apply_canopy_clearance'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cell = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    enabled = cell.value
+    
+    rname = 'canopy_clearance'
+    named_range = curWb.get_named_range(rname)
+    if named_range == None:
+        raise ExcelError('%s named range does not exist' % rname)
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    rows = len(cells)
+    # loop through values in the first column
+    sizes = [cells[r][0].value.lower().replace('kw','').strip() for r in range(0,rows)]
+    for r, size in enumerate(sizes):
+        if enabled:
+            # get the values specified in the sheet
+            if cells[r][2].value == None:
+                val = '0'
+            else:
+                val = cells[r][2].value
+        else:
+            val = -100 # this works because the siting restriction is turbine height >= (canopy_height_m + canopy_clearance_m) (highest canopy_height_m in the pt grids is ~50 m)
+        l = [size, val]
+        f.write(str(l).replace("u'","").replace("'","")[1:-1]+'\n')
+    f.seek(0)
+    if verbose:
+        print 'Exporting %s' % table
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
+    
+
 def inpOpts(curWb,schema,table,conn,cur,verbose=False):
     global sc_name
     f = StringIO()
@@ -238,6 +366,24 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
     if named_range == None:
         raise ExcelError('incent_start_year named range does not exist')
     incent_startyear = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
+
+    input_named_range = 'apply_parcel_size'
+    named_range = curWb.get_named_range(input_named_range)
+    if named_range == None:
+        raise ExcelError('apply_parcel_size named range does not exist')
+    siting_parcel_size_enabled = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
+
+    input_named_range = 'apply_pct_hi_dev'
+    named_range = curWb.get_named_range(input_named_range)
+    if named_range == None:
+        raise ExcelError('apply_pct_hi_dev named range does not exist')
+    siting_hi_dev_enabled = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
+
+    input_named_range = 'apply_canopy_clearance'
+    named_range = curWb.get_named_range(input_named_range)
+    if named_range == None:
+        raise ExcelError('apply_canopy_clearance named range does not exist')
+    siting_canopy_clearance_enabled = [named_range.destinations[0][0].range(named_range.destinations[0][1]).value]
 
     named_range = curWb.get_named_range('Input_Scenario_Options')
     if named_range == None:
@@ -276,7 +422,7 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             r += 1
         c += 1
 
-    in_l = l + ann_inf + sc_name + overwrite_exist_inc + incent_startyear + incent_utility
+    in_l = l + ann_inf + sc_name + overwrite_exist_inc + incent_startyear + incent_utility + siting_parcel_size_enabled + siting_hi_dev_enabled + siting_canopy_clearance_enabled
     f.write(str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1])
     #print str(in_l).replace(" u'","").replace("u'","").replace("'","")[1:-1]
     f.seek(0)
@@ -290,7 +436,6 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             region, 
             end_year, 
             markets, 
-            cust_exp_elec_rates, 
             load_growth_scenario, 
             res_rate_structure, 
             res_rate_escalation, 
@@ -301,9 +446,7 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             ind_rate_structure, 
             ind_rate_escalation, 
             ind_max_market_curve, 
-            net_metering_availability, 
             carbon_price, 
-            height_exclusions, 
             random_generator_seed,
             ann_inflation, 
             scenario_name, 
@@ -312,7 +455,10 @@ def inpOpts(curWb,schema,table,conn,cur,verbose=False):
             utility_type_iou, 
             utility_type_muni, 
             utility_type_coop, 
-            utility_type_allother
+            utility_type_allother,
+            siting_parcel_size_enabled,
+            siting_hi_dev_enabled,
+            siting_canopy_clearance_enabled
         ) 
         FROM STDOUT WITH CSV;''' % (schema,table), f)        
 #    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
