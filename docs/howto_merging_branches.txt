@@ -22,4 +22,10 @@ git tag -a 0.3 -m "Version Version 0.3 - Stable for preliminary dWind and SVII m
 git push origin master
 # push the tag to remote too
 git push origin master 0.3
-
+# if nececessary and desired, clean up local branches:
+git branch -d masks
+# delete the branch on github (the remote)
+	# open github in browswer
+	# navigate to branches
+	# navigate to merged branches
+	# click on and confirm delete of the branch you want to get rid of
