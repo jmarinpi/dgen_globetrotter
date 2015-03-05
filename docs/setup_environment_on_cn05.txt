@@ -121,7 +121,7 @@ git branch -a
 
 # CHECK THAT ALL DEPENDENCIES ARE LOADED CORRECTLY
 # switch git branch
- git checkout remotes/origin/masks
+ git checkout remotes/origin/dev
  # make sure you up to date
  git pull origin dev
  # run the Rsript dependency check
