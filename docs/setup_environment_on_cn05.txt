@@ -123,7 +123,7 @@ git branch -a
 # switch git branch
  git checkout remotes/origin/masks
  # make sure you up to date
- git pull origin masks
+ git pull origin dev
  # run the Rsript dependency check
  Rscript r/dependency_test.R
  # should return:
