@@ -2363,10 +2363,10 @@ def calc_manual_incentives(df, con, cur_year, schema):
     '''
     Because a system could potentially qualify for several incentives, the left 
     join above could join on multiple rows. Thus, groupby by county_id & bin_id 
-    to sum over incentives and condense back to unique county_id/bin_id combinations
+    to sum over incentives and condense back to unique county_id/bin_id/business_model combinations
     '''
 
-    value_of_incentives = d[['county_id', 'bin_id', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id']).sum().reset_index() 
+    value_of_incentives = d[['county_id', 'bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id','business_model']).sum().reset_index() 
     
     return value_of_incentives
     
@@ -2537,7 +2537,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
         inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction.astype(float)
     
     # sum results to customer bins
-    inc = inc[['county_id', 'bin_id', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id']).sum().reset_index() 
+    inc = inc[['county_id', 'bin_id', 'business_model', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id','business_model']).sum().reset_index() 
     
     inc['value_of_pbi_fit'] = inc['lifetime_value_of_pbi_fit'] / assumed_duration
     inc['pbi_fit_length'] = assumed_duration
@@ -2545,7 +2545,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc['value_of_ptc'] = inc['lifetime_value_of_ptc'] / assumed_duration
     inc['ptc_length'] = assumed_duration
     
-    return inc[['county_id','bin_id', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
+    return inc[['county_id','bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
 
 def get_rate_escalations(con, schema):
     '''
