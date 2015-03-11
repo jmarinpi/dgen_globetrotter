@@ -1751,7 +1751,12 @@ def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
     inputs_dict['sql'] = ' UNION '.join(sqls)    
     sql = """DROP TABLE IF EXISTS %(schema)s.unique_rate_gen_load_combinations;
              CREATE UNLOGGED TABLE %(schema)s.unique_rate_gen_load_combinations AS
-             %(sql)s;""" % inputs_dict
+             %(sql)s
+            ORDER BY rate_id_alias, rate_source,
+                	 hdf_load_index, crb_model, load_kwh_per_customer_in_bin,
+                	 %(resource_keys)s, system_size_kw,
+                     ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate             
+             ;""" % inputs_dict
     cur.execute(sql)
     con.commit()
     
@@ -1764,7 +1769,7 @@ def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
              CREATE INDEX unique_rate_gen_load_combinations_rate_source_btree
              ON %(schema)s.unique_rate_gen_load_combinations
              USING BTREE(rate_source);
-             
+            
              CREATE INDEX unique_rate_gen_load_combinations_hdf_load_index_btree
              ON %(schema)s.unique_rate_gen_load_combinations
              USING BTREE(hdf_load_index);
@@ -1772,6 +1777,14 @@ def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
              CREATE INDEX unique_rate_gen_load_combinations_crb_model_btree
              ON %(schema)s.unique_rate_gen_load_combinations
              USING BTREE(crb_model);
+
+             CREATE INDEX unique_rate_gen_load_combinations_load_kwh_btree
+             ON %(schema)s.unique_rate_gen_load_combinations
+             USING BTREE(load_kwh_per_customer_in_bin);
+             
+             CREATE INDEX unique_rate_gen_load_combinations_system_size_kw_btree
+             ON %(schema)s.unique_rate_gen_load_combinations
+             USING BTREE(system_size_kw);
              
              CREATE INDEX unique_rate_gen_load_combinations_resource_keys_btree
              ON %(schema)s.unique_rate_gen_load_combinations
@@ -2050,6 +2063,7 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, techno
                 
                     LEFT JOIN %(schema)s.unique_rate_gen_load_combinations b
                         ON a.rate_id_alias = b.rate_id_alias
+                        AND a.rate_source = b.rate_source
                         AND a.hdf_load_index = b.hdf_load_index
                         AND a.crb_model = b.crb_model
                         AND a.load_kwh_per_customer_in_bin = b.load_kwh_per_customer_in_bin
@@ -2220,6 +2234,7 @@ def get_main_dataframe(con, sector_abbr, schema, year):
                     AND a.year = b.year
             WHERE a.year = %(year)s""" % inputs_dict
     df = sqlio.read_frame(sql, con, coerce_float = False)
+
     return df
     
 def get_financial_parameters(con, schema):
