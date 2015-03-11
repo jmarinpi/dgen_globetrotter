@@ -1751,12 +1751,7 @@ def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
     inputs_dict['sql'] = ' UNION '.join(sqls)    
     sql = """DROP TABLE IF EXISTS %(schema)s.unique_rate_gen_load_combinations;
              CREATE UNLOGGED TABLE %(schema)s.unique_rate_gen_load_combinations AS
-             %(sql)s
-            ORDER BY rate_id_alias, rate_source,
-                	 hdf_load_index, crb_model, load_kwh_per_customer_in_bin,
-                	 %(resource_keys)s, system_size_kw,
-                     ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate             
-             ;""" % inputs_dict
+             %(sql)s;""" % inputs_dict
     cur.execute(sql)
     con.commit()
     
