@@ -1764,7 +1764,7 @@ def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
              CREATE INDEX unique_rate_gen_load_combinations_rate_source_btree
              ON %(schema)s.unique_rate_gen_load_combinations
              USING BTREE(rate_source);
-             
+            
              CREATE INDEX unique_rate_gen_load_combinations_hdf_load_index_btree
              ON %(schema)s.unique_rate_gen_load_combinations
              USING BTREE(hdf_load_index);
@@ -1772,6 +1772,14 @@ def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
              CREATE INDEX unique_rate_gen_load_combinations_crb_model_btree
              ON %(schema)s.unique_rate_gen_load_combinations
              USING BTREE(crb_model);
+
+             CREATE INDEX unique_rate_gen_load_combinations_load_kwh_btree
+             ON %(schema)s.unique_rate_gen_load_combinations
+             USING BTREE(load_kwh_per_customer_in_bin);
+             
+             CREATE INDEX unique_rate_gen_load_combinations_system_size_kw_btree
+             ON %(schema)s.unique_rate_gen_load_combinations
+             USING BTREE(system_size_kw);
              
              CREATE INDEX unique_rate_gen_load_combinations_resource_keys_btree
              ON %(schema)s.unique_rate_gen_load_combinations
@@ -2050,6 +2058,7 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, techno
                 
                     LEFT JOIN %(schema)s.unique_rate_gen_load_combinations b
                         ON a.rate_id_alias = b.rate_id_alias
+                        AND a.rate_source = b.rate_source
                         AND a.hdf_load_index = b.hdf_load_index
                         AND a.crb_model = b.crb_model
                         AND a.load_kwh_per_customer_in_bin = b.load_kwh_per_customer_in_bin
@@ -2220,6 +2229,7 @@ def get_main_dataframe(con, sector_abbr, schema, year):
                     AND a.year = b.year
             WHERE a.year = %(year)s""" % inputs_dict
     df = sqlio.read_frame(sql, con, coerce_float = False)
+
     return df
     
 def get_financial_parameters(con, schema):
@@ -2363,10 +2373,10 @@ def calc_manual_incentives(df, con, cur_year, schema):
     '''
     Because a system could potentially qualify for several incentives, the left 
     join above could join on multiple rows. Thus, groupby by county_id & bin_id 
-    to sum over incentives and condense back to unique county_id/bin_id combinations
+    to sum over incentives and condense back to unique county_id/bin_id/business_model combinations
     '''
 
-    value_of_incentives = d[['county_id', 'bin_id', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id']).sum().reset_index() 
+    value_of_incentives = d[['county_id', 'bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id','business_model']).sum().reset_index() 
     
     return value_of_incentives
     
@@ -2537,7 +2547,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
         inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction.astype(float)
     
     # sum results to customer bins
-    inc = inc[['county_id', 'bin_id', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id']).sum().reset_index() 
+    inc = inc[['county_id', 'bin_id', 'business_model', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id','business_model']).sum().reset_index() 
     
     inc['value_of_pbi_fit'] = inc['lifetime_value_of_pbi_fit'] / assumed_duration
     inc['pbi_fit_length'] = assumed_duration
@@ -2545,7 +2555,7 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc['value_of_ptc'] = inc['lifetime_value_of_ptc'] / assumed_duration
     inc['ptc_length'] = assumed_duration
     
-    return inc[['county_id','bin_id', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
+    return inc[['county_id','bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
 
 def get_rate_escalations(con, schema):
     '''
