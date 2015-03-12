@@ -193,7 +193,8 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # the same trajectories as changes in rate escalation. Output of this should be a data frame of shape (len(df),30)
     
     # TODO: curtailments should be applied to the generation, however currently infeasible for SAM integration
-    generation_revenue = (df['first_year_bill_without_system'] - ((1+df['curtailment_rate']) * df['first_year_bill_with_system']))[:,np.newaxis] * rate_growth_mult
+    df['first_year_energy_savings'] = (1- df['curtailment_rate']) * (df['first_year_bill_without_system'] - df['first_year_bill_with_system'])
+    generation_revenue = df['first_year_energy_savings'][:,np.newaxis] * rate_growth_mult
     
     # Decrement the revenue to account for system degradation.
     system_degradation_factor = np.empty(shape)
@@ -263,9 +264,9 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # and in percentage of prior bill. Recall that the first_year_bill variables are not updated in each
     # solve sequence, they are calculated once in the first year of the model. Thus, they are multiplied by the rate growth multiplier
     # in the current solve year to update for rate changes
-    first_year_energy_savings = (df.first_year_bill_without_system - df.first_year_bill_with_system) * rate_growth_mult[:,0] 
+    #first_year_energy_savings = (df.first_year_bill_without_system - df.first_year_bill_with_system) * rate_growth_mult[:,0] 
     avg_annual_payment = (annual_loan_pmts.sum(axis = 1)/df.loan_term_yrs) + down_payment_cost.sum(axis = 1)/20
-    first_year_bill_savings = first_year_energy_savings + avg_annual_payment # first_year_energy_savings is positive, avg_annual_payment is a negative
+    first_year_bill_savings = df.first_year_energy_savings.values + avg_annual_payment # first_year_energy_savings is positive, avg_annual_payment is a negative
     monthly_bill_savings = first_year_bill_savings/12
     percent_monthly_bill_savings = first_year_bill_savings/df.first_year_bill_without_system
     
