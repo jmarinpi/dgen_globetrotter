@@ -7,6 +7,7 @@ Created on Wed Mar 11 15:27:18 2015
 import numpy as np
 import pandas as pd
 import pssc_mp
+import psycopg2 as pg
 
 def scale_array(row, array_col, scale_col, prec_offset_value):
     
@@ -84,13 +85,13 @@ def get_inputs(con):
 
 # add code to create connection
 # [HERE] -- connect to dnpdb001.bigde.nrel.gov, use diffusion_3
-
+con = pg.connect('host=dnpdb001.bigde.nrel.gov user=jduckwor password=jduckwor dbname=diffusion_3 port=5433')
 # get the inputs for sam
 rate_input_df = get_inputs(con)   
 consumption_array = rate_input_df['consumption_hourly'][0]
 # open a file
 # dump this to file
-consumption_array.tostring()
+# consumption_array.tostring()
 # close file
 
 
