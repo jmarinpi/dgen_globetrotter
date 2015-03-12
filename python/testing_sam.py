@@ -8,6 +8,22 @@ import numpy as np
 import pandas as pd
 import pssc_mp
 import psycopg2 as pg
+import psycopg2.extras as pgx
+
+def make_con(connection_string, async = False):    
+    con = pg.connect(connection_string, async = async)
+    if async:
+        wait(con)
+    # create cursor object
+    cur = con.cursor(cursor_factory=pgx.RealDictCursor)
+    # set role (this should avoid permissions issues)
+    cur.execute('SET ROLE "diffusion-writers";')    
+    if async:
+        wait(con)
+    else:
+        con.commit()
+    
+    return con, cur
 
 def scale_array(row, array_col, scale_col, prec_offset_value):
     
@@ -25,7 +41,7 @@ def update_rate_json_w_nem_fields(row):
 
 def get_inputs(con):
     
-    inputs_dict = locals().copy()     
+    inputs_dict = {}
        
     inputs_dict['load_scale_offset'] = 1e8
     inputs_dict['gen_scale_offset'] = 1e6    
@@ -69,7 +85,7 @@ def get_inputs(con):
             	AND a.tilt = d.tilt
             	AND a.azimuth = d.azimuth;"""
              
-    df = pd.read_sql(sql, con, coerce_float = False)      
+    df = pd.read_sql(sql, con, coerce_float = True)      
 
     #
     df = df.apply(scale_array, axis = 1, args = ('consumption_hourly','load_kwh_per_customer_in_bin', inputs_dict['load_scale_offset']))
@@ -85,7 +101,7 @@ def get_inputs(con):
 
 # add code to create connection
 # [HERE] -- connect to dnpdb001.bigde.nrel.gov, use diffusion_3
-con = pg.connect('host=dnpdb001.bigde.nrel.gov user=jduckwor password=jduckwor dbname=diffusion_3 port=5433')
+con, cur = make_con('host=dnpdb001.bigde.nrel.gov user=jduckwor password=jduckwor dbname=diffusion_3 port=5433')
 # get the inputs for sam
 rate_input_df = get_inputs(con)   
 consumption_array = rate_input_df['consumption_hourly'][0]
@@ -96,7 +112,7 @@ consumption_array = rate_input_df['consumption_hourly'][0]
 
 
 # run sam
-sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)      
+sam_results_df = pssc_mp.pssc_mp(rate_input_df, 1)      
 
 # inspect the results
   
