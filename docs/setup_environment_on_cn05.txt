@@ -44,7 +44,7 @@ R
 install.packages("ggthemes")
 # confirm that you want to install to a personal library: type 'y' then ENTER
 # confirm that you want to create a personal library: type 'y' then ENTER
-# select a CRAN Mirror: type '85' then ENTER
+# select a CRAN Mirror: type '87' then ENTER
 install.packages("httr")
 install.packages("devtools")
 install.packages("classInt")
