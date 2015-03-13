@@ -7,6 +7,7 @@ Created on Wed Mar 11 15:27:18 2015
 import numpy as np
 import pandas as pd
 import pssc_mp
+import pssc
 import psycopg2 as pg
 import psycopg2.extras as pgx
 
@@ -27,7 +28,9 @@ def make_con(connection_string, async = False):
 
 def scale_array(row, array_col, scale_col, prec_offset_value):
     
-    row[array_col] = (np.array(row[array_col]) * row[scale_col])/prec_offset_value
+#    row[array_col] = (np.array(row[array_col]) * np.float(row[scale_col]))/prec_offset_value
+#    row[array_col] = (np.array(row[array_col], dtype = 'int64') * row[scale_col])/prec_offset_value
+    row[array_col] = (np.array(row[array_col], dtype = 'int64') * np.float(row[scale_col]))/prec_offset_value
     
     return row    
 
@@ -35,6 +38,7 @@ def update_rate_json_w_nem_fields(row):
     
     nem_fields = ['ur_enable_net_metering', 'ur_nm_yearend_sell_rate', 'ur_flat_sell_rate']
     nem_dict = dict((k, row[k]) for k in nem_fields)
+#    nem_dict = dict((k, 0) for k in nem_fields)
     row['rate_json'].update(nem_dict)
     
     return row
@@ -98,21 +102,38 @@ def get_inputs(con):
     
     return df[['uid','rate_json','consumption_hourly','generation_hourly']]
       
+def main():
+    # add code to create connection
+    # [HERE] -- connect to dnpdb001.bigde.nrel.gov, use diffusion_3
+    con, cur = make_con('host=dnpdb001.bigde.nrel.gov user=jduckwor password=jduckwor dbname=diffusion_3 port=5433')
+    # get the inputs for sam
+    rate_input_df = get_inputs(con)   
+    consumption_array = rate_input_df['consumption_hourly'][0]
+    # open a file
+    # dump this to file
+    # consumption_array.tostring()
+    # close file
+    
+    
+    # run sam
+#    sam_results_df = pssc_mp.pssc_mp(rate_input_df, 1)      
 
-# add code to create connection
-# [HERE] -- connect to dnpdb001.bigde.nrel.gov, use diffusion_3
-con, cur = make_con('host=dnpdb001.bigde.nrel.gov user=jduckwor password=jduckwor dbname=diffusion_3 port=5433')
-# get the inputs for sam
-rate_input_df = get_inputs(con)   
-consumption_array = rate_input_df['consumption_hourly'][0]
-# open a file
-# dump this to file
-# consumption_array.tostring()
-# close file
+    uid = rate_input_df['uid'][0]  # @TODO: get from config
+    rate_json = rate_input_df['rate_json'][0]
+    generation_hourly = rate_input_df['generation_hourly'][0]
+    consumption_hourly = rate_input_df['consumption_hourly'][0].astype(float)
+    
+    sam_results_df = pssc.utilityrate3(generation_hourly, consumption_hourly, rate_json,
+                     analysis_period=1., inflation_rate=0., degradation=(0.,),
+                     return_values=('annual_energy_value', 'elec_cost_with_system_year1', 'elec_cost_without_system_year1'),
+                     logger = None)
+    
+    
+    # inspect the results
+    return rate_input_df, sam_results_df
 
-
-# run sam
-sam_results_df = pssc_mp.pssc_mp(rate_input_df, 1)      
-
-# inspect the results
+if __name__ == '__main__':
+#    i,o = main()
+    i, o = main()
+    print o
   
