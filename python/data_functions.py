@@ -1933,7 +1933,7 @@ def update_rate_json_w_nem_fields(row):
 
 def scale_array(row, array_col, scale_col, prec_offset_value):
     
-    row[array_col] = (np.array(row[array_col]) * row[scale_col])/prec_offset_value
+    row[array_col] = (np.array(row[array_col], dtype = 'int64') * np.float(row[scale_col]))/prec_offset_value
     
     return row
 
