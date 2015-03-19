@@ -16,6 +16,7 @@ chmod 0755 linux_x64_64_sfx.exe
 cd gams24.4_linux_x64_64_sfx/
 # add GAMS to PATH variable
 PATH=$PATH:/home/[username]/gams/gams24.4_linux_x64_64_sfx/
+export PATH
 # add license file
 echo '[copy paste your licensing info here]' > gamslice.txt 
 # or you can use winscp to put the file in /home/[username]/gams/gams24.4_linux_x64_64_sfx/
@@ -25,7 +26,6 @@ echo '[copy paste your licensing info here]' > gamslice.txt
 	# at the end
  you will be prompted to select option for read and execute permissions. 
 	# choose option 1. useronly
-
 # confirm that gams is installed correctly
 # move to home folder
 cd ~
