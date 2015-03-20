@@ -12,6 +12,7 @@ library(RPostgreSQL)
 library(jsonlite)
 # library(tidyr)
 library (dplyr,quietly = T)
+library(grid)
 
 # use for testing/debugging only:
 # setwd('C:/Users/bsigrin/Desktop/diffusion/python')
