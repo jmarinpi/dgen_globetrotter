@@ -195,17 +195,18 @@ def combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, pr
                 e.carbon_dollars_per_ton
             FROM diffusion_solar.solar_performance_improvements a
             LEFT JOIN diffusion_solar.cost_projections_to_model b
-            ON a.year = b.year
+                ON a.year = b.year
             LEFT JOIN diffusion_solar.rate_escalations_to_model c
-            ON a.year = c.year
-            AND b.sector = c.sector
-            LEFT JOIN diffusion_shared.aeo_load_growth_projections d
-            ON c.census_division_abbr = d.census_division_abbr
-            AND a.year = d.year
+                ON a.year = c.year
+                AND b.sector = c.sector
+            LEFT JOIN diffusion_shared.aeo_load_growth_projections_2014 d
+                ON c.census_division_abbr = d.census_division_abbr
+                AND a.year = d.year
+                AND b.sector = d.sector_abbr
             LEFT JOIN diffusion_solar.market_projections e
-            ON a.year = e.year
+                ON a.year = e.year
             WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
-            AND c.sector in (%(sector_abbrs)s);""" % inputs
+                AND c.sector in (%(sector_abbrs)s);""" % inputs
     cur.execute(sql)
     con.commit()
     
@@ -246,36 +247,37 @@ def combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, pre
     sql = """DROP TABLE IF EXISTS diffusion_wind.temporal_factors;
             CREATE UNLOGGED TABLE diffusion_wind.temporal_factors as 
             SELECT a.year, a.turbine_size_kw, a.power_curve_id,
-            	b.turbine_height_m,
-            	c.fixed_om_dollars_per_kw_per_yr, 
-            	c.variable_om_dollars_per_kwh,
-            	c.installed_costs_dollars_per_kw,
-            	d.census_division_abbr,
-            	d.sector,
-            	d.escalation_factor as rate_escalation_factor,
-            	d.source as rate_escalation_source,
-            	e.scenario as load_growth_scenario,
-            	e.load_multiplier,
-            f.carbon_dollars_per_ton,
-            g.derate_factor
+                	b.turbine_height_m,
+                	c.fixed_om_dollars_per_kw_per_yr, 
+                	c.variable_om_dollars_per_kwh,
+                	c.installed_costs_dollars_per_kw,
+                	d.census_division_abbr,
+                	d.sector,
+                	d.escalation_factor as rate_escalation_factor,
+                	d.source as rate_escalation_source,
+                	e.scenario as load_growth_scenario,
+                	e.load_multiplier,
+                  f.carbon_dollars_per_ton,
+                  g.derate_factor
             FROM diffusion_wind.wind_performance_improvements a
             LEFT JOIN diffusion_wind.allowable_turbine_sizes b
-            ON a.turbine_size_kw = b.turbine_size_kw
+                ON a.turbine_size_kw = b.turbine_size_kw
             LEFT JOIN diffusion_wind.turbine_costs_per_size_and_year c
-            ON a.turbine_size_kw = c.turbine_size_kw
-            AND a.year = c.year
+                ON a.turbine_size_kw = c.turbine_size_kw
+                AND a.year = c.year
             LEFT JOIN diffusion_wind.rate_escalations_to_model d
-            ON a.year = d.year
-            LEFT JOIN diffusion_shared.aeo_load_growth_projections e
-            ON d.census_division_abbr = e.census_division_abbr
-            AND a.year = e.year
+                ON a.year = d.year
+            LEFT JOIN diffusion_shared.aeo_load_growth_projections_2014 e
+                ON d.census_division_abbr = e.census_division_abbr
+                AND a.year = e.year
+                AND d.sector = e.sector_abbr               
             LEFT JOIN diffusion_wind.market_projections f
-            ON a.year = f.year
+                ON a.year = f.year
             LEFT JOIN diffusion_wind.wind_generation_derate_factors g
-            ON a.year = g.year
-            AND  a.turbine_size_kw = g.turbine_size_kw
+                ON a.year = g.year
+                AND  a.turbine_size_kw = g.turbine_size_kw
             WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
-            AND d.sector in (%(sector_abbrs)s);""" % inputs
+                AND d.sector in (%(sector_abbrs)s);""" % inputs
     cur.execute(sql)
     con.commit()
     
