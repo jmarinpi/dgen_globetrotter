@@ -158,7 +158,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
                     
             logger.info('Scenario Name: %s' % scenario_opts['scenario_name'])
             t0 = time.time()
-            load_growth_scenario = scenario_opts['load_growth_scenario'] # get financial variables
+            load_growth_scenario = scenario_opts['load_growth_scenario'].lower() # get financial variables
             inflation = scenario_opts['ann_inflation']
             end_year = scenario_opts['end_year']
             # Generate a pseudo-random number generator to generate random numbers in numpy.
