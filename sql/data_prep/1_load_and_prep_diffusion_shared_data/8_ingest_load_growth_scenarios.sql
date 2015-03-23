@@ -42,7 +42,7 @@ CREATE TABLE diffusion_shared.aeo_load_growth_projections_2014
 
 SET ROLE 'server-superusers';
 COPY diffusion_shared.aeo_load_growth_projections_2014 
-FROM '/srv/home/mgleason/data/dg_wind/AEO2014FourScena.csv' 
+FROM '/srv/home/mgleason/data/dg_wind/AEO2014LoadFourScena_v2.csv' 
 WITH CSV HEADER;
 RESET ROLE;
 
