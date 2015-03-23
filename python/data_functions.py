@@ -1805,7 +1805,7 @@ def get_max_row_count_for_utilityrate3():
     
     # find the total size of memory on the system
     mem = psutil.virtual_memory()
-    free_mem = mem.total - mem.used
+    free_mem = mem.available
     # target to fill up only an eighth of the total memory 
     # (this gives a buffer)
     target_mem = int(free_mem/16)
