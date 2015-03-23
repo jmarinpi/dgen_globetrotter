@@ -26,9 +26,9 @@ ALTER TABLE diffusion_wind.scenario_options
       ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 
+ALTER TABLE diffusion_shared.aeo_load_growth_projections
+RENAME TO aeo_load_growth_projections_2013;
 
--- ALTER TABLE diffusion_shared.aeo_load_growth_projections
--- RENAME TO aeo_load_growth_projections_2013;
 
 DROP TABLE IF EXISTS diffusion_shared.aeo_load_growth_projections_2014;
 CREATE TABLE diffusion_shared.aeo_load_growth_projections_2014
@@ -40,11 +40,14 @@ CREATE TABLE diffusion_shared.aeo_load_growth_projections_2014
   load_multiplier numeric
 );
 
-SET ROLE 'server-superusers';
+-- SET ROLE 'server-superusers';
+set role 'mgleason_su';
 COPY diffusion_shared.aeo_load_growth_projections_2014 
-FROM '/srv/home/mgleason/data/dg_wind/AEO2014LoadFourScena_v2.csv' 
+-- FROM '/srv/home/mgleason/data/dg_wind/AEO2014LoadFourScena_v2.csv' 
+FROM '/home/mgleason/data/AEO2014LoadFourScena_v2.csv'
 WITH CSV HEADER;
-RESET ROLE;
+-- RESET ROLE;
+set role 'diffusion-writers';
 
 -- changre the sector abbr from full sector name to lower-case, 3-letter sector abbr only
 UPDATE diffusion_shared.aeo_load_growth_projections_2014 a
@@ -160,13 +163,6 @@ from diffusion_shared.aeo_load_growth_projections_2014
 group by sector_abbr, year, census_division_abbr, scenario
 order by count;
 
-
-
-  scenario text,
-  year integer,
-  sector_abbr text,
-  census_division_abbr character varying(3),
-  load_multiplier numeric
 
 
 with a as
