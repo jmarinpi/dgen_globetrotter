@@ -329,9 +329,12 @@ diffusion_trends<-function(df,runpath,scen_name){
                            nat_number_of_adopters = sum(number_of_adopters-number_of_adopters_last_year)
   )
   )
+  # melt the dataframe for ggplot
   yearly_data<-melt(data=yearly_data,id.vars=c('year','sector'))
   yearly_data$scenario<-scen_name
   yearly_data$data_type = 'New'
+
+
   cumulative_data = data[, names(yearly_data)]
 
   combined_data = rbind(cumulative_data, yearly_data)
@@ -367,7 +370,7 @@ diffusion_trends<-function(df,runpath,scen_name){
   
   national_installed_capacity_bar<-ggplot(subset(combined_data, variable %in% c("nat_installed_capacity_gw")), 
                                           aes(x = factor(year), fill = sector, weight = value))+
-    facet_grid(.~data_type) +
+    facet_wrap(~data_type, scales = 'free_y') +
     geom_bar()+
     theme_few()+
     scale_color_manual(values = sector_col) +
@@ -380,6 +383,7 @@ diffusion_trends<-function(df,runpath,scen_name){
     theme(axis.title.x = element_text(size=14, face = 'bold', vjust = -1)) +
     theme(axis.title.y = element_text(size=14, face = 'bold', vjust = 1)) +
     theme(axis.text = element_text(size=12)) +  
+    theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
     theme(legend.text = element_text(size = 12)) +
     theme(legend.title = element_text(size = 14)) +
     theme(legend.key.size = unit(1, 'cm')) +
@@ -388,7 +392,7 @@ diffusion_trends<-function(df,runpath,scen_name){
   
   national_num_of_adopters_bar<-ggplot(subset(combined_data, variable %in% c("nat_number_of_adopters")), 
                                        aes(x = factor(year), fill = sector, weight = value))+
-    facet_wrap(~data_type) +
+    facet_wrap(~data_type, scales = 'free_y') +
     geom_bar()+
     theme_few()+
     scale_color_manual(values = sector_col) +
@@ -401,6 +405,7 @@ diffusion_trends<-function(df,runpath,scen_name){
     theme(axis.title.x = element_text(size=14, face = 'bold', vjust = -1)) +
     theme(axis.title.y = element_text(size=14, face = 'bold', vjust = 1)) +
     theme(axis.text = element_text(size=12)) +  
+    theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
     theme(legend.text = element_text(size = 12)) +
     theme(legend.title = element_text(size = 14)) +
     theme(legend.key.size = unit(1, 'cm')) +
@@ -409,7 +414,7 @@ diffusion_trends<-function(df,runpath,scen_name){
   
   national_market_cap_bar<-ggplot(subset(combined_data, variable %in% c("nat_market_value")), 
                                   aes(x = factor(year), fill = sector, weight = value/1e9))+
-    facet_grid(.~data_type) +
+    facet_wrap(~data_type, scales = 'free_y') +
     geom_bar()+
     theme_few()+
     scale_color_manual(values = sector_col) +
@@ -422,6 +427,7 @@ diffusion_trends<-function(df,runpath,scen_name){
     theme(axis.title.x = element_text(size=14, face = 'bold', vjust = -1)) +
     theme(axis.title.y = element_text(size=14, face = 'bold', vjust = 1)) +
     theme(axis.text = element_text(size=12)) +  
+    theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
     theme(legend.text = element_text(size = 12)) +
     theme(legend.title = element_text(size = 14)) +
     theme(legend.key.size = unit(1, 'cm')) +
@@ -442,6 +448,7 @@ diffusion_trends<-function(df,runpath,scen_name){
     theme(axis.title.x = element_text(size=14, face = 'bold', vjust = -1)) +
     theme(axis.title.y = element_text(size=14, face = 'bold', vjust = 1)) +
     theme(axis.text = element_text(size=12)) +  
+    theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
     theme(legend.text = element_text(size = 12)) +
     theme(legend.title = element_text(size = 14)) +
     theme(legend.key.size = unit(1, 'cm')) +
