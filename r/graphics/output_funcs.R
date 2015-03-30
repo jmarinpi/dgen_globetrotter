@@ -603,8 +603,8 @@ diffusion_sectors_map <- function(df){
   # aggregate the data
   # get the unique sectors in the table
   sectors = collect(summarise(df, distinct(sector)))[,1]
-  for (sector in sectors){
-    f = filter(df, sector == sector)
+  for (current_sector in sectors){
+    f = filter(df, sector == current_sector)
     g = group_by(f, state_abbr, year)
     diffusion_sector = collect(summarise(g,
                                          Market.Share = sum(number_of_adopters)/sum(customers_in_bin)*100,
@@ -627,7 +627,7 @@ diffusion_sectors_map <- function(df){
                            classification = 'quantile',
                            height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
                            legend = T, labels = T, 
-                           slider_var = 'Year', slider_step = 2, map_title = sprintf('Diffusion (%s)',toProper(sector)), horizontal_legend = F, slider_width = 300,
+                           slider_var = 'Year', slider_step = 2, map_title = sprintf('Diffusion (%s)',toProper(current_sector)), horizontal_legend = F, slider_width = 300,
                            legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
                                                 Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (MW)',
                                                 Annual.Generation = 'Annual Generation (GWh)'))
