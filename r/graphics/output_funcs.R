@@ -117,16 +117,15 @@ cf_by_sector_and_year<-function(df){
                             tql = r_quantile(array_agg(naep), 0.75)/ 8760,
                             median = r_quantile(array_agg(naep), 0.5)/ 8760,
                             fql = r_quantile(array_agg(naep), 0.25)/ 8760))
-  ggplot(data, aes(x = year, y = median, ymin = fql, ymax = tql, color = sector, fill = sector))+
-    geom_smooth(aes(alpha = .1),stat = "identity")+
+  data$sector = sector2factor(data$sector)
+  ggplot(data)+
+    geom_ribbon(aes(x = year, ymin = fql, ymax = tql, fill = sector), alpha = .3, stat = "identity")+
+    geom_line(aes(x = year, y = median, color = sector)) +
     facet_wrap(~sector)+
-    geom_line(size = 0.75)+
-    theme_few()+
-    scale_color_manual(values = sector_col) +
-    scale_fill_manual(values = sector_fil) +
+    scale_color_manual(values = sector_col, name = 'Median') +
+    scale_fill_manual(values = sector_fil, name = 'Interquartile Range') +
     scale_y_continuous(name = 'Annual average capacity factor', label = percent)+
-    theme(strip.text.x = element_text(size=12, angle=0,))+
-    guides(color = FALSE, fill=FALSE)+
+    standard_formatting +
     ggtitle('Median Capacity Factor by Sector')
 }
 
@@ -513,15 +512,16 @@ national_installed_capacity_by_system_size_bar<-function(df,tech){
 
 lcoe_boxplot<-function(df){
   data = collect(select(df,year,lcoe,sector))
+  data$sector = sector2factor(data$sector)
   # Boxplot of LCOE over time, faceted by sector
-  p<-ggplot(data, aes(x = factor(year), y = lcoe, fill = sector))+
-    geom_boxplot(outlier.shape = NA)+
-    facet_wrap(~sector)+
-    scale_y_continuous(name = 'LCOE (c/kWh)',lim = c(0,100))+
-    scale_x_discrete(name = 'Year')+
-    ggtitle('Cost of Energy by Sector For All Sites Modeled')+
-    scale_fill_manual(name = 'Sector', values = sector_fil)+
-    theme_few()
+  p<-ggplot(data) +
+    geom_boxplot(aes(x = factor(year), y = lcoe, fill = sector), outlier.shape = NA) +
+    facet_wrap(~sector) +
+    scale_y_continuous(name = 'LCOE (c/kWh)') +
+    scale_x_discrete(name = 'Year') +
+    ggtitle('Cost of Energy by Sector For All Sites Modeled') +
+    scale_fill_manual(name = 'Sector', values = sector_fil) +
+    standard_formatting
   # aggregate summary stas on median and iqr to save to csv
   g = group_by(df,year,sector)
   out_data = collect(summarise(g, 
@@ -544,24 +544,24 @@ lcoe_cdf<-function(df, start_year, end_year){
   # filter the data to rows in the start or end year
   f = select(filter(df, year %in% yrs),year, sector, lcoe, cost_of_elec_dols_per_kwh)
   data = collect(f)
+  data$sector = sector2factor(data$sector)
   g = group_by(f, year, sector)
   prices = collect(summarise(g,
                              price = r_median(array_agg(cost_of_elec_dols_per_kwh))
   )
   )
+  prices$sector = sector2factor(prices$sector)
   
   
-  ggplot(data=data,aes(x = lcoe, colour = factor(year)))+
-    stat_ecdf()+
-    geom_vline(data = prices, aes(xintercept = price, color = factor(year)))+
-    #geom_vline(data = prices, aes(xintercept = price, color = factor(year)))+
-    facet_wrap(~sector)+
-    coord_cartesian(xlim = c(0,60))+
-    theme_few()+
-    ggtitle('Cumulative Probability of Site LCOE (c/kWh)\n Vertical Lines are median retail elec prices')+
-    scale_x_continuous(name = 'Levelized Cost of Energy (c/kWh)')+
-    scale_y_continuous(name = 'Cumulative Probability', label = percent)+
-    scale_color_discrete(name = 'Model Years')
+  ggplot(data=data)+
+    stat_ecdf(aes(x = lcoe, colour = factor(year)))+
+    geom_vline(data = prices, aes(xintercept = price, color = factor(year)), linetype = 'dashed') +    
+    facet_wrap(~sector) +
+    ggtitle('Cumulative Probability of Site LCOE (c/kWh)\n Dashed Lines are median retail elec prices')+
+    scale_x_continuous(name = 'Levelized Cost of Energy (c/kWh)') +
+    scale_y_continuous(name = 'Cumulative Probability', label = percent) +
+    scale_color_discrete(name = 'Model Years') +
+    standard_formatting
 }
 
 
@@ -825,45 +825,46 @@ dist_of_azimuth_selected<-function(df, start_year){
 }
 
 leasing_mkt_share<-function(df){
-data = collect(
-  select(df, year,sector,business_model,new_capacity) %>%
-  group_by(year,sector,business_model)%>%
-  summarise(annual_capacity_gw = sum(new_capacity)/1e6))
-
-data2 = group_by(data, year, sector) %>%
-  summarise(tot_cap = sum(annual_capacity_gw))
-
-data3 = merge(data,data2) %>%
-  mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
-  filter(business_model == 'tpo')
-
-plot<-ggplot(data3, aes(x = year, y = per_mkt_share, color = sector, fill = sector))+
-  geom_area(alpha = 0.5)+
-  facet_wrap(~sector)+
-  theme_few()+
-  scale_color_manual(values = sector_col)+
-  scale_fill_manual(values = sector_fil)+
-  xlab("")+
-  scale_y_continuous("% of New Capacity", label = percent, lim = c(0,1))+
-  ggtitle("Leasing Market Share: Percent of New Capacity Added")
-
-# Table of market share by state and year (aggregating sectors)
-data = collect(
-  select(df, year, state_abbr,business_model,new_capacity) %>%
-  group_by(year,state_abbr,business_model)%>%
-  summarise(annual_capacity_gw = sum(new_capacity)/1e6))
-
-data2 = group_by(data, year, state_abbr) %>%
-  summarise(tot_cap = sum(annual_capacity_gw))
-
-table <- merge(data,data2) %>%
-  mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
-  filter(business_model == 'tpo')%>%
-  select(year, state_abbr, market_share = per_mkt_share)%>%
-  dcast(state_abbr ~ year, value.var = 'market_share')
-
-l = list("plot" = plot, "table" = table)  
-return(l)
+  data = collect(
+    select(df, year,sector,business_model,new_capacity) %>%
+    group_by(year,sector,business_model)%>%
+    summarise(annual_capacity_gw = sum(new_capacity)/1e6))
+  
+  data2 = group_by(data, year, sector) %>%
+    summarise(tot_cap = sum(annual_capacity_gw))
+  
+  data3 = merge(data,data2) %>%
+    mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
+    filter(business_model == 'tpo')
+  
+  data3$sector = sector2factor(data3$sector)
+  
+  plot<-ggplot(data3) +
+    geom_area(aes(x = year, y = per_mkt_share, fill = sector), alpha = 0.75) +
+    facet_wrap(~sector)+
+    scale_fill_manual(values = sector_col, labels = names(sector_col), name = 'Sector')+
+    xlab("")+
+    scale_y_continuous("% of New Capacity", label = percent)+
+    ggtitle("Leasing Market Share: Percent of New Capacity Added") +
+    standard_formatting
+  
+  # Table of market share by state and year (aggregating sectors)
+  data = collect(
+    select(df, year, state_abbr,business_model,new_capacity) %>%
+    group_by(year,state_abbr,business_model)%>%
+    summarise(annual_capacity_gw = sum(new_capacity)/1e6))
+  
+  data2 = group_by(data, year, state_abbr) %>%
+    summarise(tot_cap = sum(annual_capacity_gw))
+  
+  table <- merge(data,data2) %>%
+    mutate(per_mkt_share = annual_capacity_gw/tot_cap) %>%
+    filter(business_model == 'tpo')%>%
+    select(year, state_abbr, market_share = per_mkt_share)%>%
+    dcast(state_abbr ~ year, value.var = 'market_share')
+  
+  l = list("plot" = plot, "table" = table)  
+  return(l)
 }
 
 cum_installed_capacity_by_bm<-function(df){
@@ -879,13 +880,19 @@ cum_installed_capacity_by_bm<-function(df){
     mutate(cs = cumsum(cap)) %>%
     arrange(year, business_model, sector)
   
-  plot<-ggplot(data2,aes(x = year, y = cs, color = sector, fill = business_model))+
-    geom_area(position = 'stack', color = 'black')+
+  data2$sector = sector2factor(data2$sector)
+  data2[data2$business_model == 'tpo', 'business_model'] = 'TPO'
+  data2[data2$business_model == 'host_owned', 'business_model'] = 'Host-Owned'
+  data2$business_model = factor(data2$business_model, levels = c('Host-Owned', 'TPO'))
+  
+  plot<-ggplot(data2)+
+    geom_area(aes(x = year, y = cs, fill = business_model), position = 'stack')+
     facet_wrap(~sector)+
-    theme_few()+
     xlab("")+
     scale_y_continuous("Cumulative Installed Capacity since 2014 (GW)")+
-    ggtitle("Cumulative Installed Capacity Since 2014\n [Data on ownership trends prior to 2014 not available]")
+    scale_fill_manual(name = 'Business Model', guide = guide_legend(reverse=TRUE), values = c('dark green','light green')) +
+    ggtitle("Cumulative Installed Capacity Since 2014\n [Data on ownership trends prior to 2014 not available]") +
+    standard_formatting
   
   return(plot)
   
