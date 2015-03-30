@@ -474,34 +474,29 @@ print_table <- function(...){
 
 national_installed_capacity_by_system_size_bar<-function(df,tech){
   
+  data = select(df, sector, system_size_factors, new_capacity, year) %>%
+    group_by(year, sector, system_size_factors) %>%
+    summarise(total_new_capacity = sum(new_capacity)) %>%
+    group_by(sector, system_size_factors) %>%
+    arrange(year) %>%
+    mutate(installed_cap_by_size = cumsum(total_new_capacity)/1e6 ) %>%
+    collect()
+  
   if(tech == 'solar'){
-    data <- collect(group_by(df, sector,year, system_size_factors) %.%
-      summarise(nat_installed_capacity = sum(installed_capacity)/1e6))
     data$system_size_factors <- ordered( data$system_size_factors, levels = c("(0,2.5]", "(2.5,5]", "(5,10]", "(10,20]", "(20,50]", "(50,100]", "(100,250]", "(250,500]", "(500,750]", "(750,1e+03]", "(1e+03,1.5e+03]"))
-    data = data[order(data$year,data$system_size_factors),]
-      
   } else {
-  
-  # Distinguish between 1500 kW and 1500+ kW projects
-  g = group_by(df, year, sector, system_size_factors)
-  data<- collect(summarise(g, 
-                           nat_installed_capacity  = sum(installed_capacity)/1e6
-                          )
-              )
-  
-  # order the data correctly
-  data$system_size_factors <- ordered( data$system_size_factors, levels = c('2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
-  data = data[order(data$year,data$system_size_factors),]
-  
+    # order the data correctly
+    data$system_size_factors <- ordered(data$system_size_factors, levels = c('2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
   }
+  data = data[order(data$year,data$system_size_factors),]
   data$sector = sector2factor(data$sector)
   
   colourCount = length(unique(data$system_size_factors))
   getPalette = colorRampPalette(brewer.pal(9, "YlOrRd"))
   
-  ggplot(data, aes(x = year, fill = factor(system_size_factors), y = nat_installed_capacity), color = 'black')+
-    facet_wrap(~sector,scales="free_y")+
-    geom_area()+
+  ggplot(data)+
+    facet_wrap(~sector, scales="free_y")+
+    geom_area(aes(x = year, fill = system_size_factors, y = installed_cap_by_size), position = 'stack')+
     theme_few()+
     scale_fill_manual(name = 'System Size (kW)', values = getPalette(colourCount)) +
     scale_y_continuous(name ='National Installed Capacity (GW)') +
