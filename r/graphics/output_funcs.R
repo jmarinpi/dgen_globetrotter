@@ -158,12 +158,11 @@ lcoe_contour<-function(df, schema, start_year, end_year, dr = 0.05, n = 30){
   # Subset of model points for first and last year
   sql = sprintf("SELECT * FROM %s.outputs_all WHERE year in (%s,%s) ORDER BY RANDOM() LIMIT 1000", schema, start_year, end_year)
   f = tbl(src,sql(sql))       
-  pts = collect(select(f,installed_costs_dollars_per_kw,naep,year))
+  pts = collect(select(f, installed_costs_dollars_per_kw,naep,year))
   pts$present_value_factor <- present_value_factor
   
   ggplot()+
     geom_ribbon(data = d, aes(x = npc, y = cf, ymin = cf_min, ymax = cf_max, fill = factor(lcoe)), alpha = 0.5)+
-    theme_few()+
     scale_x_continuous(name = 'Net Present Cost ($/W)', limits = c(0,10))+
     scale_y_continuous(name = 'Annual Capacity Factor', limits = c(0,.5))+
     scale_fill_brewer(name = 'LCOE Range ($/kWh)', 
@@ -174,7 +173,8 @@ lcoe_contour<-function(df, schema, start_year, end_year, dr = 0.05, n = 30){
                                   shape = factor(year)))+
     scale_colour_discrete(name = 'Sample From Model')+
     scale_shape_discrete(name = 'Sample From Model')+
-    ggtitle("LCOE Contour Map For First and Final Model Years")
+    ggtitle("LCOE Contour Map For First and Final Model Years") +
+    standard_formatting
 }
 
 excess_gen_figs<-function(df, con, schema){
