@@ -5,7 +5,7 @@ turb_size_fil <- c('Small: < 50 kW' = "#a1dab4", 'Mid: 51 - 500 kW' = "#41b6c4",
 
 
 standard_formatting = theme_few() +
-  theme(strip.text.x = element_text(size = 14, face = 'bold')) +
+  theme(strip.text = element_text(size = 14, face = 'bold')) +
   theme(plot.title = element_text(size = 15, face = 'bold', vjust = 1)) +
   theme(axis.title.x = element_text(size = 14, face = 'bold', vjust = -.5)) +
   theme(axis.title.y = element_text(size = 14, face = 'bold', vjust = 1)) +
@@ -33,13 +33,27 @@ make_con<-function(driver = "PostgreSQL", host, dbname, user, password, port = 5
 }
 
 
-simpleCap <- function(x) {
+simpleCapHelper <- function(x) {
   # converts a given string to proper case
   # For formatting scenario options
   s <- strsplit(x, "_")[[1]]
   paste(toupper(substring(s, 1,1)), substring(s, 2),
         sep="", collapse=" ")
 }
+
+simpleCap <- function(x){
+  s = sapply(x, simpleCapHelper)
+  return(unname(s))
+}
+
+toProper <- function(s, strict = FALSE) {
+  cap <- function(s) paste(toupper(substring(s, 1, 1)),
+{s <- substring(s, 2); if(strict) tolower(s) else s},
+sep = "", collapse = " " )
+sapply(strsplit(s, split = " "), cap, USE.NAMES = !is.null(names(s)))
+}
+
+
 
 mean_value_by_state_table<-function(df,val){
   # Create table of mean value by year and state. value is string of variable to take mean of. 
@@ -309,22 +323,29 @@ national_econ_attractiveness_line<-function(df,scen_name){
   )
   )
   
-  p<-ggplot(data, aes(x = year, y = median, ymin = lql, ymax = uql, color = sector, fill = sector), size = 0.75)+
-    geom_smooth(stat = 'identity')+
-    geom_line()+
-    facet_wrap(~sector+metric,scales = "free")+
-    scale_color_manual(values = sector_col) +
-    scale_fill_manual(values = sector_fil) +
-    scale_y_continuous(name ='Median Metric Value')+
-    scale_x_continuous(name ='Year')+
-    theme_few()+
-    theme(strip.text.x = element_text(size=12, angle=0,))+
-    guides(color = FALSE, fill=FALSE)+
-    ggtitle('National Economic Attractiveness (Median and Inner-Quartile Range)')
+  data$sector = sector2factor(data$sector)
+  data$metric = simpleCap(data$metric)
+  
+  
+  p <- ggplot(data) +
+    geom_ribbon(aes(x = year, ymin = lql, ymax = uql, fill = sector), alpha = 0.3, stat = 'identity', size = 0.75) +
+    geom_line(aes(x = year, y = median, color = sector), size = 0.75) +
+    facet_grid(metric~sector, scales = 'free_y') +
+    scale_color_manual(values = sector_col, name = 'Median Value') +
+    scale_fill_manual(values = sector_fil, name = 'Interquartile Range') +
+    scale_y_continuous('') +
+    scale_x_continuous(name ='Year') +
+    ggtitle('National Economic Attractiveness (Median and Inner-Quartile Range)') +
+    standard_formatting +
+    theme(strip.text.y = element_text(angle = 90, vjust = 1))
+  # move facet lables to left side
+  g <- ggplotGrob(p)
+  g$layout[g$layout$name == "strip-right",c("l", "r")] <- 2
+  grid.newpage()
+  grid.draw(g)
+  
   data$scenario<-scen_name
-#   write.csv(data,paste0(runpath,'/payback_period_trends.csv'),row.names = FALSE)
-    save(data,file = paste0(runpath,'/metric_value_trends.RData'),compress = T, compression_level = 1)
-  return(p)
+  save(data,file = paste0(runpath,'/metric_value_trends.RData'),compress = T, compression_level = 1)
 }
 
 diffusion_trends<-function(df,runpath,scen_name){
@@ -474,6 +495,8 @@ national_installed_capacity_by_system_size_bar<-function(df,tech){
   data = data[order(data$year,data$system_size_factors),]
   
   }
+  data$sector = sector2factor(data$sector)
+  
   colourCount = length(unique(data$system_size_factors))
   getPalette = colorRampPalette(brewer.pal(9, "YlOrRd"))
   
@@ -481,10 +504,9 @@ national_installed_capacity_by_system_size_bar<-function(df,tech){
     facet_wrap(~sector,scales="free_y")+
     geom_area()+
     theme_few()+
-    scale_fill_manual(name = 'System Size (kW)', values = getPalette(colourCount))+#, values = sector_fil) +
-    scale_y_continuous(name ='National Installed Capacity (GW)')+#, labels = comma)+
-    theme(strip.text.x = element_text(size = 12, angle = 0))+
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+    scale_fill_manual(name = 'System Size (kW)', values = getPalette(colourCount)) +
+    scale_y_continuous(name ='National Installed Capacity (GW)') +
+    standard_formatting +
     ggtitle('National Installed Capacity by Turbine Size (GW)')  
 }
 
