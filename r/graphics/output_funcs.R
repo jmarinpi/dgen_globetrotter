@@ -226,8 +226,9 @@ cf_supply_curve<-function(df, start_year){
   
   ggplot(data,aes(x = cf, y = load, size = 0.75))+
     geom_line()+
-    theme_few()+
     guides(size = FALSE)+
+    standard_formatting +
+    theme(axis.text.x = element_text(angle = 0, hjust = .5, vjust = 0)) +
     scale_y_continuous(name ='Customer Load (GW)')+
     scale_x_continuous(name ='Annual Average Capacity Factor', labels = percent)+
     ggtitle('Capacity Factor Supply Curve (Available Cust Load in 2014)')
@@ -242,7 +243,8 @@ elec_rate_supply_curve<-function(df, start_year){
   
   ggplot(data,aes(x = rate, y = load, size = 0.75))+
     geom_line()+
-    theme_few()+
+    standard_formatting +
+    theme(axis.text.x = element_text(angle = 0, hjust = .5, vjust = 0)) +
     guides(size = FALSE)+
     scale_y_continuous(name ='Customer Load (GW)')+
     scale_x_continuous(name ='Average Electric Rate ($/kWh)', lim = c(0,quantile(data$rate,0.98)))+
@@ -263,16 +265,16 @@ dist_of_cap_selected<-function(df,scen_name, start_year, end_year){
   cap_picked<-merge(cap_picked,tmp)
   cap_picked<-transform(cap_picked, p = cust_num/n)
   cap_picked$system_size_factors <- ordered( cap_picked$system_size_factors, levels = c('2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
+  cap_picked$sector = sector2factor(cap_picked$sector)
+  
   
   p<-ggplot(cap_picked, aes(x = factor(system_size_factors), weight = p, fill = factor(year)))+
     geom_histogram(position = 'dodge')+
     facet_wrap(~sector)+
-    theme_few()+
     scale_y_continuous(name ='Percent of Customers Selecting System Size', labels = percent)+
     scale_x_discrete(name ='Optimal Size System for Customer (kW)')+
     scale_fill_manual(name = 'Year', values = c('black','gray'))+
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-    theme(strip.text.x = element_text(size=12, angle=0,))+
+    standard_formatting +
     ggtitle('Size of Systems Being Considered')
   cap_picked$scenario<-scen_name
 #   write.csv(cap_picked,paste0(runpath,'/cap_selected_trends.csv'),row.names = FALSE)
@@ -293,18 +295,17 @@ dist_of_height_selected<-function(df,scen_name,start_year){
   )
   )
   height_picked$system_size_factors <- ordered( height_picked$system_size_factors, levels = c('2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
+  height_picked$sector = sector2factor(height_picked$sector)
+  
   p<-ggplot(height_picked)+
     geom_point(aes(x = factor(system_size_factors), y = factor(turbine_height_m), size = load_in_gw, color = sector), aes = 0.2)+
     scale_size_continuous(name = 'Potential Customer Load (GW)', range = c(4,12))+
-    theme_few()+
     facet_wrap(~sector,scales="free_y")+
     scale_color_manual(values = sector_col) +
     scale_fill_manual(values = sector_fil) +
     scale_y_discrete(name ='Turbine Height')+
     scale_x_discrete(name ='Optimal Size System for Customer (kW)')+
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-    theme(strip.text.x = element_text(size=12, angle=0,))+
-    guides(color = FALSE, fill=FALSE)+
+    standard_formatting +
     ggtitle('What Height-Size Combinations are Most-Prefered?')
   height_picked$scenario<-scen_name
 #   write.csv(height_picked,paste0(runpath,'/height_selected_trends.csv'),row.names = FALSE)
@@ -807,6 +808,7 @@ dist_of_azimuth_selected<-function(df, start_year){
   
   # Reorder the azimuth category order
   d$azimuth2 <- factor(d$azimuth, levels = c('W','SW','S','SE','E'))
+  d$sector = sector2factor(d$sector)
   
   ggplot(d, aes(x = azimuth2, weight = cap, fill = sector))+
     geom_bar(position = 'dodge', alpha = 0.5)+
@@ -814,8 +816,8 @@ dist_of_azimuth_selected<-function(df, start_year){
     scale_y_continuous(name ='Number of systems selected')+
     scale_fill_manual(values = sector_fil)+
     xlab('Azimuth')+
-    theme_few()+
-    theme(strip.text.x = element_text(size=12, angle=0,))+
+    standard_formatting +
+    theme(axis.text.x = element_text(size=12, angle=0, hjust = 0, vjust = 0))+
     ggtitle('Optimal system orientations in 2014')
 }
 
