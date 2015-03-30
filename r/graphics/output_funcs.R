@@ -1,7 +1,31 @@
-sector_col <- c(residential = "#4daf4a", commercial = "#377eb8", industrial = "#e41a1c")
-sector_fil <- c(residential = "#4daf4a", commercial = "#377eb8", industrial = "#e41a1c")
+sector_col <- c(Commercial = "#377eb8", Industrial = "#e41a1c", Residential = "#4daf4a")
+sector_fil <- sector_col
 turb_size_fil <- c('Small: < 50 kW' = "#a1dab4", 'Mid: 51 - 500 kW' = "#41b6c4", 'Large: 501 - 3,000 kW' = "#253494") 
 # ======================= DATA FUNCTIONS =================================================
+
+
+standard_formatting = theme_few() +
+  theme(strip.text.x = element_text(size = 14, face = 'bold')) +
+  theme(plot.title = element_text(size = 15, face = 'bold', vjust = 1)) +
+  theme(axis.title.x = element_text(size = 14, face = 'bold', vjust = -.5)) +
+  theme(axis.title.y = element_text(size = 14, face = 'bold', vjust = 1)) +
+  theme(axis.text = element_text(size = 12)) +  
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  theme(legend.text = element_text(size = 12)) +
+  theme(legend.title = element_text(size = 14)) +
+  theme(legend.key.size = unit(1, 'cm')) +
+  theme(legend.key = element_rect(colour = 'white', size = 2)) +
+  theme(strip.text.x = element_text(size = 14, face = 'bold'))
+
+
+sector2factor = function(sector_vector){
+  f = factor(toProper(as.character(sector_vector)), levels = names(sector_col))
+  return(f)
+} 
+
+
+
+
 
 make_con<-function(driver = "PostgreSQL", host, dbname, user, password, port = 5432){
   # Make connection to dav-gis database
@@ -332,128 +356,81 @@ diffusion_trends<-function(df,runpath,scen_name){
   # melt the dataframe for ggplot
   yearly_data<-melt(data=yearly_data,id.vars=c('year','sector'))
   yearly_data$scenario<-scen_name
-  yearly_data$data_type = 'New'
+  yearly_data$data_type = 'Annual'
 
 
   cumulative_data = data[, names(yearly_data)]
 
   combined_data = rbind(cumulative_data, yearly_data)
-  combined_data$data_type = factor(combined_data$data_type, levels = c('Cumulative', 'New'))
-
+  combined_data$data_type = factor(combined_data$data_type, levels = c('Cumulative', 'Annual'))
+  
+  combined_data$sector = sector2factor(combined_data$sector)
+  cumulative_data$sector = sector2factor(cumulative_data$sector)
+  yearly_data$sector = sector2factor(yearly_data$sector)
+  
   #' National market share trends
   trends_data = subset(data, variable %in% c('nat_market_share', 'nat_max_market_share'))
   trends_data$variable = as.character(trends_data$variable)
   trends_data[trends_data$variable == 'nat_market_share', 'variable'] = 'Market Share'
   trends_data[trends_data$variable == 'nat_max_market_share', 'variable'] = 'Max Market Share'
-  national_adopters_trends_bar<-ggplot(trends_data, 
+  trends_data$sector = sector2factor(trends_data$sector)
+  
+  national_adopters_trends_bar <- ggplot(trends_data, 
                                        aes(x = year, y = value, color = sector, linetype = variable))+
-    geom_line(size = 0.75)+
-    facet_wrap(~sector)+
-    theme_few()+
-    geom_line()+
+    geom_line(size = 0.75) +
+    facet_wrap(~sector) +
+    geom_line() +
     scale_color_manual(values = sector_col) +
     scale_fill_manual(values = sector_fil) +
-    scale_y_continuous(name ='Market Share (% of adopters)', labels = percent)+
-    scale_x_continuous(name ='Year')+
-    expand_limits(y=0)+
-    theme(strip.text.x = element_text(size=14, face = 'bold')) +
-    theme(plot.title = element_text(size=15, face = 'bold', vjust = 1)) +
-    theme(axis.title.x = element_text(size=14, face = 'bold', vjust = -1)) +
-    theme(axis.title.y = element_text(size=14, face = 'bold', vjust = 1)) +
-    theme(axis.text = element_text(size=12)) +  
-    theme(legend.text = element_text(size = 12)) +
-    theme(legend.title = element_text(size = 14)) +
-    theme(legend.key.size = unit(1, 'cm')) +
-    theme(legend.key = element_rect(colour = 'white', size = 2)) +
-    guides(color = FALSE)+
-    ggtitle('National Adoption Trends')
+    scale_y_continuous(name ='Market Share (% of adopters)', labels = percent) +
+    scale_x_continuous(name ='Year') +
+    guides(color = FALSE) +
+    expand_limits(y = 0) + 
+    ggtitle('National Adoption Trends') +
+    standard_formatting
   
-  national_installed_capacity_bar<-ggplot(subset(combined_data, variable %in% c("nat_installed_capacity_gw")), 
-                                          aes(x = factor(year), fill = sector, weight = value))+
+  national_installed_capacity_bar <- ggplot(data = subset(combined_data, variable %in% c("nat_installed_capacity_gw")))+
+    geom_bar(aes(x = factor(year), fill = sector, weight = value)) +  
     facet_wrap(~data_type, scales = 'free_y') +
-    geom_bar()+
-    theme_few()+
     scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = 'Sector', values = sector_fil, labels = c("Commercial", 'Industrial', 'Residential')) +
-    scale_y_continuous(name ='National Installed Capacity (GW)', labels = comma)+
-    expand_limits(weight=0)+
-    scale_x_discrete(name ='Year')+
-    theme(strip.text.x = element_text(size=14, face = 'bold')) +
-    theme(plot.title = element_text(size=15, face = 'bold', vjust = 1)) +
-    theme(axis.title.x = element_text(size=14, face = 'bold', vjust = -1)) +
-    theme(axis.title.y = element_text(size=14, face = 'bold', vjust = 1)) +
-    theme(axis.text = element_text(size=12)) +  
-    theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
-    theme(legend.text = element_text(size = 12)) +
-    theme(legend.title = element_text(size = 14)) +
-    theme(legend.key.size = unit(1, 'cm')) +
-    theme(legend.key = element_rect(colour = 'white', size = 2)) +
-    ggtitle('National Installed Capacity (GW)')
+    scale_fill_manual(name = 'Sector', values = sector_fil, labels = names(sector_fil), guide = guide_legend(reverse=TRUE)) +
+    scale_y_continuous(name ='National Installed Capacity (GW)', labels = comma) +
+    expand_limits(weight=0) +
+    scale_x_discrete(name ='Year') +
+    ggtitle('National Installed Capacity (GW)') +
+    standard_formatting
   
-  national_num_of_adopters_bar<-ggplot(subset(combined_data, variable %in% c("nat_number_of_adopters")), 
-                                       aes(x = factor(year), fill = sector, weight = value))+
+  national_num_of_adopters_bar <- ggplot(data = subset(combined_data, variable %in% c("nat_number_of_adopters"))) +
+    geom_bar(aes(x = factor(year), fill = sector, weight = value)) +
     facet_wrap(~data_type, scales = 'free_y') +
-    geom_bar()+
-    theme_few()+
     scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = 'Sector', values = sector_fil, labels = c("Commercial", 'Industrial', 'Residential')) +
-    scale_y_continuous(name ='Number of Adopters', labels = comma)+
-    expand_limits(weight=0)+
-    scale_x_discrete(name ='Year')+
-    theme(strip.text.x = element_text(size=14, face = 'bold')) +
-    theme(plot.title = element_text(size=15, face = 'bold', vjust = 1)) +
-    theme(axis.title.x = element_text(size=14, face = 'bold', vjust = -1)) +
-    theme(axis.title.y = element_text(size=14, face = 'bold', vjust = 1)) +
-    theme(axis.text = element_text(size=12)) +  
-    theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
-    theme(legend.text = element_text(size = 12)) +
-    theme(legend.title = element_text(size = 14)) +
-    theme(legend.key.size = unit(1, 'cm')) +
-    theme(legend.key = element_rect(colour = 'white', size = 2)) +
-    ggtitle('National Number of Adopters')  
+    scale_fill_manual(name = 'Sector', values = sector_fil, labels = names(sector_fil), guide = guide_legend(reverse=TRUE)) +
+    scale_y_continuous(name ='Number of Adopters', labels = comma) +
+    expand_limits(weight=0) +
+    scale_x_discrete(name ='Year') +
+    ggtitle('National Number of Adopters') +
+    standard_formatting
   
-  national_market_cap_bar<-ggplot(subset(combined_data, variable %in% c("nat_market_value")), 
-                                  aes(x = factor(year), fill = sector, weight = value/1e9))+
+  national_market_cap_bar <- ggplot(subset(combined_data, variable %in% c("nat_market_value"))) +
+    geom_bar(aes(x = factor(year), fill = sector, weight = value/1e9)) +  
     facet_wrap(~data_type, scales = 'free_y') +
-    geom_bar()+
-    theme_few()+
     scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = 'Sector', values = sector_fil, labels = c("Commercial", 'Industrial', 'Residential')) +
-    scale_y_continuous(name ='Value of Installed Capacity (Billion $)', labels = comma)+
-    expand_limits(weight=0)+
-    scale_x_discrete(name ='Year')+
-    theme(strip.text.x = element_text(size=14, face = 'bold')) +
-    theme(plot.title = element_text(size=15, face = 'bold', vjust = 1)) +
-    theme(axis.title.x = element_text(size=14, face = 'bold', vjust = -1)) +
-    theme(axis.title.y = element_text(size=14, face = 'bold', vjust = 1)) +
-    theme(axis.text = element_text(size=12)) +  
-    theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
-    theme(legend.text = element_text(size = 12)) +
-    theme(legend.title = element_text(size = 14)) +
-    theme(legend.key.size = unit(1, 'cm')) +
-    theme(legend.key = element_rect(colour = 'white', size = 2)) +
-    ggtitle('National Value of Installed Capacity (Billion $)')
+    scale_fill_manual(name = 'Sector', values = sector_fil, labels = names(sector_fil), guide = guide_legend(reverse=TRUE)) +
+    scale_y_continuous(name ='Value of Installed Capacity (Billion $)', labels = comma) +
+    expand_limits(weight=0) +
+    scale_x_discrete(name ='Year') +
+    ggtitle('National Value of Installed Capacity (Billion $)') +
+    standard_formatting
   
-  national_generation_bar<-ggplot(subset(data, variable %in% c("nat_generation_kwh")), 
-                                  aes(x = factor(year), fill = sector, weight = value/1e9))+
-    geom_bar()+
-    theme_few()+
+  national_generation_bar <- ggplot(subset(cumulative_data, variable %in% c("nat_generation_kwh")))+
+    geom_bar(aes(x = factor(year), fill = sector, weight = value/1e9)) +
     scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = 'Sector', values = sector_fil, labels = c("Commercial", 'Industrial', 'Residential')) +
-    scale_y_continuous(name ='National Annual Generation (TWh)', labels = comma)+
-    expand_limits(weight=0)+
-    scale_x_discrete(name ='Year')+
-    theme(strip.text.x = element_text(size=14, face = 'bold')) +
-    theme(plot.title = element_text(size=15, face = 'bold', vjust = 1)) +
-    theme(axis.title.x = element_text(size=14, face = 'bold', vjust = -1)) +
-    theme(axis.title.y = element_text(size=14, face = 'bold', vjust = 1)) +
-    theme(axis.text = element_text(size=12)) +  
-    theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
-    theme(legend.text = element_text(size = 12)) +
-    theme(legend.title = element_text(size = 14)) +
-    theme(legend.key.size = unit(1, 'cm')) +
-    theme(legend.key = element_rect(colour = 'white', size = 2)) +
-    ggtitle('National Annual Generation (TWh)')  
+    scale_fill_manual(name = 'Sector', values = sector_fil, labels = names(sector_fil), guide = guide_legend(reverse=TRUE)) +
+    scale_y_continuous(name ='National Annual Generation (TWh)', labels = comma) +
+    expand_limits(weight=0) +
+    scale_x_discrete(name ='Year') +
+    ggtitle('National Annual Generation (TWh)') +
+    standard_formatting
   
   list("national_installed_capacity_bar" = national_installed_capacity_bar,
        "national_adopters_trends_bar" = national_adopters_trends_bar,
