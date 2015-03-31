@@ -822,7 +822,7 @@ dist_of_azimuth_selected<-function(df, start_year){
     ggtitle('Optimal system orientations in 2014')
 }
 
-leasing_mkt_share<-function(df){
+leasing_mkt_share<-function(df, start_year, end_year){
   data = collect(
     select(df, year,sector,business_model,new_capacity) %>%
     group_by(year,sector,business_model)%>%
@@ -836,13 +836,18 @@ leasing_mkt_share<-function(df){
     filter(business_model == 'tpo')
   
   data3$sector = sector2factor(data3$sector)
+  for (current_sector in names(sector_col)){
+    if (!(current_sector %in% unique(data3$sector)) )
+      data3[nrow(data3)+1,] = data.frame(min(data3$year), current_sector, 'tpo', as.numeric(0), as.numeric(0), as.numeric(0))
+    
+  }
   
   plot<-ggplot(data3) +
     geom_area(aes(x = year, y = per_mkt_share, fill = sector), alpha = 0.75) +
     facet_wrap(~sector)+
     scale_fill_manual(values = sector_col, labels = names(sector_col), name = 'Sector')+
-    xlab("")+
-    scale_y_continuous("% of New Capacity", label = percent)+
+    scale_y_continuous("% of New Capacity", label = percent) +
+    scale_x_continuous(name ='Year', breaks = seq(start_year, end_year, 2)) +
     ggtitle("Leasing Market Share: Percent of New Capacity Added") +
     standard_formatting
   

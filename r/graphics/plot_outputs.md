@@ -38,7 +38,7 @@ print_table(mean_value_by_state_table(df,'lcoe'), caption = "Mean LCOE by State 
 # Buy vs Lease
 ```{r Business_Model}
 
-out<-leasing_mkt_share(df)
+out<-leasing_mkt_share(df, start_year, end_year)
 out$plot
 print_table(out$table, caption = "Annual Lease Market Share: Fraction of New Systems That Were Leased")
 cum_installed_capacity_by_bm(df)
