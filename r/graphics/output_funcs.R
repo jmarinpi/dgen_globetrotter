@@ -501,6 +501,7 @@ national_installed_capacity_by_system_size_bar<-function(df,tech){
     theme_few()+
     scale_fill_manual(name = 'System Size (kW)', values = getPalette(colourCount)) +
     scale_y_continuous(name ='National Installed Capacity (GW)') +
+    scale_x_continuous(name = 'Year', breaks = c(unique(data$year))) +
     standard_formatting +
     ggtitle('National Installed Capacity by Turbine Size (GW)')  
 }
