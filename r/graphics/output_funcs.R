@@ -874,7 +874,7 @@ leasing_mkt_share<-function(df, start_year, end_year){
   return(l)
 }
 
-cum_installed_capacity_by_bm<-function(df){
+cum_installed_capacity_by_bm<-function(df, start_year, end_year){
     
   data = collect(
     select(df, year,sector,business_model,new_capacity) %>%
@@ -883,18 +883,31 @@ cum_installed_capacity_by_bm<-function(df){
     arrange(year)
     )
   
-  data2 = group_by(data, business_model, sector) %>%
+  # make sure all years are represented
+  years = data.frame(year = seq(start_year, end_year, 2))
+  sectors = data.frame(sector = unique(data$sector))
+  bms = data.frame(business_model = c('tpo', 'host_owned'))
+  all_combos = merge(merge(years, sectors, all = T), bms, all = T)
+  
+  data2 = merge(all_combos, data, by = c('year', 'sector', 'business_model'), all.x = T)
+  # fill NAs
+  data2[is.na(data2$cap), 'cap'] = 0
+  
+  data3 = arrange(data2, sector, business_model, year) %>%
+    group_by(business_model, sector) %>%
     mutate(cs = cumsum(cap)) %>%
-    arrange(year, business_model, sector)
+    arrange(year, business_model, sector) %>%
+    collect()
   
-  data2$sector = sector2factor(data2$sector)
-  data2[data2$business_model == 'tpo', 'business_model'] = 'TPO'
-  data2[data2$business_model == 'host_owned', 'business_model'] = 'Host-Owned'
-  data2$business_model = factor(data2$business_model, levels = c('Host-Owned', 'TPO'))
+  data3$sector = sector2factor(data3$sector)
+  data3$business_model = as.character(data3$business_model)
+  data3[data3$business_model == 'tpo', 'business_model'] = 'TPO'
+  data3[data3$business_model == 'host_owned', 'business_model'] = 'Host-Owned'
+  data3$business_model = factor(data3$business_model, levels = c('Host-Owned', 'TPO'))
   
-  plot<-ggplot(data2)+
+  plot<-ggplot(data3)+
     geom_area(aes(x = year, y = cs, fill = business_model), position = 'stack')+
-    facet_wrap(~sector)+
+    facet_wrap(~sector, scales = 'free_y')+
     xlab("")+
     scale_y_continuous("Cumulative Installed Capacity since 2014 (GW)")+
     scale_fill_manual(name = 'Business Model', guide = guide_legend(reverse=TRUE), values = c('dark green','light green')) +
