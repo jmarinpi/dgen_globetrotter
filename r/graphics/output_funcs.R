@@ -122,11 +122,12 @@ cf_by_sector_and_year<-function(df){
     geom_ribbon(aes(x = year, ymin = fql, ymax = tql, fill = sector), alpha = .3, stat = "identity")+
     geom_line(aes(x = year, y = median, color = sector)) +
     facet_wrap(~sector)+
-    scale_color_manual(values = sector_col, name = 'Median') +
-    scale_fill_manual(values = sector_fil, name = 'Interquartile Range') +
+    scale_color_manual(values = sector_col, name = 'Median and IQR') +
+    scale_fill_manual(values = sector_fil, name = 'Median and IQR') +
     scale_y_continuous(name = 'Annual average capacity factor', label = percent)+
+    scale_x_continuous(name = 'Year', breaks = unique(data$year)) +
     standard_formatting +
-    ggtitle('Median Capacity Factor by Sector')
+    ggtitle('Range of Capacity Factor by Sector and Year')
 }
 
 lcoe_contour<-function(df, schema, start_year, end_year, dr = 0.05, n = 30){
@@ -273,9 +274,11 @@ dist_of_cap_selected<-function(df,scen_name, start_year, end_year){
     facet_wrap(~sector)+
     scale_y_continuous(name ='Percent of Customers Selecting System Size', labels = percent)+
     scale_x_discrete(name ='Optimal Size System for Customer (kW)')+
-    scale_fill_manual(name = 'Year', values = c('black','gray'))+
+    scale_fill_discrete(name = 'Year')+
     standard_formatting +
+    theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
     ggtitle('Size of Systems Being Considered')
+  
   cap_picked$scenario<-scen_name
 #   write.csv(cap_picked,paste0(runpath,'/cap_selected_trends.csv'),row.names = FALSE)
   save(cap_picked,file = paste0(runpath,'/cap_selected_trends.RData'),compress = T, compression_level = 1)
