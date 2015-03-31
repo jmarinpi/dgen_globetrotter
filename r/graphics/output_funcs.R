@@ -331,8 +331,8 @@ national_econ_attractiveness_line<-function(df,scen_name){
     geom_ribbon(aes(x = year, ymin = lql, ymax = uql, fill = sector), alpha = 0.3, stat = 'identity', size = 0.75) +
     geom_line(aes(x = year, y = median, color = sector), size = 0.75) +
     facet_grid(metric~sector, scales = 'free_y') +
-    scale_color_manual(values = sector_col, name = 'Median Value') +
-    scale_fill_manual(values = sector_fil, name = 'Interquartile Range') +
+    scale_color_manual(values = sector_col, name = 'Median and IQR') +
+    scale_fill_manual(values = sector_fil, name = 'Median and IQR') +
     scale_y_continuous('') +
     scale_x_continuous(name = 'Year', breaks = c(unique(data$year))) +
     ggtitle('National Economic Attractiveness (Median and Inner-Quartile Range)') +
