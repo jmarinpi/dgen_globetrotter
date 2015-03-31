@@ -309,6 +309,7 @@ dist_of_height_selected<-function(df,scen_name,start_year){
     scale_y_discrete(name ='Turbine Height')+
     scale_x_discrete(name ='Optimal Size System for Customer (kW)')+
     standard_formatting +
+    theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
     ggtitle('What Height-Size Combinations are Most-Prefered?')
   height_picked$scenario<-scen_name
 #   write.csv(height_picked,paste0(runpath,'/height_selected_trends.csv'),row.names = FALSE)
