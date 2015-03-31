@@ -334,7 +334,7 @@ national_econ_attractiveness_line<-function(df,scen_name){
     scale_color_manual(values = sector_col, name = 'Median Value') +
     scale_fill_manual(values = sector_fil, name = 'Interquartile Range') +
     scale_y_continuous('') +
-    scale_x_continuous(name ='Year') +
+    scale_x_continuous(name = 'Year', breaks = c(unique(data$year))) +
     ggtitle('National Economic Attractiveness (Median and Inner-Quartile Range)') +
     standard_formatting +
     theme(strip.text.y = element_text(angle = 90, vjust = 1))
