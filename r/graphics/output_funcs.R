@@ -404,7 +404,7 @@ diffusion_trends<-function(df,runpath,scen_name){
     scale_color_manual(values = sector_col) +
     scale_fill_manual(values = sector_fil) +
     scale_y_continuous(name ='Market Share (% of adopters)', labels = percent) +
-    scale_x_continuous(name ='Year') +
+    scale_x_continuous(name ='Year', breaks = c(unique(trends_data$year))) +
     guides(color = FALSE) +
     expand_limits(y = 0) + 
     ggtitle('National Adoption Trends') +
