@@ -909,7 +909,8 @@ cum_installed_capacity_by_bm<-function(df, start_year, end_year){
     geom_area(aes(x = year, y = cs, fill = business_model), position = 'stack')+
     facet_wrap(~sector, scales = 'free_y')+
     xlab("")+
-    scale_y_continuous("Cumulative Installed Capacity since 2014 (GW)")+
+    scale_y_continuous("Cumulative Installed Capacity since 2014 (GW)") +
+    scale_x_continuous(name = "Year", breaks = seq(start_year, end_year, 2)) +
     scale_fill_manual(name = 'Business Model', guide = guide_legend(reverse=TRUE), values = c('dark green','light green')) +
     ggtitle("Cumulative Installed Capacity Since 2014\n [Data on ownership trends prior to 2014 not available]") +
     standard_formatting
