@@ -115,6 +115,7 @@ def init_log(log_file_path):
     
     return logger
 
+
 def shutdown_log(logger):
     logging.shutdown()
     for handler in logger.handlers:
@@ -247,7 +248,7 @@ def combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, pre
     sql = """DROP TABLE IF EXISTS diffusion_wind.temporal_factors;
             CREATE UNLOGGED TABLE diffusion_wind.temporal_factors as 
             SELECT a.year, a.turbine_size_kw, a.power_curve_id,
-                	b.turbine_height_m,
+                	c.turbine_height_m,
                 	c.fixed_om_dollars_per_kw_per_yr, 
                 	c.variable_om_dollars_per_kwh,
                 	c.installed_costs_dollars_per_kw,
@@ -260,11 +261,12 @@ def combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, pre
                   f.carbon_dollars_per_ton,
                   g.derate_factor
             FROM diffusion_wind.wind_performance_improvements a
-            LEFT JOIN diffusion_wind.allowable_turbine_sizes b
-                ON a.turbine_size_kw = b.turbine_size_kw
+	    LEFT JOIN diffusion_wind.allowable_turbine_sizes b
+		ON a.turbine_size_kw = b.turbine_size_kw
             LEFT JOIN diffusion_wind.turbine_costs_per_size_and_year c
                 ON a.turbine_size_kw = c.turbine_size_kw
                 AND a.year = c.year
+		AND b.turbine_height_m = c.turbine_height_m
             LEFT JOIN diffusion_wind.rate_escalations_to_model d
                 ON a.year = d.year
             LEFT JOIN diffusion_shared.aeo_load_growth_projections_2014 e
