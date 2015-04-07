@@ -418,7 +418,7 @@ diffusion_trends<-function(df,runpath,scen_name){
     geom_bar(aes(x = factor(year), fill = sector, weight = value)) +  
     facet_wrap(~data_type, scales = 'free_y') +
     scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = 'Sector', values = sector_fil, labels = names(sector_fil), guide = guide_legend(reverse=TRUE)) +
+    scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
     scale_y_continuous(name ='National Installed Capacity (GW)', labels = comma) +
     expand_limits(weight=0) +
     scale_x_discrete(name ='Year') +
@@ -429,7 +429,7 @@ diffusion_trends<-function(df,runpath,scen_name){
     geom_bar(aes(x = factor(year), fill = sector, weight = value)) +
     facet_wrap(~data_type, scales = 'free_y') +
     scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = 'Sector', values = sector_fil, labels = names(sector_fil), guide = guide_legend(reverse=TRUE)) +
+    scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
     scale_y_continuous(name ='Number of Adopters', labels = comma) +
     expand_limits(weight=0) +
     scale_x_discrete(name ='Year') +
@@ -440,7 +440,7 @@ diffusion_trends<-function(df,runpath,scen_name){
     geom_bar(aes(x = factor(year), fill = sector, weight = value/1e9)) +  
     facet_wrap(~data_type, scales = 'free_y') +
     scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = 'Sector', values = sector_fil, labels = names(sector_fil), guide = guide_legend(reverse=TRUE)) +
+    scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
     scale_y_continuous(name ='Value of Installed Capacity (Billion $)', labels = comma) +
     expand_limits(weight=0) +
     scale_x_discrete(name ='Year') +
@@ -450,7 +450,7 @@ diffusion_trends<-function(df,runpath,scen_name){
   national_generation_bar <- ggplot(subset(cumulative_data, variable %in% c("nat_generation_kwh")))+
     geom_bar(aes(x = factor(year), fill = sector, weight = value/1e9)) +
     scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = 'Sector', values = sector_fil, labels = names(sector_fil), guide = guide_legend(reverse=TRUE)) +
+    scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
     scale_y_continuous(name ='National Annual Generation (TWh)', labels = comma) +
     expand_limits(weight=0) +
     scale_x_discrete(name ='Year') +
