@@ -474,7 +474,7 @@ scenario_opts_table<-function(con, schema){
 
 # Shortcut to print tables in nicely formatted HTML
 print_table <- function(...){
-  print(xtable(...), type = "html", include.rownames = FALSE, caption.placement = "top")
+  print(xtable(...), type = "html", include.rownames = FALSE, caption.placement = "top", comment = getOption("xtable.comment", F))
 }
 
 national_installed_capacity_by_system_size_bar<-function(df,tech){
