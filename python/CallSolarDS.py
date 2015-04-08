@@ -9,7 +9,7 @@ import gdxpds
 import pandas as pd
 import os
 
-def main(year, reeds_path, gams_path):
+def main(year, endyr_ReEDS, reeds_path, gams_path):
     # Path to the gdx files that hold the SolarDS inputs
     gdxfile_in = reeds_path + "/gdxfiles/SolarDS_Input_%s.gdx" % year
     
@@ -22,7 +22,7 @@ def main(year, reeds_path, gams_path):
     import dgen_model
     
     # Run SolarDS
-    df = dgen_model.main(mode = 'ReEDS', resume_year = year, ReEDS_inputs = ReEDS_df)
+    df = dgen_model.main(mode = 'ReEDS', resume_year = year, endyear = endyr_ReEDS, ReEDS_inputs = ReEDS_df)
     df = df[(df['year'] == year)]
     df.to_csv("temp.csv")
     SolarDSPVcapacity = 0.001* df.groupby('pca_reg')['installed_capacity'].sum() # Convert output from kW to MW and sum to the PCA level   
@@ -41,10 +41,13 @@ if __name__ == '__main__':
     year = sys.argv[1]
     year = int(year)
     
+    endyr_ReEDS = sys.argv[2]
+    endyr_ReEDS = int(endyr_ReEDS)
+    
     # Path to current ReEDS run
-    reeds_path = sys.argv[2]
+    reeds_path = sys.argv[3]
     #reeds_path = "C:/ReEDS/OtherReEDSProject/inout"
     
     # Path to GAMS
-    gams_path = sys.argv[3]   
-    main(year, reeds_path, gams_path)
+    gams_path = sys.argv[4]   
+    main(year, endyr_ReEDS, reeds_path, gams_path)
