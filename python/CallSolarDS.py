@@ -14,7 +14,7 @@ def main(year, endyr_ReEDS, reeds_path, gams_path):
     gdxfile_in = reeds_path + "/gdxfiles/SolarDS_Input_%s.gdx" % year
     
     # Pull the SolarDS inputs from ReEDS
-    ReEDS_df = gdxpds.to_dataframes(gdxfile_in)
+    ReEDS_df = gdxpds.to_dataframes(gdxfile_in, gams_path)
     
     # Change working directory to where SolarDS is (must be done before importing dgen_model)
     os.chdir('../SolarDS/python')
@@ -34,7 +34,7 @@ def main(year, endyr_ReEDS, reeds_path, gams_path):
     
     gdxfile_out = reeds_path + "/gdxfiles/SolarDS_Output_%s.gdx" % year
     
-    gdx = gdxpds.to_gdx(data, gdxfile_out)
+    gdx = gdxpds.to_gdx(data, gdxfile_out, gams_path)
 
 if __name__ == '__main__':
     # Solve year most recenlty completed in ReEDS
@@ -42,6 +42,7 @@ if __name__ == '__main__':
     year = int(year)
     
     endyr_ReEDS = sys.argv[2]
+    print endyr_ReEDS
     endyr_ReEDS = int(endyr_ReEDS)
     
     # Path to current ReEDS run
