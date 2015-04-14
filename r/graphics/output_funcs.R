@@ -356,6 +356,20 @@ national_econ_attractiveness_line<-function(df,scen_name){
 
 diffusion_trends<-function(df,runpath,scen_name){
   # Diffusion trends
+  baseline_data = filter(df, year == 2014) %>%
+                  group_by(sector) %>%
+                  summarise(year = 2012,
+                            nat_installed_capacity_gw  = sum(installed_capacity_last_year)/1e6, 
+                            # We have no way calculating CFs for existing capacity, so assume it had a 23% capacity factor
+                            nat_market_value = sum(market_value_last_year),
+                            nat_generation_kwh = sum(0.23 * 8760 * initial_capacity_mw * 1000), 
+                            nat_number_of_adopters = sum(number_of_adopters_last_year)                    
+                    ) %>%
+                  collect()
+  baseline_data = melt(baseline_data, id.vars = c('year', 'sector'))
+  baseline_data$scenario<-scen_name
+  baseline_data$data_type = 'Cumulative'
+  
   g = group_by(df, year, sector)
   data = collect(summarise(g, nat_installed_capacity_gw  = sum(installed_capacity)/1e6, 
   # We have no way calculating CFs for existing capacity, so assume it had a 23% capacity factor
@@ -386,7 +400,7 @@ diffusion_trends<-function(df,runpath,scen_name){
   yearly_data$data_type = 'Annual'
 
 
-  cumulative_data = data[, names(yearly_data)]
+  cumulative_data = rbind(data[, names(yearly_data)], baseline_data[, names(yearly_data)])
 
   combined_data = rbind(cumulative_data, yearly_data)
   combined_data$data_type = factor(combined_data$data_type, levels = c('Cumulative', 'Annual'))
@@ -418,7 +432,7 @@ diffusion_trends<-function(df,runpath,scen_name){
   
   national_installed_capacity_bar <- ggplot(data = subset(combined_data, variable %in% c("nat_installed_capacity_gw")))+
     geom_bar(aes(x = factor(year), fill = sector, weight = value)) +  
-    facet_wrap(~data_type, scales = 'free_y') +
+    facet_wrap(~data_type, scales = 'free') +
     scale_color_manual(values = sector_col) +
     scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
     scale_y_continuous(name ='National Installed Capacity (GW)', labels = comma) +
@@ -429,7 +443,7 @@ diffusion_trends<-function(df,runpath,scen_name){
   
   national_num_of_adopters_bar <- ggplot(data = subset(combined_data, variable %in% c("nat_number_of_adopters"))) +
     geom_bar(aes(x = factor(year), fill = sector, weight = value)) +
-    facet_wrap(~data_type, scales = 'free_y') +
+    facet_wrap(~data_type, scales = 'free') +
     scale_color_manual(values = sector_col) +
     scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
     scale_y_continuous(name ='Number of Adopters', labels = comma) +
@@ -440,7 +454,7 @@ diffusion_trends<-function(df,runpath,scen_name){
   
   national_market_cap_bar <- ggplot(subset(combined_data, variable %in% c("nat_market_value"))) +
     geom_bar(aes(x = factor(year), fill = sector, weight = value/1e9)) +  
-    facet_wrap(~data_type, scales = 'free_y') +
+    facet_wrap(~data_type, scales = 'free') +
     scale_color_manual(values = sector_col) +
     scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
     scale_y_continuous(name ='Value of Installed Capacity (Billion $)', labels = comma) +
@@ -660,7 +674,8 @@ make_npv_supply_curve = function(df, years = c(2014,2020,2030,2040,2050)){
     scale_x_continuous(name ='Capacity (GW)')+
     scale_color_manual(name = 'Year', values = year_colors, labels = names(year_colors)) +
     ggtitle('') +
-    standard_formatting
+    standard_formatting +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5))
   
   return(p)
 }
@@ -687,7 +702,8 @@ make_npv_supply_curve_by_sector = function(df, years = 2014){
     scale_x_continuous(name ='Capacity (GW)')+
     scale_fill_manual(name = 'Sector', values = sector_fil) +
     ggtitle('') +
-    standard_formatting
+    standard_formatting +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5))
   
   return(p)
 }
@@ -907,7 +923,7 @@ dist_of_azimuth_selected<-function(df, start_year){
     scale_fill_manual(values = sector_fil)+
     xlab('Azimuth')+
     standard_formatting +
-    theme(axis.text.x = element_text(size=12, angle=0, hjust = 0, vjust = 0))+
+    theme(axis.text.x = element_text(size=12, angle=0, hjust = 0.5, vjust = 0.5))+
     ggtitle('Optimal system orientations in 2014')
 }
 
