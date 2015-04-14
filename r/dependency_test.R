@@ -23,7 +23,8 @@ error = F
 for (package in packages){
   installed = suppressMessages(require(package, quietly = T, character.only = T, warn.conflicts = F))
   if (!installed){
-    print(sprintf('Error: %s is not installed.', package))
+    print(sprintf('Error: %s is not installed, trying to install', package))
+    install.packages(package)
     error = T
   }
 }

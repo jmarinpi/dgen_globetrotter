@@ -115,6 +115,7 @@ def init_log(log_file_path):
     
     return logger
 
+
 def shutdown_log(logger):
     logging.shutdown()
     for handler in logger.handlers:
@@ -247,7 +248,7 @@ def combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, pre
     sql = """DROP TABLE IF EXISTS diffusion_wind.temporal_factors;
             CREATE UNLOGGED TABLE diffusion_wind.temporal_factors as 
             SELECT a.year, a.turbine_size_kw, a.power_curve_id,
-                	b.turbine_height_m,
+                	c.turbine_height_m,
                 	c.fixed_om_dollars_per_kw_per_yr, 
                 	c.variable_om_dollars_per_kwh,
                 	c.installed_costs_dollars_per_kw,
@@ -260,11 +261,12 @@ def combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, pre
                   f.carbon_dollars_per_ton,
                   g.derate_factor
             FROM diffusion_wind.wind_performance_improvements a
-            LEFT JOIN diffusion_wind.allowable_turbine_sizes b
-                ON a.turbine_size_kw = b.turbine_size_kw
+	    LEFT JOIN diffusion_wind.allowable_turbine_sizes b
+		ON a.turbine_size_kw = b.turbine_size_kw
             LEFT JOIN diffusion_wind.turbine_costs_per_size_and_year c
                 ON a.turbine_size_kw = c.turbine_size_kw
                 AND a.year = c.year
+		AND b.turbine_height_m = c.turbine_height_m
             LEFT JOIN diffusion_wind.rate_escalations_to_model d
                 ON a.year = d.year
             LEFT JOIN diffusion_shared.aeo_load_growth_projections_2014 e
@@ -363,7 +365,8 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
                 'installed_capacity',
                 'market_value',
                 'first_year_bill_with_system',
-                'first_year_bill_without_system']    
+                'first_year_bill_without_system',
+                'npv4']    
     # convert formatting of fields list
     fields_str = pylist_2_pglist(fields).replace("'","")       
     # open an in memory stringIO file (like an in memory csv)
@@ -436,7 +439,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.ic, a.metric, a.metric_value, a.lcoe, a.max_market_share, 
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system,
+                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, a.npv4,
 
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id,
@@ -523,7 +526,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     a.ic, a.metric, a.metric_value, a.lcoe, a.max_market_share, 
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system,
+                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, a.npv4,
 
                     
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,

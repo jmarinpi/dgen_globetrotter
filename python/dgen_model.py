@@ -38,7 +38,7 @@ elif cfg.technology == 'solar':
     import load_excel_solar as loadXL
     
 
-def main(mode = None, resume_year = None, ReEDS_inputs = None):
+def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
     # check which technology is being modeled and adjust variables accordingly
     schema = "diffusion_%s" % cfg.technology
@@ -349,7 +349,7 @@ def main(mode = None, resume_year = None, ReEDS_inputs = None):
             ## 12. Outputs & Visualization
             # set output subfolder
                 
-            if mode != 'ReEDS' or resume_year == 2050:
+            if mode != 'ReEDS' or resume_year == endyear:
                 dup_n = 1
                 scen_name = scenario_opts['scenario_name']
                 if scen_name in scenario_names:
