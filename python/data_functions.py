@@ -365,7 +365,8 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
                 'installed_capacity',
                 'market_value',
                 'first_year_bill_with_system',
-                'first_year_bill_without_system']    
+                'first_year_bill_without_system',
+                'npv4']    
     # convert formatting of fields list
     fields_str = pylist_2_pglist(fields).replace("'","")       
     # open an in memory stringIO file (like an in memory csv)
@@ -438,7 +439,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.ic, a.metric, a.metric_value, a.lcoe, a.max_market_share, 
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system,
+                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, a.npv4,
 
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id,
@@ -525,7 +526,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     a.ic, a.metric, a.metric_value, a.lcoe, a.max_market_share, 
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system,
+                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, a.npv4,
 
                     
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
