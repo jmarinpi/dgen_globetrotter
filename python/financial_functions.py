@@ -62,7 +62,8 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs,cfg.tech_lifetime)
-    df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate,cfg.tech_lifetime)    
+    df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate,cfg.tech_lifetime)
+    df['npv4'] = calc_npv(cfs,np.array([0.04]))/df['system_size_kw']    
 
     
     # Convert metric value to integer as a primary key, then bound within max market share ranges

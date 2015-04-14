@@ -38,26 +38,29 @@ print_table(mean_value_by_state_table(df,'lcoe'), caption = "Mean LCOE by State 
 # Buy vs Lease
 ```{r Business_Model}
 
-out<-leasing_mkt_share(df)
+out<-leasing_mkt_share(df, start_year, end_year, sectors)
 out$plot
 print_table(out$table, caption = "Annual Lease Market Share: Fraction of New Systems That Were Leased")
-cum_installed_capacity_by_bm(df)
+cum_installed_capacity_by_bm(df, start_year, end_year)
 
 ```
 # System Characteristics
 ```{r System_Characteristics}
 cf_by_sector_and_year(df)
 if (tech == 'wind'){
-  dist_of_cap_selected(df,scen_name,start_year,end_year)
+  print(dist_of_cap_selected(df,scen_name,start_year,end_year))
   dist_of_height_selected(df,scen_name,start_year)
 } else if(tech == 'solar'){
   dist_of_azimuth_selected(df, start_year)
 }
 ```
-# Resource Potential
+# Supply Curves
 ``` {r Resource_Potential}
 cf_supply_curve(df, start_year)
 elec_rate_supply_curve(df, start_year)
+make_npv_supply_curve(df, years = c(2014,2020,2030,2040,2050))
+make_npv_supply_curve_by_sector(df, years = 2014)
+make_lcoe_supply_curve(df, years = c(2014,2020,2030,2040,2050))
 ```
 
 # Scenario options

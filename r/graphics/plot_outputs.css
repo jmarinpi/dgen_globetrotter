@@ -97,10 +97,12 @@ table {
 	font-size: 12px;
 	background: #fff;
 	margin: 45px;
-	width: 640px;
+	width: 846px;
 	border: none;
 	border-collapse: collapse;
 	text-align: left;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 table th {
