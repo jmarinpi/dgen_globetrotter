@@ -1,5 +1,7 @@
 sector_col <- c(Commercial = "#377eb8", Industrial = "#e41a1c", Residential = "#4daf4a")
 sector_fil <- sector_col
+year_colors = c("2014" = '#fd8d3c', '2020' = '#fc4e2a', '2030' = '#e31a1c', '2040' = '#bd0026',
+                '2050' = '#800026')
 turb_size_fil <- c('Small: < 50 kW' = "#a1dab4", 'Mid: 51 - 500 kW' = "#41b6c4", 'Large: 501 - 3,000 kW' = "#253494") 
 # ======================= DATA FUNCTIONS =================================================
 
@@ -636,6 +638,89 @@ diffusion_sectors_map <- function(df){
   }
 #   return(iframes)
 }
+
+
+make_npv_supply_curve = function(df, years = c(2014,2020,2030,2040,2050)){
+  
+  data = select(df, year, npv4, load_kwh_in_bin, naep,sector) %>%
+    filter(year %in% years) %>%
+    group_by(year) %>%
+    arrange(desc(npv4)) %>%
+    mutate(load_xmax = cumsum(load_kwh_in_bin/naep/1e6)) %>%
+    collect() %>%
+    mutate(load_xmin = 0)
+  
+  # If we chose to shade, this defines the width of the rectangle
+  data[2:nrow(data),'load_xmin'] = data[1:nrow(data)-1,'load_xmax']
+  
+  p = ggplot(data)+
+    geom_line(aes(x = load_xmax,y = npv4, color = factor(year)), size = 2)+
+    #geom_rect(aes(xmin = load_xmin, xmax = load_xmax, ymin = 0, ymax = npv4, color = year), alpha = 1)+
+    scale_y_continuous(name ='Net Present Value ($2014/kW)')+
+    scale_x_continuous(name ='Capacity (GW)')+
+    scale_color_manual(name = 'Year', values = year_colors, labels = names(year_colors)) +
+    ggtitle('') +
+    standard_formatting
+  
+  return(p)
+}
+
+
+make_npv_supply_curve_by_sector = function(df, years = 2014){
+  
+  data = select(df, year, npv4, load_kwh_in_bin, naep,sector) %>%
+    filter(year == years) %>%
+    group_by(year) %>%
+    arrange(desc(npv4)) %>%
+    mutate(load_xmax = cumsum(load_kwh_in_bin/naep/1e6)) %>%
+    collect() %>%
+    mutate(load_xmin = 0)
+  
+  # If we chose to shade, this defines the width of the rectangle-- the xmin starts at the xmax of the previous row 
+  data[2:nrow(data),'load_xmin'] = data[1:nrow(data)-1,'load_xmax']
+  data$sector = sector2factor(data$sector)
+  
+  p = ggplot(data)+
+    #geom_line(aes(x = load_xmax,y = npv4, color = factor(year)), size = 2)+
+    geom_rect(aes(xmin = load_xmin, xmax = load_xmax, ymin = 0, ymax = npv4, fill = sector), alpha = 1)+
+    scale_y_continuous(name ='Net Present Value ($2014/kW)')+
+    scale_x_continuous(name ='Capacity (GW)')+
+    scale_fill_manual(name = 'Sector', values = sector_fil) +
+    ggtitle('') +
+    standard_formatting
+  
+  return(p)
+}
+
+
+make_lcoe_supply_curve = function(df, years = c(2014,2020,2030,2040,2050)){
+  
+  data = select(df, year, lcoe, load_kwh_in_bin, naep,sector) %>%
+    filter(year %in% years) %>%
+    group_by(year) %>%
+    arrange(lcoe) %>%
+    mutate(load_xmax = cumsum(load_kwh_in_bin/naep/1e6)) %>%
+    collect() %>%
+    mutate(load_xmin = 0)
+  
+  # If we chose to shade, this defines the width of the rectangle
+  data[2:nrow(data),'load_xmin'] = data[1:nrow(data)-1,'load_xmax']
+  
+  p = ggplot(data)+
+    geom_line(aes(x = load_xmax,y = lcoe, color = factor(year)), size = 2)+
+    #geom_rect(aes(xmin = load_xmin, xmax = load_xmax, ymin = 0, ymax = npv4, color = year), alpha = 1)+
+    scale_y_continuous(name ='LCOE (c/kWh)')+
+    scale_x_continuous(name ='Capacity (GW)')+
+    scale_color_manual(name = 'Year', values = year_colors, labels = names(year_colors)) +
+    ggtitle('') +
+    standard_formatting +
+    theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust = 0.5))
+  
+  return(p)
+}
+
+
+
 
 
 

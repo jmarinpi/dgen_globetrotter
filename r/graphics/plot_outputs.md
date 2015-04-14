@@ -54,10 +54,13 @@ if (tech == 'wind'){
   dist_of_azimuth_selected(df, start_year)
 }
 ```
-# Resource Potential
+# Supply Curves
 ``` {r Resource_Potential}
 cf_supply_curve(df, start_year)
 elec_rate_supply_curve(df, start_year)
+make_npv_supply_curve(df, years = c(2014,2020,2030,2040,2050))
+make_npv_supply_curve_by_sector(df, years = 2014)
+make_lcoe_supply_curve(df, years = c(2014,2020,2030,2040,2050))
 ```
 
 # Scenario options
