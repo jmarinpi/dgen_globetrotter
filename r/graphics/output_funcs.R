@@ -27,7 +27,7 @@ sector2factor = function(sector_vector){
 
 add_data_source_note = function(g){
   gt <- ggplot_gtable(ggplot_build(g))
-  final_gt = gtable_add_grob(gt, textGrob("Note: \nCumulative data for\n2012 is historical.\nAll other years\nare model outputs.", 
+  final_gt = gtable_add_grob(gt, textGrob("Note: \nCumulative 2012 data\nare historical.\nAll other years\nare model outputs.", 
                                                              y = .11, x = .1, just = 'left',
                                                              #hjust = -.5, vjust = .5, 
                                                              gp=gpar(fontsize=12)), 
