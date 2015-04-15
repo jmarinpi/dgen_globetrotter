@@ -25,8 +25,35 @@ sector2factor = function(sector_vector){
   return(f)
 } 
 
+add_data_source_note = function(g){
+  gt <- ggplot_gtable(ggplot_build(g))
+  final_gt = gtable_add_grob(gt, textGrob("Note: \nCumulative data for\n2012 is historical.\nAll other years\nare model outputs.", 
+                                                             y = .11, x = .1, just = 'left',
+                                                             #hjust = -.5, vjust = .5, 
+                                                             gp=gpar(fontsize=12)), 
+                                                    t = 4, l = 9, r = 10, clip = 'off', name = 'note')
+  return(final_gt)
+}
 
+add_generation_data_source_note = function(g){
+  gt <- ggplot_gtable(ggplot_build(g))
+  final_gt = gtable_add_grob(gt, textGrob("Note: \n2012 data based on\nhistorical installed ca-\npacity. All other years\nare model outputs.", 
+                                          y = .1, x = .1, just = 'left',
+                                          #hjust = -.5, vjust = .5, 
+                                          gp=gpar(fontsize=12)), 
+                             t = 3, l = 5, clip = 'off', name = 'note')
+  return(final_gt)
+}
 
+add_market_cap_data_source_note = function(g){
+  gt <- ggplot_gtable(ggplot_build(g))
+  final_gt = gtable_add_grob(gt, textGrob("Note: \n2012 data based\non historical installed\ncapacity and 2012 PV\ncosts. All other years\nare model outputs.", 
+                                          y = .11, x = .1, just = 'left',
+                                          #hjust = -.5, vjust = .5, 
+                                          gp=gpar(fontsize=12)), 
+                             t = 4, l = 9, r = 10, clip = 'off', name = 'note')
+  return(final_gt)
+}
 
 
 make_con<-function(driver = "PostgreSQL", host, dbname, user, password, port = 5432){
@@ -430,49 +457,61 @@ diffusion_trends<-function(df,runpath,scen_name){
     ggtitle('National Adoption Trends') +
     standard_formatting
   
-  national_installed_capacity_bar <- ggplot(data = subset(combined_data, variable %in% c("nat_installed_capacity_gw")))+
-    geom_bar(aes(x = factor(year), fill = sector, weight = value)) +  
-    facet_wrap(~data_type, scales = 'free') +
-    scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
-    scale_y_continuous(name ='National Installed Capacity (GW)', labels = comma) +
-    expand_limits(weight=0) +
-    scale_x_discrete(name ='Year') +
-    ggtitle('National Installed Capacity (GW)') +
-    standard_formatting
+  # NATIONAL INSTALLED CAPACITY
+  national_installed_capacity_bar <- add_data_source_note(
+                                                          ggplot(data = subset(combined_data, variable %in% c("nat_installed_capacity_gw")))+
+                                                          geom_bar(aes(x = factor(year), fill = sector, weight = value)) +  
+                                                          facet_wrap(~data_type, scales = 'free') +
+                                                          scale_color_manual(values = sector_col) +
+                                                          scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
+                                                          scale_y_continuous(name ='National Installed Capacity (GW)', labels = comma) +
+                                                          expand_limits(weight=0) +
+                                                          scale_x_discrete(name ='Year') +
+                                                          ggtitle('National Installed Capacity (GW)') +
+                                                          standard_formatting
+                                                        )
   
-  national_num_of_adopters_bar <- ggplot(data = subset(combined_data, variable %in% c("nat_number_of_adopters"))) +
-    geom_bar(aes(x = factor(year), fill = sector, weight = value)) +
-    facet_wrap(~data_type, scales = 'free') +
-    scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
-    scale_y_continuous(name ='Number of Adopters', labels = comma) +
-    expand_limits(weight=0) +
-    scale_x_discrete(name ='Year') +
-    ggtitle('National Number of Adopters') +
-    standard_formatting
+  # NATIONAL NUMBER OF ADOPTERS
+  national_num_of_adopters_bar <- add_data_source_note(
+                                                        ggplot(data = subset(combined_data, variable %in% c("nat_number_of_adopters"))) +
+                                                        geom_bar(aes(x = factor(year), fill = sector, weight = value)) +
+                                                        facet_wrap(~data_type, scales = 'free') +
+                                                        scale_color_manual(values = sector_col) +
+                                                        scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
+                                                        scale_y_continuous(name ='Number of Adopters', labels = comma) +
+                                                        expand_limits(weight=0) +
+                                                        scale_x_discrete(name ='Year') +
+                                                        ggtitle('National Number of Adopters') +
+                                                        standard_formatting
+                                                      )
   
-  national_market_cap_bar <- ggplot(subset(combined_data, variable %in% c("nat_market_value"))) +
-    geom_bar(aes(x = factor(year), fill = sector, weight = value/1e9)) +  
-    facet_wrap(~data_type, scales = 'free') +
-    scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
-    scale_y_continuous(name ='Value of Installed Capacity (Billion $)', labels = comma) +
-    expand_limits(weight=0) +
-    scale_x_discrete(name ='Year') +
-    ggtitle('National Value of Installed Capacity (Billion $)') +
-    standard_formatting
+  # NATIONAL MARKET CAP
+  national_market_cap_bar <- add_market_cap_data_source_note(
+                                                    ggplot(subset(combined_data, variable %in% c("nat_market_value"))) +
+                                                    geom_bar(aes(x = factor(year), fill = sector, weight = value/1e9)) +  
+                                                    facet_wrap(~data_type, scales = 'free') +
+                                                    scale_color_manual(values = sector_col) +
+                                                    scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
+                                                    scale_y_continuous(name ='Value of Installed Capacity (Billion $)', labels = comma) +
+                                                    expand_limits(weight=0) +
+                                                    scale_x_discrete(name ='Year') +
+                                                    ggtitle('National Value of Installed Capacity (Billion $)') +
+                                                    standard_formatting
+                                                  )
   
-  national_generation_bar <- ggplot(subset(cumulative_data, variable %in% c("nat_generation_kwh")))+
-    geom_bar(aes(x = factor(year), fill = sector, weight = value/1e9)) +
-    scale_color_manual(values = sector_col) +
-    scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
-    scale_y_continuous(name ='National Annual Generation (TWh)', labels = comma) +
-    expand_limits(weight=0) +
-    scale_x_discrete(name ='Year') +
-    ggtitle('National Annual Generation (TWh)') +
-    standard_formatting
-  
+  # NATIONAL GENERATION
+  national_generation_bar <-  add_generation_data_source_note(
+                                                              ggplot(subset(cumulative_data, variable %in% c("nat_generation_kwh")))+
+                                                              geom_bar(aes(x = factor(year), fill = sector, weight = value/1e9)) +
+                                                              scale_color_manual(values = sector_col) +
+                                                              scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
+                                                              scale_y_continuous(name ='National Annual Generation (TWh)', labels = comma) +
+                                                              expand_limits(weight=0) +
+                                                              scale_x_discrete(name ='Year') +
+                                                              ggtitle('National Annual Generation (TWh)') +
+                                                              standard_formatting
+                                                              )             
+
   list("national_installed_capacity_bar" = national_installed_capacity_bar,
        "national_adopters_trends_bar" = national_adopters_trends_bar,
        "national_num_of_adopters_bar" = national_num_of_adopters_bar,

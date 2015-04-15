@@ -13,6 +13,7 @@ library(jsonlite)
 # library(tidyr)
 library (dplyr,quietly = T)
 library(grid)
+library(gtable)
 
 # use for testing/debugging only:
 # setwd('C:/Users/bsigrin/Desktop/diffusion/python')
