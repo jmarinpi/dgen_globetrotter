@@ -716,8 +716,7 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
     # The sample_cust_and_load_selector is determined by typehuq in (1,2,3) AND kownrent = 1 for recs and pba8 <> 1 
     #  for cbecs. This limits recs to mobilehomes (1) single-family (3 - attached or 2 - detached), owner-occupied 
     # homes and limits cbecs to non-vacant buildings
-    inputs['load_where'] = " AND b.sample_cust_and_load_selector AND '%s' = ANY(b.sector)" % sector_abbr
-    print(inputs['load_where'])
+    inputs['load_where'] = " AND '%s' = b.sector_abbr" % sector_abbr
     if sector_abbr == 'res':
         inputs['load_region'] = 'reportable_domain'
         # lookup table for finding the normalized max demand
@@ -772,7 +771,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
                      %(load_columns)s
              FROM %(schema)s.counties_to_model a
              LEFT JOIN %(load_table)s b
-             ON a.%(load_region) = b.%(load_region)s
+             ON a.%(load_region)s = b.%(load_region)s
              WHERE a.county_id in  (%(chunk_place_holder)s)
                    %(load_where)s
         ),
@@ -793,7 +792,8 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
                     %(load_columns)s
         FROM numbered_samples a
         LEFT JOIN %(load_table)s b
-        ON a.load_id = b.%(load_pkey)s;""" % inputs_dict
+        ON a.load_id = b.%(load_pkey)s
+        %(load_where)s ;""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
     
@@ -1353,6 +1353,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                             '%(schema)s.pt_%(sector_abbr)s_sample_load_applicable_rates_%(i_place_holder)s' % inputs,
                             '%(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s' % inputs                            
                             ]
+
         
     sql = 'DROP TABLE IF EXISTS %s;'
     for intermediate_table in intermediate_tables:
