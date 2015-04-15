@@ -716,7 +716,8 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
     # The sample_cust_and_load_selector is determined by typehuq in (1,2,3) AND kownrent = 1 for recs and pba8 <> 1 
     #  for cbecs. This limits recs to mobilehomes (1) single-family (3 - attached or 2 - detached), owner-occupied 
     # homes and limits cbecs to non-vacant buildings
-    inputs['load_where'] = " AND b.sample_cust_and_load_selector AND b.sector @> '{%s}'" % sector_abbr
+    inputs['load_where'] = " AND b.sample_cust_and_load_selector AND '%s' = ANY(b.sector)" % sector_abbr
+    print(inputs['load_where'])
     if sector_abbr == 'res':
         inputs['load_region'] = 'reportable_domain'
         # lookup table for finding the normalized max demand
@@ -771,7 +772,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
                      %(load_columns)s
              FROM %(schema)s.counties_to_model a
              LEFT JOIN %(load_table)s b
-             ON a.%(load_region)s::text = b.%(load_region)s::text
+             ON a.%(load_region) = b.%(load_region)s
              WHERE a.county_id in  (%(chunk_place_holder)s)
                    %(load_where)s
         ),
