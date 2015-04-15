@@ -2,6 +2,6 @@
 	"dbname": "diffusion_1", 
 	"host": "dnpdb001.bigde.nrel.gov", 
 	"port": "5433",
-	"password": "", 
-	"user": ""
+	"password": "jduckwor", 
+	"user": "jduckwor"
 }
