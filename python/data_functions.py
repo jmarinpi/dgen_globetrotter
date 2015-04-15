@@ -709,24 +709,22 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
     inputs['i_place_holder'] = '%(i)s'
     inputs['chunk_place_holder'] = '%(county_ids)s'
     inputs['seed_str'] = str(seed).replace('.','p')
+    inputs['load_table'] = 'diffusion_shared.cbecs_recs_combined'
+    inputs['load_columns'] = 'b.load_id, b.weight, b.ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft, b.ownocc8'
+    inputs['load_pkey'] = 'load_id'
+    inputs['load_weight_column'] = 'weight'
+    # The sample_cust_and_load_selector is determined by typehuq in (1,2,3) AND kownrent = 1 for recs and pba8 <> 1 
+    #  for cbecs. This limits recs to mobilehomes (1) single-family (3 - attached or 2 - detached), owner-occupied 
+    # homes and limits cbecs to non-vacant buildings
+    inputs['load_where'] = " AND b.sample_cust_and_load_selector AND b.sector @> '{%s}'" % sector_abbr
+    # inputs['load_region'] = 'load_region'
+
     if sector_abbr == 'res':
-        inputs['load_table'] = 'diffusion_shared.eia_microdata_recs_2009'
-        inputs['load_columns'] = 'b.doeid as load_id, b.nweight as weight, b.kwh as ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft, 1 as ownocc8'
-        inputs['load_pkey'] = 'doeid'
-        inputs['load_weight_column'] = 'nweight'
         inputs['load_region'] = 'reportable_domain'
-        # limit to mobilehomes (1) single-family (3 - attached or 2 - detached), owner-occupied homes
-        inputs['load_where'] = ' AND b.typehuq in (1,2,3) AND b.kownrent = 1'
         # lookup table for finding the normalized max demand
         inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_res'
     else:
-        inputs['load_table'] = 'diffusion_shared.eia_microdata_cbecs_2003'
-        inputs['load_columns'] = 'b.pubid8 as load_id, b.adjwt8 as weight, b.elcns8 as ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft, b.ownocc8'
-        inputs['load_pkey'] = 'pubid8'
-        inputs['load_weight_column'] = 'adjwt8'
         inputs['load_region'] = 'census_division_abbr'
-        # limit to non-vacant buildings
-        inputs['load_where'] = " AND b.pba8 <> 1"
         inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_com'
     return inputs
 
@@ -775,7 +773,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
                      %(load_columns)s
              FROM %(schema)s.counties_to_model a
              LEFT JOIN %(load_table)s b
-             ON a.%(load_region)s = b.%(load_region)s
+             ON a.%(load_region)s::text = b.%(load_region)s::text
              WHERE a.county_id in  (%(chunk_place_holder)s)
                    %(load_where)s
         ),
