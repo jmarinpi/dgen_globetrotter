@@ -717,8 +717,6 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
     #  for cbecs. This limits recs to mobilehomes (1) single-family (3 - attached or 2 - detached), owner-occupied 
     # homes and limits cbecs to non-vacant buildings
     inputs['load_where'] = " AND b.sample_cust_and_load_selector AND b.sector @> '{%s}'" % sector_abbr
-    # inputs['load_region'] = 'load_region'
-
     if sector_abbr == 'res':
         inputs['load_region'] = 'reportable_domain'
         # lookup table for finding the normalized max demand
