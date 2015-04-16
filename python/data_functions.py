@@ -703,26 +703,18 @@ def split_counties(cur, schema, npar):
     
     return county_chunks
 
+def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, logger, sector_abbr):
 
-def add_to_inputs_dict(inputs, sector_abbr, seed):
-    
-    inputs['i_place_holder'] = '%(i)s'
-    inputs['chunk_place_holder'] = '%(county_ids)s'
-    inputs['seed_str'] = str(seed).replace('.','p')
-    inputs['load_where'] = " AND '%s' = b.sector_abbr" % sector_abbr
-    inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand'
+
+    inputs_dict['chunk_place_holder'] = '%(county_ids)s'
+    inputs_dict['load_where'] = " AND '%s' = b.sector_abbr" % sector_abbr
+    # lookup table for finding the normalized max demand
+    inputs_dict['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand'
     if sector_abbr == 'res':
-        inputs['load_region'] = 'reportable_domain'
-        # lookup table for finding the normalized max demand
-        # inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_res'
+        inputs_dict['load_region'] = 'reportable_domain'
     else:
-        inputs['load_region'] = 'census_division_abbr'
-        # inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_com'
-    return inputs
+        inputs_dict['load_region'] = 'census_division_abbr'
 
-
-def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, logger):
-    
     #==============================================================================
     #     randomly sample  N points from each county 
     #==============================================================================    
@@ -1039,8 +1031,9 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                            preprocess, npar, pg_conn_string, rate_structure, logger):
 
     # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs_init = locals().copy()  
-    inputs = add_to_inputs_dict(inputs_init, sector_abbr, seed)
+    inputs = locals().copy()  
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['seed_str'] = str(seed).replace('.','p')
         
     msg = "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
     logger.info(msg)
@@ -1060,7 +1053,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     #==============================================================================
     #     sample customer locations and load. and link together    
     #==============================================================================
-    sample_customers_and_load(inputs, county_chunks, npar, pg_conn_string, logger)
+    sample_customers_and_load(inputs, county_chunks, npar, pg_conn_string, logger, sector_abbr)
 
     #==============================================================================
     #     get rate for each customer bin
@@ -1447,8 +1440,9 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                            preprocess, npar, pg_conn_string, rate_structure, logger):
 
     # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs_init = locals().copy()  
-    inputs = add_to_inputs_dict(inputs_init, sector_abbr, seed)
+    inputs = locals().copy()
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['seed_str'] = str(seed).replace('.','p')
         
     msg = "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
     logger.info(msg)
@@ -1469,7 +1463,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     #==============================================================================
     #     sample customer locations and load. and link together    
     #==============================================================================
-    sample_customers_and_load(inputs, county_chunks, npar, pg_conn_string, logger)
+    sample_customers_and_load(inputs, county_chunks, npar, pg_conn_string, logger, sector_abbr)
     
     #==============================================================================
     #     get rate for each cusomter bin
