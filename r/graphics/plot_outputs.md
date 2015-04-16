@@ -8,10 +8,14 @@
 # Diffusion
 ```{r Diffusion}
 out<-diffusion_trends(df,runpath,scen_name)
-out$national_installed_capacity_bar
-out$national_num_of_adopters_bar
-out$national_market_cap_bar
-out$national_generation_bar
+grid.draw(out$national_installed_capacity_bar)
+grid.newpage()
+grid.draw(out$national_num_of_adopters_bar)
+grid.newpage()
+grid.draw(out$national_market_cap_bar)
+grid.newpage()
+grid.draw(out$national_generation_bar)
+grid.newpage()
 print_table(total_value_by_state_table(df,'installed_capacity', unit_factor = 0.001), caption = "Installed Capacity (MW)")
 print_table(mean_value_by_state_table(df,'market_share'), caption = "Mean Adoption Share")
 out$national_adopters_trends_bar
