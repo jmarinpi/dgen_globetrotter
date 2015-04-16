@@ -709,13 +709,6 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
     inputs['i_place_holder'] = '%(i)s'
     inputs['chunk_place_holder'] = '%(county_ids)s'
     inputs['seed_str'] = str(seed).replace('.','p')
-    inputs['load_table'] = 'diffusion_shared.cbecs_recs_combined'
-    inputs['load_columns'] = 'b.load_id, b.weight, b.ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft, b.ownocc8'
-    inputs['load_pkey'] = 'load_id'
-    inputs['load_weight_column'] = 'weight'
-    # The sample_cust_and_load_selector is determined by typehuq in (1,2,3) AND kownrent = 1 for recs and pba8 <> 1 
-    #  for cbecs. This limits recs to mobilehomes (1) single-family (3 - attached or 2 - detached), owner-occupied 
-    # homes and limits cbecs to non-vacant buildings
     inputs['load_where'] = " AND '%s' = b.sector_abbr" % sector_abbr
     if sector_abbr == 'res':
         inputs['load_region'] = 'reportable_domain'
@@ -768,9 +761,9 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
          WITH all_bins AS
          (
              SELECT a.county_id, 
-                     %(load_columns)s
+                     b.load_id, b.weight, b.ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft, b.ownocc8
              FROM %(schema)s.counties_to_model a
-             LEFT JOIN %(load_table)s b
+             LEFT JOIN diffusion_shared.cbecs_recs_combined b
              ON a.%(load_region)s = b.%(load_region)s
              WHERE a.county_id in  (%(chunk_place_holder)s)
                    %(load_where)s
@@ -789,10 +782,10 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
             FROM sampled_bins a
         )
         SELECT  a.county_id, a.bin_id,
-                    %(load_columns)s
+                    b.load_id, b.weight, b.ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft, b.ownocc8
         FROM numbered_samples a
-        LEFT JOIN %(load_table)s b
-        ON a.load_id = b.%(load_pkey)s
+        LEFT JOIN diffusion_shared.cbecs_recs_combined b
+        ON a.load_id = b.load_id
         %(load_where)s ;""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
