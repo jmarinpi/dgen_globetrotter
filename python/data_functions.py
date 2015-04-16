@@ -710,13 +710,14 @@ def add_to_inputs_dict(inputs, sector_abbr, seed):
     inputs['chunk_place_holder'] = '%(county_ids)s'
     inputs['seed_str'] = str(seed).replace('.','p')
     inputs['load_where'] = " AND '%s' = b.sector_abbr" % sector_abbr
+    inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand'
     if sector_abbr == 'res':
         inputs['load_region'] = 'reportable_domain'
         # lookup table for finding the normalized max demand
-        inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_res'
+        # inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_res'
     else:
         inputs['load_region'] = 'census_division_abbr'
-        inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_com'
+        # inputs['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand_com'
     return inputs
 
 
