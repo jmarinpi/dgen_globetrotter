@@ -2720,7 +2720,7 @@ def summarise_solar_resource_by_ts_and_pca_reg(df, con):
     # Query the solar resource by pca, tilt, azimuth, & timeslice and rename columns e.g. at this point resource has already been averaged over solar_re_9809_gid 
     resource = pd.read_sql("SELECT * FROM diffusion_solar.solar_resource_by_pca_summary;", con)
     resource.drop('npoints', axis =1, inplace = True)
-    resource['pca'] = 'p' + resource.pca.map(str)
+    resource['pca_reg'] = 'p' + resource.pca_reg.map(str)
     resource.columns = ['pca_reg','tilt','azimuth','H1','H2','H3','H4','H5','H6','H7','H8','H9','H10','H11','H12','H13','H14','H15','H16','H17']
 
     # Determine the percentage of adopters that have selected a given azimuth/tilt combination in the pca
