@@ -65,7 +65,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             market_last_year_ind = None
             market_last_year_com = None
             # Read in ReEDS UPV Capital Costs
-            Convert2004_dollars = 1.2343 #Conversion from 2004$ to 2013$
+            Convert2004_dollars = 1.254 #Conversion from 2004$ to 2014$
             ReEDS_PV_CC = ReEDS_inputs['UPVCC_all']
             ReEDS_PV_CC.columns = ['year','Capital_Cost']
             ReEDS_PV_CC.year = ReEDS_PV_CC.year.convert_objects(convert_numeric=True)

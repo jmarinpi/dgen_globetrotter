@@ -53,7 +53,6 @@ if __name__ == '__main__':
     year = int(year)
     
     endyr_ReEDS = sys.argv[2]
-    print endyr_ReEDS
     endyr_ReEDS = int(endyr_ReEDS)
     
     # Path to current ReEDS run
