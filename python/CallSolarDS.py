@@ -22,15 +22,26 @@ def main(year, endyr_ReEDS, reeds_path, gams_path):
     import dgen_model
     
     # Run SolarDS
-    df = dgen_model.main(mode = 'ReEDS', resume_year = year, endyear = endyr_ReEDS, ReEDS_inputs = ReEDS_df)
+    df, cf_by_pca_and_ts = dgen_model.main(mode = 'ReEDS', resume_year = year, endyear = endyr_ReEDS, ReEDS_inputs = ReEDS_df)
     df = df[(df['year'] == year)]
-    df.to_csv("temp.csv")
+
     SolarDSPVcapacity = 0.001* df.groupby('pca_reg')['installed_capacity'].sum() # Convert output from kW to MW and sum to the PCA level   
-    SolarDSPVcapacity = SolarDSPVcapacity.reset_index()    
+    SolarDSPVcapacity = SolarDSPVcapacity.reset_index()
+    
+    # Calculate mean retail rate weighted by population
+    df['prod'] = df['customers_in_bin'] * df['cost_of_elec_dols_per_kwh']
+    grouped = df[['pca_reg', 'cost_of_elec_dols_per_kwh', 'customers_in_bin','prod']].groupby('pca_reg').sum() 
+    grouped['mean_retail_rate'] = grouped['prod']/grouped['customers_in_bin']
+    mean_retail_rate = grouped.reset_index().drop(['cost_of_elec_dols_per_kwh', 'customers_in_bin','prod'], axis =1)
     
     # The data column has to be named "value" in order for gdxpds to work properly
     SolarDSPVcapacity = SolarDSPVcapacity.rename(columns = {'installed_capacity':'value'})
-    data = {'SolarDSPVcapacity': SolarDSPVcapacity}
+    cf_by_pca_and_ts = cf_by_pca_and_ts.rename(columns = {'cf':'value'})
+    mean_retail_rate = mean_retail_rate.rename(columns = {'mean_retail_rate':'value'})
+    
+    data = {'SolarDSPVcapacity': SolarDSPVcapacity,
+            'cf_by_pca_and_ts': cf_by_pca_and_ts,
+            'mean_retail_rate': mean_retail_rate}
     
     gdxfile_out = reeds_path + "/gdxfiles/SolarDS_Output_%s.gdx" % year
     

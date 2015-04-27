@@ -377,14 +377,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             
             if mode == 'ReEDS':
                 reeds_out = datfunc.combine_outputs_reeds(schema, sectors, cur, con)
-                #r = reeds_out.groupby('pca_reg')['installed_capacity'].sum()
+                cf_by_pca_and_ts = datfunc.summarise_solar_resource_by_ts_and_pca_reg(reeds_out, con)
+                
                 market_last_year_res.to_pickle("market_last_year_res.pkl")
                 market_last_year_ind.to_pickle("market_last_year_ind.pkl")
                 market_last_year_com.to_pickle("market_last_year_com.pkl")
                 saved_vars = {'out_dir': out_dir, 'input_scenarios':input_scenarios}
                 with open('saved_vars.pickle', 'wb') as handle:
                     pickle.dump(saved_vars, handle)  
-                return reeds_out
+                return reeds_out, cf_by_pca_and_ts
                 
         if len(input_scenarios) > 1:
             # assemble report to compare scenarios
