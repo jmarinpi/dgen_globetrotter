@@ -638,20 +638,40 @@ diffusion_all_map <- function(df){
   # make sure states are treated as character and not factor
   diffusion_all$State = as.character(diffusion_all$State)
   # create the map
-  map = anim_choro_multi(diffusion_all, 'State', 
-                         c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity', 'Annual.Generation'),
-                         pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds', Annual.Generation = 'YlOrRd'),
-                         ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5, Annual.Generation = 5), 
-                         classification = 'quantile',
-                         height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
-                         legend = T, labels = T, 
-                         slider_var = 'Year', slider_step = 2, map_title = 'Diffusion (Total)', horizontal_legend = F, slider_width = 300,
-                         legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
-                                              Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (MW)',
-                                              Annual.Generation = 'Annual Generation (GWh)'))
-  # save the map
-  showIframeSrc(map, cdn = T)
-}
+#   map = anim_choro_multi(diffusion_all, 'State', 
+#                          c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity', 'Annual.Generation'),
+#                          pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds', Annual.Generation = 'YlOrRd'),
+#                          ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5, Annual.Generation = 5), 
+#                          classification = 'quantile',
+#                          height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
+#                          legend = T, labels = T, 
+#                          slider_var = 'Year', slider_step = 2, map_title = 'Diffusion (Total)', horizontal_legend = F, slider_width = 300,
+#                          legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
+#                                               Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (MW)',
+#                                               Annual.Generation = 'Annual Generation (GWh)'))
+#   #save the map
+#   showIframeSrc(map, cdn = T)
+  
+  
+  baseDir <- '/Users/jduckwor/Desktop'
+  valueVarConfigs <- list(
+    c('Market.Share', 'Market Share', 'Blues', '%'), 
+    c('Market.Value', 'Market Value', 'Greens', '$'), 
+    c('Number.of.Adopters', 'Number of Adopters', 'Purples', 'Count'), 
+    c('Installed.Capacity', 'Installed Capacity', 'Reds', 'MW'),
+    c('Annual.Generation', 'Annual Generation', 'YlOrRd', 'GWh'))
+  
+  r_js_viz(data=diffusion_all,
+     valueVarSettings=valueVarConfigs, 
+     timeSettings=c('Year', 'Year'), 
+     geogSettings=c('State', 'State'), 
+     compiledHTML=file.path(baseDir, 'outputs/standardGeomViz.html'),
+     map='United States of America, mainland',
+     nclasses=5,
+     classification='quantile',
+     tooltipPrecision=0,
+     chart1Fixed=FALSE)
+  }
 
 
 diffusion_sectors_map <- function(df){
@@ -675,19 +695,27 @@ diffusion_sectors_map <- function(df){
     # make sure states are treated as character and not factor
     diffusion_sector$State = as.character(diffusion_sector$State)
     # create the map
-    map = anim_choro_multi(diffusion_sector, 'State', 
-                           c('Market.Share','Market.Value', 'Number.of.Adopters', 'Installed.Capacity', 'Annual.Generation'),
-                           pals = list(Market.Share = 'Blues', Market.Value = 'Greens', Number.of.Adopters = 'Purples', Installed.Capacity = 'Reds', Annual.Generation = 'YlOrRd'),
-                           ncuts = list(Market.Share = 5, Market.Value = 5, Number.of.Adopters = 5, Installed.Capacity = 5, Annual.Generation = 5), 
-                           classification = 'quantile',
-                           height = 400, width = 800, scope = 'usa', label_precision = 0, big.mark = ',',
-                           legend = T, labels = T, 
-                           slider_var = 'Year', slider_step = 2, map_title = sprintf('Diffusion (%s)',toProper(current_sector)), horizontal_legend = F, slider_width = 300,
-                           legend_titles = list(Market.Share = 'Market Share (%)', Market.Value = 'Market Value ($)',
-                                                Number.of.Adopters = 'Number of Adopters (Count)', Installed.Capacity = 'Installed Capacity (MW)',
-                                                Annual.Generation = 'Annual Generation (GWh)'))
-    # save the map
-    showIframeSrc(map, cdn = T)
+
+    
+    baseDir <- '/Users/jduckwor/Desktop'
+    valueVarConfigs <- list(
+      c('Market.Share', 'Market Share', 'Blues', '%'), 
+      c('Market.Value', 'Market Value', 'Greens', '$'), 
+      c('Number.of.Adopters', 'Number of Adopters', 'Purples', 'Count'), 
+      c('Installed.Capacity', 'Installed Capacity', 'Reds', 'MW'),
+      c('Annual.Generation', 'Annual Generation', 'YlOrRd', 'GWh'))
+    
+    r_js_viz(data=diffusion_sector,
+       valueVarSettings=valueVarConfigs, 
+       timeSettings=c('Year', 'Year'), 
+       geogSettings=c('State', 'State'), 
+       compiledHTML=file.path(baseDir, 'outputs/standardGeomViz.html'),
+       map='United States of America, mainland',
+       nclasses=5,
+       classification='quantile',
+       tooltipPrecision=0,
+       chart1Fixed=FALSE)
+  
   }
 #   return(iframes)
 }
