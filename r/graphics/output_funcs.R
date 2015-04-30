@@ -652,8 +652,6 @@ diffusion_all_map <- function(df){
 #   #save the map
 #   showIframeSrc(map, cdn = T)
   
-  
-  baseDir <- '/Users/jduckwor/Desktop'
   valueVarConfigs <- list(
     c('Market.Share', 'Market Share', 'Blues', '%'), 
     c('Market.Value', 'Market Value', 'Greens', '$'), 
@@ -661,11 +659,12 @@ diffusion_all_map <- function(df){
     c('Installed.Capacity', 'Installed Capacity', 'Reds', 'MW'),
     c('Annual.Generation', 'Annual Generation', 'YlOrRd', 'GWh'))
   
+  newMapParams <- "title: {floating: true, text: 'Diffusion (Total)', align: 'center', y: 50, style: {'fontSize': '32px', 'fontFamily': 'Verdana'}}"
   r_js_viz(data=diffusion_all,
      valueVarSettings=valueVarConfigs, 
      timeSettings=c('Year', 'Year'), 
-     geogSettings=c('State', 'State'), 
-     compiledHTML=file.path(baseDir, 'outputs/standardGeomViz.html'),
+     geogSettings=c('State', 'State'),
+     mapParams=newMapParams,
      map='United States of America, mainland',
      nclasses=5,
      classification='quantile',
@@ -689,7 +688,9 @@ diffusion_sectors_map <- function(df){
                                          Annual.Generation =  sum(((number_of_adopters-initial_number_of_adopters) * aep) + (0.23 * 8760 * initial_capacity_mw * 1000))/1e6
                                         )
                               )
-
+    
+    newMapParams <- paste0("title: {floating: true, text: '", sprintf('Diffusion (%s)',toProper(current_sector)), "', y: 50, align: 'center', style: {'fontSize': '28px', 'fontFamily': 'Verdana'}}")
+    
     # reset variable names
     names(diffusion_sector)[1:2] = c('State','Year')
     # make sure states are treated as character and not factor
@@ -697,7 +698,6 @@ diffusion_sectors_map <- function(df){
     # create the map
 
     
-    baseDir <- '/Users/jduckwor/Desktop'
     valueVarConfigs <- list(
       c('Market.Share', 'Market Share', 'Blues', '%'), 
       c('Market.Value', 'Market Value', 'Greens', '$'), 
@@ -709,12 +709,13 @@ diffusion_sectors_map <- function(df){
        valueVarSettings=valueVarConfigs, 
        timeSettings=c('Year', 'Year'), 
        geogSettings=c('State', 'State'), 
-       compiledHTML=file.path(baseDir, 'outputs/standardGeomViz.html'),
+       mapParams=newMapParams,
        map='United States of America, mainland',
        nclasses=5,
        classification='quantile',
        tooltipPrecision=0,
        chart1Fixed=FALSE)
+    
   
   }
 #   return(iframes)

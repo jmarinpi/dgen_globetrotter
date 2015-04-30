@@ -21,19 +21,19 @@ library(gtable)
 # setwd('S:/mgleason/DG_Wind/diffusion_repo/python')
 setwd('/Users/jduckwor/WorkRelated/managed_code/diffusion/python')
 
-source("../r/graphics/output_funcs.R")
-source('../r/maps/map_functions.R', chdir = T)
+# source('../r/maps/map_functions.R', chdir = T)
 source("../r/maps/r2js/r2js.R")
+source("../r/graphics/output_funcs.R")
 
-runpath<-'/Users/jduckwor/WorkRelated/managed_code/diffusion/runs_solar/results_20150422_074738/dSolar'
-scen_name<-'solar_test'
-tech = 'solar'
-schema = 'diffusion_solar'
+# runpath<-'/Users/jduckwor/WorkRelated/managed_code/diffusion/runs_solar/results_20150422_074738/dSolar'
+# scen_name<-'solar_test'
+# tech = 'solar'
+# schema = 'diffusion_solar'
 
-# runpath<-commandArgs(T)[1]
-# scen_name<-commandArgs(T)[2]
-# tech = commandArgs(T)[3]
-# schema = commandArgs(T)[4]
+runpath<-commandArgs(T)[1]
+scen_name<-commandArgs(T)[2]
+tech = commandArgs(T)[3]
+schema = commandArgs(T)[4]
 
 # get pg connection params
 pg_params = fromJSON(txt = '../python/pg_params.json')
@@ -62,40 +62,7 @@ report_title = sprintf('d%s Report', tech)
 report_filepath = sprintf('%s/d%s_Report.html', runpath, tech)
 opts_chunk$set(fig.path = sprintf('%s/figure/',runpath ))
 source("../r/graphics/output_funcs.R")
+source("../r/maps/r2js/r2js.R")
 knit2html("../r/graphics/plot_outputs.md", output = report_filepath, title = report_title, 
             stylesheet = "../r/graphics/plot_outputs.css",
             options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
-
-#########################
-## DEBUG
-g = group_by(df, state_abbr, year)
-diffusion_all = collect(summarise(g,
-                                  Market.Share = sum(number_of_adopters)/sum(customers_in_bin)*100,
-                                  Market.Value = sum(market_value),
-                                  Number.of.Adopters = sum(number_of_adopters),
-                                  Installed.Capacity = sum(installed_capacity)/1000,
-                                  Annual.Generation =  sum(((number_of_adopters-initial_number_of_adopters) * aep) + (0.23 * 8760 * initial_capacity_mw * 1000))/1e6
-)
-)
-baseDir <- '/Users/jduckwor/WorkRelated/managed_code/diffusion/r/maps/r2js'
-valueVarConfigs <- list(
-  c('Market.Share', 'Market Share', 'Blues', '%'), 
-  c('Market.Value', 'Market Value', 'Greens', 'USD'), 
-  c('Number.of.Adopters', 'Number of Adopters', 'Purples', '#'), 
-  c('Installed.Capacity', 'Installed Capacity', 'Reds', 'MW'),
-  c('Annual.Generation', 'Annual Generation', 'YlOrRd', 'MW'))
-
-# names(diffusion_all)
-
-r_js_viz(data=diffusion_all,
-         valueVarSettings=valueVarConfigs, 
-         timeSettings=c('year', 'Year'), 
-         geogSettings=c('state_abbr', 'State'), 
-         compiledHTML=file.path(baseDir, 'outputs/standardGeomViz.html'),
-         map='United States of America, mainland',
-         chart1Fixed=FALSE)
-#############################
-
-# disconnect from Postgres
-dbDisconnect(con)
-

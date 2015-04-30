@@ -139,7 +139,7 @@ fListToString <- function(df, valueVarList, nclasses, classification, legendPrec
   fieldString
 }
 
-r_js_viz <- function (data, valueVarSettings, timeSettings, geogSettings, nclasses=5, classification='equal', mapParams='', chart1Type='line', chart1Params='', chart1Fixed=TRUE, chart2Type='column', chart2Params='', chart2Fixed=TRUE, mapGroup='Countries', map='United States of America', joinField='hc-a2', tooltipPrecision=2, legendPrecision=2, displayInBrowser=FALSE, compiledHTML="finalviz.html", geoJSON=NULL) {
+r_js_viz <- function (data, valueVarSettings, timeSettings, geogSettings, nclasses=5, classification='equal', mapParams='', chart1Type='line', chart1Params='', chart1Fixed=TRUE, chart2Type='column', chart2Params='', chart2Fixed=TRUE, mapGroup='Countries', map='United States of America', joinField='hc-a2', tooltipPrecision=2, legendPrecision=2, displayInBrowser=FALSE, compiledHTML=NULL, geoJSON=NULL) {
   
   columns <- c(geogSettings[1], timeSettings[1])
   #flag for whether all columns exist in data frame
@@ -181,7 +181,7 @@ r_js_viz <- function (data, valueVarSettings, timeSettings, geogSettings, nclass
   
   #runs script if columns, rows, and packages all check out, otherwise prints message to console that script was aborted
   if (columnsCheck&&rowsCheck&&packagesCheck) {
-    require(classInt)
+    require(classInt, quietly=T)
     require(RColorBrewer)
         
     valueVarString <- fListToString(data, valueVarSettings, nclasses, classification, legendPrecision)
@@ -292,7 +292,6 @@ r_js_viz <- function (data, valueVarSettings, timeSettings, geogSettings, nclass
   data <- data[, columnsToViz]
   
   baseDir <- file.path(getwd(), '../maps/r2js')
-#   print(baseDir)
   dataJSON <- df2json(data, geogSettings)
   dataJSON <- paste("var data_raw = ", dataJSON, ";")
   JSONdata <- paste(mapOptionsJSON, mapDefaultsJSON, chartOptionsJSON, chartDefaultsJSON, chart2OptionsJSON, chart2DefaultsJSON, globalDefaultsJSON, dataJSON)
@@ -333,16 +332,19 @@ r_js_viz <- function (data, valueVarSettings, timeSettings, geogSettings, nclass
   page <- gsub(pattern="/*chartview*/", replacement=chartview, x=page, fixed=TRUE)
   page <- gsub(pattern="/*selectview*/", replacement=selectview, x=page, fixed=TRUE)
   page <- gsub(pattern="/*app_edit*/", replacement=app_edit, x=page, fixed=TRUE)
-  
-#   cat(page, file=compiledHTML, append=FALSE)
-#   rm(page)
+
+  if (!is.null(compiledHTML)) {
+    cat(page, file=compiledHTML, append=FALSE)
+  }
+
   } else {
     show("SCRIPT ABORTED")
   }
   
   tmp <- URLencode(page)
   cat('<iframe src="data:text/html;charset=utf-8,', tmp ,
-    '" style="border: none; seamless:seamless; width: 1000px; height: 700px"></iframe><br/><br/>')
+    '" style="border: none; seamless:seamless; width: 1250px; height: 750px"></iframe><br/><br/>')
+
 }
 
 
