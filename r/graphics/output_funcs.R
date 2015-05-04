@@ -712,7 +712,7 @@ make_npv_supply_curve = function(df, years = c(2014,2020,2030,2040,2050)){
     scale_y_continuous(name ='Net Present Value ($2014/kW)')+
     scale_x_continuous(name ='Capacity (GW)')+
     scale_color_manual(name = 'Year', values = year_colors, labels = names(year_colors)) +
-    ggtitle('') +
+    ggtitle('Net Present Value per kW ($/kW)\n Assuming 4% discount rate') +
     standard_formatting +
     theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5))
   
@@ -740,7 +740,7 @@ make_npv_supply_curve_by_sector = function(df, years = 2014){
     scale_y_continuous(name ='Net Present Value ($2014/kW)')+
     scale_x_continuous(name ='Capacity (GW)')+
     scale_fill_manual(name = 'Sector', values = sector_fil) +
-    ggtitle('') +
+    ggtitle('Net Present Value per kW ($/kW)\n Assuming 4% discount rate') +
     standard_formatting +
     theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5))
   
@@ -764,7 +764,7 @@ make_lcoe_supply_curve = function(df, years = c(2014,2020,2030,2040,2050)){
   p = ggplot(data)+
     geom_line(aes(x = load_xmax,y = lcoe, color = factor(year)), size = 2)+
     #geom_rect(aes(xmin = load_xmin, xmax = load_xmax, ymin = 0, ymax = npv4, color = year), alpha = 1)+
-    scale_y_continuous(name ='LCOE (c/kWh)')+
+    scale_y_continuous(name ='LCOE (c/kWh)', limits =c(0,min(max(1.2*data$lcoe),100)), breaks = seq(0,min(max(1.2*data$lcoe),100),5))+
     scale_x_continuous(name ='Capacity (GW)')+
     scale_color_manual(name = 'Year', values = year_colors, labels = names(year_colors)) +
     ggtitle('') +
