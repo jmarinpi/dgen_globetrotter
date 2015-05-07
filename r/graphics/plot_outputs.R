@@ -66,3 +66,5 @@ source("../r/maps/r2js/r2js.R")
 knit2html("../r/graphics/plot_outputs.md", output = report_filepath, title = report_title, 
             stylesheet = "../r/graphics/plot_outputs.css",
             options = c("hard_wrap", "use_xhtml", "base64_images", "toc"))
+
+dbDisconnect(con)
