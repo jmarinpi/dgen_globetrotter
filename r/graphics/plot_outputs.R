@@ -19,7 +19,7 @@ library(gtable)
 # setwd('C:/Users/bsigrin/Desktop/diffusion/python')
 # setwd('/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/python')
 # setwd('S:/mgleason/DG_Wind/diffusion_repo/python')
-setwd('/Users/jduckwor/WorkRelated/managed_code/diffusion/python')
+# setwd('/Users/jduckwor/WorkRelated/managed_code/diffusion/python')
 
 # source('../r/maps/map_functions.R', chdir = T)
 source("../r/maps/r2js/r2js.R")

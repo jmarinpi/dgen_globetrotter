@@ -676,7 +676,7 @@ diffusion_all_map <- function(df){
 diffusion_sectors_map <- function(df){
   # aggregate the data
   # get the unique sectors in the table
-  sectors = collect(summarise(df, distinct(sector)))[,1]
+  sectors <- collect(summarise(df, distinct(sector)))[[1]]
   for (current_sector in sectors){
     f = filter(df, sector == current_sector)
     g = group_by(f, state_abbr, year)
