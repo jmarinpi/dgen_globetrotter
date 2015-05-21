@@ -16,13 +16,17 @@ def main(year, endyr_ReEDS, reeds_path, gams_path):
     # Pull the SolarDS inputs from ReEDS
     ReEDS_df = gdxpds.to_dataframes(gdxfile_in, gams_path)
     
+    # Set the method of applying curtailments to DER generation-- 'net' or 'gross'
+    curtailment_method = 'net'
+    
     # Change working directory to where SolarDS is (must be done before importing dgen_model)
     os.chdir('../SolarDS/python')
 
     import dgen_model
     
     # Run SolarDS
-    df, cf_by_pca_and_ts = dgen_model.main(mode = 'ReEDS', resume_year = year, endyear = endyr_ReEDS, ReEDS_inputs = ReEDS_df)
+    ReEDS_inputs = {'ReEDS_df': ReEDS_df, 'curtailment_method':curtailment_method}
+    df, cf_by_pca_and_ts = dgen_model.main(mode = 'ReEDS', resume_year = year, endyear = endyr_ReEDS, ReEDS_inputs = ReEDS_inputs)
     df = df[(df['year'] == year)]
 
     SolarDSPVcapacity = 0.001* df.groupby('pca_reg')['installed_capacity'].sum() # Convert output from kW to MW and sum to the PCA level   

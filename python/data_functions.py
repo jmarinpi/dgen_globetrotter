@@ -366,7 +366,8 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
                 'market_value',
                 'first_year_bill_with_system',
                 'first_year_bill_without_system',
-                'npv4']    
+                'npv4',
+                'excess_generation_percent']    
     # convert formatting of fields list
     fields_str = pylist_2_pglist(fields).replace("'","")       
     # open an in memory stringIO file (like an in memory csv)
@@ -380,10 +381,7 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
     # commit the additions and close the stringio file (clears memory)
     con.commit()    
     s.close()
-    
-
-    
-    
+     
 def p_execute(pg_conn_string, sql):
     try:
         # create cursor and connection
@@ -439,7 +437,8 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.ic, a.metric, a.metric_value, a.lcoe, a.max_market_share, 
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, a.npv4,
+                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, 
+                    a.npv4, a.excess_generation_percent,
 
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id,
@@ -526,7 +525,8 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     a.ic, a.metric, a.metric_value, a.lcoe, a.max_market_share, 
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, a.npv4,
+                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, 
+                    a.npv4, a.excess_generation_percent,
 
                     
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
@@ -607,7 +607,8 @@ def combine_outputs_reeds(schema, sectors, cur, con):
                     a.micro_id, a.county_id, a.bin_id, a.year, a.new_capacity, a.installed_capacity, 
                     b.azimuth,b.tilt,b.customers_in_bin,
                     b.state_abbr, b.pca_reg, b.reeds_reg,
-                    (b.rate_escalation_factor * a.first_year_bill_without_system)/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh
+                    (b.rate_escalation_factor * a.first_year_bill_without_system)/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
+                    a.excess_generation_percent
                                         
                     FROM %(schema)s.outputs_%(sector_abbr)s a
                     
@@ -2011,7 +2012,9 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, techno
              (
                 uid integer,
                 elec_cost_with_system_year1 NUMERIC,
-                elec_cost_without_system_year1 NUMERIC
+                elec_cost_without_system_year1 NUMERIC,
+                excess_generation_percent NUMERIC
+                
              );
              """ % inputs_dict
     cur.execute(sql)
@@ -2020,7 +2023,7 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, techno
     # open an in memory stringIO file (like an in memory csv)
     s = StringIO()
     # write the data to the stringIO
-    sam_results_df[['uid','elec_cost_with_system_year1','elec_cost_without_system_year1']].to_csv(s, index = False, header = False)
+    sam_results_df[['uid','elec_cost_with_system_year1','elec_cost_without_system_year1','excess_generation_percent']].to_csv(s, index = False, header = False)
     # seek back to the beginning of the stringIO file
     s.seek(0)
     # copy the data from the stringio file to the postgres table
@@ -2045,7 +2048,8 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, techno
                     
                     SELECT a.county_id, a.bin_id, a.year, 
                         c.elec_cost_with_system_year1 as first_year_bill_with_system, 
-                        c.elec_cost_without_system_year1 as first_year_bill_without_system
+                        c.elec_cost_without_system_year1 as first_year_bill_without_system,
+                        c.excess_generation_percent as excess_generation_percent
                     FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year a
                 
                     LEFT JOIN %(schema)s.unique_rate_gen_load_combinations b
@@ -2213,7 +2217,7 @@ def get_main_dataframe(con, sector_abbr, schema, year):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs_dict = locals().copy()     
     
-    sql = """SELECT a.*, b.first_year_bill_with_system, b.first_year_bill_without_system
+    sql = """SELECT a.*, b.first_year_bill_with_system, b.first_year_bill_without_system, b.excess_generation_percent
             FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year a
             LEFT JOIN %(schema)s.pt_%(sector_abbr)s_elec_costs b
                     ON a.county_id = b.county_id
@@ -2740,6 +2744,21 @@ def summarise_solar_resource_by_ts_and_pca_reg(df, con):
     d.drop(['tilt','installed_capacity'], axis = 1, inplace = True)
     
     return d
+
+def excess_generation_percent(row, con, gen):
+    ''' Function to calculate percent of excess generation given 8760-lists of 
+    consumption and generation. Currently function is configured to work only with
+    the rate_input_df to avoid pulling generation and consumption profiles
+    '''
+
+    annual_generation = sum(row[gen])
+
+    # Determine the annual amount of generation (kWh) that exceeds consumption,
+    # and must be sold to the grid to receive value
+    annual_excess_gen = sum(np.maximum(row[gen] - row[con],0))
+    row['excess_generation_percent'] = annual_excess_gen / annual_generation # unitless (kWh/kWh)
+
+    return row
     
 def code_profiler(out_dir):
     lines = [ line for line in open(out_dir + '/dg_model.log') if 'took:' in line]
