@@ -9,22 +9,19 @@ import gdxpds
 import pandas as pd
 import os
 
-def main(year, endyr_ReEDS, reeds_path, gams_path):
-    # Path to the gdx files that hold the SolarDS inputs
-    gdxfile_in = reeds_path + "/gdxfiles/SolarDS_Input_%s.gdx" % year
+def main(year, endyr_ReEDS, reeds_path, gams_path, curtailment_method):
+    # Path to the gdx files that hold the dSolar inputs
+    gdxfile_in = reeds_path + "/gdxfiles/dSolar_Input_%s.gdx" % year
     
-    # Pull the SolarDS inputs from ReEDS
+    # Pull the dSolar inputs from ReEDS
     ReEDS_df = gdxpds.to_dataframes(gdxfile_in, gams_path)
     
-    # Set the method of applying curtailments to DER generation-- 'net' or 'gross'
-    curtailment_method = 'net'
-    
-    # Change working directory to where SolarDS is (must be done before importing dgen_model)
+    # Change working directory to where dSolar is (must be done before importing dgen_model)
     os.chdir('../SolarDS/python')
 
     import dgen_model
     
-    # Run SolarDS
+    # Run dSolar
     ReEDS_inputs = {'ReEDS_df': ReEDS_df, 'curtailment_method':curtailment_method}
     df, cf_by_pca_and_ts = dgen_model.main(mode = 'ReEDS', resume_year = year, endyear = endyr_ReEDS, ReEDS_inputs = ReEDS_inputs)
     df = df[(df['year'] == year)]
@@ -39,20 +36,20 @@ def main(year, endyr_ReEDS, reeds_path, gams_path):
     mean_retail_rate = grouped.reset_index().drop(['cost_of_elec_dols_per_kwh', 'customers_in_bin','prod'], axis =1)
     
     # The data column has to be named "value" in order for gdxpds to work properly
-    SolarDSPVcapacity = SolarDSPVcapacity.rename(columns = {'installed_capacity':'value'})
+    dSolarPVcapacity = dSolarPVcapacity.rename(columns = {'installed_capacity':'value'})
     cf_by_pca_and_ts = cf_by_pca_and_ts.rename(columns = {'cf':'value'})
     mean_retail_rate = mean_retail_rate.rename(columns = {'mean_retail_rate':'value'})
     
-    data = {'SolarDSPVcapacity': SolarDSPVcapacity,
+    data = {'dSolarPVcapacity': dSolarPVcapacity,
             'cf_by_pca_and_ts': cf_by_pca_and_ts,
             'mean_retail_rate': mean_retail_rate}
     
-    gdxfile_out = reeds_path + "/gdxfiles/SolarDS_Output_%s.gdx" % year
+    gdxfile_out = reeds_path + "/gdxfiles/dSolar_Output_%s.gdx" % year
     
     gdx = gdxpds.to_gdx(data, gdxfile_out, gams_path)
 
 if __name__ == '__main__':
-    # Solve year most recenlty completed in ReEDS
+    # Solve year most recently completed in ReEDS
     year = sys.argv[1]
     year = int(year)
     
@@ -64,5 +61,10 @@ if __name__ == '__main__':
     #reeds_path = "C:/ReEDS/OtherReEDSProject/inout"
     
     # Path to GAMS
-    gams_path = sys.argv[4]   
-    main(year, endyr_ReEDS, reeds_path, gams_path)
+    gams_path = sys.argv[4]
+
+	# Curtailment switch
+    curtailment_method = sys.argv[5]
+    curtailment_method = curtailment_method.lower() # Make sure it's on lower case to prevent errors later on.
+	
+    main(year, endyr_ReEDS, reeds_path, gams_path, curtailment_method)
