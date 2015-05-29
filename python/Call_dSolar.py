@@ -26,8 +26,8 @@ def main(year, endyr_ReEDS, reeds_path, gams_path, curtailment_method):
     df, cf_by_pca_and_ts = dgen_model.main(mode = 'ReEDS', resume_year = year, endyear = endyr_ReEDS, ReEDS_inputs = ReEDS_inputs)
     df = df[(df['year'] == year)]
 
-    SolarDSPVcapacity = 0.001* df.groupby('pca_reg')['installed_capacity'].sum() # Convert output from kW to MW and sum to the PCA level   
-    SolarDSPVcapacity = SolarDSPVcapacity.reset_index()
+    dSolarPVcapacity = 0.001* df.groupby('pca_reg')['installed_capacity'].sum() # Convert output from kW to MW and sum to the PCA level   
+    dSolarPVcapacity = dSolarPVcapacity.reset_index()
     
     # Calculate mean retail rate weighted by population
     df['prod'] = df['customers_in_bin'] * df['cost_of_elec_dols_per_kwh']
