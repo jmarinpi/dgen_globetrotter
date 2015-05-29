@@ -198,6 +198,8 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
         df['first_year_energy_savings'] = (1- (df['curtailment_rate'] * df['excess_generation_percent'])) * (df['first_year_bill_without_system'] - df['first_year_bill_with_system'])
     elif curtailment_method == 'gross':
         df['first_year_energy_savings'] = (1- df['curtailment_rate']) * (df['first_year_bill_without_system'] - df['first_year_bill_with_system'])
+    elif curtailment_method == 'off':
+        df['first_year_energy_savings'] = df['first_year_bill_without_system'] - df['first_year_bill_with_system']
     
     generation_revenue = df['first_year_energy_savings'][:,np.newaxis] * rate_growth_mult
     
