@@ -96,7 +96,7 @@ CREATE TABLE diffusion_wind.wind_resource_hourly
 	ALTER TABLE diffusion_wind.wind_resource_hourly_current_small_commercial_turbine INHERIT diffusion_wind.wind_resource_hourly;
 
 	ALTER TABLE diffusion_wind.wind_resource_hourly_current_small_commercial_turbine
-		ADD CONSTRAINT wind_resource_hourly_current_small_commercial_turbine_turbine_id_check CHECK (turbine_id = 2);
+		ADD CONSTRAINT wind_resource_hourly_current_sm_comm_turbine_turbine_id_check CHECK (turbine_id = 2);
 
 	ALTER TABLE diffusion_wind.wind_resource_hourly_current_small_commercial_turbine
 		ADD CONSTRAINT wind_resource_hourly_current_small_commercial_turbine_id_fkey FOREIGN KEY (turbine_id)
@@ -106,8 +106,8 @@ CREATE TABLE diffusion_wind.wind_resource_hourly
 	ALTER TABLE diffusion_wind.wind_resource_hourly_current_small_commercial_turbine
 		ADD CONSTRAINT wind_resource_hourly_current_small_commercial_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
-	CREATE INDEX wind_resource_hourly_current_small_commercial_turbine_i_j_cf_bin_btree ON diffusion_wind.wind_resource_hourly_current_small_commercial_turbine using btree(i,j,cf_bin);
-	CREATE INDEX wind_resource_hourly_current_small_commercial_turbine_height_btree ON diffusion_wind.wind_resource_hourly_current_small_commercial_turbine using btree(height);
+	CREATE INDEX wind_resource_hourly_current_sm_comm_turbine_i_j_cf_bin_btree ON diffusion_wind.wind_resource_hourly_current_small_commercial_turbine using btree(i,j,cf_bin);
+	CREATE INDEX wind_resource_hourly_current_sm_comm_turbine_height_btree ON diffusion_wind.wind_resource_hourly_current_small_commercial_turbine using btree(height);
 
 	-- wind_resource_hourly_current_mid_size_turbine	
 	ALTER TABLE diffusion_wind.wind_resource_hourly_current_mid_size_turbine INHERIT diffusion_wind.wind_resource_hourly;

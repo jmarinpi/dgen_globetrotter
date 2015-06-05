@@ -9,8 +9,8 @@ import h5py
 import psycopg2 as pg
 import psycopg2.extras as pgx
 import numpy as np
-import pgdbUtil
-import hdfaccess
+# import pgdbUtil
+# import hdfaccess
 import glob
 import os
 import pandas as pd
