@@ -3,6 +3,7 @@ CREATE USER wcole WITH NOCREATEDB NOCREATEROLE NOCREATEUSER CONNECTION LIMIT 20 
 CREATE USER jduckwor WITH NOCREATEDB NOCREATEROLE NOCREATEUSER CONNECTION LIMIT 20 PASSWORD 'jduckwor';
 CREATE USER mgleason WITH NOCREATEDB NOCREATEROLE NOCREATEUSER CONNECTION LIMIT 20 PASSWORD 'mgleason';
 CREATE USER cdong WITH NOCREATEDB NOCREATEROLE NOCREATEUSER CONNECTION LIMIT 20 PASSWORD 'cdong';
+CREATE USER hlewis WITH NOCREATEDB NOCREATEROLE NOCREATEUSER CONNECTION LIMIT 20 PASSWORD 'hlewis';
 CREATE ROLE "diffusion-writers" NOCREATEDB NOCREATEUSER NOLOGIN INHERIT NOCREATEROLE;
 
 
@@ -11,3 +12,23 @@ ALTER GROUP "diffusion-writers" ADD user wcole;
 ALTER GROUP "diffusion-writers" ADD user jduckwor;
 ALTER GROUP "diffusion-writers" ADD user mgleason;
 ALTER GROUP "diffusion-writers" ADD user cdong;
+ALTER GROUP "diffusion-writers" ADD user hlewis;
+
+
+CREATE ROLE "diffusion-admins" with CREATEDB CREATEUSER LOGIN INHERIT CREATEROLE;
+ALTER GROUP "diffusion-admins" ADD user jduckwor;
+
+ALTER DATABASE diffusion_1
+owner to "diffusion-admins";
+
+ALTER DATABASE diffusion_2
+owner to "diffusion-admins";
+
+ALTER DATABASE diffusion_3
+owner to "diffusion-admins";
+
+ALTER DATABASE diffusion_4
+owner to "diffusion-admins";
+
+ALTER DATABASE diffusion_5
+owner to "diffusion-admins";
