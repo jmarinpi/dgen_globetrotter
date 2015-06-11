@@ -312,3 +312,88 @@ or climate_zone_building_america is null;
 -- results look good for climate_zone_building_america
 -- and good enough for climate_zone_cbecs_2003 (sinc we will be updating to cbecs 2012, which used the building america climate zones)
 
+------------------------------------------------------------------------------------------
+-- confirm that all combinations of climate zone + reportable domain or census_division_abbr
+-- have corresponding populations from recs/cbecs microdata
+
+-- recs
+with a as
+(
+	select distinct recs_2009_reportable_domain as reportable_domain, 
+			climate_zone_building_america as climate_zone
+	from diffusion_shared.county_geom a
+),
+b as
+(
+	select distinct reportable_domain, 
+				climate_zone
+	from diffusion_shared.cbecs_recs_combined 
+	where sector_abbr = 'res'
+)
+select *
+FROM a
+left join b
+ON a.reportable_domain = b.reportable_domain
+and a.climate_zone = b.climate_zone
+where b.reportable_domain is null;
+-- missing rep domain/climate zones are:
+-- 22;2 - Colorado - Hot-Dry/Mixed-Dry -- use samples from NM (25)
+-- 16;1 - NC/SC - Very Cold/Cold - Use Samples from WV? (14)
+-- 20;2 - AR, LA, OK - Hot-Dry/Mixed-Dry -- this is OK only, use sample from TX (21)
+-- 23;2 - ID, MT, UT, WY - Hot-Dry/Mixed-Dry  -- this is UT only, use sample from AZ (24)
+-- 21;4 - TX - Mixed Humid - this is TX only -- use sample from OK (20)
+-- 12;1 - MO - Very Cold/Cold - use sample from 11 (KS/NE)
+-- 26;1 - CA - Very Cold/Cold - Use sample from NV (25)
+
+-- check counts
+with a as
+(
+	select reportable_domain, climate_zone, count(*) as cz_count, sum(weight) as cz_weight
+	from diffusion_shared.cbecs_recs_combined 
+	where sector_abbr = 'res'
+	group by reportable_domain, climate_zone
+	order by cz_count
+),
+b as
+(
+	select reportable_domain, count(*) as rd_count, sum(weight) as rd_weight
+	from diffusion_shared.cbecs_recs_combined 
+	where sector_abbr = 'res'
+	group by reportable_domain
+	order by rd_count
+)
+select a.reportable_domain, a.climate_zone, a.cz_count, b.rd_count, cz_weight, rd_weight
+from a
+LEFT JOIN b
+ON a.reportable_domain = b.reportable_domain
+
+
+
+select division, climate_region_pub, count(*) as cd_count
+from eia.recs_2009_microdata 
+group by division, climate_region_pub
+order by cd_count
+
+
+
+
+-- cbecs
+with a as
+(
+	select distinct census_division_abbr, 
+			climate_zone_cbecs_2003 as climate_zone
+	from diffusion_shared.county_geom a
+),
+b as
+(
+	select distinct census_division_abbr, 
+				climate_zone
+	from diffusion_shared.cbecs_recs_combined 
+	where sector_abbr = 'com'
+)
+select *
+FROM a
+left join b
+ON a.census_division_abbr = b.census_division_abbr
+and a.climate_zone = b.climate_zone
+where b.census_division_abbr is null;

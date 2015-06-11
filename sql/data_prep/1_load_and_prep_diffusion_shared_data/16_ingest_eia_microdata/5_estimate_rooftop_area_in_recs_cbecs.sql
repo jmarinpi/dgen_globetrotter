@@ -56,7 +56,7 @@ b AS
 UPDATE diffusion_shared.eia_microdata_recs_2009 c
 set roof_sqft = b.roof_sqft
 from b
-where c.doeid = b.doeid
+where c.doeid = b.doeid;
 
 -- make sure no nulls
 select count(*)
@@ -70,7 +70,7 @@ select roof_sqft, *
 from diffusion_shared.eia_microdata_recs_2009
 where roof_sqft is not null
 order by 1;
--- there are some very roof areas but they all appear to be single story buildings with large sq ft,
+-- there are some very roof large areas but they all appear to be single story buildings with large sq ft,
 -- so unless the stories field is coded incorrectly, the algebra should be correct
 
 ---------------------------------------------------------------------------------------------------
@@ -121,7 +121,7 @@ b AS
 UPDATE diffusion_shared.eia_microdata_cbecs_2003 c
 set roof_sqft = b.roof_sqft
 from b
-where c.pubid8 = b.pubid8
+where c.pubid8 = b.pubid8;
 
 
 
@@ -137,6 +137,6 @@ select roof_sqft, *
 from diffusion_shared.eia_microdata_cbecs_2003
 where roof_sqft is not null
 order by 1;
--- there are some very roof areas but they all appear to be single story buildings with large sq ft,
+-- there are some very large roof areas but they all appear to be single story buildings with large sq ft,
 -- so unless the stories field is coded incorrectly, the algebra should be correct
 

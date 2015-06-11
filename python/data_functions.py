@@ -440,7 +440,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, 
                     a.npv4, a.excess_generation_percent,
 
-                    b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
+                    b.state_abbr, b.census_division_abbr, b.climate_zone, b.utility_type, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id,
                     b.carbon_price_cents_per_kwh, 
                     b.fixed_om_dollars_per_kw_per_yr, 
@@ -529,7 +529,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     a.npv4, a.excess_generation_percent,
 
                     
-                    b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
+                    b.state_abbr, b.census_division_abbr, b.climate_zone, b.utility_type, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id,
                     b.carbon_price_cents_per_kwh, 
                     b.fixed_om_dollars_per_kw_per_yr, 
@@ -714,9 +714,10 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
     inputs_dict['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand'
     if sector_abbr == 'res':
         inputs_dict['load_region'] = 'reportable_domain'
+        inputs_dict['load_climate_zone'] = 'climate_zone_building_america'
     else:
         inputs_dict['load_region'] = 'census_division_abbr'
-
+        inputs_dict['load_climate_zone'] = 'climate_zone_cbecs_2003'
     #==============================================================================
     #     randomly sample  N points from each county 
     #==============================================================================    
@@ -759,7 +760,8 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
                      b.load_id, b.weight, b.ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft, b.ownocc8
              FROM %(schema)s.counties_to_model a
              LEFT JOIN diffusion_shared.cbecs_recs_combined b
-             ON a.%(load_region)s = b.%(load_region)s
+                 ON a.%(load_region)s = b.%(load_region)s
+                 AND a.%(load_climate_zone)s = b.climate_zone
              WHERE a.county_id in  (%(chunk_place_holder)s)
                    %(load_where)s
         ),
@@ -801,19 +803,21 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
     logger.info(msg)
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s;
             CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
-            WITH binned as(
-            SELECT a.*, b.crb_model, b.ann_cons_kwh, b.weight, b.roof_sqft, b.roof_style, b.ownocc8,
-                	a.county_total_customers_2011 * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
-                	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
-            FROM %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
-            LEFT JOIN %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s b
-            ON a.county_id = b.county_id
-            AND a.bin_id = b.bin_id
-            WHERE county_total_load_mwh_2011 > 0)
+            WITH binned as
+            (
+                SELECT a.*, b.crb_model, b.ann_cons_kwh, b.weight, b.roof_sqft, b.roof_style, b.ownocc8,
+                    	a.county_total_customers_2011 * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
+                    	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
+                LEFT JOIN %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s b
+                    ON a.county_id = b.county_id
+                    AND a.bin_id = b.bin_id
+                WHERE county_total_load_mwh_2011 > 0
+            )
             SELECT a.*,
-            	CASE WHEN a.customers_in_bin > 0 THEN ROUND(a.load_kwh_in_bin/a.customers_in_bin, 0)::BIGINT
-            	ELSE 0::BIGINT
-            	END AS load_kwh_per_customer_in_bin
+            	CASE  WHEN a.customers_in_bin > 0 THEN ROUND(a.load_kwh_in_bin/a.customers_in_bin, 0)::BIGINT
+                	ELSE 0::BIGINT
+                  END AS load_kwh_per_customer_in_bin
             FROM binned a;""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
     print time.time()-t0
@@ -1110,6 +1114,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   year integer,
                   state_abbr character varying(2),
                   census_division_abbr text,
+                  climate_zone integer,
                   utility_type character varying(9),
                   hdf_load_index integer,
                   pca_reg text,
@@ -1167,6 +1172,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   b.year, 
                   a.state_abbr, 
                   a.census_division_abbr, 
+                  a.climate_zone,
                   a.utility_type, 
                   a.hdf_load_index,
                   a.pca_reg, a.reeds_reg,
@@ -1230,7 +1236,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                     AND b.rate_escalation_source = '%(rate_escalation_source)s'
                     AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
-                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
+                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, climate_zone, utility_type, hdf_load_index,
                    pca_reg, reeds_reg, rate_escalation_factor, incentive_array_id, ranked_rate_array_id,
                    carbon_price_cents_per_kwh, 
             
@@ -1518,7 +1524,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
             WITH combined AS
             (
                 SELECT
-                 	a.micro_id, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, 
+                 	a.micro_id, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr, a.climate_zone,
                       a.utility_type, a.hdf_load_index,
                       a.pca_reg, a.reeds_reg,
                       b.rate_escalation_factor,
@@ -1572,7 +1578,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                     AND b.rate_escalation_source = '%(rate_escalation_source)s'
                     AND b.load_growth_scenario = '%(load_growth_scenario)s'
             )
-                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
+                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, climate_zone, utility_type, hdf_load_index,
                    pca_reg, reeds_reg, rate_escalation_factor, incentive_array_id, ranked_rate_array_id, 
                    carbon_price_cents_per_kwh, 
             
