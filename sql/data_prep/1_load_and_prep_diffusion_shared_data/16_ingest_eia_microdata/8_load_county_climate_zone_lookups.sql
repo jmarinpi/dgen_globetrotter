@@ -316,6 +316,11 @@ or climate_zone_building_america is null;
 -- confirm that all combinations of climate zone + reportable domain or census_division_abbr
 -- have corresponding populations from recs/cbecs microdata
 
+-- they do not all have matches
+-- the following queries show the issues, and give potential substitutions for fill
+-- for the missing cross-sections, but the solution hasn't actually been implemented
+-- see issue #363
+
 -- recs
 with a as
 (
@@ -345,38 +350,6 @@ where b.reportable_domain is null;
 -- 12;1 - MO - Very Cold/Cold - use sample from 11 (KS/NE)
 -- 26;1 - CA - Very Cold/Cold - Use sample from NV (25)
 
--- check counts
-with a as
-(
-	select reportable_domain, climate_zone, count(*) as cz_count, sum(weight) as cz_weight
-	from diffusion_shared.cbecs_recs_combined 
-	where sector_abbr = 'res'
-	group by reportable_domain, climate_zone
-	order by cz_count
-),
-b as
-(
-	select reportable_domain, count(*) as rd_count, sum(weight) as rd_weight
-	from diffusion_shared.cbecs_recs_combined 
-	where sector_abbr = 'res'
-	group by reportable_domain
-	order by rd_count
-)
-select a.reportable_domain, a.climate_zone, a.cz_count, b.rd_count, cz_weight, rd_weight
-from a
-LEFT JOIN b
-ON a.reportable_domain = b.reportable_domain
-
-
-
-select division, climate_region_pub, count(*) as cd_count
-from eia.recs_2009_microdata 
-group by division, climate_region_pub
-order by cd_count
-
-
-
-
 -- cbecs
 with a as
 (
@@ -397,3 +370,91 @@ left join b
 ON a.census_division_abbr = b.census_division_abbr
 and a.climate_zone = b.climate_zone
 where b.census_division_abbr is null;
+-- missing combinations are:
+-- MTN;4 -- use WSC 4?
+-- SA;2 -- use MA 2
+-- ENC;3 -- use ESC 3
+-- MTN;3 -- use WSC 3
+
+
+
+
+--------------------------------------------------------------------------------
+-- check counts of climate x reportable domain/census division cross sections
+-- from recs and cbecs
+
+-- recs
+with a as
+(
+	select reportable_domain, climate_zone, count(*) 
+	from diffusion_shared.cbecs_recs_combined 
+	where sector_abbr = 'res'
+	group by reportable_domain, climate_zone
+	order by count
+),
+b as
+(
+	select reportable_domain, count(*)
+	from diffusion_shared.cbecs_recs_combined 
+	where sector_abbr = 'res'
+	group by reportable_domain
+	order by count
+),
+c as
+(
+	select climate_zone, count(*)
+	from diffusion_shared.cbecs_recs_combined 
+	where sector_abbr = 'res'
+	group by climate_zone
+	order by count
+)
+select a.reportable_domain, a.climate_zone, a.count as x_count, 
+	b.count as rd_count, 
+	c.count as clim_count
+from a
+LEFT JOIN b
+ON a.reportable_domain = b.reportable_domain
+lEFT JOIN c
+on a.climate_zone = c.climate_zone
+
+
+-- cbecs
+with a as
+(
+	select census_division_abbr, climate_zone, count(*)
+	from diffusion_shared.cbecs_recs_combined 
+	where sector_abbr = 'com'
+	and climate_zone <= 5
+	group by census_division_abbr, climate_zone
+	order by count
+),
+b as
+(
+	select census_division_abbr, count(*)
+	from diffusion_shared.cbecs_recs_combined 
+	where sector_abbr = 'com'
+	group by census_division_abbr
+	order by count
+),
+c as
+(
+	select climate_zone, count(*)
+	from diffusion_shared.cbecs_recs_combined 
+	where sector_abbr = 'com'
+	and climate_zone <= 5
+	group by climate_zone
+	order by count
+)
+select a.census_division_abbr, a.climate_zone, a.count as x_count,
+	b.count as div_count,
+	c.count as clim_count
+FROM a
+left join b
+ON a.census_division_abbr = b.census_division_abbr
+left join c
+ON a.climate_zone = c.climate_zone;
+
+-- some cross sections have REALLY small sample sizes in both recs and cbecs
+-- potential solutions:
+	-- 1) move to a higher aggregation level (reportable_domain --> census_division_abbr, census_division_abbr --> census_region)
+	-- 2) manually group certain cross-sections that make sense to go togehter (e.g., cold CA + cold NV, etc.) to reach reaasonable sample sizes

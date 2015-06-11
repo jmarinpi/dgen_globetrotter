@@ -13,6 +13,7 @@ SELECT
 	'diffusion_shared.eia_microdata_cbecs_2003' as source_table,
 	unnest(ARRAY['com', 'ind']) as sector_abbr,
 	c.census_division_abbr as census_division_abbr,
+	c.census_region as census_region,
 	NULL as reportable_domain,
 	c.climate8 as climate_zone
 FROM diffusion_shared.eia_microdata_cbecs_2003 as c
@@ -30,7 +31,8 @@ SELECT
 	1 as ownocc8,
 	'diffusion_shared.eia_microdata_recs_2009' as source_table,
 	'res' as sector_abbr,
-	NULL as census_division_abbr,
+	r.census_division_abbr as census_division_abbr,
+	r.census_region as census_region,
 	r.reportable_domain as reportable_domain,
 	r.climate_region_pub as climate_zone
 FROM diffusion_shared.eia_microdata_recs_2009 as r
