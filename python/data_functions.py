@@ -2817,11 +2817,14 @@ def excess_generation_percent(row, con, gen):
     '''
 
     annual_generation = sum(row[gen])
-
-    # Determine the annual amount of generation (kWh) that exceeds consumption,
-    # and must be sold to the grid to receive value
-    annual_excess_gen = sum(np.maximum(row[gen] - row[con],0))
-    row['excess_generation_percent'] = annual_excess_gen / annual_generation # unitless (kWh/kWh)
+    
+    if annual_generation == 0:
+        row['excess_generation_percent'] = 0
+    else:
+        # Determine the annual amount of generation (kWh) that exceeds consumption,
+        # and must be sold to the grid to receive value
+        annual_excess_gen = sum(np.maximum(row[gen] - row[con],0))
+        row['excess_generation_percent'] = annual_excess_gen / annual_generation # unitless (kWh/kWh)
 
     return row
     
