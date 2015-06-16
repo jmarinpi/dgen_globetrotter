@@ -2216,7 +2216,7 @@ def get_initial_market_shares(cur, con, sector_abbr, sector, schema, technology)
     inputs = locals().copy()     
     
     if technology == 'solar':
-        inputs['cap_table'] = 'starting_capacities_mw_2012_q4_us'
+        inputs['cap_table'] = 'starting_capacities_mw_2012_q4_us_backup'
     else:
         inputs['cap_table'] = 'starting_capacities_mw_2014_us'
     
@@ -2231,9 +2231,29 @@ def get_initial_market_shares(cur, con, sector_abbr, sector, schema, technology)
             FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year a
             LEFT JOIN %(schema)s.%(cap_table)s b
             ON a.county_id = b.county_id
-            where a.year = 2014;""" % inputs          
+            where a.year = 2014;""" % inputs             
+    
+#    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares;
+#             CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares AS
+#             WITH a as
+#            (
+#            	SELECT a.county_id, a.bin_id,
+#            		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
+#            		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
+#            		a.customers_in_bin
+#            	FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year a
+#            	LEFT JOIN %(schema)s.%(cap_table)s b
+#            		ON a.state_abbr = b.state_abbr
+#            	WHERE a.year = 2014
+#            )
+#            SELECT a.county_id, a.bin_id,
+#                 COALESCE(a.initial_number_of_adopters, 0) as initial_number_of_adopters,
+#                 COALESCE(a.initial_capacity_mw, 0) as initial_capacity_mw,
+#                 COALESCE(a.initial_number_of_adopters/a.customers_in_bin, 0) as initial_market_share
+#            FROM a;""" % inputs
     cur.execute(sql)
-    con.commit()
+    con.commit()    
+    
     
     sql = """CREATE INDEX pt_%(sector_abbr)s_initial_market_shares_join_fields_btree 
              ON %(schema)s.pt_%(sector_abbr)s_initial_market_shares 
