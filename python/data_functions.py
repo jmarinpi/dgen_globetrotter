@@ -2075,7 +2075,7 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, techno
     # fix these by setting the elec_cost_with_system_year1 = elec_cost_without_system_year1 and excess_generation_percent = 0
     sql = """UPDATE %(schema)s.utilityrate3_results a
             SET (elec_cost_with_system_year1, excess_generation_percent) = (a.elec_cost_without_system_year1, 0)
-            FROM diffusion_wind.unique_rate_gen_load_combinations b
+            FROM %(schema)s.unique_rate_gen_load_combinations b
             WHERE b.system_size_kw = 0
                 AND a.uid = b.uid;""" % inputs_dict
     cur.execute(sql)
@@ -2216,7 +2216,7 @@ def get_initial_market_shares(cur, con, sector_abbr, sector, schema, technology)
     inputs = locals().copy()     
     
     if technology == 'solar':
-        inputs['cap_table'] = 'starting_capacities_mw_2012_q4_us_backup'
+        inputs['cap_table'] = 'starting_capacities_mw_2012_q4_us'
     else:
         inputs['cap_table'] = 'starting_capacities_mw_2014_us'
     
