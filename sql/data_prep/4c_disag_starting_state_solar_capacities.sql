@@ -1,5 +1,11 @@
 ﻿SET role 'diffusion-writers';
 
+-- DROP TABLE IF EXISTS diffusion_solar.starting_capacities_mw_2012_q4_us;
+-- CREATE TABLE diffusion_solar.starting_capacities_mw_2012_q4_us AS
+-- SELECT *
+-- FROM diffusion_solar.starting_capacities_mw_2012_q4_us_backup;
+
+
 DROP TABLE IF EXISTS diffusion_solar.starting_capacities_mw_2012_q4_us;
 CREAtE TABLE diffusion_solar.starting_capacities_mw_2012_q4_us AS
 WITH customers_sums_by_sector AS
