@@ -2201,12 +2201,8 @@ def get_initial_market_shares(cur, con, sector_abbr, sector, schema, technology)
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()     
-    
-    if technology == 'solar':
-        inputs['cap_table'] = 'starting_capacities_mw_2012_q4_us'
-    else:
-        inputs['cap_table'] = 'starting_capacities_mw_2014_us'   
-
+    # add the starting capacity table to the inputs dict
+    inputs['cap_table'] = 'starting_capacities_mw_2012_q4_us'
 
     sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares;
              CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares AS
