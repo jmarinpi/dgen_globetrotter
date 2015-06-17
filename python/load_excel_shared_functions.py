@@ -100,7 +100,7 @@ def nem_scenario(curWb,schema,conn,cur,verbose=False):
                          unnest(array['All Other', 'Coop', 'IOU', 'Muni']) as utility_type,
                          0::double precision as system_size_limit_kw,
                          0::numeric as year_end_excess_sell_rate_dlrs_per_kwh,
-                         round(a.nat_gas_dollars_per_mmbtu/293.3,3) as hourly_excess_sell_rate_dlrs_per_kwh
+                         a.avoided_costs_dollars_per_kwh as hourly_excess_sell_rate_dlrs_per_kwh
                 FROM diffusion_solar.market_projections a
                 CROSS JOIN diffusion_shared.state_fips_lkup b
                 WHERE b.state_abbr <> 'PR';        
