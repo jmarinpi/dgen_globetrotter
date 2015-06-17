@@ -180,7 +180,6 @@ def combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, pr
             SELECT a.year, 
                 a.efficiency_improvement_factor,
                 a.density_w_per_sqft,
-                a.derate,
                 a.inverter_lifetime_yrs,
                 b.capital_cost_dollars_per_kw, 
                 b.inverter_cost_dollars_per_kw, 
@@ -212,11 +211,7 @@ def combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, pr
     con.commit()
     
     # create indices for subsequent joins
-    sql =  """CREATE INDEX temporal_factors_turbine_derate_btree 
-              ON diffusion_solar.temporal_factors 
-              USING BTREE(derate);
-              
-              CREATE INDEX temporal_factors_sector_btree 
+    sql =  """CREATE INDEX temporal_factors_sector_btree 
               ON diffusion_solar.temporal_factors 
               USING BTREE(sector);
               
@@ -230,11 +225,7 @@ def combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, pr
               
               CREATE INDEX temporal_factors_census_division_abbr_btree 
               ON diffusion_solar.temporal_factors 
-              USING BTREE(census_division_abbr);
-              
-              CREATE INDEX temporal_factors_join_fields_btree 
-              ON diffusion_solar.temporal_factors 
-              USING BTREE(derate, census_division_abbr);"""
+              USING BTREE(census_division_abbr);"""
     cur.execute(sql)
     con.commit()  
     
@@ -577,7 +568,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     r_cut(b.system_size_kw, ARRAY[0,2.5,5.0,10.0,20.0,50.0,100.0,250.0,500.0,750.0,1000.0,1500.0]) 
                         as system_size_factors,
                     b.npanels, 
-                    b.tilt, b.azimuth, b.derate, 
+                    b.tilt, b.azimuth,
                     b.pct_shaded, b.solar_re_9809_gid, 
                     b.density_w_per_sqft, b.inverter_lifetime_yrs, 
                     b.roof_sqft, b.roof_style, b.roof_planes, b.rooftop_portion,
@@ -1111,19 +1102,18 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s;
                 CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s AS
                 SELECT a.*,
-                        b.derate,
                         b.naep
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s a
                 LEFT JOIN %(schema)s.solar_resource_annual b
-                ON a.solar_re_9809_gid = b.solar_re_9809_gid
-                AND a.tilt = b.tilt
-                AND a.azimuth = b.azimuth""" % inputs
+                    ON a.solar_re_9809_gid = b.solar_re_9809_gid
+                    AND a.tilt = b.tilt
+                    AND a.azimuth = b.azimuth""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
 
     # create indices for subsequent joins
-    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_temporal_join_fields_btree 
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_census_division_abbr_btree 
               ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s 
-              USING BTREE(derate, census_division_abbr);
+              USING BTREE(census_division_abbr);
               
               CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_nem_join_fields_btree 
               ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s 
@@ -1178,7 +1168,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   ur_flat_sell_rate numeric,                  
                   tilt integer,
                   azimuth text,
-                  derate numeric,
                   pct_shaded double precision,
                   solar_re_9809_gid integer,
                   density_w_per_sqft numeric,
@@ -1227,7 +1216,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                 	a.naep * b.efficiency_improvement_factor as naep,
                   a.tilt,
                   a.azimuth,
-                  a.derate,
                   a.pct_shaded,
                   a.solar_re_9809_gid,
                   b.density_w_per_sqft, 
@@ -1253,8 +1241,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                                                 d.sys_size_target_no_nem) as system_sizing_return
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s a
                 INNER JOIN %(schema)s.temporal_factors b
-                    ON a.derate = b.derate
-                    AND a.census_division_abbr = b.census_division_abbr
+                    ON a.census_division_abbr = b.census_division_abbr
                 LEFT JOIN %(schema)s.nem_scenario c
                     ON c.state_abbr = a.state_abbr
                     AND c.utility_type = a.utility_type
@@ -1292,7 +1279,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     
                    tilt,
                    azimuth,
-                   derate,
                    pct_shaded,
                    solar_re_9809_gid,
                    density_w_per_sqft,
