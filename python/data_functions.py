@@ -1901,10 +1901,8 @@ def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_st
             SELECT 	a.uid, 
                     	b.sam_json as rate_json, 
                         a.load_kwh_per_customer_in_bin, c.nkwh as consumption_hourly,
-                        CASE WHEN a.system_size_kw = 0 THEN 1
-                             ELSE a.system_size_kw
-                        END as system_size_kw,
-                        COALESCE(d.cf,  array_fill(1, array[8760])) as generation_hourly,
+                        a.system_size_kw,
+                        COALESCE(d.cf,  array_fill(1, array[8760])) as generation_hourly, -- fill in for customers with no matching wind resource (values don't matter because they will be zeroed out)
                         a.ur_enable_net_metering, a.ur_nm_yearend_sell_rate, a.ur_flat_sell_rate
             	
             FROM %(schema)s.unique_rate_gen_load_combinations a
@@ -2069,17 +2067,6 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, techno
     sql = """ALTER TABLE %(schema)s.utilityrate3_results ADD PRIMARY KEY (uid);""" % inputs_dict
     cur.execute(sql)
     con.commit()
-    
-    # results will be wrong for customers with 0 kw systems (i.e., customers who have no systems are allowed at their location)
-    # these were input to SAM as 1 kw systems (with hourly cfs of 1 for all 8760 hours)
-    # fix these by setting the elec_cost_with_system_year1 = elec_cost_without_system_year1 and excess_generation_percent = 0
-    sql = """UPDATE %(schema)s.utilityrate3_results a
-            SET (elec_cost_with_system_year1, excess_generation_percent) = (a.elec_cost_without_system_year1, 0)
-            FROM %(schema)s.unique_rate_gen_load_combinations b
-            WHERE b.system_size_kw = 0
-                AND a.uid = b.uid;""" % inputs_dict
-    cur.execute(sql)
-    con.commit()                
     
     
     #==============================================================================
