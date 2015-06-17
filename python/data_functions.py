@@ -2220,25 +2220,35 @@ def get_initial_market_shares(cur, con, sector_abbr, sector, schema, technology)
     else:
         inputs['cap_table'] = 'starting_capacities_mw_2014_us'   
 
-    
+
     sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares;
              CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares AS
              WITH a as
-            (
-            	SELECT a.county_id, a.bin_id,
-            		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
-            		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
-            		a.customers_in_bin
-            	FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year a
-            	LEFT JOIN %(schema)s.%(cap_table)s b
-            		ON a.state_abbr = b.state_abbr
-            	WHERE a.year = 2014
-            )
-            SELECT a.county_id, a.bin_id,
-                 COALESCE(a.initial_number_of_adopters, 0) as initial_number_of_adopters,
-                 COALESCE(a.initial_capacity_mw, 0) as initial_capacity_mw,
-                 COALESCE(a.initial_number_of_adopters/a.customers_in_bin, 0) as initial_market_share
-            FROM a;""" % inputs
+             (
+			SELECT county_id, bin_id, state_abbr,
+				CASE  WHEN system_size_kw = 0 then 0
+					ELSE customers_in_bin
+				END AS customers_in_bin
+			FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year	
+			WHERE year = 2014			
+             ),
+             b as
+             (
+                	SELECT a.county_id, a.bin_id,
+                		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
+                		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
+                		a.customers_in_bin
+                	FROM a
+                	LEFT JOIN %(schema)s.%(cap_table)s b
+                		ON a.state_abbr = b.state_abbr
+            ) 
+            SELECT b.county_id, b.bin_id,
+                 ROUND(COALESCE(b.initial_number_of_adopters, 0)::NUMERIC, 6) as initial_number_of_adopters,
+                 ROUND(COALESCE(b.initial_capacity_mw, 0)::NUMERIC, 6) as initial_capacity_mw,
+        	     CASE  WHEN customers_in_bin = 0 then 0
+                       ELSE ROUND(COALESCE(b.initial_number_of_adopters/b.customers_in_bin, 0)::NUMERIC, 6) 
+                 END AS initial_market_share
+            FROM b;""" % inputs
     cur.execute(sql)
     con.commit()    
     
