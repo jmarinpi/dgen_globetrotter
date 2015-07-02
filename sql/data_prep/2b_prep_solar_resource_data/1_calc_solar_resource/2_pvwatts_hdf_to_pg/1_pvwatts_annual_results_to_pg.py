@@ -70,8 +70,8 @@ for hdf in hdfs:
     gids = np.array(hf['index'])
     
     # calculate the total normalized aep
-    naep = np.sum(np.array(hf['cf'], dtype = np.float),1)
-    cf_avg = np.mean(np.array(hf['cf'], dtype = np.float),1)
+    naep = np.sum(np.array(hf['cf'], dtype = np.float),0)
+    cf_avg = np.mean(np.array(hf['cf'], dtype = np.float),0)
     
     # get the tilt (making sure it's not tilted at latitude)
     tilt = hf['cf'].attrs['tilt']
@@ -83,11 +83,11 @@ for hdf in hdfs:
     azimuth = orientations[hf['cf'].attrs['azimuth']]
     
     # combine into pandas dataframe
-    df = pd.DataFrame(data={'solar_re_9809_gid' : gids.reshape(gids.shape[0],),
+    df = pd.DataFrame(data={'solar_re_9809_gid' : gids,
                        'tilt' : tilt,
                        'azimuth' : azimuth,
-                       'naep' : naep.reshape(naep.shape[0],),
-                       'cf_avg' : cf_avg.reshape(cf_avg.shape[0],)
+                       'naep' : naep,
+                       'cf_avg' : cf_avg
                        },
                        index = np.arange(0,np.shape(gids)[0]))
     
