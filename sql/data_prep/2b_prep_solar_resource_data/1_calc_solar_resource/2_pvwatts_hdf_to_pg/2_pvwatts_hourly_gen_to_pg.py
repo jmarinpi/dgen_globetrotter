@@ -104,7 +104,7 @@ for hdf in hdfs:
     
     # combine intp pandas dataframe
     df = pd.DataFrame()
-    df['solar_re_9809_gid'] = gids.reshape(gids.shape[0],)
+    df['solar_re_9809_gid'] = gids
     df['tilt'] = tilt
     df['azimuth'] = azimuth
     df['cf'] = pd.Series(cf_list).apply(lambda l: '{%s}' % str(l)[1:-1])      
