@@ -77,7 +77,7 @@ con.commit()
 # get the hdfs
 print 'Finding hdf files'
 
-hdfs = [os.path.join(hdf_path,f) for f in glob.glob1(hdf_path,'mg*.h5')]
+hdfs = [os.path.join(hdf_path,f) for f in glob.glob1(hdf_path,'*.h5')]
 for hdf in hdfs:
     print 'Loading %s' % hdf
     # open the h5 file
