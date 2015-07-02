@@ -34,8 +34,8 @@ pg_params = {'host'     : 'gispgdb',
              'password' : 'mgleason',
              'role'     : 'diffusion-writers'
              }
-hdf_path = '/home/mgleason/data/dg_solar/cf'     
-#hdf_path = '/Users/mgleason/NREL_Projects/Projects/dgen_loading_hdf_data'
+#hdf_path = '/Users/mgleason/gispgdb/data/dg_solar/cf'
+hdf_path = '/home/mgleason/data/dg_solar/cf'
  
  
 # CONNECT TO POSTGRES
@@ -53,7 +53,7 @@ orientations = {180: 'S',
 
 # create the output table
 print 'Creating output table'
-out_table = 'diffusion_solar.solar_resource_hourly'
+out_table = 'diffusion_solar.solar_resource_hourly_new'
 
 # create the table
 sql = 'DROP TABLE IF EXISTS %s;' % out_table
@@ -65,7 +65,6 @@ sql = '''CREATE TABLE %s
             solar_re_9809_gid INTEGER,
             tilt integer,
             azimuth CHARACTER VARYING(2),  
-            derate NUMERIC,
             cf integer[]
         );''' % out_table
 cur.execute(sql)
@@ -85,28 +84,20 @@ for hdf in hdfs:
     hf = h5py.File(hdf, mode = 'r')
     
     # get the gids
-    gids_all = np.array(hf['index'])
-    # find gid for solar_re_9809_gid = 3101 (no data due to bad/missing tmy file)
-    subset = np.where(gids_all <> 3101)[0]
-    gids = gids_all[subset]
-    del gids_all
+    gids = np.array(hf['index'])
     
     # extract the hourly cfs
-    cf = np.round(np.array(hf['cf'][subset,:])*scale_offset,0).astype(int)
+    cf = np.round(np.array(hf['cf'])*scale_offset,0).astype(int)
     cf_list = cf.tolist()
     del cf
-    del subset
     
     # get the tilt (making sure it's not tilted at latitude)
-    tilt = int(hf['cf'].attrs['tilt'])
+    tilt = hf['cf'].attrs['tilt']
     if tilt == -1:
         print 'Warning: Tilt was set to tilt at latitude'
     
     # get the azimuth
     azimuth = orientations[hf['cf'].attrs['azimuth']]
-    
-    # get the derate
-    derate = float(hf['cf'].attrs['derate'])
 
     # close the hdf file
     hf.close()
@@ -116,7 +107,6 @@ for hdf in hdfs:
     df['solar_re_9809_gid'] = gids.reshape(gids.shape[0],)
     df['tilt'] = tilt
     df['azimuth'] = azimuth
-    df['derate'] = derate
     df['cf'] = pd.Series(cf_list).apply(lambda l: '{%s}' % str(l)[1:-1])      
     del cf_list
     del gids

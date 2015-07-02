@@ -26,7 +26,7 @@ orientations = {180: 'S',
 
 # connect to pg
 print 'Connecting to postgres'
-pgConnString = "dbname=dav-gis user=mgleason password=mgleason host=gispgdb"
+pgConnString = "dbname=dav-gis user=mgleason password=mgleason host=gispgdb.nrel.gov"
 con = pg.connect(pgConnString)
 cur = con.cursor(cursor_factory=pgx.DictCursor)
 sql = "SET ROLE 'diffusion-writers';"
@@ -36,7 +36,7 @@ con.commit()
 
 # create the output table
 print 'Creating output table'
-out_table = 'diffusion_solar.solar_resource_annual'
+out_table = 'diffusion_solar.solar_resource_annual_new'
 
 # create the table
 sql = 'DROP TABLE IF EXISTS %s;' % out_table
@@ -47,8 +47,7 @@ sql = '''CREATE TABLE %s
         (
             solar_re_9809_gid INTEGER,
             tilt NUMERIC,
-            azimuth CHARACTER VARYING(2),  
-            derate NUMERIC,
+            azimuth CHARACTER VARYING(2),
             naep NUMERIC,
             cf_avg NUMERIC
         );''' % out_table
@@ -60,7 +59,7 @@ print 'Finding hdf files'
 #hdf_path = '/Users/mgleason/gispgdb/data/dg_solar/cf'
 hdf_path = '/home/mgleason/data/dg_solar/cf'
 
-hdfs = [os.path.join(hdf_path,f) for f in glob.glob1(hdf_path,'mg*.h5')]
+hdfs = [os.path.join(hdf_path,f) for f in glob.glob1(hdf_path,'*.h5')]
 
 for hdf in hdfs:
     print 'Loading %s' % hdf
@@ -83,14 +82,10 @@ for hdf in hdfs:
     # get the azimuth
     azimuth = orientations[hf['cf'].attrs['azimuth']]
     
-    # get the derate
-    derate = float(hf['cf'].attrs['derate'])
-    
-    # combine intp pandas dataframe
+    # combine into pandas dataframe
     df = pd.DataFrame(data={'solar_re_9809_gid' : gids.reshape(gids.shape[0],),
                        'tilt' : tilt,
                        'azimuth' : azimuth,
-                       'derate' : derate,
                        'naep' : naep.reshape(naep.shape[0],),
                        'cf_avg' : cf_avg.reshape(cf_avg.shape[0],)
                        },
@@ -101,7 +96,7 @@ for hdf in hdfs:
     print 'Writing to postgres'
     s = StringIO()
     # write the data to the stringIO
-    columns = ['solar_re_9809_gid','tilt','azimuth','derate','naep','cf_avg']
+    columns = ['solar_re_9809_gid','tilt','azimuth','naep','cf_avg']
     df[columns].to_csv(s, index = False, header = False)
     # seek back to the beginning of the stringIO file
     s.seek(0)
