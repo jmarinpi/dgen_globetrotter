@@ -26,7 +26,7 @@ orientations = {180: 'S',
 
 # connect to pg
 print 'Connecting to postgres'
-pgConnString = "dbname=dav-gis user=mgleason password=mgleason host=gispgdb.nrel.gov"
+pgConnString = "dbname=dav-gis user=mgleason password=mgleason host=gispgdb"
 con = pg.connect(pgConnString)
 cur = con.cursor(cursor_factory=pgx.DictCursor)
 sql = "SET ROLE 'diffusion-writers';"
