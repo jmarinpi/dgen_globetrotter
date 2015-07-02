@@ -67,11 +67,15 @@ for hdf in hdfs:
     hf = h5py.File(hdf, mode = 'r')
     
     # get the gids
-    gids = np.array(hf['index'])
+    gids_all = np.array(hf['index'])
+    # find gid for solar_re_9809_gid = 3101 (no data due to bad/missing tmy file)
+    subset = np.where(gids_all <> 3101)[0]
+    gids = gids_all[subset]
+    del gids_all
     
     # calculate the total normalized aep
-    naep = np.sum(np.array(hf['cf'], dtype = np.float),0)
-    cf_avg = np.mean(np.array(hf['cf'], dtype = np.float),0)
+    naep = np.sum(np.array(hf['cf'][:,subset], dtype = np.float),0)
+    cf_avg = np.mean(np.array(hf['cf'][:,subset], dtype = np.float),0)
     
     # get the tilt (making sure it's not tilted at latitude)
     tilt = hf['cf'].attrs['tilt']

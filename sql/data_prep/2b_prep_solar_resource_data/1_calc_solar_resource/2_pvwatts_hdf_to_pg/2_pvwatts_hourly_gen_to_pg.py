@@ -84,10 +84,15 @@ for hdf in hdfs:
     hf = h5py.File(hdf, mode = 'r')
     
     # get the gids
-    gids = np.array(hf['index'])
+    gids_all = np.array(hf['index'])
+    # find gid for solar_re_9809_gid = 3101 (no data due to bad/missing tmy file)
+    subset = np.where(gids_all <> 3101)[0]
+    gids = gids_all[subset]
+    del gids_all
     
     # extract the hourly cfs
-    cf = np.round(np.array(hf['cf'])*scale_offset,0).astype(int)
+    cf = np.round(np.array(hf['cf'][:,subset])*scale_offset,0).astype(int)
+    # replace the nan values with nulls
     cf_list = cf.tolist()
     del cf
     
