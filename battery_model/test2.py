@@ -68,8 +68,11 @@ def main(qcap, qmax):
     
     Cf = 0;
     j = 1;
-    ratio = 0.6788
-    qmax = lt.qmax
+    ratio = 0.6788;
+    # qmax = lt.qmax;    
+    Vqmax = [lt.qcap];
+    Vqmax.append(qmax);
+    
     
     while qmax > lt.qcap * ratio:  # 10860.8 as a threshold for ratio as 0.6788
         print
@@ -79,16 +82,28 @@ def main(qcap, qmax):
         Dlt = (1. - Cf) * lt.qcap;
         qmax = lt.qcap - Dlt;
         print Dlt, qmax;
+        Vqmax.append(qmax);
         if qmax < lt.qcap * ratio:
             break;
         j += 1;
 
-    columns = ['Years'];
-    df = pd.DataFrame(np.array(j).reshape((1,1)), columns = columns);
-    file_name = 'C:\GamsProject_CG\Replicate\Lifetime\SOC_Year.csv';
-    df.to_csv(file_name, sep='\t', index=False);
+    # print Vqmax;
+    
+    from collections import OrderedDict;
+    dict_out = OrderedDict();
+    dict_out[columns[0]] = j;
+    dict_out[columns[1]] = lt.nCycles;
+    dict_out[columns[2]] = Cf0;
+    dict_out[columns[3]] = Vqmax;
+    print dict_out;
+    
+    df = pd.DataFrame(dict_out);
+    
+    df.iloc[1:j+1,0:3] = float('nan')
+    
+    file_name = 'C:\GamsProject_CG\Replicate\Lifetime\life_Results.csv';
+    df.to_csv(file_name, index = False, header=True, na_rep='NA');
+    
 
 if __name__ == "__main__":
     main(sys.argv[1:][0], sys.argv[1:][0])
-
-
