@@ -36,23 +36,26 @@ con.commit()
 
 # create the output table
 print 'Creating output table'
-out_table = 'diffusion_solar.solar_resource_annual_new'
+out_table_template = 'diffusion_solar.solar_resource_annual_%s'
 
-# create the table
-sql = 'DROP TABLE IF EXISTS %s;' % out_table
-cur.execute(sql)
-con.commit()
-
-sql = '''CREATE TABLE %s 
-        (
-            solar_re_9809_gid INTEGER,
-            tilt NUMERIC,
-            azimuth CHARACTER VARYING(2),
-            naep NUMERIC,
-            cf_avg NUMERIC
-        );''' % out_table
-cur.execute(sql)
-con.commit()
+for azimuth in orientations.values():
+    out_table = out_table_template % azimuth.lower()
+    
+    # create the table
+    sql = 'DROP TABLE IF EXISTS %s;' % out_table
+    cur.execute(sql)
+    con.commit()
+    
+    sql = '''CREATE TABLE %s 
+            (
+                solar_re_9809_gid INTEGER,
+                tilt NUMERIC,
+                azimuth CHARACTER VARYING(2),
+                naep NUMERIC,
+                cf_avg NUMERIC
+            );''' % out_table
+    cur.execute(sql)
+    con.commit()
 
 # get the hdfs
 print 'Finding hdf files'
@@ -85,6 +88,8 @@ for hdf in hdfs:
     
     # get the azimuth
     azimuth = orientations[hf['cf'].attrs['azimuth']]
+    # set the correct output table
+    out_table = out_table_template % azimuth.lower()
     
     # combine into pandas dataframe
     df = pd.DataFrame(data={'solar_re_9809_gid' : gids,
