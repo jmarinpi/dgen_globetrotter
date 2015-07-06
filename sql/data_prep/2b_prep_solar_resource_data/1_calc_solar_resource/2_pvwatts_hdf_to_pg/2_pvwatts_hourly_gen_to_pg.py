@@ -52,7 +52,7 @@ orientations = {180: 'S',
                 }
 
 # create the output table
-print 'Creating output table'
+print 'Creating output tables'
 out_table_template = 'diffusion_solar.solar_resource_hourly_%s'
 
 
