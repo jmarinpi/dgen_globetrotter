@@ -93,7 +93,7 @@ for hdf in hdfs:
     # extract the hourly cfs
     cf = np.round(np.array(hf['cf'][:,subset])*scale_offset,0).astype(int)
     # replace the nan values with nulls
-    cf_list = cf.tolist()
+    cf_list = cf.T.tolist()
     del cf
     
     # get the tilt (making sure it's not tilted at latitude)
