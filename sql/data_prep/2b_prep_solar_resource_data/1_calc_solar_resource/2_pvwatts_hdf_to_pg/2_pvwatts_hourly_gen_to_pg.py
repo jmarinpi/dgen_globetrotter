@@ -52,27 +52,31 @@ orientations = {180: 'S',
                 }
 
 # create the output table
-print 'Creating output table'
-out_table = 'diffusion_solar.solar_resource_hourly_new'
+print 'Creating output tables'
+out_table_template = 'diffusion_solar.solar_resource_hourly_%s'
 
-# create the table
-sql = 'DROP TABLE IF EXISTS %s;' % out_table
-cur.execute(sql)
-con.commit()
 
-sql = '''CREATE TABLE %s 
-        (
-            solar_re_9809_gid INTEGER,
-            tilt integer,
-            azimuth CHARACTER VARYING(2),  
-            cf integer[]
-        );''' % out_table
-cur.execute(sql)
-con.commit()
+for azimuth in orientations.values():
+    out_table = out_table_template % azimuth.lower()
 
-sql = """COMMENT ON COLUMN %s.cf IS 'scale_offset = %s';""" % (out_table, scale_offset)
-cur.execute(sql)
-con.commit()
+    # create the table
+    sql = 'DROP TABLE IF EXISTS %s;' % out_table
+    cur.execute(sql)
+    con.commit()
+    
+    sql = '''CREATE TABLE %s 
+            (
+                solar_re_9809_gid INTEGER,
+                tilt integer,
+                azimuth CHARACTER VARYING(2),  
+                cf integer[]
+            );''' % out_table
+    cur.execute(sql)
+    con.commit()
+    
+    sql = """COMMENT ON COLUMN %s.cf IS 'scale_offset = %s';""" % (out_table, scale_offset)
+    cur.execute(sql)
+    con.commit()
 
 # get the hdfs
 print 'Finding hdf files'
@@ -103,6 +107,8 @@ for hdf in hdfs:
     
     # get the azimuth
     azimuth = orientations[hf['cf'].attrs['azimuth']]
+    # set the correct output table
+    out_table = out_table_template % azimuth.lower()
 
     # close the hdf file
     hf.close()
