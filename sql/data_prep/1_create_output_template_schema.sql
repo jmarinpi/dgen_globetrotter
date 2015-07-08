@@ -7,6 +7,8 @@ DROP TABLE IF EXISTS diffusion_template.input_main_scenario_options;
 CREATE TABLE diffusion_template.input_main_scenario_options
 (
 	scenario_name text NOT NULL,
+	run_wind boolean not null,
+	run_solar boolean not null,
 	region text NOT NULL,
 	end_year integer NOT NULL,
 	markets text NOT NULL,
