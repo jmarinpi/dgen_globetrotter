@@ -153,33 +153,38 @@ class FancyNamedRange(object):
         return first_value
         
     
-    def to_stringIO(self, columns = None, index = False, header = False):
+    def to_stringIO(self, transpose = False, columns = None, index = False, header = False):
         
         s = StringIO()
         
         if columns == None:
             columns = self.data_frame.columns
+        
+        if transpose:
+            out_df = self.data_frame[columns].T
+        else:
+            out_df = self.data_frame[columns]
             
-        self.data_frame[columns].to_csv(s, index, header)
+        out_df.to_csv(s, delimiter = ',', index = index, header = header)
         
         s.seek(0)
         
         return s
         
-    def to_postgres(self, connection, cursor, schema, table, columns = None, create = False, overwrite = True):
+    def to_postgres(self, connection, cursor, schema, table, transpose = False, columns = None, create = False, overwrite = True):
         
         sql_dict = {'schema': schema, 'table': table}
         
         if create == True:
             raise NotImplementedError('Creation of a new postgres table is not implemented')
         
-        s = self.to_stringIO(columns)        
+        s = self.to_stringIO(transpose, columns)        
         
         if overwrite == True:
             sql = 'DELETE FROM %(schema)s.%(table)s;' % sql_dict
             cursor.execute(sql)
         
-        sql = '%(schema)s.%(table)s;' % sql_dict
+        sql = '%(schema)s.%(table)s' % sql_dict
         cursor.copy_from(s, sql, sep = ',')
         connection.commit()    
         
@@ -191,7 +196,7 @@ if __name__ == '__main__':
     
     xls_file = '/Users/mgleason/NREL_Projects/github/diffusion/excel/scenario_inputs.xlsm'
     wb = xl.load_workbook(xls_file, data_only = True)
-    fnr = FancyNamedRange(wb, 'parcel_size_wind')    
+    fnr = FancyNamedRange(wb, 'scenario_options_main')    
     print fnr.data_frame
     
     

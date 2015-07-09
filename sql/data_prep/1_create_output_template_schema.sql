@@ -14,13 +14,13 @@ CREATE TABLE diffusion_template.input_main_scenario_options
 	markets text NOT NULL,
 	load_growth_scenario text NOT NULL,
 	res_rate_structure text NOT NULL,
-	res_rate_escalation text NOT NULL,
-	res_max_market_curve text NOT NULL,
 	com_rate_structure text NOT NULL,
-	com_rate_escalation text NOT NULL,
-	com_max_market_curve text NOT NULL,
 	ind_rate_structure text NOT NULL,
+	res_rate_escalation text NOT NULL,
+	com_rate_escalation text NOT NULL,
 	ind_rate_escalation text NOT NULL,
+	res_max_market_curve text NOT NULL,
+	com_max_market_curve text NOT NULL,
 	ind_max_market_curve text NOT NULL,
 	carbon_price text NOT NULL,
 	random_generator_seed integer NOT NULL, -- doesn't need a constraint -- just needs to be integer
@@ -84,19 +84,36 @@ CREATE TABLE diffusion_template.input_main_inflation
 	ann_inflation numeric NOT NULL
 );
 
+-- incentives (solar and wind)
+
+DROP TABLE IF EXISTS diffusion_template.input_wind_incentive_utility_types;
+CREATE TABLE diffusion_template.input_wind_incentive_utility_types
+(
+	utility_type_iou boolean NOT NULL,
+	utility_type_muni boolean NOT NULL,
+	utility_type_coop boolean NOT NULL,
+	utility_type_allother boolean NOT NULL
+);
+
 
 DROP TABLE IF EXISTS diffusion_template.input_wind_incentive_options;
 CREATE TABLE diffusion_template.input_wind_incentive_options
 (
 	overwrite_exist_inc boolean NOT NULL,
 	incentive_start_year integer NOT NULL,
-	utility_type_iou boolean NOT NULL,
-	utility_type_muni boolean NOT NULL,
-	utility_type_coop boolean NOT NULL,
-	utility_type_allother boolean NOT NULL,
 	CONSTRAINT input_wind_incentive_options_incentive_start_year_fkey FOREIGN KEY (incentive_start_year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON DELETE RESTRICT
+);
+
+
+DROP TABLE IF EXISTS diffusion_template.input_solar_incentive_utility_types;
+CREATE TABLE diffusion_template.input_solar_incentive_utility_types
+(
+	utility_type_iou boolean NOT NULL,
+	utility_type_muni boolean NOT NULL,
+	utility_type_coop boolean NOT NULL,
+	utility_type_allother boolean NOT NULL
 );
 
 
@@ -105,10 +122,6 @@ CREATE TABLE diffusion_template.input_solar_incentive_options
 (
 	overwrite_exist_inc boolean NOT NULL,
 	incentive_start_year integer NOT NULL,
-	utility_type_iou boolean NOT NULL,
-	utility_type_muni boolean NOT NULL,
-	utility_type_coop boolean NOT NULL,
-	utility_type_allother boolean NOT NULL,
 	CONSTRAINT input_solar_incentive_options_incentive_start_year_fkey FOREIGN KEY (incentive_start_year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON DELETE RESTRICT
