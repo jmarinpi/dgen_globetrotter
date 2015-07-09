@@ -209,7 +209,7 @@ if __name__ == '__main__':
     
     xls_file = '/Users/mgleason/NREL_Projects/github/diffusion/excel/scenario_inputs.xlsm'
     wb = xl.load_workbook(xls_file, data_only = True)
-    fnr = FancyNamedRange(wb, 'scenario_options_main')    
+    fnr = FancyNamedRange(wb, 'flat_elec_rates_main')    
     print fnr.data_frame
     
     

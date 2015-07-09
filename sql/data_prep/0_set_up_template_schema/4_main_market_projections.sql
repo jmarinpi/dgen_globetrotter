@@ -20,3 +20,20 @@ CREATE TABLE diffusion_template.input_main_market_projections
 	default_rate_escalations numeric
 );
 
+
+DROP TABLE if exists diffusion_template.input_main_flat_electric_rates_raw;
+CREATE TABLE diffusion_template.input_main_flat_electric_rates_raw
+(
+  state_abbr character varying(2),
+  res_rate_dlrs_per_kwh numeric,
+  com_rate_dlrs_per_kwh numeric,
+  ind_rate_dlrs_per_kwh numeric
+);
+
+DROP VIEW IF EXISTS diffusion_template.input_main_flat_electric_rates;
+CREATE VIEW diffusion_template.input_main_flat_electric_rates AS
+SELECT b.state_fips, a.*
+FROM diffusion_template.input_main_flat_electric_rates_raw a
+LEFT JOIN diffusion_shared.state_fips_lkup b
+	ON a.state_abbr = b.state_abbr;
+
