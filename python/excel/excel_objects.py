@@ -50,6 +50,12 @@ class FancyNamedRange(object):
         self.data_frame = self.__data_frame__()
     
 
+    def __transpose_values__(self):
+        
+        self.cell_array = self.cell_array.T
+        self.rec_array = self.__rec_array__()
+        self.data_frame = self.__data_frame__()
+
     def __base__(self, workbook, range_name):
         
         # get the named range object
@@ -123,7 +129,12 @@ class FancyNamedRange(object):
         
     def __cell_value__(self, cell):
         
-        return cell.value
+        if cell.data_type == 'n':
+            cell_value = float(cell.value)
+        else:
+            cell_value = cell.value
+        
+        return cell_value
     
     def __rec_array__(self):
         
@@ -132,6 +143,8 @@ class FancyNamedRange(object):
         cols = []
         for j in range(self.cell_array.shape[1]):
             col = cell_values(self.cell_array[:, j])
+            if col.dtype.kind not in ('S', 'b', 'U') and np.all(col.astype('int') == col):
+                col = col.astype('int')
             cols.append(col)
         
         rec_array = np.rec.fromarrays(cols)
