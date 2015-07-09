@@ -33,3 +33,30 @@ order by 1;
 -- order by 1;
 
 
+select *
+FROM diffusion_template.input_main_carbon_intensities
+order by 1;
+
+-- select *
+-- FROM diffusion_solar.manual_carbon_intensities
+-- order by 1;
+
+
+select *
+FROM diffusion_template.input_main_nem_utility_types
+order by 1;
+
+
+select *
+FROM diffusion_template.input_main_nem_avoided_costs
+order by 1;
+
+-- select *
+-- FROM diffusion_solar.nem_scenario_avoided_costs
+-- order by 1
+
+
+select *
+FROM  diffusion_template.input_main_nem_selected_scenario;
+
+

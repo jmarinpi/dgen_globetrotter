@@ -235,3 +235,22 @@ from unnest(array[
 ------------------------------------------------------------------------
 
 
+
+------------------------------------------------------------------------
+-- nem scenarios
+DROP TABLE IF EXISTS diffusion_config.sceninp_nem_scenario;
+CREATE TABLE diffusion_config.sceninp_nem_scenario
+(
+  val text unique not null
+);
+
+INSERT INTO diffusion_config.sceninp_nem_scenario
+select *
+from unnest(array[
+	'BAU',
+	'Full Everywhere',
+	'None Everywhere',
+	'Avoided Costs',
+	'User-Defined'
+	]);
+------------------------------------------------------------------------

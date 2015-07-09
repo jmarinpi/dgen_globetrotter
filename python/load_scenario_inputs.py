@@ -260,43 +260,7 @@ def main(xls_file, schema, conn = None, mode = None, ReEDS_PV_CC = None, verbose
 #    conn.commit()
 #    f.close()
 #
-#def manualCarbonIntensities(curWb,schema,table,conn,cur,verbose=False):
-#    
-#    f = StringIO()
-#    rname = 'manual_carbon_intensities'
-#    named_range = curWb.get_named_range(rname)
-#    if named_range == None:
-#        raise ExcelError('%s named range does not exist.' % rname)
-#    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
-#    columns = len(cells[0])
-#    rows = len(cells)
-#    r = 0
-#    while r < rows:
-#        c = 0
-#        l = []
-#        while c < columns:
-#            if cells[r][c].value == None:
-#                val = '0'
-#            else:
-#                val = cells[r][c].value
-#            l += [val]
-#            c += 1
-#        in_l = l
-#        
-#        f.write(list2line(in_l))
-#        #print l
-#        r += 1
-#    f.seek(0)
-#    if verbose:
-#        print 'Exporting manual_carbon_intensities'
-#    # use "COPY" to dump the data to the staging table in PG
-#    cur.execute('DELETE FROM %s.%s;' % (schema, table))
-#    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
-#    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
-#    conn.commit()
-#    f.close()
-#
-#
+
 #def perfImp(curWb,schema,table,conn,cur,verbose=False):
 #    f = StringIO()
 #    rname = 'Solar_Performance_Improvements'

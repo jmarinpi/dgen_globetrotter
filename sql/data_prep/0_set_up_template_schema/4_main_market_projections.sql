@@ -53,3 +53,12 @@ Select b.rate_type, a.rate_type_desc,
 from diffusion_template.input_main_rate_type_weights_raw a
 LEFT JOIN diffusion_shared.rate_type_desc_lkup b
 ON a.rate_type_desc = b.rate_type_desc;
+
+
+DROP TABLE IF EXISTS diffusion_template.input_main_carbon_intensities;
+CREATE TABLE diffusion_template.input_main_carbon_intensities
+(
+	state_abbr character varying(2) NOT NULL,
+	no_carbon_price_t_per_kwh numeric NOT NULL,
+	ng_intensity numeric NOT NULL
+);
