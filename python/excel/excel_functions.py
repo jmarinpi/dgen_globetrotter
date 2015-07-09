@@ -4,18 +4,9 @@ Created on Thu Jul  9 12:11:46 2015
 
 @author: mgleason
 """
-import excel_objects as xl_objects
+import excel_objects as xlo
+import openpyxl as xl
 
-def get_named_range(workbook, range_name):
-    
-    # get the named range object
-    named_range = workbook.get_named_range(range_name)
-    
-    # raise an error if the named range doesn't exist
-    if named_range == None:
-        raise xl_objects.ExcelError('%s named range does not exist.' % range_name)    
-    
-    return named_range
 
 def get_techs(wb):
     
@@ -24,6 +15,19 @@ def get_techs(wb):
                 'wind' : 'run_wind'
             }
 
-    for tech, rname in techs.iteritems():
+    techs_enabled = {}
+    for tech, range_name in techs.iteritems():
         
-        x = get_named_range(wb, rname)
+        nr = xlo.FancyNamedRange(wb, range_name)
+        techs_enabled[tech] = nr.first_value()
+        
+    return techs_enabled
+        
+    
+
+if __name__ == '__main__':
+    
+    xls_file = '/Users/mgleason/NREL_Projects/github/diffusion/excel/scenario_inputs.xlsm'
+    wb = xl.load_workbook(xls_file, data_only = True)
+#    fnr = xlo.FancyNamedRange(wb, 'run_solar')
+    techs_enabled = get_techs(wb)

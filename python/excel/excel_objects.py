@@ -9,7 +9,7 @@ import openpyxl as xl
 from cStringIO import StringIO
 import numpy as np
 import pandas as pd
-import excel_functions as xl_funcs
+#import excel_functions as xl_funcs
 
 
 class ExcelError(Exception):
@@ -18,8 +18,9 @@ class ExcelError(Exception):
 
 class FancyNamedRange(object):
     
-    def __init__(self, openpyxl_named_range):
-        self.base = openpyxl_named_range
+    def __init__(self, workbook, range_name):
+        
+        self.base = self.__base__(workbook, range_name)
         
         self.worksheets = self.__worksheets__()
         
@@ -48,6 +49,18 @@ class FancyNamedRange(object):
         
         self.data_frame = self.__data_frame__()
     
+
+    def __base__(self, workbook, range_name):
+        
+        # get the named range object
+        base = workbook.get_named_range(range_name)
+        
+        # raise an error if the named range doesn't exist
+        if base == None:
+            raise ExcelError('%s named range does not exist.' % range_name)    
+        
+        return base    
+    
     def __worksheets__(self):
         
         worksheets =  list(np.array(self.base.destinations)[:,0])
@@ -70,13 +83,19 @@ class FancyNamedRange(object):
     
     def __topleft__(self):
         
-        coordinates = self.cell_ranges[0].split(':')[0]
-        
+        if ':' in self.cell_ranges[0]:
+            coordinates = self.cell_ranges[0].split(':')[0]
+        else:
+            coordinates = self.cell_ranges[0]
+            
         return coordinates
         
     def __bottomright__(self):
         
-        coordinates = self.cell_ranges[0].split(':')[1]
+        if ':' in self.cell_ranges[0]:
+            coordinates = self.cell_ranges[0].split(':')[1]
+        else:
+            coordinates = self.cell_ranges[0]
         
         return coordinates
     
@@ -97,6 +116,8 @@ class FancyNamedRange(object):
     def __cell_array__(self):
         
         cell_array = np.array(self.cells)
+        if cell_array.shape == ():
+            cell_array = cell_array.reshape((1,1))
         
         return cell_array
         
@@ -124,6 +145,12 @@ class FancyNamedRange(object):
         df.columns = range(0, ncols)
         
         return df
+        
+    def first_value(self):
+        
+        first_value = self.data_frame.ix[0][0]
+
+        return first_value
         
     
     def to_stringIO(self, columns = None, index = False, header = False):
@@ -153,7 +180,7 @@ class FancyNamedRange(object):
             cursor.execute(sql)
         
         sql = '%(schema)s.%(table)s;' % sql_dict
-        cursor.copy_from(s, sql, sep=',')
+        cursor.copy_from(s, sql, sep = ',')
         connection.commit()    
         
         # release the string io object
@@ -164,8 +191,7 @@ if __name__ == '__main__':
     
     xls_file = '/Users/mgleason/NREL_Projects/github/diffusion/excel/scenario_inputs.xlsm'
     wb = xl.load_workbook(xls_file, data_only = True)
-    nr = xl_funcs.get_named_range(wb, 'parcel_size_wind')
-    fnr = FancyNamedRange(nr)    
-    fnr.data_frames
+    fnr = FancyNamedRange(wb, 'parcel_size_wind')    
+    print fnr.data_frame
     
     
