@@ -32,3 +32,37 @@ SELECT 	a.year,
 FROM diffusion_template.input_main_market_projections a
 CROSS JOIN diffusion_shared.state_fips_lkup b
 WHERE b.state_abbr <> 'PR';
+
+
+DROP TABLE IF EXISTS diffusion_template.input_main_nem_user_defined_scenario;
+CREATE TABLE diffusion_template.input_main_nem_user_defined_scenario
+(
+	state_abbr character varying(2),
+	
+	system_size_limit_kw_res numeric,
+	state_cap_limit_mw_res numeric,
+	year_end_excess_sell_rate_dlrs_per_kwh_res numeric,
+	hourly_excess_sell_rate_dlrs_per_kwh_res numeric,
+
+	system_size_limit_kw_com numeric,
+	state_cap_limit_mw_com numeric,
+	year_end_excess_sell_rate_dlrs_per_kwh_com numeric,
+	hourly_excess_sell_rate_dlrs_per_kwh_com numeric,
+
+	system_size_limit_kw_ind numeric,
+	state_cap_limit_mw_ind numeric,
+	year_end_excess_sell_rate_dlrs_per_kwh_ind numeric,
+	hourly_excess_sell_rate_dlrs_per_kwh_ind numeric,
+
+	first_year integer,
+	last_year integer,
+
+	CONSTRAINT input_main_nem_user_defined_scenario_first_year_fkey FOREIGN KEY (first_year)
+		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
+		ON DELETE RESTRICT,
+
+	CONSTRAINT input_main_nem_user_defined_scenario_last_year_fkey FOREIGN KEY (last_year)
+		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
+		ON DELETE RESTRICT
+
+);
