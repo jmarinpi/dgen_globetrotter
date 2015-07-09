@@ -40,17 +40,17 @@ CREATE TABLE diffusion_template.input_main_nem_user_defined_scenario
 	state_abbr character varying(2),
 	
 	system_size_limit_kw_res double precision,
-	state_cap_limit_mw_res numeric,
+	state_cap_limit_mw_res double precision,
 	year_end_excess_sell_rate_dlrs_per_kwh_res numeric,
 	hourly_excess_sell_rate_dlrs_per_kwh_res numeric,
 
 	system_size_limit_kw_com double precision,
-	state_cap_limit_mw_com numeric,
+	state_cap_limit_mw_com double precision,
 	year_end_excess_sell_rate_dlrs_per_kwh_com numeric,
 	hourly_excess_sell_rate_dlrs_per_kwh_com numeric,
 
 	system_size_limit_kw_ind double precision,
-	state_cap_limit_mw_ind numeric,
+	state_cap_limit_mw_ind double precision,
 	year_end_excess_sell_rate_dlrs_per_kwh_ind numeric,
 	hourly_excess_sell_rate_dlrs_per_kwh_ind numeric,
 
