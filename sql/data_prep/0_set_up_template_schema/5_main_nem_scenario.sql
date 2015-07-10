@@ -1,6 +1,6 @@
 ﻿set role 'diffusion-writers';
 
-DROP TABLE IF EXISTS diffusion_template.input_main_nem_utility_types;
+DROP TABLE IF EXISTS diffusion_template.input_main_nem_utility_types CASCADE;
 CREATE TABLE diffusion_template.input_main_nem_utility_types 
 (
 	utility_type_iou boolean NOT NULL,

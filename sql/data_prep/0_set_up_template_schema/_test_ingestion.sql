@@ -3,7 +3,7 @@ from diffusion_template.input_main_scenario_options;
 
 
 select *
-FROM diffusion_template.input_main_inflation;
+FROM diffusion_template.input_main_market_inflation;
 
 
 select *
@@ -16,7 +16,7 @@ order by 1;
 
 
 select *
-from diffusion_template.input_main_flat_electric_rates
+from diffusion_template.input_main_market_flat_electric_rates
 order by 1;
 
 -- select *
@@ -25,7 +25,7 @@ order by 1;
 
 
 select *
-from diffusion_template.input_main_rate_type_weights
+from diffusion_template.input_main_market_rate_type_weights
 order by 1;
 
 -- select *
@@ -34,7 +34,7 @@ order by 1;
 
 
 select *
-FROM diffusion_template.input_main_carbon_intensities
+FROM diffusion_template.input_main_market_carbon_intensities
 order by 1;
 
 -- select *
