@@ -142,6 +142,9 @@ class FancyNamedRange(object):
         else:
             cell_value = cell.value
         
+        if cell_value is None:
+            cell_value = np.nan
+        
         return cell_value
     
     def __rec_array__(self, colnames_included = False):
@@ -218,7 +221,7 @@ class FancyNamedRange(object):
             cursor.execute(sql)
         
         sql = '%(schema)s.%(table)s' % sql_dict
-        cursor.copy_from(s, sql, sep = ',')
+        cursor.copy_from(s, sql, sep = ',', null = '')
         connection.commit()    
         
         # release the string io object
@@ -229,7 +232,7 @@ if __name__ == '__main__':
     
     xls_file = '/Users/mgleason/NREL_Projects/github/diffusion/excel/scenario_inputs.xlsm'
     wb = xl.load_workbook(xls_file, data_only = True)
-    fnr = FancyNamedRange(wb, 'leasing_avail_solar')    
+    fnr = FancyNamedRange(wb, 'incentives_values_wind')    
 #    print fnr.data_frame
     
     

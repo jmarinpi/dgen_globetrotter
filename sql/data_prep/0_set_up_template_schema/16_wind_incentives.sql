@@ -91,9 +91,9 @@ select region,
 	'Tax'::text as type,
 	'Residential'::text as sector,
 
-	tax_res_incentive as incentive,
-	tax_res_cap as cap,
-	tax_res_expire as expire,
+	coalesce(tax_res_incentive, 0) as incentive,
+	coalesce(tax_res_cap, 0) as cap,
+	coalesce(tax_res_expire, 0) as expire,
 	0::numeric as incentives_c_per_kwh,
 	0::numeric as no_years,
 	0::numeric as dol_per_kw
@@ -105,9 +105,9 @@ select region,
 	'Tax'::text as type,
 	'Commercial'::text as sector,
 
-	tax_com_incentive as incentive,
-	tax_com_cap as cap,
-	tax_com_expire as expire,
+	coalesce(tax_com_incentive, 0) as incentive,
+	coalesce(tax_com_cap, 0) as cap,
+	coalesce(tax_com_expire, 0) as expire,
 	0::numeric as incentives_c_per_kwh,
 	0::numeric as no_years,
 	0::numeric as dol_per_kw
@@ -119,9 +119,9 @@ select region,
 	'Tax'::text as type,
 	'Industrial'::text as sector,
 
-	tax_ind_incentive as incentive,
-	tax_ind_cap as cap,
-	tax_ind_expire as expire,
+	coalesce(tax_ind_incentive, 0) as incentive,
+	coalesce(tax_ind_cap, 0) as cap,
+	coalesce(tax_ind_expire, 0) as expire,
 	0::numeric as incentives_c_per_kwh,
 	0::numeric as no_years,
 	0::numeric as dol_per_kw
@@ -136,9 +136,9 @@ select region,
 
 	0::numeric as incentive,
 	0::numeric as cap,
-	production_res_expire as expire,
-	production_res_incentives_c_per_kwh as incentives_c_per_kwh,
-	production_res_no_years as no_years,
+	coalesce(production_res_expire, 0) as expire,
+	coalesce(production_res_incentives_c_per_kwh, 0) as incentives_c_per_kwh,
+	coalesce(production_res_no_years, 0) as no_years,
 	0::numeric as dol_per_kw
 FROM diffusion_template.input_wind_incentives_raw
 
@@ -150,9 +150,9 @@ select region,
 
 	0::numeric as incentive,
 	0::numeric as cap,
-	production_com_expire as expire,
-	production_com_incentives_c_per_kwh as incentives_c_per_kwh,
-	production_com_no_years as no_years,
+	coalesce(production_com_expire, 0) as expire,
+	coalesce(production_com_incentives_c_per_kwh, 0) as incentives_c_per_kwh,
+	coalesce(production_com_no_years, 0) as no_years,
 	0::numeric as dol_per_kw
 FROM diffusion_template.input_wind_incentives_raw
 
@@ -164,9 +164,9 @@ select region,
 
 	0::numeric as incentive,
 	0::numeric as cap,
-	production_ind_expire as expire,
-	production_ind_incentives_c_per_kwh as incentives_c_per_kwh,
-	production_ind_no_years as no_years,
+	coalesce(production_ind_expire, 0) as expire,
+	coalesce(production_ind_incentives_c_per_kwh, 0) as incentives_c_per_kwh,
+	coalesce(production_ind_no_years, 0) as no_years,
 	0::numeric as dol_per_kw
 FROM diffusion_template.input_wind_incentives_raw
 
@@ -179,11 +179,11 @@ select region,
 	'Residential'::text as sector,
 
 	0::numeric as incentive,
-	rebate_res_cap as cap,
-	rebate_res_expire as expire,
+	coalesce(rebate_res_cap, 0) as cap,
+	coalesce(rebate_res_expire, 0) as expire,
 	0::numeric as incentives_c_per_kwh,
 	0::numeric as no_years,
-	rebate_res_dol_per_w/1000. as dol_per_kw
+	coalesce(rebate_res_dol_per_w/1000., 0) as dol_per_kw
 FROM diffusion_template.input_wind_incentives_raw
 
 UNION ALL
@@ -193,11 +193,11 @@ select region,
 	'Commercial'::text as sector,
 
 	0::numeric as incentive,
-	rebate_com_cap as cap,
-	rebate_com_expire as expire,
+	coalesce(rebate_com_cap, 0) as cap,
+	coalesce(rebate_com_expire, 0) as expire,
 	0::numeric as incentives_c_per_kwh,
 	0::numeric as no_years,
-	rebate_com_dol_per_w/1000. as dol_per_kw
+	coalesce(rebate_com_dol_per_w/1000., 0) as dol_per_kw
 FROM diffusion_template.input_wind_incentives_raw
 
 UNION ALL
@@ -207,11 +207,11 @@ select region,
 	'Industrial'::text as sector,
 
 	0::numeric as incentive,
-	rebate_ind_cap as cap,
-	rebate_ind_expire as expire,
+	coalesce(rebate_ind_cap, 0) as cap,
+	coalesce(rebate_ind_expire, 0) as expire,
 	0::numeric as incentives_c_per_kwh,
 	0::numeric as no_years,
-	rebate_ind_dol_per_w/1000. as dol_per_kw
+	coalesce(rebate_ind_dol_per_w/1000., 0) as dol_per_kw
 FROM diffusion_template.input_wind_incentives_raw;
 
 
