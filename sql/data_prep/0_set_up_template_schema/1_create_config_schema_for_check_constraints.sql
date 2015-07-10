@@ -254,3 +254,25 @@ from unnest(array[
 	'User-Defined'
 	]);
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- sector
+DROP TABLE IF EXISTS diffusion_config.sceninp_sector;
+CREATE TABLE diffusion_config.sceninp_sector
+(
+  sector text unique not null,
+  sector_abbr character varying(3) unique not null
+);
+
+INSERT INTO diffusion_config.sceninp_sector (sector, sector_abbr)
+select *, substring(lower(a) from 1 for 3)
+from unnest(array[
+	'Residential',
+	'Commercial',
+	'Industrial'
+	]) a;
+
+
+------------------------------------------------------------------------
+
+

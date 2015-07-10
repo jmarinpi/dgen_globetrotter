@@ -77,3 +77,35 @@ CREATE TABLE diffusion_template.input_solar_cost_assumptions
 		REFERENCES diffusion_config.sceninp_cost_assumptions_solar (val) MATCH SIMPLE
 		ON DELETE RESTRICT
 );
+
+
+
+DROP VIEW IF EXISTS diffusion_template.input_solar_cost_projections_to_model;
+CREAte VIEW diffusion_template.input_solar_cost_projections_to_model As
+WITH a as 
+(
+	SELECT year, capital_cost_dollars_per_kw, inverter_cost_dollars_per_kw, 
+	       fixed_om_dollars_per_kw_per_yr, variable_om_dollars_per_kwh, 
+	       sector_abbr as sector, 'User Defined'::text as source
+	FROM diffusion_template.input_solar_cost_projections
+
+	UNION ALL
+
+	SELECT year, capital_cost_dollars_per_kw, inverter_cost_dollars_per_kw, 
+		fixed_om_dollars_per_kw_per_yr, variable_om_dollars_per_kwh, 
+		sector, 'Solar Program Targets'::text as source
+	FROM diffusion_solar.solar_program_target_cost_projections
+
+	UNION ALL
+
+	select year, capital_cost_dollars_per_kw, inverter_cost_dollars_per_kw, 
+		fixed_om_dollars_per_kw_per_yr, variable_om_dollars_per_kwh, 
+		sector, 'AEO 2014'::text as source
+	from diffusion_solar.solar_costs_aeo2014
+)
+
+
+SELECT a.*
+FROM a
+INNER JOIN diffusion_template.input_solar_cost_assumptions b
+ON a.source = b.cost_assumptions;

@@ -116,6 +116,15 @@ order by 1;
 
 
 select *
+FROM diffusion_template.input_solar_cost_projections_to_model
+order by 1, sector;
+
+-- select *
+-- from diffusion_solar.cost_projections_to_model
+-- order by 1, sector;
+
+
+select *
 FROM diffusion_template.input_solar_performance_improvements
 order by 1;
 
@@ -129,4 +138,15 @@ from diffusion_template.input_solar_performance_annual_system_degradation;
 
 -- select ann_system_degradation
 -- from diffusion_solar.scenario_options;
+
+
+select *
+FROM diffusion_template.input_solar_performance_system_sizing_factors
+order by 1;
+
+-- select *
+-- from diffusion_solar.system_sizing_factors
+-- order by 1;
+
+
 
