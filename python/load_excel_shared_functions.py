@@ -430,7 +430,7 @@ def manIncents(curWb,schema,conn,cur,verbose=False):
             if incen_type == 'Rebate':
                 for utility_type in selected_utility_types.keys():
                     if selected_utility_types[utility_type]: 
-                        out = region + [incen_type] + [sector_type] + [0] + [l[1]] + [l[2]] + [0] + [0] + [l[0]/1000.] + budget + [utility_type]
+                        out = region + [incen_type] + [sector_type] + [0] + [l[1]] + [l[2]] + [0] + [0] + [float(l[0])/1000.] + budget + [utility_type]
                         f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
         r += 1
     f.seek(0)
