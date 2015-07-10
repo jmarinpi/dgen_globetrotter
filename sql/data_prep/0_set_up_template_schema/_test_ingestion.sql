@@ -334,3 +334,25 @@ order by 1;
 -- select *
 -- FROM diffusion_wind.system_sizing_factors
 -- order by 1;
+
+
+select *
+FROM diffusion_template.input_wind_siting_apply_parcel_size;
+
+select *
+FROM diffusion_template.input_wind_siting_apply_hi_dev;
+
+select *
+FROM diffusion_template.input_wind_siting_apply_canopy_clearance;
+
+select *
+FROM diffusion_template.input_wind_siting_parcel_size_raw
+order by 1;
+
+select *
+FROM diffusion_template.input_wind_siting_hi_dev_raw
+order by 1;
+
+select *
+FROM diffusion_template.input_wind_siting_canopy_clearance_raw
+order by 1;
