@@ -250,3 +250,7 @@ order by 1, 2;
 -- select *
 -- FROM diffusion_wind.leasing_availability
 -- order by 1, 2;
+
+
+select *
+FROM diffusion_template.input_solar_incentive_options;
