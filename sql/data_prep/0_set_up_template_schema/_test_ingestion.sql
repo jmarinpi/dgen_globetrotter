@@ -149,4 +149,40 @@ order by 1;
 -- order by 1;
 
 
+select *
+from diffusion_template.input_solar_finances_res
+order by 1;
 
+select *
+from diffusion_template.input_solar_finances_com
+order by 1;
+
+select *
+from diffusion_template.input_solar_finances_ind
+order by 1;
+
+select *
+FROM diffusion_template.input_solar_finances
+order by 1, 2;
+
+-- select *
+-- FROM diffusion_solar.financial_parameters
+-- order by 1, 2;
+
+
+select *
+from diffusion_template.input_solar_finances_max_market_share
+order by 1, 2;
+
+-- select *
+-- from diffusion_solar.user_defined_max_market_share
+-- order by 1, 2;
+
+
+select *
+FROM diffusion_template.input_solar_finances_depreciation_schedule
+order by 1;
+
+-- select *
+-- FROM diffusion_solar.depreciation_schedule
+-- order by 1;
