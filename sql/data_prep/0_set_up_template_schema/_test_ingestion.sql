@@ -60,3 +60,20 @@ select *
 FROM  diffusion_template.input_main_nem_selected_scenario;
 
 
+select *
+FROM diffusion_template.input_main_nem_user_defined_scenario;
+
+
+select *
+FROM diffusion_template.input_main_nem_scenario;
+
+-- select *
+-- FROM diffusion_shared.nem_scenario_bau;
+-- 
+-- select *
+-- FROM diffusion_shared.nem_scenario_none_everywhere;
+-- 
+-- select *
+-- FROM diffusion_shared.nem_scenario_full_everywhere;
+
+

@@ -10,6 +10,26 @@ CREATE TABLE diffusion_template.input_main_nem_utility_types
 );
 
 
+DROP VIEW IF EXISTS diffusion_template.input_main_nem_utility_types_tidy;
+CREATE VIEW diffusion_template.input_main_nem_utility_types_tidy AS
+with a as
+(
+	select unnest(array[	case when utility_type_iou = True then 'IOU'
+			END,
+			case when utility_type_muni = True then 'Muni'
+			END,
+			case when utility_type_coop = True then 'Coop'
+			END,
+			case when utility_type_allother = True then 'All Other'
+			ENd
+		]) as utility_type
+	from diffusion_template.input_main_nem_utility_types 
+)
+SELECT *
+FROM a
+where utility_type is not null;
+
+
 DROP TABLE IF EXISTS diffusion_template.input_main_nem_selected_scenario;
 CREATE TABLE diffusion_template.input_main_nem_selected_scenario 
 (
@@ -34,8 +54,8 @@ CROSS JOIN diffusion_shared.state_fips_lkup b
 WHERE b.state_abbr <> 'PR';
 
 
-DROP TABLE IF EXISTS diffusion_template.input_main_nem_user_defined_scenario;
-CREATE TABLE diffusion_template.input_main_nem_user_defined_scenario
+DROP TABLE IF EXISTS diffusion_template.input_main_nem_user_defined_scenario_raw;
+CREATE TABLE diffusion_template.input_main_nem_user_defined_scenario_raw
 (
 	state_abbr character varying(2),
 	
@@ -66,3 +86,64 @@ CREATE TABLE diffusion_template.input_main_nem_user_defined_scenario
 		ON DELETE RESTRICT
 
 );
+
+
+DROP VIEW IF EXISTS diffusion_template.input_main_nem_user_defined_scenario;
+CREATE VIEW diffusion_template.input_main_nem_user_defined_scenario AS
+with a as
+(
+	SELECT generate_series(first_year, last_year, 2) as year,
+		state_abbr,
+		'res'::text as sector_abbr,
+		system_size_limit_kw_res as system_size_limit_kw,
+		year_end_excess_sell_rate_dlrs_per_kwh_res as year_end_excess_sell_rate_dlrs_per_kwh,
+		hourly_excess_sell_rate_dlrs_per_kwh_res as hourly_excess_sell_rate_dlrs_per_kwh
+	FROM diffusion_template.input_main_nem_user_defined_scenario_raw
+	UNION ALL
+	SELECT generate_series(first_year, last_year, 2) as year,
+		state_abbr,
+		'com'::text as sector_abbr,
+		system_size_limit_kw_com as system_size_limit_kw,
+		year_end_excess_sell_rate_dlrs_per_kwh_com as year_end_excess_sell_rate_dlrs_per_kwh,
+		hourly_excess_sell_rate_dlrs_per_kwh_com as hourly_excess_sell_rate_dlrs_per_kwh
+	FROM diffusion_template.input_main_nem_user_defined_scenario_raw
+	UNION ALL
+	SELECT generate_series(first_year, last_year, 2) as year,
+		state_abbr,
+		'ind'::text as sector_abbr,
+		system_size_limit_kw_ind as system_size_limit_kw,
+		year_end_excess_sell_rate_dlrs_per_kwh_ind as year_end_excess_sell_rate_dlrs_per_kwh,
+		hourly_excess_sell_rate_dlrs_per_kwh_ind as hourly_excess_sell_rate_dlrs_per_kwh
+	FROM diffusion_template.input_main_nem_user_defined_scenario_raw
+)
+SELECT a.year, a.state_abbr, a.sector_abbr, b.utility_type,
+	a.system_size_limit_kw, a.year_end_excess_sell_rate_dlrs_per_kwh, a.hourly_excess_sell_rate_dlrs_per_kwh
+FROM a
+CROSS join diffusion_template.input_main_nem_utility_types_tidy b;
+
+
+
+DROP VIEW IF EXISTS diffusion_template.input_main_nem_scenario;
+CREATE VIEW diffusion_template.input_main_nem_scenario AS
+with a as
+(
+	SELECT *, 'BAU' as scenario
+	FROM diffusion_shared.nem_scenario_bau 
+	UNION ALL
+	SELECT *, 'Full Everywhere' as scenario
+	FROM diffusion_shared.nem_scenario_full_everywhere 
+	UNION ALL
+	SELECT *, 'None Everywhere' as scenario
+	FROM diffusion_shared.nem_scenario_none_everywhere
+	UNION ALL
+	SELECT *, 'Avoided Costs' as scenario
+	FROM diffusion_template.input_main_nem_avoided_costs
+	UNION ALL
+	SELECT *, 'User-Defined' as scenario
+	FROM diffusion_template.input_main_nem_user_defined_scenario
+)
+SELECT a.year, a.state_abbr, a.sector_abbr, a.utility_type, a.system_size_limit_kw, 
+       a.year_end_excess_sell_rate_dlrs_per_kwh, a.hourly_excess_sell_rate_dlrs_per_kwh
+FROM a
+INNER JOIN diffusion_template.input_main_nem_selected_scenario b
+ON a.scenario = b. val;
