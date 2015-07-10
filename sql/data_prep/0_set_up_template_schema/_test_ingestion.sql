@@ -325,3 +325,12 @@ order by  turbine_size_kw, year;
 -- select year, turbine_size_kw, derate_factor
 -- from diffusion_wind.wind_generation_derate_factors
 -- order by  turbine_size_kw, year;
+
+
+select *
+FROM diffusion_template.input_wind_performance_system_sizing_factors
+order by 1;
+
+-- select *
+-- FROM diffusion_wind.system_sizing_factors
+-- order by 1;

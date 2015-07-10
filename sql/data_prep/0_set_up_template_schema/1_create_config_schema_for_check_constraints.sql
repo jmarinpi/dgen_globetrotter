@@ -18,9 +18,6 @@ from unnest(array[
 ------------------------------------------------------------------------
 
 
-select *
-FROM diffusion_wind_config.sceninp_height_exclusions
-
 ------------------------------------------------------------------------
 -- max market curve
 DROP TABLE IF EXISTS diffusion_config.sceninp_max_market_curve;
