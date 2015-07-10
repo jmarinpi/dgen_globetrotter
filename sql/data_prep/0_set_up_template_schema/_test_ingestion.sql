@@ -186,3 +186,49 @@ order by 1;
 -- select *
 -- FROM diffusion_solar.depreciation_schedule
 -- order by 1;
+
+
+
+
+
+
+
+
+
+select *
+from diffusion_template.input_wind_finances_res
+order by 1;
+
+select *
+from diffusion_template.input_wind_finances_com
+order by 1;
+
+select *
+from diffusion_template.input_wind_finances_ind
+order by 1;
+
+select *
+FROM diffusion_template.input_wind_finances
+order by 1, 2;
+
+-- select *
+-- FROM diffusion_wind.financial_parameters
+-- order by 1, 2;
+
+
+select *
+from diffusion_template.input_wind_finances_max_market_share
+order by 1, 2;
+
+-- select *
+-- from diffusion_wind.user_defined_max_market_share
+-- order by 1, 2;
+
+
+select *
+FROM diffusion_template.input_wind_finances_depreciation_schedule
+order by 1;
+
+-- select *
+-- FROM diffusion_wind.depreciation_schedule
+-- order by 1;
