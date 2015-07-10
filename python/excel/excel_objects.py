@@ -50,6 +50,14 @@ class FancyNamedRange(object):
         self.data_frame = self.__data_frame__()
     
 
+    def __colnames_included__(self):
+        self.rec_array = self.__rec_array__(colnames_included = True)
+        self.data_frame = self.__data_frame__(colnames_included = True)
+    
+    def __melt__(self):
+        self.__colnames_included__()
+        self.data_frame = pd.melt(self.data_frame, self.data_frame.columns[0])
+
     def __transpose_values__(self):
         
         self.cell_array = self.cell_array.T
@@ -127,35 +135,44 @@ class FancyNamedRange(object):
         
         return cell_array
         
-    def __cell_value__(self, cell):
+    def __cell_value__(self, cell, floats = True):
         
-        if cell.data_type == 'n':
+        if floats == True and cell.data_type == 'n':
             cell_value = float(cell.value)
         else:
             cell_value = cell.value
         
         return cell_value
     
-    def __rec_array__(self):
+    def __rec_array__(self, colnames_included = False):
         
         cell_values = np.vectorize(self.__cell_value__)
         
+        if colnames_included == True:
+            i_begin = 1
+        else:
+            i_begin = 0
+        
         cols = []
         for j in range(self.cell_array.shape[1]):
-            col = cell_values(self.cell_array[:, j])
+            col = cell_values(self.cell_array[i_begin:, j])
             if col.dtype.kind not in ('S', 'b', 'U') and np.all(col.astype('int') == col):
                 col = col.astype('int')
             cols.append(col)
         
         rec_array = np.rec.fromarrays(cols)
+        if colnames_included == True:
+            names = cell_values(self.cell_array[0, :], floats = False)
+            rec_array.dtype.names = map(str, list(names))
         
         return rec_array
     
-    def __data_frame__(self):
+    def __data_frame__(self, colnames_included = False):
         
         df = pd.DataFrame(self.rec_array)
-        ncols = df.shape[1]
-        df.columns = range(0, ncols)
+        if colnames_included == False:
+            ncols = df.shape[1]
+            df.columns = range(0, ncols)
         
         return df
         
@@ -165,6 +182,9 @@ class FancyNamedRange(object):
 
         return first_value
         
+
+        
+    
     
     def to_stringIO(self, transpose = False, columns = None, index = False, header = False):
         
@@ -209,7 +229,7 @@ if __name__ == '__main__':
     
     xls_file = '/Users/mgleason/NREL_Projects/github/diffusion/excel/scenario_inputs.xlsm'
     wb = xl.load_workbook(xls_file, data_only = True)
-    fnr = FancyNamedRange(wb, 'flat_elec_rates_main')    
-    print fnr.data_frame
+    fnr = FancyNamedRange(wb, 'leasing_avail_solar')    
+#    print fnr.data_frame
     
     

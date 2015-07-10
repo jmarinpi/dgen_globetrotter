@@ -232,3 +232,21 @@ order by 1;
 -- select *
 -- FROM diffusion_wind.depreciation_schedule
 -- order by 1;
+
+
+select *
+FROM diffusion_template.input_solar_leasing_availability
+order by 1, 2;
+
+-- select *
+-- FROM diffusion_solar.leasing_availability
+-- order by 1, 2;
+
+
+select *
+FROM diffusion_template.input_wind_leasing_availability
+order by 1, 2;
+
+-- select *
+-- FROM diffusion_wind.leasing_availability
+-- order by 1, 2;

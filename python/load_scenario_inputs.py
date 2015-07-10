@@ -50,12 +50,14 @@ def main(xls_file, schema, conn = None, mode = None, ReEDS_PV_CC = None, verbose
         
 
         # for testing only !!!!!!!!!!!
-        mappings = mappings[mappings.run == True][['table', 'named_range', 'transpose']]
-        for table, range_name, transpose in mappings.itertuples(index = False):
+        mappings = mappings[mappings.run == True][['table', 'named_range', 'transpose', 'melt']]
+        for table, range_name, transpose, melt in mappings.itertuples(index = False):
             global fnr
             fnr = FancyNamedRange(wb, range_name)
             if transpose == True:
                 fnr.__transpose_values__()
+            elif melt == True:
+                fnr.__melt__()
             fnr.to_postgres(conn, cur, schema, table)
             del fnr
 
