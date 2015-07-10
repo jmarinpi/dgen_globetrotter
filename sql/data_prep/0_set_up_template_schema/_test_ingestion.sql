@@ -254,3 +254,47 @@ order by 1, 2;
 
 select *
 FROM diffusion_template.input_solar_incentive_options;
+
+-- select overwrite_exist_inc, incentive_start_year
+-- from diffusion_solar.scenario_options;
+
+
+select *
+FROM diffusion_template.input_solar_incentive_utility_types;
+
+-- select utility_type_iou, utility_type_muni, utility_type_coop, utility_type_allother
+-- from diffusion_solar.scenario_options;
+
+
+select *
+FROM diffusion_template.input_solar_incentives
+order by 1, 2, 3, 10;
+
+-- select *
+-- FROM diffusion_solar.manual_incentives
+-- order by 1, 2, 3, 11;
+
+
+
+
+select *
+FROM diffusion_template.input_wind_incentive_options;
+
+-- select overwrite_exist_inc, incentive_start_year
+-- from diffusion_wind.scenario_options;
+
+
+select *
+FROM diffusion_template.input_wind_incentive_utility_types;
+
+-- select utility_type_iou, utility_type_muni, utility_type_coop, utility_type_allother
+-- from diffusion_wind.scenario_options;
+
+
+select *
+FROM diffusion_template.input_wind_incentives
+order by 1, 2, 3, 10;
+
+-- select *
+-- FROM diffusion_wind.manual_incentives
+-- order by 1, 2, 3, 11;
