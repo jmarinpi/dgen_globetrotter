@@ -356,3 +356,31 @@ order by 1;
 select *
 FROM diffusion_template.input_wind_siting_canopy_clearance_raw
 order by 1;
+
+
+
+select *
+FROM diffusion_template.input_wind_siting_parcel_size
+order by 1;
+
+-- select *
+-- FROM diffusion_wind.min_acres_per_hu_lkup
+-- order by 1;
+
+
+select *
+FROM diffusion_template.input_wind_siting_hi_dev
+order by 1;
+
+-- select *
+-- FROM diffusion_wind.max_hi_dev_pct_lkup
+-- order by 1;
+
+
+select *
+FROM diffusion_template.input_wind_siting_canopy_clearance
+order by 1;
+
+-- select *
+-- FROM diffusion_wind.required_canopy_clearance_lkup
+-- order by 1;
