@@ -298,3 +298,30 @@ order by 1, 2, 3, 10;
 -- select *
 -- FROM diffusion_wind.manual_incentives
 -- order by 1, 2, 3, 11;
+
+
+select *
+FROM diffusion_template.input_wind_cost_projections
+order by 1, turbine_size_kw;
+
+-- select *
+-- FROM diffusion_wind.wind_cost_projections
+-- order by 1, turbine_size_kw;
+
+
+select year, turbine_size_kw, power_curve_id
+FROM diffusion_template.input_wind_performance_improvements
+order by turbine_size_kw, year;
+
+-- select year, turbine_size_kw, power_curve_id
+-- FROM diffusion_wind.wind_performance_improvements
+-- order by turbine_size_kw, year;
+
+
+select year, turbine_size_kw, derate_factor
+from diffusion_template.input_wind_performance_gen_derate_factors
+order by  turbine_size_kw, year;
+
+-- select year, turbine_size_kw, derate_factor
+-- from diffusion_wind.wind_generation_derate_factors
+-- order by  turbine_size_kw, year;

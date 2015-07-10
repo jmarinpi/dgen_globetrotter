@@ -232,7 +232,7 @@ if __name__ == '__main__':
     
     xls_file = '/Users/mgleason/NREL_Projects/github/diffusion/excel/scenario_inputs.xlsm'
     wb = xl.load_workbook(xls_file, data_only = True)
-    fnr = FancyNamedRange(wb, 'incentives_values_wind')    
+    fnr = FancyNamedRange(wb, 'derate_factors_wind')    
 #    print fnr.data_frame
     
     

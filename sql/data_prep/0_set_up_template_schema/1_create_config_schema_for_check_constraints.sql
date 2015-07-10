@@ -1,7 +1,4 @@
-﻿set role 'server-superusers';
-select add_schema('diffusion_config','diffusion');
-
-set role 'diffusion-writers';
+﻿set role 'diffusion-writers';
 
 ------------------------------------------------------------------------
 -- carbon price
@@ -275,4 +272,15 @@ from unnest(array[
 
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- power curve ids
+DROP TABLE IF EXISTS diffusion_config.sceninp_power_curve_ids;
+CREATE TABLE diffusion_config.sceninp_power_curve_ids
+(
+  val integer unique not null
+);
 
+INSERT INTO diffusion_config.sceninp_power_curve_ids
+select *
+from unnest(array[1, 2, 3, 4, 5, 6, 7, 8]);
+------------------------------------------------------------------------
