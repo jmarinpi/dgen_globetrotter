@@ -57,25 +57,25 @@ WHERE b.state_abbr <> 'PR';
 DROP TABLE IF EXISTS diffusion_template.input_main_nem_user_defined_scenario_raw;
 CREATE TABLE diffusion_template.input_main_nem_user_defined_scenario_raw
 (
-	state_abbr character varying(2),
+	state_abbr character varying(2) NOT NULL,
 	
-	system_size_limit_kw_res double precision,
-	state_cap_limit_mw_res double precision,
-	year_end_excess_sell_rate_dlrs_per_kwh_res numeric,
-	hourly_excess_sell_rate_dlrs_per_kwh_res numeric,
+	system_size_limit_kw_res double precision  NOT NULL,
+	state_cap_limit_mw_res double precision  NOT NULL,
+	year_end_excess_sell_rate_dlrs_per_kwh_res numeric NOT NULL, 
+	hourly_excess_sell_rate_dlrs_per_kwh_res numeric NOT NULL,
 
-	system_size_limit_kw_com double precision,
-	state_cap_limit_mw_com double precision,
-	year_end_excess_sell_rate_dlrs_per_kwh_com numeric,
-	hourly_excess_sell_rate_dlrs_per_kwh_com numeric,
+	system_size_limit_kw_com double precision NOT NULL,
+	state_cap_limit_mw_com double precision NOT NULL,
+	year_end_excess_sell_rate_dlrs_per_kwh_com numeric NOT NULL,
+	hourly_excess_sell_rate_dlrs_per_kwh_com numeric NOT NULL,
 
-	system_size_limit_kw_ind double precision,
-	state_cap_limit_mw_ind double precision,
-	year_end_excess_sell_rate_dlrs_per_kwh_ind numeric,
-	hourly_excess_sell_rate_dlrs_per_kwh_ind numeric,
+	system_size_limit_kw_ind double precision NOT NULL,
+	state_cap_limit_mw_ind double precision NOT NULL,
+	year_end_excess_sell_rate_dlrs_per_kwh_ind numeric NOT NULL,
+	hourly_excess_sell_rate_dlrs_per_kwh_ind numeric NOT NULL,
 
-	first_year integer,
-	last_year integer,
+	first_year integer NOT NULL,
+	last_year integer NOT NULL,
 
 	CONSTRAINT input_main_nem_user_defined_scenario_first_year_fkey FOREIGN KEY (first_year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE

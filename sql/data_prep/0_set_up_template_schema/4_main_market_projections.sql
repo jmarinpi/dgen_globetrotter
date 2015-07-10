@@ -17,7 +17,10 @@ CREATE TABLE diffusion_template.input_main_market_projections
 	user_defined_res_rate_escalations numeric NOT NULL,
 	user_defined_com_rate_escalations numeric NOT NULL,
 	user_defined_ind_rate_escalations numeric NOT NULL,
-	default_rate_escalations numeric NOT NULL
+	default_rate_escalations numeric NOT NULL,
+	CONSTRAINT input_main_market_projections_year_fkey FOREIGN KEY (year)
+		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
+		ON UPDATE NO ACTION ON DELETE RESTRICT
 );
 
 

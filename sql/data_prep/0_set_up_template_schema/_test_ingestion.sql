@@ -77,3 +77,56 @@ FROM diffusion_template.input_main_nem_scenario;
 -- FROM diffusion_shared.nem_scenario_full_everywhere;
 
 
+select *
+FROM diffusion_template.input_solar_cost_projections_res
+order by 1;
+
+select *
+FROM diffusion_template.input_solar_cost_projections_com
+order by 1;
+
+select *
+FROM diffusion_template.input_solar_cost_projections_ind
+order by 1;
+
+select *
+FROM diffusion_template.input_solar_cost_projections
+order by 1;
+
+-- select *
+-- FROM diffusion_solar.solar_cost_projections
+-- order by 1;
+
+
+select *
+FROM diffusion_template.input_solar_cost_learning_rates
+order by 1;
+
+-- select *
+-- FROM diffusion_solar.learning_rates
+-- order by 1;
+
+
+select *
+FROM diffusion_template.input_solar_cost_assumptions
+order by 1;
+
+-- select cost_assumptions
+-- from diffusion_solar.scenario_options;
+
+
+select *
+FROM diffusion_template.input_solar_performance_improvements
+order by 1;
+
+-- select *
+-- FROM diffusion_solar.solar_performance_improvements
+-- order by 1;
+
+
+select *
+from diffusion_template.input_solar_performance_annual_system_degradation;
+
+-- select ann_system_degradation
+-- from diffusion_solar.scenario_options;
+
