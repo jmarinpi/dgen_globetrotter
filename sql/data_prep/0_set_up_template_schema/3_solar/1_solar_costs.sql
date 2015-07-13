@@ -102,10 +102,32 @@ WITH a as
 		fixed_om_dollars_per_kw_per_yr, variable_om_dollars_per_kwh, 
 		sector, 'AEO 2014'::text as source
 	from diffusion_solar.solar_costs_aeo2014
+),
+b as
+(
+	SELECT a.*
+	FROM a
+	INNER JOIN diffusion_template.input_solar_cost_assumptions b
+	ON a.source = b.cost_assumptions
 )
+SELECT b.year, 
+	case when d.reeds_mode = true then c.capital_cost_dollars_per_kw
+	else b.capital_cost_dollars_per_kw
+	end as capital_cost_dollars_per_kw,
+	b.inverter_cost_dollars_per_kw, 
+	b.fixed_om_dollars_per_kw_per_yr, b.variable_om_dollars_per_kwh, 
+	b.sector, 
+	b.source
+from b 
+LEFT JOIN diffusion_template.input_reeds_capital_costs_by_sector c
+	ON b.year = c.year
+	and b.sector = c.sector_abbr
+LEFT JOIN diffusion_template.input_reeds_mode d
+ON true;
 
 
-SELECT a.*
-FROM a
-INNER JOIN diffusion_template.input_solar_cost_assumptions b
-ON a.source = b.cost_assumptions;
+select *
+FROM diffusion_template.input_solar_cost_projections_to_model;
+
+select *
+FROM diffusion_solar.cost_projections_to_model;

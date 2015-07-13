@@ -23,6 +23,7 @@ import diffusion_functions as diffunc
 import financial_functions as finfunc
 import data_functions as datfunc
 reload(datfunc)
+from data_objects import FancyDataFrame
 import subprocess
 import datetime
 import config as cfg
@@ -40,79 +41,86 @@ elif cfg.technology == 'solar':
 
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
-    # check which technology is being modeled and adjust variables accordingly
-    schema = "diffusion_%s" % cfg.technology
-
-    if mode == 'ReEDS':
-        
-        ReEDS_df = ReEDS_inputs['ReEDS_df']
-        curtailment_method = ReEDS_inputs['curtailment_method']
-        
-        distPVCurtailment = ReEDS_df['annual_distPVSurplusMar'] # Fraction of distributed PV curtailed in timeslice (m) and BA (n)
-        change_elec_price = ReEDS_df['change_elec_price'] # Relative change in electricity price since 2014 by BA (n)
-        
-        # Rename columns to match names in SolarDS
-        distPVCurtailment.columns = ['pca_reg','curtailment_rate']
-        change_elec_price.columns = ['pca_reg','ReEDS_elec_price_mult']
-        
-        # Remove Mexico BAs
-        change_elec_price = change_elec_price[change_elec_price.pca_reg != 'p135']
-        change_elec_price = change_elec_price[change_elec_price.pca_reg != 'p136']
-        
-        if resume_year == 2014:
-            cfg.init_model = True
-            cdate = time.strftime('%Y%m%d_%H%M%S')    
-            out_dir = '%s/runs_%s/results_%s' %(os.path.dirname(os.getcwd()), cfg.technology, cdate)        
-            os.makedirs(out_dir)
-            input_scenarios = None
-            market_last_year_res = None
-            market_last_year_ind = None
-            market_last_year_com = None
-            # Read in ReEDS UPV Capital Costs
-            Convert2004_dollars = 1.254 #Conversion from 2004$ to 2014$
-            ReEDS_PV_CC = ReEDS_df['UPVCC_all']
-            ReEDS_PV_CC.columns = ['year','Capital_Cost']
-            ReEDS_PV_CC.year = ReEDS_PV_CC.year.convert_objects(convert_numeric=True)
-            valid_years = np.arange(2014,2051,2)
-            ReEDS_PV_CC = ReEDS_PV_CC.loc[ReEDS_PV_CC.year.isin(valid_years)]
-            ReEDS_PV_CC['Capital_Cost'] = ReEDS_PV_CC['Capital_Cost']*Convert2004_dollars # ReEDS capital costs for UPV converted from 2004 dollars
-        else:
-            cfg.init_model = False
-            # Load files here
-            market_last_year_res = pd.read_pickle("market_last_year_res.pkl")
-            market_last_year_ind = pd.read_pickle("market_last_year_ind.pkl")   
-            market_last_year_com = pd.read_pickle("market_last_year_com.pkl")   
-            with open('saved_vars.pickle', 'rb') as handle:
-                saved_vars = pickle.load(handle)
-            out_dir = saved_vars['out_dir']
-            input_scenarios = saved_vars['input_scenarios']
-        #cfg.init_model,out_dir,input_scenarios, market_last_year = datfunc.load_resume_vars(cfg, resume_year)
-    else:
-        cdate = time.strftime('%Y%m%d_%H%M%S')    
-        out_dir = '%s/runs_%s/results_%s' %(os.path.dirname(os.getcwd()), cfg.technology, cdate)        
-        os.makedirs(out_dir)
-        ReEDS_PV_CC = None
-    
-                        
-    # check that number of customer bins is in the acceptable range
-    if type(cfg.customer_bins) <> int:
-        raise ValueError("""Error: customer_bins in config.py must be of type integer.""") 
-    if cfg.customer_bins <= 0:
-        raise ValueError("""Error: customer_bins in config.py must be a positive integer.""") 
-    model_init = time.time()
-    
-    logger = datfunc.init_log(os.path.join(out_dir,'dg_model.log'))
-    logger.info('Initiating model (%s)' %time.ctime())
-
-    try:       
-        # if parallelization is off, reduce npar to 1
-        if not cfg.parallelize:
-            cfg.npar = 1
+    try:
+        # check which technology is being modeled and adjust variables accordingly
+        schema = "diffusion_template"
 
         # 4. Connect to Postgres and configure connection(s) (to edit login information, edit config.py)
         # create a single connection to Postgres Database -- this will serve as the main cursor/connection
         con, cur = datfunc.make_con(cfg.pg_conn_string)
         pgx.register_hstore(con) # register access to hstore in postgres
+
+        if mode == 'ReEDS':
+            
+            reeds_mode_df = FancyDataFrame(data = [True])
+            
+            ReEDS_df = ReEDS_inputs['ReEDS_df']
+            curtailment_method = ReEDS_inputs['curtailment_method']
+            
+            distPVCurtailment = ReEDS_df['annual_distPVSurplusMar'] # Fraction of distributed PV curtailed in timeslice (m) and BA (n)
+            change_elec_price = ReEDS_df['change_elec_price'] # Relative change in electricity price since 2014 by BA (n)
+            
+            # Rename columns to match names in SolarDS
+            distPVCurtailment.columns = ['pca_reg','curtailment_rate']
+            change_elec_price.columns = ['pca_reg','ReEDS_elec_price_mult']
+            
+            # Remove Mexico BAs
+            change_elec_price = change_elec_price[change_elec_price.pca_reg != 'p135']
+            change_elec_price = change_elec_price[change_elec_price.pca_reg != 'p136']
+            
+            if resume_year == 2014:
+                cfg.init_model = True
+                cdate = time.strftime('%Y%m%d_%H%M%S')    
+                out_dir = '%s/runs_%s/results_%s' %(os.path.dirname(os.getcwd()), cfg.technology, cdate)        
+                os.makedirs(out_dir)
+                input_scenarios = None
+                market_last_year_res = None
+                market_last_year_ind = None
+                market_last_year_com = None
+                # Read in ReEDS UPV Capital Costs
+                Convert2004_dollars = 1.254 #Conversion from 2004$ to 2014$
+                ReEDS_PV_CC = FancyDataFrame(data = ReEDS_df['UPVCC_all'])
+                ReEDS_PV_CC.columns = ['year','Capital_Cost']
+                ReEDS_PV_CC.year = ReEDS_PV_CC.year.convert_objects(convert_numeric=True)
+                valid_years = np.arange(2014,2051,2)
+                ReEDS_PV_CC = ReEDS_PV_CC.loc[ReEDS_PV_CC.year.isin(valid_years)]
+                ReEDS_PV_CC.index = range(0, ReEDS_PV_CC.shape[0])
+                ReEDS_PV_CC['Capital_Cost'] = ReEDS_PV_CC['Capital_Cost'] * Convert2004_dollars # ReEDS capital costs for UPV converted from 2004 dollars
+            else:                
+                cfg.init_model = False
+                # Load files here
+                market_last_year_res = pd.read_pickle("market_last_year_res.pkl")
+                market_last_year_ind = pd.read_pickle("market_last_year_ind.pkl")   
+                market_last_year_com = pd.read_pickle("market_last_year_com.pkl")   
+                with open('saved_vars.pickle', 'rb') as handle:
+                    saved_vars = pickle.load(handle)
+                out_dir = saved_vars['out_dir']
+                input_scenarios = saved_vars['input_scenarios']
+            #cfg.init_model,out_dir,input_scenarios, market_last_year = datfunc.load_resume_vars(cfg, resume_year)
+        else:
+            reeds_mode_df = FancyDataFrame(data = [False])
+            ReEDS_PV_CC = FancyDataFrame(columns = ['year', 'Capital_Cost'])
+            cdate = time.strftime('%Y%m%d_%H%M%S')    
+            out_dir = '%s/runs_%s/results_%s' %(os.path.dirname(os.getcwd()), cfg.technology, cdate)        
+            os.makedirs(out_dir)
+
+        # write the reeds settings to postgres
+        reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
+        ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')        
+                            
+        # check that number of customer bins is in the acceptable range
+        if type(cfg.customer_bins) <> int:
+            raise ValueError("""Error: customer_bins in config.py must be of type integer.""") 
+        if cfg.customer_bins <= 0:
+            raise ValueError("""Error: customer_bins in config.py must be a positive integer.""") 
+        model_init = time.time()
+        
+        logger = datfunc.init_log(os.path.join(out_dir,'dg_model.log'))
+        logger.info('Initiating model (%s)' %time.ctime())
+       
+        # if parallelization is off, reduce npar to 1
+        if not cfg.parallelize:
+            cfg.npar = 1
         
         # configure pandas display options
         pd.set_option('max_columns', 9999)

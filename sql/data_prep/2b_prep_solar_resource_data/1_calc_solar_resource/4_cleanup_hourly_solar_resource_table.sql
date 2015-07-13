@@ -222,7 +222,9 @@ with a as
 )
 select min(aep), max(aep), avg(aep)
 from a;
--- 754642123 | 1983574854 | 1330267367.36399059
+-- 813886828;0
+-- 2030125245;
+-- 1368792282.79741323
 
 select min(naep), max(naep), avg(naep)
 from diffusion_solar.solar_resource_hourly_new;
