@@ -4,7 +4,7 @@
 DROP TABLE IF EXISTS diffusion_template.input_solar_leasing_availability;
 CREATE TABLE diffusion_template.input_solar_leasing_availability
 (
-	state character varying(2) not null,
+	state_abbr character varying(2) not null,
 	year integer not null,
 	leasing_allowed boolean not null,
 	CONSTRAINT input_solar_leasing_availability_year_fkey FOREIGN KEY (year)

@@ -11,7 +11,7 @@ DROP TABLE IF EXISTS diffusion_template.input_wind_siting_parcel_size_raw CASCAD
 CREATE TABLE diffusion_template.input_wind_siting_parcel_size_raw
 (
 	turbine_height_m integer primary key,
-	min_acres_per_hu numeric
+	min_acres_per_hu numeric NOT NULL
 );
 
 DROP VIEW IF EXISTS diffusion_template.input_wind_siting_parcel_size;
@@ -36,7 +36,7 @@ DROP TABLE IF EXISTS diffusion_template.input_wind_siting_hi_dev_raw CASCADE;
 CREATE TABLE diffusion_template.input_wind_siting_hi_dev_raw
 (
 	turbine_height_m integer primary key,
-	max_hi_dev_pct numeric
+	max_hi_dev_pct numeric NOT NULL
 );
 
 DROP VIEW IF EXISTS diffusion_template.input_wind_siting_hi_dev;
@@ -61,7 +61,7 @@ DROP TABLE IF EXISTS diffusion_template.input_wind_siting_canopy_clearance_raw  
 CREATE TABLE diffusion_template.input_wind_siting_canopy_clearance_raw
 (
 	turbine_size_kw numeric PRIMARY KEY,
-	required_clearance_m numeric
+	required_clearance_m numeric NOT null
 );
 
 
