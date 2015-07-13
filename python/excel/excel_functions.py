@@ -22,7 +22,7 @@ from data_functions import make_con
 
 
         
-def load_scenario(xls_file, schema, conn = None, mode = None, ReEDS_PV_CC = None, verbose = False):
+def load_scenario(xls_file, schema, conn = None, test = False):
     try:
         # check connection to PG
         if not conn:
@@ -41,13 +41,14 @@ def load_scenario(xls_file, schema, conn = None, mode = None, ReEDS_PV_CC = None
         if os.path.exists(mapping_file) == False:
             raise ExcelError('The required file that maps from named ranges to postgres tables (%s) does not exist' % mapping_file)
         mappings = pd.read_csv(mapping_file)
-        
+        if test == True:
+            mappings = mappings[mappings.run == True]
+            
         # open the workbook                
         wb = xl.load_workbook(xls_file, data_only = True)
         
-        # for testing only !!!!!!!!!!!
-        mappings = mappings[mappings.run == True][['table', 'named_range', 'transpose', 'melt']]
-        for table, range_name, transpose, melt in mappings.itertuples(index = False):
+            
+        for run, table, range_name, transpose, melt in mappings.itertuples(index = False):
             fnr = FancyNamedRange(wb, range_name)
             if transpose == True:
                 fnr.__transpose_values__()
@@ -66,5 +67,5 @@ def load_scenario(xls_file, schema, conn = None, mode = None, ReEDS_PV_CC = None
 
 if __name__ == '__main__':
     input_xls = '../../excel/scenario_inputs.xlsm'
-    load_scenario(input_xls, schema = 'diffusion_template', mode = None, verbose = True)
+    load_scenario(input_xls, schema = 'diffusion_template',  test = True)
     
