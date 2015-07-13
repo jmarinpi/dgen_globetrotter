@@ -232,7 +232,7 @@ from diffusion_solar.solar_resource_hourly_new;
 
 
 
-
+	
 
 vacuum analyze diffusion_solar.solar_resource_hourly_new;
 vacuum analyze diffusion_solar.solar_resource_hourly_e;
