@@ -215,7 +215,6 @@ LEFT JOIN diffusion_solar.carbon_intensities_to_model l
 ON e.state_abbr = l.state_abbr;
 ------------------------------------------------------------------------
 
-
 -- create view of sectors to model
 CREATE OR REPLACE VIEW diffusion_template.sectors_to_model AS
 SELECT CASE WHEN markets = 'All' THEN 'res=>Residential,com=>Commercial,ind=>Industrial'::hstore

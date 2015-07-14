@@ -41,11 +41,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
     try:
         # check which technology is being modeled and adjust variables accordingly
         schema = "diffusion_template"
-
+        
         # 4. Connect to Postgres and configure connection(s) (to edit login information, edit config.py)
         # create a single connection to Postgres Database -- this will serve as the main cursor/connection
         con, cur = datfunc.make_con(cfg.pg_conn_string)
         pgx.register_hstore(con) # register access to hstore in postgres
+
+        # ************************************************************************
+        # NOTE: This is temporary until the model can dynamically handle running both wind and solar technologies
+        datfunc.set_source_pt_microdata(con, cur, schema, cfg.technology)
+        # ************************************************************************
+
 
         if mode == 'ReEDS':
             

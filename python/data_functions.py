@@ -34,6 +34,21 @@ DEC2FLOAT = pg.extensions.new_type(
 pg.extensions.register_type(DEC2FLOAT)
 
 
+def set_source_pt_microdata(con, cur, schema, tech):
+    
+    inputs = locals.copy()
+    sector_abbrs = ['res', 'com', 'ind']
+    
+    for sector_abbr in sector_abbrs:
+        inputs['sector_abbr'] = sector_abbr
+        
+        sql = '''DROP VIEW IF EXISTS %(schema)s.point_microdata_%(sector_abbr)s_us_joined;
+                 CREATE VIEW %(schema)s.point_microdata_%(sector_abbr)s_us_joined AS
+                 SELECT *
+                 FROM %(schema)s.point_microdata_%(sector_abbr)s_us_joined_%(tech)s;'''
+        cur.execute(sql)
+        con.commit()
+
 def load_resume_vars(cfg, resume_year):
     # Load the variables necessary to resume the model
     if resume_year == 2014:
@@ -350,6 +365,8 @@ def clear_outputs(con, cur, schema):
 
 def write_outputs(con, cur, outputs_df, sector_abbr, schema):
     
+    inputs = locals.copy()    
+    
     # set fields to write
     fields = [  'micro_id',
                 'county_id',
@@ -392,7 +409,7 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
                 'npv4',
                 'excess_generation_percent']    
     # convert formatting of fields list
-    fields_str = pylist_2_pglist(fields).replace("'","")       
+    inputs['fields_str'] = pylist_2_pglist(fields).replace("'","")       
     # open an in memory stringIO file (like an in memory csv)
     s = StringIO()
     # write the data to the stringIO
@@ -400,7 +417,7 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
     # seek back to the beginning of the stringIO file
     s.seek(0)
     # copy the data from the stringio file to the postgres table
-    cur.copy_expert('COPY %s.outputs_%s (%s) FROM STDOUT WITH CSV' % (schema, sector_abbr,fields_str), s)
+    cur.copy_expert('COPY %(schema)s.outputs_%(sector_abbr)s (%(fields_str)s) FROM STDOUT WITH CSV' % inputs, s)
     # commit the additions and close the stringio file (clears memory)
     con.commit()    
     s.close()
@@ -645,7 +662,7 @@ def combine_outputs_reeds(schema, sectors, cur, con):
     sql += ';'
     cur.execute(sql)
     con.commit()
-    sql2 = 'SELECT * FROM %s.reeds_outputs' % schema
+    sql2 = 'SELECT * FROM %(schema)s.reeds_outputs' % inputs
     return sqlio.read_frame(sql2,con)
 
 def copy_outputs_to_csv(technology, schema, out_path, sectors, cur, con):
