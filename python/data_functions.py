@@ -48,6 +48,14 @@ def set_source_pt_microdata(con, cur, schema, tech):
                  FROM %(schema)s.point_microdata_%(sector_abbr)s_us_joined_%(tech)s;'''
         cur.execute(sql)
         con.commit()
+        
+        sql = '''DROP VIEW IF EXISTS %(schema)s.point_microdata_%(sector_abbr)s_us;
+                 CREATE VIEW %(schema)s.point_microdata_%(sector_abbr)s_us AS
+                 SELECT *
+                 FROM diffusion_%(tech)s.point_microdata_%(sector_abbr)s_us;'''
+        cur.execute(sql)
+        con.commit()        
+        
 
 def load_resume_vars(cfg, resume_year):
     # Load the variables necessary to resume the model
