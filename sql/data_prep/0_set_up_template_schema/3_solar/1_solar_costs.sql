@@ -131,3 +131,18 @@ FROM diffusion_template.input_solar_cost_projections_to_model;
 
 select *
 FROM diffusion_solar.cost_projections_to_model;
+
+
+DROP TABLE IF EXISTS diffusion_template.input_solar_cost_multipliers;
+CREATE TABLE diffusion_template.input_solar_cost_multipliers
+(
+	sector character varying(3) NOT NULL,
+	new_construction_multiplier numeric NOT NULL,
+	base_size_kw numeric NOT NULL,
+	size_adjustment_factor numeric NOT NULL,  
+	CONSTRAINT input_solar_cost_multipliers_sector_fkey FOREIGN KEY (sector)
+		REFERENCES diffusion_config.sceninp_sector (sector_abbr) MATCH SIMPLE
+		ON UPDATE NO ACTION ON DELETE RESTRICT
+);
+
+
