@@ -33,10 +33,7 @@ from sam.languages.python import sscapi
 import getopt
 import pickle
 import pssc_mp
-if cfg.technology == 'wind':
-    import load_excel_wind as loadXL
-elif cfg.technology == 'solar':
-    import load_excel_solar as loadXL
+from excel import excel_functions
     
 
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
@@ -146,8 +143,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info('Loading input data from Input Scenario Worksheet')
                 t0 = time.time()
                 try:
-                    loadXL.main(input_scenario, con, mode, ReEDS_PV_CC, verbose = False)
-                except loadXL.ExcelError, e:
+                    excel_functions.load_scenario(input_scenario, schema, con, test = False)
+                except Exception, e:
                     msg = 'Loading failed with the following error: %s' % e      
                     logger.error(msg)
                     msg = 'Model aborted'
@@ -171,7 +168,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('Scenario Name: %s' % scenario_opts['scenario_name'])
             t0 = time.time()
             load_growth_scenario = scenario_opts['load_growth_scenario'].lower() # get financial variables
-            inflation = scenario_opts['ann_inflation']
             end_year = scenario_opts['end_year']
             # Generate a pseudo-random number generator to generate random numbers in numpy.
             # This method is better than np.random.seed() because it is thread-safe
