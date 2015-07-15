@@ -36,26 +36,26 @@ pg.extensions.register_type(DEC2FLOAT)
 
 def set_source_pt_microdata(con, cur, schema, tech):
     
-    inputs = locals.copy()
+    inputs = locals().copy()
     sector_abbrs = ['res', 'com', 'ind']
-    
+
+
     for sector_abbr in sector_abbrs:
         inputs['sector_abbr'] = sector_abbr
         
         sql = '''DROP VIEW IF EXISTS %(schema)s.point_microdata_%(sector_abbr)s_us_joined;
                  CREATE VIEW %(schema)s.point_microdata_%(sector_abbr)s_us_joined AS
                  SELECT *
-                 FROM %(schema)s.point_microdata_%(sector_abbr)s_us_joined_%(tech)s;'''
+                 FROM %(schema)s.point_microdata_%(sector_abbr)s_us_joined_%(tech)s;''' % inputs
         cur.execute(sql)
         con.commit()
-        
+
         sql = '''DROP VIEW IF EXISTS %(schema)s.point_microdata_%(sector_abbr)s_us;
                  CREATE VIEW %(schema)s.point_microdata_%(sector_abbr)s_us AS
                  SELECT *
-                 FROM diffusion_%(tech)s.point_microdata_%(sector_abbr)s_us;'''
+                 FROM diffusion_%(tech)s.point_microdata_%(sector_abbr)s_us;''' % inputs
         cur.execute(sql)
         con.commit()        
-        
 
 def load_resume_vars(cfg, resume_year):
     # Load the variables necessary to resume the model
@@ -248,7 +248,7 @@ def combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_a
               
               CREATE INDEX temporal_factors_census_division_abbr_btree 
               ON %(schema)s.temporal_factors 
-              USING BTREE(census_division_abbr);"""
+              USING BTREE(census_division_abbr);""" % inputs
     cur.execute(sql)
     con.commit()  
     
@@ -330,7 +330,7 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
               
               CREATE INDEX temporal_factors_technology_year_btree 
               ON %(schema)s.temporal_factors_technology
-              USING BTREE(year);"""
+              USING BTREE(year);""" % inputs
     cur.execute(sql)
     con.commit()                
               
@@ -352,7 +352,7 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
               
               CREATE INDEX temporal_factors_market_year_btree 
               ON %(schema)s.temporal_factors_market
-              USING BTREE(year);"""
+              USING BTREE(year);""" % inputs
     cur.execute(sql)
     con.commit()  
     
@@ -373,7 +373,7 @@ def clear_outputs(con, cur, schema):
 
 def write_outputs(con, cur, outputs_df, sector_abbr, schema):
     
-    inputs = locals.copy()    
+    inputs = locals().copy()    
     
     # set fields to write
     fields = [  'micro_id',
@@ -2131,7 +2131,7 @@ def get_sectors(cur, schema):
         Returned as a dictionary.
         '''    
     
-    sql = ''''SELECT sectors 
+    sql = '''SELECT sectors 
               FROM %s.sectors_to_model;''' % schema
     cur.execute(sql)
     sectors = cur.fetchone()['sectors']
@@ -2154,7 +2154,7 @@ def get_depreciation_schedule(con, schema, type = 'macrs, standard'):
         OUT: df  - pd dataframe - year, depreciation schedule:
 
     '''
-    inputs = locals.copy()    
+    inputs = locals().copy()    
             
     inputs['field'] = type.lower()
     sql = '''SELECT %(field)s 
@@ -2291,7 +2291,7 @@ def get_financial_parameters(con, schema, tech):
             
         OUT: fin_param  - pd dataframe - pre-processed resource,bins, rates, etc. for all years:
     '''
-    inputs = locals.copy()
+    inputs = locals().copy()
     
     sql = '''SELECT * 
              FROM %(schema)s.input_%(tech)s_finances;''' % inputs
@@ -2341,7 +2341,7 @@ def get_manual_incentives(con, schema, tech):
         IN: con - pg con object - connection object
         OUT: inc - pd dataframe - dataframe of manual incentives
     '''
-    inputs = locals.copy()    
+    inputs = locals().copy()    
     
     sql = '''SELECT * 
              FROM %(schema)s.input_%(tech)s_incentives;''' % inputs
@@ -2606,7 +2606,7 @@ def get_lease_availability(con, schema, tech):
     IN: con - connection to server
     OUT: DataFrame with state, year, and availability (True/False) as columns
     '''  
-    inputs = locals.copy()    
+    inputs = locals().copy()    
     
     sql = '''SELECT state as state_abbr, year, leasing_allowed
                 FROM %(schema)s.input_%(tech)s_leasing_availability;''' % inputs

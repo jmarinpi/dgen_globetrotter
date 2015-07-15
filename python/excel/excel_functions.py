@@ -37,7 +37,7 @@ def load_scenario(xls_file, schema, conn = None, test = False):
             raise ExcelError('The specified input worksheet (%s) does not exist' % xls_file)
         
         # get the table to named range lookup from csv
-        mapping_file = './table_range_lkup.csv'
+        mapping_file = os.path.join(path, 'table_range_lkup.csv')
         if os.path.exists(mapping_file) == False:
             raise ExcelError('The required file that maps from named ranges to postgres tables (%s) does not exist' % mapping_file)
         mappings = pd.read_csv(mapping_file)

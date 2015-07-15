@@ -1,7 +1,7 @@
 ﻿SET ROLE 'diffusion-writers';
 
 -- create view of the valid counties
-DROP VIEW IF EXISTS diffusion_template.counties_to_model;
+DROP VIEW IF EXISTS diffusion_template.counties_to_model CASCADE;
 CREATE OR REPLACE VIEW diffusion_template.counties_to_model AS
 SELECT county_id, census_region, census_division_abbr, recs_2009_reportable_domain as reportable_domain,
 	a.climate_zone_building_america, a.climate_zone_cbecs_2003
@@ -13,7 +13,7 @@ ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)
 where a.state not in ('Hawaii','Alaska');
 
 -- view for carbon intensities
-DROP VIEW IF EXISTS diffusion_template.carbon_intensities_to_model;
+DROP VIEW IF EXISTS diffusion_template.carbon_intensities_to_model CASCADE;
 CREATE OR REPLACE VIEW diffusion_template.carbon_intensities_to_model AS
 SELECT state_abbr,
 	CASE WHEN b.carbon_price = 'No Carbon Price' THEN no_carbon_price_t_per_kwh
@@ -28,7 +28,7 @@ CROSS JOIN diffusion_template.input_main_scenario_options b;
 ------------------------------------------------------------------------------------
 -- WIND
 -- ind
-DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined_wind;
+DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined_wind CASCADE;
 CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined_wind AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct_hi,
@@ -59,7 +59,7 @@ ON e.state_abbr = l.state_abbr;
 
 
 -- res
-DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined_wind;
+DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined_wind CASCADE;
 CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined_wind AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct_hi,
@@ -92,7 +92,7 @@ ON e.state_abbr = l.state_abbr;
 
 
 -- comm
-DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined_wind;
+DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined_wind CASCADE;
 CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined_wind AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct_hi,
@@ -123,7 +123,7 @@ ON e.state_abbr = l.state_abbr;
 -- solar
 
 -- ind
-DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined_solar;
+DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined_solar CASCADE;
 CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined_solar AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
@@ -153,7 +153,7 @@ ON e.state_abbr = l.state_abbr;
 
 
 -- res
-DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined_solar;
+DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined_solar CASCADE;
 CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined_solar AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
@@ -186,7 +186,7 @@ ON e.state_abbr = l.state_abbr;
 
 
 -- comm
-DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined_solar;
+DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined_solar CASCADE;
 CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined_solar AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
@@ -216,6 +216,7 @@ ON e.state_abbr = l.state_abbr;
 ------------------------------------------------------------------------
 
 -- create view of sectors to model
+DROP VIEW IF EXIStS diffusion_template.sectors_to_model;
 CREATE OR REPLACE VIEW diffusion_template.sectors_to_model AS
 SELECT CASE WHEN markets = 'All' THEN 'res=>Residential,com=>Commercial,ind=>Industrial'::hstore
 	    when markets = 'Only Residential' then 'res=>Residential'::hstore

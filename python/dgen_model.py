@@ -34,6 +34,7 @@ import getopt
 import pickle
 import pssc_mp
 from excel import excel_functions
+
     
 
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
@@ -46,12 +47,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         # create a single connection to Postgres Database -- this will serve as the main cursor/connection
         con, cur = datfunc.make_con(cfg.pg_conn_string)
         pgx.register_hstore(con) # register access to hstore in postgres
-
+        
         # ************************************************************************
         # NOTE: This is temporary until the model can dynamically handle running both wind and solar technologies
         datfunc.set_source_pt_microdata(con, cur, schema, cfg.technology)
         # ************************************************************************
-
+        print 'hi'
 
         if mode == 'ReEDS':
             
@@ -419,11 +420,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             returncode = proc.returncode
 
     except Exception, e:
-        logger.error(e.__str__(), exc_info = True)
+        if 'logger' in locals():
+            logger.error(e.__str__(), exc_info = True)
+        else:
+            print e
     
     finally:
-        datfunc.shutdown_log(logger)
-        datfunc.code_profiler(out_dir)
+        if 'logger' in locals():
+            datfunc.shutdown_log(logger)
+            datfunc.code_profiler(out_dir)
     
 if __name__ == '__main__':
     main()
