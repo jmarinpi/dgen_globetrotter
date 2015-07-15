@@ -177,7 +177,7 @@ def make_con(connection_string, async = False):
     
     return con, cur
 
-def combine_temporal_data(cur, con, technology, start_year, end_year, sector_abbrs, preprocess, logger):
+def combine_temporal_data(cur, con, schema, technology, start_year, end_year, sector_abbrs, preprocess, logger):
 
     msg = "Combining Temporal Factors"    
     logger.info(msg)
@@ -186,20 +186,20 @@ def combine_temporal_data(cur, con, technology, start_year, end_year, sector_abb
         return 1
         
     if technology == 'wind':
-        combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, preprocess, logger)
+        combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs, preprocess, logger)
     elif technology == 'solar':
-        combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, preprocess, logger)
+        combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs, preprocess, logger)
     
 
-def combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, preprocess, logger):
+def combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs, preprocess, logger):
     
      # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
 
     # combine all of the temporal data (this only needs to be done once for all sectors)        
     sql = """
-            DROP TABLE IF EXISTS diffusion_solar.temporal_factors;
-            CREATE UNLOGGED TABLE diffusion_solar.temporal_factors as 
+            DROP TABLE IF EXISTS %(schema)s.temporal_factors;
+            CREATE UNLOGGED TABLE %(schema)s.temporal_factors as 
             SELECT a.year, 
                 a.efficiency_improvement_factor,
                 a.density_w_per_sqft,
@@ -216,17 +216,17 @@ def combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, pr
                 d.scenario as load_growth_scenario,
                 d.load_multiplier,
                 e.carbon_dollars_per_ton
-            FROM diffusion_solar.solar_performance_improvements a
-            LEFT JOIN diffusion_solar.cost_projections_to_model b
+            FROM %(schema)s.input_solar_performance_improvements a
+            LEFT JOIN %(schema)s.input_solar_cost_projections_to_model b
                 ON a.year = b.year
-            LEFT JOIN diffusion_solar.rate_escalations_to_model c
+            LEFT JOIN %(schema)s.rate_escalations_to_model c
                 ON a.year = c.year
                 AND b.sector = c.sector
             LEFT JOIN diffusion_shared.aeo_load_growth_projections_2014 d
                 ON c.census_division_abbr = d.census_division_abbr
                 AND a.year = d.year
                 AND b.sector = d.sector_abbr
-            LEFT JOIN diffusion_solar.market_projections e
+            LEFT JOIN %(schema)s.input_main_market_projections e
                 ON a.year = e.year
             WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
                 AND c.sector in (%(sector_abbrs)s);""" % inputs
@@ -235,34 +235,34 @@ def combine_temporal_data_solar(cur, con, start_year, end_year, sector_abbrs, pr
     
     # create indices for subsequent joins
     sql =  """CREATE INDEX temporal_factors_sector_btree 
-              ON diffusion_solar.temporal_factors 
+              ON %(schema)s.temporal_factors 
               USING BTREE(sector);
               
               CREATE INDEX temporal_factors_load_growth_scenario_btree 
-              ON diffusion_solar.temporal_factors 
+              ON %(schema)s.temporal_factors 
               USING BTREE(load_growth_scenario);
               
               CREATE INDEX temporal_factors_rate_escalation_source_btree 
-              ON diffusion_solar.temporal_factors 
+              ON %(schema)s.temporal_factors 
               USING BTREE(rate_escalation_source);
               
               CREATE INDEX temporal_factors_census_division_abbr_btree 
-              ON diffusion_solar.temporal_factors 
+              ON %(schema)s.temporal_factors 
               USING BTREE(census_division_abbr);"""
     cur.execute(sql)
     con.commit()  
     
     return 1
 
-def combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, preprocess, logger):
+def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs, preprocess, logger):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
     
     # combine the temporal data (this only needs to be done once for all sectors)
     
     # combined temporal data for technology specific factors
-    sql = """DROP TABLE IF EXISTS diffusion_wind.temporal_factors_technology;
-            CREATE UNLOGGED TABLE diffusion_wind.temporal_factors_technology as
+    sql = """DROP TABLE IF EXISTS %(schema)s.temporal_factors_technology;
+            CREATE UNLOGGED TABLE %(schema)s.temporal_factors_technology as
             SELECT      a.year, 
                     	a.turbine_size_kw, 
                     	a.power_curve_id,
@@ -271,14 +271,14 @@ def combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, pre
                     	c.variable_om_dollars_per_kwh,
                     	c.installed_costs_dollars_per_kw,
                     	d.derate_factor
-            FROM diffusion_wind.wind_performance_improvements a
+            FROM %(schema)s.input_wind_performance_improvements a
             LEFT JOIN diffusion_wind.allowable_turbine_sizes b
                 	ON a.turbine_size_kw = b.turbine_size_kw
-            LEFT JOIN diffusion_wind.turbine_costs_per_size_and_year c
+            LEFT JOIN %(schema)s.turbine_costs_per_size_and_year c
                 	ON a.turbine_size_kw = c.turbine_size_kw
                  AND a.year = c.year
                  AND b.turbine_height_m = c.turbine_height_m
-            LEFT JOIN diffusion_wind.wind_generation_derate_factors d
+            LEFT JOIN %(schema)s.input_wind_performance_gen_derate_factors d
                 	ON a.year = d.year
                  AND  a.turbine_size_kw = d.turbine_size_kw
             WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
@@ -297,8 +297,8 @@ def combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, pre
     con.commit()
     
     # combine temporal data for market specific factors
-    sql = """DROP TABLE IF EXISTS diffusion_wind.temporal_factors_market;
-            CREATE UNLOGGED TABLE diffusion_wind.temporal_factors_market as
+    sql = """DROP TABLE IF EXISTS %(schema)s.temporal_factors_market;
+            CREATE UNLOGGED TABLE %(schema)s.temporal_factors_market as
             SELECT      a.year, 	
                     	a.census_division_abbr,
                     	a.sector as sector_abbr,
@@ -307,12 +307,12 @@ def combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, pre
                     	b.scenario as load_growth_scenario,
                     	b.load_multiplier,
                     	c.carbon_dollars_per_ton
-            FROM diffusion_wind.rate_escalations_to_model a
+            FROM %(schema)s.rate_escalations_to_model a
             LEFT JOIN diffusion_shared.aeo_load_growth_projections_2014 b
                 	ON a.census_division_abbr = b.census_division_abbr
                  AND a.year = b.year
                  AND a.sector = b.sector_abbr               
-            LEFT JOIN diffusion_wind.market_projections c
+            LEFT JOIN %(schema)s.input_main_market_projections c
                 	ON a.year = c.year
             WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
                             AND a.sector in (%(sector_abbrs)s);""" % inputs
@@ -321,37 +321,37 @@ def combine_temporal_data_wind(cur, con, start_year, end_year, sector_abbrs, pre
     
     # create indices for subsequent joins
     sql =  """CREATE INDEX temporal_factors_technology_turbine_height_m_btree 
-              ON diffusion_wind.temporal_factors_technology
+              ON %(schema)s.temporal_factors_technology
               USING BTREE(turbine_height_m);
               
               CREATE INDEX temporal_factors_technology_power_curve_id_btree 
-              ON diffusion_wind.temporal_factors_technology
+              ON %(schema)s.temporal_factors_technology
               USING BTREE(power_curve_id);
               
               CREATE INDEX temporal_factors_technology_year_btree 
-              ON diffusion_wind.temporal_factors_technology
+              ON %(schema)s.temporal_factors_technology
               USING BTREE(year);"""
     cur.execute(sql)
     con.commit()                
               
     sql =  """CREATE INDEX temporal_factors_market_sector_abbr_btree 
-              ON diffusion_wind.temporal_factors_market
+              ON %(schema)s.temporal_factors_market
               USING BTREE(sector_abbr);
               
               CREATE INDEX temporal_factors_market_load_growth_scenario_btree 
-              ON diffusion_wind.temporal_factors_market 
+              ON %(schema)s.temporal_factors_market 
               USING BTREE(load_growth_scenario);
               
               CREATE INDEX temporal_factors_market_rate_escalation_source_btree 
-              ON diffusion_wind.temporal_factors_market 
+              ON %(schema)s.temporal_factors_market 
               USING BTREE(rate_escalation_source);
               
               CREATE INDEX temporal_factors_market_census_division_abbr_btree 
-              ON diffusion_wind.temporal_factors_market 
+              ON %(schema)s.temporal_factors_market 
               USING BTREE(census_division_abbr);
               
               CREATE INDEX temporal_factors_market_year_btree 
-              ON diffusion_wind.temporal_factors_market
+              ON %(schema)s.temporal_factors_market
               USING BTREE(year);"""
     cur.execute(sql)
     con.commit()  
@@ -687,7 +687,7 @@ def copy_outputs_to_csv(technology, schema, out_path, sectors, cur, con):
     
     # write the scenario optoins to csv as well
     f2 = open(out_path+'/scenario_options_summary.csv','w')
-    cur.copy_expert('COPY %s.scenario_options TO STDOUT WITH CSV HEADER;' % schema,f2)
+    cur.copy_expert('COPY %s.input_main_scenario_options TO STDOUT WITH CSV HEADER;' % schema, f2)
     f2.close()
     
 
