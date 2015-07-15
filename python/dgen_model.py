@@ -195,7 +195,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             
             sectors = datfunc.get_sectors(cur, schema)
             deprec_schedule = datfunc.get_depreciation_schedule(con, schema, type = 'macrs').values
-            financial_parameters = datfunc.get_financial_parameters(con, schema)
+            financial_parameters = datfunc.get_financial_parameters(con, schema, cfg.technology)
             max_market_share = datfunc.get_max_market_share(con, schema)
             market_projections = datfunc.get_market_projections(con, schema)
             rate_escalations = datfunc.get_rate_escalations(con, schema)
@@ -286,7 +286,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             for sector_abbr, sector in sectors.iteritems():  
                 # get dsire incentives for the generated customer bins
                 t0 = time.time()
-                dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, sector_abbr, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger)
+                dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, cfg.technology, sector_abbr, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger)
                 logger.info('datfunc.get_dsire_incentives took: %0.1fs' %(time.time() - t0))                  
                 # Pull data from the Main Table to a Data Frame for each year
                 for year in model_years:
@@ -320,7 +320,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Market characteristics from previous year
                     if year == cfg.start_year: 
                         # get the initial market share per bin by county
-                        initial_market_shares = datfunc.get_initial_market_shares(cur, con, sector_abbr, sector, schema, cfg.technology)
+                        initial_market_shares = datfunc.get_initial_market_shares(cur, con, cfg.technology, sector_abbr, sector, schema, cfg.technology)
                         df = pd.merge(df, initial_market_shares, how = 'left', on = ['county_id','bin_id'])
                         df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']
                         
@@ -332,7 +332,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         #df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
                     
                     # Determine whether leasing is permitted in given year
-                    lease_availability = datfunc.get_lease_availability(con, schema)
+                    lease_availability = datfunc.get_lease_availability(con, schema, cfg.technology)
                     df = pd.merge(df, lease_availability, on = ['state_abbr','year'])
                                         
                     # Calculate economics of adoption given system cofiguration and business model

@@ -52,7 +52,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
 
     # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
     if scenario_opts['overwrite_exist_inc']:
-        value_of_incentives = datfunc.calc_manual_incentives(df,con, year, schema)
+        value_of_incentives = datfunc.calc_manual_incentives(df,con, year, schema, cfg.technology)
     else:
         inc = pd.merge(df,dsire_incentives,how = 'left', on = 'incentive_array_id')
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
