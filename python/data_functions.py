@@ -2334,6 +2334,18 @@ def get_market_projections(con, schema):
     sql = '''SELECT * 
              FROM %s.input_main_market_projections;''' % schema
     return sqlio.read_frame(sql , con)
+
+
+def get_manual_incentive_options(con, schema, tech):
+    
+    inputs = locals().copy()
+    
+    sql = '''SELECT overwrite_exist_inc, incentive_start_year
+             FROM %(schema)s.input_%(tech)s_incentive_options;''' % inputs
+    df = sqlio.read_frame(sql, con)
+    
+    return df            
+
     
 def get_manual_incentives(con, schema, tech):
     ''' Pull manual incentives from input sheet
@@ -2608,7 +2620,7 @@ def get_lease_availability(con, schema, tech):
     '''  
     inputs = locals().copy()    
     
-    sql = '''SELECT state as state_abbr, year, leasing_allowed
+    sql = '''SELECT state_abbr, year, leasing_allowed
                 FROM %(schema)s.input_%(tech)s_leasing_availability;''' % inputs
     df = sqlio.read_frame(sql, con)
     return df

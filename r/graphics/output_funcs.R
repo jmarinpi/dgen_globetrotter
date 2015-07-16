@@ -206,46 +206,6 @@ lcoe_contour<-function(df, schema, start_year, end_year, dr = 0.05, n = 30){
     standard_formatting
 }
 
-excess_gen_figs<-function(df, con, schema){
-  
-  df = collect(select(df,excess_generation_factor,metric, metric_value,nem_system_limit_kw,system_size_kw))
-  
-  # Get the scenario options
-  table<-dbGetQuery(con,sprintf("SELECT * FROM %s.scenario_options", schema))
-  nem_availability <- table[1,'net_metering_availability']
-  
-  if(nem_availability == 'Full_Net_Metering_Everywhere'){
-    df$percent_of_gen_monetized = 1   
-  } else if(nem_availability == 'Partial_Avoided_Cost'){
-    df$percent_of_gen_monetized = 1 - 0.5 * df$excess_generation_factor 
-  } else if(nem_availability == 'Partial_No_Outflows'){
-    df$percent_of_gen_monetized = 1 - df$excess_generation_factor 
-  } else if(nem_availability == 'No_Net_Metering_Anywhere'){
-    df$percent_of_gen_monetized = 1 - df$excess_generation_factor  
-  } else {df$percent_of_gen_monetized = 0}
-  
-  if(nem_availability != 'No_Net_Metering_Anywhere'){
-    df[df$nem_system_limit_kw >= df$cap,'percent_of_gen_monetized'] <- 1
-  }
-  
-  excess_gen_pt<-ggplot(df, aes(x = percent_of_gen_monetized, y = metric_value, color = nem_system_limit_kw>0))+
-    facet_wrap(~metric, scales = "free")+
-    geom_point()+
-    theme_few()+
-    scale_x_continuous(name = 'Percent of Generation Value at Retail Rate', labels = percent)+
-    scale_y_continuous(name = 'Economic Attractiveness')+
-    ggtitle('Relationship Between NEM Availability and Economic Attractiveness')
-  
-  excess_gen_cdf<-ggplot(data = df, aes(x = percent_of_gen_monetized))+
-    stat_ecdf()+
-    theme_few()+
-    scale_x_continuous(name = 'Percent of Generation Value at Retail Rate', labels = percent)+
-    scale_y_continuous(name = 'Cumulative Percentage', labels = percent)+
-    ggtitle('Distribution of Generation Valued at Retail Rate and Payback Period')
-  
-  list('excess_gen_pt' = excess_gen_pt, 'excess_gen_cdf' = excess_gen_cdf)
-}
-
 cf_supply_curve<-function(df, start_year){
   #' National capacity factor supply curve
   # filter to only the start year, returning only the naep and load_kwh_in_bin cols
@@ -521,7 +481,7 @@ diffusion_trends<-function(df,runpath,scen_name){
 
 
 scenario_opts_table<-function(con, schema){
-  table<-dbGetQuery(con,sprintf("SELECT * from %s.scenario_options", schema))
+  table<-dbGetQuery(con,sprintf("SELECT * from %s.input_main_scenario_options", schema))
   names(table) <- unlist(lapply(names(table),simpleCap))
   table<-melt(table, id.vars = c(),variable.name='Switch',value.name="Value")
   print_table(table, caption = 'Scenario Options')    

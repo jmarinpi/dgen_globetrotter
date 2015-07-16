@@ -1,7 +1,7 @@
 ﻿SET ROLE 'diffusion-writers';
 -- residential
-DROP TABLE IF EXISTS diffusion_wind.outputs_res;
-CREATE TABLE diffusion_wind.outputs_res
+DROP TABLE IF EXISTS diffusion_template.outputs_res;
+CREATE TABLE diffusion_template.outputs_res
 (
   micro_id integer,
   county_id integer,
@@ -40,15 +40,17 @@ CREATE TABLE diffusion_wind.outputs_res
   installed_capacity numeric,
   market_value numeric,
   first_year_bill_with_system numeric,
-  first_year_bill_without_system numeric
+  first_year_bill_without_system numeric,
+  npv4 numeric,
+  excess_generation_percent numeric
 );
 
-CREATE INDEX outputs_res_join_fields_btree ON diffusion_wind.outputs_res USING btree(county_id,bin_id,year);
+CREATE INDEX outputs_res_join_fields_btree ON diffusion_template.outputs_res USING btree(county_id,bin_id,year);
 
 
 -- commercial
-DROP TABLE IF EXISTS diffusion_wind.outputs_com;
-CREATE TABLE diffusion_wind.outputs_com
+DROP TABLE IF EXISTS diffusion_template.outputs_com;
+CREATE TABLE diffusion_template.outputs_com
 (
   micro_id integer,
   county_id integer,
@@ -87,14 +89,16 @@ CREATE TABLE diffusion_wind.outputs_com
   installed_capacity numeric,
   market_value numeric,
   first_year_bill_with_system numeric,
-  first_year_bill_without_system numeric
+  first_year_bill_without_system numeric,
+  npv4 numeric,
+  excess_generation_percent numeric
 );
 
-CREATE INDEX outputs_com_join_fields_btree ON diffusion_wind.outputs_com USING btree(county_id,bin_id,year);
+CREATE INDEX outputs_com_join_fields_btree ON diffusion_template.outputs_com USING btree(county_id,bin_id,year);
 
 -- industrial
-DROP TABLE IF EXISTS diffusion_wind.outputs_ind;
-CREATE TABLE diffusion_wind.outputs_ind
+DROP TABLE IF EXISTS diffusion_template.outputs_ind;
+CREATE TABLE diffusion_template.outputs_ind
 (
   micro_id integer,
   county_id integer,
@@ -133,7 +137,9 @@ CREATE TABLE diffusion_wind.outputs_ind
   installed_capacity numeric,
   market_value numeric,
   first_year_bill_with_system numeric,
-  first_year_bill_without_system numeric
+  first_year_bill_without_system numeric,
+  npv4 numeric,
+  excess_generation_percent numeric
 );
 
-CREATE INDEX outputs_ind_join_fields_btree ON diffusion_wind.outputs_ind USING btree(county_id,bin_id,year);
+CREATE INDEX outputs_ind_join_fields_btree ON diffusion_template.outputs_ind USING btree(county_id,bin_id,year);

@@ -201,6 +201,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             market_projections = datfunc.get_market_projections(con, schema)
             rate_escalations = datfunc.get_rate_escalations(con, schema)
             rate_structures = datfunc.get_rate_structures(con, schema)
+            incentive_options = datfunc.get_manual_incentive_options(con, schema, cfg.technology)
 
             logger.info('Getting various parameters took: %0.1fs' %(time.time() - t0))
 
@@ -339,7 +340,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Calculate economics of adoption given system cofiguration and business model
                     df = finfunc.calc_economics(df, schema, sector, sector_abbr, 
                                                                                market_projections, financial_parameters, 
-                                                                               cfg, scenario_opts, max_market_share, cur, con, year, 
+                                                                               cfg, scenario_opts, incentive_options, max_market_share, cur, con, year, 
                                                                                dsire_incentives, deprec_schedule, logger, rate_escalations, 
                                                                                ann_system_degradation, mode,prng,curtailment_method)
                     

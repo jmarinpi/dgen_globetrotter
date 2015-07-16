@@ -17,7 +17,7 @@ import time
 
 #==============================================================================
 def calc_economics(df, schema, sector, sector_abbr, market_projections,
-                   financial_parameters, cfg, scenario_opts, max_market_share, cur, con, 
+                   financial_parameters, cfg, scenario_opts, incentive_opts, max_market_share, cur, con, 
                    year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation, mode, prng,curtailment_method):
     '''
     Calculates economics of system adoption (cashflows, payback, irr, etc.)
@@ -51,7 +51,8 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
         rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector_abbr,cfg.tech_lifetime)    
 
     # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
-    if scenario_opts['overwrite_exist_inc']:
+    overwrite_exist_inc = incentive_opts['overwrite_exist_inc'][0]
+    if overwrite_exist_inc:
         value_of_incentives = datfunc.calc_manual_incentives(df,con, year, schema, cfg.technology)
     else:
         inc = pd.merge(df,dsire_incentives,how = 'left', on = 'incentive_array_id')
