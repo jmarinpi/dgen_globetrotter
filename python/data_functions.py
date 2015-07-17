@@ -23,8 +23,12 @@ import colorama
 import gzip
 import subprocess
 import os
-import sys, getopt
+import sys
+import getopt
 import psutil
+import subprocess
+import tempfile
+import re
 
 # configure psycopg2 to treat numeric values as floats (improves performance of pulling data from the database)
 DEC2FLOAT = pg.extensions.new_type(
@@ -74,6 +78,7 @@ def load_resume_vars(cfg, resume_year):
         input_scenarios = saved_vars['input_scenarios']
     return cfg.init_model, out_dir, input_scenarios, market_last_year
 
+
 def prep_model(cfg):               
     # Make output folder
     cdate = time.strftime('%Y%m%d_%H%M%S')    
@@ -88,6 +93,7 @@ def prep_model(cfg):
         raise ValueError("""Error: customer_bins in config.py is not in the range of acceptable values. Change to a value in the set (10,50,100,500).""") 
     model_init = time.time()
     return out_dir, model_init
+
 
 def parse_command_args(argv):
     ''' Function to parse the command line arguments
@@ -121,6 +127,7 @@ def parse_command_args(argv):
             resume_year = arg
     return init_model, resume_year 
 
+
 def init_log(log_file_path):
     
     colorama.init()
@@ -146,6 +153,7 @@ def shutdown_log(logger):
         handler.close()
         logger.removeHandler(handler)
 
+
 def wait(conn):
     while 1:
         state = conn.poll()
@@ -162,20 +170,48 @@ def wait(conn):
 def pylist_2_pglist(l):
     return str(l)[1:-1]
 
-def make_con(connection_string, async = False):    
+
+def make_con(connection_string, role = 'diffusion-writers', async = False):    
     con = pg.connect(connection_string, async = async)
     if async:
         wait(con)
     # create cursor object
     cur = con.cursor(cursor_factory=pgx.RealDictCursor)
     # set role (this should avoid permissions issues)
-    cur.execute('SET ROLE "diffusion-writers";')    
+    cur.execute('SET ROLE "%s";' % role)    
     if async:
         wait(con)
     else:
         con.commit()
     
     return con, cur
+
+
+def current_datetime(format = '%Y_%m_%d_%Hh%Mm%Ss'):
+    
+    dt = datetime.datetime.strftime(datetime.datetime.now(), format)
+    
+    return dt
+
+
+def create_output_schema(pg_conn_string, source_schema = 'diffusion_template'):
+    
+    
+    con, cur = make_con(pg_conn_string, role = "diffusion-schema-writers")
+
+
+    cdt = current_datetime()
+    dest_schema = 'diffusion_results_%s' % cdt
+    
+#    pg_params['source_schema'] = source_schema
+#    pg_params['dest_schema'] = dest_schema
+#    
+#    line = ''
+#    new_line = re.sub(source_schema, dest_schema, line)
+
+
+    
+    
 
 def combine_temporal_data(cur, con, schema, technology, start_year, end_year, sector_abbrs, preprocess, logger):
 
