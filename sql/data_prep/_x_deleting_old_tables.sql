@@ -125,12 +125,13 @@ ALTER TABLE diffusion_wind.archive_wind_resource_current_small_turbine SET SCHEM
 ALTER TABLE diffusion_wind.archive_wind_resource_far_future_small_turbine_2014_11 SET SCHEMA diffusion_trash_wind;
 ALTER TABLE diffusion_wind.archive_wind_resource_future_mid_and_large_turbine SET SCHEMA diffusion_trash_wind;
 ALTER TABLE diffusion_wind.archive_wind_resource_future_small_turbine SET SCHEMA diffusion_trash_wind;
-ALTER TABLE diffusion_wind.archive_wind_resource_hourly_current_small_comm_turbine_2014_11 SET SCHEMA diffusion_trash_wind;
-ALTER TABLE diffusion_wind.archive_wind_resource_hourly_far_future_small_turbine_2014_11 SET SCHEMA diffusion_trash_wind;
 ALTER TABLE diffusion_wind.archive_wind_resource_nearfuture_mid_and_large_turbine SET SCHEMA diffusion_trash_wind;
 ALTER TABLE diffusion_wind.archive_wind_resource_nearfuture_small_turbine SET SCHEMA diffusion_trash_wind;
 ALTER TABLE diffusion_wind.turbines_old SET SCHEMA diffusion_trash_wind;
 ALTER TABLE diffusion_wind.normalized_wind_power_curves_old SET SCHEMA diffusion_trash_wind;
+-- drop these two old hourly ones -- we have old backups if we need elsewhere
+DROP TABLE diffusion_wind.archive_wind_resource_hourly_current_small_comm_turbine_2014_11;
+DROP TABLE diffusion_wind.archive_wind_resource_hourly_far_future_small_turbine_2014_11;
 
 -- old fixed seed stuff
 ALTER TABLE diffusion_wind.prior_seeds_com SET SCHEMA diffusion_trash_wind;
@@ -173,8 +174,6 @@ ALTER TABLE diffusion_wind.pt_ind_initial_market_shares SET SCHEMA diffusion_tra
 ALTER TABLE diffusion_wind.utilityrate3_results SET SCHEMA diffusion_trash_wind;
 ALTER TABLE diffusion_wind.unique_rate_gen_load_combinations SET SCHEMA diffusion_trash_wind;
 
--------------------- tested ok to here ----------------------------------------
-
 -- miscellanous
 ALTER TABLE diffusion_solar.max_market_curves_to_model2 SET SCHEMA diffusion_trash_solar;
 
@@ -214,3 +213,18 @@ ALTER TABLE diffusion_solar.solar_re_9809_tzone_lookup SET SCHEMA diffusion_sola
 ALTER TABLE diffusion_wind.ij_tzone_lookup SET SCHEMA diffusion_wind_data;
 
 -------------------- tested ok to here ----------------------------------------
+
+-- back up the "trash" schemas to disk:
+-- pg_dump -h localhost -U mgleason -O -n diffusion_trash_wind_config -n diffusion_trash_wind -n diffusion_trash_solar_config -n diffusion_trash_solar -v dav-gis | gzip -6 > diffusion_wind_and_solar_trash_schemas_archive_20150717.gz
+-- (in /srv2/mgleason_backups/diffusion_database)
+
+-- then drop the "trash" schemas
+DROP SCHEMA diffusion_trash_solar_config CASCADE;
+DROP SCHEMA diffusion_trash_wind_config CASCADE;
+DROP SCHEMA diffusion_trash_solar CASCADE;
+DROP SCHEMA diffusion_trash_wind CASCADE;
+
+-- then test the model one more time
+-------------------------------------------------------------------------------
+
+-- next: clean up diffusion_shared
