@@ -313,8 +313,8 @@ VACUUM ANALYZE dg_wind.incentives_geoms_copy_diced;
 -- DSIRE INCENTIVES (WIND)
 ------------------------------------------------------------------------------------------------------------
 --create the lookup table		
-DROP TABLE IF EXISTS diffusion_wind.dsire_incentives_lookup_res;
-CREATE TABLE diffusion_wind.dsire_incentives_lookup_res AS
+DROP TABLE IF EXISTS diffusion_wind_data.dsire_incentives_lookup_res;
+CREATE TABLE diffusion_wind_data.dsire_incentives_lookup_res AS
 with a as 
 (
 	SELECT b.gid, b.the_geom, d.uid as wind_incentives_uid
@@ -330,14 +330,14 @@ INNER JOIN diffusion_shared.pt_grid_us_res_new e
 ON ST_Intersects(a.the_geom,e.the_geom_4326);
 
 CREATE INDEX dsire_incentives_lookup_res_pt_gid_btree 
-ON diffusion_wind.dsire_incentives_lookup_res 
+ON diffusion_wind_data.dsire_incentives_lookup_res 
 using btree(pt_gid);
 
 -- group the incentives into arrays so that there is just one row for each pt_gid
 DROP TABLE IF EXISTS diffusion_wind_data.dsire_incentives_combos_lookup_res;
 CREATE TABLE diffusion_wind_data.dsire_incentives_combos_lookup_res AS
 SELECT pt_gid, array_agg(wind_incentives_uid order by wind_incentives_uid) as wind_incentives_uid_array
-FROM diffusion_wind.dsire_incentives_lookup_res
+FROM diffusion_wind_data.dsire_incentives_lookup_res
 group by pt_gid;
 
 -- find the unique set of incentive arrays
@@ -388,8 +388,8 @@ USING btree(incentive_array_id);
 -- DSIRE INCENTIVES (SOLAR)
 ------------------------------------------------------------------------------------------------------------
 --create the lookup table		
-DROP TABLE IF EXISTS diffusion_solar.dsire_incentives_lookup_res;
-CREATE TABLE diffusion_solar.dsire_incentives_lookup_res AS
+DROP TABLE IF EXISTS diffusion_solar_data.dsire_incentives_lookup_res;
+CREATE TABLE diffusion_solar_data.dsire_incentives_lookup_res AS
 with a as 
 (
 	SELECT b.gid, b.the_geom, d.uid as solar_incentives_uid
@@ -405,14 +405,14 @@ INNER JOIN diffusion_shared.pt_grid_us_res_new e
 ON ST_Intersects(a.the_geom,e.the_geom_4326);
 
 CREATE INDEX dsire_incentives_lookup_res_pt_gid_btree 
-ON diffusion_solar.dsire_incentives_lookup_res 
+ON diffusion_solar_data.dsire_incentives_lookup_res 
 using btree(pt_gid);
 
 -- group the incentives into arrays so that there is just one row for each pt_gid
 DROP TABLE IF EXISTS diffusion_solar_data.dsire_incentives_combos_lookup_res;
 CREATE TABLE diffusion_solar_data.dsire_incentives_combos_lookup_res AS
 SELECT pt_gid, array_agg(solar_incentives_uid order by solar_incentives_uid) as solar_incentives_uid_array
-FROM diffusion_solar.dsire_incentives_lookup_res
+FROM diffusion_solar_data.dsire_incentives_lookup_res
 group by pt_gid;
 
 -- find the unique set of incentive arrays
