@@ -41,7 +41,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
     try:
         # check which technology is being modeled and adjust variables accordingly
-        schema = "diffusion_template"
+        schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template')
         
         # 4. Connect to Postgres and configure connection(s) (to edit login information, edit config.py)
         # create a single connection to Postgres Database -- this will serve as the main cursor/connection
@@ -419,6 +419,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             if 'warning' in messages[1].lower():
                 logger.warning(messages[1])
             returncode = proc.returncode
+
+            
+        #datfunc.drop_output_schema(pg_conn_string, schema)
 
     except Exception, e:
         if 'logger' in locals():

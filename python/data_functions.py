@@ -26,9 +26,7 @@ import os
 import sys
 import getopt
 import psutil
-import subprocess
-import tempfile
-import re
+
 
 # configure psycopg2 to treat numeric values as floats (improves performance of pulling data from the database)
 DEC2FLOAT = pg.extensions.new_type(
@@ -196,21 +194,27 @@ def current_datetime(format = '%Y_%m_%d_%Hh%Mm%Ss'):
 
 def create_output_schema(pg_conn_string, source_schema = 'diffusion_template'):
     
-    
+    inputs = locals().copy()
     con, cur = make_con(pg_conn_string, role = "diffusion-schema-writers")
-
 
     cdt = current_datetime()
     dest_schema = 'diffusion_results_%s' % cdt
+    inputs['dest_schema'] = dest_schema
     
-#    pg_params['source_schema'] = source_schema
-#    pg_params['dest_schema'] = dest_schema
-#    
-#    line = ''
-#    new_line = re.sub(source_schema, dest_schema, line)
-
-
+    sql = '''SELECT clone_schema('%(source_schema)s', '%(dest_schema)s', 'diffusion-writers');''' % inputs
+    cur.execute(sql)        
+    con.commit()
     
+    return dest_schema
+    
+def drop_output_schema(pg_conn_string, schema):
+
+    inputs = locals().copy()
+
+    con, cur = make_con(pg_conn_string, role = "diffusion-schema-writers")
+    sql = '''DROP SCHEMA IF EXISTS %(schema)s CASCADE;''' % inputs
+    cur.execute(sql)
+    con.commit()
     
 
 def combine_temporal_data(cur, con, schema, technology, start_year, end_year, sector_abbrs, preprocess, logger):
