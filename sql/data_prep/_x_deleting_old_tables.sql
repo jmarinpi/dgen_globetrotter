@@ -212,19 +212,20 @@ ALTER TABLE diffusion_solar.roof_material_to_roof_style_recs SET SCHEMA diffusio
 ALTER TABLE diffusion_solar.solar_re_9809_tzone_lookup SET SCHEMA diffusion_solar_data;
 ALTER TABLE diffusion_wind.ij_tzone_lookup SET SCHEMA diffusion_wind_data;
 
--------------------- tested ok to here ----------------------------------------
+-------------------------------------------------------------------------------
+-- done cleaning wind and solar schemas
 
 -- back up the "trash" schemas to disk:
 -- pg_dump -h localhost -U mgleason -O -n diffusion_trash_wind_config -n diffusion_trash_wind -n diffusion_trash_solar_config -n diffusion_trash_solar -v dav-gis | gzip -6 > diffusion_wind_and_solar_trash_schemas_archive_20150717.gz
 -- (in /srv2/mgleason_backups/diffusion_database)
 
--- then drop the "trash" schemas
+-- drop the "trash" schemas
 DROP SCHEMA diffusion_trash_solar_config CASCADE;
 DROP SCHEMA diffusion_trash_wind_config CASCADE;
 DROP SCHEMA diffusion_trash_solar CASCADE;
 DROP SCHEMA diffusion_trash_wind CASCADE;
 
--- then test the model one more time
--------------------------------------------------------------------------------
+-- tested the model one more time for both wind and solar --- all ran fine
+-------------------- tested ok to here ----------------------------------------
 
 -- next: clean up diffusion_shared
