@@ -145,10 +145,10 @@ ON a.county_id = d.county_id
 LEFT JOIN diffusion_shared.county_geom e
 ON a.county_id = e.county_id
 -- subset to counties of interest
-INNER JOIN diffusion_solar.counties_to_model h 
+INNER JOIN diffusion_template.counties_to_model h 
 ON a.county_id = h.county_id
 -- carbon intensities
-LEFT JOIN diffusion_solar.carbon_intensities_to_model l
+LEFT JOIN diffusion_template.carbon_intensities_to_model l
 ON e.state_abbr = l.state_abbr;
 
 
@@ -178,10 +178,10 @@ ON a.county_id = d.county_id
 LEFT JOIN diffusion_shared.county_geom e
 ON a.county_id = e.county_id
 -- subset to counties of interest
-INNER JOIN diffusion_solar.counties_to_model h 
+INNER JOIN diffusion_template.counties_to_model h 
 ON a.county_id = h.county_id
 -- carbon intensities
-LEFT JOIN diffusion_solar.carbon_intensities_to_model l
+LEFT JOIN diffusion_template.carbon_intensities_to_model l
 ON e.state_abbr = l.state_abbr;
 
 
@@ -208,10 +208,10 @@ ON a.county_id = d.county_id
 LEFT JOIN diffusion_shared.county_geom e
 ON a.county_id = e.county_id
 -- subset to counties of interest
-INNER JOIN diffusion_solar.counties_to_model h 
+INNER JOIN diffusion_template.counties_to_model h 
 ON a.county_id = h.county_id
 -- carbon intensities
-LEFT JOIN diffusion_solar.carbon_intensities_to_model l
+LEFT JOIN diffusion_template.carbon_intensities_to_model l
 ON e.state_abbr = l.state_abbr;
 ------------------------------------------------------------------------
 
