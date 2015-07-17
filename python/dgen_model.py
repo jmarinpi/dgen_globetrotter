@@ -40,19 +40,6 @@ from excel import excel_functions
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
     try:
-        # check which technology is being modeled and adjust variables accordingly
-        schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template')
-        
-        # 4. Connect to Postgres and configure connection(s) (to edit login information, edit config.py)
-        # create a single connection to Postgres Database -- this will serve as the main cursor/connection
-        con, cur = datfunc.make_con(cfg.pg_conn_string)
-        pgx.register_hstore(con) # register access to hstore in postgres
-        
-        # ************************************************************************
-        # NOTE: This is temporary until the model can dynamically handle running both wind and solar technologies
-        datfunc.set_source_pt_microdata(con, cur, schema, cfg.technology)
-        # ************************************************************************
-        print 'hi'
 
         if mode == 'ReEDS':
             
@@ -102,15 +89,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 input_scenarios = saved_vars['input_scenarios']
             #cfg.init_model,out_dir,input_scenarios, market_last_year = datfunc.load_resume_vars(cfg, resume_year)
         else:
+            # set input dataframes for reeds-mode settings (these are ingested to postgres later)
             reeds_mode_df = FancyDataFrame(data = [False])
             ReEDS_PV_CC = FancyDataFrame(columns = ['year', 'Capital_Cost'])
             cdate = time.strftime('%Y%m%d_%H%M%S')    
             out_dir = '%s/runs_%s/results_%s' %(os.path.dirname(os.getcwd()), cfg.technology, cdate)        
             os.makedirs(out_dir)
 
-        # write the reeds settings to postgres
-        reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
-        ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')        
                             
         # check that number of customer bins is in the acceptable range
         if type(cfg.customer_bins) <> int:
@@ -125,6 +110,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         # if parallelization is off, reduce npar to 1
         if not cfg.parallelize:
             cfg.npar = 1
+            
+        # 4. Connect to Postgres and configure connection(s) (to edit login information, edit config.py)
+        # create a single connection to Postgres Database -- this will serve as the main cursor/connection
+        con, cur = datfunc.make_con(cfg.pg_conn_string)
+        pgx.register_hstore(con) # register access to hstore in postgres    
         
         # configure pandas display options
         pd.set_option('max_columns', 9999)
@@ -147,6 +137,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             
             # 5. Load Input excel spreadsheet to Postgres
             if cfg.init_model:
+                # create the output schema
+                logger.info('Creating output schema')
+                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template')
+                logger.info('Output schema is: %s' % schema)
+                # ************************************************************************
+                # NOTE: This is temporary until the model can dynamically handle running both wind and solar technologies
+                datfunc.set_source_pt_microdata(con, cur, schema, cfg.technology)
+                # ************************************************************************
+                # write the reeds settings to postgres
+                reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
+                ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
+                
                 logger.info('Loading input data from Input Scenario Worksheet')
                 t0 = time.time()
                 try:
@@ -161,6 +163,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             else:
                 logger.warning("Warning: Skipping Import of Input Scenario Worksheet. This should only be done in resume mode.")
             
+
 
             # 6. Read in scenario option variables
             scenario_opts = datfunc.get_scenario_options(cur, schema) 
