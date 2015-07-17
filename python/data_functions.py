@@ -206,6 +206,7 @@ def create_output_schema(pg_conn_string, source_schema = 'diffusion_template'):
     con.commit()
     
     return dest_schema
+
     
 def drop_output_schema(pg_conn_string, schema):
 
