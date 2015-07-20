@@ -3,8 +3,8 @@
 
 -- COMMERCIAL/INDUSTRIAL
 -- create a simple table with each rate_id_alias linked to a ventyx geom
-DROP TABLE IF EXISTS diffusion_shared.urdb_rates_geoms_com;
-CREATE TABLE diffusion_shared.urdb_rates_geoms_com AS
+DROP TABLE IF EXISTS diffusion_shared_data.urdb_rates_geoms_com;
+CREATE TABLE diffusion_shared_data.urdb_rates_geoms_com AS
 with a as
 (
 	-- collect all of the commercial rates
@@ -28,47 +28,47 @@ and b.sub_territory_name = c.sub_territory_name;
 
 -- make sure there are no nulls
 select count(*)
-FROM diffusion_shared.urdb_rates_geoms_com
+FROM diffusion_shared_data.urdb_rates_geoms_com
 where the_geom_4326 is null;
 
 -- create primary key on the rate_id_alias
-ALTER TABLE diffusion_shared.urdb_rates_geoms_com
+ALTER TABLE diffusion_shared_data.urdb_rates_geoms_com
 ADD PRIMARY KEY (rate_id_alias, geom_gid);
 
 -- create index on the geometry
 CREATE INDEX urdb_rates_geoms_com_the_geom_4326_gist
-ON  diffusion_shared.urdb_rates_geoms_com
+ON  diffusion_shared_data.urdb_rates_geoms_com
 using gist(the_geom_4326);
 
 -- add 900914 geom
-ALTER TABLE diffusion_shared.urdb_rates_geoms_com
+ALTER TABLE diffusion_shared_data.urdb_rates_geoms_com
 ADD column the_geom_900914 geometry;
 
-UPDATE diffusion_shared.urdb_rates_geoms_com
+UPDATE diffusion_shared_data.urdb_rates_geoms_com
 SET the_geom_900914 = ST_Transform(the_geom_4326, 900914);
 
 CREATE INDEX urdb_rates_geoms_com_the_geom_900914_gist
-ON  diffusion_shared.urdb_rates_geoms_com
+ON  diffusion_shared_data.urdb_rates_geoms_com
 using gist(the_geom_900914);
 
 -- add 96703 geom
-ALTER TABLE diffusion_shared.urdb_rates_geoms_com
+ALTER TABLE diffusion_shared_data.urdb_rates_geoms_com
 ADD column the_geom_96703 geometry;
 
-UPDATE diffusion_shared.urdb_rates_geoms_com
+UPDATE diffusion_shared_data.urdb_rates_geoms_com
 SET the_geom_96703 = ST_Transform(the_geom_4326, 96703);
 
 CREATE INDEX urdb_rates_geoms_com_the_geom_96703_gist
-ON  diffusion_shared.urdb_rates_geoms_com
+ON  diffusion_shared_data.urdb_rates_geoms_com
 using gist(the_geom_96703);
 
 
-VACUUM ANALYZE diffusion_shared.urdb_rates_geoms_com;
+VACUUM ANALYZE diffusion_shared_data.urdb_rates_geoms_com;
 
 -- RESIDENTIAL
 -- create a simple table with each rate_id_alias linked to a ventyx geom
-DROP TABLE IF EXISTS diffusion_shared.urdb_rates_geoms_res;
-CREATE TABLE diffusion_shared.urdb_rates_geoms_res AS
+DROP TABLE IF EXISTS diffusion_shared_data.urdb_rates_geoms_res;
+CREATE TABLE diffusion_shared_data.urdb_rates_geoms_res AS
 with a as
 (
 	-- collect all of the residential rates
@@ -94,38 +94,38 @@ and b.sub_territory_name = c.sub_territory_name;
 
 -- make sure there are no nulls
 select count(*)
-FROM diffusion_shared.urdb_rates_geoms_res
+FROM diffusion_shared_data.urdb_rates_geoms_res
 where the_geom_4326 is null;
 
 -- create primary key on the rate_id_alias
-ALTER TABLE diffusion_shared.urdb_rates_geoms_res
+ALTER TABLE diffusion_shared_data.urdb_rates_geoms_res
 ADD PRIMARY KEY (rate_id_alias, geom_gid);
 
 -- create index on the geometry
 CREATE INDEX urdb_rates_geoms_res_the_geom_4326_gist
-ON  diffusion_shared.urdb_rates_geoms_res
+ON  diffusion_shared_data.urdb_rates_geoms_res
 using gist(the_geom_4326);
 
 -- add 900914 geom
-ALTER TABLE diffusion_shared.urdb_rates_geoms_res
+ALTER TABLE diffusion_shared_data.urdb_rates_geoms_res
 ADD column the_geom_900914 geometry;
 
-UPDATE diffusion_shared.urdb_rates_geoms_res
+UPDATE diffusion_shared_data.urdb_rates_geoms_res
 SET the_geom_900914 = ST_Transform(the_geom_4326, 900914);
 
 CREATE INDEX urdb_rates_geoms_res_the_geom_900914_gist
-ON  diffusion_shared.urdb_rates_geoms_res
+ON  diffusion_shared_data.urdb_rates_geoms_res
 using gist(the_geom_900914);
 
 -- add 96703 geom
-ALTER TABLE diffusion_shared.urdb_rates_geoms_res
+ALTER TABLE diffusion_shared_data.urdb_rates_geoms_res
 ADD column the_geom_96703 geometry;
 
-UPDATE diffusion_shared.urdb_rates_geoms_res
+UPDATE diffusion_shared_data.urdb_rates_geoms_res
 SET the_geom_96703 = ST_Transform(the_geom_4326, 96703);
 
 CREATE INDEX urdb_rates_geoms_res_the_geom_96703_gist
-ON  diffusion_shared.urdb_rates_geoms_res
+ON  diffusion_shared_data.urdb_rates_geoms_res
 using gist(the_geom_96703);
 
-VACUUM ANALYZE diffusion_shared.urdb_rates_geoms_res;
+VACUUM ANALYZE diffusion_shared_data.urdb_rates_geoms_res;

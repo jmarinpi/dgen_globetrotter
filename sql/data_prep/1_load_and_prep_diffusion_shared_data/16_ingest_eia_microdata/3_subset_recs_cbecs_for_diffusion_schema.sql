@@ -55,24 +55,24 @@ ON diffusion_shared.eia_microdata_cbecs_2003
 using btree(climate8);
 
 -- add lookup table for pba8
-DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_2003_pba_lookup;
-CREATE TABLE  diffusion_shared.eia_microdata_cbecs_2003_pba_lookup (
+DROP TABLE IF EXISTS diffusion_shared_data.eia_microdata_cbecs_2003_pba_lookup;
+CREATE TABLE  diffusion_shared_data.eia_microdata_cbecs_2003_pba_lookup (
 	pba8	integer primary key,
 	description text
 );
 SET ROLE 'server-superusers';
-COPY diffusion_shared.eia_microdata_cbecs_2003_pba_lookup 
+COPY diffusion_shared_data.eia_microdata_cbecs_2003_pba_lookup 
 FROM '/srv/home/mgleason/data/dg_wind/pba8_lookup.csv' with csv header QUOTE '''';
 SET ROLE 'diffusion-writers';
 
 -- add lookup table for pbaplus8
-DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_2003_pbaplus8_lookup;
-CREATE TABLE  diffusion_shared.eia_microdata_cbecs_2003_pbaplus8_lookup (
+DROP TABLE IF EXISTS diffusion_shared_data.eia_microdata_cbecs_2003_pbaplus8_lookup;
+CREATE TABLE  diffusion_shared_data.eia_microdata_cbecs_2003_pbaplus8_lookup (
 	pbaplus8	integer primary key,
 	description text
 );
 SET ROLE 'server-superusers';
-COPY diffusion_shared.eia_microdata_cbecs_2003_pbaplus8_lookup 
+COPY diffusion_shared_data.eia_microdata_cbecs_2003_pbaplus8_lookup 
 FROM '/srv/home/mgleason/data/dg_wind/pbaplus8_lookup.csv' with csv header QUOTE '''';
 SET ROLE 'diffusion-writers';
 
@@ -89,9 +89,9 @@ COPY
 	SELECT a.pba8, b.description as pba8_desc,
 	       a.pbaplus8, c.description as pbaplus8_desc
 	FROM a
-	left join diffusion_shared.eia_microdata_cbecs_2003_pba_lookup b
+	left join diffusion_shared_data.eia_microdata_cbecs_2003_pba_lookup b
 	ON a.pba8 = b.pba8
-	LEFT JOIN diffusion_shared.eia_microdata_cbecs_2003_pbaplus8_lookup c
+	LEFT JOIN diffusion_shared_data.eia_microdata_cbecs_2003_pbaplus8_lookup c
 	on a.pbaplus8 = c.pbaplus8
 	order by a.pba8, a.pbaplus8
 ) TO '/srv/home/mgleason/data/dg_wind/cbecs_to_eplus_commercial_building_types.csv' with csv header;
@@ -144,8 +144,8 @@ USING btree(census_division_abbr);
 -- load cbecs pba/pbaplus to Energy Plus Commercial Reference Buildings
 -- lookup table
 SET role 'diffusion-writers';
-DROP TABLE IF EXISTS diffusion_shared.cbecs_2003_pba_to_eplus_crbs;
-CREATE TABLE diffusion_shared.cbecs_2003_pba_to_eplus_crbs
+DROP TABLE IF EXISTS diffusion_shared_data.cbecs_2003_pba_to_eplus_crbs;
+CREATE TABLE diffusion_shared_data.cbecs_2003_pba_to_eplus_crbs
 (
 	pba8 integer,
 	pba8_desc text,
@@ -159,18 +159,18 @@ CREATE TABLE diffusion_shared.cbecs_2003_pba_to_eplus_crbs
 );
 
 SET ROLE 'server-superusers';
-COPY diffusion_shared.cbecs_2003_pba_to_eplus_crbs 
+COPY diffusion_shared_data.cbecs_2003_pba_to_eplus_crbs 
 FROM '/srv/home/mgleason/data/dg_wind/cbecs_to_eplus_commercial_building_types.csv' 
 with csv header;
 SET ROLE 'diffusion-writers';
 
 -- create indices on pba8 and pbaplus 8
 CREATE INDEX cbecs_2003_pba_to_eplus_crbs_pba8_btree
-ON diffusion_shared.cbecs_2003_pba_to_eplus_crbs 
+ON diffusion_shared_data.cbecs_2003_pba_to_eplus_crbs 
 using btree(pba8);
 
 CREATE INDEX cbecs_2003_pba_to_eplus_crbs_pbaplus8_btree
-ON diffusion_shared.cbecs_2003_pba_to_eplus_crbs 
+ON diffusion_shared_data.cbecs_2003_pba_to_eplus_crbs 
 using btree(pbaplus8);
 
 -- create a simple lookup table for all non-vacant
@@ -181,7 +181,7 @@ with a AS
 (
 	SELECT a.pubid8, a.sqft8, b.*
 	FROM diffusion_shared.eia_microdata_cbecs_2003 a
-	LEFT JOIN diffusion_shared.cbecs_2003_pba_to_eplus_crbs b
+	LEFT JOIN diffusion_shared_data.cbecs_2003_pba_to_eplus_crbs b
 	ON a.pba8 = b.pba8
 	and a.pbaplus8 = b.pbaplus8
 	where a.pba8 <> 1 -- ignore vacant buildings
@@ -332,21 +332,21 @@ where typehuq in (1,2,3) AND kownrent = 1;
 
 -- ingest lookup table to translate recs reportable domain to states
 set role 'diffusion-writers';
-DrOP TABLE IF EXISTS diffusion_shared.eia_reportable_domain_to_state_recs_2009;
-CREATE TABLE diffusion_shared.eia_reportable_domain_to_state_recs_2009
+DrOP TABLE IF EXISTS diffusion_shared_data.eia_reportable_domain_to_state_recs_2009;
+CREATE TABLE diffusion_shared_data.eia_reportable_domain_to_state_recs_2009
 (
 	reportable_domain integer,
 	state_name text primary key
 );
 
 SET ROLE 'server-superusers';
-COPY  diffusion_shared.eia_reportable_domain_to_state_recs_2009
+COPY  diffusion_shared_data.eia_reportable_domain_to_state_recs_2009
 FROM '/srv/home/mgleason/data/dg_wind/recs_reportable_dominain_to_state.csv' with csv header;
 set role 'diffusion-writers';
 
 -- create index for reportable domai column in this table and the recs table
 CREATE INDEX eia_reportable_domain_to_state_recs_2009_reportable_domain_btree 
-ON diffusion_shared.eia_reportable_domain_to_state_recs_2009
+ON diffusion_shared_data.eia_reportable_domain_to_state_recs_2009
 USING btree(reportable_domain);
 
 CREATE INDEX eia_microdata_recs_2009_reportable_domain_btree 

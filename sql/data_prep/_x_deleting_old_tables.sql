@@ -5,6 +5,7 @@ set role 'server-superusers';
 SELECT add_schema('diffusion_trash_solar', 'diffusion');
 SELECT add_schema('diffusion_trash_wind', 'diffusion');
 
+
 -- solar inputs from excel
 ALTER TABLE diffusion_solar.scenario_options
 set schema diffusion_trash_solar;
@@ -229,3 +230,82 @@ DROP SCHEMA diffusion_trash_wind CASCADE;
 -------------------- tested ok to here ----------------------------------------
 
 -- next: clean up diffusion_shared
+set role 'server-superusers';
+SELECT add_schema('diffusion_trash_shared', 'diffusion');
+SELECT add_schema('diffusion_shared_data', 'diffusion');
+set role mgleason;
+
+-- trash
+-- old binned load data
+ALTER TABLE diffusion_shared.binned_annual_load_kwh_100_bins SET SCHEMA diffusion_trash_shared;
+ALTER TABLE diffusion_shared.binned_annual_load_kwh_10_bins SET SCHEMA diffusion_trash_shared;
+ALTER TABLE diffusion_shared.binned_annual_load_kwh_500_bins SET SCHEMA diffusion_trash_shared;
+ALTER TABLE diffusion_shared.binned_annual_load_kwh_50_bins SET SCHEMA diffusion_trash_shared;
+
+-- rates
+ALTER TABLE diffusion_shared.urdb3_rate_sam_jsons_backup SET SCHEMA diffusion_trash_shared;
+
+-- max market curve
+ALTER TABLE diffusion_shared.max_market_share SET SCHEMA diffusion_trash_shared;
+ALTer TABLE diffusion_shared.max_market_share_revised RENAME TO max_market_share;
+
+-- point data
+DROP TABLE IF EXISTS diffusion_shared.pt_grid_us_res_new_bad;
+DROP TABLE IF EXISTS diffusion_shared.pt_grid_us_res_new_0hu;
+
+
+-------------------------------------------------------------------------------
+-- archive
+-- old aeo data
+ALTER TABLE diffusion_shared.aeo_load_growth_projections_2013 SET SCHEMA diffusion_shared_data;
+-- electric rates
+ALTER TABLE diffusion_shared.annual_ave_elec_rates_2011 SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.ann_ave_elec_rates_by_utility_2012 SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.ann_ave_elec_rates_by_state_2012 SET SCHEMA diffusion_shared_data;
+-- no hu res points
+ALTER TABLE diffusion_shared.pt_grid_us_res_new_no_hu SET SCHEMA diffusion_shared_data;
+
+-- urdb processing intermediate files
+ALTER TABLE diffusion_shared.urdb_rates_geoms_res SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.urdb_rates_geoms_com SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.urdb_rates_geom_rate_counts SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.unique_ranked_rate_arrays_res SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.unique_ranked_rate_arrays_ind SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.unique_ranked_rate_arrays_com SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.pt_rate_isect_lkup_res SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.pt_rate_isect_lkup_ind SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.pt_rate_isect_lkup_com SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.pt_ranked_rates_lkup_res SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.pt_ranked_rates_lkup_ind SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.pt_ranked_rates_lkup_com SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.pt_ranked_rate_arrays_res SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.pt_ranked_rate_arrays_ind SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.pt_ranked_rate_arrays_com SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.pt_ranked_rate_array_lkup_res SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.pt_ranked_rate_array_lkup_ind SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.pt_ranked_rate_array_lkup_com SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.applicable_rate_load_combinations_res SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.applicable_rate_load_combinations_ind SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.applicable_rate_load_combinations_com SET SCHEMA diffusion_shared_data;
+
+-- energy plus/load profile intermediate files
+ALTER TABLE diffusion_shared.energy_plus_load_meta SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.solar_re_9809_to_eplus_load_com SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.solar_re_9809_to_eplus_load_res SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.cbecs_2003_max_demand_by_tmy_and_eia_region SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.cbecs_2003_pba_to_eplus_crbs SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003_pba_lookup SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003_pbaplus8_lookup SET SCHEMA diffusion_shared_data;
+ALTER TABLE diffusion_shared.eia_reportable_domain_to_state_recs_2009 SET SCHEMA diffusion_shared_data;
+
+
+
+
+-- back up the "shared_trash" schema to disk:
+-- pg_dump -h localhost -U mgleason -O -n diffusion_trash_shared -v dav-gis | gzip -6 > diffusion_shared_trash_schema_archive_20150720.gz
+-- (in /srv2/mgleason_backups/diffusion_database)
+
+-- drop the "shared_trash" schema
+DROP SCHEMA diffusion_trash_shared cASCADE;
+
+-- tested the model one more time for both wind and solar --- all ran fine

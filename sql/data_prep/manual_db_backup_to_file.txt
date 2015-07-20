@@ -1,1 +1,1 @@
-pg_dump -h localhost -U mgleason -O -n diffusion_shared -n geo_incentives -n urdb_rates -n diffusion_wind -n diffusion_template -n diffusion_solar -n diffusion_config -n diffusion_wind_data -n diffusion_solar_data -v dav-gis | gzip -6 > diffusion_schemas.gz
+pg_dump -h localhost -U mgleason -O -n diffusion_shared -n geo_incentives -n urdb_rates -n diffusion_wind -n diffusion_template -n diffusion_solar -n diffusion_config -n diffusion_wind_data -n diffusion_solar_data -n diffusion_shared_data -v dav-gis | gzip -6 > diffusion_schemas_20150720.gz

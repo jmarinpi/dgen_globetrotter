@@ -195,8 +195,8 @@ order by count desc;
 
 -- create table with annual rates by utility
 set role 'diffusion-writers';
-DROP TABLE if exists diffusion_shared.ann_ave_elec_rates_by_utility_2012;
-CREATE TABLE diffusion_shared.ann_ave_elec_rates_by_utility_2012 AS
+DROP TABLE if exists diffusion_shared_data.ann_ave_elec_rates_by_utility_2012;
+CREATE TABLE diffusion_shared_data.ann_ave_elec_rates_by_utility_2012 AS
 with a as
 (
 	-- find all unique utility/state combos
@@ -231,7 +231,7 @@ group by a.utility_name, a.state_abbr; -- have to groupby and avg to deal with d
 -- should produce 2069 rows (same as the count of rows in the subquery a)
 
 -- primary key
-ALTER TABLE diffusion_shared.ann_ave_elec_rates_by_utility_2012
+ALTER TABLE diffusion_shared_data.ann_ave_elec_rates_by_utility_2012
 ADD PRIMARY KEY (utility_name, state_abbr);
 
 
@@ -267,8 +267,8 @@ Acquired and loaded: 1/2/2015';
 
 -- extract the overall state avg rates for 2012
 set role 'diffusion-writers';
-DROP TABLE if exists diffusion_shared.ann_ave_elec_rates_by_state_2012;
-CREATE TABLE diffusion_shared.ann_ave_elec_rates_by_state_2012 AS
+DROP TABLE if exists diffusion_shared_data.ann_ave_elec_rates_by_state_2012;
+CREATE TABLE diffusion_shared_data.ann_ave_elec_rates_by_state_2012 AS
 SELECT state_abbr, res_rate_cents_per_kwh, com_rate_cents_per_kwh, ind_rate_cents_per_kwh
 FROM  eia.ann_avg_elec_price_by_state_by_provider_1990_to_2012
 where year = 2012
@@ -276,7 +276,7 @@ and provider = 'Total Electric Industry'
 and state_abbr <> 'US';
 
 -- add primary key on state_abbr
-ALTER TABLE diffusion_shared.ann_ave_elec_rates_by_state_2012
+ALTER TABLE diffusion_shared_data.ann_ave_elec_rates_by_state_2012
 ADD PRIMARY KEY (state_abbr);
 ----------------------------------------------------------------------------------------------------
 
@@ -293,7 +293,7 @@ with b AS
 		round(avg(a.res_rate_cents_per_kwh),2) as res_rate_cents_per_kwh,
 		round(avg(a.com_rate_cents_per_kwh),2) as com_rate_cents_per_kwh,
 		round(avg(a.ind_rate_cents_per_kwh),2) as ind_rate_cents_per_kwh
-	FROM  diffusion_shared.ann_ave_elec_rates_by_utility_2012 a
+	FROM  diffusion_shared_data.ann_ave_elec_rates_by_utility_2012 a
 	INNER JOIN eia.utility_to_county_lkup_2012 b -- this will drop utilities that can't be found in the lkup table
 	ON a.utility_name = b.utility_name
 	and a.state_abbr = b.state_abbr
@@ -321,7 +321,7 @@ FROM diffusion_shared.county_geom a
 LEFT JOIN b
 ON a.state_fips = b.state_fips::integer
 and a.county_fips = b.county_fips
-LEFT JOIN diffusion_shared.ann_ave_elec_rates_by_state_2012 c
+LEFT JOIN diffusion_shared_data.ann_ave_elec_rates_by_state_2012 c
 on a.state_abbr = c.state_abbr;
 
 -- add a primary key

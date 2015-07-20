@@ -253,7 +253,7 @@ all_maxmarket as
 (
 	SELECT metric_value, sector, max_market_share, metric, 
 		source, business_model
-	FROM diffusion_shared.max_market_share_revised
+	FROM diffusion_shared.max_market_share
 )
 SELECT a.*
 FROM all_maxmarket a
