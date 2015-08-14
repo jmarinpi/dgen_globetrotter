@@ -17,7 +17,8 @@ packages = c('ggthemes',
              'jsonlite',
              'scales',
              'knitr',
-             'gtable'
+             'gtable',
+	     'grid'
              )
 
 error = F
