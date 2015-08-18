@@ -75,8 +75,10 @@ def utilityrate3(generation_hourly, consumption_hourly, rate_json,
             raise
 
     # set generation and load
-    dat_set['SSC_ARRAY'](dat, 'hourly_energy', generation_hourly)
-    dat_set['SSC_ARRAY'](dat, 'e_load', consumption_hourly)
+    # dat_set['SSC_ARRAY'](dat, 'hourly_energy', generation_hourly)     # TODO: Remove after testing new module
+    dat_set['SSC_ARRAY'](dat, 'gen', generation_hourly)                 # NOTE: Changed to reflect new SAM version 2015-6-30
+    # dat_set['SSC_ARRAY'](dat, 'e_load', consumption_hourly)           # TODO: Remove after testing new module
+    dat_set['SSC_ARRAY'](dat, 'load', consumption_hourly)               # NOTE: Changed to reflect new SAM version 2015-6-30
 
     # create SAM utilityrate3 module object
     utilityrate = ssc.module_create('utilityrate3')
