@@ -7,59 +7,44 @@
 
 
 import string, sys, struct, os
-from ctypes import *
-
-#==============================================================================
-# NOTE: THIS SECTION IS EDITED AND IS NOT STANDARD SAM API 
-# author: mgleason
-def __init__(self):
-    
-    self.set_lib()
-
-
-def set_lib(self):
-    cwd = os.getcwd()
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    
-    if sys.platform == 'win32' or sys.platform == 'cygwin':
-        if 8*struct.calcsize("P") == 64:
-            try:
-                CDLL("../../win64/msvcr120.dll")
-                CDLL("../../win64/msvcp120.dll")
-                self.pdll = CDLL("../../win64/ssc.dll")
-                # CDLL("C:/Users/bsigrin/Desktop/diffusion/python/sam/win64/msvcr120.dll")
-                # CDLL("C:/Users/bsigrin/Desktop/diffusion/python/sam/win64/msvcp120.dll")
-                # self.pdll = CDLL("C:/Users/bsigrin/Desktop/diffusion/python/sam/win64/ssc.dll")
-            except WindowsError:
-                print 'Cannot read ssc.dll check for relative path issues'
-        else:
-            self.pdll = CDLL("../../win32/ssc.dll") 
-    elif sys.platform == 'darwin':
-        self.pdll = CDLL("../../osx64/ssc.dylib") 
-    elif sys.platform == 'linux2':
-        self.pdll = CDLL("../../linux64/ssc.so") 
-    else:
-        print "Platform not supported ", sys.platform
-    os.chdir(cwd) 
-#==============================================================================      
+from ctypes import *    
 
 c_number = c_float # must be c_double or c_float depending on how defined in sscapi.h
 class PySSC:
 
+    #==============================================================================
+    # NOTE: THIS SECTION IS EDITED AND IS NOT STANDARD SAM API 
+    # author: mgleason
     def __init__(self):
-        DIR = os.path.join( os.path.dirname(__file__), "..\\..\\")
+        
+        self.set_lib()
+
+
+    def set_lib(self):
+        cwd = os.getcwd()
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+        
         if sys.platform == 'win32' or sys.platform == 'cygwin':
             if 8*struct.calcsize("P") == 64:
-                self.pdll = CDLL(os.path.join(DIR, 'win64\\ssc.dll')) 
+                try:
+                    CDLL("../../win64/msvcr120.dll")
+                    CDLL("../../win64/msvcp120.dll")
+                    self.pdll = CDLL("../../win64/ssc.dll")
+                    # CDLL("C:/Users/bsigrin/Desktop/diffusion/python/sam/win64/msvcr120.dll")
+                    # CDLL("C:/Users/bsigrin/Desktop/diffusion/python/sam/win64/msvcp120.dll")
+                    # self.pdll = CDLL("C:/Users/bsigrin/Desktop/diffusion/python/sam/win64/ssc.dll")
+                except WindowsError:
+                    print 'Cannot read ssc.dll check for relative path issues'
             else:
-                self.pdll = CDLL(os.path.join(DIR, 'win32\\ssc.dll'))
+                self.pdll = CDLL("../../win32/ssc.dll") 
         elif sys.platform == 'darwin':
-            self.pdll = CDLL(os.path.join(DIR, "osx64/ssc.dylib")) 
+            self.pdll = CDLL(os.path.abspath("../../osx64/ssc.dylib")) 
         elif sys.platform == 'linux2':
-            self.pdll = CDLL(os.path.join(DIR, "linux64/ssc.so"))
+            self.pdll = CDLL("../../linux64/ssc.so") 
         else:
             print "Platform not supported ", sys.platform
-
+        os.chdir(cwd) 
+    #==============================================================================  
 
     INVALID=0
     STRING=1

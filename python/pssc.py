@@ -62,6 +62,10 @@ def utilityrate3(generation_hourly, consumption_hourly, rate_json,
         if not x in rate_json:
             # logger.debug('Setting %(x)s to %(y)s' % dict(x=x, y=y))
             rate_json[x] = y
+    
+    # Add SAM 6-1-15 inputs and remove deprecated ones
+    rate_json['system_use_lifetime_output'] = 0
+    rate_json['ur_excess_monthly_energy_or_dollars'] = 0
 
     # set rate and function-level paramater values
     for k, v in rate_json.iteritems():
