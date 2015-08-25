@@ -64,11 +64,4 @@ load_scenario_inputs = True
 create_report = True
 init_model = True
 
-# model mode (solar or wind)
-technology = 'wind'
-#technology = 'solar'
 
-if technology == 'solar':
-    tech_lifetime = 25
-elif technology == 'wind':
-    tech_lifetime = 25

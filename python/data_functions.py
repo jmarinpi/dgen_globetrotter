@@ -2182,18 +2182,49 @@ def get_sectors(cur, schema):
     cur.execute(sql)
     sectors = cur.fetchone()['sectors']
     return sectors
+
+
+def get_technologies(con, schema):
     
-def get_system_degradation(cur, schema):
+    
+    sql = '''with a as
+            (
+                	select unnest(array['wind', 'solar']) as tech, 
+                         unnest(array[run_wind, run_solar]) as enabled
+                  FROM %s.input_main_scenario_options
+            )
+            SELECT tech
+            FROM a
+            WHERE enabled = TRUE;''' % schema
+    
+    # get the data
+    df = sqlio.read_frame(sql, con)
+    # convert to a simple list    
+    techs = df.tech.tolist()
+    
+    if len(techs) == 0:
+        raise ValueError("No technologies were selected to be run in the input sheet.")  
+    
+    return techs
+    
+
+def get_system_degradation(cur, schema, tech):
     '''Return the annual system degradation rate as float.
         '''    
-    sql = '''SELECT ann_system_degradation 
+        
+    if tech == 'solar':
+        sql = '''SELECT ann_system_degradation 
              FROM %s.input_solar_performance_annual_system_degradation;''' % schema
-    cur.execute(sql)
-    ann_system_degradation = cur.fetchone()['ann_system_degradation']
+        cur.execute(sql)
+        ann_system_degradation = cur.fetchone()['ann_system_degradation']
+    else:
+        # if wind, system degradation won't be applied
+        ann_system_degradation = 0
+                        
     return ann_system_degradation    
     
         
-def get_depreciation_schedule(con, schema, type = 'macrs, standard'):
+def get_depreciation_schedule(con, schema, tech, type = 'macrs, standard'):
     ''' Pull depreciation schedule from dB
     
         IN: type - string - [all, macrs, standard] 
@@ -2204,7 +2235,7 @@ def get_depreciation_schedule(con, schema, type = 'macrs, standard'):
             
     inputs['field'] = type.lower()
     sql = '''SELECT %(field)s 
-             FROM %(schema)s.input_solar_finances_depreciation_schedule;''' % inputs
+             FROM %(schema)s.input_%(tech)s_finances_depreciation_schedule;''' % inputs
     df = sqlio.read_frame(sql, con)
     return df
     
@@ -2251,7 +2282,7 @@ def get_dsire_incentives(cur, con, schema, tech, sector_abbr, preprocess, npar, 
     return df
 
 
-def get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema, technology):
+def get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()     
@@ -2306,7 +2337,7 @@ def get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema, techn
     return df  
 
 
-def get_main_dataframe(con, sector_abbr, schema, year):
+def get_main_dataframe(con, sector_abbr, schema, year, tech):
     ''' Pull main pre-processed dataframe from dB
     
         IN: con - pg con object - connection object
@@ -2325,6 +2356,7 @@ def get_main_dataframe(con, sector_abbr, schema, year):
                     AND a.year = b.year
             WHERE a.year = %(year)s""" % inputs_dict
     df = sqlio.read_frame(sql, con, coerce_float = False)
+    df['tech'] = tech
 
     return df
     

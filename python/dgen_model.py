@@ -62,7 +62,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             if resume_year == 2014:
                 cfg.init_model = True
                 cdate = time.strftime('%Y%m%d_%H%M%S')    
-                out_dir = '%s/runs_%s/results_%s' %(os.path.dirname(os.getcwd()), cfg.technology, cdate)        
+                out_dir = '%s/runs/results_%s' %(os.path.dirname(os.getcwd()), cdate)        
                 os.makedirs(out_dir)
                 input_scenarios = None
                 market_last_year_res = None
@@ -93,7 +93,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             reeds_mode_df = FancyDataFrame(data = [False])
             ReEDS_PV_CC = FancyDataFrame(columns = ['year', 'Capital_Cost'])
             cdate = time.strftime('%Y%m%d_%H%M%S')    
-            out_dir = '%s/runs_%s/results_%s' %(os.path.dirname(os.getcwd()), cfg.technology, cdate)        
+            out_dir = '%s/runs/results_%s' %(os.path.dirname(os.getcwd()), cdate)        
             os.makedirs(out_dir)
 
                             
@@ -122,15 +122,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         
         # find the input excel spreadsheets
         if cfg.init_model:    
-            input_scenarios = [s for s in glob.glob("../input_scenarios_%s/*.xls*" % cfg.technology) if not '~$' in s]
+            input_scenarios = [s for s in glob.glob("../input_scenarios/*.xls*") if not '~$' in s]
             if len(input_scenarios) == 0:
-                raise ValueError("""No input scenario spreadsheet were found in the input_scenarios_%s folder.""" % cfg.technology)
+                raise ValueError("No input scenario spreadsheet were found in the input_scenarios folder.")
         elif mode != 'ReEDS':
             input_scenarios = ['']
             
         # run the model for each input scenario spreadsheet
         scenario_names = []
-        out_subfolders = []
+        dup_n = 1
+        out_subfolders = {'wind' : [], 'solar' : []}
         for i, input_scenario in enumerate(input_scenarios):
             logger.info('--------------------------------------------') 
             logger.info("Running Scenario %s of %s" % (i+1, len(input_scenarios)))
@@ -141,10 +142,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info('Creating output schema')
                 schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template')
                 logger.info('Output schema is: %s' % schema)
-                # ************************************************************************
-                # NOTE: This is temporary until the model can dynamically handle running both wind and solar technologies
-                datfunc.set_source_pt_microdata(con, cur, schema, cfg.technology)
-                # ************************************************************************
                 # write the reeds settings to postgres
                 reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
                 ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
@@ -160,6 +157,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     logger.error(msg)
                     sys.exit(-1)
                 logger.info('Loading input sheet took: %0.1fs' %(time.time() - t0))
+                
             else:
                 logger.warning("Warning: Skipping Import of Input Scenario Worksheet. This should only be done in resume mode.")
             
@@ -183,11 +181,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # This method is better than np.random.seed() because it is thread-safe
             prng = np.random.RandomState(scenario_opts['random_generator_seed'])
             
-            if cfg.technology == 'solar':
-                ann_system_degradation = datfunc.get_system_degradation(cur,schema)
-            else:
-                ann_system_degradation = 0
-            
             # start year comes from config
             if mode == 'ReEDS':
                 model_years = [resume_year]
@@ -198,240 +191,265 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             t0 = time.time()
             sectors = datfunc.get_sectors(cur, schema)
             # get the technologies to model
-            techs = datfunc.get_techologies(cur, schema)            
-            # get other user-defined inputs
-            deprec_schedule = datfunc.get_depreciation_schedule(con, schema, type = 'macrs').values
-            financial_parameters = datfunc.get_financial_parameters(con, schema, cfg.technology)
+            techs = datfunc.get_technologies(con, schema)
+            logger.info('The following technologies will be evaluated: %s' % techs)
+            
+            
+            # get other user-defined inputs (these are all technology agnostic user-inputs)
             max_market_share = datfunc.get_max_market_share(con, schema)
             market_projections = datfunc.get_market_projections(con, schema)
             rate_escalations = datfunc.get_rate_escalations(con, schema)
             rate_structures = datfunc.get_rate_structures(con, schema)
-            incentive_options = datfunc.get_manual_incentive_options(con, schema, cfg.technology)
 
             logger.info('Getting various parameters took: %0.1fs' %(time.time() - t0))
 
-            # 7. Combine All of the Temporally Varying Data in a new Table in Postgres
-            if cfg.init_model:
-                t0 = time.time()
-                datfunc.combine_temporal_data(cur, con, schema, cfg.technology, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), cfg.preprocess, logger)
-                logger.info('datfunc.combine_temporal_data took: %0.1fs' %(time.time() - t0))
-            # 8. Set up the Main Data Frame for each sector
-            outputs = pd.DataFrame()
             t0 = time.time()
             if mode != 'ReEDS' or resume_year == 2014:
+                # delete contents from the the outputs tables
+                # this is probably not necessary anymore since the schema is created fresh with each run...
                 datfunc.clear_outputs(con, cur, schema) # clear results from previous run
-            logger.info('datfunc.clear_outputs took: %0.1fs' %(time.time() - t0))
-            
-            
-            for sector_abbr, sector in sectors.iteritems():
-
-                # define the rate escalation source and max market curve for the current sector
-                rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
-                # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
-                if cfg.init_model:
-                    t0 = time.time()
-                    datfunc.generate_customer_bins(cur, con, cfg.technology, schema, 
-                                                   scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
-                                                   cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
-                                                   cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.preprocess, cfg.npar, 
-                                                   cfg.pg_conn_string, 
-                                                   rate_structures[sector_abbr], logger = logger)
-                    logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
-
-
-            # break from the loop to find all unique combinations of rates, load, and generation
-            if cfg.init_model:
-                logger.info('Finding unique combinations of rates, load, and generation')
-                datfunc.get_unique_parameters_for_urdb3(cur, con, cfg.technology, schema, sectors)         
-                # determine how many rate/load/gen combinations can be processed given the local memory resources
-                row_count_limit = datfunc.get_max_row_count_for_utilityrate3()            
-                sam_results_list = []
-                # set up chunks
-                uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema)
-                nbatches = len(uid_lists)
-                t0 = time.time()
-                logger.info("SAM Calculations will be run in %s batches to prevent memory overflow" % nbatches)
-            # create multiprocessing objects before loading inputs to improve memory efficiency
-            # consumers, tasks, results = pssc_mp.create_consumers(cfg.local_cores)
-                for i, uids in enumerate(uid_lists): 
-                    logger.info("Working on SAM Batch %s of %s" % (i+1, nbatches))
-                    # collect data for all unique combinations
-                    logger.info('\tCollecting SAM inputs')
-                    t1 = time.time()
-                    rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, cfg.technology, schema, cfg.npar, cfg.pg_conn_string)
-                    logger.info('\tdatfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t1),)        
-                    # calculate value of energy for all unique combinations
-                    logger.info('\tCalculating value of energy using SAM')
-                    # Calculate the fraction of generation output to grid (excess) to annual system generation. Excess generation is subject to net metering and curtailment
-                    t1 = time.time()                    
-                    excess_gen_percent = rate_input_df.apply(datfunc.excess_generation_percent, axis = 1, args = ('consumption_hourly','generation_hourly'))[['uid','excess_generation_percent']]                    
-                    logger.info('Calculating excess generation took: %0.1fs' % (time.time() - t1))                      
-                    t1 = time.time()
-                    # run sam calcs in serial if only one core is available
-                    if cfg.local_cores == 1:
-                        sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
-                    # otherwise run in parallel
-                    else:
-                        sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)
-                        #sam_results_df = pssc_mp.run_pssc(rate_input_df, consumers, tasks, results)
-                    logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)                                        
-                    sam_results_df = pd.merge(sam_results_df, excess_gen_percent)              
-                    sam_results_list.append(sam_results_df)
-                    # drop the rate_input_df to save on memory
-                    del rate_input_df, excess_gen_percent
-                logger.info('All SAM calculations completed in: %0.1fs' % (time.time() - t0),)
-           
-                # write results to postgres
-                t0 = time.time()
-                datfunc.write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, cfg.technology)
-                logger.info('datfunc.write_utilityrate3_to_pg took: %0.1fs' % (time.time() - t0),)  
-            #==============================================================================
-             
-
-
-            # loop through sectors and time steps to calculate full economics and diffusion                
-            for sector_abbr, sector in sectors.iteritems():  
-                # get dsire incentives for the generated customer bins
-                t0 = time.time()
-                dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, cfg.technology, sector_abbr, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger)
-                logger.info('datfunc.get_dsire_incentives took: %0.1fs' %(time.time() - t0))                  
-                # Pull data from the Main Table to a Data Frame for each year
-                for year in model_years:
-                    logger.info('Working on %s for %s sector' % (year, sector_abbr))               
-                    df = datfunc.get_main_dataframe(con, sector_abbr, schema, year)
-                    df['tech'] = cfg.technology
-                    if mode == 'ReEDS':
-                        # When in ReEDS mode add the values from ReEDS to df
-                        df = pd.merge(df,distPVCurtailment, how = 'left', on = 'pca_reg')
-                        df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
-                        df = pd.merge(df,change_elec_price, how = 'left', on = 'pca_reg')
-                        
-                        if sector_abbr == 'res':
-                            market_last_year = market_last_year_res
-                        if sector_abbr == 'ind':
-                            market_last_year = market_last_year_ind
-                        if sector_abbr == 'com':
-                            market_last_year = market_last_year_com
-                            
-                    else:
-                        # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
-                        df['curtailment_rate'] = 0
-                        df['ReEDS_elec_price_mult'] = 1
-                        curtailment_method = 'net'
-
-                    # 9. Calculate economics 
-                    ''' Calculates the economics of DER adoption through cash-flow analysis. 
-                    This involves staging necessary calculations including: determining business model, 
-                    determining incentive value and eligibility, defining market in the previous year. 
-                    '''                        
-                    
-                    # Market characteristics from previous year
-                    if year == cfg.start_year: 
-                        # get the initial market share per bin by county
-                        initial_market_shares = datfunc.get_initial_market_shares(cur, con, cfg.technology, sector_abbr, sector, schema, cfg.technology)
-                        df = pd.merge(df, initial_market_shares, how = 'left', on = ['county_id','bin_id'])
-                        df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']
-                        
-                        ## get the initial lease availability by state
-                        #leasing_avail_status_by_state = datfunc.get_initial_lease_status(df,con)
-                        #df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
-                    else:    
-                        df = pd.merge(df,market_last_year, how = 'left', on = ['county_id','bin_id'])
-                        #df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
-                    
-                    # Determine whether leasing is permitted in given year
-                    lease_availability = datfunc.get_lease_availability(con, schema, cfg.technology)
-                    df = pd.merge(df, lease_availability, on = ['state_abbr','year'])
-                                        
-                    # Calculate economics of adoption given system cofiguration and business model
-                    df = finfunc.calc_economics(df, schema, sector, sector_abbr, 
-                                                                               market_projections, financial_parameters, 
-                                                                               cfg, scenario_opts, incentive_options, max_market_share, cur, con, year, 
-                                                                               dsire_incentives, deprec_schedule, logger, rate_escalations, 
-                                                                               ann_system_degradation, mode,prng,curtailment_method)
-                    
-                    # 10. Calulate diffusion
-                    ''' Calculates the market share (ms) added in the solve year. Market share must be less
-                    than max market share (mms) except initial ms is greater than the calculated mms.
-                    For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
-                    decrease if economics deterioriate.
-                    '''             
-                    df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
-                    
-                    if mode == 'ReEDS':
-                        if sector_abbr == 'res':
-                            market_last_year_res = market_last_year
-                        if sector_abbr == 'ind':
-                            market_last_year_ind = market_last_year
-                        if sector_abbr == 'com':
-                            market_last_year_com = market_last_year
-                    
-                    # 11. Save outputs from this year and update parameters for next solve       
-                    t0 = time.time()                 
-                    datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
-                     
-            ## 12. Outputs & Visualization
-            # set output subfolder
                 
-            if mode != 'ReEDS' or resume_year == endyear:
-                dup_n = 1
+                # create output subfolder for this scenario
                 scen_name = scenario_opts['scenario_name']
                 if scen_name in scenario_names:
                     logger.warning("Warning: Scenario name %s is a duplicate. Renaming to %s_%s" % (scen_name, scen_name, dup_n))
                     scen_name = "%s_%s" % (scen_name, dup_n)
                     dup_n += 1
                 scenario_names.append(scen_name)
-                out_path = os.path.join(out_dir,scen_name)
-                out_subfolders.append(out_path)
-                os.makedirs(out_path)  
-                        
-                # copy outputs to csv     
-                logger.info('Writing outputs')
-                t0 = time.time()
-                datfunc.copy_outputs_to_csv(cfg.technology, schema, out_path, sectors, cur, con)
+                out_scen_path = os.path.join(out_dir, scen_name)
+                os.makedirs(out_scen_path)
                 # copy the input scenario spreadsheet
-                shutil.copy(input_scenario, out_path)
-                logger.info('datfunc.copy_outputs_to_csv took: %0.1fs' %(time.time() - t0))
-                # create output html report
-                t0 = time.time()
-                datfunc.create_scenario_report(cfg.technology, schema, scen_name, out_path, cur, con, cfg.Rscript_path, logger)
-                logger.info('datfunc.create_scenario_report took: %0.1fs' %(time.time() - t0))
-                logger.info('The entire model run took: %.1f seconds' % (time.time() - model_init))
+                shutil.copy(input_scenario, out_scen_path)
                 
-                #####################################################################
-                ### THIS IS TEMPORARY ###
-                # drop the new schema
-                logger.info('Dropping the output schema (%s) from postgres' % schema)
-                datfunc.drop_output_schema(cfg.pg_conn_string, schema)
-                #####################################################################
+                
+            logger.info('datfunc.clear_outputs took: %0.1fs' %(time.time() - t0))
+
+
+            # loop through technologies
+            for tech in techs:
+                   
+                if cfg.init_model:
+                    logger.info("---------------Running dGen Model for %s---------------" % tech.title())                    
+                    
+                    t0 = time.time()
+                    # Combine All of the Temporally Varying Data in a new Table in Postgres
+                    datfunc.combine_temporal_data(cur, con, schema, tech, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), cfg.preprocess, logger)
+                    logger.info('datfunc.combine_temporal_data took: %0.1fs' %(time.time() - t0))
+                    
+                    # get correct inputs for the current technology
+                    financial_parameters = datfunc.get_financial_parameters(con, schema, tech)
+                    incentive_options = datfunc.get_manual_incentive_options(con, schema, tech)
+                    deprec_schedule = datfunc.get_depreciation_schedule(con, schema, tech, type = 'macrs').values
+                    ann_system_degradation = datfunc.get_system_degradation(cur, schema, tech)
+                    # ************************************************************************
+                    # NOTE: This is temporary until the model can dynamically handle running both wind and solar technologies
+                    datfunc.set_source_pt_microdata(con, cur, schema, tech)
+                    # ************************************************************************
+    
+                # loop through sectors, creating customer bins
+                for sector_abbr, sector in sectors.iteritems():
+    
+                    # define the rate escalation source and max market curve for the current sector
+                    rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
+                    # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
+                    if cfg.init_model:
+                        t0 = time.time()
+                        datfunc.generate_customer_bins(cur, con, tech, schema, 
+                                                       scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
+                                                       cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
+                                                       cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.preprocess, cfg.npar, 
+                                                       cfg.pg_conn_string, 
+                                                       rate_structures[sector_abbr], logger = logger)
+                        logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
+    
+    
+                # break from the loop to find all unique combinations of rates, load, and generation
+                if cfg.init_model:
+                    logger.info('Finding unique combinations of rates, load, and generation')
+                    datfunc.get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors)         
+                    # determine how many rate/load/gen combinations can be processed given the local memory resources
+                    row_count_limit = datfunc.get_max_row_count_for_utilityrate3()            
+                    sam_results_list = []
+                    # set up chunks
+                    uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema)
+                    nbatches = len(uid_lists)
+                    t0 = time.time()
+                    logger.info("SAM Calculations will be run in %s batches to prevent memory overflow" % nbatches)
+                # create multiprocessing objects before loading inputs to improve memory efficiency
+                # consumers, tasks, results = pssc_mp.create_consumers(cfg.local_cores)
+                    for i, uids in enumerate(uid_lists): 
+                        logger.info("Working on SAM Batch %s of %s" % (i+1, nbatches))
+                        # collect data for all unique combinations
+                        logger.info('\tCollecting SAM inputs')
+                        t1 = time.time()
+                        rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, tech, schema, cfg.npar, cfg.pg_conn_string)
+                        logger.info('\tdatfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t1),)        
+                        # calculate value of energy for all unique combinations
+                        logger.info('\tCalculating value of energy using SAM')
+                        # Calculate the fraction of generation output to grid (excess) to annual system generation. Excess generation is subject to net metering and curtailment
+                        t1 = time.time()                    
+                        excess_gen_percent = rate_input_df.apply(datfunc.excess_generation_percent, axis = 1, args = ('consumption_hourly','generation_hourly'))[['uid','excess_generation_percent']]                    
+                        logger.info('Calculating excess generation took: %0.1fs' % (time.time() - t1))                      
+                        t1 = time.time()
+                        # run sam calcs in serial if only one core is available
+                        if cfg.local_cores == 1:
+                            sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
+                        # otherwise run in parallel
+                        else:
+                            sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)
+                            #sam_results_df = pssc_mp.run_pssc(rate_input_df, consumers, tasks, results)
+                        logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)                                        
+                        sam_results_df = pd.merge(sam_results_df, excess_gen_percent)              
+                        sam_results_list.append(sam_results_df)
+                        # drop the rate_input_df to save on memory
+                        del rate_input_df, excess_gen_percent
+                    logger.info('All SAM calculations completed in: %0.1fs' % (time.time() - t0),)
+               
+                    # write results to postgres
+                    t0 = time.time()
+                    datfunc.write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech)
+                    logger.info('datfunc.write_utilityrate3_to_pg took: %0.1fs' % (time.time() - t0),)  
+                #==============================================================================
+                 
+    
+    
+                # loop through sectors and time steps to calculate full economics and diffusion                
+                for sector_abbr, sector in sectors.iteritems():  
+                    # get dsire incentives for the generated customer bins
+                    t0 = time.time()
+                    dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, tech, sector_abbr, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger)
+                    logger.info('datfunc.get_dsire_incentives took: %0.1fs' %(time.time() - t0))                  
+                    # Pull data from the Main Table to a Data Frame for each year
+                    for year in model_years:
+                        logger.info('Working on %s for %s sector' % (year, sector_abbr))               
+                        df = datfunc.get_main_dataframe(con, sector_abbr, schema, year, tech)
+                        if mode == 'ReEDS':
+                            # When in ReEDS mode add the values from ReEDS to df
+                            df = pd.merge(df,distPVCurtailment, how = 'left', on = 'pca_reg')
+                            df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
+                            df = pd.merge(df,change_elec_price, how = 'left', on = 'pca_reg')
+                            
+                            if sector_abbr == 'res':
+                                market_last_year = market_last_year_res
+                            if sector_abbr == 'ind':
+                                market_last_year = market_last_year_ind
+                            if sector_abbr == 'com':
+                                market_last_year = market_last_year_com
+                                
+                        else:
+                            # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
+                            df['curtailment_rate'] = 0
+                            df['ReEDS_elec_price_mult'] = 1
+                            curtailment_method = 'net'
+    
+                        # 9. Calculate economics 
+                        ''' Calculates the economics of DER adoption through cash-flow analysis. 
+                        This involves staging necessary calculations including: determining business model, 
+                        determining incentive value and eligibility, defining market in the previous year. 
+                        '''                        
+                        
+                        # Market characteristics from previous year
+                        if year == cfg.start_year: 
+                            # get the initial market share per bin by county
+                            initial_market_shares = datfunc.get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema)
+                            df = pd.merge(df, initial_market_shares, how = 'left', on = ['county_id','bin_id'])
+                            df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']
+                            
+                            ## get the initial lease availability by state
+                            #leasing_avail_status_by_state = datfunc.get_initial_lease_status(df,con)
+                            #df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
+                        else:    
+                            df = pd.merge(df,market_last_year, how = 'left', on = ['county_id','bin_id'])
+                            #df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
+                        
+                        # Determine whether leasing is permitted in given year
+                        lease_availability = datfunc.get_lease_availability(con, schema, tech)
+                        df = pd.merge(df, lease_availability, on = ['state_abbr','year'])
+                                            
+                        # Calculate economics of adoption given system cofiguration and business model
+                        df = finfunc.calc_economics(df, schema, sector, sector_abbr, 
+                                                                                   market_projections, financial_parameters, 
+                                                                                   cfg, scenario_opts, incentive_options, max_market_share, cur, con, year, 
+                                                                                   dsire_incentives, deprec_schedule, logger, rate_escalations, 
+                                                                                   ann_system_degradation, mode,prng,curtailment_method)
+                        
+                        # 10. Calulate diffusion
+                        ''' Calculates the market share (ms) added in the solve year. Market share must be less
+                        than max market share (mms) except initial ms is greater than the calculated mms.
+                        For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
+                        decrease if economics deterioriate.
+                        '''             
+                        df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
+                        
+                        if mode == 'ReEDS':
+                            if sector_abbr == 'res':
+                                market_last_year_res = market_last_year
+                            if sector_abbr == 'ind':
+                                market_last_year_ind = market_last_year
+                            if sector_abbr == 'com':
+                                market_last_year_com = market_last_year
+                        
+                        # 11. Save outputs from this year and update parameters for next solve       
+                        t0 = time.time()                 
+                        datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
+                         
+                ## 12. Outputs & Visualization
+                # set output subfolder
+                    
+                if mode != 'ReEDS' or resume_year == endyear:
+                    out_tech_path = os.path.join(out_scen_path, tech)
+                    os.makedirs(out_tech_path)
+                    out_subfolders[tech].append(out_tech_path)
+                            
+                    # copy outputs to csv     
+                    logger.info('Writing outputs')
+                    t0 = time.time()
+                    datfunc.copy_outputs_to_csv(tech, schema, out_tech_path, sectors, cur, con)
+                    logger.info('datfunc.copy_outputs_to_csv took: %0.1fs' %(time.time() - t0))
+                    # create output html report
+                    t0 = time.time()
+                    datfunc.create_scenario_report(tech, schema, scen_name, out_tech_path, cur, con, cfg.Rscript_path, logger)
+                    logger.info('datfunc.create_scenario_report took: %0.1fs' %(time.time() - t0))
+                    logger.info('The entire model run took: %.1f seconds' % (time.time() - model_init))
+                
+                if mode == 'ReEDS':
+                    reeds_out = datfunc.combine_outputs_reeds(schema, sectors, cur, con)
+                    cf_by_pca_and_ts = datfunc.summarise_solar_resource_by_ts_and_pca_reg(reeds_out, con)
+                    
+                    market_last_year_res.to_pickle("market_last_year_res.pkl")
+                    market_last_year_ind.to_pickle("market_last_year_ind.pkl")
+                    market_last_year_com.to_pickle("market_last_year_com.pkl")
+                    saved_vars = {'out_dir' : out_dir, 'input_scenarios' : input_scenarios}
+                    with open('saved_vars.pickle', 'wb') as handle:
+                        pickle.dump(saved_vars, handle)  
+                    return reeds_out, cf_by_pca_and_ts
             
-            if mode == 'ReEDS':
-                reeds_out = datfunc.combine_outputs_reeds(schema, sectors, cur, con)
-                cf_by_pca_and_ts = datfunc.summarise_solar_resource_by_ts_and_pca_reg(reeds_out, con)
-                
-                market_last_year_res.to_pickle("market_last_year_res.pkl")
-                market_last_year_ind.to_pickle("market_last_year_ind.pkl")
-                market_last_year_com.to_pickle("market_last_year_com.pkl")
-                saved_vars = {'out_dir': out_dir, 'input_scenarios':input_scenarios}
-                with open('saved_vars.pickle', 'wb') as handle:
-                    pickle.dump(saved_vars, handle)  
-                return reeds_out, cf_by_pca_and_ts
+            # after all techs have been processed:
+            #####################################################################
+            ### THIS IS TEMPORARY ###
+            # drop the new schema
+            logger.info('Dropping the output schema (%s) from postgres' % schema)
+            datfunc.drop_output_schema(cfg.pg_conn_string, schema)
+            #####################################################################
                 
         if len(input_scenarios) > 1:
             # assemble report to compare scenarios
             scenario_analysis_path = '%s/r/graphics/scenario_analysis.R' % os.path.dirname(os.getcwd())
-            scenario_output_paths = datfunc.pylist_2_pglist(out_subfolders).replace("'","").replace(" ","")
-            scenario_comparison_path = os.path.join(out_dir,'scenario_comparison')
-            command = [cfg.Rscript_path,'--vanilla',scenario_analysis_path,scenario_output_paths,scenario_comparison_path]
-            msg = 'Creating scenario analysis report'            
-            logger.info(msg)
-            proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            messages = proc.communicate()
-            if 'error' in messages[1].lower():
-                logger.error(messages[1])
-            if 'warning' in messages[1].lower():
-                logger.warning(messages[1])
-            returncode = proc.returncode
+            for tech in out_subfolders.keys():
+                out_tech_subfolders = out_subfolders[tech]
+                if len(out_tech_subfolders) > 0:
+                    scenario_output_paths = datfunc.pylist_2_pglist(out_tech_subfolders).replace("'","").replace(" ","")
+                    scenario_comparison_path = os.path.join(out_dir,'scenario_comparison')
+                    command = [cfg.Rscript_path,'--vanilla',scenario_analysis_path,scenario_output_paths,scenario_comparison_path]
+                    msg = 'Creating scenario analysis report for %s' % tech          
+                    logger.info(msg)
+                    proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                    messages = proc.communicate()
+                    if 'error' in messages[1].lower():
+                        logger.error(messages[1])
+                    if 'warning' in messages[1].lower():
+                        logger.warning(messages[1])
+                    returncode = proc.returncode
 
             
 

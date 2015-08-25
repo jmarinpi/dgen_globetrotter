@@ -32,7 +32,7 @@ diffusion_sectors_map(df)
 national_econ_attractiveness_line(df,scen_name)
 print_table(mean_value_by_state_table(filter(df, metric == 'payback_period'),'metric_value'), caption = "Mean Payback Period")
 print_table(mean_value_by_state_table(filter(df, metric == 'percent_monthly_bill_savings'),'metric_value'), caption = "Mean Monthly Bill Savings (%)")
-lcoe_contour(df, schema, start_year, end_year, dr = 0.05, n = 30)
+lcoe_contour(df, schema, tech, start_year, end_year, dr = 0.05, n = 30)
 
 lcoe_boxplot(df)
 lcoe_cdf(df, start_year, end_year)
