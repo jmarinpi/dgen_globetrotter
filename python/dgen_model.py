@@ -196,8 +196,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
               
             # get the sectors to model
             t0 = time.time()
-            
             sectors = datfunc.get_sectors(cur, schema)
+            # get the technologies to model
+            techs = datfunc.get_techologies(cur, schema)            
+            # get other user-defined inputs
             deprec_schedule = datfunc.get_depreciation_schedule(con, schema, type = 'macrs').values
             financial_parameters = datfunc.get_financial_parameters(con, schema, cfg.technology)
             max_market_share = datfunc.get_max_market_share(con, schema)
@@ -297,6 +299,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 for year in model_years:
                     logger.info('Working on %s for %s sector' % (year, sector_abbr))               
                     df = datfunc.get_main_dataframe(con, sector_abbr, schema, year)
+                    df['tech'] = cfg.technology
                     if mode == 'ReEDS':
                         # When in ReEDS mode add the values from ReEDS to df
                         df = pd.merge(df,distPVCurtailment, how = 'left', on = 'pca_reg')

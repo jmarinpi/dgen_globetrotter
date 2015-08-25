@@ -456,7 +456,8 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
                 'first_year_bill_with_system',
                 'first_year_bill_without_system',
                 'npv4',
-                'excess_generation_percent']    
+                'excess_generation_percent',
+                'tech']    
     # convert formatting of fields list
     inputs['fields_str'] = pylist_2_pglist(fields).replace("'","")       
     # open an in memory stringIO file (like an in memory csv)
@@ -516,7 +517,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
             inputs['union'] = ''
         
         sub_sql = '''%(union)s 
-                    SELECT '%(sector)s'::text as sector, 
+                    SELECT a.tech, '%(sector)s'::text as sector, 
 
                     a.micro_id, a.county_id, a.bin_id, a.year, a.business_model, a.loan_term_yrs, 
                     a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
@@ -580,7 +581,9 @@ def combine_outputs_wind(schema, sectors, cur, con):
              CREATE INDEX outputs_all_business_model_btree ON %(schema)s.outputs_all USING BTREE(business_model);
              CREATE INDEX outputs_all_system_size_factors_btree ON %(schema)s.outputs_all USING BTREE(system_size_factors);                          
              CREATE INDEX outputs_all_metric_btree ON %(schema)s.outputs_all USING BTREE(metric);             
-             CREATE INDEX outputs_all_turbine_height_m_btree ON %(schema)s.outputs_all USING BTREE(turbine_height_m);''' % inputs
+             CREATE INDEX outputs_all_turbine_height_m_btree ON %(schema)s.outputs_all USING BTREE(turbine_height_m);
+             CREATE INDEX outputs_all_tech_btree ON %(schema)s.outputs_all USING BTREE(tech);
+             ''' % inputs
     cur.execute(sql)
     con.commit()
 
@@ -602,7 +605,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
             inputs['union'] = ''
         
         sub_sql = '''%(union)s 
-                    SELECT '%(sector)s'::text as sector, 
+                    SELECT a.tech, '%(sector)s'::text as sector, 
 
                     a.micro_id, a.county_id, a.bin_id, a.year, 
                     
@@ -670,7 +673,9 @@ def combine_outputs_solar(schema, sectors, cur, con):
              CREATE INDEX outputs_all_sector_btree ON %(schema)s.outputs_all USING BTREE(sector);
              CREATE INDEX outputs_all_business_model_btree ON %(schema)s.outputs_all USING BTREE(business_model);
              CREATE INDEX outputs_all_system_size_factors_btree ON %(schema)s.outputs_all USING BTREE(system_size_factors);                          
-             CREATE INDEX outputs_all_metric_btree ON %(schema)s.outputs_all USING BTREE(metric);''' % inputs
+             CREATE INDEX outputs_all_metric_btree ON %(schema)s.outputs_all USING BTREE(metric);
+             CREATE INDEX outputs_all_tech_btree ON %(schema)s.outputs_all USING BTREE(tech);
+             ''' % inputs
     cur.execute(sql)
     con.commit()
 

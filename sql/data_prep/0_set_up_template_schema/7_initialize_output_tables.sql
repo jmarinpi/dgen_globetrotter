@@ -42,7 +42,8 @@ CREATE TABLE diffusion_template.outputs_res
   first_year_bill_with_system numeric,
   first_year_bill_without_system numeric,
   npv4 numeric,
-  excess_generation_percent numeric
+  excess_generation_percent numeric,
+  tech text
 );
 
 CREATE INDEX outputs_res_join_fields_btree ON diffusion_template.outputs_res USING btree(county_id,bin_id,year);
@@ -91,10 +92,12 @@ CREATE TABLE diffusion_template.outputs_com
   first_year_bill_with_system numeric,
   first_year_bill_without_system numeric,
   npv4 numeric,
-  excess_generation_percent numeric
+  excess_generation_percent numeric,
+  tech text
 );
 
 CREATE INDEX outputs_com_join_fields_btree ON diffusion_template.outputs_com USING btree(county_id,bin_id,year);
+
 
 -- industrial
 DROP TABLE IF EXISTS diffusion_template.outputs_ind;
@@ -139,7 +142,8 @@ CREATE TABLE diffusion_template.outputs_ind
   first_year_bill_with_system numeric,
   first_year_bill_without_system numeric,
   npv4 numeric,
-  excess_generation_percent numeric
+  excess_generation_percent numeric,
+  tech text
 );
 
 CREATE INDEX outputs_ind_join_fields_btree ON diffusion_template.outputs_ind USING btree(county_id,bin_id,year);
