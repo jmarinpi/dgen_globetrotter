@@ -441,7 +441,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 out_tech_subfolders = out_subfolders[tech]
                 if len(out_tech_subfolders) > 0:
                     scenario_output_paths = datfunc.pylist_2_pglist(out_tech_subfolders).replace("'","").replace(" ","")
-                    scenario_comparison_path = os.path.join(out_dir,'scenario_comparison')
+                    scenario_comparison_path = os.path.join(out_dir,'scenario_comparison_%s' % tech)
                     command = [cfg.Rscript_path,'--vanilla',scenario_analysis_path,scenario_output_paths,scenario_comparison_path]
                     msg = 'Creating scenario analysis report for %s' % tech          
                     logger.info(msg)

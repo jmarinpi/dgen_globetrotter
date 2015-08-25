@@ -9,6 +9,8 @@ library(ggthemes)
 library(reshape2)
 library(xtable)
 library(RPostgreSQL)
+library(grid)
+library(dplyr)
 
 source("../r/graphics/output_funcs.R")
 scen_folders<- unlist(strsplit(commandArgs(TRUE)[1],","))
