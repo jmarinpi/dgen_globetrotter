@@ -177,9 +177,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             t0 = time.time()
             load_growth_scenario = scenario_opts['load_growth_scenario'].lower() # get financial variables
             end_year = scenario_opts['end_year']
-            # Generate a pseudo-random number generator to generate random numbers in numpy.
-            # This method is better than np.random.seed() because it is thread-safe
-            prng = np.random.RandomState(scenario_opts['random_generator_seed'])
             
             # start year comes from config
             if mode == 'ReEDS':
@@ -226,7 +223,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
 
             # loop through technologies
-#            techs.sort()
             for tech in techs:
                    
                 if cfg.init_model:
@@ -246,6 +242,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # NOTE: This is temporary until the model can dynamically handle running both wind and solar technologies
                     datfunc.set_source_pt_microdata(con, cur, schema, tech)
                     # ************************************************************************
+                    
+                    # Generate a pseudo-random number generator to generate random numbers in numpy.
+                    # This method is better than np.random.seed() because it is thread-safe
+                    # ( do this here to ensure repeatability of results for each individual technology )
+                    prng = np.random.RandomState(scenario_opts['random_generator_seed'])
     
                 # loop through sectors, creating customer bins
                 for sector_abbr, sector in sectors.iteritems():
