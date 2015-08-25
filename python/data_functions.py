@@ -205,6 +205,23 @@ def create_output_schema(pg_conn_string, source_schema = 'diffusion_template'):
     cur.execute(sql)        
     con.commit()
     
+    
+    ################################################################################################
+    # I DONT THINK THIS IS NECESSARY ANYMORE BECAUSE diffusion-schema-writers is now a member of backups-writers
+    
+    # turn-off backup triggers (this is only necessary on the gispgdb::dav-gis database)
+    # (if this isn't done, there will be occasional errors for model runs that are in process at the top of each hour)
+#    if 'dbname=dav-gis' in pg_conn_string:
+#        sql = """SET ROLE 'diffusion-schema-writers';"""
+#        cur.execute(sql)
+#        con.commit()
+#        sql = """UPDATE backups.tables
+#                SET (to_backup, skip_trigger) = (False, True)
+#                WHERE table_schema = '%(dest_schema)s';""" % inputs
+#        cur.execute(sql)        
+#        con.commit()    
+    ################################################################################################
+    
     return dest_schema
 
     

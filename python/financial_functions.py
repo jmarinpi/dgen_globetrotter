@@ -16,9 +16,9 @@ import time
 
 
 #==============================================================================
-def calc_economics(df, schema, sector, sector_abbr, market_projections,
-                   financial_parameters, cfg, scenario_opts, incentive_opts, max_market_share, cur, con, 
-                   year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation, mode, prng,curtailment_method):
+def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
+                   financial_parameters, scenario_opts, incentive_opts, max_market_share, cur, con, 
+                   year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation, mode, prng,curtailment_method, tech_lifetime = 25):
     '''
     Calculates economics of system adoption (cashflows, payback, irr, etc.)
     
@@ -43,27 +43,27 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
     if mode == 'ReEDS' and max(df['ReEDS_elec_price_mult'])>0:
         
-        rate_growth_mult = np.ones((len(df),cfg.tech_lifetime))
+        rate_growth_mult = np.ones((len(df), tech_lifetime))
         rate_growth_mult *= df['ReEDS_elec_price_mult'][:,np.newaxis]
          
     else:
         # if not in ReEDS mode, use the calc_expected_rate_escal function
-        rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector_abbr,cfg.tech_lifetime)    
+        rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector_abbr, tech_lifetime)    
 
     # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
     overwrite_exist_inc = incentive_opts['overwrite_exist_inc'][0]
     if overwrite_exist_inc:
-        value_of_incentives = datfunc.calc_manual_incentives(df,con, year, schema, cfg.technology)
+        value_of_incentives = datfunc.calc_manual_incentives(df,con, year, schema, tech)
     else:
         inc = pd.merge(df,dsire_incentives,how = 'left', on = 'incentive_array_id')
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id','business_model'])
 
-    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, cfg.tech_lifetime, curtailment_method)
+    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, ann_system_degradation, tech_lifetime, curtailment_method)
     
     ## Calc metric value here
-    df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs,cfg.tech_lifetime)
-    df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate,cfg.tech_lifetime)
+    df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs, tech_lifetime)
+    df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate, tech_lifetime)
     df['npv4'] = calc_npv(cfs,np.array([0.04]))/df['system_size_kw']    
 
     

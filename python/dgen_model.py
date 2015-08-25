@@ -226,6 +226,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
 
             # loop through technologies
+#            techs.sort()
             for tech in techs:
                    
                 if cfg.init_model:
@@ -367,11 +368,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         df = pd.merge(df, lease_availability, on = ['state_abbr','year'])
                                             
                         # Calculate economics of adoption given system cofiguration and business model
-                        df = finfunc.calc_economics(df, schema, sector, sector_abbr, 
+                        df = finfunc.calc_economics(df, schema, sector, sector_abbr, tech,
                                                                                    market_projections, financial_parameters, 
-                                                                                   cfg, scenario_opts, incentive_options, max_market_share, cur, con, year, 
+                                                                                   scenario_opts, incentive_options, max_market_share, cur, con, year, 
                                                                                    dsire_incentives, deprec_schedule, logger, rate_escalations, 
-                                                                                   ann_system_degradation, mode,prng,curtailment_method)
+                                                                                   ann_system_degradation, mode, prng,curtailment_method, tech_lifetime = 25)
                         
                         # 10. Calulate diffusion
                         ''' Calculates the market share (ms) added in the solve year. Market share must be less
