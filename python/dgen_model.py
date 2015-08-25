@@ -395,9 +395,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info('datfunc.create_scenario_report took: %0.1fs' %(time.time() - t0))
                 logger.info('The entire model run took: %.1f seconds' % (time.time() - model_init))
                 
+                #####################################################################
+                ### THIS IS TEMPORARY ###
                 # drop the new schema
                 logger.info('Dropping the output schema (%s) from postgres' % schema)
                 datfunc.drop_output_schema(cfg.pg_conn_string, schema)
+                #####################################################################
             
             if mode == 'ReEDS':
                 reeds_out = datfunc.combine_outputs_reeds(schema, sectors, cur, con)

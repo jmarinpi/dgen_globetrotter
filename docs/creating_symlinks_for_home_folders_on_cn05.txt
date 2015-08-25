@@ -1,0 +1,5 @@
+sudo -s
+mv /home/username/ /data/username
+chown -R $(id -nu username) /data/username
+chgrp -R $(id -ng username) /data/username
+ln -s /data/username /home/username
