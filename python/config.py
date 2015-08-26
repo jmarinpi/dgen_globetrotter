@@ -67,6 +67,7 @@ init_model = True
 technology = 'wind'
 # technology = 'solar'
 
+
 if technology == 'solar':
     tech_lifetime = 25
 elif technology == 'wind':

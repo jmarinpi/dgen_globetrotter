@@ -100,7 +100,7 @@ def nem_scenario(curWb,schema,conn,cur,verbose=False):
                          unnest(array['All Other', 'Coop', 'IOU', 'Muni']) as utility_type,
                          0::double precision as system_size_limit_kw,
                          0::numeric as year_end_excess_sell_rate_dlrs_per_kwh,
-                         round(a.nat_gas_dollars_per_mmbtu/293.3,3) as hourly_excess_sell_rate_dlrs_per_kwh
+                         a.avoided_costs_dollars_per_kwh as hourly_excess_sell_rate_dlrs_per_kwh
                 FROM diffusion_solar.market_projections a
                 CROSS JOIN diffusion_shared.state_fips_lkup b
                 WHERE b.state_abbr <> 'PR';        
@@ -428,11 +428,10 @@ def manIncents(curWb,schema,conn,cur,verbose=False):
                         out = region + [incen_type] + [sector_type] + [0] + [0] + [l[2]] + [l[0]] + [l[1]] + [0] + budget + [utility_type]
                         f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
             if incen_type == 'Rebate':
-                for utility_type in selected_utility_types:
-                    for utility_type in selected_utility_types.keys():
-                        if selected_utility_types[utility_type]: 
-                            out = region + [incen_type] + [sector_type] + [0] + [l[1]] + [l[2]] + [0] + [0] + [l[0]] + budget + [utility_type]
-                            f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
+                for utility_type in selected_utility_types.keys():
+                    if selected_utility_types[utility_type]: 
+                        out = region + [incen_type] + [sector_type] + [0] + [l[1]] + [l[2]] + [0] + [0] + [float(l[0])/1000.] + budget + [utility_type]
+                        f.write(str(out).replace("u'","").replace(" '","").replace("'","")[1:-1]+'\n')
         r += 1
     f.seek(0)
     if verbose:

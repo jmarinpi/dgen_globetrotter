@@ -1,7 +1,7 @@
 ﻿SET ROLE 'diffusion-writers';
-DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_2003;
+DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_2003 CASCADE;
 CREATE TABLE diffusion_shared.eia_microdata_cbecs_2003 AS
-select a.pubid8, a.region8, a.cendiv8, 
+select a.pubid8, a.region8, a.cendiv8, a.climate8,
 	a.pba8,
 	b.pbaplus8,
 	a.ownocc8,
@@ -27,6 +27,7 @@ ADD PRIMARY KEY (pubid8);
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.pubid8 IS 'building identifier';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.region8 IS 'Census region ';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.cendiv8 IS 'Census division';
+COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.climate8 IS 'Climate Zone';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.pba8 IS 'principal building activity';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.pbaplus8 IS 'More specific building activity';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.ownocc8 IS 'Owner occupies space';
@@ -36,7 +37,7 @@ COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.rfcns8 IS 'Roof cons
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.adjwt8 IS 'Final full sample building weight';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.elcns8 IS 'Annual electricity consumption (kWh)';
 
--- add indices on ownocc8, pba, and pbaplus
+-- add indices on ownocc8, pba, pbaplus, and climate8
 CREATE INDEX eia_microdata_cbecs_2003_ownocc8_btree
 ON diffusion_shared.eia_microdata_cbecs_2003
 using btree(ownocc8);
@@ -48,6 +49,10 @@ using btree(pba8);
 CREATE INDEX eia_microdata_cbecs_2003_pbaplus8_btree
 ON diffusion_shared.eia_microdata_cbecs_2003
 using btree(pbaplus8);
+
+CREATE INDEX eia_microdata_cbecs_2003_climate8_btree
+ON diffusion_shared.eia_microdata_cbecs_2003
+using btree(climate8);
 
 -- add lookup table for pba8
 DROP TABLE IF EXISTS diffusion_shared.eia_microdata_cbecs_2003_pba_lookup;
@@ -185,14 +190,14 @@ select pubid8, crb_model
 FROM a
 where (sqft_min is null and sqft_max is null)
 or (sqft8 >= sqft_min and sqft8 < sqft_max);
--- 5081 rows
+-- 5019 rows
 
 
 -- does that match the count of nonvacant buldings?
 select count(*)
 FROM diffusion_shared.eia_microdata_cbecs_2003
 where pba8 <> 1;
--- yes-- 5081
+-- yes-- 5019
 
 -- do all buildings have a crb?
 SELECT count(*)
@@ -208,7 +213,7 @@ UPDATE diffusion_shared.eia_microdata_cbecs_2003 a
 SET crb_model = b.crb_model
 FROM diffusion_shared.cbecs_2003_crb_lookup b
 where a.pubid8 = b.pubid8;
--- 5081 updated
+-- 5019 updated
 
 -- add an index
 CREATE INDEX eia_microdata_cbecs_2003_crb_model_btree
@@ -227,7 +232,7 @@ and pba8 <> 1;
 -- Residential Energy Consumption Survey
 DROP TABLE IF EXISTS diffusion_shared.eia_microdata_recs_2009;
 CREATE TABLE diffusion_shared.eia_microdata_recs_2009 AS
-SELECT doeid, regionc, division, reportable_domain,
+SELECT doeid, regionc, division, reportable_domain, climate_region_pub,
 	typehuq,
 	nweight::NUMERIC,
 	kownrent,
@@ -244,6 +249,7 @@ ADD PRIMARY KEY (doeid);
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.doeid IS 'Unique identifier for each respondent';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.regionc IS 'Census Region';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.division IS 'Census Division';
+COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.climate_region_pub IS 'Climate Zone (Building America)';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.reportable_domain IS 'Reportable states and groups of states';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.typehuq IS 'Type of housing unit';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.nweight IS 'Final sample weight';
@@ -254,7 +260,7 @@ COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.stories IS 'Number of
 COMMENT ON COLUMN diffusion_shared.eia_microdata_recs_2009.totsqft IS 'Total square footage (includes all attached garages, all basements, and finished/heated/cooled attics)';
 
 
--- add indices on kownrent and typehuq
+-- add indices on kownrent,typehuq, and climate_region_pub
 CREATE INDEX eia_microdata_recs_2009_typehuq_btree
 ON diffusion_shared.eia_microdata_recs_2009
 using btree(typehuq)
@@ -264,6 +270,11 @@ CREATE INDEX eia_microdata_recs_2009_kownrent_btree
 ON diffusion_shared.eia_microdata_recs_2009
 using btree(kownrent)
 where kownrent = 1;
+
+CREATE INDEX eia_microdata_recs_2009_climate_region_pub_btree
+ON diffusion_shared.eia_microdata_recs_2009
+using btree(climate_region_pub);
+
 
 ALTER TABLE diffusion_shared.eia_microdata_recs_2009
 ADD COLUMN census_region text;
@@ -317,7 +328,7 @@ ADD COLUMN crb_model text;
 UPDATE diffusion_shared.eia_microdata_recs_2009 a
 SET crb_model = 'reference'
 where typehuq in (1,2,3) AND kownrent = 1;
--- 7266 updated
+-- 7772 updated
 
 -- ingest lookup table to translate recs reportable domain to states
 set role 'diffusion-writers';

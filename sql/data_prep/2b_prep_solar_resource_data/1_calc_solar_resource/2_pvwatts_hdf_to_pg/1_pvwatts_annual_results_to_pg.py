@@ -35,32 +35,34 @@ con.commit()
 
 
 # create the output table
-print 'Creating output table'
-out_table = 'diffusion_solar.solar_resource_annual'
+print 'Creating output tables'
+out_table_template = 'diffusion_solar.solar_resource_annual_%s'
 
-# create the table
-sql = 'DROP TABLE IF EXISTS %s;' % out_table
-cur.execute(sql)
-con.commit()
-
-sql = '''CREATE TABLE %s 
-        (
-            solar_re_9809_gid INTEGER,
-            tilt NUMERIC,
-            azimuth CHARACTER VARYING(2),  
-            derate NUMERIC,
-            naep NUMERIC,
-            cf_avg NUMERIC
-        );''' % out_table
-cur.execute(sql)
-con.commit()
+for azimuth in orientations.values():
+    out_table = out_table_template % azimuth.lower()
+    
+    # create the table
+    sql = 'DROP TABLE IF EXISTS %s;' % out_table
+    cur.execute(sql)
+    con.commit()
+    
+    sql = '''CREATE TABLE %s 
+            (
+                solar_re_9809_gid INTEGER,
+                tilt NUMERIC,
+                azimuth CHARACTER VARYING(2),
+                naep NUMERIC,
+                cf_avg NUMERIC
+            );''' % out_table
+    cur.execute(sql)
+    con.commit()
 
 # get the hdfs
 print 'Finding hdf files'
 #hdf_path = '/Users/mgleason/gispgdb/data/dg_solar/cf'
 hdf_path = '/home/mgleason/data/dg_solar/cf'
 
-hdfs = [os.path.join(hdf_path,f) for f in glob.glob1(hdf_path,'mg*.h5')]
+hdfs = [os.path.join(hdf_path,f) for f in glob.glob1(hdf_path,'*.h5')]
 
 for hdf in hdfs:
     print 'Loading %s' % hdf
@@ -68,11 +70,15 @@ for hdf in hdfs:
     hf = h5py.File(hdf, mode = 'r')
     
     # get the gids
-    gids = np.array(hf['index'])
+    gids_all = np.array(hf['index'])
+    # find gid for solar_re_9809_gid = 3101 (no data due to bad/missing tmy file)
+    subset = np.where(gids_all <> 3101)[0]
+    gids = gids_all[subset]
+    del gids_all
     
     # calculate the total normalized aep
-    naep = np.sum(np.array(hf['cf'], dtype = np.float),1)
-    cf_avg = np.mean(np.array(hf['cf'], dtype = np.float),1)
+    naep = np.sum(np.array(hf['cf'][:,subset], dtype = np.float),0)
+    cf_avg = np.mean(np.array(hf['cf'][:,subset], dtype = np.float),0)
     
     # get the tilt (making sure it's not tilted at latitude)
     tilt = hf['cf'].attrs['tilt']
@@ -82,17 +88,15 @@ for hdf in hdfs:
     
     # get the azimuth
     azimuth = orientations[hf['cf'].attrs['azimuth']]
+    # set the correct output table
+    out_table = out_table_template % azimuth.lower()
     
-    # get the derate
-    derate = float(hf['cf'].attrs['derate'])
-    
-    # combine intp pandas dataframe
-    df = pd.DataFrame(data={'solar_re_9809_gid' : gids.reshape(gids.shape[0],),
+    # combine into pandas dataframe
+    df = pd.DataFrame(data={'solar_re_9809_gid' : gids,
                        'tilt' : tilt,
                        'azimuth' : azimuth,
-                       'derate' : derate,
-                       'naep' : naep.reshape(naep.shape[0],),
-                       'cf_avg' : cf_avg.reshape(cf_avg.shape[0],)
+                       'naep' : naep,
+                       'cf_avg' : cf_avg
                        },
                        index = np.arange(0,np.shape(gids)[0]))
     
@@ -101,7 +105,7 @@ for hdf in hdfs:
     print 'Writing to postgres'
     s = StringIO()
     # write the data to the stringIO
-    columns = ['solar_re_9809_gid','tilt','azimuth','derate','naep','cf_avg']
+    columns = ['solar_re_9809_gid','tilt','azimuth','naep','cf_avg']
     df[columns].to_csv(s, index = False, header = False)
     # seek back to the beginning of the stringIO file
     s.seek(0)

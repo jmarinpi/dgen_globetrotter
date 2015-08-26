@@ -18,7 +18,7 @@ import time
 #==============================================================================
 def calc_economics(df, schema, sector, sector_abbr, market_projections,
                    financial_parameters, cfg, scenario_opts, max_market_share, cur, con, 
-                   year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation, mode, prng):
+                   year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation, mode, prng,curtailment_method):
     '''
     Calculates economics of system adoption (cashflows, payback, irr, etc.)
     
@@ -58,7 +58,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id','business_model'])
 
-    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, cfg.tech_lifetime)
+    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, cfg.tech_lifetime, curtailment_method)
     
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs,cfg.tech_lifetime)
@@ -102,7 +102,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     
     
 #==============================================================================
-def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, ann_system_degradation, tech_lifetime):
+def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, ann_system_degradation, tech_lifetime, curtailment_method):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 
@@ -116,7 +116,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
         vi) revenue from all other incentives
              
     Author: bsigrin
-    Last Revision: 10/8/14
+    Last Revision: 5/21/15
     
         IN:
             df - pandas dataframe - dataframe containing: [ic ($), loan_rate, 
@@ -194,7 +194,13 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # the same trajectories as changes in rate escalation. Output of this should be a data frame of shape (len(df),30)
     
     # TODO: curtailments should be applied to the generation, however currently infeasible for SAM integration
-    df['first_year_energy_savings'] = (1- df['curtailment_rate']) * (df['first_year_bill_without_system'] - df['first_year_bill_with_system'])
+    if curtailment_method == 'net':
+        df['first_year_energy_savings'] = (1- (df['curtailment_rate'] * df['excess_generation_percent'])) * (df['first_year_bill_without_system'] - df['first_year_bill_with_system'])
+    elif curtailment_method == 'gross':
+        df['first_year_energy_savings'] = (1- df['curtailment_rate']) * (df['first_year_bill_without_system'] - df['first_year_bill_with_system'])
+    elif curtailment_method == 'off':
+        df['first_year_energy_savings'] = df['first_year_bill_without_system'] - df['first_year_bill_with_system']
+    
     generation_revenue = df['first_year_energy_savings'][:,np.newaxis] * rate_growth_mult
     
     # Decrement the revenue to account for system degradation.

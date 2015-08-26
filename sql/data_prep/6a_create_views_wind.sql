@@ -2,7 +2,8 @@
 
 -- create view of the valid counties
 CREATE OR REPLACE VIEW diffusion_wind.counties_to_model AS
-SELECT county_id, census_region, census_division_abbr, recs_2009_reportable_domain as reportable_domain
+SELECT county_id, census_region, census_division_abbr, recs_2009_reportable_domain as reportable_domain,
+	a.climate_zone_building_america, a.climate_zone_cbecs_2003
 FROM diffusion_shared.county_geom a
 INNER JOIN diffusion_wind.scenario_options b
 ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)
@@ -33,6 +34,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
+	e.climate_zone_cbecs_2003 as climate_zone,
 	a.i, a.j, a.cf_bin,
 	l.carbon_intensity_t_per_kwh
 FROM diffusion_wind.point_microdata_ind_us a
@@ -63,6 +65,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
+	e.climate_zone_building_america as climate_zone,
 	a.i, a.j, a.cf_bin, l.carbon_intensity_t_per_kwh
 FROM diffusion_wind.point_microdata_res_us a
 -- county_load_and_customers
@@ -95,6 +98,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region, 
+	e.climate_zone_cbecs_2003 as climate_zone,
 	a.i, a.j, a.cf_bin, l.carbon_intensity_t_per_kwh
 FROM diffusion_wind.point_microdata_com_us a
 -- county_load_and_customers

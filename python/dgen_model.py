@@ -44,13 +44,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
     schema = "diffusion_%s" % cfg.technology
 
     if mode == 'ReEDS':
-        distPVCurtailment = ReEDS_inputs['annual_distPVSurplusMar'] # Fraction of distributed PV curtailed in timeslice (m) and BA (n)
-        #retail_elec_price = ReEDS_inputs['retail_elec_price'] # Retail electricity price in 2004$/MWh by BA (n)
-        change_elec_price = ReEDS_inputs['change_elec_price'] # Relative change in electricity price since 2014 by BA (n)
+        
+        ReEDS_df = ReEDS_inputs['ReEDS_df']
+        curtailment_method = ReEDS_inputs['curtailment_method']
+        
+        distPVCurtailment = ReEDS_df['annual_distPVSurplusMar'] # Fraction of distributed PV curtailed in timeslice (m) and BA (n)
+        change_elec_price = ReEDS_df['change_elec_price'] # Relative change in electricity price since 2014 by BA (n)
+        
         # Rename columns to match names in SolarDS
         distPVCurtailment.columns = ['pca_reg','curtailment_rate']
-        #retail_elec_price.columns = ['pca_reg','elec_price_ReEDS']
-        change_elec_price.columns = ['pca_reg','ReEDS_elec_price_mult'] 
+        change_elec_price.columns = ['pca_reg','ReEDS_elec_price_mult']
+        
         # Remove Mexico BAs
         change_elec_price = change_elec_price[change_elec_price.pca_reg != 'p135']
         change_elec_price = change_elec_price[change_elec_price.pca_reg != 'p136']
@@ -66,7 +70,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             market_last_year_com = None
             # Read in ReEDS UPV Capital Costs
             Convert2004_dollars = 1.254 #Conversion from 2004$ to 2014$
-            ReEDS_PV_CC = ReEDS_inputs['UPVCC_all']
+            ReEDS_PV_CC = ReEDS_df['UPVCC_all']
             ReEDS_PV_CC.columns = ['year','Capital_Cost']
             ReEDS_PV_CC.year = ReEDS_PV_CC.year.convert_objects(convert_numeric=True)
             valid_years = np.arange(2014,2051,2)
@@ -218,8 +222,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
 
 
-            #==============================================================================
-            # DISABLED FOR DEV BRANCH
             # break from the loop to find all unique combinations of rates, load, and generation
             if cfg.init_model:
                 logger.info('Finding unique combinations of rates, load, and generation')
@@ -233,7 +235,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 t0 = time.time()
                 logger.info("SAM Calculations will be run in %s batches to prevent memory overflow" % nbatches)
             # create multiprocessing objects before loading inputs to improve memory efficiency
-#            consumers, tasks, results = pssc_mp.create_consumers(cfg.local_cores)
+            # consumers, tasks, results = pssc_mp.create_consumers(cfg.local_cores)
                 for i, uids in enumerate(uid_lists): 
                     logger.info("Working on SAM Batch %s of %s" % (i+1, nbatches))
                     # collect data for all unique combinations
@@ -243,6 +245,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     logger.info('\tdatfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t1),)        
                     # calculate value of energy for all unique combinations
                     logger.info('\tCalculating value of energy using SAM')
+                    # Calculate the fraction of generation output to grid (excess) to annual system generation. Excess generation is subject to net metering and curtailment
+                    t1 = time.time()                    
+                    excess_gen_percent = rate_input_df.apply(datfunc.excess_generation_percent, axis = 1, args = ('consumption_hourly','generation_hourly'))[['uid','excess_generation_percent']]                    
+                    logger.info('Calculating excess generation took: %0.1fs' % (time.time() - t1))                      
                     t1 = time.time()
                     # run sam calcs in serial if only one core is available
                     if cfg.local_cores == 1:
@@ -250,13 +256,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # otherwise run in parallel
                     else:
                         sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)
-#                    sam_results_df = pssc_mp.run_pssc(rate_input_df, consumers, tasks, results)
-                    logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)  
+                        #sam_results_df = pssc_mp.run_pssc(rate_input_df, consumers, tasks, results)
+                    logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)                                        
+                    sam_results_df = pd.merge(sam_results_df, excess_gen_percent)              
                     sam_results_list.append(sam_results_df)
                     # drop the rate_input_df to save on memory
-                    del rate_input_df
-            # delete the multiprocssing objects
-#            del consumers, tasks, results
+                    del rate_input_df, excess_gen_percent
                 logger.info('All SAM calculations completed in: %0.1fs' % (time.time() - t0),)
            
                 # write results to postgres
@@ -281,8 +286,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         # When in ReEDS mode add the values from ReEDS to df
                         df = pd.merge(df,distPVCurtailment, how = 'left', on = 'pca_reg')
                         df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
-                        #df = pd.merge(df,retail_elec_price, how = 'left', on = 'pca_reg')
                         df = pd.merge(df,change_elec_price, how = 'left', on = 'pca_reg')
+                        
                         if sector_abbr == 'res':
                             market_last_year = market_last_year_res
                         if sector_abbr == 'ind':
@@ -294,6 +299,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
                         df['curtailment_rate'] = 0
                         df['ReEDS_elec_price_mult'] = 1
+                        curtailment_method = 'net'
 
                     # 9. Calculate economics 
                     ''' Calculates the economics of DER adoption through cash-flow analysis. 
@@ -324,7 +330,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                                                market_projections, financial_parameters, 
                                                                                cfg, scenario_opts, max_market_share, cur, con, year, 
                                                                                dsire_incentives, deprec_schedule, logger, rate_escalations, 
-                                                                               ann_system_degradation, mode,prng)
+                                                                               ann_system_degradation, mode,prng,curtailment_method)
                     
                     # 10. Calulate diffusion
                     ''' Calculates the market share (ms) added in the solve year. Market share must be less
@@ -372,7 +378,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 t0 = time.time()
                 datfunc.create_scenario_report(cfg.technology, schema, scen_name, out_path, cur, con, cfg.Rscript_path, logger)
                 logger.info('datfunc.create_scenario_report took: %0.1fs' %(time.time() - t0))
-                #logger.info('Model completed at %s run took: %.1f seconds' % (time.ctime(), time.time() - model_init))
                 logger.info('The entire model run took: %.1f seconds' % (time.time() - model_init))
             
             if mode == 'ReEDS':
