@@ -30,3 +30,6 @@ excel/~$scenario_inputs_solar.xlsm
 
 # ignore PyCharm files
 .idea/
+
+# ignore pg_params.json since it should be unique for each user
+python/pg_params.json
