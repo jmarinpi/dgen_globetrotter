@@ -140,8 +140,13 @@ for hdf in hdfs:
             cf_avg_path = '%s/%s/%s' % (cf_bin,height,'cf_avg')
             # cf_avg = hdfaccess.getFilteredData(hf,cf_avg_path)
             cf_avg = getFilteredData(hf,cf_avg_path)
+<<<<<<< Updated upstream
             out_array = np.recarray((np.invert(aep.mask).sum(),), dtype = [('i', '<i4'), ('j', '<i4'), ('height','<i4'), ('cf_bin','<i4'), ('aep','f4'), ('cf_avg','f4'), ('turbine_id', '<i4')])
             out_array['aep'] = aep.data[np.invert(aep.mask)]
+=======
+            out_array = np.recarray((np.invert(aep.mask).sum(),), dtype = [('i', '<i4'), ('j', '<i4'), ('height','<i4'), ('cf_bin','<i4'), ('aep','f4'), ('cf_avg','f4')])
+            out_array['aep'] = aep.data[np.invert(aep.mask)]   
+>>>>>>> Stashed changes
             out_array['cf_avg'] = cf_avg.data[np.invert(cf_avg.mask)]
             ijs_data = ijs[np.invert(aep.mask)]
             out_array ['i'] = ijs_data['i']
