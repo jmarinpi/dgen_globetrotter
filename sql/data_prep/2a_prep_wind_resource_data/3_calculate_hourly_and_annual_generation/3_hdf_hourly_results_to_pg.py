@@ -16,8 +16,46 @@ import os
 import pandas as pd
 from cStringIO import StringIO
 
+def getFilteredData(hfile,path,indices = [], mask = None):
+    '''
+    Return the filtered data, scale factor, fill value mask, and optionally list of indexes. If indices is not specified, data for all locations will be returned
+
+    hfile = an HDF file object
+    path = string giving the path to the dataset of interest in the hfile
+    indices = optional list of indices for which to get data (indicating different cell locations)
+    '''
+
+    # find the scale factor (if it exists)
+    if 'scale_factor' in hfile[path].attrs.keys():
+        scale_factor =  hfile[path].attrs['scale_factor']
+    else:
+        scale_factor = 1 # this will have no effect when multiplied against the array
+
+    # find the fill_value (if it exists)
+    if 'fill_value' in hfile[path].attrs.keys():
+        fill_value =  hfile[path].attrs['fill_value']
+    elif hfile[path].fillvalue <> 0: # this is the default if a fill value isn't set
+        fill_value = hfile[path].fillvalue
+    else:
+        fill_value = None # this will have no effect on np.ma.masked_equal()
+
+    # get data, masking fill_value and applying scale factor
+    extract = np.ma.masked_equal(hfile[path], fill_value) * scale_factor
+    if indices <> []:
+        # Extract the subset
+        data = extract[indices]
+    else:
+        data = extract
+
+    if mask is not None:
+        result = np.ma.masked_array(data,mask)
+    else:
+        result = data
+
+    return result
+
 def pg_connect(pg_params):
-    pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s' % pg_params
+    pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s port=%(port)s' % pg_params
     con = pg.connect(pg_conn_string)
     cur = con.cursor(cursor_factory=pgx.RealDictCursor)
     
@@ -28,27 +66,42 @@ def pg_connect(pg_params):
     
     return con, cur
 
-pg_params = {'host'     : 'gispgdb',
-             'dbname'   : 'dav-gis',
-             'user'     : 'mgleason',
-             'password' : 'mgleason',
-             'role'     : 'diffusion-writers'
+pg_params = {'host'     : 'dnpdb001.bigde.nrel.gov',
+             'dbname'   : 'diffusion_3',
+             'user'     : 'jduckwor',
+             'password' : 'H2v1^gFu^',
+             'role'     : 'diffusion-writers',
+             'port'     : 5433
              }
-hdf_path = '/home/mgleason/data/dg_wind/aws_2014_wind_generation_update/outputs'
-         
  
 # CONNECT TO POSTGRES
 con, cur = pg_connect(pg_params)
 
 schema = 'diffusion_wind'
+turbine_id_lookup = {'current_residential'          : 1,
+                    'current_small_commercial'      : 2,
+                    'current_mid_size'              : 3,
+                    'current_large'                 : 4,
+                    'residential_near_future'       : 5,
+                    'residential_far_future'        : 6,
+                    'sm_mid_lg_near_future'         : 7,
+                    'sm_mid_lg_far_future'          : 8}
+
+# hdf_path = '/home/mgleason/data/dg_wind/aws_2014_wind_generation_update/outputs'
+hdf_path = '/home/jduckwor/wind_curves/hdf'
 hdfs = glob.glob1(hdf_path, '*.hdf5')
+
+print(hdfs)
+
 scale_offset = 1e3
+
 for hdf in hdfs:
-    # split the turbine name
+     # split the turbine name
     filename_parts = hdf.split('_')
-    turbine_start_i = filename_parts.index('dwind')+1
-    turbine_end_i = filename_parts.index('2014')
+    turbine_start_i = filename_parts.index('turbine')+2
+    turbine_end_i = filename_parts.index('2015')
     turbine = '_'.join(filename_parts[turbine_start_i:turbine_end_i])
+    turbine_id = turbine_id_lookup[turbine]
     
     # create the output table
     out_table = '%s.wind_resource_hourly_%s_turbine' % (schema, turbine)
@@ -64,7 +117,8 @@ for hdf in hdfs:
                 j integer,
                 cf_bin integer,
                 height integer,
-                cf integer[]
+                cf integer[],
+                turbine_id integer
             );""" % out_table
     cur.execute(sql)
     con.commit()
@@ -87,7 +141,7 @@ for hdf in hdfs:
         for height in heights:
             print '\tWorking on height = %s' % height
             cf_path = '%s/%s/%s' % (cf_bin,height,'cf_hourly')
-            cf = hdfaccess.getFilteredData(hf, cf_path)    
+            cf = getFilteredData(hf, cf_path)
             unmasked = np.invert(cf.mask)[:,0]
             cf_list = np.trunc(cf[unmasked,:]*scale_offset).astype(int).tolist()
             ijs_data = ijs[unmasked]
@@ -97,7 +151,8 @@ for hdf in hdfs:
             df['j'] = ijs_data['j']
             df['cf_bin'] = int(cf_bin.split('_')[0])/10
             df['height'] = int(height)
-            df['cf'] = pd.Series(cf_list).apply(lambda l: '{%s}' % str(l)[1:-1]) 
+            df['cf'] = pd.Series(cf_list).apply(lambda l: '{%s}' % str(l)[1:-1])
+            df['turbine_id'] = turbine_id
             
             # dump to a csv (can't use in memory because it is too large)
             print 'Writing to postgres'
