@@ -160,7 +160,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
             else:
                 logger.warning("Warning: Skipping Import of Input Scenario Worksheet. This should only be done in resume mode.")
-            crash
 
 
             # 6. Read in scenario option variables

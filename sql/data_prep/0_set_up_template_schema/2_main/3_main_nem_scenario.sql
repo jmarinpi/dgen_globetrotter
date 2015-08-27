@@ -83,8 +83,8 @@ CREATE TABLE diffusion_template.input_main_nem_expiration_rate
 );
 
 
-DROP VIEW IF EXISTS diffusion_template.input_main_non_nem_flat_sell_rates;
-CREATE VIEW diffusion_template.input_main_non_nem_flat_sell_rates AS
+DROP VIEW IF EXISTS diffusion_template.input_main_nem_flat_sell_rates CASCADE;
+CREATE VIEW diffusion_template.input_main_nem_flat_sell_rates AS
 with a as
 (
 	SELECT 	*, 'State Wholesale'::text as expiration_rate
@@ -171,7 +171,7 @@ b as
 )
 select c.year, c.state_abbr, c.sector_abbr, c.utility_type, c.system_size_limit_kw,
 	c.year_end_excess_sell_rate_dlrs_per_kwh, c.hourly_excess_sell_rate_dlrs_per_kwh
-from diffusion_template.input_main_non_nem_flat_sell_rates c
+from diffusion_template.input_main_nem_flat_sell_rates c
 left join b
 	ON b.year = c.year
 	AND b.state_abbr = c.state_abbr
