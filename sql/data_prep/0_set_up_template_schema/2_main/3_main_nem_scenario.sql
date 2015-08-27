@@ -54,6 +54,16 @@ CROSS JOIN diffusion_shared.state_fips_lkup b
 WHERE b.state_abbr <> 'PR';
 
 
+DROP TABLE IF EXISTS diffusion_template.input_main_state_wholesale_elec_prices;
+CREATE TABLE diffusion_template.input_main_state_wholesale_elec_prices
+(
+  year integer,
+  state character(2),
+  wholesale_elec_price_dlrs_per_kwh numeric
+);
+
+
+
 DROP TABLE IF EXISTS diffusion_template.input_main_nem_user_defined_scenario_raw;
 CREATE TABLE diffusion_template.input_main_nem_user_defined_scenario_raw
 (
