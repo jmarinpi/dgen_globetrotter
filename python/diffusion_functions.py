@@ -101,7 +101,7 @@ def set_bass_param(scaled_metric_value,pval = 0.0015):
     # set p and q values
     p = np.array([pval] * scaled_metric_value.size);
     # q value is set based off how attractive the technology is; these values are arbitrary and inherited from SolarDS
-    q = np.where(scaled_metric_value >= 0.9, 0.5, np.where((scaled_metric_value <=0.66) & (scaled_metric_value < 0.9), 0.4, 0.3))
+    q = np.where(scaled_metric_value >= 0.9, 0.5, np.where((scaled_metric_value >=0.66) & (scaled_metric_value < 0.9), 0.4, 0.3))
 
     return p, q
     

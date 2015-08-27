@@ -52,7 +52,7 @@ if Rscript_path == None:
 # set boolean variable for parallelization
 parallelize = True
 # set number of parallel processes to run postgres queries (this is ignored if parallelize = F)
-npar = 10
+npar = 4
 
 # local cores
 local_cores = multiprocessing.cpu_count()/2

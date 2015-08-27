@@ -966,6 +966,8 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
 
 def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure, logger):
 
+    excluded_rates = pd.read_csv('./excluded_rates_ids.csv', header=None)
+    inputs_dict['excluded_rate_ids'] = '(' + ', '.join([str(i[0]) for i in excluded_rates.values]) + ')'
 
     if rate_structure.lower() == 'complex rates':
         # find the highest ranked applicable rate for each point (based on max demand kw and state)
@@ -987,6 +989,7 @@ def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure,
                     	LEFT JOIN diffusion_shared.ranked_rate_array_lkup_%(sector_abbr)s c
                     	ON a.ranked_rate_array_id = c.ranked_rate_array_id
                     	AND b.rate_id_alias = c.rate_id_alias
+                        WHERE b.rate_id_alias NOT IN %(excluded_rate_ids)s
                     ),
                 b as
                 (

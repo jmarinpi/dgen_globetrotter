@@ -251,7 +251,9 @@ dist_of_cap_selected<-function(df,scen_name, start_year, end_year){
                                  cust_num = sum(customers_in_bin)
   )
   )
-  tmp<-ddply(cap_picked,.(sector,year),summarise, n = sum(cust_num))
+  tmp<-group_by(cap_picked, sector, year) %>%
+	summarise(n = sum(cust_num, na.rm = T))
+
   cap_picked<-merge(cap_picked,tmp)
   cap_picked<-transform(cap_picked, p = cust_num/n)
   cap_picked$system_size_factors <- ordered( cap_picked$system_size_factors, levels = c('2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
@@ -797,7 +799,10 @@ get_r_data<-function(scen_folders, file_name){
 }
 
 all_sectors_diff_trends<-function(df){
-  df<-ddply(df,.(year,variable, scenario), summarise, value = sum(value))
+  
+  df = group_by(df, year, variable, scenario) %>%
+	summarise(value = sum(value, na.rm = T))
+
   ggplot(data=df,aes(x = year, y = value, color = scenario, fill = scenario))+
     geom_line(size = 1)+
     facet_wrap(~variable,scales="free_y")+
@@ -905,8 +910,8 @@ metric_trends_ribbon<-function(df){
   
   df = as.data.frame(collect(df))
   # Create two plots for the two metrics
-  pp<-filter(df, metric == 'payback_period')
-  mbs<-filter(df, metric == 'percent_monthly_bill_savings')
+  pp<-filter(df, metric == 'Payback Period')
+  mbs<-filter(df, metric == 'Percent Monthly Bill Savings')
   
   # Median econ attractiveness over time and sector  
   p1<-ggplot(pp, aes(x = year, y = median, ymin = lql, ymax = uql, color = scenario, fill = scenario), size = 0.75)+
