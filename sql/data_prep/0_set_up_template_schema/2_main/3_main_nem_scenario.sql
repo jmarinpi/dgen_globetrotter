@@ -134,7 +134,7 @@ CREATE TABLE diffusion_template.input_main_nem_user_defined_scenario_raw
 );
 
 
-DROP VIEW IF EXISTS diffusion_template.input_main_nem_user_defined_scenario;
+DROP VIEW IF EXISTS diffusion_template.input_main_nem_user_defined_scenario CASCADE;
 CREATE VIEW diffusion_template.input_main_nem_user_defined_scenario AS
 with a as
 (
@@ -161,12 +161,27 @@ with a as
 		year_end_excess_sell_rate_dlrs_per_kwh_ind as year_end_excess_sell_rate_dlrs_per_kwh,
 		hourly_excess_sell_rate_dlrs_per_kwh_ind as hourly_excess_sell_rate_dlrs_per_kwh
 	FROM diffusion_template.input_main_nem_user_defined_scenario_raw
+),
+b as
+(
+	SELECT a.year, a.state_abbr, a.sector_abbr, b.utility_type,
+		a.system_size_limit_kw, a.year_end_excess_sell_rate_dlrs_per_kwh, a.hourly_excess_sell_rate_dlrs_per_kwh
+	FROM a
+	CROSS join diffusion_template.input_main_nem_utility_types_tidy b
 )
-SELECT a.year, a.state_abbr, a.sector_abbr, b.utility_type,
-	a.system_size_limit_kw, a.year_end_excess_sell_rate_dlrs_per_kwh, a.hourly_excess_sell_rate_dlrs_per_kwh
-FROM a
-CROSS join diffusion_template.input_main_nem_utility_types_tidy b;
-
+select c.year, c.state_abbr, c.sector_abbr, c.utility_type, c.system_size_limit_kw,
+	c.year_end_excess_sell_rate_dlrs_per_kwh, c.hourly_excess_sell_rate_dlrs_per_kwh
+from diffusion_template.input_main_non_nem_flat_sell_rates c
+left join b
+	ON b.year = c.year
+	AND b.state_abbr = c.state_abbr
+	AND b.sector_abbr = c.sector_abbr
+	AND b.utility_type = c.utility_type
+where b.year IS NULL
+UNION ALL
+SELECT b.year, b.state_abbr, b.sector_abbr, b.utility_type, b.system_size_limit_kw,
+	b.year_end_excess_sell_rate_dlrs_per_kwh, b.hourly_excess_sell_rate_dlrs_per_kwh
+from b;
 
 
 DROP VIEW IF EXISTS diffusion_template.input_main_nem_scenario;
