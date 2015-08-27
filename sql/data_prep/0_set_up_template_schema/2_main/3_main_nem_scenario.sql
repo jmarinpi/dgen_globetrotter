@@ -54,14 +54,24 @@ CROSS JOIN diffusion_shared.state_fips_lkup b
 WHERE b.state_abbr <> 'PR';
 
 
-DROP TABLE IF EXISTS diffusion_template.input_main_state_wholesale_elec_prices;
-CREATE TABLE diffusion_template.input_main_state_wholesale_elec_prices
+DROP TABLE IF EXISTS diffusion_template.input_main_state_wholesale_elec_prices_raw;
+CREATE TABLE diffusion_template.input_main_state_wholesale_elec_prices_raw
 (
-  state character(2),
+  state_abbr character(2),
   year integer,
-  wholesale_elec_price_dlrs_per_kwh numeric
+  wholesale_elec_price_dollars_per_kwh numeric
 );
 
+DROP VIEW IF EXISTS diffusion_template.input_main_state_wholesale_elec_prices;
+CREATE VIEW diffusion_template.input_main_state_wholesale_elec_prices AS
+SELECT 	a.year, 
+	a.state_abbr,
+	unnest(array['res','com','ind']) as sector_abbr,
+	unnest(array['All Other', 'Coop', 'IOU', 'Muni']) as utility_type,
+	0::double precision as system_size_limit_kw,
+	0::numeric as year_end_excess_sell_rate_dlrs_per_kwh,
+	a.wholesale_elec_price_dollars_per_kwh as hourly_excess_sell_rate_dlrs_per_kwh
+FROM diffusion_template.input_main_state_wholesale_elec_prices_raw a;
 
 DROP TABLE IF EXISTS diffusion_template.input_main_nem_expiration_rate;
 CREATE TABLE diffusion_template.input_main_nem_expiration_rate 
@@ -72,6 +82,22 @@ CREATE TABLE diffusion_template.input_main_nem_expiration_rate
 		ON DELETE RESTRICT
 );
 
+
+DROP VIEW IF EXISTS diffusion_template.input_main_non_nem_flat_sell_rates;
+CREATE VIEW diffusion_template.input_main_non_nem_flat_sell_rates AS
+with a as
+(
+	SELECT 	*, 'State Wholesale'::text as expiration_rate
+	FROM diffusion_template.input_main_state_wholesale_elec_prices
+	UNION ALL
+	select *, 'Avoided Cost'::text as expiration_rate
+	from diffusion_template.input_main_nem_avoided_costs
+)
+select a.year, a.state_abbr, a.sector_abbr, a.utility_type, 
+	a.system_size_limit_kw, a.year_end_excess_sell_rate_dlrs_per_kwh, a.hourly_excess_sell_rate_dlrs_per_kwh
+FROM a
+inner join diffusion_template.input_main_nem_expiration_rate b
+ON a.expiration_rate = b.val;
 
 
 DROP TABLE IF EXISTS diffusion_template.input_main_nem_user_defined_scenario_raw;
