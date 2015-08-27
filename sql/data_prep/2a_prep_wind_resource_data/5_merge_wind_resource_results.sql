@@ -70,7 +70,6 @@ CREATE TABLE diffusion_wind.wind_resource_annual (
 
 -- inherit individual turbine tables to the parent tables
 -- add check constraint on turbine_id
--- add foreign key constraint to diffusion_wind.turbines table
 -- add primary keys (use combos of i, j, icf, and height for now, 
 -- add indices on height and turbine_id
 
@@ -81,11 +80,6 @@ CREATE TABLE diffusion_wind.wind_resource_annual (
 
 	ALTER TABLE diffusion_wind.wind_resource_current_residential_turbine
 		ADD CONSTRAINT wind_resource_current_residential_turbine_turbine_id_check CHECK (turbine_id = 1);
-
-	ALTER TABLE diffusion_wind.wind_resource_current_residential_turbine
-		ADD CONSTRAINT wind_resource_current_residential_turbine_id_fkey FOREIGN KEY (turbine_id)
-		REFERENCES diffusion_wind.turbines (turbine_id) MATCH FULL
-		ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 	ALTER TABLE diffusion_wind.wind_resource_current_residential_turbine
 		ADD CONSTRAINT wind_resource_current_residential_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
@@ -100,11 +94,6 @@ CREATE TABLE diffusion_wind.wind_resource_annual (
 		ADD CONSTRAINT wind_resource_current_small_commercial_turbine_turbine_id_check CHECK (turbine_id = 2);
 
 	ALTER TABLE diffusion_wind.wind_resource_current_small_commercial_turbine
-		ADD CONSTRAINT wind_resource_current_small_commercial_turbine_id_fkey FOREIGN KEY (turbine_id)
-		REFERENCES diffusion_wind.turbines (turbine_id) MATCH FULL
-		ON UPDATE RESTRICT ON DELETE RESTRICT;
-
-	ALTER TABLE diffusion_wind.wind_resource_current_small_commercial_turbine
 		ADD CONSTRAINT wind_resource_current_small_commercial_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
 	CREATE INDEX wind_resource_current_small_commercial_turbine_i_j_cf_bin_btree ON diffusion_wind.wind_resource_current_small_commercial_turbine using btree(i,j,cf_bin);
@@ -115,11 +104,6 @@ CREATE TABLE diffusion_wind.wind_resource_annual (
 
 	ALTER TABLE diffusion_wind.wind_resource_current_mid_size_turbine
 		ADD CONSTRAINT wind_resource_current_mid_size_turbine_turbine_id_check CHECK (turbine_id = 3);
-
-	ALTER TABLE diffusion_wind.wind_resource_current_mid_size_turbine
-		ADD CONSTRAINT wind_resource_current_mid_size_turbine_id_fkey FOREIGN KEY (turbine_id)
-		REFERENCES diffusion_wind.turbines (turbine_id) MATCH FULL
-		ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 	ALTER TABLE diffusion_wind.wind_resource_current_mid_size_turbine
 		ADD CONSTRAINT wind_resource_current_mid_size_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
@@ -134,11 +118,6 @@ CREATE TABLE diffusion_wind.wind_resource_annual (
 		ADD CONSTRAINT wind_resource_current_large_turbine_turbine_id_check CHECK (turbine_id = 4);
 
 	ALTER TABLE diffusion_wind.wind_resource_current_large_turbine
-		ADD CONSTRAINT wind_resource_current_large_turbine_id_fkey FOREIGN KEY (turbine_id)
-		REFERENCES diffusion_wind.turbines (turbine_id) MATCH FULL
-		ON UPDATE RESTRICT ON DELETE RESTRICT;
-
-	ALTER TABLE diffusion_wind.wind_resource_current_large_turbine
 		ADD CONSTRAINT wind_resource_current_large_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
 	CREATE INDEX wind_resource_current_large_turbine_i_j_cf_bin_btree ON diffusion_wind.wind_resource_current_large_turbine using btree(i,j,cf_bin);
@@ -149,11 +128,6 @@ CREATE TABLE diffusion_wind.wind_resource_annual (
 
 	ALTER TABLE diffusion_wind.wind_resource_residential_near_future_turbine
 		ADD CONSTRAINT wind_resource_residential_near_future_turbine_turbine_turbine_id_check CHECK (turbine_id = 5);
-
-	ALTER TABLE diffusion_wind.wind_resource_residential_near_future_turbine
-		ADD CONSTRAINT wind_resource_residential_near_future_turbine_turbine_id_fkey FOREIGN KEY (turbine_id)
-		REFERENCES diffusion_wind.turbines (turbine_id) MATCH FULL
-		ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 	ALTER TABLE diffusion_wind.wind_resource_residential_near_future_turbine
 		ADD CONSTRAINT wind_resource_residential_near_future_turbine_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
@@ -168,11 +142,6 @@ CREATE TABLE diffusion_wind.wind_resource_annual (
 		ADD CONSTRAINT wind_resource_residential_far_future_turbine_turbine_id_check CHECK (turbine_id = 6);
 
 	ALTER TABLE diffusion_wind.wind_resource_residential_far_future_turbine
-		ADD CONSTRAINT wind_resource_residential_far_future_turbine_id_fkey FOREIGN KEY (turbine_id)
-		REFERENCES diffusion_wind.turbines (turbine_id) MATCH FULL
-		ON UPDATE RESTRICT ON DELETE RESTRICT;
-
-	ALTER TABLE diffusion_wind.wind_resource_residential_far_future_turbine
 		ADD CONSTRAINT wind_resource_residential_far_future_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
 	CREATE INDEX wind_resource_residential_far_future_turbine_i_j_cf_bin_btree ON diffusion_wind.wind_resource_residential_far_future_turbine using btree(i,j,cf_bin);
@@ -185,11 +154,6 @@ CREATE TABLE diffusion_wind.wind_resource_annual (
 		ADD CONSTRAINT wind_resource_sm_mid_lg_near_future_turbine_turbine_id_check CHECK (turbine_id = 7);
 
 	ALTER TABLE diffusion_wind.wind_resource_sm_mid_lg_near_future_turbine
-		ADD CONSTRAINT wind_resource_sm_mid_lg_near_future_turbine_id_fkey FOREIGN KEY (turbine_id)
-		REFERENCES diffusion_wind.turbines (turbine_id) MATCH FULL
-		ON UPDATE RESTRICT ON DELETE RESTRICT;
-
-	ALTER TABLE diffusion_wind.wind_resource_sm_mid_lg_near_future_turbine
 		ADD CONSTRAINT wind_resource_sm_mid_lg_near_future_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
 
 	CREATE INDEX wind_resource_sm_mid_lg_near_future_turbine_i_j_cf_bin_btree ON diffusion_wind.wind_resource_sm_mid_lg_near_future_turbine using btree(i,j,cf_bin);
@@ -200,11 +164,6 @@ CREATE TABLE diffusion_wind.wind_resource_annual (
 
 	ALTER TABLE diffusion_wind.wind_resource_sm_mid_lg_far_future_turbine
 		ADD CONSTRAINT wind_resource_sm_mid_lg_far_future_turbine_turbine_id_check CHECK (turbine_id = 8);
-
-	ALTER TABLE diffusion_wind.wind_resource_sm_mid_lg_far_future_turbine
-		ADD CONSTRAINT wind_resource_sm_mid_lg_far_future_turbine_id_fkey FOREIGN KEY (turbine_id)
-		REFERENCES diffusion_wind.turbines (turbine_id) MATCH FULL
-		ON UPDATE RESTRICT ON DELETE RESTRICT;
 
 	ALTER TABLE diffusion_wind.wind_resource_sm_mid_lg_far_future_turbine
 		ADD CONSTRAINT wind_resource_sm_mid_lg_far_future_turbine_pkey PRIMARY KEY(i, j, cf_bin, height);
