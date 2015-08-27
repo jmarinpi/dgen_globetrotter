@@ -57,8 +57,8 @@ WHERE b.state_abbr <> 'PR';
 DROP TABLE IF EXISTS diffusion_template.input_main_state_wholesale_elec_prices;
 CREATE TABLE diffusion_template.input_main_state_wholesale_elec_prices
 (
-  year integer,
   state character(2),
+  year integer,
   wholesale_elec_price_dlrs_per_kwh numeric
 );
 
