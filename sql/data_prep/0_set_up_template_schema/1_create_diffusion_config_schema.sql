@@ -238,6 +238,8 @@ CREATE TABLE diffusion_config.sceninp_nem_scenario
   val text unique not null
 );
 
+
+
 INSERT INTO diffusion_config.sceninp_nem_scenario
 select *
 from unnest(array[
@@ -246,6 +248,21 @@ from unnest(array[
 	'None Everywhere',
 	'Avoided Costs',
 	'User-Defined'
+	]);
+
+
+DROP TABLE IF EXISTS diffusion_config.sceninp_nem_expiration_rate;
+CREATE TABLE diffusion_config.sceninp_nem_expiration_rate
+(
+  val text unique not null
+);
+
+
+INSERT INTO diffusion_config.sceninp_nem_expiration_rate
+select *
+from unnest(array[
+	'Avoided Cost',
+	'State Wholesale'
 	]);
 ------------------------------------------------------------------------
 

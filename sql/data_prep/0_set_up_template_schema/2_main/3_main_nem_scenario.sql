@@ -63,6 +63,16 @@ CREATE TABLE diffusion_template.input_main_state_wholesale_elec_prices
 );
 
 
+DROP TABLE IF EXISTS diffusion_template.input_main_nem_expiration_rate;
+CREATE TABLE diffusion_template.input_main_nem_expiration_rate 
+(
+	val text not null,
+	CONSTRAINT input_main_state_wholesale_elec_prices_fkey FOREIGN KEY (val)
+		REFERENCES diffusion_config.sceninp_nem_expiration_rate (val) MATCH SIMPLE
+		ON DELETE RESTRICT
+);
+
+
 
 DROP TABLE IF EXISTS diffusion_template.input_main_nem_user_defined_scenario_raw;
 CREATE TABLE diffusion_template.input_main_nem_user_defined_scenario_raw
