@@ -41,6 +41,25 @@ class Consumer(multiprocessing.Process):
         return
 
 
+def run_utilityrate3(uid, generation_hourly, consumption_hourly, rate_json,
+                 analysis_period=1., inflation_rate=0., degradation=(0.,),
+                 return_values=('annual_energy_value',
+                                'elec_cost_with_system_year1',
+                                'elec_cost_without_system_year1')):
+                                    
+    result = pssc.utilityrate3(generation_hourly = generation_hourly,
+                                               consumption_hourly = consumption_hourly,
+                                               rate_json = rate_json,
+                                               analysis_period = analysis_period,
+                                               inflation_rate = inflation_rate,
+                                               degradation = degradation,
+                                               return_values = return_values)
+    result['uid'] = uid
+
+    return result
+
+    
+
 class Task(object):
 
     def __init__(self, uid, generation_hourly, consumption_hourly, rate_json,
@@ -207,6 +226,7 @@ def run_pssc(data, consumers, tasks, results):
     
     return results_df
 
+import multiprocessing
 
 def pssc_mp(data, num_consumers):
     # @TODO: convert to loop
@@ -224,15 +244,27 @@ def pssc_mp(data, num_consumers):
     num_iterations = data.shape[0]
 #    logger.debug('Found %s locations to process' % num_iterations)
 
-    tasks = multiprocessing.JoinableQueue()
-    results = multiprocessing.Queue()
+    ########################################################################
+    pool = multiprocessing.Pool(processes = num_consumers) 
+    result_list = []
+    
+#    for i in l:
+#        res = pool.apply_async(run_utilityrate3, (L, ModelSystem))
+#        result_list.append(res)    
+#
+#    for i, result in enumerate(result_list):        
+#        result_return = result.get()     
+    ########################################################################
+    
+#    tasks = multiprocessing.JoinableQueue()
+#    results = multiprocessing.Queue()
 
     num_jobs = num_iterations
 
-    consumers = [Consumer(tasks, results) for i in xrange(num_consumers)]
-    for i, consumer in enumerate(consumers):
-#        logger.debug('Starting consumer %s (%i/%i)' % (consumer.name, i + 1, num_consumers))
-        consumer.start()
+#    consumers = [Consumer(tasks, results) for i in xrange(num_consumers)]
+#    for i, consumer in enumerate(consumers):
+##        logger.debug('Starting consumer %s (%i/%i)' % (consumer.name, i + 1, num_consumers))
+#        consumer.start()
 
 #    logger.info('Loading %i task(s)' % num_jobs)
     for i in xrange(num_jobs):
@@ -244,31 +276,39 @@ def pssc_mp(data, num_consumers):
         consumption_hourly = data['consumption_hourly'][i]   
         data.drop(i, inplace = True)
         
-        tasks.put(Task(uid=uid, generation_hourly=generation_hourly,
-                       consumption_hourly=consumption_hourly, rate_json=rate_json,
-                       analysis_period=1., inflation_rate=0., degradation=(0.,),
-                 return_values=('elec_cost_with_system_year1', 'elec_cost_without_system_year1')))
+        res = pool.apply_async(run_utilityrate3, (uid, generation_hourly,consumption_hourly, rate_json, 1., 0., (0.,), 
+                                                  ('elec_cost_with_system_year1', 'elec_cost_without_system_year1')))
+        result_list.append(res)   
+        
+#        tasks.put(Task(uid=uid, generation_hourly=generation_hourly,
+#                       consumption_hourly=consumption_hourly, rate_json=rate_json,
+#                       analysis_period=1., inflation_rate=0., degradation=(0.,),
+#                 return_values=('elec_cost_with_system_year1', 'elec_cost_without_system_year1')))
 
 #    logger.debug('Loading %i NULL job(s) to signal Consumers there are no more tasks' % num_consumers)
-    for i in xrange(num_consumers):
-        tasks.put(None)
+#    for i in xrange(num_consumers):
+#        tasks.put(None)
 
 #    logger.info('Waiting for %i job(s) across %i worker(s) to finish' % (num_jobs, num_consumers))
 
     # get results as they are returned
-    result_count = 0
+#    result_count = 0
     results_all = []
-    while num_jobs:
-        result = results.get()
-        results_all.append(result)
-        result_count += 1
-#        logger.info('Recieved results for %i tasks' % result_count)
-        num_jobs -= 1
+    for i, result in enumerate(result_list):        
+        result_return = result.get()     
+        results_all.append(result_return)
+        
+#    while num_jobs:
+#        result = results.get()
+#        results_all.append(result)
+#        result_count += 1
+##        logger.info('Recieved results for %i tasks' % result_count)
+#        num_jobs -= 1
 
 #    logger.info('Completed %i of %i job(s)' % (result_count, num_iterations))
 
     # delete consumer objects to free memory
-    del consumers
+#    del consumers
 
     # convert results list to pandas a dataframe
     results_df = pd.DataFrame.from_dict(results_all)

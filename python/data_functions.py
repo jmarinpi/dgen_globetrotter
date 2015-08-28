@@ -1902,7 +1902,7 @@ def get_max_row_count_for_utilityrate3():
     free_mem = mem.available
     # target to fill up only an eighth of the total memory 
     # (this gives a buffer)
-    target_mem = int(free_mem/16)
+    target_mem = int(free_mem/2)
     
     # previous runs suggest that the size of each row in bytes will generally be less than:
     row_mem = 300000
