@@ -286,7 +286,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         # Calculate the fraction of generation output to grid (excess) to annual system generation. Excess generation is subject to net metering and curtailment
                         t1 = time.time()                    
                         excess_gen_percent = rate_input_df.apply(datfunc.excess_generation_percent, axis = 1, args = ('consumption_hourly','generation_hourly'))[['uid','excess_generation_percent']]                    
-                        logger.info('Calculating excess generation took: %0.1fs' % (time.time() - t1))                      
+                        logger.info('\tCalculating excess generation took: %0.1fs' % (time.time() - t1))                      
                         t1 = time.time()
                         # calculate value of energy for all unique combinations
                         logger.info('\tCalculating value of energy using SAM')
