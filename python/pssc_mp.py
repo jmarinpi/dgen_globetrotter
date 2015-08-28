@@ -74,7 +74,7 @@ def load_test_data(test_id=True):
     return {'rate_json': rates_json, 'generation_hourly': generation_hourly, 'consumption_hourly': consumption_hourly}  # @TODO: change to pandas dataframe
 
 
-def pssc_mp(data, pool):
+def pssc_mp(data, num_consumers):
     # @TODO: convert to loop
     """
         Distribute pssc processing across workers.
@@ -87,7 +87,7 @@ def pssc_mp(data, pool):
     # set number of iterations
     num_jobs = data.shape[0]
 
-#    pool = multiprocessing.Pool(processes = num_consumers) 
+    pool = multiprocessing.Pool(processes = num_consumers) 
     result_list = []
 
 
