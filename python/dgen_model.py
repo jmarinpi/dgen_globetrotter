@@ -278,6 +278,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     logger.info("SAM Calculations will be run in %s batches to prevent memory overflow" % nbatches)
                 # create multiprocessing objects before loading inputs to improve memory efficiency
                 # consumers, tasks, results = pssc_mp.create_consumers(cfg.local_cores)
+                    pool = multiprocessing.Pool(processes = cfg.local_cores) 
                     for i, uids in enumerate(uid_lists): 
                         logger.info("Working on SAM Batch %s of %s" % (i+1, nbatches))
                         # collect data for all unique combinations
@@ -297,15 +298,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                             sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
                         # otherwise run in parallel
                         else:
-                            pool = multiprocessing.Pool(processes = cfg.local_cores) 
+                            
                             sam_results_df = pssc_mp.pssc_mp(rate_input_df, pool)
-                            pool.close()
                             #sam_results_df = pssc_mp.run_pssc(rate_input_df, consumers, tasks, results)
                         logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)                                        
                         sam_results_df = pd.merge(sam_results_df, excess_gen_percent)              
                         sam_results_list.append(sam_results_df)
                         # drop the rate_input_df to save on memory
                         del rate_input_df, excess_gen_percent
+                    pool.close()
                     logger.info('All SAM calculations completed in: %0.1fs' % (time.time() - t0),)
                
                     # write results to postgres
