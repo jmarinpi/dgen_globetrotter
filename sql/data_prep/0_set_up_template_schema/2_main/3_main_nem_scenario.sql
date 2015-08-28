@@ -40,7 +40,7 @@ CREATE TABLE diffusion_template.input_main_nem_selected_scenario
 );
 
 
-DROP VIEW IF EXISTS diffusion_template.input_main_nem_avoided_costs;
+DROP VIEW IF EXISTS diffusion_template.input_main_nem_avoided_costs CASCADE;
 CREATE VIEW diffusion_template.input_main_nem_avoided_costs AS
 SELECT 	a.year, 
 	b.state_abbr,
@@ -54,7 +54,7 @@ CROSS JOIN diffusion_shared.state_fips_lkup b
 WHERE b.state_abbr <> 'PR';
 
 
-DROP TABLE IF EXISTS diffusion_template.input_main_state_wholesale_elec_prices_raw;
+DROP TABLE IF EXISTS diffusion_template.input_main_state_wholesale_elec_prices_raw CASCADE;
 CREATE TABLE diffusion_template.input_main_state_wholesale_elec_prices_raw
 (
   state_abbr character(2),
@@ -182,6 +182,7 @@ UNION ALL
 SELECT b.year, b.state_abbr, b.sector_abbr, b.utility_type, b.system_size_limit_kw,
 	b.year_end_excess_sell_rate_dlrs_per_kwh, b.hourly_excess_sell_rate_dlrs_per_kwh
 from b;
+
 
 
 DROP VIEW IF EXISTS diffusion_template.input_main_nem_scenario;
