@@ -34,7 +34,7 @@ import getopt
 import pickle
 import pssc_mp
 from excel import excel_functions
-
+import multiprocessing
     
 
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
@@ -297,7 +297,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                             sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
                         # otherwise run in parallel
                         else:
-                            sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)
+                            pool = multiprocessing.Pool(processes = cfg.local_cores) 
+                            sam_results_df = pssc_mp.pssc_mp(rate_input_df, pool)
+                            pool.close()
                             #sam_results_df = pssc_mp.run_pssc(rate_input_df, consumers, tasks, results)
                         logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)                                        
                         sam_results_df = pd.merge(sam_results_df, excess_gen_percent)              
