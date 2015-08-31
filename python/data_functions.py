@@ -1973,7 +1973,7 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
         df = df.apply(update_rate_json_w_nem_fields, axis = 1)
 
         # add the results to the queue
-        queue.put(df[['uid','rate_json','consumption_hourly','generation_hourly', 'flat_rate_excess_gen_kwh', 'excess_generation_percent']])
+        queue.put(df[['uid','rate_json','consumption_hourly','generation_hourly', 'excess_generation_percent', 'net_fit_credit_dollars']])
         
     except Exception, e:
         print 'Error: %s' % e
@@ -2816,7 +2816,7 @@ def excess_generation_calcs(row, gross_fit_mode = False):
         
     else: # otherwise, we will make some modifications so that we can apply net fit for non-nem cases
         
-        if row['apply_net_metering'] == True: # should this be 1 not True????????
+        if row['apply_net_metering'] == True: 
             
             # there will be zero excess generation credited at the flat sell rate (it will all be net metered)
             row['flat_rate_excess_gen_kwh'] = 0
@@ -2837,6 +2837,8 @@ def excess_generation_calcs(row, gross_fit_mode = False):
             # set to run net metering in SAM 
             # (note: since we've modified gen to drop any excess generation, this will simply account for offset consumption)
             row['ur_enable_net_metering'] = True
+
+    row['net_fit_credit_dollars'] = row['flat_rate_excess_gen_kwh'] * row['ur_flat_sell_rate']
 
     return row
     
