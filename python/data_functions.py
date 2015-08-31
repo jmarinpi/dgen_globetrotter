@@ -1851,7 +1851,7 @@ def split_utilityrate3_inputs(row_count_limit, cur, con, schema):
     
     
 
-def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_string):
+def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_string, gross_fit_mode = False):
     
     
     inputs_dict = locals().copy()     
@@ -1918,7 +1918,7 @@ def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_st
     for i in range(npar):
         place_holders = {'uids': pylist_2_pglist(uid_chunks[i])}
         isql = sql % place_holders
-        proc = Process(target = p_get_utilityrate3_inputs, args = (inputs_dict, pg_conn_string, isql, results))
+        proc = Process(target = p_get_utilityrate3_inputs, args = (inputs_dict, pg_conn_string, isql, results, gross_fit_mode))
         jobs.append(proc)
         proc.start()
     
@@ -1950,7 +1950,7 @@ def scale_array(row, array_col, scale_col, prec_offset_value):
     
     return row
 
-def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
+def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue, gross_fit_mode = False):
     try:
         # create cursor and connection
         con, cur = make_con(pg_conn_string)  
@@ -1967,7 +1967,7 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
         df = df.apply(scale_array, axis = 1, args = ('generation_hourly','system_size_kw', inputs_dict['gen_scale_offset']))
         
         # calculate the excess generation and make necessary NEM modifications
-        df = df.apply(excess_generation_calcs, axis = 1, args = (False))
+        df = df.apply(excess_generation_calcs, axis = 1, args = (gross_fit_mode,))
 
         # update the net metering fields in the rate_json
         df = df.apply(update_rate_json_w_nem_fields, axis = 1)

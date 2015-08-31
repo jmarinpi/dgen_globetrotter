@@ -241,7 +241,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # collect data for all unique combinations
                     logger.info('\tCollecting SAM inputs')
                     t1 = time.time()
-                    rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, cfg.technology, schema, cfg.npar, cfg.pg_conn_string)
+                    rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, cfg.technology, schema, cfg.npar, cfg.pg_conn_string, cfg.gross_fit_mode)
                     excess_gen_df = rate_input_df[['uid', 'excess_generation_percent', 'net_fit_credit_dollars']]
                     logger.info('\tdatfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t1),)        
                     # calculate value of energy for all unique combinations
