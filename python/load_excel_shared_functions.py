@@ -101,10 +101,10 @@ def nem_scenario(curWb,schema,conn,cur,verbose=False):
                          0::double precision as system_size_limit_kw,
                          0::numeric as year_end_excess_sell_rate_dlrs_per_kwh,
                          a.avoided_costs_dollars_per_kwh as hourly_excess_sell_rate_dlrs_per_kwh
-                FROM diffusion_solar.market_projections a
+                FROM %s.market_projections a
                 CROSS JOIN diffusion_shared.state_fips_lkup b
                 WHERE b.state_abbr <> 'PR';        
-        """ % (schema, schema)
+        """ % (schema, schema, schema)
         cur.execute(sql)
         conn.commit()        
 
