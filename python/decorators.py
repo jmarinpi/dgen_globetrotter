@@ -13,3 +13,13 @@ def shared(f):
 def unshared(f):
     f.shared = False
     return f  
+    
+    
+class fid(object):
+    
+    def __init__(self, i):
+        self.fid = i
+
+    def __call__(self, f):
+        f.fid = self.fid
+        return f

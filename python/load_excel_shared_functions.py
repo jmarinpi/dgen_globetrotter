@@ -31,6 +31,7 @@ def list2line(l):
 
     
 @decorators.shared    
+@decorators.fid(9)
 def nem_scenario(curWb,schema,conn,cur,verbose=False):
     
     table = 'nem_scenario'
@@ -226,6 +227,7 @@ def nem_scenario(curWb,schema,conn,cur,verbose=False):
         conn.commit()
         
 @decorators.shared
+@decorators.fid(7)
 def ud_elec_rates(curWb,schema,conn,cur,verbose=False):
     
     table = 'user_defined_electric_rates'    
@@ -263,7 +265,9 @@ def ud_elec_rates(curWb,schema,conn,cur,verbose=False):
     cur.execute(sql)
     conn.commit()
 
+
 @decorators.shared
+@decorators.fid(6)
 def rate_type_weights(curWb,schema,conn,cur,verbose=False):
     
     table = 'rate_type_weights'    
@@ -302,6 +306,7 @@ def rate_type_weights(curWb,schema,conn,cur,verbose=False):
     
 
 @decorators.shared
+@decorators.fid(5)
 def leasingAvail(curWb,schema,conn,cur,verbose=False):
     
     table = 'leasing_availability'    
@@ -338,6 +343,7 @@ def leasingAvail(curWb,schema,conn,cur,verbose=False):
     f.close()
 
 @decorators.shared
+@decorators.fid(4)
 def maxMarket(curWb,schema,conn,cur,verbose=False):
     
     table = 'user_defined_max_market_share'    
@@ -379,7 +385,8 @@ def maxMarket(curWb,schema,conn,cur,verbose=False):
     conn.commit()
     f.close()
 
-@decorators.shared    
+@decorators.shared 
+@decorators.fid(8)   
 def manIncents(curWb,schema,conn,cur,verbose=False):
     
     table = 'manual_incentives'
@@ -483,6 +490,7 @@ def manIncents(curWb,schema,conn,cur,verbose=False):
     
 
 @decorators.shared    
+@decorators.fid(3)
 def depSched(curWb,schema,conn,cur,verbose=False):
     
     table = 'depreciation_schedule'    
@@ -520,6 +528,7 @@ def depSched(curWb,schema,conn,cur,verbose=False):
 
     
 @decorators.shared      
+@decorators.fid(2)
 def finParams(curWb,schema,conn,cur,verbose=False):
         
     table = 'financial_parameters'    
@@ -623,6 +632,7 @@ def finParams(curWb,schema,conn,cur,verbose=False):
     f.close()
 
 @decorators.shared    
+@decorators.fid(1)
 def marketProj(curWb,schema,conn,cur,verbose=False):
     
     table = 'market_projections'    
@@ -659,6 +669,7 @@ def marketProj(curWb,schema,conn,cur,verbose=False):
     f.close()
     
 @decorators.shared
+@decorators.fid(0)
 def stateWholesale(curWb,schema,conn,cur,verbose=False):
 
     table = 'state_wholesale_price'
@@ -699,7 +710,7 @@ def stateWholesale(curWb,schema,conn,cur,verbose=False):
     f.close()
     
 # NOTE: THIS MUST ALWAYS GO LAST
-shared_table_functions = []
+shared_table_functions = {}
 for key, value in locals().items():
     if callable(value) and value.__module__ == __name__ and value.shared == True:
-        shared_table_functions.append(value)
+        shared_table_functions[value.fid] = value
