@@ -242,6 +242,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     logger.info('\tCollecting SAM inputs')
                     t1 = time.time()
                     rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, cfg.technology, schema, cfg.npar, cfg.pg_conn_string)
+                    excess_gen_df = rate_input_df[['uid', 'excess_generation_percent', 'net_fit_credit_dollars']]
                     logger.info('\tdatfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t1),)        
                     # calculate value of energy for all unique combinations
                     logger.info('\tCalculating value of energy using SAM')                                  
@@ -255,9 +256,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         #sam_results_df = pssc_mp.run_pssc(rate_input_df, consumers, tasks, results)
                     logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)    
                     # append the excess_generation_percent and net_fit_credit_dollars to the sam_results_df
-                    sam_results_df = pd.merge(sam_results_df, rate_input_df[['uid', 'excess_generation_percent', 'net_fit_credit_dollars']], on = ['uid'])   
+                    sam_results_df = pd.merge(sam_results_df, excess_gen_df, on = 'uid')
+
                     # adjust the elec_cost_with_system_year1 to account for the net_fit_credit_dollars
-                    sam_results_df['elec_cost_with_system_year1'] = sam_results_df['elec_cost_with_system_year1'] - sam_results_df['net_fit_credit_dollars']
+                    sam_results_df['elec_cost_with_system_year1'] = sam_results_df['elec_cost_with_system_year1'] - sam_results_df['net_fit_credit_dollars']              
                     sam_results_list.append(sam_results_df)
                     # drop the rate_input_df to save on memory
                     del rate_input_df
