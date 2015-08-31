@@ -245,10 +245,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     logger.info('\tdatfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t1),)        
                     # calculate value of energy for all unique combinations
                     logger.info('\tCalculating value of energy using SAM')
-                    # Calculate the fraction of generation output to grid (excess) to annual system generation. Excess generation is subject to net metering and curtailment
-                    t1 = time.time()                    
-                    excess_gen_percent = rate_input_df.apply(datfunc.excess_generation_percent, axis = 1, args = ('consumption_hourly','generation_hourly'))[['uid','excess_generation_percent']]                    
-                    logger.info('Calculating excess generation took: %0.1fs' % (time.time() - t1))                      
+                    # Calculate the fraction of generation output to grid (excess) to annual system generation. Excess generation is subject to net metering and curtailment                 
+                    excess_gen_percent = rate_input_df[['uid','excess_generation_percent']]                                     
                     t1 = time.time()
                     # run sam calcs in serial if only one core is available
                     if cfg.local_cores == 1:
