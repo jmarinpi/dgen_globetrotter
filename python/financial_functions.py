@@ -58,8 +58,9 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id','business_model'])
 
-    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, cfg.tech_lifetime, curtailment_method)
+    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives  = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, cfg.technology, ann_system_degradation, cfg.tech_lifetime, curtailment_method, cfg)
     
+    df['total_value_of_incentives'] = total_value_of_incentives
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs,cfg.tech_lifetime)
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate,cfg.tech_lifetime)
@@ -102,7 +103,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     
     
 #==============================================================================
-def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, ann_system_degradation, tech_lifetime, curtailment_method):
+def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, ann_system_degradation, tech_lifetime, curtailment_method, cfg):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 
@@ -151,10 +152,19 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     
     # 1)  Cost of servicing loan/leasing payments
     crf = (df.loan_rate*(1 + df.loan_rate)**df.loan_term_yrs) / ( (1+df.loan_rate)**df.loan_term_yrs - 1);
+
+    # Cap the fraction of capital costs that incentives may offset
+    # TODO: Applying this as a hot-fix for bugs in the DSIRE dataset. We should review dsire dataset to ensure incentives are being
+    # accurately valued
+
+    # Constrain fraction to [0,1]
+    max_incent_fraction = min(max(cfg.max_incentive_fraction,0),1)
+    #np.minimum(max_incent_fraction * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'])
+    df['total_value_of_incentive'] = np.minimum(max_incent_fraction * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'])
     
     # Assume that incentives received in first year are directly credited against installed cost; This help avoid
     # ITC cash flow imbalances in first year
-    net_installed_cost = df.ic - (df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction)
+    net_installed_cost = df['ic'] - df['total_value_of_incentive']
     
     # Calculate the annual payment net the downpayment and upfront incentives
     pmt = - (1 - df.down_payment) * net_installed_cost * crf    
@@ -238,7 +248,8 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     Revenue comes from taxable deduction [basis * tax rate * schedule] and cannot be monetized by Residential
     '''
     depreciation_revenue = np.zeros(shape)
-    deprec_basis = np.maximum(df.ic - 0.5 * (df.value_of_tax_credit_or_deduction  + df.value_of_rebate),0)[:,np.newaxis] # depreciable basis reduced by half the incentive
+    max_depreciation_reduction = np.minimum(df['total_value_of_incentive'], df['value_of_tax_credit_or_deduction']  + df['value_of_rebate'])
+    deprec_basis = np.maximum(df.ic - 0.5 * (max_depreciation_reduction),0)[:,np.newaxis] # depreciable basis reduced by half the incentive
     depreciation_revenue[:,:20] = deprec_basis * deprec_schedule.reshape(1,20) * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | (df.business_model == 'tpo'))[:,np.newaxis]   
 
     '''
@@ -256,8 +267,8 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     
     incentive_revenue = np.zeros(shape)
     
-    ptc_revenue = datfunc.fill_jagged_array(df.value_of_ptc,df.ptc_length, cols = tech_lifetime)
-    pbi_fit_revenue = datfunc.fill_jagged_array(df.value_of_pbi_fit,df.pbi_fit_length, cols = tech_lifetime)    
+    ptc_revenue = datfunc.fill_jagged_array(np.minimum(df.value_of_ptc,df.total_value_of_incentive/df.ptc_length),df.ptc_length, cols = tech_lifetime)
+    pbi_fit_revenue = datfunc.fill_jagged_array(np.minimum(df.value_of_pbi_fit,df.total_value_of_incentive/df.ptc_length) ,df.pbi_fit_length, cols = tech_lifetime)    
 
     incentive_revenue += ptc_revenue + pbi_fit_revenue
     
@@ -283,7 +294,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     df['monthly_bill_savings'] = monthly_bill_savings
     df['percent_monthly_bill_savings'] = percent_monthly_bill_savings
     
-    return revenue, costs, cfs, df.first_year_bill_with_system, df.first_year_bill_without_system
+    return revenue, costs, cfs, df.first_year_bill_with_system, df.first_year_bill_without_system,df.total_value_of_incentive
 
 #==============================================================================    
 def calc_lcoe(costs,aep, dr, tech_lifetime):
