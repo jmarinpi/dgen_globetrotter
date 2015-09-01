@@ -51,7 +51,7 @@ if Rscript_path == None:
 # set boolean variable for parallelization
 parallelize = True
 # set number of parallel processes to run postgres queries (this is ignored if parallelize = F)
-npar = 10
+npar = 4
 
 # local cores
 local_cores = multiprocessing.cpu_count()/2
@@ -62,6 +62,8 @@ load_scenario_inputs = True
 # Should a html report file be created?
 create_report = True
 init_model = True
+
+gross_fit_mode = True
 
 # model mode (solar or wind)
 technology = 'wind'

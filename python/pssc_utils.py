@@ -87,16 +87,20 @@ logger = initialize_logger(level='DEBUG')
 logger.debug('Config file: %s' % os.path.abspath(config.filename))
 
 # SSC rate variables
-param_types = {'analysis_period': 'SSC_NUMBER',
+param_types = {'system_use_lifetime_output': 'SSC_NUMBER',          # New in SAM 6-1-2015
+               'ur_excess_monthly_energy_or_dollars': 'SSC_NUMBER', # New in SAM 6-1-2015
+               'analysis_period': 'SSC_NUMBER',
                'ur_ec_p7_t3_br': 'SSC_NUMBER',
                'ur_ec_p7_t3_sr': 'SSC_NUMBER',
                'ur_ec_p7_t3_ub': 'SSC_NUMBER',
                'ur_ec_p7_t4_br': 'SSC_NUMBER',
                'ur_ec_p7_t4_sr': 'SSC_NUMBER',
                'ur_ec_p7_t4_ub': 'SSC_NUMBER',
-               'hourly_energy': 'SSC_ARRAY',
+               # 'hourly_energy': 'SSC_ARRAY',  # Replaced by gen
+               'gen': 'SSC_ARRAY',
                'p_with_system': 'SSC_ARRAY',
-               'e_load': 'SSC_ARRAY',
+               # 'e_load': 'SSC_ARRAY',         # Replaced by load
+               'load': 'SSC_ARRAY',
                'p_load': 'SSC_ARRAY',
                'inflation_rate': 'SSC_NUMBER',
                'degradation': 'SSC_ARRAY',

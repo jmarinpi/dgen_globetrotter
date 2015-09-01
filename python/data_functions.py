@@ -1851,7 +1851,7 @@ def split_utilityrate3_inputs(row_count_limit, cur, con, schema):
     
     
 
-def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_string):
+def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_string, gross_fit_mode = False):
     
     
     inputs_dict = locals().copy()     
@@ -1892,7 +1892,7 @@ def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_st
                         a.load_kwh_per_customer_in_bin, c.nkwh as consumption_hourly,
                         a.system_size_kw,
                         COALESCE(d.cf,  array_fill(1, array[8760])) as generation_hourly, -- fill in for customers with no matching wind resource (values don't matter because they will be zeroed out)
-                        a.ur_enable_net_metering, a.ur_nm_yearend_sell_rate, a.ur_flat_sell_rate
+                        a.ur_enable_net_metering as apply_net_metering, a.ur_nm_yearend_sell_rate, a.ur_flat_sell_rate
             	
             FROM %(schema)s.unique_rate_gen_load_combinations a
             
@@ -1918,7 +1918,7 @@ def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_st
     for i in range(npar):
         place_holders = {'uids': pylist_2_pglist(uid_chunks[i])}
         isql = sql % place_holders
-        proc = Process(target = p_get_utilityrate3_inputs, args = (inputs_dict, pg_conn_string, isql, results))
+        proc = Process(target = p_get_utilityrate3_inputs, args = (inputs_dict, pg_conn_string, isql, results, gross_fit_mode))
         jobs.append(proc)
         proc.start()
     
@@ -1950,7 +1950,7 @@ def scale_array(row, array_col, scale_col, prec_offset_value):
     
     return row
 
-def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
+def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue, gross_fit_mode = False):
     try:
         # create cursor and connection
         con, cur = make_con(pg_conn_string)  
@@ -1966,11 +1966,14 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue):
         # scale the hourly cfs into hourly kw using the system size
         df = df.apply(scale_array, axis = 1, args = ('generation_hourly','system_size_kw', inputs_dict['gen_scale_offset']))
         
+        # calculate the excess generation and make necessary NEM modifications
+        df = df.apply(excess_generation_calcs, axis = 1, args = (gross_fit_mode,))
+
         # update the net metering fields in the rate_json
         df = df.apply(update_rate_json_w_nem_fields, axis = 1)
-               
+
         # add the results to the queue
-        queue.put(df[['uid','rate_json','consumption_hourly','generation_hourly']])
+        queue.put(df[['uid','rate_json','consumption_hourly','generation_hourly', 'excess_generation_percent', 'net_fit_credit_dollars']])
         
     except Exception, e:
         print 'Error: %s' % e
@@ -2780,21 +2783,62 @@ def summarise_solar_resource_by_ts_and_pca_reg(df, con):
     
     return d
 
-def excess_generation_percent(row, con, gen):
+def excess_generation_calcs(row, gross_fit_mode = False):
     ''' Function to calculate percent of excess generation given 8760-lists of 
     consumption and generation. Currently function is configured to work only with
     the rate_input_df to avoid pulling generation and consumption profiles
     '''
 
+    con = 'consumption_hourly'
+    gen = 'generation_hourly'
+
     annual_generation = sum(row[gen])
+    excess_gen_hourly = np.maximum(row[gen] - row[con],0)
+    excess_gen_annual = np.sum(excess_gen_hourly)
     
+    # calculate the excess generation percent
     if annual_generation == 0:
         row['excess_generation_percent'] = 0
     else:
         # Determine the annual amount of generation (kWh) that exceeds consumption,
         # and must be sold to the grid to receive value
-        annual_excess_gen = sum(np.maximum(row[gen] - row[con],0))
-        row['excess_generation_percent'] = annual_excess_gen / annual_generation # unitless (kWh/kWh)
+        row['excess_generation_percent'] = excess_gen_annual / annual_generation # unitless (kWh/kWh)
+
+    if gross_fit_mode == True:
+        # under gross fit, we will simply feed all inputs into SAM as-is and let the utilityrate3 module
+        # handle all calculations with no modifications
+    
+        # no excess generation will be credited at the flat sell rate (outside of SAM)
+        row['flat_rate_excess_gen_kwh'] = 0
+        
+        # set ur_enable_net_metering equal to apply_net_metering
+        row['ur_enable_net_metering'] = row['apply_net_metering']
+        
+    else: # otherwise, we will make some modifications so that we can apply net fit for non-nem cases
+        
+        if row['apply_net_metering'] == True: 
+            
+            # there will be zero excess generation credited at the flat sell rate (it will all be net metered)
+            row['flat_rate_excess_gen_kwh'] = 0
+
+            # set to run net metering in SAM
+            row['ur_enable_net_metering'] = True
+            
+        else: 
+            # set the data up to be able to run a net fit mode
+        
+            # all excess generation will be credited at the flat sell rate
+            row['flat_rate_excess_gen_kwh'] = excess_gen_annual
+            
+            # calculate the non-excess portion of hourly generation and re-assign it to the gen column
+            offset_generation = row[gen] - excess_gen_hourly
+            row[gen] = offset_generation
+            
+            # set to run net metering in SAM 
+            # (note: since we've modified gen to drop any excess generation, this will simply account for offset consumption)
+            row['ur_enable_net_metering'] = True
+
+    row['net_fit_credit_dollars'] = row['flat_rate_excess_gen_kwh'] * row['ur_flat_sell_rate']
 
     return row
     

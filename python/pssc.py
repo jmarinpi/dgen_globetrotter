@@ -62,6 +62,10 @@ def utilityrate3(generation_hourly, consumption_hourly, rate_json,
         if not x in rate_json:
             # logger.debug('Setting %(x)s to %(y)s' % dict(x=x, y=y))
             rate_json[x] = y
+    
+    # Add SAM 6-1-15 inputs and remove deprecated ones
+    rate_json['system_use_lifetime_output'] = 0
+    rate_json['ur_excess_monthly_energy_or_dollars'] = 0
 
     # set rate and function-level paramater values
     for k, v in rate_json.iteritems():
@@ -75,8 +79,10 @@ def utilityrate3(generation_hourly, consumption_hourly, rate_json,
             raise
 
     # set generation and load
-    dat_set['SSC_ARRAY'](dat, 'hourly_energy', generation_hourly)
-    dat_set['SSC_ARRAY'](dat, 'e_load', consumption_hourly)
+    # dat_set['SSC_ARRAY'](dat, 'hourly_energy', generation_hourly)     # TODO: Remove after testing new module
+    dat_set['SSC_ARRAY'](dat, 'gen', generation_hourly)                 # NOTE: Changed to reflect new SAM version 2015-6-30
+    # dat_set['SSC_ARRAY'](dat, 'e_load', consumption_hourly)           # TODO: Remove after testing new module
+    dat_set['SSC_ARRAY'](dat, 'load', consumption_hourly)               # NOTE: Changed to reflect new SAM version 2015-6-30
 
     # create SAM utilityrate3 module object
     utilityrate = ssc.module_create('utilityrate3')

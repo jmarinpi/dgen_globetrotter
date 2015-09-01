@@ -241,14 +241,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # collect data for all unique combinations
                     logger.info('\tCollecting SAM inputs')
                     t1 = time.time()
-                    rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, cfg.technology, schema, cfg.npar, cfg.pg_conn_string)
+                    rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, cfg.technology, schema, cfg.npar, cfg.pg_conn_string, cfg.gross_fit_mode)
+                    excess_gen_df = rate_input_df[['uid', 'excess_generation_percent', 'net_fit_credit_dollars']]
                     logger.info('\tdatfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t1),)        
                     # calculate value of energy for all unique combinations
-                    logger.info('\tCalculating value of energy using SAM')
-                    # Calculate the fraction of generation output to grid (excess) to annual system generation. Excess generation is subject to net metering and curtailment
-                    t1 = time.time()                    
-                    excess_gen_percent = rate_input_df.apply(datfunc.excess_generation_percent, axis = 1, args = ('consumption_hourly','generation_hourly'))[['uid','excess_generation_percent']]                    
-                    logger.info('Calculating excess generation took: %0.1fs' % (time.time() - t1))                      
+                    logger.info('\tCalculating value of energy using SAM')                                  
                     t1 = time.time()
                     # run sam calcs in serial if only one core is available
                     if cfg.local_cores == 1:
@@ -257,11 +254,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     else:
                         sam_results_df = pssc_mp.pssc_mp(rate_input_df, cfg.local_cores)
                         #sam_results_df = pssc_mp.run_pssc(rate_input_df, consumers, tasks, results)
-                    logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)                                        
-                    sam_results_df = pd.merge(sam_results_df, excess_gen_percent)              
+                    logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)    
+                    # append the excess_generation_percent and net_fit_credit_dollars to the sam_results_df
+                    sam_results_df = pd.merge(sam_results_df, excess_gen_df, on = 'uid')
+
+                    # adjust the elec_cost_with_system_year1 to account for the net_fit_credit_dollars
+                    sam_results_df['elec_cost_with_system_year1'] = sam_results_df['elec_cost_with_system_year1'] - sam_results_df['net_fit_credit_dollars']              
                     sam_results_list.append(sam_results_df)
                     # drop the rate_input_df to save on memory
-                    del rate_input_df, excess_gen_percent
+                    del rate_input_df
                 logger.info('All SAM calculations completed in: %0.1fs' % (time.time() - t0),)
            
                 # write results to postgres

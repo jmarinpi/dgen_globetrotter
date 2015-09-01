@@ -31,6 +31,7 @@ def list2line(l):
 
     
 @decorators.shared    
+@decorators.fid(9)
 def nem_scenario(curWb,schema,conn,cur,verbose=False):
     
     table = 'nem_scenario'
@@ -101,12 +102,41 @@ def nem_scenario(curWb,schema,conn,cur,verbose=False):
                          0::double precision as system_size_limit_kw,
                          0::numeric as year_end_excess_sell_rate_dlrs_per_kwh,
                          a.avoided_costs_dollars_per_kwh as hourly_excess_sell_rate_dlrs_per_kwh
-                FROM diffusion_solar.market_projections a
+                FROM %s.market_projections a
                 CROSS JOIN diffusion_shared.state_fips_lkup b
                 WHERE b.state_abbr <> 'PR';        
-        """ % (schema, schema)
+        """ % (schema, schema, schema)
         cur.execute(sql)
         conn.commit()        
+
+    named_range = curWb.get_named_range('expiration_rate')
+    if named_range == None:
+        raise ExcelError('expiration_rate named range does not exist.')
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    expiration_rate = cells.value
+
+    if expiration_rate == 'State Wholesale':
+        # load the state wholesale prices
+
+        sql = """DROP TABLE IF EXISTS %s.nem_scenario_state_wholesale;
+                CREATE TABLE %s.nem_scenario_state_wholesale AS
+                WITH z AS (
+                SELECT  a.year,
+                     b.state_abbr,
+                     unnest(array['res','com','ind']) as sector_abbr,
+                     unnest(array['All Other', 'Coop', 'IOU', 'Muni']) as utility_type,
+                     0::double precision as system_size_limit_kw,
+                     0::numeric as year_end_excess_sell_rate_dlrs_per_kwh
+                FROM diffusion_solar.market_projections a
+                CROSS JOIN diffusion_shared.state_fips_lkup b
+                WHERE b.state_abbr <> 'PR')
+                SELECT z.*, c.wholesale_elec_price AS hourly_excess_sell_rate_dlrs_per_kwh
+                FROM z
+                LEFT JOIN %s.state_wholesale_price AS c
+                ON z.year = c.year AND z.state_abbr = c.state
+                ;""" % (schema, schema, schema)
+        cur.execute(sql)
+        conn.commit()
 
     if selected_scenario == 'User-Defined':
         # get the applicable utility types        
@@ -153,20 +183,29 @@ def nem_scenario(curWb,schema,conn,cur,verbose=False):
         cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
         conn.commit()
         f.close()
-         # append avoided costs to the end
+
+        # append avoided costs to the end
+        if expiration_rate == 'Avoided Cost':
+            nem_expiration_table = 'nem_scenario_avoided_costs'
+        elif expiration_rate == 'State Wholesale':
+            nem_expiration_table = 'nem_scenario_state_wholesale'
+        else:
+            print(expiration_rate)
+            raise ExcelError('state_wholesale_price named range does not exist')
+
         sql = """INSERT INTO %s.%s
-                            (year, state_abbr, sector_abbr, utility_type, system_size_limit_kw, 
-                             year_end_excess_sell_rate_dlrs_per_kwh, hourly_excess_sell_rate_dlrs_per_kwh)        
-                 SELECT a.year, a.state_abbr, a.sector_abbr, a.utility_type, a.system_size_limit_kw, 
+                            (year, state_abbr, sector_abbr, utility_type, system_size_limit_kw,
+                             year_end_excess_sell_rate_dlrs_per_kwh, hourly_excess_sell_rate_dlrs_per_kwh)
+                 SELECT a.year, a.state_abbr, a.sector_abbr, a.utility_type, a.system_size_limit_kw,
                         a.year_end_excess_sell_rate_dlrs_per_kwh, a.hourly_excess_sell_rate_dlrs_per_kwh
-                 FROM %s.nem_scenario_avoided_costs a
+                 FROM %s.%s a
                  LEFT JOIN %s.%s b
                  ON a.year = b.year
                  AND a.state_abbr = b.state_abbr
                  AND a.sector_abbr = b.sector_abbr
                  AND a.utility_type = b.utility_type
                  WHERE a.utility_type in (%s)
-                 AND b.year IS NULL;""" % (schema, table, schema, schema, table, str(utility_types)[1:-1])
+                 AND b.year IS NULL;""" % (schema, table, schema, nem_expiration_table, schema, table, str(utility_types)[1:-1])
         cur.execute(sql)
         conn.commit()
         
@@ -188,6 +227,7 @@ def nem_scenario(curWb,schema,conn,cur,verbose=False):
         conn.commit()
         
 @decorators.shared
+@decorators.fid(7)
 def ud_elec_rates(curWb,schema,conn,cur,verbose=False):
     
     table = 'user_defined_electric_rates'    
@@ -225,7 +265,9 @@ def ud_elec_rates(curWb,schema,conn,cur,verbose=False):
     cur.execute(sql)
     conn.commit()
 
+
 @decorators.shared
+@decorators.fid(6)
 def rate_type_weights(curWb,schema,conn,cur,verbose=False):
     
     table = 'rate_type_weights'    
@@ -264,6 +306,7 @@ def rate_type_weights(curWb,schema,conn,cur,verbose=False):
     
 
 @decorators.shared
+@decorators.fid(5)
 def leasingAvail(curWb,schema,conn,cur,verbose=False):
     
     table = 'leasing_availability'    
@@ -300,6 +343,7 @@ def leasingAvail(curWb,schema,conn,cur,verbose=False):
     f.close()
 
 @decorators.shared
+@decorators.fid(4)
 def maxMarket(curWb,schema,conn,cur,verbose=False):
     
     table = 'user_defined_max_market_share'    
@@ -341,7 +385,8 @@ def maxMarket(curWb,schema,conn,cur,verbose=False):
     conn.commit()
     f.close()
 
-@decorators.shared    
+@decorators.shared 
+@decorators.fid(8)   
 def manIncents(curWb,schema,conn,cur,verbose=False):
     
     table = 'manual_incentives'
@@ -445,6 +490,7 @@ def manIncents(curWb,schema,conn,cur,verbose=False):
     
 
 @decorators.shared    
+@decorators.fid(3)
 def depSched(curWb,schema,conn,cur,verbose=False):
     
     table = 'depreciation_schedule'    
@@ -482,6 +528,7 @@ def depSched(curWb,schema,conn,cur,verbose=False):
 
     
 @decorators.shared      
+@decorators.fid(2)
 def finParams(curWb,schema,conn,cur,verbose=False):
         
     table = 'financial_parameters'    
@@ -585,6 +632,7 @@ def finParams(curWb,schema,conn,cur,verbose=False):
     f.close()
 
 @decorators.shared    
+@decorators.fid(1)
 def marketProj(curWb,schema,conn,cur,verbose=False):
     
     table = 'market_projections'    
@@ -620,10 +668,49 @@ def marketProj(curWb,schema,conn,cur,verbose=False):
     conn.commit()
     f.close()
     
-    
+@decorators.shared
+@decorators.fid(0)
+def stateWholesale(curWb,schema,conn,cur,verbose=False):
+
+    table = 'state_wholesale_price'
+
+    f = StringIO()
+    named_range = curWb.get_named_range(table)
+    if named_range == None:
+        raise ExcelError('state_wholesale_price named range does not exist')
+    cells = named_range.destinations[0][0].range(named_range.destinations[0][1])
+    columns = len(cells[0])
+    rows = len(cells)
+    c = 1
+    while c < columns:
+        r = 1
+        year = cells[0][c].value
+        while r < rows:
+            state = cells[r][0].value
+            if cells[r][c].value is None:
+                val = '0'
+            else:
+                val = cells[r][c].value
+            l = [year, state, val]
+            r += 1
+
+            # TODO: find less hacky way to get rid of encoding weirdness
+            lString = str(l)[1:-1].replace("u'", "").replace("'", "").replace(" ", "")
+
+            f.write(lString + '\n')
+        c += 1
+    f.seek(0)
+    if verbose:
+        print 'Exporting state_wholesale_price'
+    # use "COPY" to dump the data to the staging table in PG
+    cur.execute('DELETE FROM %s.%s;' % (schema, table))
+    cur.copy_from(f,"%s.%s" % (schema,table),sep=',')
+    cur.execute('VACUUM ANALYZE %s.%s;' % (schema,table))
+    conn.commit()
+    f.close()
     
 # NOTE: THIS MUST ALWAYS GO LAST
-shared_table_functions = []
+shared_table_functions = {}
 for key, value in locals().items():
     if callable(value) and value.__module__ == __name__ and value.shared == True:
-        shared_table_functions.append(value)
+        shared_table_functions[value.fid] = value

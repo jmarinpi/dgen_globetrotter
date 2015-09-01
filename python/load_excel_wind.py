@@ -58,7 +58,8 @@ def main(wb, conn, mode = None, ReEDS_PV_CC = None, verbose = False):
         table = 'required_canopy_clearance_lkup'        
         sitingCanopyClearance(curWb,schema,table,conn,cur,verbose)
 
-        for func in lex.shared_table_functions:
+        for k in sorted(lex.shared_table_functions.keys()):
+            func = lex.shared_table_functions[k]
             func(curWb,schema,conn,cur,verbose)
 
 
