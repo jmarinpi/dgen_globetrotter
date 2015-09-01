@@ -1966,11 +1966,9 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue, gross_fit
         # scale the hourly cfs into hourly kw using the system size
         df = df.apply(scale_array, axis = 1, args = ('generation_hourly','system_size_kw', inputs_dict['gen_scale_offset']))
 
-        t0 = time.time()
         # calculate the excess generation and make necessary NEM modifications
-        #df = excess_generation_vectorized(df, gross_fit_mode)
-        df = df.apply(excess_generation_calcs, axis = 1, args = (gross_fit_mode,))
-        print time.time()- t0
+        df = excess_generation_vectorized(df, gross_fit_mode)
+        #df = df.apply(excess_generation_calcs, axis = 1, args = (gross_fit_mode,))
         
         # update the net metering fields in the rate_json
         df = df.apply(update_rate_json_w_nem_fields, axis = 1)
