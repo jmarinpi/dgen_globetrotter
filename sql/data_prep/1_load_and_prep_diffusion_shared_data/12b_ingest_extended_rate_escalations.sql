@@ -68,5 +68,4 @@ values ('AEO2014 Extended');
 
 -- next steps:
 -- run model with aeo2014 anda gain with ae2014_extended
--- repeat for all diffusion_* dbs
 -- create an issue documenting the necssary changes for DB branch
