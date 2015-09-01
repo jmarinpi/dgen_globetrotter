@@ -67,7 +67,7 @@ gross_fit_mode = True
 
 # model mode (solar or wind)
 technology = 'wind'
-# technology = 'solar'
+#technology = 'solar'
 
 
 if technology == 'solar':

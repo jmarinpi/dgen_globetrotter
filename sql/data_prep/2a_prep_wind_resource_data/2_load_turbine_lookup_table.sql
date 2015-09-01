@@ -1,56 +1,55 @@
-﻿-- ALTER tABLE diffusion_wind.turbines
--- RENAME TO turbines_old;
+﻿-- drop the foreign key constraints from the annual and hourly resource tables
+-- ALTER TABLE diffusion_wind.wind_resource_sm_mid_lg_near_future_turbine DROP CONSTRAINT wind_resource_sm_mid_lg_near_future_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_sm_mid_lg_near_future_turbine DROP CONSTRAINT wind_resource_hourly_sm_mid_lg_near_future_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_current_large_turbine DROP CONSTRAINT wind_resource_current_large_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_current_large_turbine DROP CONSTRAINT wind_resource_hourly_current_large_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_current_mid_size_turbine DROP CONSTRAINT wind_resource_current_mid_size_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_current_mid_size_turbine DROP CONSTRAINT wind_resource_hourly_current_mid_size_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_current_small_commercial_turbine DROP CONSTRAINT wind_resource_current_small_commercial_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_current_small_commercial_turbine DROP CONSTRAINT wind_resource_hourly_current_small_commercial_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_current_residential_turbine DROP CONSTRAINT wind_resource_current_residential_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_current_residential_turbine DROP CONSTRAINT wind_resource_hourly_current_residential_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_residential_far_future_turbine DROP CONSTRAINT wind_resource_residential_far_future_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_residential_far_future_turbine DROP CONSTRAINT wind_resource_hourly_residential_ff_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_residential_near_future_turbine DROP CONSTRAINT wind_resource_residential_near_future_turbine_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_residential_near_future_turbine DROP CONSTRAINT wind_resource_hourly_residential_nf_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_sm_mid_lg_far_future_turbine DROP CONSTRAINT wind_resource_sm_mid_lg_far_future_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_sm_mid_lg_far_future_turbine DROP CONSTRAINT wind_resource_hourly_sm_mid_lg_ff_turbine_id_fkey;
+
+-- ALTER TABLE diffusion_wind.wind_resource_current_large_turbine DROP CONSTRAINT wind_resource_current_large_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_current_mid_size_turbine DROP CONSTRAINT wind_resource_current_mid_size_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_current_residential_turbine DROP CONSTRAINT wind_resource_current_residential_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_far_future_mid_size_and_large_turbine DROP CONSTRAINT wind_resource_far_future_mid_size_and_large_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_current_large_turbine DROP CONSTRAINT wind_resource_hourly_current_large_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_current_mid_size_turbine DROP CONSTRAINT wind_resource_hourly_current_mid_size_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_current_residential_turbine DROP CONSTRAINT wind_resource_hourly_current_residential_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_far_future_mid_size_and_large_turbine DROP CONSTRAINT wind_resource_hourly_far_future_mid_size_and_large_turbine_id_f;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_near_future_mid_size_turbine DROP CONSTRAINT wind_resource_hourly_near_future_mid_size_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_near_future_residential_turbine DROP CONSTRAINT wind_resource_hourly_near_future_residential_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_near_future_mid_size_turbine DROP CONSTRAINT wind_resource_near_future_mid_size_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_near_future_residential_turbine DROP CONSTRAINT wind_resource_near_future_residential_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_current_small_commercial_turbine DROP CONSTRAINT wind_resource_current_small_commercial_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_current_small_commercial_turbine DROP CONSTRAINT wind_resource_hourly_current_small_commercial_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_hourly_far_future_small_turbine DROP CONSTRAINT wind_resource_hourly_far_future_small_turbine_id_fkey;
+-- ALTER TABLE diffusion_wind.wind_resource_far_future_small_turbine DROP CONSTRAINT wind_resource_far_future_small_turbine_id_fkey;
+
+-- create turbine id lookup table
 set role 'diffusion-writers';
 DROP TABLE IF EXISTS diffusion_wind.turbines;
-CREATE TABLE diffusion_wind.turbines (
-	turbine_id serial primary key,
-	turbine_name text,
-	turbine_description text);
+CREATE TABLE diffusion_wind.turbines 
+(
+	turbine_id integer primary key,
+	windpy_powercurve text unique,
+	description text unique
+);
 
-SET ROLE 'server-superusers';
-COPY diffusion_wind.turbines (turbine_name, turbine_description) 
-from '/srv/home/mgleason/data/dg_wind/updated_power_curves_descriptions.csv' with csv header;
-RESET ROLE;
+
+\COPY diffusion_wind.turbines from '/Volumes/gispgdb.nrel.gov/data/dg_wind/updated_power_curves_descriptions.csv' with csv header;
+
 
 SELECT *
 FROM diffusion_wind.turbines;
 
 
--- load normalized power curves too
--- ALTER tABLE diffusion_wind.normalized_wind_power_curves
--- RENAME TO normalized_wind_power_curves_old;
-
-set role 'diffusion-writers';
+-- drop the old normalize_wind_power_curves table (power curves can now be looked up directly in the windpy repo)
 DROP TABLE IF EXIStS diffusion_wind.normalized_wind_power_curves;
-CREATE TABLE diffusion_wind.normalized_wind_power_curves
-(
-  power_curve_id integer,
-  wind_speed_ms integer,
-  turbine_name text,
-  norm_power_kwh_per_kw numeric
-);
-
-SET ROLE 'server-superusers';
-COPY diffusion_wind.normalized_wind_power_curves (wind_speed_ms, turbine_name, norm_power_kwh_per_kw) 
-from '/srv/home/mgleason/data/dg_wind/updated_power_curves_tidy_format.csv' with csv header;
-RESET ROLE;
-
--- update the power_curve_id using the turbines table
-UPDATE diffusion_wind.normalized_wind_power_curves a
-SET power_curve_id = b.turbine_id
-FROM diffusion_wind.turbines b
-where a.turbine_name = b.turbine_name;
-
--- check that we got them all
-SELECT *
-FROM diffusion_wind.normalized_wind_power_curves
-where power_Curve_id is null;
-
--- primary key should be windspeed and power curve id
-ALTER TABLE diffusion_wind.normalized_wind_power_curves
-ADD PRIMARY KEY (power_curve_id, wind_speed_ms);
-
--- add these data to the windpy power curves
-INSErT INTO windpy.turbine_power_curves
-SELECT turbine_name, wind_speed_ms as windspeedms, norm_power_kwh_per_kw as generation_kw
-FROM diffusion_wind.normalized_wind_power_curves;
