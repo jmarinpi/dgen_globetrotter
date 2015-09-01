@@ -63,7 +63,7 @@ load_scenario_inputs = True
 create_report = True
 init_model = True
 
-gross_fit_mode = True
+gross_fit_mode = False
 
 # model mode (solar or wind)
 technology = 'wind'
