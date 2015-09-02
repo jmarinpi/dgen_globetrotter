@@ -64,5 +64,10 @@ load_scenario_inputs = True
 create_report = True
 init_model = True
 
-#tech_lifetime = 25
+# In non-NEM mode, should generation be allowed to offset self-consumption (False), or directly sold to grid (True)
+gross_fit_mode = False
+
+# Maximum fraction of system capital cost that incentives offset (effectively capping incentive value beyond this point)
+max_incentive_fraction = 0.4
+
 
