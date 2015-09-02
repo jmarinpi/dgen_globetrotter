@@ -59,7 +59,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id','business_model'])
 
-    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, ann_system_degradation, tech_lifetime, curtailment_method, max_incentive_fraction)
+    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, ann_system_degradation, curtailment_method, tech_lifetime, max_incentive_fraction)
     
     df['total_value_of_incentives'] = total_value_of_incentives
     ## Calc metric value here
