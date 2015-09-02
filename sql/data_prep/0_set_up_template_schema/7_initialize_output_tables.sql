@@ -43,6 +43,7 @@ CREATE TABLE diffusion_template.outputs_res
   first_year_bill_without_system numeric,
   npv4 numeric,
   excess_generation_percent numeric,
+  total_value_of_incentives numeric,
   tech text
 );
 
@@ -93,6 +94,7 @@ CREATE TABLE diffusion_template.outputs_com
   first_year_bill_without_system numeric,
   npv4 numeric,
   excess_generation_percent numeric,
+  total_value_of_incentives numeric,
   tech text
 );
 
@@ -143,6 +145,7 @@ CREATE TABLE diffusion_template.outputs_ind
   first_year_bill_without_system numeric,
   npv4 numeric,
   excess_generation_percent numeric,
+  total_value_of_incentives numeric,
   tech text
 );
 
