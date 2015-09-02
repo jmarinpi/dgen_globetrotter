@@ -6,7 +6,14 @@ CREATE USER cdong WITH NOCREATEDB NOCREATEROLE NOCREATEUSER INHERIT CONNECTION L
 CREATE USER hlewis WITH NOCREATEDB NOCREATEROLE NOCREATEUSER INHERIT CONNECTION LIMIT 20 PASSWORD 'hlewis';
 CREATE USER test WITH NOCREATEDB NOCREATEROLE NOCREATEUSER INHERIT CONNECTION LIMIT 20 PASSWORD 'test';
 
-CREATE ROLE "diffusion-writers" NOCREATEDB NOCREATEUSER NOLOGIN NOCREATEROLE NOINHERIT;
+CREATE ROLE "diffusion-admins" with CREATEDB CREATEUSER LOGIN NOINHERIT CREATEROLE;
+CREATE ROLE "diffusion-schema-writers" NOCREATEDB NOCREATEUSER NOLOGIN NOCREATEROLE;
+GRANT CREATE ON database "diffusion_1" to "diffusion-schema-writers" ;
+CREATE ROLE "diffusion-writers" NOCREATEDB NOCREATEUSER NOLOGIN NOCREATEROLE;
+CREATE ROLE "diffusion-intermediate" NOCREATEDB NOCREATEUSER NOLOGIN NOCREATEROLE NOINHERIT;
+
+ALTER GROUP "diffusion-intermediate" ADD USER "diffusion-writers";
+ALTER GROUP "diffusion-schema-writers" ADD user "diffusion-intermediate";
 
 ALTER GROUP "diffusion-writers" ADD user bsigrin;
 ALTER GROUP "diffusion-writers" ADD user wcole;
@@ -15,13 +22,6 @@ ALTER GROUP "diffusion-writers" ADD user mgleason;
 ALTER GROUP "diffusion-writers" ADD user cdong;
 ALTER GROUP "diffusion-writers" ADD user hlewis;
 
-
-CREATE ROLE "diffusion-schema-writers" NOCREATEDB NOCREATEUSER NOLOGIN NOCREATEROLE;
-GRANT CREATE ON database "diffusion_1" to "diffusion-schema-writers" ;
-ALTER GROUP "diffusion-schema-writers" ADD user "diffusion-writers";
-
-
-CREATE ROLE "diffusion-admins" with CREATEDB CREATEUSER LOGIN NOINHERIT CREATEROLE;
 ALTER GROUP "diffusion-admins" ADD user jduckwor;
 
 ALTER DATABASE diffusion_1
