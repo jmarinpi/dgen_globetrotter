@@ -40,7 +40,10 @@ CREATE TABLE diffusion_wind.outputs_res
   installed_capacity numeric,
   market_value numeric,
   first_year_bill_with_system numeric,
-  first_year_bill_without_system numeric
+  first_year_bill_without_system numeric,
+  npv4 numeric,
+  excess_generation_percent numeric,
+  total_value_of_incentives numeric
 );
 
 CREATE INDEX outputs_res_join_fields_btree ON diffusion_wind.outputs_res USING btree(county_id,bin_id,year);
@@ -87,7 +90,10 @@ CREATE TABLE diffusion_wind.outputs_com
   installed_capacity numeric,
   market_value numeric,
   first_year_bill_with_system numeric,
-  first_year_bill_without_system numeric
+  first_year_bill_without_system numeric,
+  npv4 numeric,
+  excess_generation_percent numeric,
+  total_value_of_incentives numeric
 );
 
 CREATE INDEX outputs_com_join_fields_btree ON diffusion_wind.outputs_com USING btree(county_id,bin_id,year);
@@ -133,7 +139,10 @@ CREATE TABLE diffusion_wind.outputs_ind
   installed_capacity numeric,
   market_value numeric,
   first_year_bill_with_system numeric,
-  first_year_bill_without_system numeric
+  first_year_bill_without_system numeric,
+  npv4 numeric,
+  excess_generation_percent numeric,
+  total_value_of_incentives numeric
 );
 
 CREATE INDEX outputs_ind_join_fields_btree ON diffusion_wind.outputs_ind USING btree(county_id,bin_id,year);
