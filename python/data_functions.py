@@ -740,14 +740,14 @@ def copy_outputs_to_csv(technology, schema, out_path, sectors, cur, con):
     f2.close()
     
 
-def create_scenario_report(technology, schema, scen_name, out_path, cur, con, Rscript_path, logger = None):
+def create_scenario_report(technology, schema, scen_name, out_path, cur, con, Rscript_path, pg_params_file, logger = None):
            
     # path to the plot_outputs R script        
     plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
     
     #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
     # for linux and mac, this needs to be formatted as a list of args passed to subprocess
-    command = [Rscript_path,'--vanilla', plot_outputs_path, out_path, scen_name, technology, schema]
+    command = [Rscript_path,'--vanilla', plot_outputs_path, out_path, scen_name, technology, schema, pg_params_file]
     msg = 'Creating outputs report'
     if logger is not None:            
         logger.info(msg)

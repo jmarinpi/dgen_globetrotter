@@ -407,7 +407,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     logger.info('datfunc.copy_outputs_to_csv took: %0.1fs' %(time.time() - t0))
                     # create output html report
                     t0 = time.time()
-                    datfunc.create_scenario_report(tech, schema, scen_name, out_tech_path, cur, con, cfg.Rscript_path, logger)
+                    datfunc.create_scenario_report(tech, schema, scen_name, out_tech_path, cur, con, cfg.Rscript_path, cfg.pg_params_file, logger)
                     logger.info('datfunc.create_scenario_report took: %0.1fs' %(time.time() - t0))
                     logger.info('The entire model run took: %.1f seconds' % (time.time() - model_init))
                 
