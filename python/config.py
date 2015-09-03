@@ -13,8 +13,8 @@ import multiprocessing
 # these are all variables that we can change, but don't want to expose to non-expert users
 #==============================================================================
 
-pg_params_file = 'pg_params.json'
-#pg_params_file = 'pg_params_db.json'
+#pg_params_file = 'pg_params.json'
+pg_params_file = 'pg_params_db.json'
 #pg_params_file = 'pg_params_dev.json'
 
 # load pg params from pg_params.json
