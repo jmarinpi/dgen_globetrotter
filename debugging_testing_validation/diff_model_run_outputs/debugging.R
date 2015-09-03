@@ -1,9 +1,13 @@
-one  = read.csv('/Users/mgleason/NREL_Projects/git_repos/diffusion/runs_solar/results_20150313_090413/dSolar/outputs.csv.gz')
-two = read.csv('/Users/mgleason/NREL_Projects/git_repos/diffusion/runs_solar/results_20150313_090839/dSolar/outputs.csv.gz')
+one  = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20150903_120040/BAU/solar/outputs.csv.gz')
+two = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs_solar/results_20150903_120518/dSolar/outputs.csv.gz')
 
+one = one[one$tech == 'solar', 2:93]
 # check sizes
-nrow(one)
+nrow(one) 
 nrow(two)
+
+# check column names match
+all(names(one) == names(two))
 
 # subset to cols of interest
 # one = one[,c('county_id','bin_id','year','turbine_size_kw','turbine_height_m')]
