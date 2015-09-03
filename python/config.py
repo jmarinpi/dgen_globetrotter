@@ -14,8 +14,8 @@ import multiprocessing
 #==============================================================================
 
 #pg_params_file = 'pg_params.json'
-pg_params_file = 'pg_params_db.json'
-#pg_params_file = 'pg_params_dev.json'
+#pg_params_file = 'pg_params_db.json'
+pg_params_file = 'pg_params_dev.json'
 
 # load pg params from pg_params.json
 path = os.path.dirname(os.path.abspath(__file__))
