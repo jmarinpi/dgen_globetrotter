@@ -34,9 +34,10 @@ runpath<-commandArgs(T)[1]
 scen_name<-commandArgs(T)[2]
 tech = commandArgs(T)[3]
 schema = commandArgs(T)[4]
+pg_params_file = commandArgs(T)[5]
 
 # get pg connection params
-pg_params = fromJSON(txt = '../python/pg_params.json')
+pg_params = fromJSON(txt = sprintf('../python/%s', pg_params_file))
 
 
 
