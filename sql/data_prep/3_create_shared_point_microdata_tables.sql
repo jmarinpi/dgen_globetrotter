@@ -1,163 +1,198 @@
-﻿-- residential
-DROP TABLE IF EXISTS diffusion_solar.point_microdata_res_us CASCADE;
+﻿set role 'diffusion-writers';
+
+----------------------------------------------------------------------------------------
+-- residential
+DROP TABLE IF EXISTS diffusion_shared.point_microdata_res_us CASCADE;
 SET seed to 1;
-CREATE TABLE diffusion_solar.point_microdata_res_us AS
-WITH a AS
-(
-	SELECT 	a.county_id, 
-		'p'::text || a.pca_reg::text AS pca_reg, 
-		a.reeds_reg, 
-		a.solar_incentive_array_id as incentive_array_id,
-		a.ranked_rate_array_id, 
-		a.hdf_load_index,
-		a.utility_type, 
-		-- solar only
-		solar_re_9809_gid,
-		-- res only		
-		sum(a.blkgrp_ownocc_sf_hu_portion) as point_weight
-	FROM diffusion_shared.pt_grid_us_res a
-	GROUP BY a.county_id,
-		a.pca_reg,
-		a.reeds_reg,
-		a.solar_incentive_array_id,
-		a.ranked_rate_array_id,
-		a.hdf_load_index,
-		a.utility_type,
-		-- solar only
-		a.solar_re_9809_gid
-)
-SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
-FROM a
-ORDER BY county_id;
---use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
--- previous version had 1,007,879 rows
--- new version has:
-select count(*)
-FROM diffusion_solar.point_microdata_res_us;
--- 788,514 rows
-
--- primary key and indices
-ALTER TABLE diffusion_solar.point_microdata_res_us
-ADD primary key (micro_id);
-
-CREATE INDEX point_microdata_res_us_county_id_btree
-  ON diffusion_solar.point_microdata_res_us
-  USING btree (county_id);
-
-CREATE INDEX point_microdata_res_us_utility_type_btree
-  ON diffusion_solar.point_microdata_res_us
-  USING btree (utility_type);
-
-
-VACUUM ANALYZE diffusion_solar.point_microdata_res_us;
-
-
-----------------------------------------------------------------------------------------------------
--- commercial
--- select count(*)
--- FROM diffusion_solar.point_microdata_com_us; --137779
-
-DROP TABLE IF EXISTS diffusion_solar.point_microdata_com_us CASCADE;
-SET seed to 1;
-CREATE TABLE diffusion_solar.point_microdata_com_us AS
+CREATE TABLE diffusion_shared.point_microdata_res_us AS
 WITH a AS
 (
 	SELECT a.county_id, 
 		'p'::text || a.pca_reg::text AS pca_reg, 
 		a.reeds_reg, 
-		a.solar_incentive_array_id as incentive_array_id,
 		a.ranked_rate_array_id, 
 		a.hdf_load_index,
 		a.utility_type, 
+		-- wind only
+		a.wind_incentive_array_id,
+		b.i, b.j, b.cf_bin, 
+		a.hi_dev_pct,
+		ROUND(a.acres_per_hu,2) as acres_per_hu,
+		a.canopy_ht_m,
+		a.canopy_pct >= 25 as canopy_pct_hi,
 		-- solar only
-		solar_re_9809_gid,
-		count(*)::integer as point_weight
-	FROM diffusion_shared.pt_grid_us_com a
+		a.solar_incentive_array_id,
+		a.solar_re_9809_gid,
+		-- res only		
+		sum(a.blkgrp_ownocc_sf_hu_portion) as point_weight
+	FROM diffusion_shared.pt_grid_us_res a
+	LEFT JOIN diffusion_wind.ij_cfbin_lookup_res_pts_us b 
+		ON a.gid = b.pt_gid
 	GROUP BY a.county_id,
 		a.pca_reg,
 		a.reeds_reg,
-		a.solar_incentive_array_id,
+		a.wind_incentive_array_id,
 		a.ranked_rate_array_id,
 		a.hdf_load_index,
 		a.utility_type,
+		-- wind only
+		b.i, b.j, b.cf_bin,
+		a.hi_dev_pct,
+		ROUND(a.acres_per_hu,2),
+		a.canopy_ht_m,
+		a.canopy_pct >= 25,	
 		-- solar only
+		a.solar_incentive_array_id,
 		a.solar_re_9809_gid
 )
 SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
 FROM a
 ORDER BY county_id;
 --use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
--- previous version had 347,490 rows
--- new version has:
-select count(*)
-FROM diffusion_solar.point_microdata_com_us;
--- 125,703 rows
+-- 4626447 rows
 
 -- primary key and indices
-ALTER TABLE diffusion_solar.point_microdata_com_us
+ALTER TABLE diffusion_shared.point_microdata_res_us
+ADD primary key (micro_id);
+
+CREATE INDEX point_microdata_res_us_county_id_btree
+  ON diffusion_shared.point_microdata_res_us
+  USING btree (county_id);
+
+CREATE INDEX point_microdata_res_us_utility_type_btree
+  ON diffusion_shared.point_microdata_res_us
+  USING btree (utility_type);
+
+VACUUM ANALYZE diffusion_shared.point_microdata_res_us;
+
+----------------------------------------------------------------------------------------
+-- commercial
+
+DROP TABLE IF EXISTS diffusion_shared.point_microdata_com_us CASCADE;
+SET seed to 1;
+CREATE TABLE diffusion_shared.point_microdata_com_us AS
+WITH a AS
+(
+	SELECT a.county_id, 
+		'p'::text || a.pca_reg::text AS pca_reg, 
+		a.reeds_reg, 
+		a.ranked_rate_array_id, 
+		a.hdf_load_index,
+		a.utility_type, 
+		-- wind only
+		a.wind_incentive_array_id,
+		b.i, b.j, b.cf_bin, 
+		a.hi_dev_pct,
+		ROUND(a.acres_per_hu, 2) as acres_per_hu,
+		a.canopy_ht_m,
+		a.canopy_pct >= 25 as canopy_pct_hi,
+		-- solar only
+		a.solar_incentive_array_id,
+		a.solar_re_9809_gid,
+		--
+		count(*)::integer as point_weight
+	FROM diffusion_shared.pt_grid_us_com a
+	LEFT JOIN diffusion_wind.ij_cfbin_lookup_com_pts_us b 
+	ON a.gid = b.pt_gid
+	GROUP BY a.county_id,
+		a.pca_reg,
+		a.reeds_reg,
+		a.wind_incentive_array_id,
+		a.ranked_rate_array_id,
+		a.hdf_load_index,
+		a.utility_type,
+		-- wind only
+		b.i, b.j, b.cf_bin,
+		a.hi_dev_pct,
+		ROUND(a.acres_per_hu, 2),
+		a.canopy_ht_m,
+		a.canopy_pct >= 25,
+		-- solar only
+		a.solar_incentive_array_id,
+		a.solar_re_9809_gid
+)
+SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
+FROM a
+ORDER BY county_id;
+--use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
+-- 1392781  rows
+
+-- primary key and indices
+ALTER TABLE diffusion_shared.point_microdata_com_us
 ADD primary key (micro_id);
 
 CREATE INDEX point_microdata_com_us_county_id_btree
-  ON diffusion_solar.point_microdata_com_us
+  ON diffusion_shared.point_microdata_com_us
   USING btree (county_id);
 
 CREATE INDEX point_microdata_com_us_utility_type_btree
-  ON diffusion_solar.point_microdata_com_us
+  ON diffusion_shared.point_microdata_com_us
   USING btree (utility_type);
 
-VACUUM ANALYZE diffusion_solar.point_microdata_com_us;
+VACUUM ANALYZE diffusion_shared.point_microdata_com_us;
 
 
 ----------------------------------------------------------------------------------------------------
 -- industrial
-DROP TABLE IF EXISTS diffusion_solar.point_microdata_ind_us CASCADE;
+
+DROP TABLE IF EXISTS diffusion_shared.point_microdata_ind_us CASCADE;
 SET seed to 1;
-CREATE TABLE diffusion_solar.point_microdata_ind_us AS
+CREATE TABLE diffusion_shared.point_microdata_ind_us AS
 WITH a AS
 (
 	SELECT a.county_id, 
 		'p'::text || a.pca_reg::text AS pca_reg, 
 		a.reeds_reg, 
-		a.solar_incentive_array_id as incentive_array_id,
+		a.wind_incentive_array_id,
 		a.ranked_rate_array_id, 
 		a.hdf_load_index,
 		a.utility_type, 
+		-- wind only
+		b.i, b.j, b.cf_bin, 
+		a.hi_dev_pct,
+		ROUND(a.acres_per_hu, 2) as acres_per_hu,
+		a.canopy_ht_m,
+		a.canopy_pct >= 25 as canopy_pct_hi,
 		-- solar only
-		solar_re_9809_gid,
+		a.solar_incentive_array_id,
+		a.solar_re_9809_gid,
 		count(*)::integer as point_weight
 	FROM diffusion_shared.pt_grid_us_ind a
+	LEFT JOIN diffusion_wind.ij_cfbin_lookup_ind_pts_us b 
+	ON a.gid = b.pt_gid
 	GROUP BY a.county_id,
 		a.pca_reg,
 		a.reeds_reg,
-		a.solar_incentive_array_id,
+		a.wind_incentive_array_id,
 		a.ranked_rate_array_id,
 		a.hdf_load_index,
 		a.utility_type,
+		-- wind only
+		b.i, b.j, b.cf_bin,
+		a.hi_dev_pct,
+		ROUND(a.acres_per_hu, 2),
+		a.canopy_ht_m,
+		a.canopy_pct >= 25,
 		-- solar only
+		a.solar_incentive_array_id,
 		a.solar_re_9809_gid
 )
 SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, *
 FROM a
 ORDER BY county_id;
 --use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
--- previous version had 225,119 rows
--- new version has:
-select count(*)
-FROM diffusion_solar.point_microdata_ind_us;
--- 174,056 rows
-
+-- 1030392 rows
 
 -- primary key and indices
-ALTER TABLE diffusion_solar.point_microdata_ind_us
+ALTER TABLE diffusion_shared.point_microdata_ind_us
 ADD primary key (micro_id);
 
 CREATE INDEX point_microdata_ind_us_county_id_btree
-  ON diffusion_solar.point_microdata_ind_us
+  ON diffusion_shared.point_microdata_ind_us
   USING btree (county_id);
 
 CREATE INDEX point_microdata_ind_us_utility_type_btree
-  ON diffusion_solar.point_microdata_ind_us
+  ON diffusion_shared.point_microdata_ind_us
   USING btree (utility_type);
 
-
-VACUUM ANALYZE diffusion_solar.point_microdata_ind_us;
+VACUUM ANALYZE diffusion_shared.point_microdata_ind_us;
