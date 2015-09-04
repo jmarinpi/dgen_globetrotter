@@ -28,11 +28,11 @@ CROSS JOIN diffusion_template.input_main_scenario_options b;
 ------------------------------------------------------------------------------------
 -- WIND
 -- ind
-DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined_wind CASCADE;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined_wind AS
+DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined_wind_2;
+CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined_wind_2 AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct_hi,
-	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
+	a.pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
@@ -40,7 +40,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	e.climate_zone_cbecs_2003 as climate_zone,
 	a.i, a.j, a.cf_bin,
 	l.carbon_intensity_t_per_kwh
-FROM diffusion_wind.point_microdata_ind_us a
+FROM diffusion_shared.point_microdata_ind_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
@@ -59,18 +59,18 @@ ON e.state_abbr = l.state_abbr;
 
 
 -- res
-DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined_wind CASCADE;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined_wind AS
+DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined_wind_2;
+CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined_wind_2 AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct_hi,
-	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
+	a.pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region,
 	e.climate_zone_building_america as climate_zone,
 	a.i, a.j, a.cf_bin, l.carbon_intensity_t_per_kwh
-FROM diffusion_wind.point_microdata_res_us a
+FROM diffusion_shared.point_microdata_res_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
@@ -92,18 +92,18 @@ ON e.state_abbr = l.state_abbr;
 
 
 -- comm
-DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined_wind CASCADE;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined_wind AS
+DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined_wind_2;
+CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined_wind_2 AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct_hi,
-	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
+	a.pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier,
 	e.state_abbr, e.state_fips, e.census_division_abbr, e.census_region, 
 	e.climate_zone_cbecs_2003 as climate_zone,
 	a.i, a.j, a.cf_bin, l.carbon_intensity_t_per_kwh
-FROM diffusion_wind.point_microdata_com_us a
+FROM diffusion_shared.point_microdata_com_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
@@ -123,10 +123,10 @@ ON e.state_abbr = l.state_abbr;
 -- solar
 
 -- ind
-DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined_solar CASCADE;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined_solar AS
+DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined_solar_2;
+CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined_solar_2 AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
-	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
+	a.pca_reg, a.reeds_reg, a.solar_incentive_array_id as incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_industrial as county_total_customers_2011, 
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
 	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier,
@@ -134,7 +134,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	e.climate_zone_cbecs_2003 as climate_zone,
 	a.solar_re_9809_gid, 
 	l.carbon_intensity_t_per_kwh
-FROM diffusion_solar.point_microdata_ind_us a
+FROM diffusion_shared.point_microdata_ind_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
@@ -153,10 +153,10 @@ ON e.state_abbr = l.state_abbr;
 
 
 -- res
-DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined_solar CASCADE;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined_solar AS
+DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined_solar_2;
+CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined_solar_2 AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
-	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
+	a.pca_reg, a.reeds_reg, a.solar_incentive_array_id as incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
 	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier,
@@ -164,7 +164,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	e.climate_zone_building_america as climate_zone,
 	a.solar_re_9809_gid, 
 	l.carbon_intensity_t_per_kwh
-FROM diffusion_solar.point_microdata_res_us a
+FROM diffusion_shared.point_microdata_res_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
@@ -186,10 +186,10 @@ ON e.state_abbr = l.state_abbr;
 
 
 -- comm
-DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined_solar CASCADE;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined_solar AS
+DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined_solar_2;
+CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined_solar_2 AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
-	a.pca_reg, a.reeds_reg, a.incentive_array_id, a.ranked_rate_array_id,
+	a.pca_reg, a.reeds_reg, a.solar_incentive_array_id as incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_commercial as county_total_customers_2011, 
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
 	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier,
@@ -197,7 +197,7 @@ SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	e.climate_zone_cbecs_2003 as climate_zone,
 	a.solar_re_9809_gid,
 	l.carbon_intensity_t_per_kwh
-FROM diffusion_solar.point_microdata_com_us a
+FROM diffusion_shared.point_microdata_com_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id

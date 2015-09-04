@@ -49,6 +49,13 @@ def set_source_pt_microdata(con, cur, schema, tech):
                  CREATE VIEW %(schema)s.point_microdata_%(sector_abbr)s_us_joined AS
                  SELECT *
                  FROM %(schema)s.point_microdata_%(sector_abbr)s_us_joined_%(tech)s;''' % inputs
+              
+        # switch to this for testing on new point microdata joined
+#        sql = '''DROP VIEW IF EXISTS %(schema)s.point_microdata_%(sector_abbr)s_us_joined;
+#                 CREATE VIEW %(schema)s.point_microdata_%(sector_abbr)s_us_joined AS
+#                 SELECT *
+#                 FROM %(schema)s.point_microdata_%(sector_abbr)s_us_joined_%(tech)s_2;''' % inputs                 
+                 
         cur.execute(sql)
         con.commit()
 
@@ -56,6 +63,12 @@ def set_source_pt_microdata(con, cur, schema, tech):
                  CREATE VIEW %(schema)s.point_microdata_%(sector_abbr)s_us AS
                  SELECT *
                  FROM diffusion_%(tech)s.point_microdata_%(sector_abbr)s_us;''' % inputs
+
+        # switch to this for testing new diffusion_shared.point_microdata
+#        sql = '''DROP VIEW IF EXISTS %(schema)s.point_microdata_%(sector_abbr)s_us;
+#                 CREATE VIEW %(schema)s.point_microdata_%(sector_abbr)s_us AS
+#                 SELECT *
+#                 FROM diffusion_shared.point_microdata_%(sector_abbr)s_us;''' % inputs
         cur.execute(sql)
         con.commit()        
 
