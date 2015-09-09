@@ -54,13 +54,6 @@ def set_source_pt_microdata(con, cur, schema, tech):
         cur.execute(sql)
         con.commit()
 
-        # switch to this for testing new diffusion_shared.point_microdata
-        sql = '''DROP VIEW IF EXISTS %(schema)s.point_microdata_%(sector_abbr)s_us;
-                 CREATE VIEW %(schema)s.point_microdata_%(sector_abbr)s_us AS
-                 SELECT *
-                 FROM diffusion_shared.point_microdata_%(sector_abbr)s_us;''' % inputs
-        cur.execute(sql)
-        con.commit()        
 
 def load_resume_vars(cfg, resume_year):
     # Load the variables necessary to resume the model
@@ -831,7 +824,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
             WITH b as 
             (
                 SELECT unnest(sample(array_agg(a.micro_id ORDER BY a.micro_id),%(n_bins)s,%(seed)s,True,array_agg(a.point_weight ORDER BY a.micro_id))) as micro_id
-                FROM %(schema)s.point_microdata_%(sector_abbr)s_us a
+                FROM diffusion_shared.point_microdata_%(sector_abbr)s_us a
                 WHERE a.county_id IN (%(chunk_place_holder)s)
                 GROUP BY a.county_id
             )
