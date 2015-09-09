@@ -28,8 +28,8 @@ CROSS JOIN diffusion_template.input_main_scenario_options b;
 ------------------------------------------------------------------------------------
 -- WIND
 -- ind
-DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined_wind_2;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined_wind_2 AS
+DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined_wind;
+CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined_wind AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct_hi,
 	a.pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id, a.ranked_rate_array_id,
@@ -59,8 +59,8 @@ ON e.state_abbr = l.state_abbr;
 
 
 -- res
-DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined_wind_2;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined_wind_2 AS
+DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined_wind;
+CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined_wind AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct_hi,
 	a.pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id, a.ranked_rate_array_id,
@@ -92,8 +92,8 @@ ON e.state_abbr = l.state_abbr;
 
 
 -- comm
-DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined_wind_2;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined_wind_2 AS
+DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined_wind;
+CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined_wind AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.hi_dev_pct, a.acres_per_hu, a.canopy_ht_m, a.canopy_pct_hi,
 	a.pca_reg, a.reeds_reg, a.wind_incentive_array_id as incentive_array_id, a.ranked_rate_array_id,
@@ -123,8 +123,8 @@ ON e.state_abbr = l.state_abbr;
 -- solar
 
 -- ind
-DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined_solar_2;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined_solar_2 AS
+DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined_solar;
+CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined_solar AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.pca_reg, a.reeds_reg, a.solar_incentive_array_id as incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_industrial as county_total_customers_2011, 
@@ -153,8 +153,8 @@ ON e.state_abbr = l.state_abbr;
 
 
 -- res
-DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined_solar_2;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined_solar_2 AS
+DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined_solar;
+CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined_solar AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.pca_reg, a.reeds_reg, a.solar_incentive_array_id as incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011, 
@@ -186,8 +186,8 @@ ON e.state_abbr = l.state_abbr;
 
 
 -- comm
-DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined_solar_2;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined_solar_2 AS
+DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined_solar;
+CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined_solar AS
 SELECT a.micro_id, a.county_id, a.utility_type, a.hdf_load_index,
 	a.pca_reg, a.reeds_reg, a.solar_incentive_array_id as incentive_array_id, a.ranked_rate_array_id,
 	b.total_customers_2011_commercial as county_total_customers_2011, 
