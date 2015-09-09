@@ -767,15 +767,37 @@ def generate_customer_bins(cur, con, technology, schema, seed, n_bins, sector_ab
                            rate_escalation_source, load_growth_scenario, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, rate_structure, logger):
                                
-                               
+
+    inputs = locals().copy()
+    inputs['i_place_holder'] = '%(i)s'
+        
+    #==============================================================================
+    #     break counties into subsets for parallel processing
+    #==============================================================================
+    # get list of counties
+    county_chunks = split_counties(cur, schema, npar)
+    
+    #==============================================================================
+    #     sample customer locations and load. and link together    
+    #==============================================================================
+    sample_customers_and_load(inputs, county_chunks, npar, pg_conn_string, logger, sector_abbr)
+    
+    #==============================================================================
+    #     get rate for each cusomter bin
+    #==============================================================================
+    find_rates(inputs, county_chunks, npar, pg_conn_string, rate_structure, logger)        
+
+    #==============================================================================
+    #     run the portions that are technology specific
+    #==============================================================================
     if technology == 'wind':
         resource_key = 'i,j,cf_bin'
-        final_table = generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+        final_table = generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
                            rate_escalation_source, load_growth_scenario, resource_key, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, rate_structure, logger)
     elif technology == 'solar':
         resource_key = 'solar_re_9809_gid'
-        final_table = generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+        final_table = generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
                            rate_escalation_source, load_growth_scenario, resource_key, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, rate_structure, logger)  
 
@@ -1127,7 +1149,7 @@ def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string
     print time.time()-t0
 
 
-def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
                            rate_escalation_source, load_growth_scenario, resource_key, 
                            oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, rate_structure, logger):
@@ -1145,22 +1167,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                            'com' : '%(schema)s.pt_com_best_option_each_year' % inputs, 
                            'ind' : '%(schema)s.pt_ind_best_option_each_year' % inputs}
         return table_name_dict[sector_abbr]
-    
-    #==============================================================================
-    #     break counties into subsets for parallel processing
-    #==============================================================================
-    # get list of counties
-    county_chunks = split_counties(cur, schema, npar)
-
-    #==============================================================================
-    #     sample customer locations and load. and link together    
-    #==============================================================================
-    sample_customers_and_load(inputs, county_chunks, npar, pg_conn_string, logger, sector_abbr)
-
-    #==============================================================================
-    #     get rate for each customer bin
-    #==============================================================================
-    find_rates(inputs, county_chunks, npar, pg_conn_string, rate_structure, logger)
 
     #==============================================================================
     #     Assign rooftop characterisics
@@ -1516,7 +1522,7 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, 
 ########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
-def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
                            rate_escalation_source, load_growth_scenario, resource_key,
                            oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, rate_structure, logger):
@@ -1534,23 +1540,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                            'com' : '%(schema)s.pt_com_best_option_each_year' % inputs, 
                            'ind' : '%(schema)s.pt_ind_best_option_each_year' % inputs}
         return table_name_dict[sector_abbr]
-    
-    #==============================================================================
-    #     break counties into subsets for parallel processing
-    #==============================================================================
-    # get list of counties
-    county_chunks = split_counties(cur, schema, npar)
-    
-
-    #==============================================================================
-    #     sample customer locations and load. and link together    
-    #==============================================================================
-    sample_customers_and_load(inputs, county_chunks, npar, pg_conn_string, logger, sector_abbr)
-    
-    #==============================================================================
-    #     get rate for each cusomter bin
-    #==============================================================================
-    find_rates(inputs, county_chunks, npar, pg_conn_string, rate_structure, logger)    
 
     #==============================================================================
     #     apply turbine siting restrictions
