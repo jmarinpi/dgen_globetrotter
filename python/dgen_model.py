@@ -200,6 +200,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('Getting various parameters took: %0.1fs' %(time.time() - t0))
 
             if mode != 'ReEDS' or resume_year == 2014:                
+                
                 # create output subfolder for this scenario
                 scen_name = scenario_opts['scenario_name']
                 if scen_name in scenario_names:
@@ -211,20 +212,34 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 os.makedirs(out_scen_path)
                 # copy the input scenario spreadsheet
                 shutil.copy(input_scenario, out_scen_path)
+                
+                
+                # Combine All of the Temporally Varying Data in a new Table in Postgres
+                t0 = time.time()
+                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), cfg.preprocess, logger)
+                logger.info('datfunc.combine_temporal_data took: %0.1fs' %(time.time() - t0))                
+                
+                 # loop through sectors, creating customer bins
+                for sector_abbr, sector in sectors.iteritems():
+    
+                    # define the rate escalation source and max market curve for the current sector
+                    rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
+                    # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
+                    t0 = time.time()
+                    datfunc.generate_customer_bins(cur, con, techs, schema, 
+                                                   scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
+                                                   cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
+                                                   cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.preprocess, cfg.npar, 
+                                                   cfg.pg_conn_string, 
+                                                   rate_structures[sector_abbr], logger = logger)
+                    logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))
+               
                            
-            # loop through technologies
-
-
             for tech in techs:
                    
                 if cfg.init_model:
                     logger.info("---------------Running dGen Model for %s---------------" % tech.title())                    
-                    
-                    t0 = time.time()
-                    # Combine All of the Temporally Varying Data in a new Table in Postgres
-                    datfunc.combine_temporal_data(cur, con, schema, tech, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), cfg.preprocess, logger)
-                    logger.info('datfunc.combine_temporal_data took: %0.1fs' %(time.time() - t0))
-                    
+                                        
                     # get correct inputs for the current technology
                     financial_parameters = datfunc.get_financial_parameters(con, schema, tech)
                     incentive_options = datfunc.get_manual_incentive_options(con, schema, tech)
@@ -233,26 +248,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     # Generate a pseudo-random number generator to generate random numbers in numpy.
                     # This method is better than np.random.seed() because it is thread-safe
-                    # ( do this here to ensure repeatability of results for each individual technology )
+                    # ( do this here to ensure repeatability of results for each individual technology regardless of order of their occurence in "techs" list )
                     prng = np.random.RandomState(scenario_opts['random_generator_seed'])
-    
-                # loop through sectors, creating customer bins
-                for sector_abbr, sector in sectors.iteritems():
-    
-                    # define the rate escalation source and max market curve for the current sector
-                    rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
-                    # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
-                    if cfg.init_model:
-                        t0 = time.time()
-                        datfunc.generate_customer_bins(cur, con, tech, schema, 
-                                                       scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
-                                                       cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
-                                                       cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.preprocess, cfg.npar, 
-                                                       cfg.pg_conn_string, 
-                                                       rate_structures[sector_abbr], logger = logger)
-                        logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))        
-    
-    
+            
                 # break from the loop to find all unique combinations of rates, load, and generation
                 if cfg.init_model:
                     logger.info('Finding unique combinations of rates, load, and generation')

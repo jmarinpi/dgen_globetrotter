@@ -196,17 +196,15 @@ def drop_output_schema(pg_conn_string, schema):
     con.commit()
     
 
-def combine_temporal_data(cur, con, schema, technology, start_year, end_year, sector_abbrs, preprocess, logger):
+def combine_temporal_data(cur, con, schema, techs, start_year, end_year, sector_abbrs, preprocess, logger):
 
     msg = "Combining Temporal Factors"    
     logger.info(msg)
-
-    if preprocess:
-        return 1
         
-    if technology == 'wind':
+    if 'wind' in techs:
         combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs, preprocess, logger)
-    elif technology == 'solar':
+    
+    if 'solar' in techs:
         combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs, preprocess, logger)
     
 
@@ -217,8 +215,8 @@ def combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_a
 
     # combine all of the temporal data (this only needs to be done once for all sectors)        
     sql = """
-            DROP TABLE IF EXISTS %(schema)s.temporal_factors;
-            CREATE UNLOGGED TABLE %(schema)s.temporal_factors as 
+            DROP TABLE IF EXISTS %(schema)s.temporal_factors_solar;
+            CREATE UNLOGGED TABLE %(schema)s.temporal_factors_solar as 
             SELECT a.year, 
                 a.efficiency_improvement_factor,
                 a.density_w_per_sqft,
@@ -254,19 +252,19 @@ def combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_a
     
     # create indices for subsequent joins
     sql =  """CREATE INDEX temporal_factors_sector_btree 
-              ON %(schema)s.temporal_factors 
+              ON %(schema)s.temporal_factors_solar 
               USING BTREE(sector);
               
               CREATE INDEX temporal_factors_load_growth_scenario_btree 
-              ON %(schema)s.temporal_factors 
+              ON %(schema)s.temporal_factors_solar 
               USING BTREE(load_growth_scenario);
               
               CREATE INDEX temporal_factors_rate_escalation_source_btree 
-              ON %(schema)s.temporal_factors 
+              ON %(schema)s.temporal_factors_solar 
               USING BTREE(rate_escalation_source);
               
               CREATE INDEX temporal_factors_census_division_abbr_btree 
-              ON %(schema)s.temporal_factors 
+              ON %(schema)s.temporal_factors_solar 
               USING BTREE(census_division_abbr);""" % inputs
     cur.execute(sql)
     con.commit()  
@@ -280,8 +278,8 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
     # combine the temporal data (this only needs to be done once for all sectors)
     
     # combined temporal data for technology specific factors
-    sql = """DROP TABLE IF EXISTS %(schema)s.temporal_factors_technology;
-            CREATE UNLOGGED TABLE %(schema)s.temporal_factors_technology as
+    sql = """DROP TABLE IF EXISTS %(schema)s.temporal_factors_technology_wind;
+            CREATE UNLOGGED TABLE %(schema)s.temporal_factors_technology_wind as
             SELECT      a.year, 
                     	a.turbine_size_kw, 
                     	a.power_curve_id,
@@ -316,8 +314,8 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
     con.commit()
     
     # combine temporal data for market specific factors
-    sql = """DROP TABLE IF EXISTS %(schema)s.temporal_factors_market;
-            CREATE UNLOGGED TABLE %(schema)s.temporal_factors_market as
+    sql = """DROP TABLE IF EXISTS %(schema)s.temporal_factors_market_wind;
+            CREATE UNLOGGED TABLE %(schema)s.temporal_factors_market_wind as
             SELECT      a.year, 	
                     	a.census_division_abbr,
                     	a.sector as sector_abbr,
@@ -340,37 +338,37 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
     
     # create indices for subsequent joins
     sql =  """CREATE INDEX temporal_factors_technology_turbine_height_m_btree 
-              ON %(schema)s.temporal_factors_technology
+              ON %(schema)s.temporal_factors_technology_wind
               USING BTREE(turbine_height_m);
               
               CREATE INDEX temporal_factors_technology_power_curve_id_btree 
-              ON %(schema)s.temporal_factors_technology
+              ON %(schema)s.temporal_factors_technology_wind
               USING BTREE(power_curve_id);
               
               CREATE INDEX temporal_factors_technology_year_btree 
-              ON %(schema)s.temporal_factors_technology
+              ON %(schema)s.temporal_factors_technology_wind
               USING BTREE(year);""" % inputs
     cur.execute(sql)
     con.commit()                
               
     sql =  """CREATE INDEX temporal_factors_market_sector_abbr_btree 
-              ON %(schema)s.temporal_factors_market
+              ON %(schema)s.temporal_factors_market_wind
               USING BTREE(sector_abbr);
               
               CREATE INDEX temporal_factors_market_load_growth_scenario_btree 
-              ON %(schema)s.temporal_factors_market 
+              ON %(schema)s.temporal_factors_market_wind
               USING BTREE(load_growth_scenario);
               
               CREATE INDEX temporal_factors_market_rate_escalation_source_btree 
-              ON %(schema)s.temporal_factors_market 
+              ON %(schema)s.temporal_factors_market_wind
               USING BTREE(rate_escalation_source);
               
               CREATE INDEX temporal_factors_market_census_division_abbr_btree 
-              ON %(schema)s.temporal_factors_market 
+              ON %(schema)s.temporal_factors_market_wind
               USING BTREE(census_division_abbr);
               
               CREATE INDEX temporal_factors_market_year_btree 
-              ON %(schema)s.temporal_factors_market
+              ON %(schema)s.temporal_factors_market_wind
               USING BTREE(year);""" % inputs
     cur.execute(sql)
     con.commit()  
@@ -539,12 +537,12 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     
                     FROM %(schema)s.outputs_%(sector_abbr)s a
                     
-                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_best_option_each_year b
+                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind b
                     ON a.county_id = b.county_id
                     AND a.bin_id = b.bin_id
                     and a.year = b.year
                     
-                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_initial_market_shares c
+                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_initial_market_shares_wind c
                     ON a.county_id = c.county_id
                     AND a.bin_id = c.bin_id
                     ''' % inputs
@@ -632,12 +630,12 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     
                     FROM %(schema)s.outputs_%(sector_abbr)s a
                     
-                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_best_option_each_year b
+                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar b
                     ON a.county_id = b.county_id
                     AND a.bin_id = b.bin_id
                     and a.year = b.year
                     
-                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_initial_market_shares c
+                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_initial_market_shares_solar c
                     ON a.county_id = c.county_id
                     AND a.bin_id = c.bin_id
                     ''' % inputs
@@ -686,7 +684,7 @@ def combine_outputs_reeds(schema, sectors, cur, con):
                                         
                     FROM %(schema)s.outputs_%(sector_abbr)s a
                     
-                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_best_option_each_year b
+                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar b
                     ON a.county_id = b.county_id
                     AND a.bin_id = b.bin_id
                     and a.year = b.year
@@ -744,7 +742,7 @@ def create_scenario_report(technology, schema, scen_name, out_path, cur, con, Rs
             print "Warning: %s" % messages[1]
     returncode = proc.returncode    
 
-def generate_customer_bins(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
+def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, rate_structure, logger):
                                
@@ -771,18 +769,53 @@ def generate_customer_bins(cur, con, technology, schema, seed, n_bins, sector_ab
     #==============================================================================
     #     run the portions that are technology specific
     #==============================================================================
-    if technology == 'wind':
+    if 'wind' in techs:
         resource_key = 'i,j,cf_bin'
-        final_table = generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
+        technology = 'wind'
+        logger.info('Preparing customer bins for Wind: %(sector)s sector' % inputs)
+        generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
                            rate_escalation_source, load_growth_scenario, resource_key, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, rate_structure, logger)
-    elif technology == 'solar':
+
+    if 'solar' in techs:
         resource_key = 'solar_re_9809_gid'
-        final_table = generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
+        technology = 'solar'
+        logger.info('Preparing customer bins for Wind: %(sector)s sector' % inputs)
+        generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
                            rate_escalation_source, load_growth_scenario, resource_key, oversize_system_factor, undersize_system_factor,
                            preprocess, npar, pg_conn_string, rate_structure, logger)  
 
-    return final_table
+    
+    #==============================================================================
+    #   clean up intermediate tables
+    #==============================================================================
+    msg = "Cleaning up intermediate tables"
+    logger.info(msg)
+    intermediate_tables = [ '%(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s' % inputs,
+                            '%(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_applicable_rates_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s' % inputs,
+                            '%(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs,                       
+                            ]
+        
+    sql = 'DROP TABLE IF EXISTS %s;'
+    for intermediate_table in intermediate_tables:
+        isql = sql % intermediate_table
+        if '%(i)s' in intermediate_table:
+            p_run(pg_conn_string, isql, county_chunks, npar)
+        else:
+            cur.execute(isql)
+            con.commit()        
+    
+    
+    return 0
 
 ########################################################################################################################
 ########################################################################################################################
@@ -1040,7 +1073,7 @@ def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure,
     
     ###############################################################################################
     # regardless of the rate structure, the output table needs indices added for subsequent queries
-    if inputs_dict['technology'] == 'wind':    
+    if 'wind' in inputs_dict['techs']:    
         # add index for exclusions (if they apply)
         sql =  """  CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_acres_per_hu_btree 
                     ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
@@ -1059,7 +1092,7 @@ def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure,
                     USING btree(canopy_ht_m);""" % inputs_dict                                  
         p_run(pg_conn_string, sql, county_chunks, npar)
         
-    elif inputs_dict['technology'] == 'solar':
+    if 'solar' in inputs_dict['techs']:  
         # add an index on county id and row_number
         sql = """CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_join_fields_btree 
                 ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s USING BTREE(county_id, bin_id);
@@ -1142,12 +1175,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
         
     msg = "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
     logger.info(msg)
-     
-    if preprocess == True:
-        table_name_dict = {'res': '%(schema)s.pt_res_best_option_each_year' % inputs, 
-                           'com' : '%(schema)s.pt_com_best_option_each_year' % inputs, 
-                           'ind' : '%(schema)s.pt_ind_best_option_each_year' % inputs}
-        return table_name_dict[sector_abbr]
 
     #==============================================================================
     #     Assign rooftop characterisics
@@ -1187,8 +1214,8 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     t0 = time.time()
     logger.info(msg)
     
-    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_best_option_each_year;
-                CREATE UNLOGGED TABLE  %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar;
+                CREATE UNLOGGED TABLE  %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
                 (
                   micro_id integer,
                   county_id integer,
@@ -1244,7 +1271,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     cur.execute(sql)
     con.commit()
     
-    sql =  """INSERT INTO %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+    sql =  """INSERT INTO %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
             WITH combined AS
             (
                 SELECT
@@ -1300,7 +1327,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                                                 d.sys_size_target_nem,
                                                 d.sys_size_target_no_nem) as system_sizing_return
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s a
-                INNER JOIN %(schema)s.temporal_factors b
+                INNER JOIN %(schema)s.temporal_factors_solar b
                     ON a.census_division_abbr = b.census_division_abbr
                 LEFT JOIN %(schema)s.input_main_nem_scenario c
                     ON c.state_abbr = a.state_abbr
@@ -1356,52 +1383,52 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     print time.time() - t0
     
     # create indices
-    sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_join_fields_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+    sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_join_fields_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(county_id,bin_id);
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_year_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_year_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(year);
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_incentive_array_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_incentive_array_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(incentive_array_id);    
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_re_9809_gid_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_solar_re_9809_gid_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(solar_re_9809_gid);            
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_tilt_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_tilt_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(tilt);     
 
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_azimuth_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_azimuth_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(azimuth);        
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_system_size_kw_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_system_size_kw_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(system_size_kw);  
 
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_rate_id_alias_source_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_rate_id_alias_source_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(rate_id_alias, rate_source);         
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_hdf_load_index_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_hdf_load_index_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(hdf_load_index);  
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_crb_model_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_crb_model_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(crb_model);  
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_load_kwh_per_customer_in_bin_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_load_kwh_per_customer_in_bin_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(load_kwh_per_customer_in_bin);    
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_nem_fields_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_nem_fields_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate);
             """ % inputs
     cur.execute(sql)
@@ -1409,38 +1436,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     
     print time.time() - t0
 
-    #==============================================================================
-    #   clean up intermediate tables
-    #==============================================================================
-    msg = "Cleaning up intermediate tables"
-    logger.info(msg)
-    intermediate_tables = [ '%(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s' % inputs,
-                            '%(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s' % inputs,
-                            '%(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s' % inputs,
-                            '%(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s' % inputs,
-                            '%(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s' % inputs,
-                            '%(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs,
-                            '%(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s' % inputs,
-                            '%(schema)s.pt_%(sector_abbr)s_sample_load_applicable_rates_%(i_place_holder)s' % inputs,
-                            '%(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s' % inputs                            
-                            ]
-
-        
-    sql = 'DROP TABLE IF EXISTS %s;'
-    for intermediate_table in intermediate_tables:
-        isql = sql % intermediate_table
-        if '%(i)s' in intermediate_table:
-            p_run(pg_conn_string, isql, county_chunks, npar)
-        else:
-            cur.execute(isql)
-            con.commit()    
-
-    #==============================================================================
-    #     return name of final table
-    #==============================================================================
-    final_table = '%(schema)s.pt_%(sector_abbr)s_best_option_each_year' % inputs
-
-    return final_table
 
 
 def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, logger):
@@ -1515,12 +1510,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
         
     msg = "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
     logger.info(msg)
-     
-    if preprocess == True:
-        table_name_dict = {'res': '%(schema)s.pt_res_best_option_each_year' % inputs, 
-                           'com' : '%(schema)s.pt_com_best_option_each_year' % inputs, 
-                           'ind' : '%(schema)s.pt_ind_best_option_each_year' % inputs}
-        return table_name_dict[sector_abbr]
 
     #==============================================================================
     #     apply turbine siting restrictions
@@ -1607,10 +1596,10 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                                   d.sys_oversize_limit_no_nem) as scoe_return
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s a
                 
-                INNER JOIN %(schema)s.temporal_factors_market b
+                INNER JOIN %(schema)s.temporal_factors_market_wind b
                     ON a.census_division_abbr = b.census_division_abbr
 
-                INNER JOIN %(schema)s.temporal_factors_technology e
+                INNER JOIN %(schema)s.temporal_factors_technology_wind e
                     ON a.turbine_height_m = e.turbine_height_m
                     AND a.turbine_size_kw = e.turbine_size_kw
                     AND a.power_curve_id = e.power_curve_id
@@ -1673,15 +1662,15 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     t0 = time.time()
     logger.info(msg)
     # create empty table
-    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_best_option_each_year;
-            CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_best_option_each_year AS
+    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind;
+            CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind AS
             SELECT *
             FROM %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_0
             LIMIT 0;""" % inputs    
     cur.execute(sql)
     con.commit()
     
-    sql =  """INSERT INTO %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+    sql =  """INSERT INTO %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
               SELECT distinct on (a.county_id, a.bin_id, a.year) a.*
               FROM  %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s a
               ORDER BY a.county_id ASC, a.bin_id ASC, a.year ASC, a.scoe ASC,
@@ -1689,48 +1678,48 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     p_run(pg_conn_string, sql, county_chunks, npar)
     
     # create indices
-    sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_join_fields_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+    sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_join_fields_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(county_id,bin_id);
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_year_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_year_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(year);
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_incentive_array_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_incentive_array_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(incentive_array_id);              
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_i_j_cf_bin_height_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_i_j_cf_bin_height_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(i, j, cf_bin, turbine_height_m);     
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_turbine_id_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_turbine_id_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(turbine_id);   
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_system_size_kw_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_system_size_kw_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(system_size_kw);
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_rate_id_alias_source_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_rate_id_alias_source_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(rate_id_alias, rate_source);             
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_hdf_load_index_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_hdf_load_index_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(hdf_load_index);  
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_crb_model_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_crb_model_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(crb_model);  
 
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_load_kwh_per_customer_in_bin_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_load_kwh_per_customer_in_bin_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(load_kwh_per_customer_in_bin);      
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_nem_fields_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_nem_fields_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate);                  
              
              """ % inputs
@@ -1739,47 +1728,17 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     
     print time.time() - t0
 
-    #==============================================================================
-    #   clean up intermediate tables
-    #==============================================================================
-    msg = "Cleaning up intermediate tables"
-    logger.info(msg)
-    intermediate_tables = ['%(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s' % inputs,
-                           '%(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s' % inputs,
-                           '%(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s' % inputs,
-                           '%(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s' % inputs,
-                           '%(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s' % inputs,
-                           '%(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs,
-                           '%(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s' % inputs,
-                           '%(schema)s.pt_%(sector_abbr)s_sample_load_applicable_rates_%(i_place_holder)s' % inputs,
-                           '%(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s' % inputs    ]
 
-      
-         
-    sql = 'DROP TABLE IF EXISTS %s;'
-    for intermediate_table in intermediate_tables:
-        isql = sql % intermediate_table
-        if '%(i)s' in intermediate_table:
-            p_run(pg_conn_string, isql, county_chunks, npar)
-        else:
-            cur.execute(isql)
-            con.commit()    
 
-    #==============================================================================
-    #     return name of final table
-    #==============================================================================
-    final_table = '%(schema)s.pt_%(sector_abbr)s_best_option_each_year' % inputs
 
-    return final_table
-
-def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
+def get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors):
     
     
     inputs_dict = locals().copy()     
        
-    if technology == 'wind':
+    if tech == 'wind':
         inputs_dict['resource_keys'] = 'i, j, cf_bin, turbine_height_m, turbine_id'
-    elif technology == 'solar':
+    elif tech == 'solar':
         inputs_dict['resource_keys'] = 'solar_re_9809_gid, tilt, azimuth'
 
 
@@ -1791,7 +1750,7 @@ def get_unique_parameters_for_urdb3(cur, con, technology, schema, sectors):
                     	hdf_load_index, crb_model, load_kwh_per_customer_in_bin,
                         %(resource_keys)s, system_size_kw, 
                         ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate
-                FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+                FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s
                 GROUP BY  rate_id_alias, rate_source,
                     	 hdf_load_index, crb_model, load_kwh_per_customer_in_bin,
                     	 %(resource_keys)s, system_size_kw,
@@ -1891,20 +1850,20 @@ def split_utilityrate3_inputs(row_count_limit, cur, con, schema):
     
     
 
-def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_string, gross_fit_mode = False):
+def get_utilityrate3_inputs(uids, cur, con, tech, schema, npar, pg_conn_string, gross_fit_mode = False):
     
     
     inputs_dict = locals().copy()     
        
     inputs_dict['load_scale_offset'] = 1e8
-    if technology == 'wind':
+    if tech == 'wind':
         inputs_dict['gen_join_clause'] = """a.i = d.i
                                             AND a.j = d.j
                                             AND a.cf_bin = d.cf_bin
                                             AND a.turbine_height_m = d.height
                                             AND a.turbine_id = d.turbine_id"""
         inputs_dict['gen_scale_offset'] = 1e3
-    elif technology == 'solar':
+    elif tech == 'solar':
         inputs_dict['gen_join_clause'] = """a.solar_re_9809_gid = d.solar_re_9809_gid
                                             AND a.tilt = d.tilt
                                             AND a.azimuth = d.azimuth"""
@@ -1947,7 +1906,7 @@ def get_utilityrate3_inputs(uids, cur, con, technology, schema, npar, pg_conn_st
                     AND a.hdf_load_index = c.hdf_index
             
             -- JOIN THE RESOURCE DATA
-            LEFT JOIN diffusion_%(technology)s.%(technology)s_resource_hourly d
+            LEFT JOIN diffusion_%(tech)s.%(tech)s_resource_hourly d
                     ON %(gen_join_clause)s
             
             WHERE a.uid IN (%(chunk_place_holder)s);""" % inputs_dict
@@ -2046,7 +2005,7 @@ def run_utilityrate3(df, logger):
     return results_df
     
 
-def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, technology):
+def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech):
     
     inputs_dict = locals().copy()  
 
@@ -2056,13 +2015,13 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, techno
     sam_results_df.reset_index(drop = True, inplace = True)     
     
     # set the join clauses depending on the technology
-    if technology == 'wind':
+    if tech == 'wind':
         inputs_dict['resource_join_clause'] = """a.i = b.i
                                             AND a.j = b.j
                                             AND a.cf_bin = b.cf_bin
                                             AND a.turbine_height_m = b.turbine_height_m
                                             AND a.turbine_id = b.turbine_id """
-    elif technology == 'solar':
+    elif tech == 'solar':
         inputs_dict['resource_join_clause'] = """a.solar_re_9809_gid = b.solar_re_9809_gid
                                             AND a.tilt = b.tilt
                                             AND a.azimuth = b.azimuth """
@@ -2108,14 +2067,14 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, techno
     for sector_abbr, sector in sectors.iteritems():
         inputs_dict['sector_abbr'] = sector_abbr
         inputs_dict['sector'] = sector
-        sql = """   DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_elec_costs;
-                    CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_elec_costs AS
+        sql = """   DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s;
+                    CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s AS
                     
                     SELECT a.county_id, a.bin_id, a.year, 
                         c.elec_cost_with_system_year1 as first_year_bill_with_system, 
                         c.elec_cost_without_system_year1 as first_year_bill_without_system,
                         c.excess_generation_percent as excess_generation_percent
-                    FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year a
+                    FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s a
                 
                     LEFT JOIN %(schema)s.unique_rate_gen_load_combinations b
                         ON a.rate_id_alias = b.rate_id_alias
@@ -2138,12 +2097,12 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, techno
         con.commit()
     
         # add indices on: county_id, bin_id, year
-        sql = """CREATE INDEX pt_%(sector_abbr)s_elec_costs_join_fields_btree 
-                 ON %(schema)s.pt_%(sector_abbr)s_elec_costs
+        sql = """CREATE INDEX pt_%(sector_abbr)s_elec_costs_%(tech)s_join_fields_btree 
+                 ON %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s
                  USING BTREE(county_id,bin_id);
              
-                 CREATE INDEX pt_%(sector_abbr)s_elec_costs_year_btree 
-                 ON %(schema)s.pt_%(sector_abbr)s_elec_costs
+                 CREATE INDEX pt_%(sector_abbr)s_elec_costs_%(tech)s_year_btree 
+                 ON %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s
                  USING BTREE(year);""" % inputs_dict
         cur.execute(sql)
         con.commit()
@@ -2242,7 +2201,7 @@ def get_dsire_incentives(cur, con, schema, tech, sector_abbr, preprocess, npar, 
                 WITH a AS
                 (
                 	SELECT DISTINCT incentive_array_id as incentive_array_id
-                	FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year
+                	FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s
                 	WHERE year = 2014
                 )
                 SELECT a.incentive_array_id, c.*
@@ -2265,15 +2224,15 @@ def get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema):
     # add the starting capacity table to the inputs dict
     inputs['cap_table'] = 'starting_capacities_mw_2012_q4_us'
 
-    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares;
-             CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares AS
+    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;
+             CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s AS
              WITH a as
              (
 			SELECT county_id, bin_id, state_abbr,
 				CASE  WHEN system_size_kw = 0 then 0
 					ELSE customers_in_bin
 				END AS customers_in_bin
-			FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year	
+			FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s	
 			WHERE year = 2014			
              ),
              b as
@@ -2297,8 +2256,8 @@ def get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema):
     con.commit()    
     
     
-    sql = """CREATE INDEX pt_%(sector_abbr)s_initial_market_shares_join_fields_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_initial_market_shares 
+    sql = """CREATE INDEX pt_%(sector_abbr)s_initial_market_shares_%(tech)s_join_fields_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s 
              USING BTREE(county_id,bin_id);""" % inputs
     cur.execute(sql)
     con.commit()
@@ -2308,7 +2267,7 @@ def get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema):
                     initial_market_share AS market_share_last_year,
                     initial_number_of_adopters AS number_of_adopters_last_year,
                     1000 * initial_capacity_mw AS installed_capacity_last_year 
-            FROM %(schema)s.pt_%(sector_abbr)s_initial_market_shares;""" % inputs
+            FROM %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;""" % inputs
     df = sqlio.read_frame(sql, con)
     return df  
 
@@ -2325,8 +2284,8 @@ def get_main_dataframe(con, sector_abbr, schema, year, tech):
     inputs_dict = locals().copy()     
     
     sql = """SELECT a.*, b.first_year_bill_with_system, b.first_year_bill_without_system, b.excess_generation_percent
-            FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year a
-            LEFT JOIN %(schema)s.pt_%(sector_abbr)s_elec_costs b
+            FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s a
+            LEFT JOIN %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s b
                     ON a.county_id = b.county_id
                     AND a.bin_id = b.bin_id
                     AND a.year = b.year
@@ -2336,6 +2295,7 @@ def get_main_dataframe(con, sector_abbr, schema, year, tech):
 
     return df
     
+
 def get_financial_parameters(con, schema, tech):
     ''' Pull financial parameters dataframe from dB. We used to filter by business model here, but with leasing we will join
     on sector and business_model later in calc_economics.
