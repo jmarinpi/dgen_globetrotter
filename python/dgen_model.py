@@ -236,21 +236,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                
                            
             for tech in techs:
-                   
-                if cfg.init_model:
-                    logger.info("---------------Running dGen Model for %s---------------" % tech.title())                    
-                                        
-                    # get correct inputs for the current technology
-                    financial_parameters = datfunc.get_financial_parameters(con, schema, tech)
-                    incentive_options = datfunc.get_manual_incentive_options(con, schema, tech)
-                    deprec_schedule = datfunc.get_depreciation_schedule(con, schema, tech, type = 'macrs').values
-                    ann_system_degradation = datfunc.get_system_degradation(cur, schema, tech)
-                    
-                    # Generate a pseudo-random number generator to generate random numbers in numpy.
-                    # This method is better than np.random.seed() because it is thread-safe
-                    # ( do this here to ensure repeatability of results for each individual technology regardless of order of their occurence in "techs" list )
-                    prng = np.random.RandomState(scenario_opts['random_generator_seed'])
-            
                 # break from the loop to find all unique combinations of rates, load, and generation
                 if cfg.init_model:
                     logger.info('Finding unique combinations of rates, load, and generation')
@@ -298,7 +283,21 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==============================================================================
                  
     
-    
+            for tech in techs:
+                if cfg.init_model:
+                    logger.info("---------------Running dGen Model for %s---------------" % tech.title())                    
+                                        
+                    # get correct inputs for the current technology
+                    financial_parameters = datfunc.get_financial_parameters(con, schema, tech)
+                    incentive_options = datfunc.get_manual_incentive_options(con, schema, tech)
+                    deprec_schedule = datfunc.get_depreciation_schedule(con, schema, tech, type = 'macrs').values
+                    ann_system_degradation = datfunc.get_system_degradation(cur, schema, tech)
+                    
+                    # Generate a pseudo-random number generator to generate random numbers in numpy.
+                    # This method is better than np.random.seed() because it is thread-safe
+                    # ( do this here to ensure repeatability of results for each individual technology regardless of order of their occurence in "techs" list )
+                    prng = np.random.RandomState(scenario_opts['random_generator_seed'])
+                
                 # loop through sectors and time steps to calculate full economics and diffusion                
                 for sector_abbr, sector in sectors.iteritems():  
                     # get dsire incentives for the generated customer bins
