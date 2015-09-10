@@ -17,8 +17,8 @@ import time
 
 #==============================================================================
 def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
-                   financial_parameters, scenario_opts, incentive_opts, max_market_share, cur, con, 
-                   year, dsire_incentives, deprec_schedule, logger, rate_escalations, ann_system_degradation, mode, prng,curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
+                   financial_parameters_all, scenario_opts, incentive_opts_all, max_market_share, cur, con, 
+                   year, dsire_incentives, deprec_schedule_all, logger, rate_escalations, ann_system_degradation_all, mode, prng,curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
     Calculates economics of system adoption (cashflows, payback, irr, etc.)
     
@@ -28,6 +28,16 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
         OUT:
             df - pd dataframe - main dataframe with econ outputs appended as columns
     '''
+    
+    
+    # filter the tidy-structure inputs to the correct technology:
+    sql = "tech == '%s'" % tech
+    financial_parameters = financial_parameters_all.query(sql)[['sector', 'business_model', 'loan_term_yrs', 'loan_rate', 'down_payment', 'discount_rate', 'tax_rate', 'length_of_irr_analysis_yrs']]
+    incentive_opts = incentive_opts_all.query(sql)[['overwrite_exist_inc', 'incentive_start_year']]
+    deprec_schedule = deprec_schedule_all.query(sql).sort('year', ascending = True)['deprec'].values
+    print ann_system_degradation_all
+    ann_system_degradation = ann_system_degradation_all.query(sql)['ann_system_degradation'][0]
+    
     # Evaluate economics of leasing or buying for all customers who are able to lease
     business_model = pd.DataFrame({'business_model' : ('host_owned','tpo'), 
                                    'metric' : ('payback_period','percent_monthly_bill_savings'),

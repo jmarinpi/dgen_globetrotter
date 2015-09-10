@@ -2143,23 +2143,19 @@ def get_technologies(con, schema):
     return techs
     
 
-def get_system_degradation(cur, schema, tech):
+def get_system_degradation(con, schema):
     '''Return the annual system degradation rate as float.
         '''    
         
-    if tech == 'solar':
-        sql = '''SELECT ann_system_degradation 
-             FROM %s.input_solar_performance_annual_system_degradation;''' % schema
-        cur.execute(sql)
-        ann_system_degradation = cur.fetchone()['ann_system_degradation']
-    else:
-        # if wind, system degradation won't be applied
-        ann_system_degradation = 0
-                        
+
+    sql = '''SELECT ann_system_degradation, tech
+         FROM %s.input_performance_annual_system_degradation;''' % schema
+    ann_system_degradation = sqlio.read_frame(sql, con)
+
     return ann_system_degradation    
     
         
-def get_depreciation_schedule(con, schema, tech, type = 'macrs, standard'):
+def get_depreciation_schedule(con, schema, macrs = True):
     ''' Pull depreciation schedule from dB
     
         IN: type - string - [all, macrs, standard] 
@@ -2167,11 +2163,17 @@ def get_depreciation_schedule(con, schema, tech, type = 'macrs, standard'):
 
     '''
     inputs = locals().copy()    
-            
-    inputs['field'] = type.lower()
-    sql = '''SELECT %(field)s 
-             FROM %(schema)s.input_%(tech)s_finances_depreciation_schedule;''' % inputs
+    
+    if macrs == True:
+        inputs['field'] = 'macrs'
+    else:
+        inputs['field'] = 'standard'
+        
+    sql = '''SELECT year, tech, %(field)s as deprec
+             FROM %(schema)s.input_finances_depreciation_schedule
+             order by tech, year ASC;''' % inputs
     df = sqlio.read_frame(sql, con)
+    
     return df
     
 def get_scenario_options(cur, schema):
@@ -2291,12 +2293,13 @@ def get_main_dataframe(con, sector_abbr, schema, year, tech):
                     AND a.year = b.year
             WHERE a.year = %(year)s""" % inputs_dict
     df = sqlio.read_frame(sql, con, coerce_float = False)
+
     df['tech'] = tech
 
     return df
     
 
-def get_financial_parameters(con, schema, tech):
+def get_financial_parameters(con, schema):
     ''' Pull financial parameters dataframe from dB. We used to filter by business model here, but with leasing we will join
     on sector and business_model later in calc_economics.
     
@@ -2308,7 +2311,7 @@ def get_financial_parameters(con, schema, tech):
     inputs = locals().copy()
     
     sql = '''SELECT * 
-             FROM %(schema)s.input_%(tech)s_finances;''' % inputs
+             FROM %(schema)s.input_financial_parameters;''' % inputs
     df = sqlio.read_frame(sql, con)
     
     # minor formatting for table joins later on
@@ -2350,12 +2353,12 @@ def get_market_projections(con, schema):
     return sqlio.read_frame(sql , con)
 
 
-def get_manual_incentive_options(con, schema, tech):
+def get_manual_incentive_options(con, schema):
     
     inputs = locals().copy()
     
-    sql = '''SELECT overwrite_exist_inc, incentive_start_year
-             FROM %(schema)s.input_%(tech)s_incentive_options;''' % inputs
+    sql = '''SELECT *
+             FROM %(schema)s.input_incentive_options;''' % inputs
     df = sqlio.read_frame(sql, con)
     
     return df            

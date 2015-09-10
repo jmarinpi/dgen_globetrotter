@@ -191,11 +191,19 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('The following technologies will be evaluated: %s' % techs)
             
             
-            # get other user-defined inputs (these are all technology agnostic user-inputs)
+            #==============================================================================
+            #   get other user-defined inputs
+            #==============================================================================
+            #  these are all technology agnostic user-inputs
             max_market_share = datfunc.get_max_market_share(con, schema)
             market_projections = datfunc.get_market_projections(con, schema)
             rate_escalations = datfunc.get_rate_escalations(con, schema)
             rate_structures = datfunc.get_rate_structures(con, schema)
+            # these are technology specific, set up in tidy form with a "tech" field
+            financial_parameters = datfunc.get_financial_parameters(con, schema)
+            incentive_options = datfunc.get_manual_incentive_options(con, schema)
+            deprec_schedule = datfunc.get_depreciation_schedule(con, schema, macrs = True)
+            ann_system_degradation = datfunc.get_system_degradation(con, schema)      
 
             logger.info('Getting various parameters took: %0.1fs' %(time.time() - t0))
 
@@ -281,17 +289,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     datfunc.write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech)
                     logger.info('datfunc.write_utilityrate3_to_pg took: %0.1fs' % (time.time() - t0),)  
                 #==============================================================================
-                 
+
     
             for tech in techs:
                 if cfg.init_model:
                     logger.info("---------------Running dGen Model for %s---------------" % tech.title())                    
-                                        
-                    # get correct inputs for the current technology
-                    financial_parameters = datfunc.get_financial_parameters(con, schema, tech)
-                    incentive_options = datfunc.get_manual_incentive_options(con, schema, tech)
-                    deprec_schedule = datfunc.get_depreciation_schedule(con, schema, tech, type = 'macrs').values
-                    ann_system_degradation = datfunc.get_system_degradation(cur, schema, tech)
                     
                     # Generate a pseudo-random number generator to generate random numbers in numpy.
                     # This method is better than np.random.seed() because it is thread-safe

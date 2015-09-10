@@ -402,3 +402,57 @@ SELECT 'udind'::character varying(5) as rate_source,
 	a.state_fips as rate_id_alias, 
 	('{"ur_flat_buy_rate" : ' || round(ind_rate_dlrs_per_kwh,2)::text || '}')::JSON as sam_json
 FROM diffusion_template.input_main_market_flat_electric_rates a;
+
+
+------------------------------------------------------------------------------------------------
+-- finances
+set role 'diffusion-writers';
+
+DROP VIEW IF EXISTS diffusion_template.input_finances;
+CREATE VIEW diffusion_template.input_finances AS
+select *, 'wind'::text as tech
+from diffusion_template.input_wind_finances
+UNION ALL
+select *, 'solar'::text as tech
+from diffusion_template.input_solar_finances;
+
+------------------------------------------------------------------------------------------------
+-- finances
+set role 'diffusion-writers';
+
+DROP VIEW IF EXISTS diffusion_template.input_financial_parameters;
+CREATE VIEW diffusion_template.input_financial_parameters AS
+select *, 'wind'::text as tech
+from diffusion_template.input_wind_finances
+UNION ALL
+select *, 'solar'::text as tech
+from diffusion_template.input_solar_finances;
+
+------------------------------------------------------------------------------------------------
+-- manual incentive options
+DROP VIEW IF EXISTS diffusion_template.input_incentive_options;
+CREATE VIEW diffusion_template.input_incentive_options AS
+SELECT overwrite_exist_inc, incentive_start_year, 'wind'::text as tech
+FROM diffusion_template.input_wind_incentive_options
+UNION ALL
+SELECT overwrite_exist_inc, incentive_start_year, 'solar'::text as tech
+FROM diffusion_template.input_solar_incentive_options;
+
+------------------------------------------------------------------------------------------------
+-- depreciation schedule
+DROP VIEW IF EXISTS diffusion_template.input_finances_depreciation_schedule;
+CREATE VIEW diffusion_template.input_finances_depreciation_schedule AS
+SELECT *, 'wind'::text as tech
+FROM diffusion_template.input_wind_finances_depreciation_schedule 
+UNION ALL
+SELECT *, 'solar'::text as tech
+FROM diffusion_template.input_solar_finances_depreciation_schedule;
+
+------------------------------------------------------------------------------------------------
+-- annual system degradation
+DROP VIEW IF EXISTS diffusion_template.input_performance_annual_system_degradation;
+CREATE VIEW diffusion_template.input_performance_annual_system_degradation AS
+SELECT 0::numeric as ann_system_degradation, 'wind'::text as tech
+UNION ALL
+SELECT ann_system_degradation, 'solar'::text as tech
+FROM diffusion_template.input_solar_performance_annual_system_degradation;
