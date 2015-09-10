@@ -252,7 +252,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     row_count_limit = datfunc.get_max_row_count_for_utilityrate3()            
                     sam_results_list = []
                     # set up chunks
-                    uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema)
+                    uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema, tech)
                     nbatches = len(uid_lists)
                     t0 = time.time()
                     logger.info("SAM Calculations will be run in %s batches to prevent memory overflow" % nbatches)

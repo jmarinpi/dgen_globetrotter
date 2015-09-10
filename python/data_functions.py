@@ -1759,44 +1759,44 @@ def get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors):
     
     
     inputs_dict['sql'] = ' UNION '.join(sqls)    
-    sql = """DROP TABLE IF EXISTS %(schema)s.unique_rate_gen_load_combinations;
-             CREATE UNLOGGED TABLE %(schema)s.unique_rate_gen_load_combinations AS
+    sql = """DROP TABLE IF EXISTS %(schema)s.unique_rate_gen_load_combinations_%(tech)s;
+             CREATE UNLOGGED TABLE %(schema)s.unique_rate_gen_load_combinations_%(tech)s AS
              %(sql)s;""" % inputs_dict
     cur.execute(sql)
     con.commit()
     
     
     # create indices on: rate_id_alias, hdf_load_index, crb_model, resource keys
-    sql = """CREATE INDEX unique_rate_gen_load_combinations_rate_id_alias_btree
-             ON %(schema)s.unique_rate_gen_load_combinations
+    sql = """CREATE INDEX unique_rate_gen_load_combinations_%(tech)s_rate_id_alias_btree
+             ON %(schema)s.unique_rate_gen_load_combinations_%(tech)s
              USING BTREE(rate_id_alias);
              
-             CREATE INDEX unique_rate_gen_load_combinations_rate_source_btree
-             ON %(schema)s.unique_rate_gen_load_combinations
+             CREATE INDEX unique_rate_gen_load_combinations_%(tech)s_rate_source_btree
+             ON %(schema)s.unique_rate_gen_load_combinations_%(tech)s
              USING BTREE(rate_source);
             
-             CREATE INDEX unique_rate_gen_load_combinations_hdf_load_index_btree
-             ON %(schema)s.unique_rate_gen_load_combinations
+             CREATE INDEX unique_rate_gen_load_combinations_%(tech)s_hdf_load_index_btree
+             ON %(schema)s.unique_rate_gen_load_combinations_%(tech)s
              USING BTREE(hdf_load_index);
              
-             CREATE INDEX unique_rate_gen_load_combinations_crb_model_btree
-             ON %(schema)s.unique_rate_gen_load_combinations
+             CREATE INDEX unique_rate_gen_load_combinations_%(tech)s_crb_model_btree
+             ON %(schema)s.unique_rate_gen_load_combinations_%(tech)s
              USING BTREE(crb_model);
 
-             CREATE INDEX unique_rate_gen_load_combinations_load_kwh_btree
-             ON %(schema)s.unique_rate_gen_load_combinations
+             CREATE INDEX unique_rate_gen_load_combinations_%(tech)s_load_kwh_btree
+             ON %(schema)s.unique_rate_gen_load_combinations_%(tech)s
              USING BTREE(load_kwh_per_customer_in_bin);
              
-             CREATE INDEX unique_rate_gen_load_combinations_system_size_kw_btree
-             ON %(schema)s.unique_rate_gen_load_combinations
+             CREATE INDEX unique_rate_gen_load_combinations_%(tech)s_system_size_kw_btree
+             ON %(schema)s.unique_rate_gen_load_combinations_%(tech)s
              USING BTREE(system_size_kw);
              
-             CREATE INDEX unique_rate_gen_load_combinations_resource_keys_btree
-             ON %(schema)s.unique_rate_gen_load_combinations
+             CREATE INDEX unique_rate_gen_load_combinations_%(tech)s_resource_keys_btree
+             ON %(schema)s.unique_rate_gen_load_combinations_%(tech)s
              USING BTREE(%(resource_keys)s);
              
-             CREATE INDEX unique_rate_gen_load_combinations_nem_fields_btree
-             ON %(schema)s.unique_rate_gen_load_combinations
+             CREATE INDEX unique_rate_gen_load_combinations_%(tech)s_nem_fields_btree
+             ON %(schema)s.unique_rate_gen_load_combinations_%(tech)s
              USING BTREE(ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate);
              """ % inputs_dict
              
@@ -1804,7 +1804,7 @@ def get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors):
     con.commit()
     
     # add a unique id/primary key
-    sql = """ALTER TABLE %(schema)s.unique_rate_gen_load_combinations
+    sql = """ALTER TABLE %(schema)s.unique_rate_gen_load_combinations_%(tech)s
              ADD COLUMN uid serial PRIMARY KEY;""" % inputs_dict
     cur.execute(sql)
     con.commit()
@@ -1827,13 +1827,13 @@ def get_max_row_count_for_utilityrate3():
     return total_rows
     
 
-def split_utilityrate3_inputs(row_count_limit, cur, con, schema):
+def split_utilityrate3_inputs(row_count_limit, cur, con, schema, tech):
 
     inputs_dict = locals().copy()    
     
    # find the set of uids     
     sql =   """SELECT uid 
-               FROM %(schema)s.unique_rate_gen_load_combinations
+               FROM %(schema)s.unique_rate_gen_load_combinations_%(tech)s
                ORDER BY uid;""" % inputs_dict
     cur.execute(sql)
     uids = [row['uid'] for row in cur.fetchall()]
@@ -1893,7 +1893,7 @@ def get_utilityrate3_inputs(uids, cur, con, tech, schema, npar, pg_conn_string, 
                         COALESCE(d.cf,  array_fill(1, array[8760])) as generation_hourly, -- fill in for customers with no matching wind resource (values don't matter because they will be zeroed out)
                         a.ur_enable_net_metering as apply_net_metering, a.ur_nm_yearend_sell_rate, a.ur_flat_sell_rate
             	
-            FROM %(schema)s.unique_rate_gen_load_combinations a
+            FROM %(schema)s.unique_rate_gen_load_combinations_%(tech)s a
             
             -- JOIN THE RATE DATA
             LEFT JOIN %(schema)s.all_rate_jsons b 
@@ -2030,8 +2030,8 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech):
     #==============================================================================
     #     CREATE TABLE TO HOLD RESULTS
     #==============================================================================
-    sql = """DROP TABLE IF EXISTS %(schema)s.utilityrate3_results;
-             CREATE UNLOGGED TABLE %(schema)s.utilityrate3_results
+    sql = """DROP TABLE IF EXISTS %(schema)s.utilityrate3_results_%(tech)s;
+             CREATE UNLOGGED TABLE %(schema)s.utilityrate3_results_%(tech)s
              (
                 uid integer,
                 elec_cost_with_system_year1 NUMERIC,
@@ -2050,13 +2050,13 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech):
     # seek back to the beginning of the stringIO file
     s.seek(0)
     # copy the data from the stringio file to the postgres table
-    cur.copy_expert('COPY %(schema)s.utilityrate3_results FROM STDOUT WITH CSV' % inputs_dict, s)
+    cur.copy_expert('COPY %(schema)s.utilityrate3_results_%(tech)s FROM STDOUT WITH CSV' % inputs_dict, s)
     # commit the additions and close the stringio file (clears memory)
     con.commit()    
     s.close()
     
     # add primary key constraint to uid field
-    sql = """ALTER TABLE %(schema)s.utilityrate3_results ADD PRIMARY KEY (uid);""" % inputs_dict
+    sql = """ALTER TABLE %(schema)s.utilityrate3_results_%(tech)s ADD PRIMARY KEY (uid);""" % inputs_dict
     cur.execute(sql)
     con.commit()
     
@@ -2076,7 +2076,7 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech):
                         c.excess_generation_percent as excess_generation_percent
                     FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s a
                 
-                    LEFT JOIN %(schema)s.unique_rate_gen_load_combinations b
+                    LEFT JOIN %(schema)s.unique_rate_gen_load_combinations_%(tech)s b
                         ON a.rate_id_alias = b.rate_id_alias
                         AND a.rate_source = b.rate_source
                         AND a.hdf_load_index = b.hdf_load_index
@@ -2088,7 +2088,7 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech):
                         AND a.ur_nm_yearend_sell_rate = b.ur_nm_yearend_sell_rate
                         AND a.ur_flat_sell_rate = b.ur_flat_sell_rate
                         
-                    LEFT JOIN %(schema)s.utilityrate3_results c
+                    LEFT JOIN %(schema)s.utilityrate3_results_%(tech)s c
                         ON b.uid = c.uid
             
         """ % inputs_dict
