@@ -199,12 +199,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
             logger.info('Getting various parameters took: %0.1fs' %(time.time() - t0))
 
-            t0 = time.time()
-            if mode != 'ReEDS' or resume_year == 2014:
-                # delete contents from the the outputs tables
-                # this is probably not necessary anymore since the schema is created fresh with each run...
-                datfunc.clear_outputs(con, cur, schema) # clear results from previous run
-                
+            if mode != 'ReEDS' or resume_year == 2014:                
                 # create output subfolder for this scenario
                 scen_name = scenario_opts['scenario_name']
                 if scen_name in scenario_names:
@@ -216,12 +211,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 os.makedirs(out_scen_path)
                 # copy the input scenario spreadsheet
                 shutil.copy(input_scenario, out_scen_path)
-                
-                
-            logger.info('datfunc.clear_outputs took: %0.1fs' %(time.time() - t0))
-
-
+                           
             # loop through technologies
+
+
             for tech in techs:
                    
                 if cfg.init_model:
