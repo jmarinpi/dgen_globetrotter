@@ -35,8 +35,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
     financial_parameters = financial_parameters_all.query(sql)[['sector', 'business_model', 'loan_term_yrs', 'loan_rate', 'down_payment', 'discount_rate', 'tax_rate', 'length_of_irr_analysis_yrs']]
     incentive_opts = incentive_opts_all.query(sql)[['overwrite_exist_inc', 'incentive_start_year']]
     deprec_schedule = deprec_schedule_all.query(sql).sort('year', ascending = True)['deprec'].values
-    print ann_system_degradation_all
-    ann_system_degradation = ann_system_degradation_all.query(sql)['ann_system_degradation'][0]
+    ann_system_degradation = ann_system_degradation_all.query(sql)['ann_system_degradation'].iloc[0]
     
     # Evaluate economics of leasing or buying for all customers who are able to lease
     business_model = pd.DataFrame({'business_model' : ('host_owned','tpo'), 
@@ -61,7 +60,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
         rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector_abbr, tech_lifetime)    
 
     # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
-    overwrite_exist_inc = incentive_opts['overwrite_exist_inc'][0]
+    overwrite_exist_inc = incentive_opts['overwrite_exist_inc'].iloc[0]
     if overwrite_exist_inc:
         value_of_incentives = datfunc.calc_manual_incentives(df,con, year, schema, tech)
     else:
