@@ -36,25 +36,6 @@ DEC2FLOAT = pg.extensions.new_type(
 pg.extensions.register_type(DEC2FLOAT)
 
 
-def set_source_pt_microdata(con, cur, schema, tech):
-    
-    inputs = locals().copy()
-    sector_abbrs = ['res', 'com', 'ind']
-
-
-    for sector_abbr in sector_abbrs:
-        inputs['sector_abbr'] = sector_abbr
-              
-        # switch to this for testing on new point microdata joined
-        sql = '''DROP VIEW IF EXISTS %(schema)s.point_microdata_%(sector_abbr)s_us_joined;
-                 CREATE VIEW %(schema)s.point_microdata_%(sector_abbr)s_us_joined AS
-                 SELECT *
-                 FROM %(schema)s.point_microdata_%(sector_abbr)s_us_joined_%(tech)s;''' % inputs                 
-                 
-        cur.execute(sql)
-        con.commit()
-
-
 def load_resume_vars(cfg, resume_year):
     # Load the variables necessary to resume the model
     if resume_year == 2014:
@@ -1275,13 +1256,13 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.hdf_load_index,
                   a.pca_reg, a.reeds_reg,
                   b.rate_escalation_factor,
-                  a.incentive_array_id,
+                  a.incentive_array_id_solar as incentive_array_id,
                   a.ranked_rate_array_id,
                   b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
                 	b.fixed_om_dollars_per_kw_per_yr, 
                 	b.variable_om_dollars_per_kwh,
-                	b.capital_cost_dollars_per_kw * a.cap_cost_multiplier::NUMERIC as capital_cost_dollars_per_kw,
-                  b.inverter_cost_dollars_per_kw * a.cap_cost_multiplier::NUMERIC as inverter_cost_dollars_per_kw,
+                	b.capital_cost_dollars_per_kw * a.cap_cost_multiplier_solar::NUMERIC as capital_cost_dollars_per_kw,
+                  b.inverter_cost_dollars_per_kw * a.cap_cost_multiplier_solar::NUMERIC as inverter_cost_dollars_per_kw,
                 	a.ann_cons_kwh, 
                 	b.load_multiplier * a.customers_in_bin * (1-a.pct_shaded) as customers_in_bin, 
                 	a.customers_in_bin * (1-a.pct_shaded) as initial_customers_in_bin, 
@@ -1591,13 +1572,13 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                       a.utility_type, a.hdf_load_index,
                       a.pca_reg, a.reeds_reg,
                       b.rate_escalation_factor,
-                      a.incentive_array_id,
+                      a.incentive_array_id_wind as incentive_array_id,
                       a.ranked_rate_array_id,
                       a.ownocc8,
                 b.carbon_dollars_per_ton * 100 * a.carbon_intensity_t_per_kwh as  carbon_price_cents_per_kwh,
                 	e.fixed_om_dollars_per_kw_per_yr, 
                 	e.variable_om_dollars_per_kwh,
-                	e.installed_costs_dollars_per_kw * a.cap_cost_multiplier::numeric as installed_costs_dollars_per_kw,
+                	e.installed_costs_dollars_per_kw * a.cap_cost_multiplier_wind::numeric as installed_costs_dollars_per_kw,
                 	a.ann_cons_kwh, 
                 	b.load_multiplier * a.customers_in_bin as customers_in_bin, 
                 	a.customers_in_bin as initial_customers_in_bin, 

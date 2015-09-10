@@ -230,10 +230,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     incentive_options = datfunc.get_manual_incentive_options(con, schema, tech)
                     deprec_schedule = datfunc.get_depreciation_schedule(con, schema, tech, type = 'macrs').values
                     ann_system_degradation = datfunc.get_system_degradation(cur, schema, tech)
-                    # ************************************************************************
-                    # NOTE: This is temporary until the model can dynamically handle running both wind and solar technologies
-                    datfunc.set_source_pt_microdata(con, cur, schema, tech)
-                    # ************************************************************************
                     
                     # Generate a pseudo-random number generator to generate random numbers in numpy.
                     # This method is better than np.random.seed() because it is thread-safe
