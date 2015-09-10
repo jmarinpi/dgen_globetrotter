@@ -194,6 +194,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==============================================================================
             #   get other user-defined inputs
             #==============================================================================
+            t0 = time.time()
             #  these are all technology agnostic user-inputs
             max_market_share = datfunc.get_max_market_share(con, schema)
             market_projections = datfunc.get_market_projections(con, schema)
@@ -204,7 +205,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             incentive_options = datfunc.get_manual_incentive_options(con, schema)
             deprec_schedule = datfunc.get_depreciation_schedule(con, schema, macrs = True)
             ann_system_degradation = datfunc.get_system_degradation(con, schema)      
-
             logger.info('Getting various parameters took: %0.1fs' %(time.time() - t0))
 
             if mode != 'ReEDS' or resume_year == 2014:                
@@ -220,7 +220,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 os.makedirs(out_scen_path)
                 # copy the input scenario spreadsheet
                 shutil.copy(input_scenario, out_scen_path)
-                
                 
                 # Combine All of the Temporally Varying Data in a new Table in Postgres
                 t0 = time.time()
@@ -244,7 +243,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                
                            
             for tech in techs:
-                # break from the loop to find all unique combinations of rates, load, and generation
+                # find all unique combinations of rates, load, and generation
                 if cfg.init_model:
                     logger.info('Finding unique combinations of rates, load, and generation')
                     datfunc.get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors)         
