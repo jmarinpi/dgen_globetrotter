@@ -1,7 +1,7 @@
-one  = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20150903_120040/BAU/solar/outputs.csv.gz')
-two = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs_solar/results_20150903_120518/dSolar/outputs.csv.gz')
+one  = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/az_benchmarks/one/solar/outputs.csv.gz')
+two = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20150911_140350/one/solar/outputs.csv.gz')
 
-one = one[one$tech == 'solar', 2:93]
+
 # check sizes
 nrow(one) 
 nrow(two)
@@ -13,7 +13,7 @@ all(names(one) == names(two))
 # one = one[,c('county_id','bin_id','year','turbine_size_kw','turbine_height_m')]
 # two = two[,c('county_id','bin_id','year','turbine_size_kw','turbine_height_m')]
 
-ids = c('county_id','bin_id','year','sector')
+ids = c('county_id','bin_id','year','sector', 'tech')
 
 # compare
 m = merge(one, two, by = ids, suffixes = c('.1','.2'))
