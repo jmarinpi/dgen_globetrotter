@@ -196,19 +196,19 @@ def drop_output_schema(pg_conn_string, schema):
     con.commit()
     
 
-def combine_temporal_data(cur, con, schema, techs, start_year, end_year, sector_abbrs, preprocess, logger):
+def combine_temporal_data(cur, con, schema, techs, start_year, end_year, sector_abbrs, logger):
 
     msg = "Combining Temporal Factors"    
     logger.info(msg)
         
     if 'wind' in techs:
-        combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs, preprocess, logger)
+        combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs, logger)
     
     if 'solar' in techs:
-        combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs, preprocess, logger)
+        combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs, logger)
     
 
-def combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs, preprocess, logger):
+def combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs, logger):
     
      # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
@@ -271,7 +271,7 @@ def combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_a
     
     return 1
 
-def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs, preprocess, logger):
+def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs, logger):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
     
@@ -744,7 +744,7 @@ def create_scenario_report(technology, schema, scen_name, out_path, cur, con, Rs
 
 def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, oversize_system_factor, undersize_system_factor,
-                           preprocess, npar, pg_conn_string, rate_structure, logger):
+                           npar, pg_conn_string, rate_structure, logger):
                                
 
     inputs = locals().copy()
@@ -775,7 +775,7 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
         logger.info('Preparing customer bins for Wind: %(sector)s sector' % inputs)
         generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
                            rate_escalation_source, load_growth_scenario, resource_key, oversize_system_factor, undersize_system_factor,
-                           preprocess, npar, pg_conn_string, rate_structure, logger)
+                           npar, pg_conn_string, rate_structure, logger)
 
     if 'solar' in techs:
         resource_key = 'solar_re_9809_gid'
@@ -783,7 +783,7 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
         logger.info('Preparing customer bins for Wind: %(sector)s sector' % inputs)
         generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
                            rate_escalation_source, load_growth_scenario, resource_key, oversize_system_factor, undersize_system_factor,
-                           preprocess, npar, pg_conn_string, rate_structure, logger)  
+                           npar, pg_conn_string, rate_structure, logger)  
 
     
     #==============================================================================
@@ -1166,7 +1166,7 @@ def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string
 def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
                            rate_escalation_source, load_growth_scenario, resource_key, 
                            oversize_system_factor, undersize_system_factor,
-                           preprocess, npar, pg_conn_string, rate_structure, logger):
+                           npar, pg_conn_string, rate_structure, logger):
 
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()  
@@ -1501,7 +1501,7 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, 
 def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
                            rate_escalation_source, load_growth_scenario, resource_key,
                            oversize_system_factor, undersize_system_factor,
-                           preprocess, npar, pg_conn_string, rate_structure, logger):
+                           npar, pg_conn_string, rate_structure, logger):
 
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
@@ -2187,7 +2187,7 @@ def get_scenario_options(cur, schema):
     return results
 
 
-def get_dsire_incentives(cur, con, schema, tech, sector_abbr, preprocess, npar, pg_conn_string, logger):
+def get_dsire_incentives(cur, con, schema, tech, sector_abbr, npar, pg_conn_string, logger):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
 

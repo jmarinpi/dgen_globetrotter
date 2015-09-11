@@ -106,19 +106,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         
         logger = datfunc.init_log(os.path.join(out_dir,'dg_model.log'))
         logger.info('Initiating model (%s)' %time.ctime())
-       
-        # if parallelization is off, reduce npar to 1
-        if not cfg.parallelize:
-            cfg.npar = 1
             
         # 4. Connect to Postgres and configure connection(s) (to edit login information, edit config.py)
         # create a single connection to Postgres Database -- this will serve as the main cursor/connection
         con, cur = datfunc.make_con(cfg.pg_conn_string)
         pgx.register_hstore(con) # register access to hstore in postgres    
-        
-        # configure pandas display options
-        pd.set_option('max_columns', 9999)
-        pd.set_option('max_rows',10)
         
         # find the input excel spreadsheets
         if cfg.init_model:    
@@ -223,7 +215,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 # Combine All of the Temporally Varying Data in a new Table in Postgres
                 t0 = time.time()
-                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), cfg.preprocess, logger)
+                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), logger)
                 logger.info('datfunc.combine_temporal_data took: %0.1fs' %(time.time() - t0))                
                 
                  # loop through sectors, creating customer bins
@@ -236,7 +228,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     datfunc.generate_customer_bins(cur, con, techs, schema, 
                                                    scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
                                                    cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
-                                                   cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.preprocess, cfg.npar, 
+                                                   cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.npar, 
                                                    cfg.pg_conn_string, 
                                                    rate_structures[sector_abbr], logger = logger)
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))
@@ -303,7 +295,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 for sector_abbr, sector in sectors.iteritems():  
                     # get dsire incentives for the generated customer bins
                     t0 = time.time()
-                    dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, tech, sector_abbr, cfg.preprocess, cfg.npar, cfg.pg_conn_string, logger)
+                    dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, tech, sector_abbr, cfg.npar, cfg.pg_conn_string, logger)
                     logger.info('datfunc.get_dsire_incentives took: %0.1fs' %(time.time() - t0))                  
                     # Pull data from the Main Table to a Data Frame for each year
                     for year in model_years:

@@ -42,8 +42,6 @@ undersize_system_factor = 0.5
 # model start year
 start_year = 2014
 
-preprocess = False #True means to use the last-created main table
-
 # Path to R will vary by user (until we move the script over to run on gispgdb server)
 Rscript_paths = ['/usr/bin/Rscript','C:/Users/mgleason/Documents/R/R-3.0.2/bin/Rscript.exe','C:/Program Files/R/R-3.0.2/bin/Rscript.exe','C:/Program Files/R/R-3.0.3/bin/Rscript.exe', 'C:/Users/bsigrin/Documents/R/R-3.1.1/bin/Rscript.exe']
 Rscript_path = None
@@ -53,8 +51,6 @@ for rp in Rscript_paths:
 if Rscript_path == None:
     raise Exception('No Rscript Path found: Add a new path to Rscripts_path in config.py')
 
-# set boolean variable for parallelization
-parallelize = True
 # set number of parallel processes to run postgres queries (this is ignored if parallelize = F)
 npar = 4
 
