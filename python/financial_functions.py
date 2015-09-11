@@ -322,7 +322,13 @@ def calc_lcoe(costs,aep, dr, tech_lifetime):
     aep_time_series = np.repeat(aep[:,np.newaxis], tech_lifetime, axis = 1)
     aep_time_series = np.hstack((np.zeros((len(aep),1)),aep_time_series))
     denom = calc_npv(aep_time_series, dr)
-    return num/denom
+    
+    # where system size is zero, lcoe should be nan
+    # otherwise, calc using num/denom
+    with np.errstate(invalid = 'ignore'):
+        lcoe =  np.where(aep == 0, np.nan, num/denom)
+    
+    return lcoe
 #==============================================================================    
 
 def calc_irr(cfs):
