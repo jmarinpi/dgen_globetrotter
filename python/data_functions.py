@@ -2854,8 +2854,10 @@ def excess_generation_vectorized(df, gross_fit_mode = False):
     excess_gen_annual = np.sum(excess_gen_hourly, 1)
     offset_generation = (gen_array - excess_gen_hourly).tolist()
 
-    df['excess_generation_percent'] = np.where(annual_generation == 0, 0, excess_gen_annual/annual_generation)
+    with np.errstate(invalid = 'ignore'):
+        df['excess_generation_percent'] = np.where(annual_generation == 0, 0, excess_gen_annual/annual_generation)
     
+        
     if gross_fit_mode == True:
         # under gross fit, we will simply feed all inputs into SAM as-is and let the utilityrate3 module
         # handle all calculations with no modifications
