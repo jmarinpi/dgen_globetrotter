@@ -173,7 +173,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             if mode == 'ReEDS':
                 model_years = [resume_year]
             else:
-                model_years = range(cfg.start_year,end_year+1,2)
+                model_years = range(cfg.start_year, end_year+1,2)
               
             # get the sectors to model
             t0 = time.time()
@@ -228,9 +228,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     datfunc.generate_customer_bins(cur, con, techs, schema, 
                                                    scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
                                                    cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
-                                                   cfg.oversize_system_factor, cfg.undersize_system_factor, cfg.npar, 
-                                                   cfg.pg_conn_string, 
-                                                   rate_structures[sector_abbr], logger = logger)
+                                                   cfg.npar, cfg.pg_conn_string, rate_structures[sector_abbr], logger = logger)
                     logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))
                
                            

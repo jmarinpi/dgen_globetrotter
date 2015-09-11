@@ -26,6 +26,7 @@ import os
 import sys
 import getopt
 import psutil
+import json
 
 
 # configure psycopg2 to treat numeric values as floats (improves performance of pulling data from the database)
@@ -35,6 +36,16 @@ DEC2FLOAT = pg.extensions.new_type(
     lambda value, curs: float(value) if value is not None else None)
 pg.extensions.register_type(DEC2FLOAT)
 
+
+def get_pg_params(json_file):
+    
+    pg_params_json = file(json_file,'r')
+    pg_params = json.load(pg_params_json)
+    pg_params_json.close()
+
+    pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s port=%(port)s' % pg_params
+
+    return pg_params, pg_conn_string
 
 def load_resume_vars(cfg, resume_year):
     # Load the variables necessary to resume the model
@@ -52,22 +63,6 @@ def load_resume_vars(cfg, resume_year):
         out_dir = saved_vars['out_dir']
         input_scenarios = saved_vars['input_scenarios']
     return cfg.init_model, out_dir, input_scenarios, market_last_year
-
-
-def prep_model(cfg):               
-    # Make output folder
-    cdate = time.strftime('%Y%m%d_%H%M%S')    
-    out_dir = '%s/runs/results_%s' %(os.path.dirname(os.getcwd()),cdate)        
-    os.makedirs(out_dir)
-    
-    # check that random generator seed is in the acceptable range
-    if cfg.random_generator_seed < 0 or cfg.random_generator_seed > 1:
-        raise ValueError("""random_generator_seed in config.py is not in the range of acceptable values. Change to a value in the range >= 0 and <= 1.""")                           
-        # check that number of customer bins is in the acceptable range
-    if cfg.customer_bins not in (10,50,100,500):
-        raise ValueError("""Error: customer_bins in config.py is not in the range of acceptable values. Change to a value in the set (10,50,100,500).""") 
-    model_init = time.time()
-    return out_dir, model_init
 
 
 def parse_command_args(argv):
@@ -743,8 +738,7 @@ def create_scenario_report(technology, schema, scen_name, out_path, cur, con, Rs
     returncode = proc.returncode    
 
 def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
-                           rate_escalation_source, load_growth_scenario, oversize_system_factor, undersize_system_factor,
-                           npar, pg_conn_string, rate_structure, logger):
+                           rate_escalation_source, load_growth_scenario, npar, pg_conn_string, rate_structure, logger):
                                
 
     inputs = locals().copy()
@@ -774,16 +768,14 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
         technology = 'wind'
         logger.info('Preparing customer bins for Wind: %(sector)s sector' % inputs)
         generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, resource_key, oversize_system_factor, undersize_system_factor,
-                           npar, pg_conn_string, rate_structure, logger)
+                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure, logger)
 
     if 'solar' in techs:
         resource_key = 'solar_re_9809_gid'
         technology = 'solar'
         logger.info('Preparing customer bins for Wind: %(sector)s sector' % inputs)
         generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, resource_key, oversize_system_factor, undersize_system_factor,
-                           npar, pg_conn_string, rate_structure, logger)  
+                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure, logger)  
 
     
     #==============================================================================
@@ -1164,9 +1156,7 @@ def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string
 
 
 def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, resource_key, 
-                           oversize_system_factor, undersize_system_factor,
-                           npar, pg_conn_string, rate_structure, logger):
+                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure, logger):
 
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()  
@@ -1499,9 +1489,7 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, 
 ########################################################################################################################
 ########################################################################################################################
 def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, resource_key,
-                           oversize_system_factor, undersize_system_factor,
-                           npar, pg_conn_string, rate_structure, logger):
+                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure, logger):
 
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
