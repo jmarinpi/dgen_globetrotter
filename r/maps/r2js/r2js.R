@@ -98,7 +98,7 @@ fListToString <- function(df, valueVarList, nclasses, classification, legendPrec
         }
       }
 
-      intervals <- classIntervals(column, nclasses, classification)
+      intervals <- suppressWarnings(classIntervals(column, nclasses, classification))
       breaks <- intervals$brks
       fillColors = RColorBrewer::brewer.pal(nclasses+1, palette)[2:(nclasses+1)]
       
