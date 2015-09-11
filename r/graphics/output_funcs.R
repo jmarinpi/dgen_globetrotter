@@ -533,7 +533,7 @@ lcoe_boxplot<-function(df){
   data$sector = sector2factor(data$sector)
   # Boxplot of LCOE over time, faceted by sector
   p<-ggplot(data) +
-    geom_boxplot(aes(x = factor(year), y = lcoe, fill = sector), outlier.shape = NA) +
+    geom_boxplot(aes(x = factor(year), y = lcoe, fill = sector), outlier.shape = NA, na.rm = T) +
     facet_wrap(~sector) +
     scale_y_continuous(name = 'LCOE (c/kWh)') +
     scale_x_discrete(name = 'Year') +
