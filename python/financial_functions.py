@@ -18,7 +18,7 @@ import time
 #==============================================================================
 def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
                    financial_parameters_all, scenario_opts, incentive_opts_all, max_market_share, cur, con, 
-                   year, dsire_incentives, deprec_schedule_all, logger, rate_escalations, ann_system_degradation_all, mode, prng,curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
+                   year, dsire_incentives, deprec_schedule_all, logger, rate_escalations, ann_system_degradation_all, mode, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
     Calculates economics of system adoption (cashflows, payback, irr, etc.)
     
@@ -106,8 +106,6 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
     # Derate the maximum market share for commercial and industrial customers in leased buildings by (1/3)
     # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
     df['max_market_share'] = np.where(df.owner_occupancy_status == 2, df.max_market_share/3,df.max_market_share)
-        
-    df = datfunc.assign_business_model(df, prng, method = 'prob', alpha = 2)
     
     return df
 #==============================================================================    

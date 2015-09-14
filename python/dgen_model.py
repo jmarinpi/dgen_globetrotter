@@ -350,7 +350,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         else:    
                             df = pd.merge(df,market_last_year, how = 'left', on = ['county_id','bin_id'])
                             #df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
-                        
+
                         # Determine whether leasing is permitted in given year
                         lease_availability = datfunc.get_lease_availability(con, schema, tech)
                         df = pd.merge(df, lease_availability, on = ['state_abbr','year'])
@@ -360,7 +360,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                                                    market_projections, financial_parameters, 
                                                                                    scenario_opts, incentive_options, max_market_share, cur, con, year, 
                                                                                    dsire_incentives, deprec_schedule, logger, rate_escalations, 
-                                                                                   ann_system_degradation, mode, prng,curtailment_method, tech_lifetime = 25)
+                                                                                   ann_system_degradation, mode,curtailment_method, tech_lifetime = 25)
+                        
+                        # assign business model
+                        df = datfunc.assign_business_model(df, prng, method = 'prob', alpha = 2)
+                        
                         
                         # 10. Calulate diffusion
                         ''' Calculates the market share (ms) added in the solve year. Market share must be less
