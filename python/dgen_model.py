@@ -28,7 +28,7 @@ import pssc_mp
 from excel import excel_functions
 
 
-#np.seterr(all='raise')
+np.seterr(all='raise')
     
 
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):

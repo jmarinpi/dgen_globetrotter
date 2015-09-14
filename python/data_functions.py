@@ -2722,7 +2722,11 @@ def assign_business_model(df, prng, method = 'prob', alpha = 2):
         df = df.merge(gb, left_on=['county_id','bin_id'],right_index = True)
         
         # Determine the probability of leasing
-        df['prob_of_leasing'] = df['mkt_exp']/df['mkt_sum']
+        # if the mkt_sum == 0, there is no probability of adoption at all, regardless of the business model
+        # but the division below will fail for the prob of leasing
+        # therefore, just set prob of leasing to zero
+        with np.errstate(invalid = 'ignore'):
+            df['prob_of_leasing'] = np.where(df['mkt_sum'] == 0, 0, df['mkt_exp']/df['mkt_sum'])
         df.loc[(df['business_model'] == 'tpo') & ~(df['leasing_allowed']),'prob_of_leasing'] = 0 #Restrict leasing if not allowed by state
         
         # Both business models are still in the df, so we use a ranking algorithm after the random draw
