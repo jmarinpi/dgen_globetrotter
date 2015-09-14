@@ -122,31 +122,32 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         dup_n = 1
         out_subfolders = {'wind' : [], 'solar' : []}
         for i, input_scenario in enumerate(input_scenarios):
-            logger.info('--------------------------------------------') 
+            logger.info('============================================') 
+            logger.info('============================================') 
             logger.info("Running Scenario %s of %s" % (i+1, len(input_scenarios)))
-            
+            logger.info("-------------Preparing Database-------------")
             # 5. Load Input excel spreadsheet to Postgres
             if cfg.init_model:
                 # create the output schema
                 logger.info('Creating output schema')
+                t0 = time.time()
                 schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template')
-                logger.info('Output schema is: %s' % schema)
+                logger.info('\tOutput schema is: %s' % schema)
+                logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
                 # write the reeds settings to postgres
                 reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
                 ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
-                
                 logger.info('Loading input data from Input Scenario Worksheet')
-                t0 = time.time()
                 try:
+                    t0 = time.time()
                     excel_functions.load_scenario(input_scenario, schema, con, test = False)
+                    logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
                 except Exception, e:
-                    msg = 'Loading failed with the following error: %s' % e      
+                    msg = '\tLoading failed with the following error: %s' % e      
                     logger.error(msg)
                     msg = 'Model aborted'
                     logger.error(msg)
                     sys.exit(-1)
-                logger.info('Loading input sheet took: %0.1fs' %(time.time() - t0))
-                
             else:
                 logger.warning("Warning: Skipping Import of Input Scenario Worksheet. This should only be done in resume mode.")
 
@@ -184,6 +185,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #   get other user-defined inputs
             #==============================================================================
             t0 = time.time()
+            msg = 'Getting various scenario parameters'
+            logger.info(msg)
             #  these are all technology agnostic user-inputs
             max_market_share = datfunc.get_max_market_share(con, schema)
             market_projections = datfunc.get_market_projections(con, schema)
@@ -194,7 +197,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             incentive_options = datfunc.get_manual_incentive_options(con, schema)
             deprec_schedule = datfunc.get_depreciation_schedule(con, schema, macrs = True)
             ann_system_degradation = datfunc.get_system_degradation(con, schema)      
-            logger.info('Getting various parameters took: %0.1fs' %(time.time() - t0))
+            logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
 
             if mode != 'ReEDS' or resume_year == 2014:                
                 
@@ -212,27 +215,31 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 # Combine All of the Temporally Varying Data in a new Table in Postgres
                 t0 = time.time()
+                msg = "Combining Temporal Factors"    
+                logger.info(msg)        
                 datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), logger)
-                logger.info('datfunc.combine_temporal_data took: %0.1fs' %(time.time() - t0))                
+                logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))                
                 
                  # loop through sectors, creating customer bins
+                logger.info("--------------Creating Agents---------------")
                 for sector_abbr, sector in sectors.iteritems():
     
                     # define the rate escalation source and max market curve for the current sector
                     rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
                     # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
-                    t0 = time.time()
                     datfunc.generate_customer_bins(cur, con, techs, schema, 
                                                    scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
                                                    cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
                                                    cfg.npar, cfg.pg_conn_string, rate_structures[sector_abbr], logger = logger)
-                    logger.info('datfunc.generate_customer_bins for %s sector took: %0.1fs' %(sector, time.time() - t0))
+
                
                            
             for tech in techs:
                 # find all unique combinations of rates, load, and generation
                 if cfg.init_model:
-                    logger.info('Finding unique combinations of rates, load, and generation')
+                    logger.info("---------Calculating Energy Savings---------")
+                    logger.info('Calculating Annual Electric Bill Savings for Agents')
+                    logger.info('\tFinding unique combinations of rates, load, and generation')
                     datfunc.get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors)         
                     # determine how many rate/load/gen combinations can be processed given the local memory resources
                     row_count_limit = datfunc.get_max_row_count_for_utilityrate3()            
@@ -241,17 +248,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema, tech)
                     nbatches = len(uid_lists)
                     t0 = time.time()
-                    logger.info("SAM Calculations will be run in %s batches to prevent memory overflow" % nbatches)
+                    logger.info("\tSAM Calculations will be run in %s batches to prevent memory overflow" % nbatches)
                     for i, uids in enumerate(uid_lists): 
-                        logger.info("Working on SAM Batch %s of %s" % (i+1, nbatches))
+                        logger.info("\t\tWorking on SAM Batch %s of %s" % (i+1, nbatches))
                         # collect data for all unique combinations
-                        logger.info('\tCollecting SAM inputs')
+                        logger.info('\t\t\tCollecting SAM inputs')
                         t1 = time.time()
                         rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, tech, schema, cfg.npar, cfg.pg_conn_string, cfg.gross_fit_mode)
                         excess_gen_df = rate_input_df[['uid', 'excess_generation_percent', 'net_fit_credit_dollars']]
-                        logger.info('\tdatfunc.get_utilityrate3_inputs took: %0.1fs' % (time.time() - t1),)        
+                        logger.info('\t\t\t\tCompleted in: %0.1fs' % (time.time() - t1))        
                         # calculate value of energy for all unique combinations
-                        logger.info('\tCalculating value of energy using SAM')
+                        logger.info('\t\t\tCalculating value of energy using SAM')
                         # run sam calcs in serial if only one core is available
                         if cfg.local_cores == 1:
                             sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
@@ -259,7 +266,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         else:
                             
                             sam_results_df = pssc_mp.pssc_mp(rate_input_df,  cfg.local_cores)
-                        logger.info('\tdatfunc.run_utilityrate3 took: %0.1fs' % (time.time() - t1),)                                        
+                        logger.info('\t\t\t\tCompleted in: %0.1fs' % (time.time() - t1),)                                        
                         # append the excess_generation_percent and net_fit_credit_dollars to the sam_results_df
                         sam_results_df = pd.merge(sam_results_df, excess_gen_df, on = 'uid')
 
@@ -268,18 +275,20 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         sam_results_list.append(sam_results_df)
                         # drop the rate_input_df to save on memory
                         del rate_input_df, excess_gen_df
-                    logger.info('All SAM calculations completed in: %0.1fs' % (time.time() - t0),)
+                    logger.info('\tTotal time to calculate all electric bills: %0.1fs' % (time.time() - t0),)
                
                     # write results to postgres
                     t0 = time.time()
+                    logger.info("Writing SAM Results to Database")
                     datfunc.write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech)
-                    logger.info('datfunc.write_utilityrate3_to_pg took: %0.1fs' % (time.time() - t0),)  
+                    logger.info('\tCompleted in: %0.1fs' % (time.time() - t0),)  
                 #==============================================================================
 
     
+            logger.info("---------Modeling Annual Deployment---------")
             for tech in techs:
                 if cfg.init_model:
-                    logger.info("---------------Running dGen Model for %s---------------" % tech.title())                    
+                    logger.info("Modeling deployment for %s" % tech.title())                    
                     
                     # Generate a pseudo-random number generator to generate random numbers in numpy.
                     # This method is better than np.random.seed() because it is thread-safe
@@ -289,12 +298,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # loop through sectors and time steps to calculate full economics and diffusion                
                 for sector_abbr, sector in sectors.iteritems():  
                     # get dsire incentives for the generated customer bins
-                    t0 = time.time()
-                    dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, tech, sector_abbr, cfg.npar, cfg.pg_conn_string, logger)
-                    logger.info('datfunc.get_dsire_incentives took: %0.1fs' %(time.time() - t0))                  
+                    dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, tech, sector_abbr, cfg.npar, cfg.pg_conn_string, logger)               
                     # Pull data from the Main Table to a Data Frame for each year
                     for year in model_years:
-                        logger.info('Working on %s for %s sector' % (year, sector_abbr))               
+                        logger.info('\tWorking on %s for %s sector' % (year, sector))               
                         df = datfunc.get_main_dataframe(con, sector_abbr, schema, year, tech)
                         if mode == 'ReEDS':
                             # When in ReEDS mode add the values from ReEDS to df
@@ -340,6 +347,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         df = pd.merge(df, lease_availability, on = ['state_abbr','year'])
                                             
                         # Calculate economics of adoption given system cofiguration and business model
+                        logger.info("\t\tCalculating Economics")
                         df = finfunc.calc_economics(df, schema, sector, sector_abbr, tech,
                                                                                    market_projections, financial_parameters, 
                                                                                    scenario_opts, incentive_options, max_market_share, cur, con, year, 
@@ -352,6 +360,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
                         decrease if economics deterioriate.
                         '''             
+                        logger.info("\t\tCalculating Diffusion")
                         df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
                         
                         if mode == 'ReEDS':
@@ -375,12 +384,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     out_subfolders[tech].append(out_tech_path)
                             
                     # copy outputs to csv     
-                    logger.info('Writing outputs')
+                    logger.info('Exporting Results from Database')
                     t0 = time.time()
                     datfunc.copy_outputs_to_csv(tech, schema, out_tech_path, sectors, cur, con)
-                    logger.info('datfunc.copy_outputs_to_csv took: %0.1fs' %(time.time() - t0))
+                    logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
                     # create output html report
                     t0 = time.time()
+                    
                     datfunc.create_scenario_report(tech, schema, scen_name, out_tech_path, cur, con, cfg.Rscript_path, cfg.pg_params_file, logger)
                     logger.info('datfunc.create_scenario_report took: %0.1fs' %(time.time() - t0))
                     logger.info('The entire model run took: %.1f seconds' % (time.time() - model_init))

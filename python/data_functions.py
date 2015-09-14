@@ -193,9 +193,6 @@ def drop_output_schema(pg_conn_string, schema):
 
 def combine_temporal_data(cur, con, schema, techs, start_year, end_year, sector_abbrs, logger):
 
-    msg = "Combining Temporal Factors"    
-    logger.info(msg)
-        
     if 'wind' in techs:
         combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs, logger)
     
@@ -743,6 +740,10 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
 
     inputs = locals().copy()
     inputs['i_place_holder'] = '%(i)s'
+    
+    t0 = time.time()
+    msg = "Creating Aagents for %s Sector" % sector
+    logger.info(msg)
         
     #==============================================================================
     #     break counties into subsets for parallel processing
@@ -766,14 +767,14 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
     if 'wind' in techs:
         resource_key = 'i,j,cf_bin'
         technology = 'wind'
-        logger.info('Preparing customer bins for Wind: %(sector)s sector' % inputs)
+        logger.info('\tAttributing Agents with Wind Data')
         generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
                            rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure, logger)
 
     if 'solar' in techs:
         resource_key = 'solar_re_9809_gid'
         technology = 'solar'
-        logger.info('Preparing customer bins for Wind: %(sector)s sector' % inputs)
+        logger.info('\tAttributing Agents with Solar Data')
         generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
                            rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure, logger)  
 
@@ -781,7 +782,7 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
     #==============================================================================
     #   clean up intermediate tables
     #==============================================================================
-    msg = "Cleaning up intermediate tables"
+    msg = "\tCleaning up..."
     logger.info(msg)
     intermediate_tables = [ '%(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s' % inputs,
                             '%(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s' % inputs,
@@ -807,7 +808,8 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
             con.commit()        
     
     
-    return 0
+    logger.info('\tTotal time to create agents for %s sector: %0.1fs' % (sector, (time.time() - t0))) 
+
 
 ########################################################################################################################
 ########################################################################################################################
@@ -844,7 +846,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
     #     randomly sample  N points from each county 
     #==============================================================================    
     # (note: some counties will have fewer than N points, in which case, all are returned) 
-    msg = 'Sampling Customer Bins from Each County'
+    msg = '\tSampling from Point Microdata for Each County'
     logger.info(msg)
     t0 = time.time() 
     sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s;
@@ -864,12 +866,12 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
             WHERE a.county_id IN (%(chunk_place_holder)s);""" % inputs_dict
 
     p_run(pg_conn_string, sql, county_chunks, npar)
-    print time.time()-t0
+    logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
     #==============================================================================
     #    create lookup table with random values for each load bin 
     #==============================================================================
-    msg = "Setting up randomized load bins"
+    msg = "\tSampling from Load Microdata"
     logger.info(msg)
     t0 = time.time()
     
@@ -906,7 +908,6 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
         ON a.load_id = b.load_id
         %(load_where)s ;""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
-    print time.time()-t0
     
     # add an index on county id and row_number
     sql = """CREATE INDEX county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s_join_fields_btree 
@@ -914,14 +915,16 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
             CREATE INDEX county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s_crb_model_btree 
             ON %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s USING BTREE(crb_model);""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
+    logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
    
     #==============================================================================
     #     link each point to a load bin
     #==============================================================================
     # use random weighted sampling on the load bins to ensure that countyies with <N points
     # have a representative sample of load bins 
-    msg = 'Associating Customer Bins with Load and Customer Count'    
+    msg = '\tJoining Point and Load Samples'    
     logger.info(msg)
+    t0 = time.time()
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s;
             CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
             WITH binned as
@@ -941,7 +944,6 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
                   END AS load_kwh_per_customer_in_bin
             FROM binned a;""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
-    print time.time()-t0
 
     # **** ADD INDICES ****
     sql = """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_join_fields_btree 
@@ -959,7 +961,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
             ON a.crb_model = b.crb_model
             AND a.hdf_load_index = b.hdf_index;""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
-    print time.time()-t0       
+           
 
     # add indices on: max_demand_kw, state_abbr, ranked_rate_array_id
     sql = """CREATE INDEX pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s_pkey_btree 
@@ -975,10 +977,12 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
             ON %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s USING BTREE(ranked_rate_array_id);
             """ % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
-
+    logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
 def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure, logger):
 
+    logger.info("\tSelecting rates for each agent")
+    t0 = time.time()
     excluded_rates = pd.read_csv('./excluded_rates_ids.csv', header=None)
     inputs_dict['excluded_rate_ids'] = '(' + ', '.join([str(i[0]) for i in excluded_rates.values]) + ')'
 
@@ -1096,6 +1100,7 @@ def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure,
                 ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s USING BTREE(state_abbr);""" % inputs_dict
         p_run(pg_conn_string, sql, county_chunks, npar)
 
+    logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
 def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string, logger):
     
@@ -1162,9 +1167,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     inputs = locals().copy()  
     inputs['i_place_holder'] = '%(i)s'
     inputs['seed_str'] = str(seed).replace('.','p')
-        
-    msg = "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
-    logger.info(msg)
 
     #==============================================================================
     #     Assign rooftop characterisics
@@ -1174,8 +1176,9 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     #==============================================================================
     #     Join to Resource
     #==============================================================================
-    msg = "Finding Resource for Each Customer Bin"
+    msg = "\t\tFinding Soalr Resource for Each Agent"
     logger.info(msg)
+    t0 = time.time()
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s;
                 CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s AS
                 SELECT a.*,
@@ -1196,11 +1199,12 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
               ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s 
               USING BTREE(state_abbr, utility_type);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
+    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
     #==============================================================================
-    msg = "Combining Cost, Resource, and System Sizing for Each Customer Bin and Year"
+    msg = "Combining Cost and Resource and Selecting System Configuration for Each Agent"
     t0 = time.time()
     logger.info(msg)
     
@@ -1370,7 +1374,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    ownocc8 as owner_occupancy_state
           FROM combined;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
-    print time.time() - t0
     
     # create indices
     sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_join_fields_btree 
@@ -1423,10 +1426,8 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
             """ % inputs
     cur.execute(sql)
     con.commit()
+    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
     
-    print time.time() - t0
-
-
 
 def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, logger):
     
@@ -1434,10 +1435,7 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, 
     #     Find the allowable turbine heights and sizes (kw) for each customer bin
     #==============================================================================    
     # (note: some counties will have fewer than N points, in which case, all are returned) 
-    msg = 'Applying Turbine Siting Restrictions'
-    logger.info(msg)
-    t0 = time.time() 
-    
+   
     sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s;
              CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s AS
              
@@ -1483,7 +1481,7 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, 
               ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s
               USING BTREE(%(resource_key)s);""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)              
-    print time.time()-t0
+
 
 ########################################################################################################################
 ########################################################################################################################
@@ -1496,18 +1494,19 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     inputs['i_place_holder'] = '%(i)s'
     inputs['seed_str'] = str(seed).replace('.','p')
         
-    msg = "Setting up %(sector)s Customer Profiles by County for Scenario Run" % inputs
-    logger.info(msg)
-
     #==============================================================================
     #     apply turbine siting restrictions
     #==============================================================================   
+    logger.info('\t\tApplying Turbine Siting Restrictions')
+    t0 = time.time()
     apply_siting_restrictions(inputs, county_chunks, npar, pg_conn_string, logger)
+    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
     
     #==============================================================================
     #     Find All Combinations of Points and Wind Resource
     #==============================================================================  
-    msg = "Finding All Wind Resource Combinations for Each Customer Bin"
+    msg = "\t\tFinding Wind Resource for Each Agent"
+    t0 = time.time()
     logger.info(msg)
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s;
                 CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s AS
@@ -1532,12 +1531,13 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
               ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
               USING BTREE(state_abbr, utility_type);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
+    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
 
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
     #==============================================================================
-    msg = "Finding All Combinations of Cost and Resource for Each Customer Bin and Year"
+    msg = "\t\tCombining Cost and Resource Data"
     t0 = time.time()
     logger.info(msg)       
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
@@ -1641,12 +1641,13 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
              USING BTREE(county_id ASC, bin_id ASC, year ASC, scoe ASC, system_size_kw ASC, turbine_height_m ASC);           
           """ % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
-    print time.time() - t0
+    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
+
 
     #==============================================================================
     #    Find the Most Cost-Effective Wind Turbine Configuration for Each Customer Bin
     #==============================================================================
-    msg = "Selecting the most cost-effective wind turbine configuration for each customer bin and year"
+    msg = "\t\tSelecting System Configuration for Each Agent"
     t0 = time.time()
     logger.info(msg)
     # create empty table
@@ -1713,8 +1714,8 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
              """ % inputs
     cur.execute(sql)
     con.commit()
-    
-    print time.time() - t0
+    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
+
 
 
 
