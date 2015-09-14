@@ -2534,7 +2534,8 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     ptc_still_exists = cur_date <= inc.ptc_end_date # Is the incentive still valid
     ptc_max_size = np.minimum(inc['system_size_kw'], inc.tax_credit_max_size_kw)
     inc.loc[(inc.ptc_dlrs_kwh > 0) & (inc.ptc_duration_years.isnull()), 'ptc_duration_years'] = assumed_duration
-    value_of_ptc =  ptc_still_exists * np.minimum(inc.ptc_dlrs_kwh * inc.aep * (ptc_max_size/inc.system_size_kw), inc.max_dlrs_yr)
+    with np.errstate(invalid = 'ignore'):
+        value_of_ptc =  np.where(ptc_still_exists & inc.system_size_kw > 0, np.minimum(inc.ptc_dlrs_kwh * inc.aep * (ptc_max_size/inc.system_size_kw), inc.max_dlrs_yr), 0)
     value_of_ptc[np.isnan(value_of_ptc)] = 0
     value_of_ptc = np.where(value_of_ptc < inc.max_tax_credit_dlrs, value_of_ptc,inc.max_tax_credit_dlrs)
     length_of_ptc = inc.ptc_duration_years.fillna(0)
