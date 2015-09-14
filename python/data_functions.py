@@ -2468,14 +2468,39 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc.tax_deduction_pcnt_cost = inc.tax_deduction_pcnt_cost.astype(float)
     inc.tax_credit_max_size_kw = inc.tax_credit_max_size_kw.astype(float)
     inc.tax_credit_min_size_kw = inc.tax_credit_min_size_kw.astype(float)
-    inc.loc[inc.max_dlrs_yr.isnull(), 'max_dlrs_yr'] = 1e9
-    inc.loc[inc.tax_credit_max_size_kw.isnull(), 'tax_credit_max_size_kw'] = 10000
+    # replace null values for min/max dollars and size with defaults
+    exp_date = datetime.date(default_exp_yr, 12, 31) # note: this was formerly set to 1/1/16 for ITC, and 12/31/16 for all other incentives
+    max_dlrs = 1e9
+    dlrs_per_kwh = 0
+    max_size_kw = 10000
+    min_size_kw = 0
+    min_output_kwh_yr = 0
+    increment_incentive_kw = 0
+    # expiration date
+    inc.loc[:, 'ptc_end_date'] = inc.ptc_end_date.fillna(exp_date)
+    inc.loc[:, 'pbi_fit_end_date'] = inc.pbi_fit_end_date.fillna(exp_date) # Assign expiry if no date    
+    # max dollars
+    inc.loc[:, 'max_dlrs_yr'] = inc.max_dlrs_yr.fillna(max_dlrs)
+    inc.loc[:, 'pbi_fit_max_dlrs'] = inc.pbi_fit_max_dlrs.fillna(max_dlrs)
+    inc.loc[:, 'max_tax_credit_dlrs'] = inc.max_tax_credit_dlrs.fillna(max_dlrs)
+    # dollars per kwh
+    inc.loc[:, 'ptc_dlrs_kwh'] = inc.ptc_dlrs_kwh.fillna(dlrs_per_kwh)
+    # max size
+    inc.loc[:, 'tax_credit_max_size_kw'] = inc.tax_credit_max_size_kw.fillna(max_size_kw)
+    inc.loc[:, 'pbi_fit_max_size_kw' ] = inc.pbi_fit_min_size_kw.fillna(max_size_kw)
+    inc.loc[:, 'rebate_max_size_kw'] = inc.rebate_min_size_kw.fillna(max_size_kw)
+    # min size
+    inc.loc[:, 'pbi_fit_min_size_kw' ] = inc.pbi_fit_min_size_kw.fillna(min_size_kw)
+    inc.loc[:, 'rebate_min_size_kw'] = inc.rebate_min_size_kw.fillna(min_size_kw)
+    # minimum output kwh
+    inc.loc[:, 'pbi_fit_min_output_kwh_yr'] = inc['pbi_fit_min_output_kwh_yr'].fillna(min_output_kwh_yr)    
+    # increment incentives
+    increment_vars = ['increment_1_capacity_kw','increment_2_capacity_kw','increment_3_capacity_kw','increment_4_capacity_kw', 'increment_1_rebate_dlrs_kw','increment_2_rebate_dlrs_kw','increment_3_rebate_dlrs_kw','increment_4_rebate_dlrs_kw']    
+    inc.loc[:, increment_vars] = inc[increment_vars].fillna(increment_incentive_kw)
+    
+    
     
     # 1. # Calculate Value of Increment Incentive
-
-    increment_vars = ['increment_1_capacity_kw','increment_2_capacity_kw','increment_3_capacity_kw','increment_4_capacity_kw', 'increment_1_rebate_dlrs_kw','increment_2_rebate_dlrs_kw','increment_3_rebate_dlrs_kw','increment_4_rebate_dlrs_kw']    
-    inc.loc[:, increment_vars] = inc[increment_vars].fillna(0)
-
     # The amount of capacity that qualifies for the increment
     cap_1 = np.minimum(inc.increment_1_capacity_kw, inc['system_size_kw'])
     cap_2 = np.maximum(inc['system_size_kw'] - inc.increment_1_capacity_kw,0)
@@ -2483,26 +2508,20 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     cap_4 = np.maximum(inc['system_size_kw'] - inc.increment_3_capacity_kw,0)
     
     value_of_increment = cap_1 * inc.increment_1_rebate_dlrs_kw + cap_2 * inc.increment_2_rebate_dlrs_kw + cap_3 * inc.increment_3_rebate_dlrs_kw + cap_4 * inc.increment_4_rebate_dlrs_kw
-    value_of_increment.loc[np.isnan(value_of_increment)] = 0
-    inc['value_of_increment'] = value_of_increment
+    inc['value_of_increment'] = value_of_increment.fillna(0)
     # Don't let increment exceed 20% of project cost
     exceeds_20 = inc['value_of_increment'] > 0.2 * inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
     inc.loc[exceeds_20, 'value_of_increment'] = 0.2 * inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
     
     # 2. # Calculate lifetime value of PBI & FIT
-    inc.loc[:, 'pbi_fit_min_output_kwh_yr'] = inc['pbi_fit_min_output_kwh_yr'].fillna(0)    
-    inc.loc[inc.pbi_fit_end_date.isnull(), 'pbi_fit_end_date'] = datetime.date(default_exp_yr, 12, 31) # Assign expiry if no date
     pbi_fit_still_exists = cur_date <= inc.pbi_fit_end_date # Is the incentive still valid
-    
     pbi_fit_cap = np.where(inc['system_size_kw'] < inc.pbi_fit_min_size_kw, 0, inc['system_size_kw'])
     pbi_fit_cap = np.where(pbi_fit_cap > inc.pbi_fit_max_size_kw, inc.pbi_fit_max_size_kw, pbi_fit_cap)
     pbi_fit_aep = np.where(inc['aep'] < inc.pbi_fit_min_output_kwh_yr, 0, inc['aep'])
     
     # If exists pbi_fit_kwh > 0 but no duration, assume duration
     inc.loc[(inc.pbi_fit_dlrs_kwh > 0) & inc.pbi_fit_duration_years.isnull(), 'pbi_fit_duration_years']  = assumed_duration
-    
     value_of_pbi_fit = pbi_fit_still_exists * np.minimum(inc.pbi_fit_dlrs_kwh, inc.max_dlrs_yr) * pbi_fit_aep
-    inc.loc[inc.pbi_fit_max_dlrs.isnull(), 'pbi_fit_max_dlrs'] = 1e9
     value_of_pbi_fit = np.minimum(value_of_pbi_fit,inc.pbi_fit_max_dlrs)
     value_of_pbi_fit[np.isnan(value_of_pbi_fit)] = 0
     length_of_pbi_fit = inc.pbi_fit_duration_years.fillna(0)
@@ -2512,10 +2531,8 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     inc['lifetime_value_of_pbi_fit'] = length_of_pbi_fit * value_of_pbi_fit
     
     ## Calculate first year value and length of PTC
-    inc.loc[inc.ptc_end_date.isnull(), 'ptc_end_date'] = datetime.date(default_exp_yr, 1, 1) # Assign expiry if no date
     ptc_still_exists = cur_date <= inc.ptc_end_date # Is the incentive still valid
     ptc_max_size = np.minimum(inc['system_size_kw'], inc.tax_credit_max_size_kw)
-    inc.loc[inc.max_tax_credit_dlrs.isnull(), 'max_tax_credit_dlrs'] = 1e9,
     inc.loc[(inc.ptc_dlrs_kwh > 0) & (inc.ptc_duration_years.isnull()), 'ptc_duration_years'] = assumed_duration
     value_of_ptc =  ptc_still_exists * np.minimum(inc.ptc_dlrs_kwh * inc.aep * (ptc_max_size/inc.system_size_kw), inc.max_dlrs_yr)
     value_of_ptc[np.isnan(value_of_ptc)] = 0

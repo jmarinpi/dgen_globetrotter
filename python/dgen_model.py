@@ -11,30 +11,24 @@ import os
 
 # 2. # Import modules and global vars
 import pandas as pd
-import pandas.io.sql as sqlio
-import psycopg2 as pg
 import psycopg2.extras as pgx
 import numpy as np
-import scipy as sp
 import glob
-import matplotlib as mpl
-import collections
 import diffusion_functions as diffunc
 import financial_functions as finfunc
 import data_functions as datfunc
 reload(datfunc)
 from data_objects import FancyDataFrame
 import subprocess
-import datetime
 import config as cfg
 import shutil
 import sys
-from sam.languages.python import sscapi
-import getopt
 import pickle
 import pssc_mp
 from excel import excel_functions
-import multiprocessing
+
+
+#np.seterr(all='raise')
     
 
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
