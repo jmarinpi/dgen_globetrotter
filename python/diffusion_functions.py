@@ -123,7 +123,7 @@ def calc_diffusion_market_share(df):
     '''
     # The relative economic attractiveness controls the p,q values in Bass diffusion
     # Current assumption is that only payback and MBS are being used, that pp is bounded [0-30] and MBS bounded [0-120]
-    scaled_metric_value = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'monthly_bill_savings', df.metric_value/120,np.nan))    
+    scaled_metric_value = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'percent_monthly_bill_savings', df.metric_value/120,np.nan))    
     p,q  = set_bass_param(scaled_metric_value) 
     teq = calc_equiv_time(df.market_share_last_year, df.max_market_share, p, q); # find the 'equivalent time' on the newly scaled diffusion curve
     teq2 = teq + 2; # now step forward two years from the 'new location'
