@@ -690,7 +690,7 @@ def combine_outputs_reeds(schema, sectors, cur, con):
     cur.execute(sql)
     con.commit()
     sql2 = 'SELECT * FROM %(schema)s.reeds_outputs' % inputs
-    return sqlio.read_frame(sql2,con)
+    return pd.read_sql(sql2,con)
 
 def copy_outputs_to_csv(technology, schema, out_path, sectors, cur, con):
     
@@ -2121,7 +2121,7 @@ def get_technologies(con, schema):
             WHERE enabled = TRUE;''' % schema
     
     # get the data
-    df = sqlio.read_frame(sql, con)
+    df = pd.read_sql(sql, con)
     # convert to a simple list    
     techs = df.tech.tolist()
     
@@ -2138,7 +2138,7 @@ def get_system_degradation(con, schema):
 
     sql = '''SELECT ann_system_degradation, tech
          FROM %s.input_performance_annual_system_degradation;''' % schema
-    ann_system_degradation = sqlio.read_frame(sql, con)
+    ann_system_degradation = pd.read_sql(sql, con)
 
     return ann_system_degradation    
     
@@ -2160,7 +2160,7 @@ def get_depreciation_schedule(con, schema, macrs = True):
     sql = '''SELECT year, tech, %(field)s as deprec
              FROM %(schema)s.input_finances_depreciation_schedule
              order by tech, year ASC;''' % inputs
-    df = sqlio.read_frame(sql, con)
+    df = pd.read_sql(sql, con)
     
     return df
     
@@ -2203,7 +2203,7 @@ def get_dsire_incentives(cur, con, schema, tech, sector_abbr, npar, pg_conn_stri
                 WHERE lower(c.sector) = '%(incentives_sector)s'
                 ORDER BY a.incentive_array_id
             """ % inputs
-    df = sqlio.read_frame(sql, con, coerce_float = False)
+    df = pd.read_sql(sql, con, coerce_float = False)
     return df
 
 
@@ -2258,7 +2258,7 @@ def get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema):
                     initial_number_of_adopters AS number_of_adopters_last_year,
                     1000 * initial_capacity_mw AS installed_capacity_last_year 
             FROM %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;""" % inputs
-    df = sqlio.read_frame(sql, con)
+    df = pd.read_sql(sql, con)
     return df  
 
 
@@ -2280,7 +2280,7 @@ def get_main_dataframe(con, sector_abbr, schema, year, tech):
                     AND a.bin_id = b.bin_id
                     AND a.year = b.year
             WHERE a.year = %(year)s""" % inputs_dict
-    df = sqlio.read_frame(sql, con, coerce_float = False)
+    df = pd.read_sql(sql, con, coerce_float = False)
 
     df['tech'] = tech
 
@@ -2300,7 +2300,7 @@ def get_financial_parameters(con, schema):
     
     sql = '''SELECT * 
              FROM %(schema)s.input_financial_parameters;''' % inputs
-    df = sqlio.read_frame(sql, con)
+    df = pd.read_sql(sql, con)
     
     # minor formatting for table joins later on
     df.sector = df.sector.str.lower()
@@ -2325,7 +2325,7 @@ def get_max_market_share(con, schema):
 
     sql = '''SELECT * 
              FROM %s.max_market_curves_to_model;'''  % schema
-    max_market_share = sqlio.read_frame(sql, con)
+    max_market_share = pd.read_sql(sql, con)
    
     return max_market_share
     
@@ -2338,7 +2338,7 @@ def get_market_projections(con, schema):
     '''
     sql = '''SELECT * 
              FROM %s.input_main_market_projections;''' % schema
-    return sqlio.read_frame(sql , con)
+    return pd.read_sql(sql , con)
 
 
 def get_manual_incentive_options(con, schema):
@@ -2347,7 +2347,7 @@ def get_manual_incentive_options(con, schema):
     
     sql = '''SELECT *
              FROM %(schema)s.input_incentive_options;''' % inputs
-    df = sqlio.read_frame(sql, con)
+    df = pd.read_sql(sql, con)
     
     return df            
 
@@ -2362,7 +2362,7 @@ def get_manual_incentives(con, schema, tech):
     
     sql = '''SELECT * 
              FROM %(schema)s.input_%(tech)s_incentives;''' % inputs
-    df = sqlio.read_frame(sql, con)
+    df = pd.read_sql(sql, con)
     df['sector'] = df['sector'].str.lower()
     return df
  
@@ -2611,7 +2611,7 @@ def get_rate_escalations(con, schema):
     sql = """SELECT census_division_abbr, year, 
                 lower(sector) as sector, escalation_factor
                 FROM %s.rate_escalations_to_model;""" % schema
-    rate_escalations = sqlio.read_frame(sql, con)
+    rate_escalations = pd.read_sql(sql, con)
     return rate_escalations
 
 def get_rate_structures(con, schema):
@@ -2628,7 +2628,7 @@ def get_rate_structures(con, schema):
         	SELECT 'ind' as sector_abbr, ind_rate_structure as rate_structure
         	FROM %(schema)s.input_main_scenario_options;""" % inputs
     
-    rate_structures_df = sqlio.read_frame(sql, con)
+    rate_structures_df = pd.read_sql(sql, con)
     rate_structures = dict(zip(rate_structures_df['sector_abbr'], rate_structures_df['rate_structure']))
     
     return rate_structures    
@@ -2644,7 +2644,7 @@ def get_lease_availability(con, schema, tech):
     
     sql = '''SELECT state_abbr, year, leasing_allowed
                 FROM %(schema)s.input_%(tech)s_leasing_availability;''' % inputs
-    df = sqlio.read_frame(sql, con)
+    df = pd.read_sql(sql, con)
     return df
     
 def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr,tech_lifetime): 

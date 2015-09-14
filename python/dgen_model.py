@@ -27,8 +27,6 @@ import pickle
 import pssc_mp
 from excel import excel_functions
 
-
-
 #==============================================================================
 # raise all numpy warnings as exceptions
 #==============================================================================
