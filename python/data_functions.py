@@ -715,11 +715,6 @@ def create_scenario_report(technology, schema, scen_name, out_path, cur, con, Rs
     #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
     # for linux and mac, this needs to be formatted as a list of args passed to subprocess
     command = [Rscript_path,'--vanilla', plot_outputs_path, out_path, scen_name, technology, schema, pg_params_file]
-    msg = 'Creating outputs report'
-    if logger is not None:            
-        logger.info(msg)
-    else:
-        print msg
     proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     messages = proc.communicate()
     if 'error' in messages[1].lower():
@@ -742,7 +737,7 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
     inputs['i_place_holder'] = '%(i)s'
     
     t0 = time.time()
-    msg = "Creating Aagents for %s Sector" % sector
+    msg = "Creating Agents for %s Sector" % sector
     logger.info(msg)
         
     #==============================================================================
@@ -782,7 +777,7 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
     #==============================================================================
     #   clean up intermediate tables
     #==============================================================================
-    msg = "\tCleaning up..."
+    msg = "\tCleaning Up Intermediate Tables..."
     logger.info(msg)
     intermediate_tables = [ '%(schema)s.county_rooftop_availability_samples_%(sector_abbr)s_%(i_place_holder)s' % inputs,
                             '%(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s' % inputs,
@@ -808,7 +803,7 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
             con.commit()        
     
     
-    logger.info('\tTotal time to create agents for %s sector: %0.1fs' % (sector, (time.time() - t0))) 
+    logger.info('\tTotal time to create agents for %s sector: %0.1fs' % (sector.lower(), (time.time() - t0))) 
 
 
 ########################################################################################################################
@@ -981,7 +976,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
 
 def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure, logger):
 
-    logger.info("\tSelecting rates for each agent")
+    logger.info("\tSelecting Rates for Each Agent")
     t0 = time.time()
     excluded_rates = pd.read_csv('./excluded_rates_ids.csv', header=None)
     inputs_dict['excluded_rate_ids'] = '(' + ', '.join([str(i[0]) for i in excluded_rates.values]) + ')'
@@ -1104,9 +1099,7 @@ def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure,
 
 def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string, logger):
     
-    msg = "Assigning rooftop characteristics"
-    logger.info(msg)
-    
+   
     #=============================================================================================================
     #     link each point to a rooftop orientation based on roof_style and prob weights in rooftop_characteristics
     #=============================================================================================================
@@ -1157,7 +1150,6 @@ def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string
               USING BTREE(solar_re_9809_gid, tilt, azimuth);""" % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
     
-    print time.time()-t0
 
 
 def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
@@ -1171,12 +1163,16 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     #==============================================================================
     #     Assign rooftop characterisics
     #==============================================================================  
+    msg = "\t\tAssigning Rooftop Characteristics"
+    logger.info(msg)
+    t0 = time.time()
     assign_roof_characteristics(inputs, county_chunks, npar, pg_conn_string, logger)
+    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0)) 
 
     #==============================================================================
     #     Join to Resource
     #==============================================================================
-    msg = "\t\tFinding Soalr Resource for Each Agent"
+    msg = "\t\tFinding Solar Resource for Each Agent"
     logger.info(msg)
     t0 = time.time()
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s;
@@ -1204,7 +1200,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
     #==============================================================================
-    msg = "Combining Cost and Resource and Selecting System Configuration for Each Agent"
+    msg = "\t\tCombining Cost and Resource and Selecting System Configuration for Each Agent"
     t0 = time.time()
     logger.info(msg)
     
@@ -2180,8 +2176,6 @@ def get_dsire_incentives(cur, con, schema, tech, sector_abbr, npar, pg_conn_stri
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
 
-    msg = "Identifying initial incentives for customer bins from DSIRE Database"
-    logger.info(msg)
     
     if sector_abbr == 'ind':
         inputs['incentives_sector'] = 'com'
