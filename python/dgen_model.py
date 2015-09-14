@@ -28,7 +28,12 @@ import pssc_mp
 from excel import excel_functions
 
 
+
+#==============================================================================
+# raise all numpy warnings as exceptions
+#==============================================================================
 np.seterr(all='raise')
+#==============================================================================
     
 
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
