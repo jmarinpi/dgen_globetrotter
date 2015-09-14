@@ -117,7 +117,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         elif mode != 'ReEDS':
             input_scenarios = ['']
             
-        # run the model for each input scenario spreadsheet
+     
+        #==========================================================================================================
+        # PREP DATABASE
+        #==========================================================================================================
         scenario_names = []
         dup_n = 1
         out_subfolders = {'wind' : [], 'solar' : []}
@@ -212,16 +215,20 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 os.makedirs(out_scen_path)
                 # copy the input scenario spreadsheet
                 shutil.copy(input_scenario, out_scen_path)
+                                
+                #==========================================================================================================
+                # CREATE AGENTS
+                #==========================================================================================================
+                logger.info("--------------Creating Agents---------------")
                 
                 # Combine All of the Temporally Varying Data in a new Table in Postgres
                 t0 = time.time()
                 msg = "Combining Temporal Factors"    
                 logger.info(msg)        
                 datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), logger)
-                logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))                
+                logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))                    
                 
-                 # loop through sectors, creating customer bins
-                logger.info("--------------Creating Agents---------------")
+                 # loop through sectors, creating customer bins                
                 for sector_abbr, sector in sectors.iteritems():
     
                     # define the rate escalation source and max market curve for the current sector
@@ -232,6 +239,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                    cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
                                                    cfg.npar, cfg.pg_conn_string, rate_structures[sector_abbr], logger = logger)
 
+            #==========================================================================================================
+            # CALCULATE BILL SAVINGS
+            #==========================================================================================================
             if cfg.init_model:
                 logger.info("---------Calculating Energy Savings---------")
                 for tech in techs:
@@ -281,6 +291,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         logger.info('\tTotal time to calculate all electric bills: %0.1fs' % (time.time() - t0),)  
 
     
+            #==========================================================================================================
+            # MODEL DEPLOYMENT    
+            #==========================================================================================================
             logger.info("---------Modeling Annual Deployment---------")
             for tech in techs:
                 if cfg.init_model:
