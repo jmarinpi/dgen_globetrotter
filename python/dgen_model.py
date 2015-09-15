@@ -312,7 +312,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     dsire_incentives[tech] = dsire_df
 
                 for year in model_years:
-                    logger.info('\tWorking on %s for %s Sector' % (year, sector))               
+                    npv_dfs = []
+                    dfs = []
+                    logger.info('\tWorking on %s for %s Sector' % (year, sector))
                     for tech in techs:
                         df = datfunc.get_main_dataframe(con, sector_abbr, schema, year, tech)
                         if mode == 'ReEDS':
@@ -351,11 +353,25 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                                                    scenario_opts, incentive_options, max_market_share, cur, con, year, 
                                                                                    dsire_incentives[tech], deprec_schedule, logger, rate_escalations, 
                                                                                    ann_system_degradation, mode,curtailment_method, tech_lifetime = 25)
+                        
+                        npv_df = df[['county_id', 'bin_id', 'busines_model', 'tech', 'leasing_allowed', 'npv4']]
+                        
+                        dfs.append(df)                        
+                        npv_dfs.append(npv_df)
+                       
                     
-                        # assign business model
-                        df = datfunc.assign_business_model(df, prng[tech], method = 'prob', alpha = 2)
-                        
-                        
+                    if cfg.choose_tech == True:
+                        npv_all = pd.concat(npv_dfs, axis = 0, ignore_index = True)
+                        # choose tech
+                        finfunc.select_business_model_and_tech(npv_all, choose_tech = True)
+                    else:
+                        dfs_bm = []
+                        for df in dfs:
+                            # assign business model
+                            df = datfunc.assign_business_model(df, prng[tech], method = 'prob', alpha = 2)
+                            dfs_bm.append(df)
+                     
+                    for df in dfs_bm:
                         # 10. Calulate diffusion
                         ''' Calculates the market share (ms) added in the solve year. Market share must be less
                         than max market share (mms) except initial ms is greater than the calculated mms.
