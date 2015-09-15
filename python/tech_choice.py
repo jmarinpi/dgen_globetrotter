@@ -62,15 +62,8 @@ def system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', '
     else:
         group_by_cols = ['county_id', 'bin_id', 'tech']
   
-    # Find the minimum and maxmimum npv by group
-    gb_min = df.groupby(group_by_cols)['npv4'].min().reset_index()
-    gb_min.columns = group_by_cols + ['min_npv']
-    gb_max = df.groupby(group_by_cols)['npv4'].max().reset_index()
-    gb_max.columns = group_by_cols + ['max_npv']
-    
-    # Rescale the npv (if there are negative npvs, the scale won't be [0,1])
-    df = df.merge(gb_min).merge(gb_max)
-    df['npv'] = (df['npv4'] - df['min_npv'])/(df['max_npv'] - df['min_npv'])
+    # Change any negative npvs to zero
+    df['npv'] = np.where(df['npv4'] < 0, 0, df['npv4'])
     
     # Calculate the exponentiated value, filtering by whether leasing is allowed
     df['mkt_exp'] = df['npv']**df['alpha']
@@ -81,18 +74,25 @@ def system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', '
     gb = pd.DataFrame({'mkt_sum': gb['mkt_exp'].sum()})
     
     # Merge the random number and expo values back 
-    df = df.merge(gb, left_on= group_by_cols, right_index = True)
+    df = df.merge(gb, left_on = group_by_cols, right_index = True)
     
     # Determine the probability of adopting
+    # Set a default, uniform probability that will be used in cases where all options are uneconomical
+    # (probs must always sum to 1)
+    if choose_tech == True:
+        def_ratio = 0.25
+    else:
+        def_ratio = 0.5
+        
     with np.errstate(invalid = 'ignore'):
-        df['p'] = np.where(df['mkt_sum'] == 0, 0, df['mkt_exp']/df['mkt_sum'])
+        df['p'] = np.where(df['mkt_sum'] == 0, def_ratio, df['mkt_exp']/df['mkt_sum'])
     
     # Do a weighted random draw by group and return the p-value that was selected
     selected_uids = df.groupby(group_by_cols).apply(weighted_choice, prng).reset_index()
     selected_uids.columns = group_by_cols + ['best']
     
     # Filter by the best choice by matching the p-values returned above
-    df_selected = df.merge(selected_uids, left_on = group_by_cols + ['uid'], right_on = group_by_cols + ['best'])
+    df_selected = df.merge(selected_uids, left_on = group_by_cols + ['uid'], right_on = group_by_cols + ['best'], how = 'outer')
     return_df = df_selected[['county_id', 'bin_id', 'tech', 'business_model']].sort(columns = ['county_id', 'bin_id', 'tech'])
     
     return return_df
