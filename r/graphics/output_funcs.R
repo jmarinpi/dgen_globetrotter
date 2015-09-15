@@ -185,7 +185,7 @@ lcoe_contour<-function(df, schema, tech, start_year, end_year, dr = 0.05, n = 30
   d[d$lcoe == 0.7 , 'cf_min'] <- 0
   
   # Subset of model points for first and last year
-  sql = sprintf("SELECT * FROM %s.outputs_all WHERE tech = '%s' AND year in (%s,%s) ORDER BY RANDOM() LIMIT 1000", schema, tech, start_year, end_year)
+  sql = sprintf("SELECT * FROM %s.outputs_all_%s AND year in (%s,%s) ORDER BY RANDOM() LIMIT 1000", schema, tech, start_year, end_year)
   f = tbl(src,sql(sql))       
   pts = collect(select(f, installed_costs_dollars_per_kw,naep,year))
   pts$present_value_factor <- present_value_factor

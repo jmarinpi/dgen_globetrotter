@@ -47,8 +47,7 @@ src = src_postgres(host = pg_params[['host']], dbname=pg_params[['dbname']], use
 
 # lazy load the output table from postgres
 sql = sprintf("SELECT *
-                FROM %s.outputs_all
-              WHERE tech = '%s'", schema, tech)
+                FROM %s.outputs_all_%s", schema, tech)
 df = tbl(src,sql(sql))
 
 # get the start year and end year for the model run

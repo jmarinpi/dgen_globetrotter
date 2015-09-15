@@ -475,8 +475,8 @@ def combine_outputs_wind(schema, sectors, cur, con):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()   
 
-    sql = '''DROP TABLE IF EXISTS %(schema)s.outputs_all;
-            CREATE UNLOGGED TABLE %(schema)s.outputs_all AS  ''' % inputs  
+    sql = '''DROP TABLE IF EXISTS %(schema)s.outputs_all_wind;
+            CREATE UNLOGGED TABLE %(schema)s.outputs_all_wind AS  ''' % inputs  
     
     for i, sector_abbr in enumerate(sectors.keys()):
         inputs['sector'] = sectors[sector_abbr].lower()
@@ -537,6 +537,8 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     LEFT JOIN %(schema)s.pt_%(sector_abbr)s_initial_market_shares_wind c
                     ON a.county_id = c.county_id
                     AND a.bin_id = c.bin_id
+                    
+                    WHERE a.tech = 'wind';
                     ''' % inputs
         sql += sub_sql
     
@@ -545,14 +547,14 @@ def combine_outputs_wind(schema, sectors, cur, con):
     con.commit()
 
     # create indices that will be needed for various aggregations in R visualization script
-    sql = '''CREATE INDEX outputs_all_year_btree ON %(schema)s.outputs_all USING BTREE(year);
-             CREATE INDEX outputs_all_state_abbr_btree ON %(schema)s.outputs_all USING BTREE(state_abbr);
-             CREATE INDEX outputs_all_sector_btree ON %(schema)s.outputs_all USING BTREE(sector);
-             CREATE INDEX outputs_all_business_model_btree ON %(schema)s.outputs_all USING BTREE(business_model);
-             CREATE INDEX outputs_all_system_size_factors_btree ON %(schema)s.outputs_all USING BTREE(system_size_factors);                          
-             CREATE INDEX outputs_all_metric_btree ON %(schema)s.outputs_all USING BTREE(metric);             
-             CREATE INDEX outputs_all_turbine_height_m_btree ON %(schema)s.outputs_all USING BTREE(turbine_height_m);
-             CREATE INDEX outputs_all_tech_btree ON %(schema)s.outputs_all USING BTREE(tech);
+    sql = '''CREATE INDEX outputs_all_wind_year_btree ON %(schema)s.outputs_all_wind USING BTREE(year);
+             CREATE INDEX outputs_all_wind_state_abbr_btree ON %(schema)s.outputs_all_wind USING BTREE(state_abbr);
+             CREATE INDEX outputs_all_wind_sector_btree ON %(schema)s.outputs_all_wind USING BTREE(sector);
+             CREATE INDEX outputs_all_wind_business_model_btree ON %(schema)s.outputs_all_wind USING BTREE(business_model);
+             CREATE INDEX outputs_all_wind_system_size_factors_btree ON %(schema)s.outputs_all_wind USING BTREE(system_size_factors);                          
+             CREATE INDEX outputs_all_wind_metric_btree ON %(schema)s.outputs_all_wind USING BTREE(metric);             
+             CREATE INDEX outputs_all_wind_turbine_height_m_btree ON %(schema)s.outputs_all_wind USING BTREE(turbine_height_m);
+             CREATE INDEX outputs_all_wind_tech_btree ON %(schema)s.outputs_all_wind USING BTREE(tech);
              ''' % inputs
     cur.execute(sql)
     con.commit()
@@ -563,8 +565,8 @@ def combine_outputs_solar(schema, sectors, cur, con):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()   
 
-    sql = '''DROP TABLE IF EXISTS %(schema)s.outputs_all;
-            CREATE UNLOGGED TABLE %(schema)s.outputs_all AS  ''' % inputs  
+    sql = '''DROP TABLE IF EXISTS %(schema)s.outputs_all_solar;
+            CREATE UNLOGGED TABLE %(schema)s.outputs_all_solar AS  ''' % inputs  
     
     for i, sector_abbr in enumerate(sectors.keys()):
         inputs['sector'] = sectors[sector_abbr].lower()
@@ -630,6 +632,8 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     LEFT JOIN %(schema)s.pt_%(sector_abbr)s_initial_market_shares_solar c
                     ON a.county_id = c.county_id
                     AND a.bin_id = c.bin_id
+                    
+                    WHERE a.tech = 'solar';
                     ''' % inputs
         sql += sub_sql
     
@@ -638,13 +642,13 @@ def combine_outputs_solar(schema, sectors, cur, con):
     con.commit()
 
     # create indices that will be needed for various aggregations in R visualization script
-    sql = '''CREATE INDEX outputs_all_year_btree ON %(schema)s.outputs_all USING BTREE(year);
-             CREATE INDEX outputs_all_state_abbr_btree ON %(schema)s.outputs_all USING BTREE(state_abbr);
-             CREATE INDEX outputs_all_sector_btree ON %(schema)s.outputs_all USING BTREE(sector);
-             CREATE INDEX outputs_all_business_model_btree ON %(schema)s.outputs_all USING BTREE(business_model);
-             CREATE INDEX outputs_all_system_size_factors_btree ON %(schema)s.outputs_all USING BTREE(system_size_factors);                          
-             CREATE INDEX outputs_all_metric_btree ON %(schema)s.outputs_all USING BTREE(metric);
-             CREATE INDEX outputs_all_tech_btree ON %(schema)s.outputs_all USING BTREE(tech);
+    sql = '''CREATE INDEX outputs_all_solar_year_btree ON %(schema)s.outputs_all_solar USING BTREE(year);
+             CREATE INDEX outputs_all_solar_state_abbr_btree ON %(schema)s.outputs_all_solar USING BTREE(state_abbr);
+             CREATE INDEX outputs_all_solar_sector_btree ON %(schema)s.outputs_all_solar USING BTREE(sector);
+             CREATE INDEX outputs_all_solar_business_model_btree ON %(schema)s.outputs_all_solar USING BTREE(business_model);
+             CREATE INDEX outputs_all_solar_system_size_factors_btree ON %(schema)s.outputs_all_solar USING BTREE(system_size_factors);                          
+             CREATE INDEX outputs_all_solar_metric_btree ON %(schema)s.outputs_all_solar USING BTREE(metric);
+             CREATE INDEX outputs_all_solar_tech_btree ON %(schema)s.outputs_all_solar USING BTREE(tech);
              ''' % inputs
     cur.execute(sql)
     con.commit()
@@ -689,45 +693,51 @@ def combine_outputs_reeds(schema, sectors, cur, con):
     sql2 = 'SELECT * FROM %(schema)s.reeds_outputs' % inputs
     return pd.read_sql(sql2,con)
 
-def copy_outputs_to_csv(technology, schema, out_path, sectors, cur, con):
+def copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con):
     
-    if technology == 'wind':
+    
+    if 'wind' in techs:
         combine_outputs_wind(schema, sectors, cur, con)
-    elif technology == 'solar':
+
+    if 'solar' in techs:
         combine_outputs_solar(schema, sectors, cur, con)        
 
     # copy data to csv
-    f = gzip.open(out_path+'/outputs.csv.gz','w',1)
-    cur.copy_expert('COPY %s.outputs_all TO STDOUT WITH CSV HEADER;' % schema, f)
-    f.close()
+    for tech in techs:
+        out_file = os.path.join(out_scen_path, tech, 'outputs_%s.csv.gz' % tech)
+        f = gzip.open(out_file,'w',1)
+        cur.copy_expert('COPY %s.outputs_all_%s TO STDOUT WITH CSV HEADER;' % (schema, tech), f)
+        f.close()
     
     # write the scenario optoins to csv as well
-    f2 = open(out_path+'/scenario_options_summary.csv','w')
+    f2 = open(os.path.join(out_scen_path, 'scenario_options_summary.csv'),'w')
     cur.copy_expert('COPY %s.input_main_scenario_options TO STDOUT WITH CSV HEADER;' % schema, f2)
     f2.close()
     
 
-def create_scenario_report(technology, schema, scen_name, out_path, cur, con, Rscript_path, pg_params_file, logger = None):
+def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rscript_path, pg_params_file, logger = None):
            
     # path to the plot_outputs R script        
     plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
     
-    #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
-    # for linux and mac, this needs to be formatted as a list of args passed to subprocess
-    command = [Rscript_path,'--vanilla', plot_outputs_path, out_path, scen_name, technology, schema, pg_params_file]
-    proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-    messages = proc.communicate()
-    if 'error' in messages[1].lower():
-        if logger is not None:
-            logger.error(messages[1])
-        else:
-            print "Error: %s" % messages[1]
-    if 'warning' in messages[1].lower():
-        if logger is not None:
-            logger.warning(messages[1])
-        else:
-            print "Warning: %s" % messages[1]
-    returncode = proc.returncode    
+    for tech in techs:
+        out_tech_path = os.path.join(out_scen_path, tech)
+        #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
+        # for linux and mac, this needs to be formatted as a list of args passed to subprocess
+        command = [Rscript_path,'--vanilla', plot_outputs_path, out_tech_path, scen_name, tech, schema, pg_params_file]
+        proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        messages = proc.communicate()
+        if 'error' in messages[1].lower():
+            if logger is not None:
+                logger.error(messages[1])
+            else:
+                print "Error: %s" % messages[1]
+        if 'warning' in messages[1].lower():
+            if logger is not None:
+                logger.warning(messages[1])
+            else:
+                print "Warning: %s" % messages[1]
+  
 
 def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
                            rate_escalation_source, load_growth_scenario, npar, pg_conn_string, rate_structure, logger):
@@ -2254,6 +2264,7 @@ def get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema):
                     1000 * initial_capacity_mw AS installed_capacity_last_year 
             FROM %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;""" % inputs
     df = pd.read_sql(sql, con)
+    
     return df  
 
 
