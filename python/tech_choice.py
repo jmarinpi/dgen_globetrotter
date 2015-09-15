@@ -7,6 +7,7 @@ Created on Thu Sep 10 15:20:11 2015
 
 import pandas as pd
 import numpy as np
+import sys
 
 
 
@@ -28,7 +29,28 @@ alpha_lkup = pd.DataFrame({'tech' : ['solar','solar','wind','wind'],
 })
 
 
-def system_choice(df, prng, alpha_lkup, choose_tech = False):
+def system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind']):
+    
+
+
+    # check each customer bin has four entries
+    test = df.groupby(['county_id', 'bin_id'])['npv4'].count().reset_index()
+    if np.any(test.iloc[:,2] <> len(techs) * 2):
+        raise ValueError("Incorrect number of entries for each customer bin")
+        sys.exit(-1)
+    
+    # check each customer bin + tech has two business models
+    test = df.groupby(['county_id', 'bin_id', 'tech'])['business_model'].count().reset_index()
+    if np.any(test.iloc[:,3] <> 2):
+        raise ValueError("Incorrect number of business models for each customer bin")
+        sys.exit(-1)
+        
+     # check each customer bin + business model has the correct nmber of techs
+    test = df.groupby(['county_id', 'bin_id', 'business_model'])['tech'].count().reset_index()
+    if np.any(test.iloc[:,3] <> len(techs)):
+        raise ValueError("Incorrect number of techs for each customer bin")
+        sys.exit(-1)
+        
     
     df['uid'] = range(0, df.shape[0])
     df = df.merge(alpha_lkup)
@@ -70,6 +92,7 @@ def system_choice(df, prng, alpha_lkup, choose_tech = False):
     
     # Filter by the best choice by matching the p-values returned above
     df_selected = df.merge(selected_uids, left_on = group_by_cols + ['uid'], right_on = group_by_cols + ['best'])
-    return_df = df_selected[['county_id', 'bin_id', 'tech', 'business_model']]
+    return_df = df_selected[['county_id', 'bin_id', 'tech', 'business_model']].sort(columns = ['county_id', 'bin_id', 'tech'])
+    
     
     return return_df
