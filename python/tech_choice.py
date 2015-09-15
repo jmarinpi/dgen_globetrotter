@@ -84,7 +84,8 @@ def system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', '
     df = df.merge(gb, left_on= group_by_cols, right_index = True)
     
     # Determine the probability of adopting
-    df['p'] = df['mkt_exp']/df['mkt_sum']
+    with np.errstate(invalid = 'ignore'):
+        df['p'] = np.where(df['mkt_sum'] == 0, 0, df['mkt_exp']/df['mkt_sum'])
     
     # Do a weighted random draw by group and return the p-value that was selected
     selected_uids = df.groupby(group_by_cols).apply(weighted_choice, prng).reset_index()
@@ -93,6 +94,5 @@ def system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', '
     # Filter by the best choice by matching the p-values returned above
     df_selected = df.merge(selected_uids, left_on = group_by_cols + ['uid'], right_on = group_by_cols + ['best'])
     return_df = df_selected[['county_id', 'bin_id', 'tech', 'business_model']].sort(columns = ['county_id', 'bin_id', 'tech'])
-    
     
     return return_df
