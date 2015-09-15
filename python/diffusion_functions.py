@@ -46,7 +46,8 @@ def calc_diffusion(df, logger, year, sector):
     df['market_value'] = df['market_value_last_year'] + df['new_market_value']
     market_last_year = df[['county_id','bin_id','market_share', 'max_market_share','number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
     market_last_year.columns = ['county_id', 'bin_id', 'market_share_last_year', 'max_market_share_last_year','number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
-    return df,market_last_year, logger
+
+    return df, market_last_year, logger
 
 
 #=============================================================================

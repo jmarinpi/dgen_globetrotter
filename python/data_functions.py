@@ -524,7 +524,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     (b.rate_escalation_factor * a.first_year_bill_without_system)/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
-                    c.initial_capacity_mw
+                    c.initial_capacity_kw * 1000 as initial_capacity_mw
                                         
                     
                     FROM %(schema)s.outputs_%(sector_abbr)s a
@@ -620,7 +620,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     (b.rate_escalation_factor * a.first_year_bill_without_system)/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
-                    c.initial_capacity_mw
+                     c.initial_capacity_kw * 1000 as initial_capacity_mw
                     
                     FROM %(schema)s.outputs_%(sector_abbr)s a
                     
@@ -2226,7 +2226,7 @@ def get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema):
 			SELECT county_id, bin_id, state_abbr,
 				CASE  WHEN system_size_kw = 0 then 0
 					ELSE customers_in_bin
-				END AS customers_in_bin
+				END AS customers_in_bin, installed_costs_dollars_per_kw
 			FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s	
 			WHERE year = 2014			
              ),
@@ -2235,17 +2235,19 @@ def get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema):
                 	SELECT a.county_id, a.bin_id,
                 		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
                 		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
-                		a.customers_in_bin
+                		a.customers_in_bin,
+                         a.installed_costs_dollars_per_kw
                 	FROM a
                 	LEFT JOIN diffusion_%(tech)s.starting_capacities_mw_2012_q4_us b
                 		ON a.state_abbr = b.state_abbr
             ) 
             SELECT b.county_id, b.bin_id,
                  ROUND(COALESCE(b.initial_number_of_adopters, 0)::NUMERIC, 6) as initial_number_of_adopters,
-                 ROUND(COALESCE(b.initial_capacity_mw, 0)::NUMERIC, 6) as initial_capacity_mw,
+                 1000 * ROUND(COALESCE(b.initial_capacity_mw, 0)::NUMERIC, 6) as initial_capacity_kw,
         	     CASE  WHEN customers_in_bin = 0 then 0
                        ELSE ROUND(COALESCE(b.initial_number_of_adopters/b.customers_in_bin, 0)::NUMERIC, 6) 
-                 END AS initial_market_share
+                 END AS initial_market_share,
+                 b.installed_costs_dollars_per_kw
             FROM b;""" % inputs
     cur.execute(sql)
     con.commit()    
@@ -2257,15 +2259,53 @@ def get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema):
     cur.execute(sql)
     con.commit()
 
-    # BOS - installed capacity is stored as MW in the database, but to be consisent with calculations should be in kW
+
     sql = """SELECT county_id, bin_id, 
                     initial_market_share AS market_share_last_year,
                     initial_number_of_adopters AS number_of_adopters_last_year,
-                    1000 * initial_capacity_mw AS installed_capacity_last_year 
+                    initial_capacity_kw AS installed_capacity_last_year,
+                    installed_costs_dollars_per_kw * initial_capacity_kw as market_value_last_year
             FROM %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;""" % inputs
     df = pd.read_sql(sql, con)
     
     return df  
+
+
+def get_market_last_year(cur, con, is_first_year, tech, sector_abbr, sector, schema):
+    
+    inputs = locals().copy()
+    
+    
+    if is_first_year == True:
+        last_year_df = get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema)
+    else:
+        sql = """SELECT *
+                FROM %(schema)s.output_%(tech)s_market_last_year;""" % inputs
+        last_year_df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return last_year_df
+    
+
+def write_last_year(con, cur, market_last_year, sector_abbr, schema, tech):
+    
+    inputs = locals().copy()    
+    inputs['out_table'] = '%(schema)s.output_%(tech)s_market_last_year'  % inputs
+    
+    sql = """DELETE FROM %(out_table)s;"""  % inputs
+    cur.execute(sql)
+    con.commit()
+
+    # open an in memory stringIO file (like an in memory csv)
+    s = StringIO()
+    # write the data to the stringIO
+    market_last_year.to_csv(s, index = False, header = False)
+    # seek back to the beginning of the stringIO file
+    s.seek(0)
+    # copy the data from the stringio file to the postgres table
+    cur.copy_expert('COPY %(out_table)s FROM STDOUT WITH CSV' % inputs, s)
+    # commit the additions and close the stringio file (clears memory)
+    con.commit()    
+    s.close()
 
 
 def get_main_dataframe(con, sector_abbr, schema, year, tech):

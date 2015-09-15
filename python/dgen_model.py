@@ -311,7 +311,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     dsire_df = datfunc.get_dsire_incentives(cur, con, schema, tech, sector_abbr, cfg.npar, cfg.pg_conn_string, logger)     
                     dsire_incentives[tech] = dsire_df
 
-                market_last_year = {}
                 for year in model_years:
                     logger.info('\tWorking on %s for %s Sector' % (year, sector))               
                     for tech in techs:
@@ -342,13 +341,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         '''                        
                         
                         # Market characteristics from previous year
-                        if year == cfg.start_year: 
-                            # get the initial market share per bin by county
-                            initial_market_shares = datfunc.get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema)
-                            df = pd.merge(df, initial_market_shares, how = 'left', on = ['county_id','bin_id'])
-                            df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']
-                        else:    
-                            df = pd.merge(df, market_last_year[tech], how = 'left', on = ['county_id','bin_id'])
+                        is_first_year = year == cfg.start_year
+                        previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, tech, sector_abbr, sector, schema)   
+                        df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id','bin_id'])
                                             
                         # Calculate economics of adoption given system cofiguration and business model
                         df = finfunc.calc_economics(df, schema, sector, sector_abbr, tech,
@@ -367,8 +362,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
                         decrease if economics deterioriate.
                         '''             
-                        df, market_last_year_df, logger = diffunc.calc_diffusion(df, logger, year, sector)
-                        market_last_year[tech] = market_last_year_df
+                        df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
+
                         if mode == 'ReEDS':
                             if sector_abbr == 'res':
                                 market_last_year_res = market_last_year
@@ -380,6 +375,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         # 11. Save outputs from this year and update parameters for next solve       
                         t0 = time.time()                 
                         datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
+                        datfunc.write_last_year(con, cur, market_last_year, sector_abbr, schema, tech)
                          
                 ## 12. Outputs & Visualization
                 # set output subfolder  
