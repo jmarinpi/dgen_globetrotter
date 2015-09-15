@@ -2279,12 +2279,16 @@ def get_main_dataframe(con, sector_abbr, schema, year, tech):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs_dict = locals().copy()     
     
-    sql = """SELECT a.*, b.first_year_bill_with_system, b.first_year_bill_without_system, b.excess_generation_percent
+    sql = """SELECT a.*, b.first_year_bill_with_system, b.first_year_bill_without_system, b.excess_generation_percent, c.leasing_allowed
             FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s a
             LEFT JOIN %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s b
                     ON a.county_id = b.county_id
                     AND a.bin_id = b.bin_id
                     AND a.year = b.year
+            -- LEASING AVAILABILITY
+            LEFT JOIN %(schema)s.input_%(tech)s_leasing_availability c
+                ON a.state_abbr = c.state_abbr
+                AND a.year = c.year                                     
             WHERE a.year = %(year)s""" % inputs_dict
     df = pd.read_sql(sql, con, coerce_float = False)
 

@@ -134,9 +134,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # create the output schema
                 logger.info('Creating output schema')
                 t0 = time.time()
-#                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template')
-                schema = 'diffusion_results_2015_09_15_09h48m04s' # TODO: turn this off
-                datfunc.clear_outputs(con, cur, schema) # TODO: turn this off
+#                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Uncomment
+                schema = 'diffusion_results_2015_09_15_09h48m04s' # TODO: COMMENT/DELETE
+                datfunc.clear_outputs(con, cur, schema) # TODO: COMMENT/DELETE
                 logger.info('\tOutput schema is: %s' % schema)
                 logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
                 # write the reeds settings to postgres
@@ -227,7 +227,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 t0 = time.time()
                 msg = "Combining Temporal Factors"    
                 logger.info(msg)        
-#                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), logger)
+#                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), logger) # TODO: Uncomment
                 logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))                    
                 
                  # loop through sectors, creating customer bins                
@@ -236,7 +236,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # define the rate escalation source and max market curve for the current sector
                     rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
                     # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
-#                    datfunc.generate_customer_bins(cur, con, techs, schema, 
+#                    datfunc.generate_customer_bins(cur, con, techs, schema,  # TODO: Uncomment
 #                                                   scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
 #                                                   cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
 #                                                   cfg.npar, cfg.pg_conn_string, rate_structures[sector_abbr], logger = logger)
@@ -246,7 +246,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==========================================================================================================
             if cfg.init_model:
                 logger.info("---------Calculating Energy Savings---------")
-#                for tech in techs:
+#                for tech in techs: # TODO: Uncomment
 #                    # find all unique combinations of rates, load, and generation
 #                    
 #                        logger.info('Calculating Annual Electric Bill Savings for %s' % tech.title())
@@ -347,17 +347,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                             initial_market_shares = datfunc.get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema)
                             df = pd.merge(df, initial_market_shares, how = 'left', on = ['county_id','bin_id'])
                             df['market_value_last_year'] = df['installed_capacity_last_year'] * df['installed_costs_dollars_per_kw']
-                            
-                            ## get the initial lease availability by state
-                            #leasing_avail_status_by_state = datfunc.get_initial_lease_status(df,con)
-                            #df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
                         else:    
                             df = pd.merge(df, market_last_year[tech], how = 'left', on = ['county_id','bin_id'])
-                            #df = pd.merge(df, leasing_avail_status_by_state, how = 'left', on = ['state_abbr'])
-
-                        # Determine whether leasing is permitted in given year
-                        lease_availability = datfunc.get_lease_availability(con, schema, tech)
-                        df = pd.merge(df, lease_availability, on = ['state_abbr','year'])
                                             
                         # Calculate economics of adoption given system cofiguration and business model
                         df = finfunc.calc_economics(df, schema, sector, sector_abbr, tech,
@@ -365,7 +356,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                                                    scenario_opts, incentive_options, max_market_share, cur, con, year, 
                                                                                    dsire_incentives[tech], deprec_schedule, logger, rate_escalations, 
                                                                                    ann_system_degradation, mode,curtailment_method, tech_lifetime = 25)
-                        
+                    
                         # assign business model
                         df = datfunc.assign_business_model(df, prng[tech], method = 'prob', alpha = 2)
                         
@@ -406,7 +397,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))
                 # create output html report
                 t0 = time.time()
-                logger.info('\tCompiling Output Report') # TODO: change this to take techs as an input instead of tech
+                logger.info('\tCompiling Output Reports')
                 datfunc.create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, cfg.Rscript_path, cfg.pg_params_file, logger)
                 logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))
                                 
@@ -427,7 +418,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             ### THIS IS TEMPORARY ###
             # drop the new schema
             logger.info('Dropping the Output Schema (%s) from Database' % schema)
-#            datfunc.drop_output_schema(cfg.pg_conn_string, schema)
+#            datfunc.drop_output_schema(cfg.pg_conn_string, schema) # TODO: Uncomment
             #####################################################################
             
             logger.info("-------------Model Run Complete-------------")
