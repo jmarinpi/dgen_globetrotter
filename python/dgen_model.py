@@ -298,11 +298,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==========================================================================================================
             logger.info("---------Modeling Annual Deployment---------")
             if cfg.init_model:
-                prng = {}    
-                for tech in techs:                
-                    # Generate a pseudo-random number generator to generate random numbers in numpy.
-                    # This method is better than np.random.seed() because it is thread-safe
-                    prng[tech] = np.random.RandomState(scenario_opts['random_generator_seed'])
+                prng = np.random.RandomState(scenario_opts['random_generator_seed'])
+            
             for sector_abbr, sector in sectors.iteritems():  
                 logger.info("Modeling Deployment for %s Sector" % sector.title())
                 dsire_incentives = {}
@@ -353,24 +350,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                                                    scenario_opts, incentive_options, max_market_share, cur, con, year, 
                                                                                    dsire_incentives[tech], deprec_schedule, logger, rate_escalations, 
                                                                                    ann_system_degradation, mode,curtailment_method, tech_lifetime = 25)
-                        
-                        npv_df = df[['county_id', 'bin_id', 'busines_model', 'tech', 'leasing_allowed', 'npv4']]
-                        
+                                                
                         dfs.append(df)                        
-                        npv_dfs.append(npv_df)
-                       
                     
-                    if cfg.choose_tech == True:
-                        npv_all = pd.concat(npv_dfs, axis = 0, ignore_index = True)
-                        # choose tech
-                        finfunc.select_business_model_and_tech(npv_all, choose_tech = True)
-                    else:
-                        dfs_bm = []
-                        for df in dfs:
-                            # assign business model
-                            df = datfunc.assign_business_model(df, prng[tech], method = 'prob', alpha = 2)
-                            dfs_bm.append(df)
-                     
+                    # exit the techs loop and combine results from each technology
+                    df_combined = pd.concat(dfs, axis = 0, ignore_index = True)
+                    
+                    # select from choices for business model and (optionally) technology
+                    df_combined = datfunc.select_financing_and_tech(npv_dfs, prng, cfg.alpha_lkup, cfg.choose_tech, techs)
+                    
                     for df in dfs_bm:
                         # 10. Calulate diffusion
                         ''' Calculates the market share (ms) added in the solve year. Market share must be less

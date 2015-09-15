@@ -82,3 +82,12 @@ gross_fit_mode = False
 max_incentive_fraction = 0.4
 
 
+#==============================================================================
+#  Set up the alpha lookup table used by datfunc.select_financing_and_tech
+#==============================================================================
+alpha_lkup = pd.DataFrame({'tech' : ['solar', 'solar', 'wind', 'wind'],
+                           'business_model' : ['host_owned', 'tpo', 'host_owned', 'tpo'],
+                            'alpha' : [2, 2, 2, 2]
+
+})
+
