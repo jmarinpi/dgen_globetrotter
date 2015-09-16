@@ -136,7 +136,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info('Creating output schema')
                 t0 = time.time()
                 schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
-#                schema = 'diffusion_results_2015_09_15_09h48m04s' # TODO: COMMENT/DELETE
+#                schema = 'diffusion_results_2015_09_16_15h06m58s' # TODO: COMMENT/DELETE
                 datfunc.clear_outputs(con, cur, schema)
                 logger.info('\tOutput schema is: %s' % schema)
                 logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
@@ -346,7 +346,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id','bin_id'])
                                             
                         # Calculate economics of adoption given system cofiguration and business model
-                        logger.info("\t\tCalculating system economics for %s" % tech.title)
+                        logger.info("\t\tCalculating system economics for %s" % tech.title())
                         df = finfunc.calc_economics(df, schema, sector, sector_abbr, tech,
                                                                                    market_projections, financial_parameters, 
                                                                                    scenario_opts, incentive_options, max_market_share, cur, con, year, 
@@ -373,9 +373,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         '''             
                         df = df_combined[df_combined.tech == tech]
                         logger.info("\t\tCalculating diffusion")
-#                        t0 = time.time()
-#                        df = datfunc.assign_business_model(df, prng, method = 'prob', alpha = 2)
-#                        print time.time() - t0
                         df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
                         logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
