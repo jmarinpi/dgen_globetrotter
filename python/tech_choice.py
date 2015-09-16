@@ -12,7 +12,9 @@ import sys
 
 def weighted_choice(group, prng):
     
-    sample = prng.choice(group['uid'], 1, False, group['p'])[0]
+    # rescale probabilities to sum to one
+    p = group['p']/group['p'].sum()
+    sample = prng.choice(group['uid'], 1, False, p)[0]
     
     return sample
 
@@ -56,7 +58,7 @@ def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs =
     
     # Calculate the exponentiated value, filtering by whether leasing is allowed
     df['mkt_exp'] = df['npv']**df['alpha']
-    df.loc[(df['business_model'] == 'tpo') & ~(df['leasing_allowed']),'mkt_exp'] = 0 #Restrict leasing if not allowed by state
+    df.loc[(df['business_model'] == 'tpo') & (df['leasing_allowed'] == False),'mkt_exp'] = 0 #Restrict leasing if not allowed by state
     
     # Calculate the total exponentiated values for each group
     gb = df.groupby(group_by_cols)
@@ -66,15 +68,8 @@ def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs =
     df = df.merge(gb, left_on = group_by_cols, right_index = True)
     
     # Determine the probability of adopting
-    # Set a default, uniform probability that will be used in cases where all options are uneconomical
-    # (probs must always sum to 1)
-    if choose_tech == True:
-        def_ratio = 0.25
-    else:
-        def_ratio = 0.5
-        
     with np.errstate(invalid = 'ignore'):
-        df['p'] = np.where(df['mkt_sum'] == 0, def_ratio, df['mkt_exp']/df['mkt_sum'])    
+        df['p'] = np.where(df['mkt_sum'] > 0, df['mkt_exp']/df['mkt_sum'], np.where((df['business_model'] == 'tpo') & (df['leasing_allowed'] == False), 0., 1.))
     
     # Do a weighted random draw by group and return the p-value that was selected
     # Note: If choose_tech = False, it's necessary to split up the dataframe by technology
