@@ -135,8 +135,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # create the output schema
                 logger.info('Creating output schema')
                 t0 = time.time()
-                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
-#                schema = 'diffusion_results_2015_09_16_15h06m58s' # TODO: COMMENT/DELETE
+#                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
+                schema = 'diffusion_results_2015_09_16_15h06m58s' # TODO: COMMENT/DELETE
                 datfunc.clear_outputs(con, cur, schema)
                 logger.info('\tOutput schema is: %s' % schema)
                 logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
@@ -146,7 +146,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info('Loading Input Scenario Worksheet')
                 try:
                     t0 = time.time()
-                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
+#                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
                     logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
                 except Exception, e:
                     msg = '\tLoading failed with the following error: %s' % e      
@@ -228,7 +228,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 t0 = time.time()
                 msg = "Combining Temporal Factors"    
                 logger.info(msg)        
-                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), logger) # TODO: Comment
+#                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), logger) # TODO: Comment
                 logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))                    
                 
                  # loop through sectors, creating customer bins                
@@ -237,61 +237,61 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # define the rate escalation source and max market curve for the current sector
                     rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
                     # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
-                    datfunc.generate_customer_bins(cur, con, techs, schema,  # TODO: Comment
-                                                   scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
-                                                   cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
-                                                   cfg.npar, cfg.pg_conn_string, rate_structures[sector_abbr], logger = logger)
+#                    datfunc.generate_customer_bins(cur, con, techs, schema,  # TODO: Comment
+#                                                   scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
+#                                                   cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
+#                                                   cfg.npar, cfg.pg_conn_string, rate_structures[sector_abbr], logger = logger)
 
             #==========================================================================================================
             # CALCULATE BILL SAVINGS
             #==========================================================================================================
-            if cfg.init_model:
-                logger.info("---------Calculating Energy Savings---------")
-                for tech in techs: # TODO: Comment
-                    # find all unique combinations of rates, load, and generation
-                    
-                        logger.info('Calculating Annual Electric Bill Savings for %s' % tech.title())
-                        logger.info('\tFinding Unique Combinations of Rates, Load, and Generation')
-                        datfunc.get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors)         
-                        # determine how many rate/load/gen combinations can be processed given the local memory resources
-                        row_count_limit = datfunc.get_max_row_count_for_utilityrate3()            
-                        sam_results_list = []
-                        # set up chunks
-                        uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema, tech)
-                        nbatches = len(uid_lists)
-                        t0 = time.time()
-                        logger.info("\tSAM calculations will be run in %s batches to prevent memory overflow" % nbatches)
-                        for i, uids in enumerate(uid_lists): 
-                            logger.info("\t\tWorking on SAM Batch %s of %s" % (i+1, nbatches))
-                            # collect data for all unique combinations
-                            logger.info('\t\t\tCollecting SAM Inputs')
-                            t1 = time.time()
-                            rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, tech, schema, cfg.npar, cfg.pg_conn_string, cfg.gross_fit_mode)
-                            excess_gen_df = rate_input_df[['uid', 'excess_generation_percent', 'net_fit_credit_dollars']]
-                            logger.info('\t\t\t\tCompleted in: %0.1fs' % (time.time() - t1))        
-                            # calculate value of energy for all unique combinations
-                            logger.info('\t\t\tCalculating Energy Savings Using SAM')
-                            # run sam calcs in serial if only one core is available
-                            if cfg.local_cores == 1:
-                                sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
-                            # otherwise run in parallel
-                            else:
-                                
-                                sam_results_df = pssc_mp.pssc_mp(rate_input_df,  cfg.local_cores)
-                            logger.info('\t\t\t\tCompleted in: %0.1fs' % (time.time() - t1),)                                        
-                            # append the excess_generation_percent and net_fit_credit_dollars to the sam_results_df
-                            sam_results_df = pd.merge(sam_results_df, excess_gen_df, on = 'uid')
-    
-                            # adjust the elec_cost_with_system_year1 to account for the net_fit_credit_dollars
-                            sam_results_df['elec_cost_with_system_year1'] = sam_results_df['elec_cost_with_system_year1'] - sam_results_df['net_fit_credit_dollars']              
-                            sam_results_list.append(sam_results_df)
-                            # drop the rate_input_df to save on memory
-                            del rate_input_df, excess_gen_df
-                   
-                        # write results to postgres
-                        logger.info("\tWriting SAM Results to Database")
-                        datfunc.write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech)
-                        logger.info('\tTotal time to calculate all electric bills: %0.1fs' % (time.time() - t0),)  
+#            if cfg.init_model:
+#                logger.info("---------Calculating Energy Savings---------")
+#                for tech in techs: # TODO: Comment
+#                    # find all unique combinations of rates, load, and generation
+#                    
+#                        logger.info('Calculating Annual Electric Bill Savings for %s' % tech.title())
+#                        logger.info('\tFinding Unique Combinations of Rates, Load, and Generation')
+#                        datfunc.get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors)         
+#                        # determine how many rate/load/gen combinations can be processed given the local memory resources
+#                        row_count_limit = datfunc.get_max_row_count_for_utilityrate3()            
+#                        sam_results_list = []
+#                        # set up chunks
+#                        uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema, tech)
+#                        nbatches = len(uid_lists)
+#                        t0 = time.time()
+#                        logger.info("\tSAM calculations will be run in %s batches to prevent memory overflow" % nbatches)
+#                        for i, uids in enumerate(uid_lists): 
+#                            logger.info("\t\tWorking on SAM Batch %s of %s" % (i+1, nbatches))
+#                            # collect data for all unique combinations
+#                            logger.info('\t\t\tCollecting SAM Inputs')
+#                            t1 = time.time()
+#                            rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, tech, schema, cfg.npar, cfg.pg_conn_string, cfg.gross_fit_mode)
+#                            excess_gen_df = rate_input_df[['uid', 'excess_generation_percent', 'net_fit_credit_dollars']]
+#                            logger.info('\t\t\t\tCompleted in: %0.1fs' % (time.time() - t1))        
+#                            # calculate value of energy for all unique combinations
+#                            logger.info('\t\t\tCalculating Energy Savings Using SAM')
+#                            # run sam calcs in serial if only one core is available
+#                            if cfg.local_cores == 1:
+#                                sam_results_df = datfunc.run_utilityrate3(rate_input_df, logger)
+#                            # otherwise run in parallel
+#                            else:
+#                                
+#                                sam_results_df = pssc_mp.pssc_mp(rate_input_df,  cfg.local_cores)
+#                            logger.info('\t\t\t\tCompleted in: %0.1fs' % (time.time() - t1),)                                        
+#                            # append the excess_generation_percent and net_fit_credit_dollars to the sam_results_df
+#                            sam_results_df = pd.merge(sam_results_df, excess_gen_df, on = 'uid')
+#    
+#                            # adjust the elec_cost_with_system_year1 to account for the net_fit_credit_dollars
+#                            sam_results_df['elec_cost_with_system_year1'] = sam_results_df['elec_cost_with_system_year1'] - sam_results_df['net_fit_credit_dollars']              
+#                            sam_results_list.append(sam_results_df)
+#                            # drop the rate_input_df to save on memory
+#                            del rate_input_df, excess_gen_df
+#                   
+#                        # write results to postgres
+#                        logger.info("\tWriting SAM Results to Database")
+#                        datfunc.write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech)
+#                        logger.info('\tTotal time to calculate all electric bills: %0.1fs' % (time.time() - t0),)  
 
     
             #==========================================================================================================
