@@ -354,10 +354,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         dfs.append(df)                        
                     
                     # exit the techs loop and combine results from each technology
+                    logger.info("Combining data")
                     df_combined = pd.concat(dfs, axis = 0, ignore_index = True)
                     
                     # select from choices for business model and (optionally) technology
-                    df_combined = datfunc.select_financing_and_tech(npv_dfs, prng, cfg.alpha_lkup, cfg.choose_tech, techs)
+                    logger.info("Selecting financing option and technology")
+                    df_combined = datfunc.select_financing_and_tech(df_combined, prng, cfg.alpha_lkup, cfg.choose_tech, techs)
                     
                     for tech in techs:
                         # 10. Calulate diffusion
@@ -366,7 +368,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
                         decrease if economics deterioriate.
                         '''             
-                        df = df_combined[df.tech == tech]
+                        df = df_combined[df_combined.tech == tech]
+                        logger.info("Calculating diffusion")
                         df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
 
                         if mode == 'ReEDS':

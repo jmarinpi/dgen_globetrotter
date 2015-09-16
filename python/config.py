@@ -12,6 +12,7 @@ Created on Wed Mar 26 13:01:56 2014
 import os
 import multiprocessing
 import data_functions as datfunc
+import pandas as pd
 
 #==============================================================================
 #   get postgres connection parameters
@@ -50,7 +51,6 @@ for rp in Rscript_paths:
 if Rscript_path == None:
     raise Exception('No Rscript Path found: Add a new path to Rscripts_path in config.py')
 
-
 #==============================================================================
 #   set number of parallel processes to run postgres queries (this is ignored if parallelize = F)
 #==============================================================================
@@ -80,6 +80,12 @@ gross_fit_mode = False
 # Maximum fraction of system capital cost that incentives offset 
 # (effectively capping incentive value beyond this point)
 max_incentive_fraction = 0.4
+
+
+#==============================================================================
+#  Set option for technology choice mode
+#==============================================================================
+choose_tech = False
 
 
 #==============================================================================
