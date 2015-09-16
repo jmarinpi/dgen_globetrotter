@@ -16,11 +16,7 @@ def weighted_choice(group, prng):
     sample = prng.choice(group['uid'], 1, False, group['p'])[0]
     
     return sample
-   
 
-df = pd.read_csv('/Users/mgleason/NREL_Projects/github/diffusion/python/test_data.csv')
-prng = np.random.RandomState(1234)
-df['leasing_allowed'] = True
 
 alpha_lkup = pd.DataFrame({'tech' : ['solar','solar','wind','wind'],
                            'business_model' : ['ho','tpo','ho','tpo'],
@@ -30,6 +26,7 @@ alpha_lkup = pd.DataFrame({'tech' : ['solar','solar','wind','wind'],
 
 
 def system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind']):
+        
     
     in_columns = df.columns.tolist()
 
@@ -88,8 +85,25 @@ def system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', '
         df['p'] = np.where(df['mkt_sum'] == 0, def_ratio, df['mkt_exp']/df['mkt_sum'])    
     
     # Do a weighted random draw by group and return the p-value that was selected
-    selected_uids = df.groupby(group_by_cols).apply(weighted_choice, prng).reset_index()
-    selected_uids.columns = group_by_cols + ['best']
+    # Note: If choose_tech = False, it's necessary to split up the dataframe by technology
+    # and re-initialize the random seed for each tech. This ensures that results will be consistent
+    # for each technology regardless of whether the model is run with multiple techs or just
+    # a single tech.
+    if choose_tech == True:
+        selected_uids = df.groupby(group_by_cols).apply(weighted_choice, prng).reset_index()
+        selected_uids.columns = group_by_cols + ['best']
+    else:
+        selected_uids_list = []
+        # get the initial seed
+        seed = prng.get_state()[1][0]
+        for tech in techs:
+            prng.seed(seed)
+            # split by technologies
+            tech_df = df[df['tech'] == tech]
+            selected_tech_uids = tech_df.groupby(group_by_cols).apply(weighted_choice, prng).reset_index()
+            selected_tech_uids.columns = group_by_cols + ['best']
+            selected_uids_list.append(selected_tech_uids)
+        selected_uids = pd.concat(selected_uids_list, axis = 0, ignore_index = True)
     
     # Filter by the best choice by matching the p-values returned above
     df_selected = df.merge(selected_uids, left_on = group_by_cols + ['uid'], right_on = group_by_cols + ['best'], how = 'outer')
@@ -116,3 +130,38 @@ def system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', '
     return_df = return_df[in_columns + ['selected_option']].sort(columns = ['county_id', 'bin_id', 'tech'])       
     
     return return_df
+    
+    
+df = pd.read_csv('/Users/mgleason/NREL_Projects/github/diffusion/python/test_data.csv')
+df['leasing_allowed'] = True
+
+df_solar = df[df.tech == 'solar']
+df_wind = df[df.tech == 'wind']
+
+
+prng = np.random.RandomState(1234)
+b = system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind'])
+
+prng = np.random.RandomState(1234)
+br = system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['wind', 'solar'])
+
+prng = np.random.RandomState(1234)
+w = system_choice(df_wind, prng, alpha_lkup, choose_tech = False, techs = ['wind'])
+
+prng = np.random.RandomState(1234)
+s = system_choice(df_solar, prng, alpha_lkup, choose_tech = False, techs = ['solar'])
+
+
+bw = b[b.tech == 'wind']
+bs = b[b.tech == 'solar']
+
+print(np.all(bs.reset_index(drop = True) == s.reset_index(drop = True)))
+print(np.all(bw.reset_index(drop = True) == w.reset_index(drop = True)))
+
+
+#np.all(b.reset_index(drop = True) == br.reset_index(drop = True))
+
+
+
+
+
