@@ -10,7 +10,6 @@ import numpy as np
 import sys
 
 
-
 def weighted_choice(group, prng):
     
     sample = prng.choice(group['uid'], 1, False, group['p'])[0]
@@ -18,14 +17,7 @@ def weighted_choice(group, prng):
     return sample
 
 
-alpha_lkup = pd.DataFrame({'tech' : ['solar','solar','wind','wind'],
-                           'business_model' : ['ho','tpo','ho','tpo'],
-                            'alpha' : [2,2,2,2]
-
-})
-
-
-def system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind']):
+def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind']):
         
     
     in_columns = df.columns.tolist()
@@ -131,35 +123,36 @@ def system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', '
     
     return return_df
     
+if __name__ == '__main__': 
+    from config import alpha_lkup
+    df = pd.read_csv('/Users/mgleason/NREL_Projects/github/diffusion/python/test_data.csv')
+    df['leasing_allowed'] = True
     
-df = pd.read_csv('/Users/mgleason/NREL_Projects/github/diffusion/python/test_data.csv')
-df['leasing_allowed'] = True
-
-df_solar = df[df.tech == 'solar']
-df_wind = df[df.tech == 'wind']
-
-
-prng = np.random.RandomState(1234)
-b = system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind'])
-
-prng = np.random.RandomState(1234)
-br = system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['wind', 'solar'])
-
-prng = np.random.RandomState(1234)
-w = system_choice(df_wind, prng, alpha_lkup, choose_tech = False, techs = ['wind'])
-
-prng = np.random.RandomState(1234)
-s = system_choice(df_solar, prng, alpha_lkup, choose_tech = False, techs = ['solar'])
-
-
-bw = b[b.tech == 'wind']
-bs = b[b.tech == 'solar']
-
-print(np.all(bs.reset_index(drop = True) == s.reset_index(drop = True)))
-print(np.all(bw.reset_index(drop = True) == w.reset_index(drop = True)))
+    df_solar = df[df.tech == 'solar']
+    df_wind = df[df.tech == 'wind']
+    
+    
+    prng = np.random.RandomState(1234)
+    b = select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind'])
+    
+    prng = np.random.RandomState(1234)
+    br = select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs = ['wind', 'solar'])
+    
+    prng = np.random.RandomState(1234)
+    w = select_financing_and_tech(df_wind, prng, alpha_lkup, choose_tech = False, techs = ['wind'])
+    
+    prng = np.random.RandomState(1234)
+    s = select_financing_and_tech(df_solar, prng, alpha_lkup, choose_tech = False, techs = ['solar'])
+    
+    
+    bw = b[b.tech == 'wind']
+    bs = b[b.tech == 'solar']
+    
+    print(np.all(bs.reset_index(drop = True) == s.reset_index(drop = True)))
+    print(np.all(bw.reset_index(drop = True) == w.reset_index(drop = True)))
 
 
-#np.all(b.reset_index(drop = True) == br.reset_index(drop = True))
+    #np.all(b.reset_index(drop = True) == br.reset_index(drop = True))
 
 
 

@@ -26,6 +26,7 @@ import sys
 import pickle
 import pssc_mp
 from excel import excel_functions
+import tech_choice
 
 #==============================================================================
 # raise all numpy warnings as exceptions
@@ -345,21 +346,23 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id','bin_id'])
                                             
                         # Calculate economics of adoption given system cofiguration and business model
+                        logger.info("\t\tCalculating system economics for %s" % tech.title)
                         df = finfunc.calc_economics(df, schema, sector, sector_abbr, tech,
                                                                                    market_projections, financial_parameters, 
                                                                                    scenario_opts, incentive_options, max_market_share, cur, con, year, 
                                                                                    dsire_incentives[tech], deprec_schedule, logger, rate_escalations, 
                                                                                    ann_system_degradation, mode,curtailment_method, tech_lifetime = 25)
-                                                
+                        logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
                         dfs.append(df)                        
                     
                     # exit the techs loop and combine results from each technology
-                    logger.info("Combining data")
                     df_combined = pd.concat(dfs, axis = 0, ignore_index = True)
                     
                     # select from choices for business model and (optionally) technology
-                    logger.info("Selecting financing option and technology")
-                    df_combined = datfunc.select_financing_and_tech(df_combined, prng, cfg.alpha_lkup, cfg.choose_tech, techs)
+                    logger.info("\t\tSelecting financing option and technology")
+                    t0 = time.time()
+                    df_combined = tech_choice.select_financing_and_tech(df_combined, prng, cfg.alpha_lkup, cfg.choose_tech, techs)
+                    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))    
                     
                     for tech in techs:
                         # 10. Calulate diffusion
@@ -369,8 +372,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         decrease if economics deterioriate.
                         '''             
                         df = df_combined[df_combined.tech == tech]
-                        logger.info("Calculating diffusion")
+                        logger.info("\t\tCalculating diffusion")
+#                        t0 = time.time()
+#                        df = datfunc.assign_business_model(df, prng, method = 'prob', alpha = 2)
+#                        print time.time() - t0
                         df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
+                        logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
                         if mode == 'ReEDS':
                             if sector_abbr == 'res':
