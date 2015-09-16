@@ -136,7 +136,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info('Creating output schema')
                 t0 = time.time()
 #                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
-                schema = 'diffusion_results_2015_09_16_15h06m58s' # TODO: COMMENT/DELETE
+                schema = 'diffusion_results_2015_09_16_15h50m30s' # TODO: COMMENT/DELETE
                 datfunc.clear_outputs(con, cur, schema)
                 logger.info('\tOutput schema is: %s' % schema)
                 logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
@@ -364,18 +364,20 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     df_combined = tech_choice.select_financing_and_tech(df_combined, prng, cfg.alpha_lkup, cfg.choose_tech, techs)
                     logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))    
                     
-                    for tech in techs:
-                        # 10. Calulate diffusion
-                        ''' Calculates the market share (ms) added in the solve year. Market share must be less
-                        than max market share (mms) except initial ms is greater than the calculated mms.
-                        For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
-                        decrease if economics deterioriate.
-                        '''             
-                        df = df_combined[df_combined.tech == tech]
-                        logger.info("\t\tCalculating diffusion")
-                        df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
-                        logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
+                    # 10. Calulate diffusion
+                    ''' Calculates the market share (ms) added in the solve year. Market share must be less
+                    than max market share (mms) except initial ms is greater than the calculated mms.
+                    For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
+                    decrease if economics deterioriate.
+                    '''             
+                    df = df_combined[df_combined.tech == tech]
+                    logger.info("\t\tCalculating diffusion")
+                    df_combined, market_last_year_combined, logger = diffunc.calc_diffusion(df_combined, logger, year, sector)
+                    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
+                    for tech in techs:
+                        df = df_combined[df_combined.tech == tech]
+                        market_last_year = market_last_year_combined[market_last_year_combined.tech == tech]
                         if mode == 'ReEDS':
                             if sector_abbr == 'res':
                                 market_last_year_res = market_last_year

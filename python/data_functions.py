@@ -2298,6 +2298,7 @@ def write_last_year(con, cur, market_last_year, sector_abbr, schema, tech):
     # open an in memory stringIO file (like an in memory csv)
     s = StringIO()
     # write the data to the stringIO
+    market_last_year.drop('tech', axis = 1, inplace = True)
     market_last_year.to_csv(s, index = False, header = False)
     # seek back to the beginning of the stringIO file
     s.seek(0)
