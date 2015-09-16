@@ -99,9 +99,7 @@ def system_choice(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', '
     if choose_tech == False:
         # return only the selected options
         return_df =  df_selected[df_selected['selected_option'] == True].sort(columns = ['county_id', 'bin_id', 'tech'])       
-        return_df['rank_within_tech'] == np.nan
     else:
-        
         # isolate the selected options
         selected_techs = df_selected[df_selected['selected_option'] == True].groupby(['county_id', 'bin_id', 'tech']).size().reset_index()
         selected_techs.columns = ['county_id', 'bin_id', 'tech', 'selected_tech']

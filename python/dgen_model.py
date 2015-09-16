@@ -359,13 +359,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # select from choices for business model and (optionally) technology
                     df_combined = datfunc.select_financing_and_tech(npv_dfs, prng, cfg.alpha_lkup, cfg.choose_tech, techs)
                     
-                    for df in dfs_bm:
+                    for tech in techs:
                         # 10. Calulate diffusion
                         ''' Calculates the market share (ms) added in the solve year. Market share must be less
                         than max market share (mms) except initial ms is greater than the calculated mms.
                         For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
                         decrease if economics deterioriate.
                         '''             
+                        df = df_combined[df.tech == tech]
                         df, market_last_year, logger = diffunc.calc_diffusion(df, logger, year, sector)
 
                         if mode == 'ReEDS':

@@ -2873,7 +2873,7 @@ def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs =
         def_ratio = 0.5
         
     with np.errstate(invalid = 'ignore'):
-        df['p'] = np.where(df['mkt_sum'] == 0, def_ratio, df['mkt_exp']/df['mkt_sum'])
+        df['p'] = np.where(df['mkt_sum'] == 0, def_ratio, df['mkt_exp']/df['mkt_sum'])    
     
     # Do a weighted random draw by group and return the p-value that was selected
     selected_uids = df.groupby(group_by_cols).apply(weighted_choice, prng).reset_index()
@@ -2882,8 +2882,26 @@ def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs =
     # Filter by the best choice by matching the p-values returned above
     df_selected = df.merge(selected_uids, left_on = group_by_cols + ['uid'], right_on = group_by_cols + ['best'], how = 'outer')
     df_selected['selected_option'] = df_selected.best.isnull() == False
+    df_selected = df_selected[in_columns + ['selected_option']].sort(columns = ['county_id', 'bin_id', 'tech'])  
     
-    return_df = df_selected[in_columns+['selected_option']].sort(columns = ['county_id', 'bin_id', 'tech'])
+    if choose_tech == False:
+        # return only the selected options
+        return_df =  df_selected[df_selected['selected_option'] == True].sort(columns = ['county_id', 'bin_id', 'tech'])       
+    else:
+        # isolate the selected options
+        selected_techs = df_selected[df_selected['selected_option'] == True].groupby(['county_id', 'bin_id', 'tech']).size().reset_index()
+        selected_techs.columns = ['county_id', 'bin_id', 'tech', 'selected_tech']
+        # identify which technology was not selected for each agent
+        unselected_techs = df_selected.merge(selected_techs, on = ['county_id', 'bin_id', 'tech'], how = 'outer')
+        unselected_techs = unselected_techs[unselected_techs.selected_tech.isnull()]
+        # rank the remainders by npv4
+        rank_for_unselected_techs = pd.DataFrame(unselected_techs.groupby(['county_id', 'bin_id', 'tech'])['npv4'].rank(method = 'first', ascending = False))
+        rank_for_unselected_techs.columns = ['rank_within_tech']
+        df_with_rank_remainders = df_selected.merge(rank_for_unselected_techs, left_index = True, right_index = True, how = 'outer') 
+        return_df = df_with_rank_remainders[(df_with_rank_remainders.selected_option == True) | (df_with_rank_remainders.rank_within_tech == 1)]
+        
+     # subset the columns to return
+    return_df = return_df[in_columns + ['selected_option']].sort(columns = ['county_id', 'bin_id', 'tech']) 
     
     return return_df
 
