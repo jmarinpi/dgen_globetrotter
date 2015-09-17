@@ -21,6 +21,8 @@ import decorators
 from config import show_times
 import utility_functions as utilfunc
 
+logger = utilfunc.get_logger()
+
 
 #==============================================================================
 # configure psycopg2 to treat numeric values as floats (improves performance of pulling data from the database)
@@ -546,7 +548,7 @@ def copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con):
     f2.close()
     
 
-def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rscript_path, pg_params_file, logger = None):
+def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rscript_path, pg_params_file):
            
     # path to the plot_outputs R script        
     plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
@@ -558,6 +560,7 @@ def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rs
         command = [Rscript_path,'--vanilla', plot_outputs_path, out_tech_path, scen_name, tech, schema, pg_params_file]
         proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         messages = proc.communicate()
+        logger.info("Hello world")
         if 'error' in messages[1].lower():
             if logger is not None:
                 logger.error(messages[1])
@@ -2137,7 +2140,7 @@ def write_last_year(con, cur, market_last_year, sector_abbr, schema, tech):
     s.close()
 
 
-@decorators.fn_timer(show_times)
+#@decorators.fn_timer(show_times)
 def get_main_dataframe(con, sector_abbr, schema, year, tech):
     ''' Pull main pre-processed dataframe from dB
     

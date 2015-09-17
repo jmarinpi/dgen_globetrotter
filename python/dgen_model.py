@@ -105,7 +105,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             raise ValueError("""Error: customer_bins in config.py must be a positive integer.""") 
         model_init = time.time()
         
-        logger = utilfunc.init_log(os.path.join(out_dir,'dg_model.log'))
+        logger = utilfunc.get_logger(os.path.join(out_dir,'dg_model.log'))
         logger.info('Initiating model (%s)' %time.ctime())
             
         # 4. Connect to Postgres and configure connection(s) (to edit login information, edit config.py)
@@ -408,7 +408,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # create output html report
                 t0 = time.time()
                 logger.info('\tCompiling Output Reports')
-                datfunc.create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, cfg.Rscript_path, cfg.pg_params_file, logger)
+                datfunc.create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, cfg.Rscript_path, cfg.pg_params_file)
                 logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))
                                 
             if mode == 'ReEDS':

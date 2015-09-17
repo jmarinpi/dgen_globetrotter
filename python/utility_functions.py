@@ -22,23 +22,25 @@ import psycopg2.extras as pgx
 #==============================================================================
 #       Logging Functions
 #==============================================================================
-def init_log(log_file_path):
+def get_logger(log_file_path = None):
     
     colorama.init()
-    logging.basicConfig(filename = log_file_path, filemode = 'w', format='%(levelname)-8s:%(message)s', level = logging.DEBUG)   
-    logger = logging.getLogger(__name__)
-    formatter = colorlog.ColoredFormatter(
-        "%(log_color)s%(levelname)-8s:%(reset)s %(white)s%(message)s",
-        datefmt=None,
-        reset=True
-        )     
-    console = logging.StreamHandler()
-    console.setLevel(logging.DEBUG)
-    console.setFormatter(formatter)
-    logger.addHandler(console)
-    
-    return logger
+    formatter = colorlog.ColoredFormatter("%(log_color)s%(levelname)-8s:%(reset)s %(white)s%(message)s",
+                                            datefmt=None,
+                                            reset=True
+                                            )    
+    if log_file_path is not None:
+        logging.basicConfig(filename = log_file_path, filemode = 'w', format='%(levelname)-8s:%(message)s', level = logging.DEBUG)   
+        logger = logging.getLogger(__name__)
+    else:
+        logger = logging.getLogger(__name__)   
+        console = logging.StreamHandler()
+        console.setLevel(logging.DEBUG)
+        console.setFormatter(formatter)
+        logger.addHandler(console)
 
+    return logger
+    
 
 def shutdown_log(logger):
     logging.shutdown()
