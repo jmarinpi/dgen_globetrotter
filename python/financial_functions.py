@@ -27,7 +27,9 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
                    financial_parameters_all, scenario_opts, incentive_opts_all, max_market_share, cur, con, 
                    year, dsire_incentives, deprec_schedule_all, rate_escalations, ann_system_degradation_all, mode, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
-    Calculates economics of system adoption (cashflows, payback, irr, etc.)
+    Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
+
+    
     
         IN:
             Lots    

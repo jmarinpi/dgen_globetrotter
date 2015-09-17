@@ -38,6 +38,16 @@ pg.extensions.register_type(DEC2FLOAT)
 #==============================================================================
 
 
+def create_tech_subfolders(out_scen_path, techs, out_subfolders):
+    
+    for tech in techs:
+        # set output subfolders  
+        out_tech_path = os.path.join(out_scen_path, tech)
+        os.makedirs(out_tech_path)
+        out_subfolders[tech].append(out_tech_path)
+    
+    return out_subfolders
+
 def create_scenario_results_folder(input_scenario, scen_name, scenario_names, out_dir, dup_n):
     
     if scen_name in scenario_names:
@@ -549,9 +559,10 @@ def combine_outputs_solar(schema, sectors, cur, con):
     con.commit()
 
 
-
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con):
     
+    logger.info('\tExporting Results from Database')
     
     if 'wind' in techs:
         combine_outputs_wind(schema, sectors, cur, con)
@@ -571,9 +582,12 @@ def copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con):
     cur.copy_expert('COPY %s.input_main_scenario_options TO STDOUT WITH CSV HEADER;' % schema, f2)
     f2.close()
     
-
+    
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rscript_path, pg_params_file):
-           
+
+    logger.info('\tCompiling Output Reports')
+    
     # path to the plot_outputs R script        
     plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
     

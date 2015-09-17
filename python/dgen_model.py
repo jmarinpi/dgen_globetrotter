@@ -167,7 +167,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('\tTechnologies: %s' % techs)
             logger.info('\tYears: %s - %s' % (cfg.start_year, end_year))
             
-            # assert that model is set to run the whole US (applies to Reeds mode only)
+            # reeds stuff..
             if mode == 'ReEDS' and scenario_opts['region'] != 'United States':
                 logger.error('Linked model can only run nationally. Select United States in input sheet'      )
                 logger.error('Model aborted')
@@ -190,6 +190,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('\tCompleted in: %0.1fs' % t.interval)
 
             # set model years depending on whether in reeds mode
+            # reeds stuff...
             if mode == 'ReEDS':
                 model_years = [resume_year]
             else:
@@ -213,6 +214,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # CALCULATE BILL SAVINGS
                 #==========================================================================================================
                 logger.info("---------Calculating Energy Savings---------")
+                # REFACTOR: remove this loop
                 for tech in techs: # TODO: Comment
                     # find all unique combinations of rates, load, and generation
                     
@@ -275,8 +277,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 for year in model_years:
                     dfs = []
                     logger.info('\tWorking on %s for %s Sector' % (year, sector))
+                    # REFACTOR: remove this loop
                     for tech in techs:
+                        # get input agent attributes from postgres
                         df = datfunc.get_main_dataframe(con, sector_abbr, schema, year, tech)
+                        # reeds stuff...
                         if mode == 'ReEDS':
                             # When in ReEDS mode add the values from ReEDS to df
                             df = pd.merge(df,distPVCurtailment, how = 'left', on = 'pca_reg')
@@ -294,20 +299,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                             # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
                             df['curtailment_rate'] = 0
                             df['ReEDS_elec_price_mult'] = 1
-                            curtailment_method = 'net'
-    
-                        # 9. Calculate economics 
-                        ''' Calculates the economics of DER adoption through cash-flow analysis. 
-                        This involves staging necessary calculations including: determining business model, 
-                        determining incentive value and eligibility, defining market in the previous year. 
-                        '''                        
+                            curtailment_method = 'net'                
                         
                         # Market characteristics from previous year
                         is_first_year = year == cfg.start_year
                         previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, tech, sector_abbr, sector, schema)   
                         df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id','bin_id'])
                                             
-                        # Calculate economics of adoption given system cofiguration and business model
+                        # Calculate economics of adoption for different busines models
                         df = finfunc.calc_economics(df, schema, sector, sector_abbr, tech,
                                                                                    market_projections, financial_parameters, 
                                                                                    scenario_opts, incentive_options, max_market_share, cur, con, year, 
@@ -315,27 +314,23 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                                                    ann_system_degradation, mode,curtailment_method, tech_lifetime = 25)
                         dfs.append(df)                        
                     
-                    # exit the techs loop and combine results from each technology
-                    df_combined = pd.concat(dfs, axis = 0, ignore_index = True)
-                    # select from choices for business model and (optionally) technology
-                    logger.info("\t\tSelecting financing option and technology")
-                    t0 = time.time()
-                    df_combined = tech_choice.select_financing_and_tech(df_combined, prng, cfg.alpha_lkup, cfg.choose_tech, techs)
-                    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))    
                     
-                    # 10. Calulate diffusion
-                    ''' Calculates the market share (ms) added in the solve year. Market share must be less
-                    than max market share (mms) except initial ms is greater than the calculated mms.
-                    For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
-                    decrease if economics deterioriate.
-                    '''             
-                    logger.info("\t\tCalculating diffusion")
+                    # exit the Technology loop and combine results from each technology
+                    df_combined = pd.concat(dfs, axis = 0, ignore_index = True)
+                    
+                    # select from choices for business model and (optionally) technology
+                    df_combined = tech_choice.select_financing_and_tech(df_combined, prng, cfg.alpha_lkup, cfg.choose_tech, techs)  
+                    
+                    # calculate diffusion based on economics and bass diffusion      
                     df_combined, market_last_year_combined = diffunc.calc_diffusion(df_combined, year, sector)
-                    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
+                    # save outputs from this year and update parameters for next solve  
                     for tech in techs:
+                        # filter results to only the current technology
                         df = df_combined[df_combined.tech == tech]
                         market_last_year = market_last_year_combined[market_last_year_combined.tech == tech]
+                        
+                        # reeds stuff...
                         if mode == 'ReEDS':
                             if sector_abbr == 'res':
                                 market_last_year_res = market_last_year
@@ -344,30 +339,23 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                             if sector_abbr == 'com':
                                 market_last_year_com = market_last_year
                         
-                        # 11. Save outputs from this year and update parameters for next solve       
-                        t0 = time.time()                 
+                        # write the incremental results to the database
                         datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
                         datfunc.write_last_year(con, cur, market_last_year, sector_abbr, schema, tech)
                          
-                ## 12. Outputs & Visualization
-                # set output subfolder  
+            #==============================================================================
+            #    Outputs & Visualization
+            #==============================================================================
             if mode != 'ReEDS' or resume_year == endyear:
                 "---------Saving Model Results---------"
-                for tech in techs:
-                    out_tech_path = os.path.join(out_scen_path, tech)
-                    os.makedirs(out_tech_path)
-                    out_subfolders[tech].append(out_tech_path)
+                out_subfolders = datfunc.create_tech_subfolders(out_scen_path, techs, out_subfolders)
                         
                 # copy outputs to csv     
-                logger.info('\tExporting Results from Database')
-                t0 = time.time()
                 datfunc.copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con)
-                logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))
-                # create output html report
-                t0 = time.time()
-                logger.info('\tCompiling Output Reports')
+
+                # create output html report                
                 datfunc.create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, cfg.Rscript_path, cfg.pg_params_file)
-                logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))
+
                                 
             if mode == 'ReEDS':
                 reeds_out = reedsfunc.combine_outputs_reeds(schema, sectors, cur, con)

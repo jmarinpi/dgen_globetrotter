@@ -17,17 +17,23 @@ Last Revision: 3/26/14
 
 import numpy as np
 import utility_functions as utilfunc
+import decorators
+from config import show_times
 
 #==============================================================================
 # Load logger
-logger = utilfunc.get_logger()
+#logger = utilfunc.get_logger()
 #==============================================================================
 
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
+#@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
 def calc_diffusion(df, year, sector):
-    ''' Brings everything together to calculate the diffusion market share 
-        based on payback, max market, and market last year. Using the calculated 
+
+    ''' Calculates the market share (ms) added in the solve year. Market share must be less
+        than max market share (mms) except initial ms is greater than the calculated mms.
+        For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
+        decrease if economics deterioriate. Using the calculated 
         market share, relevant quantities are updated.
 
         IN: df - pd dataframe - Main dataframe
@@ -35,6 +41,9 @@ def calc_diffusion(df, year, sector):
         OUT: df - pd dataframe - Main dataframe
             market_last_year - pd dataframe - market to inform diffusion in next year
     '''
+    
+#    logger.info("\t\tCalculating diffusion")    
+    
     df['diffusion_market_share'] = calc_diffusion_market_share(df) * df['selected_option'] # ensure no diffusion for non-selected options
    
     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
