@@ -27,7 +27,7 @@ import pickle
 from excel import excel_functions
 import tech_choice
 import reeds_functions as reedsfunc
-import utility_function as utilfunc
+import utility_functions as utilfunc
 
 #==============================================================================
 # raise  numpy and pandas warnings as exceptions
@@ -109,7 +109,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             
         # 4. Connect to Postgres and configure connection(s) (to edit login information, edit config.py)
         # create a single connection to Postgres Database -- this will serve as the main cursor/connection
-        con, cur = datfunc.make_con(cfg.pg_conn_string)
+        con, cur = utilfunc.make_con(cfg.pg_conn_string)
         pgx.register_hstore(con) # register access to hstore in postgres    
         
         # find the input excel spreadsheets
@@ -411,8 +411,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))
                                 
             if mode == 'ReEDS':
-                reeds_out = datfunc.combine_outputs_reeds(schema, sectors, cur, con)
-                cf_by_pca_and_ts = datfunc.summarise_solar_resource_by_ts_and_pca_reg(reeds_out, con)
+                reeds_out = reedsfunc.combine_outputs_reeds(schema, sectors, cur, con)
+                cf_by_pca_and_ts = reedsfunc.summarise_solar_resource_by_ts_and_pca_reg(reeds_out, con)
                 
                 market_last_year_res.to_pickle("market_last_year_res.pkl")
                 market_last_year_ind.to_pickle("market_last_year_ind.pkl")

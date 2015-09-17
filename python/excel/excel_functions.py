@@ -17,7 +17,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 par_path = os.path.dirname(path)
 sys.path.append(par_path)
 from config import pg_conn_string
-from data_functions import make_con
+from utility_functions import make_con
 
 
 

@@ -5,29 +5,21 @@ Created on Mon Mar 24 08:59:44 2014
 @author: bsigrin
 """
 import psycopg2 as pg
-import psycopg2.extras as pgx
 import time   
 import numpy as np
 import pandas as pd
 import datetime
 from multiprocessing import Process, JoinableQueue
-import select
 from cStringIO import StringIO
 import logging
 reload(logging)
-# note: need to install using pip install git+https://github.com/borntyping/python-colorlog.git#egg=colorlog
-import colorlog
-import colorama
 import gzip
 import subprocess
 import os
-import sys
-import getopt
 import psutil
-import json
 import decorators
 from config import show_times
-import pickle
+import utility_functions as utilfunc
 
 
 #==============================================================================
@@ -40,111 +32,13 @@ pg.extensions.register_type(DEC2FLOAT)
 #==============================================================================
 
 
-def parse_command_args(argv):
-    ''' Function to parse the command line arguments
-    IN:
-    
-    -h : help 'dg_model.py -i <Initiate Model?> -y <year>'
-    -i : Initiate model for 2010 and quit
-    -y: or year= : Resume model solve in passed year
-    
-    OUT:
-    
-    init_model - Boolean - Should model initiate?
-    resume_year - Float - year model should resume
-    '''
-    
-    resume_year = None
-    init_model = False
-    
-    try:
-        opts, args = getopt.getopt(argv,"hiy:",["year="])
-    except getopt.GetoptError:
-        print 'Command line argument not recognized, please use: dg_model.py -i -y <year>'
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt == '-h':
-            print 'dg_model.py -i <Initiate Model?> -y <year>'
-            sys.exit()
-        elif opt in ("-i"):
-            init_model = True
-        elif opt in ("-y", "year="):
-            resume_year = arg
-    return init_model, resume_year 
-
-
-def init_log(log_file_path):
-    
-    colorama.init()
-    logging.basicConfig(filename = log_file_path, filemode = 'w', format='%(levelname)-8s:%(message)s', level = logging.DEBUG)   
-    logger = logging.getLogger(__name__)
-    formatter = colorlog.ColoredFormatter(
-        "%(log_color)s%(levelname)-8s:%(reset)s %(white)s%(message)s",
-        datefmt=None,
-        reset=True
-        )     
-    console = logging.StreamHandler()
-    console.setLevel(logging.DEBUG)
-    console.setFormatter(formatter)
-    logger.addHandler(console)
-    
-    return logger
-
-
-def shutdown_log(logger):
-    logging.shutdown()
-    for handler in logger.handlers:
-        handler.flush()
-        handler.close()
-        logger.removeHandler(handler)
-
-
-def wait(conn):
-    while 1:
-        state = conn.poll()
-        if state == pg.extensions.POLL_OK:
-            break
-        elif state == pg.extensions.POLL_WRITE:
-            select.select([], [conn.fileno()], [])
-        elif state == pg.extensions.POLL_READ:
-            select.select([conn.fileno()], [], [])
-        else:
-            raise pg.OperationalError("poll() returned %s" % state)
-
-
-def pylist_2_pglist(l):
-    return str(l)[1:-1]
-
-
-def make_con(connection_string, role = 'diffusion-writers', async = False):    
-    con = pg.connect(connection_string, async = async)
-    if async:
-        wait(con)
-    # create cursor object
-    cur = con.cursor(cursor_factory=pgx.RealDictCursor)
-    # set role (this should avoid permissions issues)
-    cur.execute('SET ROLE "%s";' % role)    
-    if async:
-        wait(con)
-    else:
-        con.commit()
-    
-    return con, cur
-
-
-def current_datetime(format = '%Y_%m_%d_%Hh%Mm%Ss'):
-    
-    dt = datetime.datetime.strftime(datetime.datetime.now(), format)
-    
-    return dt
-
 
 def create_output_schema(pg_conn_string, source_schema = 'diffusion_template'):
     
     inputs = locals().copy()
-    con, cur = make_con(pg_conn_string, role = "diffusion-schema-writers")
+    con, cur = utilfunc.make_con(pg_conn_string, role = "diffusion-schema-writers")
 
-    cdt = current_datetime()
+    cdt = utilfunc.current_datetime()
     dest_schema = 'diffusion_results_%s' % cdt
     inputs['dest_schema'] = dest_schema
     
@@ -160,7 +54,7 @@ def drop_output_schema(pg_conn_string, schema):
 
     inputs = locals().copy()
 
-    con, cur = make_con(pg_conn_string, role = "diffusion-schema-writers")
+    con, cur = utilfunc.make_con(pg_conn_string, role = "diffusion-schema-writers")
     sql = '''DROP SCHEMA IF EXISTS %(schema)s CASCADE;''' % inputs
     cur.execute(sql)
     con.commit()
@@ -404,7 +298,7 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
                 'tech']    
 
     # convert formatting of fields list
-    inputs['fields_str'] = pylist_2_pglist(fields).replace("'","")       
+    inputs['fields_str'] = utilfunc.pylist_2_pglist(fields).replace("'","")       
     # open an in memory stringIO file (like an in memory csv)
     s = StringIO()
     # write the data to the stringIO
@@ -420,7 +314,7 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
 def p_execute(pg_conn_string, sql):
     try:
         # create cursor and connection
-        con, cur = make_con(pg_conn_string)  
+        con, cur = utilfunc.make_con(pg_conn_string)  
         # execute query
         cur.execute(sql)
         # commit changes
@@ -437,7 +331,7 @@ def p_run(pg_conn_string, sql, county_chunks, npar):
     
     jobs = []
     for i in range(npar):
-        place_holders = {'i': i, 'county_ids': pylist_2_pglist(county_chunks[i])}
+        place_holders = {'i': i, 'county_ids': utilfunc.pylist_2_pglist(county_chunks[i])}
         isql = sql % place_holders
         proc = Process(target = p_execute, args = (pg_conn_string, isql))
         jobs.append(proc)
@@ -628,45 +522,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
     cur.execute(sql)
     con.commit()
 
-def combine_outputs_reeds(schema, sectors, cur, con):
-    
-    # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()   
 
-    sql = '''DROP TABLE IF EXISTS %(schema)s.reeds_outputs;
-            CREATE UNLOGGED TABLE %(schema)s.reeds_outputs AS  ''' % inputs  
-    
-    for i, sector_abbr in enumerate(sectors.keys()):
-        inputs['sector'] = sectors[sector_abbr].lower()
-        inputs['sector_abbr'] = sector_abbr
-        if i > 0:
-            inputs['union'] = 'UNION ALL '
-        else:
-            inputs['union'] = ''
-        
-        sub_sql = '''%(union)s 
-                    SELECT '%(sector)s'::text as sector, 
-
-                    a.micro_id, a.county_id, a.bin_id, a.year, a.new_capacity, a.installed_capacity, 
-                    b.azimuth,b.tilt,b.customers_in_bin,
-                    b.state_abbr, b.pca_reg, b.reeds_reg,
-                    (b.rate_escalation_factor * a.first_year_bill_without_system)/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
-                    a.excess_generation_percent
-                                        
-                    FROM %(schema)s.outputs_%(sector_abbr)s a
-                    
-                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar b
-                    ON a.county_id = b.county_id
-                    AND a.bin_id = b.bin_id
-                    and a.year = b.year
-
-                    ''' % inputs
-        sql += sub_sql
-    sql += ';'
-    cur.execute(sql)
-    con.commit()
-    sql2 = 'SELECT * FROM %(schema)s.reeds_outputs' % inputs
-    return pd.read_sql(sql2,con)
 
 def copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con):
     
@@ -1088,7 +944,6 @@ def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string
     #=============================================================================================================
     #     link each point to a rooftop orientation based on roof_style and prob weights in rooftop_characteristics
     #=============================================================================================================
-    t0 = time.time()
     sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s;
             CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s AS
             WITH all_roof_options AS
@@ -1883,7 +1738,7 @@ def get_utilityrate3_inputs(uids, cur, con, tech, schema, npar, pg_conn_string, 
     jobs = []
  
     for i in range(npar):
-        place_holders = {'uids': pylist_2_pglist(uid_chunks[i])}
+        place_holders = {'uids': utilfunc.pylist_2_pglist(uid_chunks[i])}
         isql = sql % place_holders
         proc = Process(target = p_get_utilityrate3_inputs, args = (inputs_dict, pg_conn_string, isql, results, gross_fit_mode))
         jobs.append(proc)
@@ -1920,7 +1775,7 @@ def scale_array(row, array_col, scale_col, prec_offset_value):
 def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue, gross_fit_mode = False):
     try:
         # create cursor and connection
-        con, cur = make_con(pg_conn_string)  
+        con, cur = utilfunc.make_con(pg_conn_string)  
         # get the data from postgres
         df = pd.read_sql(sql, con, coerce_float = False)
         # close cursor and connection
@@ -2074,6 +1929,7 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech):
                  USING BTREE(year);""" % inputs_dict
         cur.execute(sql)
         con.commit()
+
 
 def get_sectors(cur, schema):
     '''Return the sectors to model from table view in postgres.
@@ -2476,7 +2332,6 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     ic = inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
     
     cur_date = np.array([datetime.date(cur_year, 1, 1)]*len(inc))
-    default_exp_date = np.array([datetime.date(default_exp_yr, 12, 31)]*len(inc))
     
     # Column names differ btw the wind and solar tables. 
     # Adding this exception handling so they have common set of columns
@@ -2812,46 +2667,6 @@ def assign_business_model(df, prng, method = 'prob', alpha = 2):
     return df
 
 
-def summarise_solar_resource_by_ts_and_pca_reg(df, con):
-    '''
-    Outputs for ReEDS linkage the solar capacity factor by time slice and PCA 
-    weighted by the existing azimuth/tilts deployed. Summary is based
-    on a pre-processing step which finds the mean CF by timeslice by averaging
-    over the point-level resource (solar_re_9808_gid) within a PCA
-    
-    IN: 
-        con
-        df
-    
-    OUT:
-        
-        pandas dataframe [pca_reg, ts, cf]
-    '''
-    
-    # Query the solar resource by pca, tilt, azimuth, & timeslice and rename columns e.g. at this point resource has already been averaged over solar_re_9809_gid 
-    resource = pd.read_sql("SELECT * FROM diffusion_solar.solar_resource_by_pca_summary;", con)
-    resource.drop('npoints', axis =1, inplace = True)
-    resource['pca_reg'] = 'p' + resource.pca_reg.map(str)
-    resource.columns = ['pca_reg','tilt','azimuth','H1','H2','H3','H4','H5','H6','H7','H8','H9','H10','H11','H12','H13','H14','H15','H16','H17']
-
-    # Determine the percentage of adopters that have selected a given azimuth/tilt combination in the pca
-    d = df[['installed_capacity','pca_reg', 'azimuth', 'tilt']].groupby(['pca_reg', 'azimuth', 'tilt']).sum()    
-    d = d.groupby(level=0).apply(lambda x: x/float(x.sum())).reset_index()
-    
-    # Join the resource to get the capacity factor by time slice, azimuth, tilt & pca
-    d = pd.merge(d, resource, how = 'left', on = ['pca_reg','azimuth','tilt'])
-    
-    # Pivot to tall format
-    d = d.set_index(['pca_reg','azimuth','tilt','installed_capacity']).stack().reset_index()
-    d.columns = ['pca_reg','azimuth','tilt','installed_capacity','ts','cf']
-    
-    # Finally, calculate weighted mean CF by timeslice using number_of_adopters as the weight 
-    d['cf'] = d['cf'] * d['installed_capacity']
-    d = d.groupby(['pca_reg','ts']).sum().reset_index()
-    d.drop(['tilt','installed_capacity'], axis = 1, inplace = True)
-    
-    return d
-
 def excess_generation_calcs(row, gross_fit_mode = False):
     ''' Function to calculate percent of excess generation given 8760-lists of 
     consumption and generation. Currently function is configured to work only with
@@ -2954,20 +2769,4 @@ def excess_generation_vectorized(df, gross_fit_mode = False):
     return df
 
 
-
-
-def code_profiler(out_dir):
-    lines = [ line for line in open(out_dir + '/dg_model.log') if 'took:' in line]
-    
-    process = [line.split('took:')[-2] for line in lines]
-    process = [line.split(':')[-1] for line in process]
-    
-    time = [line.split('took:')[-1] for line in lines]
-    time = [line.split('s')[0] for line in time]
-    time = [float(x) for x in time]
-    
-    
-    profile = pd.DataFrame({'process': process, 'time':time})
-    profile = profile.sort('time', ascending = False)
-    profile.to_csv(out_dir + '/code_profiler.csv') 
     
