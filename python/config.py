@@ -11,8 +11,13 @@ Created on Wed Mar 26 13:01:56 2014
 
 import os
 import multiprocessing
-import data_functions as datfunc
 import pandas as pd
+import utility_functions as utilfunc
+
+#==============================================================================
+#  Show timing statements for functions
+#==============================================================================
+show_times = True
 
 #==============================================================================
 #   get postgres connection parameters
@@ -26,14 +31,12 @@ pg_params_file = 'pg_params_db.json'
 #pg_params_file = 'pg_params_dev.json'
 
 # load pg params from pg_params.json
-pg_params, pg_conn_string = datfunc.get_pg_params(os.path.join(path, pg_params_file))
-
+pg_params, pg_conn_string = utilfunc.get_pg_params(os.path.join(path, pg_params_file))
 
 #==============================================================================
 #   set the number of customer bins to model in each county
 #==============================================================================
 customer_bins = 10
-
 
 #==============================================================================
 #   model start year
@@ -72,7 +75,7 @@ init_model = True
 #==============================================================================
 # In non-NEM mode, should generation be allowed to offset self-consumption (False), 
 # or directly sold to grid (True)
-gross_fit_mode = False
+gross_fit_mode = True
 
 #==============================================================================
 #  Set a cap on value of incentives

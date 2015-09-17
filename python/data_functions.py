@@ -6,8 +6,6 @@ Created on Mon Mar 24 08:59:44 2014
 """
 import psycopg2 as pg
 import psycopg2.extras as pgx
-import psycopg2.extensions as pgxt
-import pandas.io.sql as sqlio
 import time   
 import numpy as np
 import pandas as pd
@@ -27,6 +25,9 @@ import sys
 import getopt
 import psutil
 import json
+import decorators
+from config import show_times
+import pickle
 
 
 # configure psycopg2 to treat numeric values as floats (improves performance of pulling data from the database)
@@ -37,15 +38,6 @@ DEC2FLOAT = pg.extensions.new_type(
 pg.extensions.register_type(DEC2FLOAT)
 
 
-def get_pg_params(json_file):
-    
-    pg_params_json = file(json_file,'r')
-    pg_params = json.load(pg_params_json)
-    pg_params_json.close()
-
-    pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s port=%(port)s' % pg_params
-
-    return pg_params, pg_conn_string
 
 def load_resume_vars(cfg, resume_year):
     # Load the variables necessary to resume the model
@@ -2308,6 +2300,7 @@ def write_last_year(con, cur, market_last_year, sector_abbr, schema, tech):
     s.close()
 
 
+@decorators.fn_timer(show_times)
 def get_main_dataframe(con, sector_abbr, schema, year, tech):
     ''' Pull main pre-processed dataframe from dB
     
