@@ -122,8 +122,25 @@ def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs =
         df_selected_and_unselected = df_selected.merge(best_unselected_tech, left_on = ['uid'], right_on = ['best_alternative'], how = 'outer')      
         df_selected_and_unselected['best_unselected'] = df_selected_and_unselected.best_alternative.isnull() == False 
         return_df = df_selected_and_unselected[(df_selected_and_unselected.selected_option == True) | (df_selected_and_unselected.best_unselected == True)]
-        
-     # subset the columns to return
+        # check row count matches the input df/2
+        if return_df.shape[0] <> df.shape[0]/2:
+            raise ValueError("Shape mismatch: output dataframe does not have 1/2 the rows of input dataframe")
+            sys.exit(-1)
+        # check that the number of selected and unselected options both = 1/2 the shape of the input df
+        num_selected = sum(return_df['selected_option'] == True)
+        num_unselected = sum(return_df['selected_option'] <> False)
+        if num_selected <> df.shape[0]/4:
+            raise ValueError("The number of selected options is not equal to 1/2 of the input data frame")
+            sys.exit(-1)            
+        if num_unselected <> df.shape[0]/4:
+            raise ValueError("The number of unselected options is not equal to 1/2 of the input data frame")
+            sys.exit(-1)   
+        # make sure there are no rows that are marked as both selected_option and best_unselected
+        if np.any((return_df.selected_option == True) & (return_df.best_unselected == True)):
+            raise ValueError("There are some options that are marked as both selected and unselected")
+            sys.exit(-1)
+            
+    # subset the columns to return
     return_df = return_df[in_columns + ['selected_option']].sort(columns = ['county_id', 'bin_id', 'tech'])      
     
     
@@ -132,14 +149,15 @@ def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs =
 if __name__ == '__main__': 
     from config import alpha_lkup
     from pandas.util.testing import assert_frame_equal
+    
 #    in_df = pd.read_csv('/Users/mgleason/NREL_Projects/github/diffusion/python/test_data.csv')
 #    in_df['leasing_allowed'] = True
+
     in_df = pd.read_csv('/Users/mgleason/Desktop/df.csv')
 
     
     df_solar = in_df[in_df.tech == 'solar'].copy()
     df_wind = in_df[in_df.tech == 'wind'].copy()
-    
     
     prng = np.random.RandomState(1234)
     b = select_financing_and_tech(in_df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind'])
