@@ -29,9 +29,10 @@ from excel import excel_functions
 import tech_choice
 
 #==============================================================================
-# raise all numpy warnings as exceptions
+# raise  numpy and pandas warnings as exceptions
 #==============================================================================
 np.seterr(all='raise')
+pd.set_option('mode.chained_assignment','raise')
 #==============================================================================
     
 
