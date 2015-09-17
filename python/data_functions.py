@@ -2318,9 +2318,37 @@ def get_main_dataframe(con, sector_abbr, schema, year, tech):
     '''
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs_dict = locals().copy()     
+    inputs = locals().copy()     
     
-    sql = """SELECT a.*, b.first_year_bill_with_system, b.first_year_bill_without_system, b.excess_generation_percent, c.leasing_allowed
+    if tech == 'wind':
+        inputs['add_cols'] = 'NULL::INTEGER as tilt, NULL::TEXT as azimuth, NULL::INTEGER as available_roof_sqft, NULL::NUMERIC as inverter_cost_dollars_per_kw, NULL::INTEGER as inverter_lifetime_yrs'
+    elif tech == 'solar':
+        inputs['add_cols'] = 'a.tilt, a.azimuth, a.available_roof_sqft, a.inverter_cost_dollars_per_kw, a.inverter_lifetime_yrs'
+    
+    sql = """SELECT a.micro_id, 
+                    a.county_id, 
+                    a.bin_id, 
+                    a.year, 
+                    a.state_abbr, 
+                    a.census_division_abbr, 
+                    a.utility_type, 
+                    a.pca_reg, 
+                    a.reeds_reg, 
+                    a.incentive_array_id, 
+                    a.carbon_price_cents_per_kwh, 
+                    a.fixed_om_dollars_per_kw_per_yr, 
+                    a.variable_om_dollars_per_kwh, 
+                    a.installed_costs_dollars_per_kw, 
+                    a.customers_in_bin, 
+                    a.load_kwh_per_customer_in_bin, 
+                    a.system_size_kw, 
+                    a.aep,  
+                    a.owner_occupancy_status,
+                    %(add_cols)s,
+                    b.first_year_bill_with_system, 
+                    b.first_year_bill_without_system, 
+                    b.excess_generation_percent, 
+                    c.leasing_allowed
             FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s a
             LEFT JOIN %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s b
                     ON a.county_id = b.county_id
@@ -2330,7 +2358,7 @@ def get_main_dataframe(con, sector_abbr, schema, year, tech):
             LEFT JOIN %(schema)s.input_%(tech)s_leasing_availability c
                 ON a.state_abbr = c.state_abbr
                 AND a.year = c.year                                     
-            WHERE a.year = %(year)s""" % inputs_dict
+            WHERE a.year = %(year)s""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
 
     df['tech'] = tech
