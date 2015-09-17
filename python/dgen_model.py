@@ -152,7 +152,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             else:
                 logger.warning("Warning: Skipping Import of Input Scenario Worksheet. This should only be done in resume mode.")
 
-
             # read in high level scenario settings
             scenario_opts = datfunc.get_scenario_options(cur, schema) 
             scen_name = scenario_opts['scenario_name']
@@ -167,7 +166,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('\tSectors: %s' % sectors.values())
             logger.info('\tTechnologies: %s' % techs)
             logger.info('\tYears: %s - %s' % (cfg.start_year, end_year))
-            
             
             # assert that model is set to run the whole US (applies to Reeds mode only)
             if mode == 'ReEDS' and scenario_opts['region'] != 'United States':
@@ -192,13 +190,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 ann_system_degradation = datfunc.get_system_degradation(con, schema)      
             logger.info('\tCompleted in: %0.1fs' % t.interval)
 
-            
-            # start year comes from config
+            # set model years depending on whether in reeds mode
             if mode == 'ReEDS':
                 model_years = [resume_year]
             else:
                 model_years = range(cfg.start_year, end_year+1,2)
-
 
             if mode != 'ReEDS' or resume_year == 2014:      
                 # create output folder for this scenario
@@ -209,8 +205,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 logger.info("--------------Creating Agents---------------")
                 # Combine All of the Temporally Varying Data in a new Table in Postgres       
-                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, utilfunc.pylist_2_pglist(sectors.keys())) # TODO: Comment                
-                crash                
+                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, utilfunc.pylist_2_pglist(sectors.keys())) # TODO: Comment                                
                 # loop through sectors, creating customer bins                
                 for sector_abbr, sector in sectors.iteritems():
     
