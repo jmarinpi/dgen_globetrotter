@@ -37,8 +37,10 @@ pg.extensions.register_type(DEC2FLOAT)
 #==============================================================================
 
 
-
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
 def create_output_schema(pg_conn_string, source_schema = 'diffusion_template'):
+    
+    logger.info('Creating output schema')
     
     inputs = locals().copy()
     con, cur = utilfunc.make_con(pg_conn_string, role = "diffusion-schema-writers")
@@ -51,11 +53,14 @@ def create_output_schema(pg_conn_string, source_schema = 'diffusion_template'):
     cur.execute(sql)        
     con.commit()
 
+    logger.info('\tOutput schema is: %s' % dest_schema)
    
     return dest_schema
 
-    
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
 def drop_output_schema(pg_conn_string, schema):
+
+    logger.info('Dropping the Output Schema (%s) from Database' % schema)
 
     inputs = locals().copy()
 
@@ -2135,7 +2140,6 @@ def write_last_year(con, cur, market_last_year, sector_abbr, schema, tech):
     s.close()
 
 
-#@decorators.fn_timer(show_times)
 def get_main_dataframe(con, sector_abbr, schema, year, tech):
     ''' Pull main pre-processed dataframe from dB
     

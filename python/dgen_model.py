@@ -133,66 +133,48 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('============================================') 
             logger.info("Running Scenario %s of %s" % (i+1, len(input_scenarios)))
             logger.info("-------------Preparing Database-------------")
-            # 5. Load Input excel spreadsheet to Postgres
+            # load Input excel spreadsheet to Postgres
             if cfg.init_model:
                 # create the output schema
-                logger.info('Creating output schema')
-                t0 = time.time()
                 schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
 #                schema = 'diffusion_results_2015_09_17_11h34m00s' # TODO: COMMENT/DELETE
                 datfunc.clear_outputs(con, cur, schema)
-                logger.info('\tOutput schema is: %s' % schema)
-                logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
                 # write the reeds settings to postgres
                 reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
                 ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
-                logger.info('Loading Input Scenario Worksheet')
+                
                 try:
-                    t0 = time.time()
                     excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
-                    logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
                 except Exception, e:
-                    msg = '\tLoading failed with the following error: %s' % e      
-                    logger.error(msg)
-                    msg = 'Model aborted'
-                    logger.error(msg)
+                    logger.error('\tLoading failed with the following error: %s\nModel Aborted' % e      )
+                    logger.error('Model aborted')
                     sys.exit(-1)
             else:
                 logger.warning("Warning: Skipping Import of Input Scenario Worksheet. This should only be done in resume mode.")
 
 
-            # 6. Read in scenario option variables
+            # read in high level scenario settings
             scenario_opts = datfunc.get_scenario_options(cur, schema) 
-            
-            if mode == 'ReEDS' and scenario_opts['region'] != 'United States':
-                msg = 'Linked model can only run nationally. Select United States in input sheet'      
-                logger.error(msg)
-                msg = 'Model aborted'
-                logger.error(msg)
-                sys.exit(-1)
-                    
-            logger.info('Scenario Name: %s' % scenario_opts['scenario_name'])
-            t0 = time.time()
-            load_growth_scenario = scenario_opts['load_growth_scenario'].lower() # get financial variables
+            sectors = datfunc.get_sectors(cur, schema)
+            techs = datfunc.get_technologies(con, schema)
             end_year = scenario_opts['end_year']
             
-            # start year comes from config
-            if mode == 'ReEDS':
-                model_years = [resume_year]
-            else:
-                model_years = range(cfg.start_year, end_year+1,2)
-              
-            # get the sectors to model
-            t0 = time.time()
-            sectors = datfunc.get_sectors(cur, schema)
-            # get the technologies to model
-            techs = datfunc.get_technologies(con, schema)
-            logger.info('The Following Technologies Will Be Evaluated: %s' % techs)
+            # summarize high level secenario settings 
+            logger.info('Scenario Settings:')
+            logger.info('\tScenario Name: %s' % scenario_opts['scenario_name'])
+            logger.info('\tRegion: %s' % scenario_opts['region'])
+            logger.info('\tSectors: %s' % sectors.values())
+            logger.info('\tTechnologies: %s' % techs)
+            logger.info('\tYears: %s - %s' % (cfg.start_year, end_year))
             
             
-            #==============================================================================
-            #   get other user-defined inputs
-            #==============================================================================
+            # assert that model is set to run the whole US (applies to Reeds mode only)
+            if mode == 'ReEDS' and scenario_opts['region'] != 'United States':
+                logger.error('Linked model can only run nationally. Select United States in input sheet'      )
+                logger.error('Model aborted')
+                sys.exit(-1)
+                                  
+            # get other scenario inputs
             t0 = time.time()
             msg = 'Getting various scenario parameters'
             logger.info(msg)
@@ -201,12 +183,20 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             market_projections = datfunc.get_market_projections(con, schema)
             rate_escalations = datfunc.get_rate_escalations(con, schema)
             rate_structures = datfunc.get_rate_structures(con, schema)
+            load_growth_scenario = scenario_opts['load_growth_scenario'].lower() # get financial variables
             # these are technology specific, set up in tidy form with a "tech" field
             financial_parameters = datfunc.get_financial_parameters(con, schema)
             incentive_options = datfunc.get_manual_incentive_options(con, schema)
             deprec_schedule = datfunc.get_depreciation_schedule(con, schema, macrs = True)
             ann_system_degradation = datfunc.get_system_degradation(con, schema)      
             logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
+
+            
+            # start year comes from config
+            if mode == 'ReEDS':
+                model_years = [resume_year]
+            else:
+                model_years = range(cfg.start_year, end_year+1,2)
 
             if mode != 'ReEDS' or resume_year == 2014:                
                 
@@ -427,7 +417,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #####################################################################
             ### THIS IS TEMPORARY ###
             # drop the new schema
-            logger.info('Dropping the Output Schema (%s) from Database' % schema)
             datfunc.drop_output_schema(cfg.pg_conn_string, schema) # TODO: Uncomment
             #####################################################################
             

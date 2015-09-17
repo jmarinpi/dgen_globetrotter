@@ -11,23 +11,30 @@ import sys
 import os
 from excel_objects import FancyNamedRange, ExcelError
 import pandas as pd
+import decorators
 
 
 path = os.path.dirname(os.path.abspath(__file__))
 par_path = os.path.dirname(path)
 sys.path.append(par_path)
-from config import pg_conn_string
-from utility_functions import make_con
+from config import pg_conn_string, show_times
+import utility_functions as utilfunc
 
+#==============================================================================
+# Load logger
+logger = utilfunc.get_logger()
+#==============================================================================
 
-
-        
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
 def load_scenario(xls_file, schema, conn = None, test = False):
+    
+    logger.info('Loading Input Scenario Worksheet')    
+    
     try:
         # check connection to PG
         if not conn:
             close_conn = True
-            conn, cur = make_con(pg_conn_string)
+            conn, cur = utilfunc.make_con(pg_conn_string)
         else:
             # make cursor from conn
             cur = conn.cursor()
