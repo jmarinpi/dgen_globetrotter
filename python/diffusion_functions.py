@@ -25,7 +25,7 @@ logger = utilfunc.get_logger()
 
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
-def calc_diffusion(df, logger, year, sector):
+def calc_diffusion(df, year, sector):
     ''' Brings everything together to calculate the diffusion market share 
         based on payback, max market, and market last year. Using the calculated 
         market share, relevant quantities are updated.
@@ -51,7 +51,7 @@ def calc_diffusion(df, logger, year, sector):
     market_last_year = df[['county_id','bin_id', 'tech', 'market_share', 'max_market_share','number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
     market_last_year.columns = ['county_id', 'bin_id', 'tech', 'market_share_last_year', 'max_market_share_last_year','number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
 
-    return df, market_last_year, logger
+    return df, market_last_year
 
 
 #=============================================================================
