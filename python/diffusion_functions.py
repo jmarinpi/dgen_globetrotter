@@ -16,8 +16,12 @@ Last Revision: 3/26/14
 """
 
 import numpy as np
-import pandas as pd
-import time
+import utility_functions as utilfunc
+
+#==============================================================================
+# Load logger
+logger = utilfunc.get_logger()
+#==============================================================================
 
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^

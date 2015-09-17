@@ -6,14 +6,16 @@ Multiprocessing for pssc module.
 
 import time
 import multiprocessing
-
 import pandas as pd
-
 import pssc
-
-from pssc_utils import logger
 from pssc_utils import make_conn
 from pssc_utils import config
+import utility_functions as utilfunc
+
+#==============================================================================
+# Load logger
+logger = utilfunc.get_logger()
+#==============================================================================
 
 
 def run_utilityrate3(uid, generation_hourly, consumption_hourly, rate_json,

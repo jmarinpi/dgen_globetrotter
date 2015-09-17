@@ -18,7 +18,6 @@ import psycopg2 as pg
 import psycopg2.extras as pgx
 
 
-
 #==============================================================================
 #       Logging Functions
 #==============================================================================
@@ -30,9 +29,10 @@ def get_logger(log_file_path = None):
                                             reset=True
                                             )    
     if log_file_path is not None:
-        logging.basicConfig(filename = log_file_path, filemode = 'w', format='%(levelname)-8s:%(message)s', level = logging.DEBUG)   
-        logger = logging.getLogger(__name__)
-    else:
+        logging.basicConfig(filename = log_file_path, filemode = 'w', format='%(levelname)-8s:%(message)s', level = logging.DEBUG) 
+    logger = logging.getLogger(__name__)
+    
+    if len(logger.handlers) == 0:
         logger = logging.getLogger(__name__)   
         console = logging.StreamHandler()
         console.setLevel(logging.DEBUG)

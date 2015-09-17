@@ -2,9 +2,9 @@ __author__ = 'dhetting'
 
 import configobj
 import datetime
-import logging
 import os
 import sys
+#import logging
 
 
 # get configuration info
@@ -17,41 +17,46 @@ else:
 cdate = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
 
-def initialize_logger(output_dir=os.getcwd(), level=None, extra_handlers=()):
-    """
-    Returns a logger object configured to display >= INFO to the screen and >= DEBUG to a log file.
-    """
-    # init logger
-    logger = logging.getLogger('main')
-
-    # create console handler and set level to info
-    handler = logging.StreamHandler()
-
-    # @TODO: introduced a bug somewhere that prevents (some?) printing to screen
-    # get logger level from config if needed
-    if level is None:
-        level = config.get('logger_level') or 'INFO'
-
-    # set level
-    if level == 'DEBUG':
-        handler.setLevel(logging.DEBUG)
-    elif level == 'INFO':
-        handler.setLevel(logging.INFO)
-
-    # set formatter
-    formatter = logging.Formatter('%(levelname)s - %(asctime)s -  %(funcName)s - %(lineno)d - Msg: "%(message)s"')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-    # create error file handler and set level to error
-    if 'file' in extra_handlers:
-        handler = logging.FileHandler(os.path.join(output_dir, '%s_%s.log' % (config.filename[:-4], cdate)), 'w', encoding=None, delay='true')
-        handler.setLevel(logging.DEBUG)
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-
-    return logger
-
+#def initialize_logger(output_dir=os.getcwd(), level=None, extra_handlers=()):
+#    """
+#    Returns a logger object configured to display >= INFO to the screen and >= DEBUG to a log file.
+#    """
+#    # init logger
+#    logger = logging.getLogger('main')
+#
+#    # create console handler and set level to info
+#    handler = logging.StreamHandler()
+#
+#    # @TODO: introduced a bug somewhere that prevents (some?) printing to screen
+#    # get logger level from config if needed
+#    if level is None:
+#        level = config.get('logger_level') or 'INFO'
+#
+#    # set level
+#    if level == 'DEBUG':
+#        handler.setLevel(logging.DEBUG)
+#    elif level == 'INFO':
+#        handler.setLevel(logging.INFO)
+#
+#    # set formatter
+#    formatter = logging.Formatter('%(levelname)s - %(asctime)s -  %(funcName)s - %(lineno)d - Msg: "%(message)s"')
+#    handler.setFormatter(formatter)
+#    logger.addHandler(handler)
+#
+#    # create error file handler and set level to error
+#    if 'file' in extra_handlers:
+#        handler = logging.FileHandler(os.path.join(output_dir, '%s_%s.log' % (config.filename[:-4], cdate)), 'w', encoding=None, delay='true')
+#        handler.setLevel(logging.DEBUG)
+#        handler.setFormatter(formatter)
+#        logger.addHandler(handler)
+#
+#    return logger
+#
+## create logger
+#logger = initialize_logger(level='DEBUG')
+#
+## log config file
+#logger.debug('Config file: %s' % os.path.abspath(config.filename))
 
 def make_conn(host=config.get('db_host'), dbname=config.get('db_name'), user=config.get('db_user'),
               password=config.get('db_password'), port=config.get('db_port'), lib='psycopg2', c_factory=None):
@@ -80,11 +85,7 @@ def make_conn(host=config.get('db_host'), dbname=config.get('db_name'), user=con
     return conn
 
 
-# create logger
-logger = initialize_logger(level='DEBUG')
 
-# log config file
-logger.debug('Config file: %s' % os.path.abspath(config.filename))
 
 # SSC rate variables
 param_types = {'system_use_lifetime_output': 'SSC_NUMBER',          # New in SAM 6-1-2015

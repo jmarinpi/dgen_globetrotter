@@ -5,7 +5,12 @@ Wrapper for SAM utilityrate3 module.
 """
 import pssc_utils
 from sam.languages.python import sscapi
+import utility_functions as utilfunc
 
+#==============================================================================
+# Load logger
+logger = utilfunc.get_logger()
+#==============================================================================
 
 def utilityrate3(generation_hourly, consumption_hourly, rate_json,
                  analysis_period=1., inflation_rate=0., degradation=(0.,),
@@ -32,10 +37,6 @@ def utilityrate3(generation_hourly, consumption_hourly, rate_json,
                                                            elec_cost_with_system: ssc.Data.elec_cost_with_system,
                                                            elec_cost_without_system: ssc.Data.elec_cost_without_system}
     """
-
-    # if no logger provided, create one:
-    if logger is None:
-        from pssc_utils import logger
 
     # define return container
     return_value = dict()

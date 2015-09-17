@@ -21,7 +21,10 @@ import decorators
 from config import show_times
 import utility_functions as utilfunc
 
+#==============================================================================
+# Load logger
 logger = utilfunc.get_logger()
+#==============================================================================
 
 
 #==============================================================================
@@ -62,16 +65,16 @@ def drop_output_schema(pg_conn_string, schema):
     con.commit()
     
 
-def combine_temporal_data(cur, con, schema, techs, start_year, end_year, sector_abbrs, logger):
+def combine_temporal_data(cur, con, schema, techs, start_year, end_year, sector_abbrs):
 
     if 'wind' in techs:
-        combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs, logger)
+        combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs)
     
     if 'solar' in techs:
-        combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs, logger)
+        combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs)
     
 
-def combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs, logger):
+def combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs):
     
      # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
@@ -131,10 +134,9 @@ def combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_a
               USING BTREE(census_division_abbr);""" % inputs
     cur.execute(sql)
     con.commit()  
-    
-    return 1
 
-def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs, logger):
+
+def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
     
@@ -235,8 +237,7 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
               USING BTREE(year);""" % inputs
     cur.execute(sql)
     con.commit()  
-    
-    return 1
+
     
 def clear_outputs(con, cur, schema):
     """Delete all rows from the res, com, and ind output tables"""
@@ -560,21 +561,15 @@ def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rs
         command = [Rscript_path,'--vanilla', plot_outputs_path, out_tech_path, scen_name, tech, schema, pg_params_file]
         proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         messages = proc.communicate()
-        logger.info("Hello world")
         if 'error' in messages[1].lower():
-            if logger is not None:
-                logger.error(messages[1])
-            else:
-                print "Error: %s" % messages[1]
+            logger.error(messages[1])
         if 'warning' in messages[1].lower():
-            if logger is not None:
-                logger.warning(messages[1])
-            else:
-                print "Warning: %s" % messages[1]
+            logger.warning(messages[1])
+
   
 
 def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
-                           rate_escalation_source, load_growth_scenario, npar, pg_conn_string, rate_structure, logger):
+                           rate_escalation_source, load_growth_scenario, npar, pg_conn_string, rate_structure):
                                
 
     inputs = locals().copy()
@@ -593,12 +588,12 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
     #==============================================================================
     #     sample customer locations and load. and link together    
     #==============================================================================
-    sample_customers_and_load(inputs, county_chunks, npar, pg_conn_string, logger, sector_abbr)
+    sample_customers_and_load(inputs, county_chunks, npar, pg_conn_string, sector_abbr)
     
     #==============================================================================
     #     get rate for each cusomter bin
     #==============================================================================
-    find_rates(inputs, county_chunks, npar, pg_conn_string, rate_structure, logger)        
+    find_rates(inputs, county_chunks, npar, pg_conn_string, rate_structure)        
 
     #==============================================================================
     #     run the portions that are technology specific
@@ -608,14 +603,14 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
         technology = 'wind'
         logger.info('\tAttributing Agents with Wind Data')
         generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure, logger)
+                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure)
 
     if 'solar' in techs:
         resource_key = 'solar_re_9809_gid'
         technology = 'solar'
         logger.info('\tAttributing Agents with Solar Data')
         generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure, logger)  
+                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure)  
 
     
     #==============================================================================
@@ -667,7 +662,7 @@ def split_counties(cur, schema, npar):
     
     return county_chunks
 
-def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, logger, sector_abbr):
+def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, sector_abbr):
 
 
     inputs_dict['chunk_place_holder'] = '%(county_ids)s'
@@ -818,7 +813,7 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
     p_run(pg_conn_string, sql, county_chunks, npar)
     logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
-def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure, logger):
+def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure):
 
     logger.info("\tSelecting Rates for Each Agent")
     t0 = time.time()
@@ -941,7 +936,7 @@ def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure,
 
     logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
-def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string, logger):
+def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string):
     
    
     #=============================================================================================================
@@ -996,7 +991,7 @@ def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string
 
 
 def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure, logger):
+                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure):
 
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()  
@@ -1009,7 +1004,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     msg = "\t\tAssigning Rooftop Characteristics"
     logger.info(msg)
     t0 = time.time()
-    assign_roof_characteristics(inputs, county_chunks, npar, pg_conn_string, logger)
+    assign_roof_characteristics(inputs, county_chunks, npar, pg_conn_string)
     logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0)) 
 
     #==============================================================================
@@ -1268,7 +1263,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
     
 
-def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, logger):
+def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string):
     
     #==============================================================================
     #     Find the allowable turbine heights and sizes (kw) for each customer bin
@@ -1326,7 +1321,7 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string, 
 ########################################################################################################################
 ########################################################################################################################
 def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure, logger):
+                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure):
 
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
@@ -1338,7 +1333,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     #==============================================================================   
     logger.info('\t\tApplying Turbine Siting Restrictions')
     t0 = time.time()
-    apply_siting_restrictions(inputs, county_chunks, npar, pg_conn_string, logger)
+    apply_siting_restrictions(inputs, county_chunks, npar, pg_conn_string)
     logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
     
     #==============================================================================
@@ -1806,7 +1801,7 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue, gross_fit
         print sql
     
 
-def run_utilityrate3(df, logger):
+def run_utilityrate3(df):
     # NOTE: This method is slower than pssc_mp.pssc_mp()
     # unless there is only one core available, in which case
     # this method will run faster due to no overhead of setting
@@ -2014,7 +2009,7 @@ def get_scenario_options(cur, schema):
     return results
 
 
-def get_dsire_incentives(cur, con, schema, tech, sector_abbr, npar, pg_conn_string, logger):
+def get_dsire_incentives(cur, con, schema, tech, sector_abbr, npar, pg_conn_string):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
 
