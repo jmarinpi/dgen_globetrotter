@@ -23,6 +23,7 @@ import subprocess
 import config as cfg
 import shutil
 import sys
+import pssc_mp
 import pickle
 from excel import excel_functions
 import tech_choice
@@ -138,7 +139,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info('Creating output schema')
                 t0 = time.time()
 #                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
-                schema = 'diffusion_results_2015_09_16_15h50m30s' # TODO: COMMENT/DELETE
+                schema = 'diffusion_results_2015_09_17_11h34m00s' # TODO: COMMENT/DELETE
                 datfunc.clear_outputs(con, cur, schema)
                 logger.info('\tOutput schema is: %s' % schema)
                 logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
@@ -230,7 +231,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 t0 = time.time()
                 msg = "Combining Temporal Factors"    
                 logger.info(msg)        
-#                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, datfunc.pylist_2_pglist(sectors.keys()), logger) # TODO: Comment
+#                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, utilfunc.pylist_2_pglist(sectors.keys()), logger) # TODO: Comment
                 logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))                    
                 
                  # loop through sectors, creating customer bins                
@@ -439,7 +440,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             for tech in out_subfolders.keys():
                 out_tech_subfolders = out_subfolders[tech]
                 if len(out_tech_subfolders) > 0:
-                    scenario_output_paths = datfunc.pylist_2_pglist(out_tech_subfolders).replace("'","").replace(" ","")
+                    scenario_output_paths = utilfunc.pylist_2_pglist(out_tech_subfolders).replace("'","").replace(" ","")
                     scenario_comparison_path = os.path.join(out_dir,'scenario_comparison_%s' % tech)
                     command = [cfg.Rscript_path,'--vanilla',scenario_analysis_path,scenario_output_paths,scenario_comparison_path]
                     logger.info('============================================') 
