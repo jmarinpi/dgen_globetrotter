@@ -18,6 +18,15 @@ def weighted_choice(group, prng):
     
     return sample
 
+def which_max_npv4(group):
+    
+    # rescale probabilities to sum to one
+    uid_list = group['uid'].tolist()
+    max_npv = group['npv4'].max()
+    i =  group['npv4'].tolist().index(max_npv)
+    uid = uid_list[i]
+    
+    return uid
 
 def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind']):
         
@@ -95,7 +104,6 @@ def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs =
     # Filter by the best choice by matching the p-values returned above
     df_selected = df.merge(selected_uids, left_on = group_by_cols + ['uid'], right_on = group_by_cols + ['best'], how = 'outer')
     df_selected['selected_option'] = df_selected.best.isnull() == False
-    df_selected = df_selected[in_columns + ['selected_option']].sort(columns = ['county_id', 'bin_id', 'tech'])  
     
     if choose_tech == False:
         # return only the selected options
@@ -108,30 +116,36 @@ def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs =
         unselected_techs = df_selected.merge(selected_techs, on = ['county_id', 'bin_id', 'tech'], how = 'outer')
         unselected_techs = unselected_techs[unselected_techs.selected_tech.isnull()]
         # rank the remainders by npv4
-        rank_for_unselected_techs = pd.DataFrame(unselected_techs.groupby(['county_id', 'bin_id', 'tech'])['npv4'].rank(method = 'first', ascending = False))
-        rank_for_unselected_techs.columns = ['rank_within_tech']
-        df_with_rank_remainders = df_selected.merge(rank_for_unselected_techs, left_index = True, right_index = True, how = 'outer') 
-        return_df = df_with_rank_remainders[(df_with_rank_remainders.selected_option == True) | (df_with_rank_remainders.rank_within_tech == 1)]
+        best_unselected_tech = unselected_techs.groupby(['county_id', 'bin_id']).apply(which_max_npv4).reset_index()
+        best_unselected_tech.columns = ['county_id', 'bin_id', 'best_alternative']
+        best_unselected_tech.drop(['county_id', 'bin_id'], axis = 1, inplace = True)
+        df_selected_and_unselected = df_selected.merge(best_unselected_tech, left_on = ['uid'], right_on = ['best_alternative'], how = 'outer')      
+        df_selected_and_unselected['best_unselected'] = df_selected_and_unselected.best_alternative.isnull() == False 
+        return_df = df_selected_and_unselected[(df_selected_and_unselected.selected_option == True) | (df_selected_and_unselected.best_unselected == True)]
         
      # subset the columns to return
-    return_df = return_df[in_columns + ['selected_option']].sort(columns = ['county_id', 'bin_id', 'tech'])       
+    return_df = return_df[in_columns + ['selected_option']].sort(columns = ['county_id', 'bin_id', 'tech'])      
+    
     
     return return_df
     
 if __name__ == '__main__': 
     from config import alpha_lkup
-    df = pd.read_csv('/Users/mgleason/NREL_Projects/github/diffusion/python/test_data.csv')
-    df['leasing_allowed'] = True
+    from pandas.util.testing import assert_frame_equal
+#    in_df = pd.read_csv('/Users/mgleason/NREL_Projects/github/diffusion/python/test_data.csv')
+#    in_df['leasing_allowed'] = True
+    in_df = pd.read_csv('/Users/mgleason/Desktop/df.csv')
+
     
-    df_solar = df[df.tech == 'solar']
-    df_wind = df[df.tech == 'wind']
+    df_solar = in_df[in_df.tech == 'solar'].copy()
+    df_wind = in_df[in_df.tech == 'wind'].copy()
     
     
     prng = np.random.RandomState(1234)
-    b = select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind'])
+    b = select_financing_and_tech(in_df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind'])
     
     prng = np.random.RandomState(1234)
-    br = select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs = ['wind', 'solar'])
+    br = select_financing_and_tech(in_df, prng, alpha_lkup, choose_tech = False, techs = ['wind', 'solar'])
     
     prng = np.random.RandomState(1234)
     w = select_financing_and_tech(df_wind, prng, alpha_lkup, choose_tech = False, techs = ['wind'])
@@ -143,13 +157,24 @@ if __name__ == '__main__':
     bw = b[b.tech == 'wind']
     bs = b[b.tech == 'solar']
     
-    print(np.all(bs.reset_index(drop = True) == s.reset_index(drop = True)))
-    print(np.all(bw.reset_index(drop = True) == w.reset_index(drop = True)))
+    try:
+        assert_frame_equal(bs.reset_index(drop = True), s.reset_index(drop = True))
+        print True
+    except Exception:
+        print False
+        
+    try:
+        assert_frame_equal(bw.reset_index(drop = True), w.reset_index(drop = True))
+        print True
+    except Exception:
+        print False
+
 
 
     #np.all(b.reset_index(drop = True) == br.reset_index(drop = True))
 
-
-
-
+#    bs.to_csv('/Users/mgleason/Desktop/bs.csv', index = False)
+#    s.to_csv('/Users/mgleason/Desktop/s.csv', index = False)
+#    w.to_csv('/Users/mgleason/Desktop/w.csv', index = False)
+#    bw.to_csv('/Users/mgleason/Desktop/bw.csv', index = False)
 

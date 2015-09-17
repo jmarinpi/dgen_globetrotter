@@ -2719,7 +2719,7 @@ def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr,tech_lifeti
     temp_df = df[['county_id','bin_id','business_model','census_division_abbr']]
     customer_expected_escalations = temp_df.merge(temp_df.merge(rate_pivot, how = 'left', on = 'census_division_abbr', sort = False))
     
-    if (df[['county_id','bin_id','business_model']] == customer_expected_escalations[['county_id','bin_id','business_model']]).all().all():
+    if np.all(df[['county_id','bin_id','business_model']].reset_index() == customer_expected_escalations[['county_id','bin_id','business_model']].reset_index()):
         return customer_expected_escalations.ix[:,4:].values
     else:
         raise Exception("rate_escalations_have been reordered!")

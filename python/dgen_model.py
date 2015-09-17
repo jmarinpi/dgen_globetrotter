@@ -310,7 +310,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     dsire_incentives[tech] = dsire_df
 
                 for year in model_years:
-                    npv_dfs = []
                     dfs = []
                     logger.info('\tWorking on %s for %s Sector' % (year, sector))
                     for tech in techs:
@@ -357,7 +356,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     # exit the techs loop and combine results from each technology
                     df_combined = pd.concat(dfs, axis = 0, ignore_index = True)
-                    
                     # select from choices for business model and (optionally) technology
                     logger.info("\t\tSelecting financing option and technology")
                     t0 = time.time()
@@ -370,7 +368,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
                     decrease if economics deterioriate.
                     '''             
-                    df = df_combined[df_combined.tech == tech]
                     logger.info("\t\tCalculating diffusion")
                     df_combined, market_last_year_combined, logger = diffunc.calc_diffusion(df_combined, logger, year, sector)
                     logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
