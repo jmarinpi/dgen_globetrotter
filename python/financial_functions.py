@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 import data_functions as datfunc
 import utility_functions as utilfunc
+import decorators
+from config import show_times
 
 #==============================================================================
 # Load logger
@@ -20,6 +22,7 @@ logger = utilfunc.get_logger()
 
 
 #==============================================================================
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
                    financial_parameters_all, scenario_opts, incentive_opts_all, max_market_share, cur, con, 
                    year, dsire_incentives, deprec_schedule_all, rate_escalations, ann_system_degradation_all, mode, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
@@ -33,6 +36,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
             df - pd dataframe - main dataframe with econ outputs appended as columns
     '''
     
+    logger.info("\t\tCalculating system economics for %s" % tech.title())
     
     # filter the tidy-structure inputs to the correct technology:
     sql = "tech == '%s'" % tech

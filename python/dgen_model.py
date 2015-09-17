@@ -181,7 +181,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 max_market_share = datfunc.get_max_market_share(con, schema)
                 market_projections = datfunc.get_market_projections(con, schema)
                 rate_escalations = datfunc.get_rate_escalations(con, schema)
-                rate_structures = datfunc.get_rate_structures(con, schema)
                 load_growth_scenario = scenario_opts['load_growth_scenario'].lower() # get financial variables
                 # these are technology specific, set up in tidy form with a "tech" field
                 financial_parameters = datfunc.get_financial_parameters(con, schema)
@@ -200,27 +199,19 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # create output folder for this scenario
                 out_scen_path, scenario_names, dup_n = datfunc.create_scenario_results_folder(input_scenario, scen_name, scenario_names, out_dir, dup_n)
 
+                # create psuedo-rangom number generator (not used until tech/finance choice function)
+                prng = np.random.RandomState(scenario_opts['random_generator_seed'])
+
                 #==========================================================================================================
                 # CREATE AGENTS
                 #==========================================================================================================
                 logger.info("--------------Creating Agents---------------")
-                # Combine All of the Temporally Varying Data in a new Table in Postgres       
-                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, utilfunc.pylist_2_pglist(sectors.keys())) # TODO: Comment                                
-                # loop through sectors, creating customer bins                
-                for sector_abbr, sector in sectors.iteritems():
-    
-                    # define the rate escalation source and max market curve for the current sector
-                    rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
-                    # create the Main Table in Postgres (optimal turbine size and height for each year and customer bin)
-                    datfunc.generate_customer_bins(cur, con, techs, schema,  # TODO: Comment
-                                                   scenario_opts['random_generator_seed'], cfg.customer_bins, sector_abbr, sector, 
-                                                   cfg.start_year, end_year, rate_escalation_source, load_growth_scenario,
-                                                   cfg.npar, cfg.pg_conn_string, rate_structures[sector_abbr])
-
-            #==========================================================================================================
-            # CALCULATE BILL SAVINGS
-            #==========================================================================================================
-            if cfg.init_model:
+                datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, 
+                                               cfg.start_year, end_year, cfg.npar, cfg.pg_conn_string, scenario_opts) # TODO: Comment
+               
+                #==========================================================================================================
+                # CALCULATE BILL SAVINGS
+                #==========================================================================================================
                 logger.info("---------Calculating Energy Savings---------")
                 for tech in techs: # TODO: Comment
                     # find all unique combinations of rates, load, and generation
@@ -272,10 +263,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==========================================================================================================
             # MODEL DEPLOYMENT    
             #==========================================================================================================
-            logger.info("---------Modeling Annual Deployment---------")
-            if cfg.init_model:
-                prng = np.random.RandomState(scenario_opts['random_generator_seed'])
-            
+            logger.info("---------Modeling Annual Deployment---------")            
             for sector_abbr, sector in sectors.iteritems():  
                 logger.info("Modeling Deployment for %s Sector" % sector.title())
                 dsire_incentives = {}
@@ -320,13 +308,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id','bin_id'])
                                             
                         # Calculate economics of adoption given system cofiguration and business model
-                        logger.info("\t\tCalculating system economics for %s" % tech.title())
                         df = finfunc.calc_economics(df, schema, sector, sector_abbr, tech,
                                                                                    market_projections, financial_parameters, 
                                                                                    scenario_opts, incentive_options, max_market_share, cur, con, year, 
                                                                                    dsire_incentives[tech], deprec_schedule, rate_escalations, 
                                                                                    ann_system_degradation, mode,curtailment_method, tech_lifetime = 25)
-                        logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
                         dfs.append(df)                        
                     
                     # exit the techs loop and combine results from each technology

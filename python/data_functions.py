@@ -591,50 +591,78 @@ def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rs
 
   
 
-def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, 
-                           rate_escalation_source, load_growth_scenario, npar, pg_conn_string, rate_structure):
+def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year, end_year, 
+                           npar, pg_conn_string, scenario_opts):
                                
 
     inputs = locals().copy()
     inputs['i_place_holder'] = '%(i)s'
     
-    t0 = time.time()
-    msg = "Creating Agents for %s Sector" % sector
-    logger.info(msg)
+    # extract settings from scenario opts
+    load_growth_scenario = scenario_opts['load_growth_scenario'].lower()    
+    seed = scenario_opts['random_generator_seed']
+    
+    # get rate structure settings (this will be for all sectors)
+    rate_structures = get_rate_structures(con, schema)
+    
+    # combine all temporally varying data
+    combine_temporal_data(cur, con, schema, techs, start_year, end_year, utilfunc.pylist_2_pglist(sectors.keys()))                           
+    
+    for sector_abbr, sector in sectors.iteritems():
+        with utilfunc.Timer() as t:
+            logger.info("Creating Agents for %s Sector" % sector)
+                
+            #==============================================================================
+            #     break counties into subsets for parallel processing
+            #==============================================================================
+            # get list of counties
+            county_chunks = split_counties(cur, schema, npar)
+            
+            #==============================================================================
+            #     sample customer locations and load. and link together    
+            #==============================================================================
+            sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, npar, pg_conn_string)
+            
+            #==============================================================================
+            #     get rate for each agent
+            #==============================================================================
+            rate_structure = rate_structures[sector_abbr]
+            find_rates(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, rate_structure, techs)
         
-    #==============================================================================
-    #     break counties into subsets for parallel processing
-    #==============================================================================
-    # get list of counties
-    county_chunks = split_counties(cur, schema, npar)
+            #==============================================================================
+            # set the source for the rate_escalation data
+            #==============================================================================
+            rate_escalation_source = scenario_opts['%s_rate_escalation' % sector_abbr]
+            
+            #==============================================================================
+            #     run the portions that are technology specific
+            #==============================================================================
+            if 'wind' in techs:
+                resource_key = 'i,j,cf_bin'
+                technology = 'wind'
+                logger.info('\tAttributing Agents with Wind Data')
+                generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
+                                   rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string)
+        
+            if 'solar' in techs:
+                resource_key = 'solar_re_9809_gid'
+                technology = 'solar'
+                logger.info('\tAttributing Agents with Solar Data')
+                generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
+                                   rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string)  
+        
+            
+            #==============================================================================
+            #   clean up intermediate tables
+            #==============================================================================
+            cleanup_intermediate_tables(schema, sector_abbr, county_chunks, npar, pg_conn_string, cur, con, inputs['i_place_holder'])
+            
+            
+        logger.info('\tTotal time to create agents for %s sector: %0.1fs' % (sector.lower(), t.interval)) 
+
+def cleanup_intermediate_tables(schema, sector_abbr, county_chunks, npar, pg_conn_string, cur, con, i_place_holder):
     
-    #==============================================================================
-    #     sample customer locations and load. and link together    
-    #==============================================================================
-    sample_customers_and_load(inputs, county_chunks, npar, pg_conn_string, sector_abbr)
-    
-    #==============================================================================
-    #     get rate for each cusomter bin
-    #==============================================================================
-    find_rates(inputs, county_chunks, npar, pg_conn_string, rate_structure)        
-
-    #==============================================================================
-    #     run the portions that are technology specific
-    #==============================================================================
-    if 'wind' in techs:
-        resource_key = 'i,j,cf_bin'
-        technology = 'wind'
-        logger.info('\tAttributing Agents with Wind Data')
-        generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure)
-
-    if 'solar' in techs:
-        resource_key = 'solar_re_9809_gid'
-        technology = 'solar'
-        logger.info('\tAttributing Agents with Solar Data')
-        generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure)  
-
+    inputs = locals().copy()    
     
     #==============================================================================
     #   clean up intermediate tables
@@ -663,10 +691,6 @@ def generate_customer_bins(cur, con, techs, schema, seed, n_bins, sector_abbr, s
         else:
             cur.execute(isql)
             con.commit()        
-    
-    
-    logger.info('\tTotal time to create agents for %s sector: %0.1fs' % (sector.lower(), (time.time() - t0))) 
-
 
 ########################################################################################################################
 ########################################################################################################################
@@ -685,11 +709,15 @@ def split_counties(cur, schema, npar):
     
     return county_chunks
 
-def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, sector_abbr):
+def sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, npar, pg_conn_string):
 
 
+    inputs_dict = locals().copy()
+    
+    inputs_dict['i_place_holder'] = '%(i)s'
     inputs_dict['chunk_place_holder'] = '%(county_ids)s'
     inputs_dict['load_where'] = " AND '%s' = b.sector_abbr" % sector_abbr
+
     # lookup table for finding the normalized max demand
     inputs_dict['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand'
     if sector_abbr == 'res':
@@ -836,8 +864,13 @@ def sample_customers_and_load(inputs_dict, county_chunks, npar, pg_conn_string, 
     p_run(pg_conn_string, sql, county_chunks, npar)
     logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
-def find_rates(inputs_dict, county_chunks, npar, pg_conn_string, rate_structure):
 
+def find_rates(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, rate_structure, techs):
+
+    inputs_dict = locals().copy()
+    inputs_dict['i_place_holder'] = '%(i)s'
+    inputs_dict['chunk_place_holder'] = '%(county_ids)s'
+    
     logger.info("\tSelecting Rates for Each Agent")
     t0 = time.time()
     excluded_rates = pd.read_csv('./excluded_rates_ids.csv', header=None)
@@ -1014,7 +1047,7 @@ def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string
 
 
 def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure):
+                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string):
 
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()  
@@ -1344,7 +1377,7 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string):
 ########################################################################################################################
 ########################################################################################################################
 def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string, rate_structure):
+                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string):
 
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
