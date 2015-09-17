@@ -24,9 +24,10 @@ import config as cfg
 import shutil
 import sys
 import pickle
-import pssc_mp
 from excel import excel_functions
 import tech_choice
+import reeds_functions as reedsfunc
+import utility_function as utilfunc
 
 #==============================================================================
 # raise  numpy and pandas warnings as exceptions
@@ -86,7 +87,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     saved_vars = pickle.load(handle)
                 out_dir = saved_vars['out_dir']
                 input_scenarios = saved_vars['input_scenarios']
-            #cfg.init_model,out_dir,input_scenarios, market_last_year = datfunc.load_resume_vars(cfg, resume_year)
+            #cfg.init_model,out_dir,input_scenarios, market_last_year = reedsfunc.load_resume_vars(cfg, resume_year)
         else:
             # set input dataframes for reeds-mode settings (these are ingested to postgres later)
             reeds_mode_df = FancyDataFrame(data = [False])
@@ -103,7 +104,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             raise ValueError("""Error: customer_bins in config.py must be a positive integer.""") 
         model_init = time.time()
         
-        logger = datfunc.init_log(os.path.join(out_dir,'dg_model.log'))
+        logger = utilfunc.init_log(os.path.join(out_dir,'dg_model.log'))
         logger.info('Initiating model (%s)' %time.ctime())
             
         # 4. Connect to Postgres and configure connection(s) (to edit login information, edit config.py)
@@ -463,8 +464,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
     
     finally:
         if 'logger' in locals():
-            datfunc.shutdown_log(logger)
-            datfunc.code_profiler(out_dir)
+            utilfunc.shutdown_log(logger)
+            utilfunc.code_profiler(out_dir)
     
 if __name__ == '__main__':
     main()

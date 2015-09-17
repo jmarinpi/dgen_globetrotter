@@ -10,7 +10,7 @@ import time
 import numpy as np
 import pandas as pd
 import datetime
-from multiprocessing import Process, Queue, JoinableQueue, Pool
+from multiprocessing import Process, JoinableQueue
 import select
 from cStringIO import StringIO
 import logging
@@ -30,31 +30,14 @@ from config import show_times
 import pickle
 
 
+#==============================================================================
 # configure psycopg2 to treat numeric values as floats (improves performance of pulling data from the database)
 DEC2FLOAT = pg.extensions.new_type(
     pg.extensions.DECIMAL.values,
     'DEC2FLOAT',
     lambda value, curs: float(value) if value is not None else None)
 pg.extensions.register_type(DEC2FLOAT)
-
-
-
-def load_resume_vars(cfg, resume_year):
-    # Load the variables necessary to resume the model
-    if resume_year == 2014:
-        cfg.init_model = True
-        out_dir = None
-        input_scenarios = None
-        market_last_year = None
-    else:
-        cfg.init_model = False
-        # Load files here
-        market_last_year = pd.read_pickle("market_last_year.pkl")   
-        with open('saved_vars.pickle', 'rb') as handle:
-            saved_vars = pickle.load(handle)
-        out_dir = saved_vars['out_dir']
-        input_scenarios = saved_vars['input_scenarios']
-    return cfg.init_model, out_dir, input_scenarios, market_last_year
+#==============================================================================
 
 
 def parse_command_args(argv):
@@ -1835,8 +1818,6 @@ def split_utilityrate3_inputs(row_count_limit, cur, con, schema, tech):
     return uid_chunks
 
     
-    
-
 def get_utilityrate3_inputs(uids, cur, con, tech, schema, npar, pg_conn_string, gross_fit_mode = False):
     
     
