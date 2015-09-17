@@ -155,13 +155,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
             # read in high level scenario settings
             scenario_opts = datfunc.get_scenario_options(cur, schema) 
+            scen_name = scenario_opts['scenario_name']
             sectors = datfunc.get_sectors(cur, schema)
             techs = datfunc.get_technologies(con, schema)
             end_year = scenario_opts['end_year']
             
             # summarize high level secenario settings 
             logger.info('Scenario Settings:')
-            logger.info('\tScenario Name: %s' % scenario_opts['scenario_name'])
+            logger.info('\tScenario Name: %s' % scen_name)
             logger.info('\tRegion: %s' % scenario_opts['region'])
             logger.info('\tSectors: %s' % sectors.values())
             logger.info('\tTechnologies: %s' % techs)
@@ -175,21 +176,21 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 sys.exit(-1)
                                   
             # get other scenario inputs
+            logger.info('Getting various scenario parameters')
             t0 = time.time()
-            msg = 'Getting various scenario parameters'
-            logger.info(msg)
             #  these are all technology agnostic user-inputs
-            max_market_share = datfunc.get_max_market_share(con, schema)
-            market_projections = datfunc.get_market_projections(con, schema)
-            rate_escalations = datfunc.get_rate_escalations(con, schema)
-            rate_structures = datfunc.get_rate_structures(con, schema)
-            load_growth_scenario = scenario_opts['load_growth_scenario'].lower() # get financial variables
-            # these are technology specific, set up in tidy form with a "tech" field
-            financial_parameters = datfunc.get_financial_parameters(con, schema)
-            incentive_options = datfunc.get_manual_incentive_options(con, schema)
-            deprec_schedule = datfunc.get_depreciation_schedule(con, schema, macrs = True)
-            ann_system_degradation = datfunc.get_system_degradation(con, schema)      
-            logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))
+            with utilfunc.Timer() as t:
+                max_market_share = datfunc.get_max_market_share(con, schema)
+                market_projections = datfunc.get_market_projections(con, schema)
+                rate_escalations = datfunc.get_rate_escalations(con, schema)
+                rate_structures = datfunc.get_rate_structures(con, schema)
+                load_growth_scenario = scenario_opts['load_growth_scenario'].lower() # get financial variables
+                # these are technology specific, set up in tidy form with a "tech" field
+                financial_parameters = datfunc.get_financial_parameters(con, schema)
+                incentive_options = datfunc.get_manual_incentive_options(con, schema)
+                deprec_schedule = datfunc.get_depreciation_schedule(con, schema, macrs = True)
+                ann_system_degradation = datfunc.get_system_degradation(con, schema)      
+            logger.info('\tCompleted in: %0.1fs' % t.interval)
 
             
             # start year comes from config
@@ -198,33 +199,19 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             else:
                 model_years = range(cfg.start_year, end_year+1,2)
 
-            if mode != 'ReEDS' or resume_year == 2014:                
-                
-                # create output subfolder for this scenario
-                scen_name = scenario_opts['scenario_name']
-                if scen_name in scenario_names:
-                    logger.warning("Warning: Scenario name %s is a duplicate. Renaming to %s_%s" % (scen_name, scen_name, dup_n))
-                    scen_name = "%s_%s" % (scen_name, dup_n)
-                    dup_n += 1
-                scenario_names.append(scen_name)
-                out_scen_path = os.path.join(out_dir, scen_name)
-                os.makedirs(out_scen_path)
-                # copy the input scenario spreadsheet
-                shutil.copy(input_scenario, out_scen_path)
-                                
+
+            if mode != 'ReEDS' or resume_year == 2014:      
+                # create output folder for this scenario
+                out_scen_path, scenario_names, dup_n = datfunc.create_scenario_results_folder(input_scenario, scen_name, scenario_names, out_dir, dup_n)
+
                 #==========================================================================================================
                 # CREATE AGENTS
                 #==========================================================================================================
                 logger.info("--------------Creating Agents---------------")
-                
-                # Combine All of the Temporally Varying Data in a new Table in Postgres
-                t0 = time.time()
-                msg = "Combining Temporal Factors"    
-                logger.info(msg)        
-                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, utilfunc.pylist_2_pglist(sectors.keys())) # TODO: Comment
-                logger.info('\tCompleted in: %0.1fs' %(time.time() - t0))                    
-                
-                 # loop through sectors, creating customer bins                
+                # Combine All of the Temporally Varying Data in a new Table in Postgres       
+                datfunc.combine_temporal_data(cur, con, schema, techs, cfg.start_year, end_year, utilfunc.pylist_2_pglist(sectors.keys())) # TODO: Comment                
+                crash                
+                # loop through sectors, creating customer bins                
                 for sector_abbr, sector in sectors.iteritems():
     
                     # define the rate escalation source and max market curve for the current sector

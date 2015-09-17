@@ -16,6 +16,7 @@ import datetime
 import select
 import psycopg2 as pg
 import psycopg2.extras as pgx
+import time
 
 
 #==============================================================================
@@ -72,6 +73,17 @@ def current_datetime(format = '%Y_%m_%d_%Hh%Mm%Ss'):
     
     return dt
     
+
+class Timer:    
+    # adapted from http://preshing.com/20110924/timing-your-code-using-pythons-with-statement/
+
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, *args):
+        self.end = time.time()
+        self.interval = self.end - self.start
 
 #==============================================================================
 #       Postgres Functions

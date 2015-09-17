@@ -20,6 +20,7 @@ import psutil
 import decorators
 from config import show_times
 import utility_functions as utilfunc
+import shutil
 
 #==============================================================================
 # Load logger
@@ -35,6 +36,21 @@ DEC2FLOAT = pg.extensions.new_type(
     lambda value, curs: float(value) if value is not None else None)
 pg.extensions.register_type(DEC2FLOAT)
 #==============================================================================
+
+
+def create_scenario_results_folder(input_scenario, scen_name, scenario_names, out_dir, dup_n):
+    
+    if scen_name in scenario_names:
+        logger.warning("Warning: Scenario name %s is a duplicate. Renaming to %s_%s" % (scen_name, scen_name, dup_n))
+        scen_name = "%s_%s" % (scen_name, dup_n)
+        dup_n += 1
+    scenario_names.append(scen_name)
+    out_scen_path = os.path.join(out_dir, scen_name)
+    os.makedirs(out_scen_path)
+    # copy the input scenario spreadsheet
+    shutil.copy(input_scenario, out_scen_path)
+    
+    return out_scen_path, scenario_names, dup_n
 
 
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
@@ -69,8 +85,10 @@ def drop_output_schema(pg_conn_string, schema):
     cur.execute(sql)
     con.commit()
     
-
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
 def combine_temporal_data(cur, con, schema, techs, start_year, end_year, sector_abbrs):
+
+    logger.info("Combining Temporal Factors")
 
     if 'wind' in techs:
         combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs)
