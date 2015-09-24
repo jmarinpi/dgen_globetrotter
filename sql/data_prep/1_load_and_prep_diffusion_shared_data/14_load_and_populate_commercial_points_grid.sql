@@ -1105,6 +1105,56 @@ using btree(acres_per_hu);
 
 
 ------------------------------------------------------------------------------------------------------------
+-- ULOCALE
+------------------------------------------------------------------------------------------------------------
+DROP TABLE IF EXISTS  diffusion_wind_data.pt_grid_us_com_ulocale_lkup;
+CREATE TABLE  diffusion_wind_data.pt_grid_us_com_ulocale_lkup 
+(
+	gid integer,
+	ulocale integer
+);
+
+SELECT parsel_2('dav-gis','mgleason','mgleason',
+		'diffusion_shared.pt_grid_us_com',
+		'gid',
+		'SELECT a.gid, CASE WHEN b.ulocale IS NULL THEN -999::INTEGER -- change nulls to -999
+				    WHEN b.ulocale = 0 THEN -999::INTEGER -- use -999 instead of zero for unknown
+				    WHEN b.ulocale IN (43, 42) THEN 41::INTEGER -- lump rural into one code
+				    WHEN b.ulocale in (33, 32) THEN 31::INTEGER -- lump town into one code
+				    ELSE b.ulocale::INTEGER
+                           END as ulocale
+		FROM diffusion_shared.pt_grid_us_com a
+		LEFT JOIN  pv_rooftop.locale b
+			ON ST_Intersects(a.the_geom_96703, b.the_geom_96703)',
+		'diffusion_wind_data.pt_grid_us_com_ulocale_lkup', 
+		'a',16);
+
+-- create a primary key on the lookup table
+ALTER tABLE diffusion_wind_data.pt_grid_us_com_ulocale_lkup
+ADD PRIMARY KEY (gid);
+
+-- check for nulls (there shouldn't be any -- they should be -999 instead)
+select count(*)
+FROM diffusion_wind_data.pt_grid_us_com_ulocale_lkup
+where ulocale is null;
+-- 
+
+-- add back to the main table
+ALTER TABLE diffusion_shared.pt_grid_us_com
+ADD COLUMN ulocale integer;
+
+UPDATE diffusion_shared.pt_grid_us_com a
+SET ulocale = b.ulocale
+FROM diffusion_wind_data.pt_grid_us_com_ulocale_lkup
+WHERe a.gid = b.gid;
+
+-- add index
+CREATE INDEX pt_grid_us_com_ulocale_btree
+ON diffusion_shared.pt_grid_us_com
+USING BTREE(ulocale);
+------------------------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------------------------
 -- RESET THE FILL FACTOR
 ------------------------------------------------------------------------------------------------------------
 ALTER TABLE diffusion_shared.pt_grid_us_com_new
