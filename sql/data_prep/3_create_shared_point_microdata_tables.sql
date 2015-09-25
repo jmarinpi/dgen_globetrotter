@@ -23,6 +23,7 @@ WITH a AS
 		-- solar only
 		a.solar_incentive_array_id,
 		a.solar_re_9809_gid,
+		a.ulocale,
 		-- res only		
 		sum(a.blkgrp_ownocc_sf_hu_portion) as point_weight
 	FROM diffusion_shared.pt_grid_us_res a
@@ -42,6 +43,7 @@ WITH a AS
 		a.canopy_ht_m,
 		a.canopy_pct >= 25,	
 		-- solar only
+		a.ulocale,
 		a.solar_incentive_array_id,
 		a.solar_re_9809_gid
 )
@@ -49,7 +51,7 @@ SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, 
 FROM a
 ORDER BY county_id;
 --use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
--- 4626447 rows
+-- 4635943 rows
 
 -- primary key and indices
 ALTER TABLE diffusion_shared.point_microdata_res_us
@@ -87,6 +89,7 @@ WITH a AS
 		a.canopy_ht_m,
 		a.canopy_pct >= 25 as canopy_pct_hi,
 		-- solar only
+		a.ulocale,
 		a.solar_incentive_array_id,
 		a.solar_re_9809_gid,
 		--
@@ -108,6 +111,7 @@ WITH a AS
 		a.canopy_ht_m,
 		a.canopy_pct >= 25,
 		-- solar only
+		a.ulocale,
 		a.solar_incentive_array_id,
 		a.solar_re_9809_gid
 )
@@ -115,7 +119,7 @@ SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, 
 FROM a
 ORDER BY county_id;
 --use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
--- 1392781  rows
+-- 1400715  rows
 
 -- primary key and indices
 ALTER TABLE diffusion_shared.point_microdata_com_us
@@ -154,6 +158,7 @@ WITH a AS
 		a.canopy_ht_m,
 		a.canopy_pct >= 25 as canopy_pct_hi,
 		-- solar only
+		a.ulocale,
 		a.solar_incentive_array_id,
 		a.solar_re_9809_gid,
 		count(*)::integer as point_weight
@@ -174,6 +179,7 @@ WITH a AS
 		a.canopy_ht_m,
 		a.canopy_pct >= 25,
 		-- solar only
+		a.ulocale,
 		a.solar_incentive_array_id,
 		a.solar_re_9809_gid
 )
@@ -181,7 +187,7 @@ SELECT (row_number() OVER (ORDER BY county_id, random()))::integer as micro_id, 
 FROM a
 ORDER BY county_id;
 --use setseed() and order by random() as a secondary sort key to ensure order will be the same if we have to re run
--- 1030392 rows
+-- 1034230 rows
 
 -- primary key and indices
 ALTER TABLE diffusion_shared.point_microdata_ind_us
