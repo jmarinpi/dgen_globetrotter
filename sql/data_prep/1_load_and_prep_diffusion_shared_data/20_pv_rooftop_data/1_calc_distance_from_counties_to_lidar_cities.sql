@@ -1,49 +1,25 @@
-﻿--------------------------------------------------------------------------------------------------------
--- add geography columns to the two input tables
--- county_geom
-ALTER TABLE diffusion_shared.county_geom
-ADD COLUMN the_geog geography;
-
-UPDATE diffusion_shared.county_geom
-set the_geog = the_geom_4326::geography;
-
--- solar_gid
--- add 4326 first
-ALTER TABLE pv_rooftop_dsolar_integration.solar_gid
-ADD COLUMN rasd_the_geom_4326 geometry;
-
-UPDATE pv_rooftop_dsolar_integration.solar_gid
-SEt rasd_the_geom_4326 = ST_Transform(rasd_the_geom_96703, 4326);
-
--- then add geog
-ALTER TABLE pv_rooftop_dsolar_integration.solar_gid
-ADD COLUMN rasd_the_geog geography;
-
-UPDATE pv_rooftop_dsolar_integration.solar_gid
-set rasd_the_geog = rasd_the_geom_4326::geography;
-
--- add indices
-CREATE INDEX county_geom_the_geog_gist
-ON diffusion_shared.county_geom
-USING GIST(the_geog);
-
-CREATE INDEX solar_gid_rasd_the_geom_4326_gist
-ON pv_rooftop_dsolar_integration.solar_gid
-USING GIST(rasd_the_geom_4326);
-
-CREATE INDEX county_geom_the_geog_gist
-ON pv_rooftop_dsolar_integration.solar_gid
-USING GIST(rasd_the_geog);
---------------------------------------------------------------------------------------------------------
-
--- now calculate distances
+﻿-- now calculate distances 
+-- use 96703 geom since geog will be too slow
 DROP TABLE IF EXISTS diffusion_data_shared.county_to_lidar_city_distances_lkup;
-CREATE TABLE diffusion_data_shared.county_to_lidar_city_distances_lkup AS
-SELECT a.county_id, b.city_id, b.city, b.state, b.year, b.basename,
-	ST_Distance(a.the_geog, b.rasd_the_geog) as dist_m
-FROM diffusion_shared.county_geom a
-LEFT JOIN pv_rooftop_dsolar_integration.solar_gid b
-ON a.census_region = b.census_region;
+CREATE TABLE diffusion_data_shared.county_to_lidar_city_distances_lkup
+(
+	county_id integer,
+	city_id integer,
+	city text,
+	state character varying(2),
+	year character varying(2),
+	basename text,
+	dist_m numeric
+);
+
+SELECT parsel_2('dav-gis','mgleason','mgleason',
+		'diffusion_shared.county_geom','county_id',
+		'SELECT a.county_id, b.city_id, b.city, b.state, b.year, b.basename,
+			ST_Distance(a.the_geom_96703, b.rasd_the_geom_96703) as dist_m
+		FROM diffusion_shared.county_geom a
+		LEFT JOIN pv_rooftop_dsolar_integration.solar_gid b
+			ON a.census_region = b.census_region',
+		'diffusion_data_shared.county_to_lidar_city_distances_lkup', 'a', 16);
 
 -- create indices
 CREATE INDEX county_to_lidar_city_distances_lkup_county_id_btree
