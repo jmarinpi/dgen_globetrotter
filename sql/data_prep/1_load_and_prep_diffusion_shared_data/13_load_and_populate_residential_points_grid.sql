@@ -1299,13 +1299,18 @@ ADD COLUMN ulocale integer;
 
 UPDATE diffusion_shared.pt_grid_us_res a
 SET ulocale = b.ulocale
-FROM diffusion_data_wind.pt_grid_us_res_ulocale_lkup
+FROM diffusion_data_wind.pt_grid_us_res_ulocale_lkup b
 WHERe a.gid = b.gid;
 
 -- add index
 CREATE INDEX pt_grid_us_res_ulocale_btree
 ON diffusion_shared.pt_grid_us_res
 USING BTREE(ulocale);
+
+-- make sure no nulls
+select count(*)
+FROM diffusion_shared.pt_grid_us_res
+where ulocale is null;
 ------------------------------------------------------------------------------------------------------------
 
 
