@@ -106,6 +106,6 @@ choose_tech = False
 #==============================================================================
 #  Source of rooftop configuration data
 #==============================================================================
-#rooftop_source = 'recs_cbecs'
+rooftop_source = 'recs_cbecs'
 #rooftop_source = 'optimal_only'
-rooftop_source = 'optimal_blended'
+#rooftop_source = 'optimal_blended'
