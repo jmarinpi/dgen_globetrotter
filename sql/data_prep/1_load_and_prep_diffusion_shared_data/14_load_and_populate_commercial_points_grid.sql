@@ -1107,8 +1107,8 @@ using btree(acres_per_hu);
 ------------------------------------------------------------------------------------------------------------
 -- ULOCALE
 ------------------------------------------------------------------------------------------------------------
-DROP TABLE IF EXISTS  diffusion_wind_data.pt_grid_us_com_ulocale_lkup;
-CREATE TABLE  diffusion_wind_data.pt_grid_us_com_ulocale_lkup 
+DROP TABLE IF EXISTS  diffusion_data_wind.pt_grid_us_com_ulocale_lkup;
+CREATE TABLE  diffusion_data_wind.pt_grid_us_com_ulocale_lkup 
 (
 	gid integer,
 	ulocale integer
@@ -1126,16 +1126,16 @@ SELECT parsel_2('dav-gis','mgleason','mgleason',
 		FROM diffusion_shared.pt_grid_us_com a
 		LEFT JOIN  pv_rooftop.locale b
 			ON ST_Intersects(a.the_geom_96703, b.the_geom_96703)',
-		'diffusion_wind_data.pt_grid_us_com_ulocale_lkup', 
+		'diffusion_data_wind.pt_grid_us_com_ulocale_lkup', 
 		'a',16);
 
 -- create a primary key on the lookup table
-ALTER tABLE diffusion_wind_data.pt_grid_us_com_ulocale_lkup
+ALTER tABLE diffusion_data_wind.pt_grid_us_com_ulocale_lkup
 ADD PRIMARY KEY (gid);
 
 -- check for nulls (there shouldn't be any -- they should be -999 instead)
 select count(*)
-FROM diffusion_wind_data.pt_grid_us_com_ulocale_lkup
+FROM diffusion_data_wind.pt_grid_us_com_ulocale_lkup
 where ulocale is null;
 -- 
 
@@ -1145,7 +1145,7 @@ ADD COLUMN ulocale integer;
 
 UPDATE diffusion_shared.pt_grid_us_com a
 SET ulocale = b.ulocale
-FROM diffusion_wind_data.pt_grid_us_com_ulocale_lkup
+FROM diffusion_data_wind.pt_grid_us_com_ulocale_lkup
 WHERe a.gid = b.gid;
 
 -- add index
