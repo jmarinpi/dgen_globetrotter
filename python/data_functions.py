@@ -1052,7 +1052,7 @@ def assign_roof_characteristics(inputs_dict, rooftop_source, county_chunks, npar
                     	GROUP BY county_id, bin_id
                 )
                 SELECT a.*,
-                    	c.tilt, c.azimuth, d.pct_shaded as pct_developable,
+                    	c.tilt, c.azimuth, 1-d.pct_shaded as pct_developable,
                     	a.roof_sqft * c.rooftop_portion * c.slope_area_multiplier * c.unshaded_multiplier * c.gcr as available_roof_sqft,
                         c.gcr as ground_cover_ratio
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
@@ -1274,10 +1274,10 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                 	b.capital_cost_dollars_per_kw * a.cap_cost_multiplier_solar::NUMERIC as capital_cost_dollars_per_kw,
                   b.inverter_cost_dollars_per_kw * a.cap_cost_multiplier_solar::NUMERIC as inverter_cost_dollars_per_kw,
                 	a.ann_cons_kwh, 
-                	b.load_multiplier * a.customers_in_bin * (1-a.pct_developable) as customers_in_bin, 
-                	a.customers_in_bin * (1-a.pct_developable) as initial_customers_in_bin, 
-                	b.load_multiplier * a.load_kwh_in_bin * (1-a.pct_developable) AS load_kwh_in_bin,
-                	a.load_kwh_in_bin * (1-a.pct_developable) AS initial_load_kwh_in_bin,
+                	b.load_multiplier * a.customers_in_bin * a.pct_developable as customers_in_bin, 
+                	a.customers_in_bin * a.pct_developable as initial_customers_in_bin, 
+                	b.load_multiplier * a.load_kwh_in_bin * a.pct_developable AS load_kwh_in_bin,
+                	a.load_kwh_in_bin * a.pct_developable AS initial_load_kwh_in_bin,
                 	a.load_kwh_per_customer_in_bin,
                   a.crb_model,                  
                   a.max_demand_kw,
