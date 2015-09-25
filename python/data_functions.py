@@ -1100,7 +1100,7 @@ def assign_roof_characteristics(inputs_dict, rooftop_source, county_chunks, npar
         # add indices on join keys
         sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rooftop_cities_%(i_place_holder)s_join_keys_btree 
                   ON %(schema)s.pt_%(sector_abbr)s_sample_load_rooftop_cities_%(i_place_holder)s 
-                  USING BTREE(city_id, size_class, ulocale);""" % inputs_dict
+                  USING BTREE(city_id, bldg_size_class, ulocale);""" % inputs_dict
         p_run(pg_conn_string, sql, county_chunks, npar)
         
         # sample from the lidar bins for that city
@@ -1112,7 +1112,7 @@ def assign_roof_characteristics(inputs_dict, rooftop_source, county_chunks, npar
                 		unnest(sample(array_agg(b.pid ORDER BY b.pid), 1, 
                 		%(seed)s * a.bin_id * a.county_id, FALSE, 
                         array_agg(b.count ORDER BY b.pid))) as pid
-                	FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rooftop_cities_%(i_place_holder)s
+                	FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rooftop_cities_%(i_place_holder)s a
                 	LEFT JOIN diffusion_solar.rooftop_orientation_frequencies_%(rooftop_source)s b
                 		ON a.city_id = b.city_id
                 		AND  b.zone = '%(zone)s'
@@ -1123,7 +1123,7 @@ def assign_roof_characteristics(inputs_dict, rooftop_source, county_chunks, npar
                 SELECT a.*, c.tilt, c.azimuth, e.pct_developable,
                       	c.slopearea_m2_bin * 10.7639 * d.gcr as available_roof_sqft,
                         d.gcr as ground_cover_ratio                 
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rooftop_cities_%(i_place_holder)s
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rooftop_cities_%(i_place_holder)s a
                 INNER JOIN b
                 	ON a.county_id = b.county_id
                 	and a.bin_id = b.bin_id
