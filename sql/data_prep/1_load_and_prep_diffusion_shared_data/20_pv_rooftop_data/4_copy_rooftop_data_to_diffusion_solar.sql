@@ -43,6 +43,40 @@ CREATE TABLE diffusion_solar.rooftop_orientation_frequencies_optimal_only AS
 SELECT *
 FROM pv_rooftop_dsolar_integration.rooftop_orientation_frequencies_optimal_only;
 
+-- add integer primary key
+ALTER TABLE diffusion_solar.rooftop_orientation_frequencies_optimal_only
+ADD COLUMN pid serial primary key;
+
+-- for consistency with tech report:
+	-- change tilt of -1 to 15 degrees
+	-- but flag as "flat" (to allow for correct Groudn Cover Ratio)
+-- optimal only
+ALTER TABLE diffusion_solar.rooftop_orientation_frequencies_optimal_only
+ADD COLUMN flat_roof boolean default false;
+
+UPDATE diffusion_solar.rooftop_orientation_frequencies_optimal_only
+SET flat_roof = TRUE
+where tilt = -1;
+-- 58727 rows
+
+UPDATE diffusion_solar.rooftop_orientation_frequencies_optimal_only a
+set tilt = 15
+where flat_roof = True;
+-- 58727 rows
+-- optimal blended
+ALTER TABLE diffusion_solar.rooftop_orientation_frequencies_optimal_blended
+ADD COLUMN flat_roof boolean default false;
+
+UPDATE diffusion_solar.rooftop_orientation_frequencies_optimal_blended
+SET flat_roof = TRUE
+where tilt = -1;
+-- 58795 rows
+
+UPDATE diffusion_solar.rooftop_orientation_frequencies_optimal_blended a
+set tilt = 15
+where flat_roof = True;
+-- 58795 rows
+
 -- create indices
 CReATE INDEX rooftop_orientation_frequencies_optimal_only_zone_btree
 ON diffusion_solar.rooftop_orientation_frequencies_optimal_only
@@ -66,6 +100,10 @@ DROP TABLE IF EXISTS diffusion_solar.rooftop_orientation_frequencies_optimal_ble
 CREATE TABLE diffusion_solar.rooftop_orientation_frequencies_optimal_blended AS
 SELECT *
 FROM pv_rooftop_dsolar_integration.rooftop_orientation_frequencies_optimal_blended;
+
+-- add integer primary key
+ALTER TABLE diffusion_solar.rooftop_orientation_frequencies_optimal_blended
+ADD COLUMN pid serial primary key;
 
 -- create indices
 CReATE INDEX rooftop_orientation_frequencies_optimal_blended_zone_btree
@@ -133,3 +171,16 @@ RENAME TO rooftop_city_ranks_by_county_and_ulocale_ind;
 ALTER TABLE diffusion_data_shared.rooftop_city_ranks_by_county_and_ulocale_ind
 SET SCHEMA diffusion_solar;
 ------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------
+-- CReate lookup table for ground cover ratio
+------------------------------------------------------------------------------------------
+DROP TABLE IF EXISTS diffusion_solar.rooftop_ground_cover_ratios;
+CREATE TABLE diffusion_solar.rooftop_ground_cover_ratios AS
+SELECT unnest(array[True, False]) as flat_roof,
+	unnest(array[0.7, 0.98]) as gcr;
+
+-- add primary key
+ALTER TABLE diffusion_solar.rooftop_ground_cover_ratios
+ADD PRIMARY KEY (flat_roof);

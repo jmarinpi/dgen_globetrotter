@@ -207,8 +207,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # CREATE AGENTS
                 #==========================================================================================================
                 logger.info("--------------Creating Agents---------------")
-                datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, 
-                                               cfg.start_year, end_year, cfg.npar, cfg.pg_conn_string, scenario_opts) # TODO: Comment
+                datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, cfg.start_year, 
+                                               end_year, cfg.rooftop_source, cfg.npar, cfg.pg_conn_string, scenario_opts) # TODO: Comment
                
                 #==========================================================================================================
                 # CALCULATE BILL SAVINGS
