@@ -2292,7 +2292,7 @@ def get_main_dataframe(con, sector_abbr, schema, year, tech):
     inputs = locals().copy()     
     
     if tech == 'wind':
-        inputs['add_cols'] = 'NULL::INTEGER as tilt, NULL::TEXT as azimuth, NULL::INTEGER as available_roof_sqft, NULL::NUMERIC as inverter_cost_dollars_per_kw, NULL::INTEGER as inverter_lifetime_yrs'
+        inputs['add_cols'] = 'NULL::INTEGER as tilt, NULL::TEXT as azimuth, NULL::INTEGER as available_roof_sqft, 0::NUMERIC as inverter_cost_dollars_per_kw, 0::INTEGER as inverter_lifetime_yrs'
     elif tech == 'solar':
         inputs['add_cols'] = 'a.tilt, a.azimuth, a.available_roof_sqft, a.inverter_cost_dollars_per_kw, a.inverter_lifetime_yrs'
     

@@ -198,11 +198,10 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, c
     # wind turbines do not have inverters hence no replacement cost.
     # but for solar, calculate and replace the inverter replacement costs with actual values
     inverter_cost = np.zeros(shape)
-
-    if tech == 'solar':
-        # Annualized (undiscounted) inverter replacement cost $/year (includes system size). Applied from year 10 onwards since assume initial 10-year warranty
-        inverter_replacement_cost  = df['system_size_kw'] * df.inverter_cost_dollars_per_kw/df.inverter_lifetime_yrs
-        inverter_cost[:,10:] = -inverter_replacement_cost[:,np.newaxis]
+    # Annualized (undiscounted) inverter replacement cost $/year (includes system size). Applied from year 10 onwards since assume initial 10-year warranty
+    with np.errstate(invalid = 'ignore'):
+        inverter_replacement_cost  = np.where(df['tech'] == 'solar', df['system_size_kw'] * df.inverter_cost_dollars_per_kw/df.inverter_lifetime_yrs, 0)
+    inverter_cost[:,10:] = -inverter_replacement_cost[:,np.newaxis]
     
     # 2) Costs of fixed & variable O&M. O&M costs are tax deductible for commerical entitites
     om_cost = np.zeros(shape);
