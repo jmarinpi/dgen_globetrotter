@@ -264,7 +264,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
     
             #==========================================================================================================
-            # MODEL DEPLOYMENT    
+            # MODEL TECHNOLOGY DEPLOYMENT    
             #==========================================================================================================
             logger.info("---------Modeling Annual Deployment---------")            
             for sector_abbr, sector in sectors.iteritems():  
@@ -274,9 +274,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 for year in model_years:
                     dfs = []
                     logger.info('\tWorking on %s for %s Sector' % (year, sector))
-                    # REFACTOR: remove this loop
-                    # ------------------------------------------------------------------------
-#                    for tech in techs:
                         
                     # get input agent attributes from postgres
                     df = datfunc.get_main_dataframe(con, sector_abbr, schema, year, techs)
@@ -313,11 +310,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                    dsire_incentives, deprec_schedule, 
                                                    ann_system_degradation, mode, curtailment_method, tech_lifetime = 25)
                     logger.info('\tCompleted in: %0.1fs' % t.interval)
-#                    dfs.append(df)                        
-                    # ------------------------------------------------------------------------
-                    
-                    # exit the Technology loop and combine results from each technology
-#                    df_combined = pd.concat(dfs, axis = 0, ignore_index = True)
+
                     
                     # select from choices for business model and (optionally) technology
                     df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, cfg.choose_tech, techs)  
@@ -326,7 +319,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     df, market_last_year_combined = diffunc.calc_diffusion(df, year, sector)
 
                     # save outputs from this year and update parameters for next solve  
-                    for tech in techs:
+                    for tech in techs: #TODO: Remove this loop
                         # filter results to only the current technology
                         df_tech = df[df['tech'] == tech]
                         market_last_year = market_last_year_combined[market_last_year_combined.tech == tech]

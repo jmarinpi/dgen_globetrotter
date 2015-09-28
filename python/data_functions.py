@@ -2743,31 +2743,6 @@ def get_lease_availability(con, schema, tech):
     df = pd.read_sql(sql, con)
     return df
     
-#def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr,tech_lifetime): 
-#    '''
-#    Append the expected rate escalation to the main dataframe.
-#    Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
-#    resulting in an average real compounding rate growth. This rate is then used to calculate cash flows
-#    
-#    IN: con - connection to server
-#    OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
-#    '''  
-#    
-#    # Only use the escalation multiplier over the next 30 years
-#    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + tech_lifetime)) & (rate_escalations['year'] >=  year) & (rate_escalations['sector'] == sector_abbr.lower())]
-#    
-#    rate_pivot = projected_rate_escalations.pivot(index = 'census_division_abbr',columns = 'year', values = 'escalation_factor')    
-#    rate_pivot['census_division_abbr'] = rate_pivot.index
-#    
-#    # Need to join expected escalations on df without sorting, thus remerge with original frame
-#    # see: http://stackoverflow.com/questions/20206615/how-can-a-pandas-merge-preserve-order
-#    temp_df = df[['tech', 'county_id', 'bin_id', 'business_model', 'census_division_abbr']]
-#    customer_expected_escalations = temp_df.merge(temp_df.merge(rate_pivot, how = 'left', on = 'census_division_abbr', sort = False))
-#    
-#    if np.all(df[['tech', 'county_id', 'bin_id', 'business_model']].reset_index() == customer_expected_escalations[['tech', 'county_id', 'bin_id', 'business_model']].reset_index()):
-#        return customer_expected_escalations.ix[:, 5:].values
-#    else:
-#        raise Exception("rate_escalations_have been reordered!")
 
 def fill_jagged_array(vals,lens, cols):
     '''
