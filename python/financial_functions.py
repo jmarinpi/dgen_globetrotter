@@ -25,7 +25,7 @@ logger = utilfunc.get_logger()
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
                    financial_parameters, scenario_opts, incentive_opts_all, max_market_share, cur, con, 
-                   year, dsire_incentives, deprec_schedule_all, rate_escalations, ann_system_degradation, mode, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
+                   year, dsire_incentives, deprec_schedule, rate_escalations, ann_system_degradation, mode, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
     Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
 
@@ -43,7 +43,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
     # filter the tidy-structure inputs to the correct technology:
     sql = "tech == '%s'" % tech
     incentive_opts = incentive_opts_all.query(sql)[['overwrite_exist_inc', 'incentive_start_year']]
-    deprec_schedule = deprec_schedule_all.query(sql).sort('year', ascending = True)['deprec'].values
+#    deprec_schedule = deprec_schedule_all.query(sql).sort('year', ascending = True)['deprec'].values
 
 
     
@@ -58,6 +58,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
     df['sector'] = sector.lower()
     df = pd.merge(df, financial_parameters, how = 'left', on = ['sector', 'business_model', 'tech'])
     df = pd.merge(df, ann_system_degradation, how = 'left', on = ['tech'])
+    df = pd.merge(df, deprec_schedule, how = 'left', on = ['tech'])
     
     # get customer expected rate escalations
     # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
@@ -79,7 +80,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id','business_model'])
 
-    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, curtailment_method, tech_lifetime, max_incentive_fraction)
+    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives = calc_cashflows(df, rate_growth_mult, scenario_opts, tech, curtailment_method, tech_lifetime, max_incentive_fraction)
     
     df['total_value_of_incentives'] = total_value_of_incentives
     ## Calc metric value here
@@ -124,7 +125,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
     
     
 #==============================================================================
-def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
+def calc_cashflows(df, rate_growth_mult, scenario_opts, tech, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 
@@ -270,8 +271,9 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, c
     depreciation_revenue = np.zeros(shape)
     max_depreciation_reduction = np.minimum(df['total_value_of_incentive'], df['value_of_tax_credit_or_deduction']  + df['value_of_rebate'])
     deprec_basis = np.maximum(df.ic - 0.5 * (max_depreciation_reduction),0)[:,np.newaxis] # depreciable basis reduced by half the incentive
-    depreciation_revenue[:,:20] = deprec_basis * deprec_schedule.reshape(1,20) * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | (df.business_model == 'tpo'))[:,np.newaxis]   
-
+    deprec_schedule_arr = np.array(list(df['deprec']))    
+    depreciation_revenue[:,:20] = deprec_basis * deprec_schedule_arr * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | (df.business_model == 'tpo'))[:,np.newaxis]   
+    deprec_basis * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | (df.business_model == 'tpo'))[:,np.newaxis]
     '''
     6) Interest paid on loans is tax-deductible for commercial & industrial users; 
     assume can fully monetize. Assume that third-party owners finance system all-cash--thus no interest to deduct. 

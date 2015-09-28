@@ -2136,9 +2136,10 @@ def get_depreciation_schedule(con, schema, macrs = True):
     else:
         inputs['field'] = 'standard'
         
-    sql = '''SELECT year, tech, %(field)s as deprec
-             FROM %(schema)s.input_finances_depreciation_schedule
-             order by tech, year ASC;''' % inputs
+    sql = '''SELECT tech, array_agg(%(field)s ORDER BY year ASC)::DOUBLE PRECISION[] as deprec
+            FROM %(schema)s.input_finances_depreciation_schedule
+            GROUP BY tech
+            ORDER BY tech;''' % inputs
     df = pd.read_sql(sql, con)
     
     return df
