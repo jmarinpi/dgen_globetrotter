@@ -2155,99 +2155,114 @@ def get_scenario_options(cur, schema):
     return results
 
 
-def get_dsire_incentives(cur, con, schema, tech, sector_abbr, npar, pg_conn_string):
+def get_dsire_incentives(cur, con, schema, techs, sector_abbr, npar, pg_conn_string):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
     
-    sql =   """
-                WITH a AS
-                (
-                	SELECT DISTINCT incentive_array_id as incentive_array_id
-                	FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s
-                	WHERE year = 2014
-                )
-                SELECT a.incentive_array_id, c.*
-                FROM a
-                LEFT JOIN diffusion_%(tech)s.dsire_incentives_simplified_lkup_%(sector_abbr)s b
-                    ON a.incentive_array_id = b.incentive_array_id
-                LEFT JOIN diffusion_%(tech)s.incentives c
-                    ON b.incentives_uid = c.uid
-                WHERE lower(c.sector_abbr) = '%(sector_abbr)s'
-                ORDER BY a.incentive_array_id
-            """ % inputs
+    sql_list = []
+    for tech in techs:
+        inputs['tech'] = tech
+        sql =   """SELECT a.incentive_array_id, c.*, '%(tech)s'::TEXT as tech
+                    FROM 
+                    (SELECT DISTINCT incentive_array_id as incentive_array_id
+                    	FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s
+                    	WHERE year = 2014) a
+                    LEFT JOIN diffusion_%(tech)s.dsire_incentives_simplified_lkup_%(sector_abbr)s b
+                        ON a.incentive_array_id = b.incentive_array_id
+                    LEFT JOIN diffusion_%(tech)s.incentives c
+                        ON b.incentives_uid = c.uid
+                    WHERE lower(c.sector_abbr) = '%(sector_abbr)s'
+                """ % inputs
+        sql_list.append(sql)
+    
+    sql = ' UNION ALL '.join(sql_list)
+            
     df = pd.read_sql(sql, con, coerce_float = False)
     return df
 
 
-def get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema):
+def get_initial_market_shares(cur, con, techs, sector_abbr, sector, schema):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()     
     # add the starting capacity table to the inputs dict
     inputs['cap_table'] = 'starting_capacities_mw_2012_q4_us'
-
-    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;
-             CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s AS
-             WITH a as
-             (
-			SELECT county_id, bin_id, state_abbr,
-				CASE  WHEN system_size_kw = 0 then 0
-					ELSE customers_in_bin
-				END AS customers_in_bin, installed_costs_dollars_per_kw
-			FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s	
-			WHERE year = 2014			
-             ),
-             b as
-             (
-                	SELECT a.county_id, a.bin_id,
-                		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
-                		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
-                		a.customers_in_bin,
-                         a.installed_costs_dollars_per_kw
-                	FROM a
-                	LEFT JOIN diffusion_%(tech)s.starting_capacities_mw_2012_q4_us b
-                		ON a.state_abbr = b.state_abbr
-            ) 
-            SELECT b.county_id, b.bin_id,
-                 ROUND(COALESCE(b.initial_number_of_adopters, 0)::NUMERIC, 6) as initial_number_of_adopters,
-                 1000 * ROUND(COALESCE(b.initial_capacity_mw, 0)::NUMERIC, 6) as initial_capacity_kw,
-        	     CASE  WHEN customers_in_bin = 0 then 0
-                       ELSE ROUND(COALESCE(b.initial_number_of_adopters/b.customers_in_bin, 0)::NUMERIC, 6) 
-                 END AS initial_market_share,
-                 b.installed_costs_dollars_per_kw
-            FROM b;""" % inputs
-    cur.execute(sql)
-    con.commit()    
     
-    
-    sql = """CREATE INDEX pt_%(sector_abbr)s_initial_market_shares_%(tech)s_join_fields_btree 
-             ON %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s 
-             USING BTREE(county_id,bin_id);""" % inputs
-    cur.execute(sql)
-    con.commit()
+    sql_list = []
+    for tech in techs:
+        inputs['tech'] = tech
+        sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;
+                 CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s AS
+                 WITH a as
+                 (
+    			SELECT county_id, bin_id, state_abbr,
+    				CASE  WHEN system_size_kw = 0 then 0
+    					ELSE customers_in_bin
+    				END AS customers_in_bin, installed_costs_dollars_per_kw
+    			FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s	
+    			WHERE year = 2014			
+                 ),
+                 b as
+                 (
+                    	SELECT a.county_id, a.bin_id,
+                    		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
+                    		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
+                    		a.customers_in_bin,
+                             a.installed_costs_dollars_per_kw
+                    	FROM a
+                    	LEFT JOIN diffusion_%(tech)s.starting_capacities_mw_2012_q4_us b
+                    		ON a.state_abbr = b.state_abbr
+                ) 
+                SELECT b.county_id, b.bin_id,
+                     ROUND(COALESCE(b.initial_number_of_adopters, 0)::NUMERIC, 6) as initial_number_of_adopters,
+                     1000 * ROUND(COALESCE(b.initial_capacity_mw, 0)::NUMERIC, 6) as initial_capacity_kw,
+            	     CASE  WHEN customers_in_bin = 0 then 0
+                           ELSE ROUND(COALESCE(b.initial_number_of_adopters/b.customers_in_bin, 0)::NUMERIC, 6) 
+                     END AS initial_market_share,
+                     b.installed_costs_dollars_per_kw
+                FROM b;""" % inputs
+        cur.execute(sql)
+        con.commit()    
+        
+        
+        sql = """CREATE INDEX pt_%(sector_abbr)s_initial_market_shares_%(tech)s_join_fields_btree 
+                 ON %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s 
+                 USING BTREE(county_id,bin_id);""" % inputs
+        cur.execute(sql)
+        con.commit()
 
 
-    sql = """SELECT county_id, bin_id, 
-                    initial_market_share AS market_share_last_year,
-                    initial_number_of_adopters AS number_of_adopters_last_year,
-                    initial_capacity_kw AS installed_capacity_last_year,
-                    installed_costs_dollars_per_kw * initial_capacity_kw as market_value_last_year
-            FROM %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;""" % inputs
+        sql = """SELECT county_id, bin_id, 
+                        initial_market_share AS market_share_last_year,
+                        initial_number_of_adopters AS number_of_adopters_last_year,
+                        initial_capacity_kw AS installed_capacity_last_year,
+                        installed_costs_dollars_per_kw * initial_capacity_kw as market_value_last_year,
+                        '%(tech)s'::TEXT as tech
+                FROM %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s""" % inputs
+        sql_list.append(sql)
+        
+    sql = ' UNION ALL '.join(sql_list)
     df = pd.read_sql(sql, con)
+    
     
     return df  
 
 
-def get_market_last_year(cur, con, is_first_year, tech, sector_abbr, sector, schema):
+def get_market_last_year(cur, con, is_first_year, techs, sector_abbr, sector, schema):
     
     inputs = locals().copy()
     
     
     if is_first_year == True:
-        last_year_df = get_initial_market_shares(cur, con, tech, sector_abbr, sector, schema)
+        last_year_df = get_initial_market_shares(cur, con, techs, sector_abbr, sector, schema)
     else:
-        sql = """SELECT *
-                FROM %(schema)s.output_%(tech)s_market_last_year;""" % inputs
+        sql_list = []
+        for tech in techs:
+            inputs['tech'] = tech
+            sql = """SELECT *
+                    FROM %(schema)s.output_%(tech)s_market_last_year""" % inputs
+            sql_list.append(sql)
+        sql = ' UNION ALL '.join(sql_list)
         last_year_df = pd.read_sql(sql, con, coerce_float = False)
     
     return last_year_df
@@ -2265,7 +2280,8 @@ def write_last_year(con, cur, market_last_year, sector_abbr, schema, tech):
     # open an in memory stringIO file (like an in memory csv)
     s = StringIO()
     # write the data to the stringIO
-    market_last_year.drop('tech', axis = 1).to_csv(s, index = False, header = False)
+    out_cols = ['county_id', 'bin_id', 'market_share_last_year', 'max_market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year', 'tech']
+    market_last_year[out_cols].to_csv(s, index = False, header = False)
     # seek back to the beginning of the stringIO file
     s.seek(0)
     # copy the data from the stringio file to the postgres table
@@ -2275,7 +2291,7 @@ def write_last_year(con, cur, market_last_year, sector_abbr, schema, tech):
     s.close()
 
 
-def get_main_dataframe(con, sector_abbr, schema, year, tech):
+def get_main_dataframe(con, sector_abbr, schema, year, techs):
     ''' Pull main pre-processed dataframe from dB
     
         IN: con - pg con object - connection object
@@ -2286,48 +2302,60 @@ def get_main_dataframe(con, sector_abbr, schema, year, tech):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()     
     
-    if tech == 'wind':
-        inputs['add_cols'] = 'NULL::INTEGER as tilt, NULL::TEXT as azimuth, NULL::INTEGER as available_roof_sqft, 0::NUMERIC as inverter_cost_dollars_per_kw, 0::INTEGER as inverter_lifetime_yrs'
-    elif tech == 'solar':
-        inputs['add_cols'] = 'a.tilt, a.azimuth, a.available_roof_sqft, a.inverter_cost_dollars_per_kw, a.inverter_lifetime_yrs'
-    
-    sql = """SELECT a.micro_id, 
-                    a.county_id, 
-                    a.bin_id, 
-                    a.year, 
-                    a.state_abbr, 
-                    a.census_division_abbr, 
-                    a.utility_type, 
-                    a.pca_reg, 
-                    a.reeds_reg, 
-                    a.incentive_array_id, 
-                    a.carbon_price_cents_per_kwh, 
-                    a.fixed_om_dollars_per_kw_per_yr, 
-                    a.variable_om_dollars_per_kwh, 
-                    a.installed_costs_dollars_per_kw, 
-                    a.customers_in_bin, 
-                    a.load_kwh_per_customer_in_bin, 
-                    a.system_size_kw, 
-                    a.aep,  
-                    a.owner_occupancy_status,
-                    %(add_cols)s,
-                    b.first_year_bill_with_system, 
-                    b.first_year_bill_without_system, 
-                    b.excess_generation_percent, 
-                    c.leasing_allowed
-            FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s a
-            LEFT JOIN %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s b
-                    ON a.county_id = b.county_id
-                    AND a.bin_id = b.bin_id
-                    AND a.year = b.year
-            -- LEASING AVAILABILITY
-            LEFT JOIN %(schema)s.input_%(tech)s_leasing_availability c
-                ON a.state_abbr = c.state_abbr
-                AND a.year = c.year                                     
-            WHERE a.year = %(year)s""" % inputs
-    df = pd.read_sql(sql, con, coerce_float = False)
 
-    df['tech'] = tech
+    
+    sql_list = []
+    for tech in techs:
+        inputs['tech'] = tech
+        
+        if tech == 'wind':
+            inputs['add_cols'] = """NULL::INTEGER as tilt, NULL::TEXT as azimuth, NULL::INTEGER as available_roof_sqft, 
+                                    0::NUMERIC as inverter_cost_dollars_per_kw, 0::INTEGER as inverter_lifetime_yrs, 
+                                    'wind'::text as tech"""
+        elif tech == 'solar':
+            inputs['add_cols'] = """a.tilt, a.azimuth, a.available_roof_sqft, 
+                                    a.inverter_cost_dollars_per_kw, a.inverter_lifetime_yrs, 
+                                    'solar'::TEXT as tech"""       
+
+        sql = """SELECT a.micro_id, 
+                        a.county_id, 
+                        a.bin_id, 
+                        a.year, 
+                        a.state_abbr, 
+                        a.census_division_abbr, 
+                        a.utility_type, 
+                        a.pca_reg, 
+                        a.reeds_reg, 
+                        a.incentive_array_id, 
+                        a.carbon_price_cents_per_kwh, 
+                        a.fixed_om_dollars_per_kw_per_yr, 
+                        a.variable_om_dollars_per_kwh, 
+                        a.installed_costs_dollars_per_kw, 
+                        a.customers_in_bin, 
+                        a.load_kwh_per_customer_in_bin, 
+                        a.system_size_kw, 
+                        a.aep,  
+                        a.owner_occupancy_status,
+                        %(add_cols)s,
+                        b.first_year_bill_with_system, 
+                        b.first_year_bill_without_system, 
+                        b.excess_generation_percent, 
+                        c.leasing_allowed
+                FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s a
+                LEFT JOIN %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s b
+                        ON a.county_id = b.county_id
+                        AND a.bin_id = b.bin_id
+                        AND a.year = b.year
+                -- LEASING AVAILABILITY
+                LEFT JOIN %(schema)s.input_%(tech)s_leasing_availability c
+                    ON a.state_abbr = c.state_abbr
+                    AND a.year = c.year                                     
+                WHERE a.year = %(year)s""" % inputs
+        sql_list.append(sql)
+            
+    sql = ' UNION ALL '.join(sql_list)
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
 
     return df
     
@@ -2397,7 +2425,7 @@ def get_manual_incentive_options(con, schema):
     return df            
 
     
-def get_manual_incentives(con, schema, tech):
+def get_manual_incentives(con, schema):
     ''' Pull manual incentives from input sheet
     
         IN: con - pg con object - connection object
@@ -2405,13 +2433,21 @@ def get_manual_incentives(con, schema, tech):
     '''
     inputs = locals().copy()    
     
-    sql = '''SELECT * 
-             FROM %(schema)s.input_%(tech)s_incentives;''' % inputs
+    sql = '''SELECT region as state_abbr, lower(sector) as sector, type, incentive, cap, expire, incentives_c_per_kwh, 
+                    no_years, dol_per_kw, utility_type, 
+                    'solar'::TEXT as tech
+             FROM %(schema)s.input_solar_incentives
+            UNION ALL
+            SELECT region as state_abbr, lower(sector) as sector, type, incentive, cap, expire, incentives_c_per_kwh, 
+                    no_years, dol_per_kw, utility_type,
+                    'wind'::TEXT as tech
+            FROM %(schema)s.input_wind_incentives;''' % inputs
     df = pd.read_sql(sql, con)
     df['sector'] = df['sector'].str.lower()
+
     return df
  
-def calc_manual_incentives(df, con, cur_year, schema, tech):
+def calc_manual_incentives(df, con, cur_year, schema):
     ''' Calculate the value in first year and length for incentives manually 
     entered in input sheet. 
 
@@ -2421,8 +2457,8 @@ def calc_manual_incentives(df, con, cur_year, schema, tech):
         OUT: manual_incentives_value - pandas DataFrame - value of rebate, tax incentives, and PBI
     '''
     # Join manual incentives with main df   
-    inc = get_manual_incentives(con, schema, tech)
-    df = pd.merge(df, inc,left_on = ['state_abbr','sector','utility_type'], right_on = ['region','sector','utility_type'])
+    inc = get_manual_incentives(con, schema)
+    df = pd.merge(df, inc, how = 'left', on = ['state_abbr','sector','utility_type', 'tech'])
         
     # Calculate value of incentive and rebate, and value and length of PBI
     df['value_of_tax_credit_or_deduction'] = df['incentive'] * df['installed_costs_dollars_per_kw'] * df['system_size_kw'] * (cur_year <= df['expire'])
@@ -2469,7 +2505,7 @@ def calc_dsire_incentives(df, dsire_incentives, cur_year, default_exp_yr = 2016,
                                         mutiyear incentves, the (undiscounted) lifetime value is given 
     '''  
     
-    inc = pd.merge(df, dsire_incentives, how = 'left', on = ['incentive_array_id', 'sector'])    
+    inc = pd.merge(df, dsire_incentives, how = 'left', on = ['incentive_array_id', 'sector', 'tech'])    
     
     # Shorten names
     ic = inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
@@ -2653,7 +2689,7 @@ def calc_dsire_incentives(df, dsire_incentives, cur_year, default_exp_yr = 2016,
     
     return inc_summed[['tech', 'sector', 'county_id','bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
 
-def get_rate_escalations(con, schema):
+def get_rate_escalations(con, schema, current_year, tech_lifetime):
     '''
     Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
     resulting in an average real compounding rate growth. This rate is then used to calculate cash flows
@@ -2661,10 +2697,17 @@ def get_rate_escalations(con, schema):
     IN: con - connection to server
     OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
     '''  
-    sql = """SELECT census_division_abbr, year, 
-                lower(sector) as sector, escalation_factor
-                FROM %s.rate_escalations_to_model;""" % schema
+    inputs = locals().copy()
+    inputs['year_max'] = current_year + tech_lifetime
+    
+    sql = """SELECT census_division_abbr, lower(sector) as sector_abbr, 
+                    array_agg(escalation_factor order by year asc) as rate_escalations
+            FROM %(schema)s.rate_escalations_to_model
+            WHERE year < %(year_max)s 
+                  AND year >= %(current_year)s 
+            GROUP BY census_division_abbr, sector""" % inputs
     rate_escalations = pd.read_sql(sql, con)
+    
     return rate_escalations
 
 def get_rate_structures(con, schema):
@@ -2700,31 +2743,31 @@ def get_lease_availability(con, schema, tech):
     df = pd.read_sql(sql, con)
     return df
     
-def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr,tech_lifetime): 
-    '''
-    Append the expected rate escalation to the main dataframe.
-    Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
-    resulting in an average real compounding rate growth. This rate is then used to calculate cash flows
-    
-    IN: con - connection to server
-    OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
-    '''  
-    
-    # Only use the escalation multiplier over the next 30 years
-    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + tech_lifetime)) & (rate_escalations['year'] >=  year) & (rate_escalations['sector'] == sector_abbr.lower())]
-    
-    rate_pivot = projected_rate_escalations.pivot(index = 'census_division_abbr',columns = 'year', values = 'escalation_factor')    
-    rate_pivot['census_division_abbr'] = rate_pivot.index
-    
-    # Need to join expected escalations on df without sorting, thus remerge with original frame
-    # see: http://stackoverflow.com/questions/20206615/how-can-a-pandas-merge-preserve-order
-    temp_df = df[['county_id','bin_id','business_model','census_division_abbr']]
-    customer_expected_escalations = temp_df.merge(temp_df.merge(rate_pivot, how = 'left', on = 'census_division_abbr', sort = False))
-    
-    if np.all(df[['county_id','bin_id','business_model']].reset_index() == customer_expected_escalations[['county_id','bin_id','business_model']].reset_index()):
-        return customer_expected_escalations.ix[:,4:].values
-    else:
-        raise Exception("rate_escalations_have been reordered!")
+#def calc_expected_rate_escal(df, rate_escalations, year, sector_abbr,tech_lifetime): 
+#    '''
+#    Append the expected rate escalation to the main dataframe.
+#    Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
+#    resulting in an average real compounding rate growth. This rate is then used to calculate cash flows
+#    
+#    IN: con - connection to server
+#    OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
+#    '''  
+#    
+#    # Only use the escalation multiplier over the next 30 years
+#    projected_rate_escalations = rate_escalations[(rate_escalations['year'] < (year + tech_lifetime)) & (rate_escalations['year'] >=  year) & (rate_escalations['sector'] == sector_abbr.lower())]
+#    
+#    rate_pivot = projected_rate_escalations.pivot(index = 'census_division_abbr',columns = 'year', values = 'escalation_factor')    
+#    rate_pivot['census_division_abbr'] = rate_pivot.index
+#    
+#    # Need to join expected escalations on df without sorting, thus remerge with original frame
+#    # see: http://stackoverflow.com/questions/20206615/how-can-a-pandas-merge-preserve-order
+#    temp_df = df[['tech', 'county_id', 'bin_id', 'business_model', 'census_division_abbr']]
+#    customer_expected_escalations = temp_df.merge(temp_df.merge(rate_pivot, how = 'left', on = 'census_division_abbr', sort = False))
+#    
+#    if np.all(df[['tech', 'county_id', 'bin_id', 'business_model']].reset_index() == customer_expected_escalations[['tech', 'county_id', 'bin_id', 'business_model']].reset_index()):
+#        return customer_expected_escalations.ix[:, 5:].values
+#    else:
+#        raise Exception("rate_escalations_have been reordered!")
 
 def fill_jagged_array(vals,lens, cols):
     '''

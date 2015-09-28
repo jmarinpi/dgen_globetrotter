@@ -16,6 +16,7 @@ import numpy as np
 import glob
 import diffusion_functions as diffunc
 import financial_functions as finfunc
+reload(finfunc)
 import data_functions as datfunc
 reload(datfunc)
 from data_objects import FancyDataFrame
@@ -136,15 +137,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # load Input excel spreadsheet to Postgres
             if cfg.init_model:
                 # create the output schema
-                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
-#                schema = 'diffusion_results_2015_09_17_11h34m00s' # TODO: COMMENT/DELETE
+#                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
+                schema = 'diffusion_results_2015_09_28_10h57m27s' # TODO: COMMENT/DELETE
                 datfunc.clear_outputs(con, cur, schema)
                 # write the reeds settings to postgres
                 reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
                 ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
                 
                 try:
-                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
+#                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
+                    pass
                 except Exception, e:
                     logger.error('\tLoading failed with the following error: %s\nModel Aborted' % e      )
                     logger.error('Model aborted')
@@ -180,7 +182,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             with utilfunc.Timer() as t:
                 max_market_share = datfunc.get_max_market_share(con, schema)
                 market_projections = datfunc.get_market_projections(con, schema)
-                rate_escalations = datfunc.get_rate_escalations(con, schema)
                 load_growth_scenario = scenario_opts['load_growth_scenario'].lower() # get financial variables
                 # these are technology specific, set up in tidy form with a "tech" field
                 financial_parameters = datfunc.get_financial_parameters(con, schema)
@@ -207,59 +208,59 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # CREATE AGENTS
                 #==========================================================================================================
                 logger.info("--------------Creating Agents---------------")
-                datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, cfg.start_year, 
-                                               end_year, cfg.rooftop_source, cfg.npar, cfg.pg_conn_string, scenario_opts) # TODO: Comment
+#                datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, cfg.start_year, 
+#                                               end_year, cfg.rooftop_source, cfg.npar, cfg.pg_conn_string, scenario_opts) # TODO: Comment
                
                 #==========================================================================================================
                 # CALCULATE BILL SAVINGS
                 #==========================================================================================================
                 logger.info("---------Calculating Energy Savings---------")
                 # REFACTOR: remove this loop
-                for tech in techs: # TODO: Comment
-                    # find all unique combinations of rates, load, and generation
-                    
-                        logger.info('Calculating Annual Electric Bill Savings for %s' % tech.title())
-                        logger.info('\tFinding Unique Combinations of Rates, Load, and Generation')
-                        datfunc.get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors)         
-                        # determine how many rate/load/gen combinations can be processed given the local memory resources
-                        row_count_limit = datfunc.get_max_row_count_for_utilityrate3()            
-                        sam_results_list = []
-                        # set up chunks
-                        uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema, tech)
-                        nbatches = len(uid_lists)
-                        t0 = time.time()
-                        logger.info("\tSAM calculations will be run in %s batches to prevent memory overflow" % nbatches)
-                        for i, uids in enumerate(uid_lists): 
-                            logger.info("\t\tWorking on SAM Batch %s of %s" % (i+1, nbatches))
-                            # collect data for all unique combinations
-                            logger.info('\t\t\tCollecting SAM Inputs')
-                            t1 = time.time()
-                            rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, tech, schema, cfg.npar, cfg.pg_conn_string, cfg.gross_fit_mode)
-                            excess_gen_df = rate_input_df[['uid', 'excess_generation_percent', 'net_fit_credit_dollars']]
-                            logger.info('\t\t\t\tCompleted in: %0.1fs' % (time.time() - t1))        
-                            # calculate value of energy for all unique combinations
-                            logger.info('\t\t\tCalculating Energy Savings Using SAM')
-                            # run sam calcs in serial if only one core is available
-                            if cfg.local_cores == 1:
-                                sam_results_df = datfunc.run_utilityrate3(rate_input_df)
-                            # otherwise run in parallel
-                            else:
-                                
-                                sam_results_df = pssc_mp.pssc_mp(rate_input_df,  cfg.local_cores)
-                            logger.info('\t\t\t\tCompleted in: %0.1fs' % (time.time() - t1),)                                        
-                            # append the excess_generation_percent and net_fit_credit_dollars to the sam_results_df
-                            sam_results_df = pd.merge(sam_results_df, excess_gen_df, on = 'uid')
-    
-                            # adjust the elec_cost_with_system_year1 to account for the net_fit_credit_dollars
-                            sam_results_df['elec_cost_with_system_year1'] = sam_results_df['elec_cost_with_system_year1'] - sam_results_df['net_fit_credit_dollars']              
-                            sam_results_list.append(sam_results_df)
-                            # drop the rate_input_df to save on memory
-                            del rate_input_df, excess_gen_df
-                   
-                        # write results to postgres
-                        logger.info("\tWriting SAM Results to Database")
-                        datfunc.write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech)
-                        logger.info('\tTotal time to calculate all electric bills: %0.1fs' % (time.time() - t0),)  
+#                for tech in techs: # TODO: Comment
+#                    # find all unique combinations of rates, load, and generation
+#                    
+#                        logger.info('Calculating Annual Electric Bill Savings for %s' % tech.title())
+#                        logger.info('\tFinding Unique Combinations of Rates, Load, and Generation')
+#                        datfunc.get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors)         
+#                        # determine how many rate/load/gen combinations can be processed given the local memory resources
+#                        row_count_limit = datfunc.get_max_row_count_for_utilityrate3()            
+#                        sam_results_list = []
+#                        # set up chunks
+#                        uid_lists = datfunc.split_utilityrate3_inputs(row_count_limit, cur, con, schema, tech)
+#                        nbatches = len(uid_lists)
+#                        t0 = time.time()
+#                        logger.info("\tSAM calculations will be run in %s batches to prevent memory overflow" % nbatches)
+#                        for i, uids in enumerate(uid_lists): 
+#                            logger.info("\t\tWorking on SAM Batch %s of %s" % (i+1, nbatches))
+#                            # collect data for all unique combinations
+#                            logger.info('\t\t\tCollecting SAM Inputs')
+#                            t1 = time.time()
+#                            rate_input_df = datfunc.get_utilityrate3_inputs(uids, cur, con, tech, schema, cfg.npar, cfg.pg_conn_string, cfg.gross_fit_mode)
+#                            excess_gen_df = rate_input_df[['uid', 'excess_generation_percent', 'net_fit_credit_dollars']]
+#                            logger.info('\t\t\t\tCompleted in: %0.1fs' % (time.time() - t1))        
+#                            # calculate value of energy for all unique combinations
+#                            logger.info('\t\t\tCalculating Energy Savings Using SAM')
+#                            # run sam calcs in serial if only one core is available
+#                            if cfg.local_cores == 1:
+#                                sam_results_df = datfunc.run_utilityrate3(rate_input_df)
+#                            # otherwise run in parallel
+#                            else:
+#                                
+#                                sam_results_df = pssc_mp.pssc_mp(rate_input_df,  cfg.local_cores)
+#                            logger.info('\t\t\t\tCompleted in: %0.1fs' % (time.time() - t1),)                                        
+#                            # append the excess_generation_percent and net_fit_credit_dollars to the sam_results_df
+#                            sam_results_df = pd.merge(sam_results_df, excess_gen_df, on = 'uid')
+#    
+#                            # adjust the elec_cost_with_system_year1 to account for the net_fit_credit_dollars
+#                            sam_results_df['elec_cost_with_system_year1'] = sam_results_df['elec_cost_with_system_year1'] - sam_results_df['net_fit_credit_dollars']              
+#                            sam_results_list.append(sam_results_df)
+#                            # drop the rate_input_df to save on memory
+#                            del rate_input_df, excess_gen_df
+#                   
+#                        # write results to postgres
+#                        logger.info("\tWriting SAM Results to Database")
+#                        datfunc.write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech)
+#                        logger.info('\tTotal time to calculate all electric bills: %0.1fs' % (time.time() - t0),)  
 
     
             #==========================================================================================================
@@ -268,66 +269,66 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info("---------Modeling Annual Deployment---------")            
             for sector_abbr, sector in sectors.iteritems():  
                 logger.info("Modeling Deployment for %s Sector" % sector.title())
-                dsire_incentives = {}
-                for tech in techs:
-                    # get dsire incentives for the generated customer bins
-                    dsire_df = datfunc.get_dsire_incentives(cur, con, schema, tech, sector_abbr, cfg.npar, cfg.pg_conn_string)     
-                    dsire_incentives[tech] = dsire_df
-
+                # get dsire incentives for the generated customer bins
+                dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sector_abbr, cfg.npar, cfg.pg_conn_string)     
                 for year in model_years:
                     dfs = []
                     logger.info('\tWorking on %s for %s Sector' % (year, sector))
                     # REFACTOR: remove this loop
-                    for tech in techs:
-                        # get input agent attributes from postgres
-                        df = datfunc.get_main_dataframe(con, sector_abbr, schema, year, tech)
-                        # reeds stuff...
-                        if mode == 'ReEDS':
-                            # When in ReEDS mode add the values from ReEDS to df
-                            df = pd.merge(df,distPVCurtailment, how = 'left', on = 'pca_reg')
-                            df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
-                            df = pd.merge(df,change_elec_price, how = 'left', on = 'pca_reg')
-                            
-                            if sector_abbr == 'res':
-                                market_last_year = market_last_year_res
-                            if sector_abbr == 'ind':
-                                market_last_year = market_last_year_ind
-                            if sector_abbr == 'com':
-                                market_last_year = market_last_year_com
-                                
-                        else:
-                            # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
-                            df['curtailment_rate'] = 0
-                            df['ReEDS_elec_price_mult'] = 1
-                            curtailment_method = 'net'                
+                    # ------------------------------------------------------------------------
+#                    for tech in techs:
                         
-                        # Market characteristics from previous year
-                        is_first_year = year == cfg.start_year
-                        previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, tech, sector_abbr, sector, schema)   
-                        df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id','bin_id'])
-                                            
-                        # Calculate economics of adoption for different busines models
-                        df = finfunc.calc_economics(df, schema, sector, sector_abbr, tech,
-                                                                                   market_projections, financial_parameters, 
-                                                                                   scenario_opts, incentive_options, max_market_share, cur, con, year, 
-                                                                                   dsire_incentives[tech], deprec_schedule, rate_escalations, 
-                                                                                   ann_system_degradation, mode,curtailment_method, tech_lifetime = 25)
-                        dfs.append(df)                        
+                    # get input agent attributes from postgres
+                    df = datfunc.get_main_dataframe(con, sector_abbr, schema, year, techs)
+                    # reeds stuff...
+                    if mode == 'ReEDS':
+                        # When in ReEDS mode add the values from ReEDS to df
+                        df = pd.merge(df, distPVCurtailment, how = 'left', on = 'pca_reg')
+                        df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
+                        df = pd.merge(df,change_elec_price, how = 'left', on = 'pca_reg')
+                        
+                        if sector_abbr == 'res':
+                            market_last_year = market_last_year_res
+                        if sector_abbr == 'ind':
+                            market_last_year = market_last_year_ind
+                        if sector_abbr == 'com':
+                            market_last_year = market_last_year_com
+                            
+                    else:
+                        # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
+                        df['curtailment_rate'] = 0
+                        df['ReEDS_elec_price_mult'] = 1
+                        curtailment_method = 'net'                
                     
+                    # Market characteristics from previous year
+                    is_first_year = year == cfg.start_year
+                    previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sector_abbr, sector, schema)   
+                    df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id', 'bin_id', 'tech'])
+                                        
+                    # Calculate economics of adoption for different busines models
+                    with utilfunc.Timer() as t:
+                        df = finfunc.calc_economics(df, schema, sector, sector_abbr, 
+                                                   market_projections, financial_parameters, 
+                                                   scenario_opts, incentive_options, max_market_share, cur, con, year, 
+                                                   dsire_incentives, deprec_schedule, 
+                                                   ann_system_degradation, mode, curtailment_method, tech_lifetime = 25)
+                    logger.info('\tCompleted in: %0.1fs' % t.interval)
+#                    dfs.append(df)                        
+                    # ------------------------------------------------------------------------
                     
                     # exit the Technology loop and combine results from each technology
-                    df_combined = pd.concat(dfs, axis = 0, ignore_index = True)
+#                    df_combined = pd.concat(dfs, axis = 0, ignore_index = True)
                     
                     # select from choices for business model and (optionally) technology
-                    df_combined = tech_choice.select_financing_and_tech(df_combined, prng, cfg.alpha_lkup, cfg.choose_tech, techs)  
+                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, cfg.choose_tech, techs)  
                     
                     # calculate diffusion based on economics and bass diffusion      
-                    df_combined, market_last_year_combined = diffunc.calc_diffusion(df_combined, year, sector)
+                    df, market_last_year_combined = diffunc.calc_diffusion(df, year, sector)
 
                     # save outputs from this year and update parameters for next solve  
                     for tech in techs:
                         # filter results to only the current technology
-                        df = df_combined[df_combined.tech == tech]
+                        df_tech = df[df['tech'] == tech]
                         market_last_year = market_last_year_combined[market_last_year_combined.tech == tech]
                         
                         # reeds stuff...
@@ -340,7 +341,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                 market_last_year_com = market_last_year
                         
                         # write the incremental results to the database
-                        datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
+                        datfunc.write_outputs(con, cur, df_tech, sector_abbr, schema) 
                         datfunc.write_last_year(con, cur, market_last_year, sector_abbr, schema, tech)
                          
             #==============================================================================
@@ -373,7 +374,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #####################################################################
             ### THIS IS TEMPORARY ###
             # drop the new schema
-            datfunc.drop_output_schema(cfg.pg_conn_string, schema) # TODO: Uncomment
+#            datfunc.drop_output_schema(cfg.pg_conn_string, schema) # TODO: Uncomment
             #####################################################################
             
             logger.info("-------------Model Run Complete-------------")
