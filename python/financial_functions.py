@@ -42,7 +42,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
     
     # filter the tidy-structure inputs to the correct technology:
     sql = "tech == '%s'" % tech
-    financial_parameters = financial_parameters_all.query(sql)[['sector', 'business_model', 'loan_term_yrs', 'loan_rate', 'down_payment', 'discount_rate', 'tax_rate', 'length_of_irr_analysis_yrs']]
+#    financial_parameters = financial_parameters_all.query(sql)[['sector', 'business_model', 'loan_term_yrs', 'loan_rate', 'down_payment', 'discount_rate', 'tax_rate', 'length_of_irr_analysis_yrs']]
     incentive_opts = incentive_opts_all.query(sql)[['overwrite_exist_inc', 'incentive_start_year']]
     deprec_schedule = deprec_schedule_all.query(sql).sort('year', ascending = True)['deprec'].values
     ann_system_degradation = ann_system_degradation_all.query(sql)['ann_system_degradation'].iloc[0]
@@ -56,7 +56,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
     df = df.drop('cross_join', axis=1)
     
     df['sector'] = sector.lower()
-    df = pd.merge(df,financial_parameters, how = 'left', on = ['sector','business_model'])
+    df = pd.merge(df,financial_parameters_all, how = 'left', on = ['sector', 'business_model', 'tech'])
     
     # get customer expected rate escalations
     # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed

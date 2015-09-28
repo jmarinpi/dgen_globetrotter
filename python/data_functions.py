@@ -443,7 +443,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     ON a.county_id = c.county_id
                     AND a.bin_id = c.bin_id
                     
-                    WHERE a.tech = 'wind';
+                    WHERE a.tech = 'wind'
                     ''' % inputs
         sql += sub_sql
     
@@ -537,7 +537,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     ON a.county_id = c.county_id
                     AND a.bin_id = c.bin_id
                     
-                    WHERE a.tech = 'solar';
+                    WHERE a.tech = 'solar'
                     ''' % inputs
         sql += sub_sql
     
