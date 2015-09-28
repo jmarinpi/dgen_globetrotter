@@ -24,7 +24,7 @@ logger = utilfunc.get_logger()
 #==============================================================================
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
-                   financial_parameters, scenario_opts, incentive_opts_all, max_market_share, cur, con, 
+                   financial_parameters, scenario_opts, incentive_opts, max_market_share, cur, con, 
                    year, dsire_incentives, deprec_schedule, rate_escalations, ann_system_degradation, mode, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
     Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
@@ -41,11 +41,8 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
     logger.info("\t\tCalculating system economics for %s" % tech.title())
     
     # filter the tidy-structure inputs to the correct technology:
-    sql = "tech == '%s'" % tech
-    incentive_opts = incentive_opts_all.query(sql)[['overwrite_exist_inc', 'incentive_start_year']]
-#    deprec_schedule = deprec_schedule_all.query(sql).sort('year', ascending = True)['deprec'].values
-
-
+#    sql = "tech == '%s'" % tech
+#    incentive_opts = incentive_opts_all.query(sql)[['overwrite_exist_inc', 'incentive_start_year']]
     
     # Evaluate economics of leasing or buying for all customers who are able to lease
     business_model = pd.DataFrame({'business_model' : ('host_owned','tpo'), 
@@ -59,6 +56,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
     df = pd.merge(df, financial_parameters, how = 'left', on = ['sector', 'business_model', 'tech'])
     df = pd.merge(df, ann_system_degradation, how = 'left', on = ['tech'])
     df = pd.merge(df, deprec_schedule, how = 'left', on = ['tech'])
+    df = pd.merge(df, incentive_opts, how = 'left', on = ['tech'])
     
     # get customer expected rate escalations
     # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
@@ -72,13 +70,14 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
         rate_growth_mult = datfunc.calc_expected_rate_escal(df, rate_escalations, year, sector_abbr, tech_lifetime)    
 
     # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
-    overwrite_exist_inc = incentive_opts['overwrite_exist_inc'].iloc[0]
-    if overwrite_exist_inc:
-        value_of_incentives = datfunc.calc_manual_incentives(df,con, year, schema, tech)
-    else:
-        inc = pd.merge(df,dsire_incentives,how = 'left', on = 'incentive_array_id')
-        value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
-    df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id','business_model'])
+    df_manual_incentives = df[df['overwrite_exist_inc'] == True]
+    df_dsire_incentives = df[df['overwrite_exist_inc'] == False]
+    
+    value_of_incentives_manual = datfunc.calc_manual_incentives(df_manual_incentives, con, year, schema, tech)
+    value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, year, default_exp_yr = 2016, assumed_duration = 10)
+
+    value_of_incentives_all = pd.concat([value_of_incentives_manual, value_of_incentives_dsire])
+    df = pd.merge(df, value_of_incentives_all, how = 'left', on = ['county_id','bin_id','business_model', 'tech', 'sector'])
 
     revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives = calc_cashflows(df, rate_growth_mult, scenario_opts, tech, curtailment_method, tech_lifetime, max_incentive_fraction)
     

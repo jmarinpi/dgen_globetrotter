@@ -2158,12 +2158,6 @@ def get_scenario_options(cur, schema):
 def get_dsire_incentives(cur, con, schema, tech, sector_abbr, npar, pg_conn_string):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
-
-    
-    if sector_abbr == 'ind':
-        inputs['incentives_sector'] = 'com'
-    else:
-        inputs['incentives_sector'] = sector_abbr    
     
     sql =   """
                 WITH a AS
@@ -2178,7 +2172,7 @@ def get_dsire_incentives(cur, con, schema, tech, sector_abbr, npar, pg_conn_stri
                     ON a.incentive_array_id = b.incentive_array_id
                 LEFT JOIN diffusion_%(tech)s.incentives c
                     ON b.incentives_uid = c.uid
-                WHERE lower(c.sector) = '%(incentives_sector)s'
+                WHERE lower(c.sector_abbr) = '%(sector_abbr)s'
                 ORDER BY a.incentive_array_id
             """ % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
@@ -2428,36 +2422,39 @@ def calc_manual_incentives(df, con, cur_year, schema, tech):
     '''
     # Join manual incentives with main df   
     inc = get_manual_incentives(con, schema, tech)
-    d = pd.merge(df,inc,left_on = ['state_abbr','sector','utility_type'], right_on = ['region','sector','utility_type'])
+    df = pd.merge(df, inc,left_on = ['state_abbr','sector','utility_type'], right_on = ['region','sector','utility_type'])
         
     # Calculate value of incentive and rebate, and value and length of PBI
-    d['value_of_tax_credit_or_deduction'] = d['incentive'] * d['installed_costs_dollars_per_kw'] * d['system_size_kw'] * (cur_year <= d['expire'])
-    d['value_of_tax_credit_or_deduction'] = d['value_of_tax_credit_or_deduction'].astype(float)
-    d['value_of_pbi_fit'] = 0.01 * d['incentives_c_per_kwh'] * d['aep'] * (cur_year <= d['expire']) # First year value  
-    d['value_of_rebate'] = np.minimum(1000 * d['dol_per_kw'] * d['system_size_kw'] * (cur_year <= d['expire']), d['system_size_kw'])
-    d['pbi_fit_length'] = d['no_years']
+    df['value_of_tax_credit_or_deduction'] = df['incentive'] * df['installed_costs_dollars_per_kw'] * df['system_size_kw'] * (cur_year <= df['expire'])
+    df['value_of_tax_credit_or_deduction'] = df['value_of_tax_credit_or_deduction'].astype(float)
+    df['value_of_pbi_fit'] = 0.01 * df['incentives_c_per_kwh'] * df['aep'] * (cur_year <= df['expire']) # First year value  
+    df['value_of_rebate'] = np.minimum(1000 * df['dol_per_kw'] * df['system_size_kw'] * (cur_year <= df['expire']), df['system_size_kw'])
+    df['pbi_fit_length'] = df['no_years']
     
     # These values are not used, but necessary for cashflow calculations later
     # Convert dtype to float s.t. columns are included in groupby calculation.
-    d['value_of_increment'] = 0
-    d['value_of_ptc'] = 0
-    d['ptc_length'] = 0
+    df['value_of_increment'] = 0
+    df['value_of_ptc'] = 0
+    df['ptc_length'] = 0
     
-    d['value_of_tax_credit_or_deduction'] = d['value_of_tax_credit_or_deduction'].astype(float)
-    d['value_of_pbi_fit'] = d['value_of_pbi_fit'].astype(float)
-    d['value_of_rebate'] = d['value_of_rebate'].astype(float)
-    d['pbi_fit_length'] = d['pbi_fit_length'].astype(float)
+    df['value_of_tax_credit_or_deduction'] = df['value_of_tax_credit_or_deduction'].astype(float)
+    df['value_of_pbi_fit'] = df['value_of_pbi_fit'].astype(float)
+    df['value_of_rebate'] = df['value_of_rebate'].astype(float)
+    df['pbi_fit_length'] = df['pbi_fit_length'].astype(float)
     '''
     Because a system could potentially qualify for several incentives, the left 
     join above could join on multiple rows. Thus, groupby by county_id & bin_id 
     to sum over incentives and condense back to unique county_id/bin_id/business_model combinations
     '''
-
-    value_of_incentives = d[['county_id', 'bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id','business_model']).sum().reset_index() 
+    
+    if df.shape[0] > 0:
+        value_of_incentives = df[['tech', 'sector', 'county_id', 'bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['tech', 'sector', 'county_id','bin_id','business_model']).sum().reset_index() 
+    else:
+        value_of_incentives = df[['tech', 'sector', 'county_id', 'bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
     
     return value_of_incentives
     
-def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration = 10):
+def calc_dsire_incentives(df, dsire_incentives, cur_year, default_exp_yr = 2016, assumed_duration = 10):
     '''
     Calculate the value of incentives based on DSIRE database. There may be many incentives per each customer bin (county_id+bin_id),
     so the value is calculated for each row (incentives)
@@ -2471,6 +2468,9 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
     OUT: value_of_incentives - pandas df - Values of incentives by type. For 
                                         mutiyear incentves, the (undiscounted) lifetime value is given 
     '''  
+    
+    inc = pd.merge(df, dsire_incentives, how = 'left', on = ['incentive_array_id', 'sector'])    
+    
     # Shorten names
     ic = inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
     
@@ -2640,15 +2640,18 @@ def calc_dsire_incentives(inc, cur_year, default_exp_yr = 2016, assumed_duration
         inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction.astype(float)
     
     # sum results to customer bins
-    inc_summed = inc[['county_id', 'bin_id', 'business_model', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['county_id','bin_id','business_model']).sum().reset_index() 
-    
+    if inc.shape[0] > 0:
+        inc_summed = inc[['tech', 'sector', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['tech', 'sector', 'county_id','bin_id','business_model']).sum().reset_index() 
+    else:
+        inc_summed = inc[['tech', 'sector', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
+        
     inc_summed['value_of_pbi_fit'] = inc_summed['lifetime_value_of_pbi_fit'] / assumed_duration
     inc_summed['pbi_fit_length'] = assumed_duration
     
     inc_summed['value_of_ptc'] = inc_summed['lifetime_value_of_ptc'] / assumed_duration
     inc_summed['ptc_length'] = assumed_duration
     
-    return inc_summed[['county_id','bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
+    return inc_summed[['tech', 'sector', 'county_id','bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
 
 def get_rate_escalations(con, schema):
     '''
