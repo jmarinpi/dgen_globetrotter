@@ -24,8 +24,8 @@ logger = utilfunc.get_logger()
 #==============================================================================
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
-                   financial_parameters_all, scenario_opts, incentive_opts_all, max_market_share, cur, con, 
-                   year, dsire_incentives, deprec_schedule_all, rate_escalations, ann_system_degradation_all, mode, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
+                   financial_parameters, scenario_opts, incentive_opts_all, max_market_share, cur, con, 
+                   year, dsire_incentives, deprec_schedule_all, rate_escalations, ann_system_degradation, mode, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
     Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
 
@@ -42,10 +42,10 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
     
     # filter the tidy-structure inputs to the correct technology:
     sql = "tech == '%s'" % tech
-#    financial_parameters = financial_parameters_all.query(sql)[['sector', 'business_model', 'loan_term_yrs', 'loan_rate', 'down_payment', 'discount_rate', 'tax_rate', 'length_of_irr_analysis_yrs']]
     incentive_opts = incentive_opts_all.query(sql)[['overwrite_exist_inc', 'incentive_start_year']]
     deprec_schedule = deprec_schedule_all.query(sql).sort('year', ascending = True)['deprec'].values
-    ann_system_degradation = ann_system_degradation_all.query(sql)['ann_system_degradation'].iloc[0]
+
+
     
     # Evaluate economics of leasing or buying for all customers who are able to lease
     business_model = pd.DataFrame({'business_model' : ('host_owned','tpo'), 
@@ -56,7 +56,8 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
     df = df.drop('cross_join', axis=1)
     
     df['sector'] = sector.lower()
-    df = pd.merge(df,financial_parameters_all, how = 'left', on = ['sector', 'business_model', 'tech'])
+    df = pd.merge(df, financial_parameters, how = 'left', on = ['sector', 'business_model', 'tech'])
+    df = pd.merge(df, ann_system_degradation, how = 'left', on = ['tech'])
     
     # get customer expected rate escalations
     # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
@@ -78,7 +79,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
         value_of_incentives = datfunc.calc_dsire_incentives(inc, year, default_exp_yr = 2016, assumed_duration = 10)
     df = pd.merge(df, value_of_incentives, how = 'left', on = ['county_id','bin_id','business_model'])
 
-    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, ann_system_degradation, curtailment_method, tech_lifetime, max_incentive_fraction)
+    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives = calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, curtailment_method, tech_lifetime, max_incentive_fraction)
     
     df['total_value_of_incentives'] = total_value_of_incentives
     ## Calc metric value here
@@ -123,7 +124,7 @@ def calc_economics(df, schema, sector, sector_abbr, tech, market_projections,
     
     
 #==============================================================================
-def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, ann_system_degradation, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
+def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 
@@ -236,7 +237,7 @@ def calc_cashflows(df, rate_growth_mult, deprec_schedule, scenario_opts, tech, a
     # Decrement the revenue to account for system degradation.
     system_degradation_factor = np.empty(shape)
     system_degradation_factor[:,0] = 1
-    system_degradation_factor[:,1:]  = 1 - ann_system_degradation
+    system_degradation_factor[:,1:]  = 1 - df['ann_system_degradation'][:, np.newaxis]
     system_degradation_factor = system_degradation_factor.cumprod(axis = 1)
     
     generation_revenue *= system_degradation_factor
