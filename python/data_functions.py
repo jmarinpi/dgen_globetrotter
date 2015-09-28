@@ -360,7 +360,6 @@ def p_execute(pg_conn_string, sql):
         cur.close()
     except Exception, e:
         print 'Error: %s' % e
-        print sql
 
     
 def p_run(pg_conn_string, sql, county_chunks, npar):
@@ -1036,7 +1035,7 @@ def assign_roof_characteristics(inputs_dict, rooftop_source, county_chunks, npar
                     	SELECT a.county_id, a.bin_id, 
                              b.uid as roof_char_uid, b.prob_weight
                     	FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
-                    	LEFT JOIN diffusion_solar.rooftop_dsolar_characteristics b
+                    	LEFT JOIN diffusion_solar.rooftop_solards_characteristics b
                     	ON b.sector_abbr = '%(sector_abbr)s'
                       AND a.roof_style = b.roof_style
                 ),
@@ -1059,7 +1058,7 @@ def assign_roof_characteristics(inputs_dict, rooftop_source, county_chunks, npar
                 LEFT JOIN selected_roof_options b
                         ON a.county_id = b.county_id 
                         AND a.bin_id = b.bin_id
-                LEFT JOIN diffusion_solar.rooftop_dsolar_characteristics c
+                LEFT JOIN diffusion_solar.rooftop_solards_characteristics c
                         ON b.roof_char_uid = c.uid
                 LEFT JOIN diffusion_solar.solar_ds_regional_shading_assumptions d
                         ON a.state_abbr = d.state_abbr;""" % inputs_dict
@@ -1131,9 +1130,8 @@ def assign_roof_characteristics(inputs_dict, rooftop_source, county_chunks, npar
                 	ON b.pid = c.pid
                 INNER JOIN diffusion_solar.rooftop_ground_cover_ratios d
                 	on c.flat_roof = d.flat_roof
-                INNER JOIN diffusion_solar.rooftop_percent_developable_buildings e
-                	ON a.city_id = e.city_id
-                	AND e.zone = '%(zone)s'
+                INNER JOIN diffusion_solar.rooftop_percent_developable_buildings_by_state e
+                	ON a.state_abbr = e.state_abbr
                 	AND a.bldg_size_class = e.size_class;""" % inputs_dict   
         p_run(pg_conn_string, sql, county_chunks, npar)
         

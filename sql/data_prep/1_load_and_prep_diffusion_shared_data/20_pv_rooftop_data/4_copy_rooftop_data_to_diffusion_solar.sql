@@ -12,28 +12,79 @@ set role 'diffusion-writers';
 ------------------------------------------------------------------------------------------
 -- percent of buildings that are developable
 ------------------------------------------------------------------------------------------
+------------------------------------
 -- by city, sector, and size class
-DROP TABLE IF EXISTS diffusion_solar.rooftop_percent_developable_buildings;
-CREATE TABLE diffusion_solar.rooftop_percent_developable_buildings AS
+DROP TABLE IF EXISTS diffusion_solar.rooftop_percent_developable_buildings_by_city;
+CREATE TABLE diffusion_solar.rooftop_percent_developable_buildings_by_city AS
 SELECT city_id, zone, size_class, pct_developable
 FROM pv_rooftop_dsolar_integration.percent_developable_buildings;
 
 -- create indices
 -- city id
-CREATE INDEX rooftop_percent_developable_buildings_btree_city_id
-ON diffusion_solar.rooftop_percent_developable_buildings
+CREATE INDEX rooftop_percent_developable_buildings_by_city_btree_city_id
+ON diffusion_solar.rooftop_percent_developable_buildings_by_city
 using BTREE(city_id);
 
 -- zone
-CREATE INDEX rooftop_percent_developable_buildings_btree_zone
-ON diffusion_solar.rooftop_percent_developable_buildings
+CREATE INDEX rooftop_percent_developable_buildings_by_city_btree_zone
+ON diffusion_solar.rooftop_percent_developable_buildings_by_city
 using BTREE(zone);
 
 -- size class
-CREATE INDEX rooftop_percent_developable_buildings_btree_size_class
-ON diffusion_solar.rooftop_percent_developable_buildings
+CREATE INDEX rooftop_percent_developable_buildings_by_city_btree_size_class
+ON diffusion_solar.rooftop_percent_developable_buildings_by_city
 using BTREE(size_class);
 
+------------------------------------
+-- by state (from work by Caleb Phillips, Pieter Gagnon, and Jenny Melius)
+DROP TABLE IF EXISTS diffusion_solar.rooftop_percent_developable_buildings_by_state;
+CREATE TABLE diffusion_solar.rooftop_percent_developable_buildings_by_state 
+(
+	state_abbr character varying(2),
+	size_class character varying(6),
+	pct_developable numeric
+);
+
+\COPY diffusion_solar.rooftop_percent_developable_buildings_by_state (state_abbr, pct_developable, size_class) FROM '/Volumes/Staff/mgleason/DG_Solar/Data/Source_Data/pv_rooftop_tech_potential/from_pgagnon_20150928/pct_suitable_by_state_simplified.csv' with csv header;
+
+-- add primary key
+ALTER TABLE diffusion_solar.rooftop_percent_developable_buildings_by_state 
+ADD PRIMARY KEY (state_abbr, size_class);
+
+-- round pct developable to 2 digits
+UPDATE diffusion_solar.rooftop_percent_developable_buildings_by_state 
+set pct_developable = round(pct_developable, 2);
+
+-- check which states are missing
+with a as
+(
+	select distinct state_abbr
+	from diffusion_shared.county_geom
+),
+b as
+(
+	select distinct state_abbr
+	from diffusion_solar.rooftop_percent_developable_buildings_by_state 
+)
+select *
+FROM  a
+left join b
+on a.state_abbr = b.state_abbr
+where b.state_abbr is null;
+-- only alaska and hawaii are missing, which is fine for now
+
+select count(*)
+FROM diffusion_solar.rooftop_percent_developable_buildings_by_state 
+group by state_abbr
+order by count asc;
+-- make sure there are three entries for each state
+-- all set
+
+-- make sure medium and large buildigns only have percents of 1
+select distinct pct_developable
+from diffusion_solar.rooftop_percent_developable_buildings_by_state 
+where size_class in ('medium', 'large');
+-- 1.00 -- all set!
 ------------------------------------------------------------------------------------------
 -- discrete distributions of optimal plane orientations
 ------------------------------------------------------------------------------------------
