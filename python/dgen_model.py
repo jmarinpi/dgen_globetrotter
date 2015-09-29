@@ -45,7 +45,8 @@ pd.set_option('mode.chained_assignment', 'raise')
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
     try:
-
+        model_init = time.time()
+        
         if mode == 'ReEDS':
             
             reeds_mode_df = FancyDataFrame(data = [True])
@@ -107,10 +108,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             raise ValueError("""Error: customer_bins in config.py must be of type integer.""") 
         if cfg.customer_bins <= 0:
             raise ValueError("""Error: customer_bins in config.py must be a positive integer.""") 
-        model_init = time.time()
         
+        
+        # create the logger
         logger = utilfunc.get_logger(os.path.join(out_dir,'dg_model.log'))
-        logger.info('Initiating model (%s)' % time.ctime())
             
         # 4. Connect to Postgres and configure connection(s) (to edit login information, edit config.py)
         # create a single connection to Postgres Database -- this will serve as the main cursor/connection
@@ -180,7 +181,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('\tYears: %s - %s' % (cfg.start_year, end_year))
             logger.info('\tTech Choice Mode Enabled: %s' % choose_tech)
             
-            # reeds stuff..
+            # reeds stuff.. #TODO: Refactor
             if mode == 'ReEDS' and scenario_opts['region'] != 'United States':
                 logger.error('Linked model can only run nationally. Select United States in input sheet'      )
                 logger.error('Model aborted')
@@ -188,8 +189,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                   
             # get other scenario inputs
             logger.info('Getting various scenario parameters')
-            t0 = time.time()
-            #  these are all technology agnostic user-inputs
             with utilfunc.Timer() as t:
                 max_market_share = datfunc.get_max_market_share(con, schema)
                 market_projections = datfunc.get_market_projections(con, schema)
@@ -331,7 +330,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             
             # after all techs have been processed:
             #####################################################################
-            ### THIS IS TEMPORARY ###
             # drop the new schema
 #            datfunc.drop_output_schema(cfg.pg_conn_string, schema) # TODO: Uncomment
             #####################################################################
