@@ -688,9 +688,9 @@ def check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_di
             for sector_abbr, sector in sectors.iteritems():
                 inputs['sector_abbr'] = sector_abbr
                 sql = """SELECT state_abbr, bldg_size_class, 
-                                sum(aep)/1e6 as gen_gwh,
-                                sum(available_roof_sqft)/10.7639 as area_m2,
-                                sum(system_size_kw)/1e6 as cap_gw
+                                sum(aep * initial_customers_in_bin)/1e6 as gen_gwh,
+                                sum(available_roof_sqft * initial_customers_in_bin)/10.7639 as area_m2,
+                                sum(system_size_kw * initial_customers_in_bin)/1e6 as cap_gw
                        FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
                        WHERE year = 2014
                        GROUP BY state_abbr, bldg_size_class""" % inputs
@@ -698,7 +698,14 @@ def check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_di
             inputs['sql_all'] = ' UNION ALL '.join(sql_list)
             sql = """DROP TABLE IF EXISTS %(schema)s.agent_tech_potential_by_state_solar;
                      CREATE UNLOGGED TABLE %(schema)s.agent_tech_potential_by_state_solar AS
-                     %(sql_all)s;""" % inputs
+                     WITH a as
+                     (%(sql_all)s)
+                     SELECT state_abbr, bldg_size_class, 
+                            sum(gen_gwh) as gen_gwh,
+                            sum(area_m2) as area_m2,
+                            sum(cap_gw) as cap_gw
+                     FROM a
+                     GROUP BY state_abbr, bldg_size_class;""" % inputs
             cur.execute(sql)
             con.commit()
             
