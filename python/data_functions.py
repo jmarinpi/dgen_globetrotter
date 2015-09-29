@@ -2408,27 +2408,30 @@ def get_market_last_year(cur, con, is_first_year, techs, sector_abbr, sector, sc
     return last_year_df
     
 
-def write_last_year(con, cur, market_last_year, sector_abbr, schema, tech):
+def write_last_year(con, cur, market_last_year, sector_abbr, schema, techs):
     
     inputs = locals().copy()    
-    inputs['out_table'] = '%(schema)s.output_%(tech)s_market_last_year'  % inputs
     
-    sql = """DELETE FROM %(out_table)s;"""  % inputs
-    cur.execute(sql)
-    con.commit()
-
-    # open an in memory stringIO file (like an in memory csv)
-    s = StringIO()
-    # write the data to the stringIO
-    out_cols = ['county_id', 'bin_id', 'market_share_last_year', 'max_market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year', 'tech']
-    market_last_year[out_cols].to_csv(s, index = False, header = False)
-    # seek back to the beginning of the stringIO file
-    s.seek(0)
-    # copy the data from the stringio file to the postgres table
-    cur.copy_expert('COPY %(out_table)s FROM STDOUT WITH CSV' % inputs, s)
-    # commit the additions and close the stringio file (clears memory)
-    con.commit()    
-    s.close()
+    for tech in techs:
+        inputs['tech'] = tech
+        inputs['out_table'] = '%(schema)s.output_%(tech)s_market_last_year'  % inputs
+        
+        sql = """DELETE FROM %(out_table)s;"""  % inputs
+        cur.execute(sql)
+        con.commit()
+    
+        # open an in memory stringIO file (like an in memory csv)
+        s = StringIO()
+        # write the data to the stringIO
+        out_cols = ['county_id', 'bin_id', 'market_share_last_year', 'max_market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year', 'tech']
+        market_last_year[out_cols].to_csv(s, index = False, header = False)
+        # seek back to the beginning of the stringIO file
+        s.seek(0)
+        # copy the data from the stringio file to the postgres table
+        cur.copy_expert('COPY %(out_table)s FROM STDOUT WITH CSV' % inputs, s)
+        # commit the additions and close the stringio file (clears memory)
+        con.commit()    
+        s.close()
 
 
 def get_main_dataframe(con, sector_abbr, schema, year, techs):

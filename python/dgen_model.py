@@ -285,26 +285,21 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, choose_tech, techs)  
                     
                     # calculate diffusion based on economics and bass diffusion      
-                    df, market_last_year_combined = diffunc.calc_diffusion(df, year, sector)
-
-                    # save outputs from this year and update parameters for next solve  
-                    for tech in techs: #TODO: Remove this loop
-                        # filter results to only the current technology
-                        df_tech = df[df['tech'] == tech]
-                        market_last_year = market_last_year_combined[market_last_year_combined.tech == tech]
-                        
-                        # reeds stuff...
-                        if mode == 'ReEDS':
-                            if sector_abbr == 'res':
-                                market_last_year_res = market_last_year
-                            if sector_abbr == 'ind':
-                                market_last_year_ind = market_last_year
-                            if sector_abbr == 'com':
-                                market_last_year_com = market_last_year
-                        
-                        # write the incremental results to the database
-                        datfunc.write_outputs(con, cur, df_tech, sector_abbr, schema) 
-                        datfunc.write_last_year(con, cur, market_last_year, sector_abbr, schema, tech)
+                    df, market_last_year = diffunc.calc_diffusion(df, year, sector) 
+     
+                    # reeds stuff... # TODO: Refactor
+                    if mode == 'ReEDS':
+                        market_last_year_solar = market_last_year[market_last_year.tech == 'solar']
+                        if sector_abbr == 'res':
+                            market_last_year_res = market_last_year_solar
+                        if sector_abbr == 'ind':
+                            market_last_year_ind = market_last_year_solar
+                        if sector_abbr == 'com':
+                            market_last_year_com = market_last_year_solar
+                    
+                    # write the incremental results to the database
+                    datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
+                    datfunc.write_last_year(con, cur, market_last_year, sector_abbr, schema, techs)
                          
             #==============================================================================
             #    Outputs & Visualization
