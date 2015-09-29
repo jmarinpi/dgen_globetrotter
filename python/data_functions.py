@@ -516,7 +516,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     b.tilt, b.azimuth,
                     b.pct_developable, b.solar_re_9809_gid, 
                     b.density_w_per_sqft, b.inverter_lifetime_yrs, 
-                    b.available_roof_sqft, b.ground_cover_ratio,
+                    b.available_roof_sqft, b.bldg_size_class, b.ground_cover_ratio,
                                         
                     b.rate_escalation_factor,
                     
@@ -671,6 +671,75 @@ def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year,
             
             
         logger.info('\tTotal time to create agents for %s sector: %0.1fs' % (sector.lower(), t.interval)) 
+
+
+
+def check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_dir):
+    
+    inputs = locals().copy()    
+    
+    logger.info('Checking Agent Tech Potential Against State Tech Potential Limits')    
+    
+    for tech in techs:
+        if tech == 'wind':
+            logger.warning('\tTech potential limits are not available for distributed wind. Agents cannot be checked.')
+        elif tech == 'solar':
+            sql_list = []
+            for sector_abbr, sector in sectors.iteritems():
+                inputs['sector_abbr'] = sector_abbr
+                sql = """SELECT state_abbr, bldg_size_class, 
+                                sum(aep)/1e6 as gen_gwh,
+                                sum(available_roof_sqft)/10.7639 as area_m2,
+                                sum(system_size_kw)/1e6 as cap_gw
+                       FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
+                       WHERE year = 2014
+                       GROUP BY state_abbr, bldg_size_class""" % inputs
+                sql_list.append(sql)
+            inputs['sql_all'] = ' UNION ALL '.join(sql_list)
+            sql = """DROP TABLE IF EXISTS %(schema)s.agent_tech_potential_by_state_solar;
+                     CREATE UNLOGGED TABLE %(schema)s.agent_tech_potential_by_state_solar AS
+                     %(sql_all)s;""" % inputs
+            cur.execute(sql)
+            con.commit()
+            
+            # compare to known tech potential limits
+            sql = """DROP TABLE IF EXISTS %(schema)s.tech_potential_ratios_solar;
+                     CREATE TABLE %(schema)s.tech_potential_ratios_solar AS
+                    SELECT a.state_abbr, a.bldg_size_class,
+                            a.cap_gw/b.cap_gw as pct_of_tech_potential_capacity,
+                            a.gen_gwh/b.gen_gwh as pct_of_tech_potential_generation,
+                            a.area_m2/b.area_m2 as pct_of_tech_potential_area
+                     FROM %(schema)s.agent_tech_potential_by_state_solar a
+                     LEFT JOIN diffusion_solar.rooftop_tech_potential_limits_by_state  b
+                         ON a.state_abbr = b.state_abbr
+                         AND a.bldg_size_class = b.size_class""" % inputs
+            cur.execute(sql)
+            con.commit()
+                         
+            # find overages
+            sql = """SELECT *
+                     FROM %(schema)s.tech_potential_ratios_solar
+                         WHERE pct_of_tech_potential_capacity > 1
+                               OR pct_of_tech_potential_generation > 1
+                               OR pct_of_tech_potential_area > 1;""" % inputs
+            overage = pd.read_sql(sql, con)
+            
+            # report overages, if any
+            if overage.shape[0] > 0:
+                inputs['out_overage_csv'] = os.path.join(out_dir, 'tech_potential_overages_solar.csv')
+                logger.warning('\tModel tech potential exceeds actual tech potential for some states. See: %(out_overage_csv)s for details.' % inputs)                
+                overage.to_csv(inputs['out_overage_csv'], index = False, header = True)
+            else:
+                inputs['out_ratios_csv'] = os.path.join(out_dir, 'tech_potential_ratios_solar.csv')
+                logger.info('\tModel tech potential is within state tech potential limits. See: %(out_ratios_csv)s for details.' % inputs)
+                sql = """SELECT *
+                     FROM %(schema)s.tech_potential_ratios_solar""" % inputs
+                ratios = pd.read_sql(sql, con)
+                ratios.to_csv(inputs['out_ratios_csv'], index = False, header = True)
+            
+
+
+
 
 def cleanup_intermediate_tables(schema, sector_abbr, county_chunks, npar, pg_conn_string, cur, con, i_place_holder):
     
@@ -1246,6 +1315,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   density_w_per_sqft numeric,
                   inverter_lifetime_yrs integer,
                   available_roof_sqft integer,
+                  bldg_size_class character varying(6),
                   ground_cover_ratio numeric,
                   owner_occupancy_status integer
                 );""" % inputs
@@ -1292,6 +1362,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   c.year_end_excess_sell_rate_dlrs_per_kwh as ur_nm_yearend_sell_rate,
                   c.hourly_excess_sell_rate_dlrs_per_kwh as ur_flat_sell_rate,
                   a.available_roof_sqft,
+                  a.bldg_size_class,
                   a.ground_cover_ratio,
                   a.ownocc8,
                   --OPTIMAL SIZING ALGORITHM THAT RETURNS A SYSTEM SIZE AND NUMBER OF PANELS:
@@ -1347,6 +1418,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    density_w_per_sqft,
                    inverter_lifetime_yrs,
                    available_roof_sqft,
+                   bldg_size_class,
                    ground_cover_ratio,
                    ownocc8 as owner_occupancy_state
           FROM combined;""" % inputs
@@ -1392,6 +1464,14 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_crb_model_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(crb_model);  
+             
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_bldg_size_class_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
+             USING BTREE(bldg_size_class);  
+             
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_state_abbr_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
+             USING BTREE(state_abbr); 
              
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_load_kwh_per_customer_in_bin_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar

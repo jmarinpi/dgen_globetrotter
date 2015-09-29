@@ -235,3 +235,47 @@ SELECT unnest(array[True, False]) as flat_roof,
 -- add primary key
 ALTER TABLE diffusion_solar.rooftop_ground_cover_ratios
 ADD PRIMARY KEY (flat_roof);
+
+------------------------------------------------------------------------------------------
+-- Tech Potential Limits by State (from Pieter, Caleb, and Jenny)
+------------------------------------------------------------------------------------------
+DROP TABLE IF EXISTS diffusion_solar.rooftop_tech_potential_limits_by_state;
+CREATE TABLE diffusion_solar.rooftop_tech_potential_limits_by_state
+(
+	state_abbr character varying(2),
+	size_class character varying(6),
+	area_m2 numeric,
+	cap_gw numeric,
+	gen_gwh numeric
+);
+
+\COPY diffusion_solar.rooftop_tech_potential_limits_by_state FROM '/Volumes/Staff/mgleason/DG_Solar/Data/Source_Data/pv_rooftop_tech_potential/from_pgagnon_20150928/State_results_simplified_reformatted.csv' with csv header;
+
+-- add a primary key
+ALTER TABLE diffusion_solar.rooftop_tech_potential_limits_by_state
+ADD PRIMARY KEY (state_abbr, size_class);
+
+-- check three entries for each state
+select  state_abbr, count(*)
+from diffusion_solar.rooftop_tech_potential_limits_by_state
+group by state_abbr
+order by count desc;
+-- all set
+
+-- which states are missing?
+with a as
+(
+	select distinct state_abbr
+	from diffusion_shared.county_geom
+),
+b as
+(
+	select distinct state_abbr
+	from diffusion_solar.rooftop_tech_potential_limits_by_state 
+)
+select *
+FROM  a
+left join b
+on a.state_abbr = b.state_abbr
+where b.state_abbr is null;
+-- only alaska and hawaii are missing, which is fine for now
