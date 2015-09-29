@@ -584,7 +584,7 @@ def copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con):
     
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rscript_path, pg_params_file):
-
+    
     logger.info('\tCompiling Output Reports')
     
     # path to the plot_outputs R script        

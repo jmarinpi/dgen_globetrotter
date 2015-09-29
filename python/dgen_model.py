@@ -14,17 +14,20 @@ import pandas as pd
 import psycopg2.extras as pgx
 import numpy as np
 import glob
-import diffusion_functions as diffunc
-import financial_functions as finfunc
-reload(finfunc)
+# ---------------------------------------------
+# order of the next 3 needs to be maintained
+# otherwise the logger may not work correctly
 import data_functions as datfunc
 reload(datfunc)
+import diffusion_functions as diffunc
+reload(diffunc)
+import financial_functions as finfunc
+reload(finfunc)
+# ---------------------------------------------
 from data_objects import FancyDataFrame
 import subprocess
 import config as cfg
-import shutil
 import sys
-import pssc_mp
 import pickle
 from excel import excel_functions
 import tech_choice
@@ -272,13 +275,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id', 'bin_id', 'tech'])
                                         
                     # Calculate economics of adoption for different busines models
-                    with utilfunc.Timer() as t:
-                        df = finfunc.calc_economics(df, schema, sector, sector_abbr, 
-                                                   market_projections, financial_parameters, 
-                                                   scenario_opts, incentive_options, max_market_share, cur, con, year, 
-                                                   dsire_incentives, deprec_schedule, 
-                                                   ann_system_degradation, mode, curtailment_method, tech_lifetime = 25)
-                    logger.info('\tCompleted in: %0.1fs' % t.interval)
+                    df = finfunc.calc_economics(df, schema, sector, sector_abbr, 
+                                               market_projections, financial_parameters, 
+                                               scenario_opts, incentive_options, max_market_share, 
+                                               cur, con, year, dsire_incentives, deprec_schedule, 
+                                               ann_system_degradation, mode, curtailment_method, 
+                                               tech_lifetime = 25)
 
                     
                     # select from choices for business model and (optionally) technology

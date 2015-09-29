@@ -38,7 +38,12 @@ def which_max_npv4(group):
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind']):
         
-    logger.info("\t\tSelecting financing option and technology")    
+    if choose_tech == True:
+        msg = "\t\tSelecting Financing Option and Technology"
+    else:
+        msg = "\t\tSelecting Financing Option"
+        
+    logger.info(msg)    
     
     in_columns = df.columns.tolist()
 

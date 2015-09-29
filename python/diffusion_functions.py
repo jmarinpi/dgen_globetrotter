@@ -22,12 +22,12 @@ from config import show_times
 
 #==============================================================================
 # Load logger
-#logger = utilfunc.get_logger()
+logger = utilfunc.get_logger()
 #==============================================================================
 
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
-#@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def calc_diffusion(df, year, sector):
 
     ''' Calculates the market share (ms) added in the solve year. Market share must be less
@@ -42,7 +42,7 @@ def calc_diffusion(df, year, sector):
             market_last_year - pd dataframe - market to inform diffusion in next year
     '''
     
-#    logger.info("\t\tCalculating diffusion")    
+    logger.info("\t\tCalculating Diffusion")    
     
     df['diffusion_market_share'] = calc_diffusion_market_share(df) * df['selected_option'] # ensure no diffusion for non-selected options
    

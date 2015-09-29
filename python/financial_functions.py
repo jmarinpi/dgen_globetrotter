@@ -39,7 +39,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
             df - pd dataframe - main dataframe with econ outputs appended as columns
     '''
     
-    logger.info("\t\tCalculating system economics")
+    logger.info("\t\tCalculating System Economics")
     
     # Evaluate economics of leasing or buying for all customers who are able to lease
     business_model = pd.DataFrame({'business_model' : ('host_owned','tpo'), 
