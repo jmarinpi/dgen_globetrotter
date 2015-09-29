@@ -21,6 +21,7 @@ import decorators
 from config import show_times
 import utility_functions as utilfunc
 import shutil
+import pssc_mp
 
 #==============================================================================
 # Load logger
@@ -780,6 +781,53 @@ def cleanup_intermediate_tables(schema, sector_abbr, county_chunks, npar, pg_con
         else:
             cur.execute(isql)
             con.commit()        
+
+
+def calc_utility_bills(cur, con, schema, sectors, techs, npar, pg_conn_string, gross_fit_mode, local_cores):
+    logger.info("---------Calculating Energy Savings---------")
+                
+    for tech in techs:
+        # find all unique combinations of rates, load, and generation
+        
+            logger.info('Calculating Annual Electric Bill Savings for %s' % tech.title())
+            logger.info('\tFinding Unique Combinations of Rates, Load, and Generation')
+            get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors)         
+            # determine how many rate/load/gen combinations can be processed given the local memory resources
+            row_count_limit = get_max_row_count_for_utilityrate3()            
+            sam_results_list = []
+            # set up chunks
+            uid_lists = split_utilityrate3_inputs(row_count_limit, cur, con, schema, tech)
+            nbatches = len(uid_lists)
+            t0 = time.time()
+            logger.info("\tSAM calculations will be run in %s batches to prevent memory overflow" % nbatches)
+            for i, uids in enumerate(uid_lists): 
+                logger.info("\t\tWorking on SAM Batch %s of %s" % (i+1, nbatches))
+                # collect data for all unique combinations
+                logger.info('\t\t\tCollecting SAM Inputs')
+                t1 = time.time()
+                rate_input_df = get_utilityrate3_inputs(uids, cur, con, tech, schema, npar, 
+                                                        pg_conn_string, gross_fit_mode)
+                excess_gen_df = rate_input_df[['uid', 'excess_generation_percent', 'net_fit_credit_dollars']]
+                logger.info('\t\t\t\tCompleted in: %0.1fs' % (time.time() - t1))        
+                # calculate value of energy for all unique combinations
+                logger.info('\t\t\tCalculating Energy Savings Using SAM')
+                # run sam calcs
+                sam_results_df = pssc_mp.pssc_mp(rate_input_df,  local_cores)
+                logger.info('\t\t\t\tCompleted in: %0.1fs' % (time.time() - t1),)                                        
+                # append the excess_generation_percent and net_fit_credit_dollars to the sam_results_df
+                sam_results_df = pd.merge(sam_results_df, excess_gen_df, on = 'uid')
+
+                # adjust the elec_cost_with_system_year1 to account for the net_fit_credit_dollars
+                sam_results_df['elec_cost_with_system_year1'] = sam_results_df['elec_cost_with_system_year1'] - sam_results_df['net_fit_credit_dollars']              
+                sam_results_list.append(sam_results_df)
+                # drop the rate_input_df to save on memory
+                del rate_input_df, excess_gen_df
+       
+            # write results to postgres
+            logger.info("\tWriting SAM Results to Database")
+            write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech)
+            logger.info('\tTotal time to calculate all electric bills: %0.1fs' % (time.time() - t0),)  
+
 
 ########################################################################################################################
 ########################################################################################################################
