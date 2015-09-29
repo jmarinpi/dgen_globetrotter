@@ -183,6 +183,29 @@ SELECT b.year, b.state_abbr, b.sector_abbr, b.utility_type, b.system_size_limit_
 	b.year_end_excess_sell_rate_dlrs_per_kwh, b.hourly_excess_sell_rate_dlrs_per_kwh
 from b;
 
+-- create a view of the preloaded BAU scenario that backfills after expiration years
+-- with the user-defined flat sell rate
+DROP VIEW IF EXISTS diffusion_template.input_main_nem_bau_scenario;
+CREATE VIEW diffusion_template.input_main_nem_bau_scenario AS
+with b as
+(
+	select year, state_abbr, sector_abbr, utility_type,
+		system_size_limit_kw, year_end_excess_sell_rate_dlrs_per_kwh, hourly_excess_sell_rate_dlrs_per_kwh
+	FROM diffusion_shared.nem_scenario_bau
+)
+select c.year, c.state_abbr, c.sector_abbr, c.utility_type, c.system_size_limit_kw,
+	c.year_end_excess_sell_rate_dlrs_per_kwh, c.hourly_excess_sell_rate_dlrs_per_kwh
+from diffusion_template.input_main_nem_flat_sell_rates c
+left join b
+	ON b.year = c.year
+	AND b.state_abbr = c.state_abbr
+	AND b.sector_abbr = c.sector_abbr
+	AND b.utility_type = c.utility_type
+where b.year IS NULL
+UNION ALL
+SELECT b.year, b.state_abbr, b.sector_abbr, b.utility_type, b.system_size_limit_kw,
+	b.year_end_excess_sell_rate_dlrs_per_kwh, b.hourly_excess_sell_rate_dlrs_per_kwh
+from b;
 
 
 DROP VIEW IF EXISTS diffusion_template.input_main_nem_scenario;
@@ -190,7 +213,7 @@ CREATE VIEW diffusion_template.input_main_nem_scenario AS
 with a as
 (
 	SELECT *, 'BAU' as scenario
-	FROM diffusion_shared.nem_scenario_bau 
+	FROM diffusion_template.input_main_nem_bau_scenario
 	UNION ALL
 	SELECT *, 'Full Everywhere' as scenario
 	FROM diffusion_shared.nem_scenario_full_everywhere 
