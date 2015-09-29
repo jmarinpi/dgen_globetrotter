@@ -90,6 +90,23 @@ from unnest(array[
 	]);
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- solar rooftop data sources
+DROP TABLE IF EXISTS diffusion_config.sceninp_rooftop_data_source;
+CREATE TABLE diffusion_config.sceninp_rooftop_data_source
+(
+  val text unique not null
+);
+
+INSERT INTO diffusion_config.sceninp_rooftop_data_source
+select *
+from unnest(array[
+	'EIA Building Microdata',
+	'LIDAR (Optimal Plane Only)',
+	'LIDAR (Optimal Plane Blended)'
+	]);
+------------------------------------------------------------------------
+
 
 ------------------------------------------------------------------------
 -- model year range (end year and incentive start year)

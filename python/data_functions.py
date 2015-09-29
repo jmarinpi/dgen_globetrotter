@@ -603,7 +603,7 @@ def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rs
 
   
 
-def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year, end_year, rooftop_source, #TODO: Get rooftop source from postgres
+def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year, end_year,
                            npar, pg_conn_string, scenario_opts):
                                
 
@@ -661,7 +661,7 @@ def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year,
                 technology = 'solar'
                 logger.info('\tAttributing Agents with Solar Data')
                 generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                                   rate_escalation_source, load_growth_scenario, rooftop_source, resource_key, npar, pg_conn_string)  
+                                   rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string)  
         
             
             #==============================================================================
@@ -1098,8 +1098,14 @@ def find_rates(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, r
 
     logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
-def assign_roof_characteristics(inputs_dict, rooftop_source, county_chunks, npar, pg_conn_string):
-    
+def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string, con):
+     
+   
+    # get the rooftop source
+    sql = """SELECT * 
+             FROM %(schema)s.input_solar_rooftop_source;""" % inputs_dict
+    rooftop_source_df = pd.read_sql(sql, con)
+    rooftop_source = rooftop_source_df['rooftop_source'].iloc[0]
    
     if rooftop_source == 'recs_cbecs':
         #=============================================================================================================
@@ -1226,7 +1232,7 @@ def assign_roof_characteristics(inputs_dict, rooftop_source, county_chunks, npar
 
 
 def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sector_abbr, sector, start_year, end_year, county_chunks,
-                           rate_escalation_source, load_growth_scenario, rooftop_source, resource_key, npar, pg_conn_string):
+                           rate_escalation_source, load_growth_scenario, resource_key, npar, pg_conn_string):
 
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()  
@@ -1239,7 +1245,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     msg = "\t\tAssigning Rooftop Characteristics"
     logger.info(msg)
     t0 = time.time()
-    assign_roof_characteristics(inputs, rooftop_source, county_chunks, npar, pg_conn_string)
+    assign_roof_characteristics(inputs, county_chunks, npar, pg_conn_string, con)
     logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0)) 
 
     #==============================================================================

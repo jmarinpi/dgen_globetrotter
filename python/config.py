@@ -95,13 +95,3 @@ alpha_lkup = pd.DataFrame({'tech' : ['solar', 'solar', 'wind', 'wind'],
 })
 
 
-# *****************************************************************************
-# *****************************************************************************
-#  INPUTS TO BE MOVED TO EXCEL INPUT SHEET ------
-
-#==============================================================================
-#  Source of rooftop configuration data
-#==============================================================================
-#rooftop_source = 'recs_cbecs'
-#rooftop_source = 'optimal_only'
-rooftop_source = 'optimal_blended'
