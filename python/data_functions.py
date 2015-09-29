@@ -681,6 +681,7 @@ def check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_di
     logger.info('Checking Agent Tech Potential Against State Tech Potential Limits')    
     
     for tech in techs:
+        inputs['tech'] = tech
         if tech == 'wind':
             logger.warning('\tTech potential limits are not available for distributed wind. Agents cannot be checked.')
         elif tech == 'solar':
@@ -734,11 +735,11 @@ def check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_di
             # report overages, if any
             if overage.shape[0] > 0:
                 inputs['out_overage_csv'] = os.path.join(out_dir, 'tech_potential_overages_solar.csv')
-                logger.warning('\tModel tech potential exceeds actual tech potential for some states. See: %(out_overage_csv)s for details.' % inputs)                
+                logger.warning('\tModel tech potential exceeds actual %(tech)s tech potential for some states. See: %(out_overage_csv)s for details.' % inputs)                
                 overage.to_csv(inputs['out_overage_csv'], index = False, header = True)
             else:
                 inputs['out_ratios_csv'] = os.path.join(out_dir, 'tech_potential_ratios_solar.csv')
-                logger.info('\tModel tech potential is within state tech potential limits. See: %(out_ratios_csv)s for details.' % inputs)
+                logger.info('\tModel tech potential is within state %(tech)s tech potential limits. See: %(out_ratios_csv)s for details.' % inputs)
                 sql = """SELECT *
                      FROM %(schema)s.tech_potential_ratios_solar""" % inputs
                 ratios = pd.read_sql(sql, con)

@@ -1,9 +1,10 @@
 ﻿set role 'diffusion-writers';
 
-DROP TABLE IF EXISTS diffusion_template.input_main_scenario_options;
+DROP TABLE IF EXISTS diffusion_template.input_main_scenario_options CASCADE;
 CREATE TABLE diffusion_template.input_main_scenario_options
 (
 	scenario_name text NOT NULL,
+	tech_choice boolean not null,
 	run_wind boolean not null,
 	run_solar boolean not null,
 	region text NOT NULL,

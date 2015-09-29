@@ -156,10 +156,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
             # read in high level scenario settings
             scenario_opts = datfunc.get_scenario_options(cur, schema) 
-            scen_name = scenario_opts['scenario_name']
+            scen_name = scenario_opts['scenario_name'] 
             sectors = datfunc.get_sectors(cur, schema)
             techs = datfunc.get_technologies(con, schema)
             end_year = scenario_opts['end_year']
+            choose_tech = scenario_opts['tech_choice']
+            
+            # if in tech choice mode, check that multiple techs are available
+            if choose_tech == True and len(techs) == 1:
+                logger.error("Cannot run Tech Choice Mode with only one technology")
+                logger.error("Model aborted")
+                sys.exit(-1)
             
             # summarize high level secenario settings 
             logger.info('Scenario Settings:')
@@ -168,6 +175,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('\tSectors: %s' % sectors.values())
             logger.info('\tTechnologies: %s' % techs)
             logger.info('\tYears: %s - %s' % (cfg.start_year, end_year))
+            logger.info('\tTech Choice Mode Enabled: %s' % choose_tech)
             
             # reeds stuff..
             if mode == 'ReEDS' and scenario_opts['region'] != 'United States':
@@ -319,7 +327,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     
                     # select from choices for business model and (optionally) technology
-                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, cfg.choose_tech, techs)  
+                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, choose_tech, techs)  
                     
                     # calculate diffusion based on economics and bass diffusion      
                     df, market_last_year_combined = diffunc.calc_diffusion(df, year, sector)
