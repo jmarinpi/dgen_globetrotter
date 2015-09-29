@@ -1,7 +1,7 @@
 ﻿SET ROLE 'diffusion-writers';
 
-DROP VIEW IF EXISTS diffusion_wind.incentives;
-CREATE OR REPLACE VIEW diffusion_wind.incentives AS 
+DROP TABLE IF EXISTS diffusion_wind.incentives;
+CREATE TABLE diffusion_wind.incentives AS 
          SELECT uid, incentive_id, 
             wind_increment_1_capacity_kw AS increment_1_capacity_kw, 
             wind_increment_2_capacity_kw AS increment_2_capacity_kw, 
@@ -128,10 +128,23 @@ UNION ALL
            FROM geo_incentives.wind_incentives
           WHERE is_com = true;
 
+-- add primary key
+ALTER TABLE diffusion_wind.incentives
+ADD PRIMARY KEY (uid, sector_abbr);
+
+-- add indices on those two feilds separately
+CREATE INDEX incentives_uid_btree
+ON diffusion_wind.incentives
+using BTREE(uid);
+
+CREATE INDEX incentives_sector_abbr_btree
+ON diffusion_wind.incentives
+using BTREE(sector_abbr);
+
 ------------------------------------------------------------------------------------------------------------------------
 
-DROP VIEW IF EXISTS diffusion_solar.incentives;
-CREATE OR REPLACE VIEW diffusion_solar.incentives AS 
+DROP TABLE IF EXISTS diffusion_solar.incentives;
+CREATE TABLE diffusion_solar.incentives AS 
          SELECT uid, incentive_id, 
             pv_res_increment_1_capacity_kw as increment_1_capacity_kw,
 	    pv_res_increment_2_capacity_kw as increment_2_capacity_kw,
@@ -257,3 +270,16 @@ UNION ALL
             'industrial'::text as sector
            FROM geo_incentives.pv_incentives
           WHERE is_com = true;
+
+-- add primary key
+ALTER TABLE diffusion_solar.incentives
+ADD PRIMARY KEY (uid, sector_abbr);
+
+-- add indices on those two feilds separately
+CREATE INDEX incentives_uid_btree
+ON diffusion_solar.incentives
+using BTREE(uid);
+
+CREATE INDEX incentives_sector_abbr_btree
+ON diffusion_solar.incentives
+using BTREE(sector_abbr);
