@@ -29,13 +29,13 @@ CREATE TABLE diffusion_template.input_main_scenario_options
 		ON DELETE RESTRICT,
 	-- max market curves
 	CONSTRAINT input_main_scenario_options_com_max_market_curve_fkey FOREIGN KEY (com_max_market_curve)
-		REFERENCES diffusion_config.sceninp_max_market_curve (val) MATCH SIMPLE
+		REFERENCES diffusion_config.sceninp_max_market_curve_nonres (val) MATCH SIMPLE
 		ON DELETE RESTRICT,
 	CONSTRAINT input_main_scenario_options_res_max_market_curve_fkey FOREIGN KEY (res_max_market_curve)
-		REFERENCES diffusion_config.sceninp_max_market_curve (val) MATCH SIMPLE
+		REFERENCES diffusion_config.sceninp_max_market_curve_res (val) MATCH SIMPLE
 		ON DELETE RESTRICT,
 	CONSTRAINT input_main_scenario_options_ind_max_market_curve_fkey FOREIGN KEY (ind_max_market_curve)
-		REFERENCES diffusion_config.sceninp_max_market_curve (val) MATCH SIMPLE
+		REFERENCES diffusion_config.sceninp_max_market_curve_nonres (val) MATCH SIMPLE
 		ON DELETE RESTRICT,
 	-- rate escalations
 	CONSTRAINT input_main_scenario_options_com_rate_escalation_fkey FOREIGN KEY (com_rate_escalation)

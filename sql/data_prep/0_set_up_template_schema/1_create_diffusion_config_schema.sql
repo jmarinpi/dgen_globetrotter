@@ -19,19 +19,38 @@ from unnest(array[
 
 
 ------------------------------------------------------------------------
--- max market curve
-DROP TABLE IF EXISTS diffusion_config.sceninp_max_market_curve;
-CREATE TABLE diffusion_config.sceninp_max_market_curve
+-- max market curve (residential)
+DROP TABLE IF EXISTS diffusion_config.sceninp_max_market_curve_res;
+CREATE TABLE diffusion_config.sceninp_max_market_curve_res
 (
   val text unique not null
 );
 
-INSERT INTO diffusion_config.sceninp_max_market_curve
+INSERT INTO diffusion_config.sceninp_max_market_curve_res
 select *
 from unnest(array[
 	'NEMS',
 	'Navigant',
-	'User Fit',
+	'RW Beck',
+	'NREL'
+	]);
+------------------------------------------------------------------------
+
+
+
+------------------------------------------------------------------------
+-- max market curve (residential)
+DROP TABLE IF EXISTS diffusion_config.sceninp_max_market_curve_nonres;
+CREATE TABLE diffusion_config.sceninp_max_market_curve_nonres
+(
+  val text unique not null
+);
+
+INSERT INTO diffusion_config.sceninp_max_market_curve_nonres
+select *
+from unnest(array[
+	'NEMS',
+	'Navigant',
 	'RW Beck'
 	]);
 ------------------------------------------------------------------------

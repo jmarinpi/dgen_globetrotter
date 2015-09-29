@@ -54,33 +54,6 @@ SELECT 'Industrial'::text as sector, *
 FROM diffusion_template.input_wind_finances_ind;
 
 
-DROP TABLE IF EXISTS diffusion_template.input_wind_finances_max_market_share_raw;
-CREATE TABLE diffusion_template.input_wind_finances_max_market_share_raw
-(
-	year integer NOT NULL,
-	new_res numeric NOT NULL,
-	retrofit_res numeric NOT NULL,
-	new_com numeric NOT NULL,
-	retrofit_com numeric NOT NULL,
-	new_ind numeric NOT NULL,
-	retrofit_ind numeric NOT NULL
-);
-
-DROP VIEW IF EXISTS diffusion_template.input_wind_finances_max_market_share;
-CREATE VIEW diffusion_template.input_wind_finances_max_market_share AS
-SELECT  year, 'residential'::text as sector, 
-	new_res as new, retrofit_res as retrofit
-FROM diffusion_template.input_wind_finances_max_market_share_raw
-UNION ALL
-SELECT  year, 'commercial'::text as sector, 
-	new_com as new, retrofit_com as retrofit
-FROM diffusion_template.input_wind_finances_max_market_share_raw
-UNION ALL
-SELECT  year, 'industrial'::text as sector, 
-	new_ind as new, retrofit_ind as retrofit
-FROM diffusion_template.input_wind_finances_max_market_share_raw;
-
-
 DROP TABLE IF EXIStS diffusion_template.input_wind_finances_depreciation_schedule;
 CREATE TABLE diffusion_template.input_wind_finances_depreciation_schedule
 (
