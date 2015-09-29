@@ -154,21 +154,8 @@ CREATE INDEX outputs_ind_join_fields_btree ON diffusion_template.outputs_ind USI
 ------------------------------------------------------------------------------------------------------------
 -- tables to hold results from each previous model year 
 
-DROP TABLE IF EXISTS diffusion_template.output_wind_market_last_year;
-CREATE TABLE diffusion_template.output_wind_market_last_year
-(
-	county_id INTEGER,
-	bin_id INTEGER,
-	market_share_last_year NUMERIC,
-	max_market_share_last_year NUMERIC,
-	number_of_adopters_last_year NUMERIC,
-	installed_capacity_last_year NUMERIC,
-	market_value_last_year NUMERIC,
-	tech text
-);
-
-DROP TABLE IF EXISTS diffusion_template.output_solar_market_last_year;
-CREATE TABLE diffusion_template.output_solar_market_last_year
+DROP TABLE IF EXISTS diffusion_template.output_market_last_year;
+CREATE TABLE diffusion_template.output_market_last_year
 (
 	county_id INTEGER,
 	bin_id INTEGER,
