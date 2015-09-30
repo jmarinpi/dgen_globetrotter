@@ -420,7 +420,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source, 
                     b.ur_enable_net_metering, b.nem_system_size_limit_kw,
                     b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,
-                    b.naep, b.aep, b.system_size_kw,
+                    b.naep/8760 as cf, b.naep, b.aep, b.system_size_kw,
                     CASE WHEN b.turbine_size_kw = 1500 AND b.nturb > 1 THEN '1500+'::TEXT 
                     ELSE b.turbine_size_kw::TEXT 
                     END as system_size_factors,
@@ -514,7 +514,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source, 
                     b.ur_enable_net_metering, b.nem_system_size_limit_kw,
                     b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,   
-                    b.naep, b.aep, b.system_size_kw, 
+                    b.naep/8760 as cf, b.naep, b.aep, b.system_size_kw, 
                     r_cut(b.system_size_kw, ARRAY[0,2.5,5.0,10.0,20.0,50.0,100.0,250.0,500.0,750.0,1000.0,1500.0]) 
                         as system_size_factors,
                     b.npanels, 
@@ -589,9 +589,9 @@ def combine_output_view(schema, cur, con, techs):
                         initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, crb_model, 
                         max_demand_kw, rate_id_alias, rate_source, ur_enable_net_metering, 
                         nem_system_size_limit_kw, ur_nm_yearend_sell_rate, ur_flat_sell_rate, 
-                        naep, aep, system_size_kw, system_size_factors, rate_escalation_factor, 
-                        cost_of_elec_dols_per_kwh, initial_market_share, 
-                        initial_number_of_adopters, initial_capacity_mw, naep/8760 as cf
+                        cf, naep, aep, system_size_kw, system_size_factors, 
+                        rate_escalation_factor, cost_of_elec_dols_per_kwh, 
+                        initial_market_share, initial_number_of_adopters, initial_capacity_mw
                  FROM %(schema)s.outputs_all_%(tech)s""" % inputs
         sql_list.append(sql)
     

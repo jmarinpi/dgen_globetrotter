@@ -198,7 +198,7 @@ lcoe_contour<-function(df, schema, tech, start_year, end_year, dr = 0.05, n = 30
   d[d$lcoe == 0.7 , 'cf_min'] <- 0
   
   # Subset of model points for first and last year
-  sql = sprintf("SELECT * FROM %s.outputs_all_%s AND year in (%s,%s) ORDER BY RANDOM() LIMIT 1000", schema, tech, start_year, end_year)
+  sql = sprintf("SELECT * FROM %s.outputs_all_%s WHERE year in (%s,%s) ORDER BY RANDOM() LIMIT 1000", schema, tech, start_year, end_year)
   f = tbl(src,sql(sql))       
   pts = collect(select(f, installed_costs_dollars_per_kw,naep,year))
   pts$present_value_factor <- present_value_factor
@@ -1039,7 +1039,7 @@ make_npv_supply_curve = function(df, by_load = T, by_tech = F, years = c(2014,20
 make_npv_supply_curve_by_sector = function(df, years = 2014){
   
   data = select(df, year, npv4, load_kwh_in_bin, naep,sector) %>%
-    filter(year == years) %>%
+    filter(year == years & naep > 0) %>%
     group_by(year) %>%
     arrange(desc(npv4)) %>%
     mutate(load_xmax = cumsum(load_kwh_in_bin/naep/1e6)) %>%
@@ -1067,7 +1067,7 @@ make_npv_supply_curve_by_sector = function(df, years = 2014){
 make_lcoe_supply_curve = function(df, years = c(2014,2020,2030,2040,2050)){
   
   data = select(df, year, lcoe, load_kwh_in_bin, naep,sector) %>%
-    filter(year %in% years) %>%
+    filter(year %in% years & naep > 0) %>%
     group_by(year) %>%
     arrange(lcoe) %>%
     mutate(load_xmax = cumsum(load_kwh_in_bin/naep/1e6)) %>%
