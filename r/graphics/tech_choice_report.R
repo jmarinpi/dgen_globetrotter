@@ -17,11 +17,11 @@ library(gtable, quietly = T)
 
 ################################################################################################
 # use for testing/debugging only:
-setwd('/Users/mgleason/NREL_Projects/github/diffusion/python')
-runpath = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20150930_100229/BAU'
-scen_name = 'BAU'
-schema = 'diffusion_results_2015_09_29_16h53m03s'
-pg_params_file = 'pg_params_db.json'
+# setwd('/Users/mgleason/NREL_Projects/github/diffusion/python')
+# runpath = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20150930_100229/BAU'
+# scen_name = 'BAU'
+# schema = 'diffusion_results_2015_09_29_16h53m03s'
+# pg_params_file = 'pg_params_db.json'
 ################################################################################################
 
 source("../r/maps/r2js/r2js.R")
@@ -29,10 +29,8 @@ source("../r/graphics/output_funcs.R")
 
 runpath<-commandArgs(T)[1]
 scen_name<-commandArgs(T)[2]
-tech = commandArgs(T)[3]
-schema = commandArgs(T)[4]
-pg_params_file = commandArgs(T)[5]
-
+schema = commandArgs(T)[3]
+pg_params_file = commandArgs(T)[4]
 
 
 # get pg connection params

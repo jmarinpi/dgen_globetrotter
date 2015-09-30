@@ -380,7 +380,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()   
 
-    sql = '''DROP TABLE IF EXISTS %(schema)s.outputs_all_wind;
+    sql = '''DROP TABLE IF EXISTS %(schema)s.outputs_all_wind CASCADE;
             CREATE UNLOGGED TABLE %(schema)s.outputs_all_wind AS  ''' % inputs  
     
     for i, sector_abbr in enumerate(sectors.keys()):
@@ -470,7 +470,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()   
 
-    sql = '''DROP TABLE IF EXISTS %(schema)s.outputs_all_solar;
+    sql = '''DROP TABLE IF EXISTS %(schema)s.outputs_all_solar CASCADE;
             CREATE UNLOGGED TABLE %(schema)s.outputs_all_solar AS  ''' % inputs  
     
     for i, sector_abbr in enumerate(sectors.keys()):
@@ -627,7 +627,10 @@ def copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con):
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rscript_path, pg_params_file):
     
-    logger.info('\tCompiling Output Reports')
+    if len(techs) > 1:
+        logger.info('\tCompiling Output Reports')
+    else:
+        logger.info('\tCompiling Output Report')
     
     # path to the plot_outputs R script        
     plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
@@ -644,6 +647,24 @@ def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rs
         if 'warning' in messages[1].lower():
             logger.warning(messages[1])
 
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def create_tech_choice_report(choose_tech, schema, scen_name, out_scen_path, cur, con, Rscript_path, pg_params_file):
+    
+    if choose_tech == True:
+        logger.info('\tCompiling Technology Choice Report')        
+    
+    # path to the plot_outputs R script        
+    plot_outputs_path = '%s/r/graphics/tech_choice_report.R' % os.path.dirname(os.getcwd())        
+        
+    #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
+    # for linux and mac, this needs to be formatted as a list of args passed to subprocess
+    command = [Rscript_path,'--vanilla', plot_outputs_path, out_scen_path, scen_name, schema, pg_params_file]
+    proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    messages = proc.communicate()
+    if 'error' in messages[1].lower():
+        logger.error(messages[1])
+    if 'warning' in messages[1].lower():
+        logger.warning(messages[1])
   
 
 def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year, end_year,

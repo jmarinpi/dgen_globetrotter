@@ -314,6 +314,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 # create output html report                
                 datfunc.create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, cfg.Rscript_path, cfg.pg_params_file)
+                
+                # create tech choice report (if applicable)
+                datfunc.create_tech_choice_report(choose_tech, schema, scen_name, out_scen_path, cur, con, cfg.Rscript_path, cfg.pg_params_file)
 
                                 
             if mode == 'ReEDS':
