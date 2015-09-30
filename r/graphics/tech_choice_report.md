@@ -26,3 +26,20 @@ out$national_adopters_trends_bar
 npv4_by_year(df, by_tech = T)
 
 ```
+# Resource
+```{r Resource}
+df_cf = mutate(df, v = cf)
+boxplot_by_year(df_cf, 'Capacity Factor', by_tech = T, adopters_only = T, label = percent)
+
+df_elec_costs = mutate(df, v = cost_of_elec_dols_per_kwh)
+boxplot_by_year(df_elec_costs, 'Cost of Electricity ($/kwh)', by_tech = T, adopters_only = T, label = dollar)
+
+df_sys_size = mutate(df, v = system_size_kw)
+boxplot_by_year(df_sys_size, 'System Sizes (kw)', by_tech = T, adopters_only = T, label = comma)
+
+df_load = mutate(df, v = load_kwh_per_customer_in_bin)
+boxplot_by_year(df_load, 'Annual Customer Load (kwh)', by_tech = T, adopters_only = T, label = comma)
+
+df_incentives = mutate(df, v = total_value_of_incentives/system_size_kw)
+boxplot_by_year(df_incentives, 'Value of Incentives per kW ($/kW)', by_tech = T, adopters_only = T, label = dollar)
+```

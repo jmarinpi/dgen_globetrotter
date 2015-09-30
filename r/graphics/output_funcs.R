@@ -397,6 +397,149 @@ npv4_by_year <-function(df, by_tech = F){
   grid.draw(g)
 }
 
+boxplot_stats = function(x, stat = NA){
+  b = boxplot(x, plot = F)
+  stats = as.numeric(b$stats)
+  names(stats) = c('lw', 'lq', 'm', 'uq', 'uw')
+  if (!is.na(stat)){
+    return(stats[stat])
+  } else {
+    return(stats)
+  }
+}
+
+# ----------------------------------------
+# Authors: Stefan Kraft and Andreas Alfons
+#          Vienna University of Technology
+# ----------------------------------------
+
+spBwplotStats <- function(x, weights = NULL, coef = 1.5, 
+                          zeros = TRUE, do.out = TRUE) {
+  # initializations
+  if(!is.numeric(x)) stop("'x' must be a numeric vector")
+  if(!is.numeric(coef) || length(coef) != 1 || coef < 0) {
+    stop("'coef' must be a single non-negative number")
+  }
+  # get quantiles
+  if(isTRUE(zeros)) {
+    zero <- ifelse(is.na(x), FALSE, x == 0)
+    x <- x[!zero]
+    if(is.null(weights)) nzero <- sum(zero)
+    else {
+      # if 'zeros' is not TRUE, these checks are done in 'quantileWt'
+      # but here we need them since we use subscripting
+      if(!is.numeric(weights)) stop("'weights' must be a numeric vector")
+      else if(length(weights) != length(zero)) {
+        stop("'weights' must have the same length as 'x'")
+      }
+      nzero <- sum(weights[zero])
+      weights <- weights[!zero]
+    }
+  } else nzero <- NULL
+  ok <- !is.na(x)
+  n <- if(is.null(weights)) sum(ok) else sum(weights[ok])
+  if(n == 0) stats <- rep.int(NA, 5)
+  else stats <- quantileWt(x, weights)
+  iqr <- diff(stats[c(2, 4)])  # inter quartile range
+  if(coef == 0) do.out <- FALSE
+  else {
+    if(is.na(iqr)) out <- is.infinite(x) 
+    else {
+      lower <- stats[2] - coef * iqr
+      upper <- stats[4] + coef * iqr
+      out <- ifelse(ok, x < lower | x > upper, FALSE)
+    }
+    if(any(out)) stats[c(1, 5)] <- range(x[!out], na.rm=TRUE)
+  }
+  res <- list(stats=stats, n=n, nzero=nzero, 
+              out=if(isTRUE(do.out)) x[out] else numeric())
+  class(res) <- "spBwplotStats"
+  res
+}
+
+quantileWt <- function(x, weights = NULL, 
+                       probs = seq(0, 1, 0.25), na.rm = TRUE) {
+  # initializations
+  if(!is.numeric(x)) stop("'x' must be a numeric vector")
+  x <- unname(x)  # unlike 'quantile', this never returns a named vector
+  if(is.null(weights)) {
+    return(quantile(x, probs, na.rm=na.rm, names=FALSE, type=1))
+  } else if(!is.numeric(weights)) stop("'weights' must be a numeric vector")
+  else if(length(weights) != length(x)) {
+    stop("'weights' must have the same length as 'x'")
+  } else if(!all(is.finite(weights))) stop("missing or infinite weights")
+  if(!is.numeric(probs) || all(is.na(probs)) || 
+       isTRUE(any(probs < 0 | probs > 1))) {
+    stop("'probs' must be a numeric vector with values in [0,1]")
+  }
+  if(length(x) == 0) return(rep.int(NA, length(probs)))
+  if(!isTRUE(na.rm) && any(is.na(x))) {
+    stop("missing values and NaN's not allowed if 'na.rm' is not TRUE")
+  }
+  # sort values and weights
+  ord <- order(x, na.last=NA)
+  x <- x[ord]
+  weights <- weights[ord]
+  # some preparations
+  rw <- cumsum(weights)/sum(weights)
+  rm <- rw / rw[length(rw)]
+  rw[length(rw)] <- 1  # just to make sure
+  # obtain quantiles
+  select <- sapply(probs, function(p) min(which(rw >= p)))
+  q <- x[select]
+  return(q)
+}
+
+# # ----------------------------------------
+
+
+boxplot_by_year = function(df, title, by_tech = F, adopters_only = T, label = NULL){
+  
+  if (adopters_only == T){
+    f = filter(df, new_adopters > 0)    
+  } else {
+    f = df
+  }
+
+  if (by_tech == T){
+    g = group_by(f, year, sector, tech)
+  } else {
+    g = group_by(f, year, sector)
+  }
+
+  s = summarize(g, lw = r_boxplot_stats(array_agg(v), 'lw'),
+               lq = r_boxplot_stats(array_agg(v), 'lq'),
+               m = r_boxplot_stats(array_agg(v), 'm'),
+               uq = r_boxplot_stats(array_agg(v), 'uq'),
+               uw = r_boxplot_stats(array_agg(v), 'uw')
+            ) %>% collect()
+  s = as.data.frame(s)
+  
+  if (by_tech == T){
+    s$tech = simpleCap(s$tech)
+    x_var = 'tech'
+    facet_formula = 'sector ~ year'
+    color_var = 'tech'
+    colors = tech_col
+  } else {
+    x_var = 'year'
+    facet_formula = '~ sector'
+    color_var = 'sector'
+    colors = sector_col
+  }
+  s$sector = sector2factor(s$sector)
+  s$year = as.factor(s$year)
+  
+  ggplot(data = s) +
+    geom_boxplot(aes_string(x = x_var, ymin = 'lw', lower = 'lq', middle = 'm', upper = 'uq', ymax = 'uw', fill = color_var), stat = 'identity') +
+    facet_grid(facet_formula, scales = 'fixed') +
+    scale_fill_manual(name = simpleCap(color_var), values = colors) +
+    scale_y_continuous(name = title, label = label) +
+    scale_x_discrete(name = simpleCap(x_var)) +
+    standard_formatting +
+    ggtitle(sprintf('Range of %s by Sector and Year (Adopters Only)', title))
+  
+}
 
 
 

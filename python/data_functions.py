@@ -587,7 +587,7 @@ def combine_output_view(schema, cur, con, techs):
                         nem_system_size_limit_kw, ur_nm_yearend_sell_rate, ur_flat_sell_rate, 
                         naep, aep, system_size_kw, system_size_factors, rate_escalation_factor, 
                         cost_of_elec_dols_per_kwh, initial_market_share, 
-                        initial_number_of_adopters, initial_capacity_mw
+                        initial_number_of_adopters, initial_capacity_mw, naep/8760 as cf
                  FROM %(schema)s.outputs_all_%(tech)s""" % inputs
         sql_list.append(sql)
     
