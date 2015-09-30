@@ -82,70 +82,12 @@ sep = "", collapse = " " )
 sapply(strsplit(s, split = " "), cap, USE.NAMES = !is.null(names(s)))
 }
 
+################################################################################################################################
+################################################################################################################################
 
 
-mean_value_by_state_table<-function(df,val){
-  # Create table of mean value by year and state. value is string of variable to take mean of. 
-  val = as.symbol(val)
-  g = group_by(df, year, state_abbr)
-  by_state = collect(summarise(g,
-                               round(mean(val),as.integer(2))
-                              )
-                     )
-  names(by_state)<-c('year','State',val)
-  g = group_by(df, year)
-  national = collect(summarise(g,
-                               round(mean(val),as.integer(2))
-                              )
-                     )
-  national$State<-'U.S'
-  names(national)<-c('year',val,'State')
-  by_state<-dcast(data = by_state,formula= State ~ year, value.var = as.character(val))
-  national<-dcast(data = national,formula= State ~ year, value.var = as.character(val))
-  rbind(national,by_state)
-}
 
-total_value_by_state_table<-function(df, val, unit_factor = 1, by_tech = F){
-  # Create table of summed value by year and state. value is string of variable to take sum over.
-  # Use unit_factor to convert units if needed i.e. unit_factor = 1e-6 will convert kW to GW
-  val_symb = as.symbol(val)
-  if (by_tech == T){
-    g = group_by(df, year, state_abbr, tech)
-  } else {
-    g = group_by(df, year, state_abbr)
-  }
-  by_state = as.data.frame(collect(summarise(g, sum(val_symb * unit_factor))))
-  names(by_state)[ncol(by_state)] = val
-  names(by_state)[which(names(by_state) == 'state_abbr')] = 'State'
-  
-  if (by_tech == T){
-    g = group_by(by_state, year, tech)    
-  } else {
-    g = group_by(by_state, year)    
-  }
-  
-  national = summarise(g, 
-                       sum(val_symb))
-  
-  names(national)[ncol(national)] = val
-  national$State ='U.S'
-  
-  
-  # round the results
-  by_state[, val] = round(by_state[, val], 2)
-  national[, val] = round(national[, val], 2)
-  by_state = dcast(data = by_state, formula= State + tech ~ year, value.var =  val)
-  national = dcast(data = national, formula= State + tech ~ year, value.var =  val)
-  
-  result_df = rbind(national,by_state)
-  
-  return(result_df)
-}
 
-create_report <- function(runpath) {
-  knit2html("../r/graphics/plot_outputs.md", output = "DG Wind report.html", title = "DG Wind report", stylesheet = "plot_outputs.css",
-            options = c("hard_wrap", "use_xhtml", "base64_images", "toc = yes"))
-}
 
 
 
@@ -501,10 +443,6 @@ scenario_opts_table<-function(con, schema){
   print_table(table, caption = 'Scenario Options')    
 }
 
-# Shortcut to print tables in nicely formatted HTML
-print_table <- function(...){
-  print(xtable(...), type = "html", include.rownames = FALSE, caption.placement = "top", comment = getOption("xtable.comment", F))
-}
 
 national_installed_capacity_by_system_size_bar<-function(df,tech){
   

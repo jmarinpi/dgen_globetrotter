@@ -558,6 +558,46 @@ def combine_outputs_solar(schema, sectors, cur, con):
     con.commit()
 
 
+def combine_output_view(schema, cur, con, techs):
+    
+    inputs = locals().copy()
+    
+    sql_list = []
+    for tech in techs:
+        inputs['tech'] = tech
+        sql = """SELECT tech, sector, micro_id, county_id, bin_id, year, business_model,
+                        loan_term_yrs, loan_rate, down_payment, discount_rate, tax_rate,
+                        length_of_irr_analysis_yrs, market_share_last_year, 
+                        number_of_adopters_last_year, installed_capacity_last_year, 
+                        market_value_last_year, value_of_increment, value_of_pbi_fit, 
+                        value_of_ptc, pbi_fit_length, ptc_length, value_of_rebate, 
+                        value_of_tax_credit_or_deduction, ic, metric, metric_value, 
+                        lcoe, max_market_share, diffusion_market_share, new_market_share,
+                        new_adopters, new_capacity, new_market_value, market_share, 
+                        number_of_adopters, installed_capacity, market_value, 
+                        first_year_bill_with_system, first_year_bill_without_system, 
+                        npv4, excess_generation_percent, total_value_of_incentives, 
+                        state_abbr, census_division_abbr, utility_type, hdf_load_index, 
+                        pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, 
+                        carbon_price_cents_per_kwh, fixed_om_dollars_per_kw_per_yr, 
+                        variable_om_dollars_per_kwh, installed_costs_dollars_per_kw, 
+                        customers_in_bin, initial_customers_in_bin, load_kwh_in_bin, 
+                        initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, crb_model, 
+                        max_demand_kw, rate_id_alias, rate_source, ur_enable_net_metering, 
+                        nem_system_size_limit_kw, ur_nm_yearend_sell_rate, ur_flat_sell_rate, 
+                        naep, aep, system_size_kw, system_size_factors, rate_escalation_factor, 
+                        cost_of_elec_dols_per_kwh, initial_market_share, 
+                        initial_number_of_adopters, initial_capacity_mw
+                 FROM %(schema)s.outputs_all_%(tech)s""" % inputs
+        sql_list.append(sql)
+    
+    inputs['sql_combined'] = ' UNION ALL '.join(sql_list)
+    sql = """DROP VIEW IF EXISTS %(schema)s.outputs_all;
+              CREATE VIEW %(schema)s.outputs_all AS
+              %(sql_combined)s;""" % inputs
+    cur.execute(sql)
+    con.commit()
+
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con):
     
@@ -568,6 +608,8 @@ def copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con):
 
     if 'solar' in techs:
         combine_outputs_solar(schema, sectors, cur, con)        
+
+    combine_output_view(schema, cur, con, techs)
 
     # copy data to csv
     for tech in techs:
