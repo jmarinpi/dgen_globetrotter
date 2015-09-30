@@ -26,7 +26,7 @@ out$national_adopters_trends_bar
 npv4_by_year(df, by_tech = T)
 
 ```
-# Resource
+# Resource and Economic Comparisons
 ```{r Resource}
 df_cf = mutate(df, v = cf)
 boxplot_by_year(df_cf, 'Capacity Factor', by_tech = T, adopters_only = T, label = percent)
