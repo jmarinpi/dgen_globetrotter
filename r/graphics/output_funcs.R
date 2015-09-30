@@ -219,24 +219,6 @@ lcoe_contour<-function(df, schema, tech, start_year, end_year, dr = 0.05, n = 30
     standard_formatting
 }
 
-cf_supply_curve<-function(df, start_year){
-  #' National capacity factor supply curve
-  # filter to only the start year, returning only the naep and load_kwh_in_bin cols
-  data = collect(select(filter(df, year == start_year),naep,load_kwh_in_bin))
-  data <- transform(data, cf = naep/8760)
-  data<-data[order(-data$cf),]
-  data$load<-cumsum(data$load_kwh_in_bin/(1e6*8760))
-  
-  ggplot(data,aes(x = cf, y = load, size = 0.75))+
-    geom_line()+
-    guides(size = FALSE)+
-    standard_formatting +
-    theme(axis.text.x = element_text(angle = 0, hjust = .5, vjust = 0)) +
-    scale_y_continuous(name ='Customer Load (GW)')+
-    scale_x_continuous(name ='Annual Average Capacity Factor', labels = percent)+
-    ggtitle('Capacity Factor Supply Curve (Available Cust Load in 2014)')
-}
-
 elec_rate_supply_curve<-function(df, start_year){
   #' National electricity rate supply curve
   # filter to only the start year, returning only the cost_of_elec_dols_per_kwh and load_kwh_in_bin cols
@@ -906,6 +888,82 @@ diffusion_sectors_map <- function(df){
 #   return(iframes)
 }
 
+cf_supply_curve<-function(df, by_load = T, by_tech = F, years = c(2014,2020,2030,2040,2050)){
+  
+  #' National capacity factor supply curve
+  # filter to only the start year, returning only the naep and load_kwh_in_bin cols
+#   data = collect(select(filter(df, year %in% years), naep, load_kwh_in_bin, tech, cf))
+#   data<-data[order(-data$cf),]
+#   data$load<-cumsum(data$load_kwh_in_bin/(1e6*8760))
+  
+  if (by_load == T){
+    data = select(df, year, cf, load_kwh_in_bin, naep, sector, tech) %>%
+      filter(year %in% years)
+    if (by_tech == T){
+      data = group_by(data, year, tech) %>%
+        arrange(desc(cf)) %>%
+        mutate(xmax = cumsum(load_kwh_in_bin/naep/1e6)) %>%
+        collect() %>%
+        mutate(xmin = 0) 
+    } else {
+      data = group_by(data, year) %>%
+        arrange(desc(cf)) %>%
+        mutate(xmax = cumsum(load_kwh_in_bin/naep/1e6)) %>%
+        collect() %>%
+        mutate(xmin = 0) 
+    }
+  } else {
+    data = select(df, year, cf, customers_in_bin, naep, sector, tech) %>%
+      filter(year %in% years)
+    if (by_tech == T){
+      data = group_by(data, year, tech) %>%
+        arrange(desc(cf)) %>%
+        mutate(xmax = cumsum(customers_in_bin)) %>%
+        collect() %>%
+        mutate(xmin = 0)
+    } else {
+      data = group_by(data, year) %>%
+        arrange(desc(cf)) %>%
+        mutate(xmax = cumsum(customers_in_bin)) %>%
+        collect() %>%
+        mutate(xmin = 0)      
+    }
+  }  
+  
+  if (by_tech == T){
+    data$tech = simpleCap(data$tech)
+    fgrid = facet_grid('~ year')
+    color_var = 'tech'
+    colors = tech_col
+  } else {
+    fgrid = geom_blank()
+    color_var = 'year'
+    colors = year_colors
+  }
+  
+  if (by_load == T){
+    title = 'Capacity (GW)'
+  } else {
+    title = 'Customers'
+  }
+  
+  # If we chose to shade, this defines the width of the rectangle
+  data[2:nrow(data),'xmin'] = data[1:nrow(data)-1,'xmax']
+  data$year = as.factor(data$year)
+  
+  
+  p = ggplot(data)+
+    geom_line(aes_string(x = 'xmax', y = 'cf', color = color_var), size = 2)+
+    fgrid + 
+    scale_y_continuous(name = 'Capacity Factor', label = percent)+
+    scale_x_continuous(name = title) +
+    scale_color_manual(name = simpleCap(color_var), values = colors, labels = names(colors)) +
+    ggtitle('Capacity Factor Supply Curve') +
+    standard_formatting +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5))
+  
+  return(p)
+}
 
 make_npv_supply_curve = function(df, by_load = T, by_tech = F, years = c(2014,2020,2030,2040,2050)){
   

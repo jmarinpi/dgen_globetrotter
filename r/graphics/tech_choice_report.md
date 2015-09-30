@@ -42,11 +42,12 @@ df_load = mutate(df, v = load_kwh_per_customer_in_bin)
 boxplot_by_year(df_load, 'Annual Customer Load (kwh)', by_tech = T, adopters_only = T, label = comma)
 
 df_incentives = mutate(df, v = total_value_of_incentives/system_size_kw)
-boxplot_by_year(df_incentives, 'Value of Incentives per kW ($/kW)', by_tech = T, adopters_only = T, label = dollar)
+boxplot_by_year(df_incentives, 'Value of Incentives per kW (dol/kW)', by_tech = T, adopters_only = T, label = dollar)
 ```
 
 # Supply Curves
 ```{r Supply Curves}
+options(warn = -1)
 make_npv_supply_curve(df, by_load = F, by_tech = T, years = c(2014,2020,2030,2040,2050))
-
+cf_supply_curve(df, by_load = F, by_tech = T, years = c(2014,2020,2030,2040,2050))
 ```
