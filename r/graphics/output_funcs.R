@@ -1,5 +1,6 @@
 sector_col <- c(Commercial = "#377eb8", Industrial = "#e41a1c", Residential = "#4daf4a")
 sector_fil <- sector_col
+tech_col = c(Solar = "#fe9929", Wind = "#3690c0")
 year_colors = c("2014" = '#fd8d3c', '2020' = '#fc4e2a', '2030' = '#e31a1c', '2040' = '#bd0026',
                 '2050' = '#800026')
 turb_size_fil <- c('Small: < 50 kW' = "#a1dab4", 'Mid: 51 - 500 kW' = "#41b6c4", 'Large: 501 - 3,000 kW' = "#253494") 
@@ -354,6 +355,60 @@ national_econ_attractiveness_line<-function(df,scen_name){
   data$scenario<-scen_name
   save(data,file = paste0(runpath,'/metric_value_trends.RData'),compress = T, compression_level = 1)
 }
+
+
+npv4_by_year <-function(df, by_tech = F){
+  # Median payback period over time and sector
+  if (by_tech == T){
+    g = group_by(df, year, sector, tech)
+  } else {
+    g = group_by(df, year, sector)    
+    fill_var = as.symbol('sector')
+  }
+
+  data = collect(summarise(g, 
+                           uql = r_quantile(array_agg(npv4), 0.95),
+                           median = r_quantile(array_agg(npv4), 0.5),
+                           lql = r_quantile(array_agg(npv4), 0.05)
+  )
+  )  
+  data$sector = sector2factor(data$sector)
+
+  if (by_tech == T){
+    data$tech = simpleCap(data$tech)
+    p <- ggplot(data) +
+      geom_ribbon(aes(x = year, ymin = lql, ymax = uql, fill = tech), alpha = 0.3, stat = 'identity', size = 0.75) +
+      geom_line(aes(x = year, y = median, color = tech), size = 0.75) +
+      facet_grid(. ~ sector, scales = 'free_y') +
+      scale_color_manual(values = tech_col, name = 'Median and 5th/95th Percentiles') +
+      scale_fill_manual(values = tech_col, name = 'Median and 5th/95th Percentiles') +
+      scale_y_continuous('') +
+      scale_x_continuous(name = 'Year', breaks = c(unique(data$year))) +
+      ggtitle('Net Present Value (4%) (Median and 90% Spread)') +
+      standard_formatting +
+      theme(strip.text.y = element_text(angle = 90, vjust = 1))
+  } else {
+    p <- ggplot(data) +
+      geom_ribbon(aes(x = year, ymin = lql, ymax = uql, fill = sector), alpha = 0.3, stat = 'identity', size = 0.75) +
+      geom_line(aes(x = year, y = median, color = sector), size = 0.75) +
+      facet_grid(. ~ sector, scales = 'free_y') +
+      scale_color_manual(values = sector_col, name = 'Median and IQR') +
+      scale_fill_manual(values = sector_fil, name = 'Median and IQR') +
+      scale_y_continuous('') +
+      scale_x_continuous(name = 'Year', breaks = c(unique(data$year))) +
+      ggtitle('Net Present Value (4%) (Median and Inner-Quartile Range)') +
+      standard_formatting +
+      theme(strip.text.y = element_text(angle = 90, vjust = 1))
+  }
+
+  # move facet lables to left side
+  g <- ggplotGrob(p)
+  g$layout[g$layout$name == "strip-right",c("l", "r")] <- 2
+  grid.newpage()
+  grid.draw(g)
+}
+
+
 
 diffusion_trends<-function(df,runpath,scen_name){
   # Diffusion trends
