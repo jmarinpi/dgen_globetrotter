@@ -336,7 +336,8 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
                 'npv4',
                 'excess_generation_percent',
                 'total_value_of_incentives',
-                'tech']    
+                'tech',
+                'selected_option']    
 
     # convert formatting of fields list
     inputs['fields_str'] = utilfunc.pylist_2_pglist(fields).replace("'","")       
@@ -407,7 +408,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
                     a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, 
-                    a.npv4, a.excess_generation_percent, a.total_value_of_incentives,
+                    a.npv4, a.excess_generation_percent, a.total_value_of_incentives, a.selected_option,
 
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id,
@@ -499,7 +500,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
                     a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, 
-                    a.npv4, a.excess_generation_percent, a.total_value_of_incentives,
+                    a.npv4, a.excess_generation_percent, a.total_value_of_incentives, a.selected_option,
 
                     
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
@@ -591,7 +592,8 @@ def combine_output_view(schema, cur, con, techs):
                         nem_system_size_limit_kw, ur_nm_yearend_sell_rate, ur_flat_sell_rate, 
                         cf, naep, aep, system_size_kw, system_size_factors, 
                         rate_escalation_factor, cost_of_elec_dols_per_kwh, 
-                        initial_market_share, initial_number_of_adopters, initial_capacity_mw
+                        initial_market_share, initial_number_of_adopters, 
+                        initial_capacity_mw, selected_option
                  FROM %(schema)s.outputs_all_%(tech)s""" % inputs
         sql_list.append(sql)
     

@@ -44,7 +44,8 @@ CREATE TABLE diffusion_template.outputs_res
   npv4 numeric,
   excess_generation_percent numeric,
   total_value_of_incentives numeric,
-  tech text
+  tech text,
+  selected_option boolean
 );
 
 CREATE INDEX outputs_res_join_fields_btree ON diffusion_template.outputs_res USING btree(county_id,bin_id,year);
@@ -95,7 +96,8 @@ CREATE TABLE diffusion_template.outputs_com
   npv4 numeric,
   excess_generation_percent numeric,
   total_value_of_incentives numeric,
-  tech text
+  tech text,
+  selected_option boolean
 );
 
 CREATE INDEX outputs_com_join_fields_btree ON diffusion_template.outputs_com USING btree(county_id,bin_id,year);
@@ -146,7 +148,8 @@ CREATE TABLE diffusion_template.outputs_ind
   npv4 numeric,
   excess_generation_percent numeric,
   total_value_of_incentives numeric,
-  tech text
+  tech text,
+  selected_option boolean
 );
 
 CREATE INDEX outputs_ind_join_fields_btree ON diffusion_template.outputs_ind USING btree(county_id,bin_id,year);
