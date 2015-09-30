@@ -26,6 +26,7 @@ out$national_adopters_trends_bar
 npv4_by_year(df, by_tech = T)
 
 ```
+
 # Resource and Economic Comparisons
 ```{r Resource}
 df_cf = mutate(df, v = cf)
@@ -42,4 +43,10 @@ boxplot_by_year(df_load, 'Annual Customer Load (kwh)', by_tech = T, adopters_onl
 
 df_incentives = mutate(df, v = total_value_of_incentives/system_size_kw)
 boxplot_by_year(df_incentives, 'Value of Incentives per kW ($/kW)', by_tech = T, adopters_only = T, label = dollar)
+```
+
+# Supply Curves
+```{r Supply Curves}
+make_npv_supply_curve(df, by_load = F, by_tech = T, years = c(2014,2020,2030,2040,2050))
+
 ```

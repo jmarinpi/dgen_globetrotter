@@ -907,25 +907,69 @@ diffusion_sectors_map <- function(df){
 }
 
 
-make_npv_supply_curve = function(df, years = c(2014,2020,2030,2040,2050)){
+make_npv_supply_curve = function(df, by_load = T, by_tech = F, years = c(2014,2020,2030,2040,2050)){
   
-  data = select(df, year, npv4, load_kwh_in_bin, naep,sector) %>%
-    filter(year %in% years) %>%
-    group_by(year) %>%
-    arrange(desc(npv4)) %>%
-    mutate(load_xmax = cumsum(load_kwh_in_bin/naep/1e6)) %>%
-    collect() %>%
-    mutate(load_xmin = 0)
+  if (by_load == T){
+    data = select(df, year, npv4, load_kwh_in_bin, naep, sector, tech) %>%
+      filter(year %in% years & naep > 0)
+    if (by_tech == T){
+      data = group_by(data, year, tech) %>%
+      arrange(desc(npv4)) %>%
+      mutate(xmax = cumsum(load_kwh_in_bin/naep/1e6)) %>%
+      collect() %>%
+      mutate(xmin = 0) 
+    } else {
+      data = group_by(data, year) %>%
+        arrange(desc(npv4)) %>%
+        mutate(xmax = cumsum(load_kwh_in_bin/naep/1e6)) %>%
+        collect() %>%
+        mutate(xmin = 0) 
+    }
+  } else {
+    data = select(df, year, npv4, customers_in_bin, naep, sector, tech) %>%
+      filter(year %in% years)
+    if (by_tech == T){
+      data = group_by(data, year, tech) %>%
+        arrange(desc(npv4)) %>%
+        mutate(xmax = cumsum(customers_in_bin)) %>%
+        collect() %>%
+        mutate(xmin = 0)
+    } else {
+      data = group_by(data, year) %>%
+        arrange(desc(npv4)) %>%
+        mutate(xmax = cumsum(customers_in_bin)) %>%
+        collect() %>%
+        mutate(xmin = 0)      
+    }
+  }
+
+  if (by_tech == T){
+    data$tech = simpleCap(data$tech)
+    fgrid = facet_grid('~ year')
+    color_var = 'tech'
+    colors = tech_col
+  } else {
+    fgrid = geom_blank()
+    color_var = 'year'
+    colors = year_colors
+  }
+  
+  if (by_load == T){
+    title = 'Capacity (GW)'
+  } else {
+    title = 'Customers'
+  }
   
   # If we chose to shade, this defines the width of the rectangle
-  data[2:nrow(data),'load_xmin'] = data[1:nrow(data)-1,'load_xmax']
+  data[2:nrow(data),'xmin'] = data[1:nrow(data)-1,'xmax']
+  data$year = as.factor(data$year)
   
   p = ggplot(data)+
-    geom_line(aes(x = load_xmax,y = npv4, color = factor(year)), size = 2)+
-    #geom_rect(aes(xmin = load_xmin, xmax = load_xmax, ymin = 0, ymax = npv4, color = year), alpha = 1)+
+    geom_line(aes_string(x = 'xmax', y = 'npv4', color = color_var), size = 2)+
+    fgrid + 
     scale_y_continuous(name ='Net Present Value ($2014/kW)')+
-    scale_x_continuous(name ='Capacity (GW)')+
-    scale_color_manual(name = 'Year', values = year_colors, labels = names(year_colors)) +
+    scale_x_continuous(name = title) +
+    scale_color_manual(name = simpleCap(color_var), values = colors, labels = names(colors)) +
     ggtitle('Net Present Value per kW ($/kW)\n Assuming 4% discount rate') +
     standard_formatting +
     theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5))

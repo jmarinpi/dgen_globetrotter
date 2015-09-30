@@ -73,5 +73,6 @@ make_lcoe_supply_curve(df, years = c(2014,2020,2030,2040,2050))
 
 # Scenario options
 ```{r Scenario_Options}
+options(warn=-1)
 scenario_opts_table(con, schema)
 ```
