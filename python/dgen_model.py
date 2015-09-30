@@ -307,7 +307,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==============================================================================
             if mode != 'ReEDS' or resume_year == endyear:
                 "---------Saving Model Results---------"
-                out_subfolders = datfunc.create_tech_subfolders(out_scen_path, techs, out_subfolders)
+                out_subfolders = datfunc.create_tech_subfolders(out_scen_path, techs, out_subfolders, choose_tech)
                         
                 # copy outputs to csv     
                 datfunc.copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con)

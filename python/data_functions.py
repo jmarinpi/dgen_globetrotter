@@ -39,13 +39,17 @@ pg.extensions.register_type(DEC2FLOAT)
 #==============================================================================
 
 
-def create_tech_subfolders(out_scen_path, techs, out_subfolders):
+def create_tech_subfolders(out_scen_path, techs, out_subfolders, choose_tech):
     
     for tech in techs:
         # set output subfolders  
         out_tech_path = os.path.join(out_scen_path, tech)
         os.makedirs(out_tech_path)
         out_subfolders[tech].append(out_tech_path)
+    
+    if choose_tech == True:
+        out_tech_choice_path = os.path.join(out_scen_path, 'tech_choice')
+        os.makedirs(out_tech_choice_path)
     
     return out_subfolders
 
@@ -656,9 +660,10 @@ def create_tech_choice_report(choose_tech, schema, scen_name, out_scen_path, cur
     # path to the plot_outputs R script        
     plot_outputs_path = '%s/r/graphics/tech_choice_report.R' % os.path.dirname(os.getcwd())        
         
+    out_path = os.path.join(out_scen_path, 'tech_choice')
     #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
     # for linux and mac, this needs to be formatted as a list of args passed to subprocess
-    command = [Rscript_path,'--vanilla', plot_outputs_path, out_scen_path, scen_name, schema, pg_params_file]
+    command = [Rscript_path,'--vanilla', plot_outputs_path, out_path, scen_name, schema, pg_params_file]
     proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     messages = proc.communicate()
     if 'error' in messages[1].lower():
