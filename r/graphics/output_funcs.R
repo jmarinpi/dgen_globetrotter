@@ -376,6 +376,7 @@ npv4_by_year <-function(df, by_tech = F){
   )
   )  
   data$sector = sector2factor(data$sector)
+  data$tech = simpleCap(data$tech)
   
   p <- ggplot(data) +
     geom_ribbon(aes_string(x = 'year', ymin = 'lql', ymax = 'uql', fill = color_var), alpha = 0.3, stat = 'identity', size = 0.75) +
