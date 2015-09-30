@@ -26,7 +26,6 @@ pg_params_file = 'pg_params_db.json'
 
 source("../r/maps/r2js/r2js.R")
 source("../r/graphics/output_funcs.R")
-source("../r/graphics/tech_choice_funcs.R")
 
 runpath<-commandArgs(T)[1]
 scen_name<-commandArgs(T)[2]
@@ -56,7 +55,6 @@ sectors = as.character(collect(summarise(df, distinct(sector))))
 
 # set up markdown params and knit markdown file
 source("../r/graphics/output_funcs.R") # TODO: REMOVE AFTER DEBUGGING
-source("../r/graphics/tech_choice_funcs.R")  # TODO: REMOVE AFTER DEBUGGING
 opts_knit$set(base.dir = runpath)
 report_title = 'dGen Tech Choice Report'
 report_filepath = sprintf('%s/dGen_Tech_Choice_Report.html', runpath)
