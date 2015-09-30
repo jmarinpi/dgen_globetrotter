@@ -95,3 +95,7 @@ alpha_lkup = pd.DataFrame({'tech' : ['solar', 'solar', 'wind', 'wind'],
 })
 
 
+#==============================================================================
+#  Should the output schema be deleted after the model run
+#==============================================================================
+delete_output_schema = True

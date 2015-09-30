@@ -89,16 +89,19 @@ def create_output_schema(pg_conn_string, source_schema = 'diffusion_template'):
     return dest_schema
 
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
-def drop_output_schema(pg_conn_string, schema):
-
-    logger.info('Dropping the Output Schema (%s) from Database' % schema)
-
-    inputs = locals().copy()
-
-    con, cur = utilfunc.make_con(pg_conn_string, role = "diffusion-schema-writers")
-    sql = '''DROP SCHEMA IF EXISTS %(schema)s CASCADE;''' % inputs
-    cur.execute(sql)
-    con.commit()
+def drop_output_schema(pg_conn_string, schema, delete_output_schema):
+    
+    if delete_output_schema == True:
+        logger.info('Dropping the Output Schema (%s) from Database' % schema)
+    
+        inputs = locals().copy()
+    
+        con, cur = utilfunc.make_con(pg_conn_string, role = "diffusion-schema-writers")
+        sql = '''DROP SCHEMA IF EXISTS %(schema)s CASCADE;''' % inputs
+        cur.execute(sql)
+        con.commit()
+    else:
+        logger.warning("The output schema  (%(schema)s) has not been deleted. Please delete manually when you are finished analyzing outputs." % inputs)
     
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
 def combine_temporal_data(cur, con, schema, techs, start_year, end_year, sector_abbrs):
