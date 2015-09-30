@@ -361,9 +361,12 @@ npv4_by_year <-function(df, by_tech = F){
   # Median payback period over time and sector
   if (by_tech == T){
     g = group_by(df, year, sector, tech)
+    color_var = 'tech'
+    colors = tech_col
   } else {
     g = group_by(df, year, sector)    
-    fill_var = as.symbol('sector')
+    color_var = 'sector'
+    colors = sector_col
   }
 
   data = collect(summarise(g, 
@@ -373,33 +376,18 @@ npv4_by_year <-function(df, by_tech = F){
   )
   )  
   data$sector = sector2factor(data$sector)
-
-  if (by_tech == T){
-    data$tech = simpleCap(data$tech)
-    p <- ggplot(data) +
-      geom_ribbon(aes(x = year, ymin = lql, ymax = uql, fill = tech), alpha = 0.3, stat = 'identity', size = 0.75) +
-      geom_line(aes(x = year, y = median, color = tech), size = 0.75) +
-      facet_grid(. ~ sector, scales = 'free_y') +
-      scale_color_manual(values = tech_col, name = 'Median and 5th/95th Percentiles') +
-      scale_fill_manual(values = tech_col, name = 'Median and 5th/95th Percentiles') +
-      scale_y_continuous('') +
-      scale_x_continuous(name = 'Year', breaks = c(unique(data$year))) +
-      ggtitle('Net Present Value (4%) (Median and 90% Spread)') +
-      standard_formatting +
-      theme(strip.text.y = element_text(angle = 90, vjust = 1))
-  } else {
-    p <- ggplot(data) +
-      geom_ribbon(aes(x = year, ymin = lql, ymax = uql, fill = sector), alpha = 0.3, stat = 'identity', size = 0.75) +
-      geom_line(aes(x = year, y = median, color = sector), size = 0.75) +
-      facet_grid(. ~ sector, scales = 'free_y') +
-      scale_color_manual(values = sector_col, name = 'Median and IQR') +
-      scale_fill_manual(values = sector_fil, name = 'Median and IQR') +
-      scale_y_continuous('') +
-      scale_x_continuous(name = 'Year', breaks = c(unique(data$year))) +
-      ggtitle('Net Present Value (4%) (Median and Inner-Quartile Range)') +
-      standard_formatting +
-      theme(strip.text.y = element_text(angle = 90, vjust = 1))
-  }
+  
+  p <- ggplot(data) +
+    geom_ribbon(aes_string(x = 'year', ymin = 'lql', ymax = 'uql', fill = color_var), alpha = 0.3, stat = 'identity', size = 0.75) +
+    geom_line(aes_string(x = 'year', y = 'median', color = color_var), size = 0.75) +
+    facet_grid(. ~ sector, scales = 'free_y') +
+    scale_color_manual(values = colors, name = 'Median and 5th/95th Percentiles') +
+    scale_fill_manual(values = colors, name = 'Median and 5th/95th Percentiles') +
+    scale_y_continuous('') +
+    scale_x_continuous(name = 'Year', breaks = c(unique(data$year))) +
+    ggtitle('Net Present Value (4%) (Median and 90% Spread)') +
+    standard_formatting +
+    theme(strip.text.y = element_text(angle = 90, vjust = 1))
 
   # move facet lables to left side
   g <- ggplotGrob(p)
@@ -410,10 +398,18 @@ npv4_by_year <-function(df, by_tech = F){
 
 
 
-diffusion_trends<-function(df,runpath,scen_name){
+
+diffusion_trends<-function(df, runpath, scen_name, by_tech = F, save_results = T){
   # Diffusion trends
-  baseline_data = filter(df, year == 2014) %>%
-                  group_by(sector) %>%
+  df_2014 = filter(df, year == 2014)
+  if (by_tech == T){
+    g_2014 = group_by(df_2014, sector, tech)
+    melt_vars = c('year', 'sector', 'tech')
+  } else{
+    g_2014 = group_by(df_2014, sector)
+    melt_vars = c('year', 'sector')
+  }
+  baseline_data = g_2014 %>%
                   summarise(year = 2012,
                             nat_installed_capacity_gw  = sum(installed_capacity_last_year)/1e6, 
                             # We have no way calculating CFs for existing capacity, so assume it had a 23% capacity factor
@@ -422,11 +418,15 @@ diffusion_trends<-function(df,runpath,scen_name){
                             nat_number_of_adopters = sum(number_of_adopters_last_year)                    
                     ) %>%
                   collect()
-  baseline_data = melt(baseline_data, id.vars = c('year', 'sector'))
-  baseline_data$scenario<-scen_name
+  baseline_data = melt(baseline_data, id.vars = melt_vars)
+  baseline_data$scenario = scen_name
   baseline_data$data_type = 'Cumulative'
   
-  g = group_by(df, year, sector)
+  if (by_tech == T){  
+    g = group_by(df, year, sector, tech)
+  } else {
+    g = group_by(df, year, sector)
+  }
   data = collect(summarise(g, nat_installed_capacity_gw  = sum(installed_capacity)/1e6, 
   # We have no way calculating CFs for existing capacity, so assume it had a 23% capacity factor
                            nat_market_share = sum(number_of_adopters)/sum(customers_in_bin), 
@@ -436,13 +436,14 @@ diffusion_trends<-function(df,runpath,scen_name){
                            nat_number_of_adopters = sum(number_of_adopters)
   )
   )
-  data<-melt(data=data,id.vars=c('year','sector'))
-  data$scenario<-scen_name
+  data = melt(data = data, id.vars = melt_vars)
+  data$scenario = scen_name
   data$data_type = 'Cumulative'
   
-#   write.csv(data,paste0(runpath,'/diffusion_trends.csv'),row.names = FALSE)
-  save(data,file = paste0(runpath,'/diffusion_trends.RData'),compress = T, compression_level = 1)
-  
+  if (save_results == T){
+    save(data,file = paste0(runpath,'/diffusion_trends.RData'),compress = T, compression_level = 1)    
+  }
+
   # order the data by sector and year
   yearly_data = collect(summarise(g, nat_installed_capacity_gw  = sum(installed_capacity-installed_capacity_last_year)/1e6, 
                            # We have no way calculating CFs for existing capacity, so assume it had a 23% capacity factor
@@ -451,10 +452,9 @@ diffusion_trends<-function(df,runpath,scen_name){
   )
   )
   # melt the dataframe for ggplot
-  yearly_data<-melt(data=yearly_data,id.vars=c('year','sector'))
-  yearly_data$scenario<-scen_name
+  yearly_data = melt(data = yearly_data, id.vars = melt_vars)
+  yearly_data$scenario = scen_name
   yearly_data$data_type = 'Annual'
-
 
   cumulative_data = rbind(data[, names(yearly_data)], baseline_data[, names(yearly_data)])
 
@@ -464,21 +464,33 @@ diffusion_trends<-function(df,runpath,scen_name){
   combined_data$sector = sector2factor(combined_data$sector)
   cumulative_data$sector = sector2factor(cumulative_data$sector)
   yearly_data$sector = sector2factor(yearly_data$sector)
+  if (by_tech == T){
+    combined_data$tech = simpleCap(combined_data$tech)
+    cumulative_data$tech = simpleCap(cumulative_data$tech)
+    yearly_data$tech = simpleCap(yearly_data$tech)
+    data$tech = simpleCap(data$tech)
+    color_var = 'tech'
+    colors = tech_col
+  } else {
+    color_var = 'sector'
+    colors = sector_col
+  }
   
-  #' National market share trends
+  # National market share trends
   trends_data = subset(data, variable %in% c('nat_market_share', 'nat_max_market_share'))
   trends_data$variable = as.character(trends_data$variable)
   trends_data[trends_data$variable == 'nat_market_share', 'variable'] = 'Market Share'
   trends_data[trends_data$variable == 'nat_max_market_share', 'variable'] = 'Max Market Share'
   trends_data$sector = sector2factor(trends_data$sector)
   
+  
   national_adopters_trends_bar <- ggplot(trends_data, 
-                                       aes(x = year, y = value, color = sector, linetype = variable))+
+                                       aes_string(x = 'year', y = 'value', color = color_var, linetype = 'variable'))+
     geom_line(size = 0.75) +
     facet_wrap(~sector) +
     geom_line() +
-    scale_color_manual(values = sector_col) +
-    scale_fill_manual(values = sector_fil) +
+    scale_color_manual(values = colors) +
+    scale_fill_manual(values = colors) +
     scale_y_continuous(name ='Market Share (% of adopters)', labels = percent) +
     scale_x_continuous(name ='Year', breaks = c(unique(trends_data$year))) +
     guides(color = FALSE) +
@@ -489,10 +501,10 @@ diffusion_trends<-function(df,runpath,scen_name){
   # NATIONAL INSTALLED CAPACITY
   national_installed_capacity_bar <- add_data_source_note(
                                                           ggplot(data = subset(combined_data, variable %in% c("nat_installed_capacity_gw")))+
-                                                          geom_bar(aes(x = factor(year), fill = sector, weight = value)) +  
-                                                          facet_wrap(~data_type, scales = 'free') +
-                                                          scale_color_manual(values = sector_col) +
-                                                          scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
+                                                          geom_bar(aes_string(x = 'factor(year)', fill = color_var, weight = 'value')) +  
+                                                          facet_wrap(~ data_type, scales = 'free') +
+                                                          scale_color_manual(values = colors) +
+                                                          scale_fill_manual(name = simpleCap(color_var), values = colors, guide = guide_legend(reverse=TRUE)) +
                                                           scale_y_continuous(name ='National Installed Capacity (GW)', labels = comma) +
                                                           expand_limits(weight=0) +
                                                           scale_x_discrete(name ='Year') +
@@ -503,10 +515,10 @@ diffusion_trends<-function(df,runpath,scen_name){
   # NATIONAL NUMBER OF ADOPTERS
   national_num_of_adopters_bar <- add_data_source_note(
                                                         ggplot(data = subset(combined_data, variable %in% c("nat_number_of_adopters"))) +
-                                                        geom_bar(aes(x = factor(year), fill = sector, weight = value)) +
+                                                        geom_bar(aes_string(x = 'factor(year)', fill = color_var, weight = 'value')) +
                                                         facet_wrap(~data_type, scales = 'free') +
-                                                        scale_color_manual(values = sector_col) +
-                                                        scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
+                                                        scale_color_manual(values = colors) +
+                                                        scale_fill_manual(name = simpleCap(color_var), values = colors, guide = guide_legend(reverse=TRUE)) +
                                                         scale_y_continuous(name ='Number of Adopters', labels = comma) +
                                                         expand_limits(weight=0) +
                                                         scale_x_discrete(name ='Year') +
@@ -517,10 +529,10 @@ diffusion_trends<-function(df,runpath,scen_name){
   # NATIONAL MARKET CAP
   national_market_cap_bar <- add_market_cap_data_source_note(
                                                     ggplot(subset(combined_data, variable %in% c("nat_market_value"))) +
-                                                    geom_bar(aes(x = factor(year), fill = sector, weight = value/1e9)) +  
-                                                    facet_wrap(~data_type, scales = 'free') +
-                                                    scale_color_manual(values = sector_col) +
-                                                    scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
+                                                    geom_bar(aes_string(x = 'factor(year)', fill = color_var, weight = 'value/1e9')) +  
+                                                    facet_wrap(~ data_type, scales = 'free') +
+                                                    scale_color_manual(values = colors) +
+                                                    scale_fill_manual(name = simpleCap(color_var), values = colors, guide = guide_legend(reverse=TRUE)) +
                                                     scale_y_continuous(name ='Value of Installed Capacity (Billion $)', labels = comma) +
                                                     expand_limits(weight=0) +
                                                     scale_x_discrete(name ='Year') +
@@ -531,9 +543,9 @@ diffusion_trends<-function(df,runpath,scen_name){
   # NATIONAL GENERATION
   national_generation_bar <-  add_generation_data_source_note(
                                                               ggplot(subset(cumulative_data, variable %in% c("nat_generation_kwh")))+
-                                                              geom_bar(aes(x = factor(year), fill = sector, weight = value/1e9)) +
-                                                              scale_color_manual(values = sector_col) +
-                                                              scale_fill_manual(name = 'Sector', values = sector_fil, guide = guide_legend(reverse=TRUE)) +
+                                                              geom_bar(aes_string(x = 'factor(year)', fill = color_var, weight = 'value/1e9')) +
+                                                              scale_color_manual(values = colors) +
+                                                              scale_fill_manual(name = simpleCap(color_var), values = colors, guide = guide_legend(reverse=TRUE)) +
                                                               scale_y_continuous(name ='National Annual Generation (TWh)', labels = comma) +
                                                               expand_limits(weight=0) +
                                                               scale_x_discrete(name ='Year') +
