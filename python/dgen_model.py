@@ -273,14 +273,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)  
                 
                 # calculate diffusion based on economics and bass diffusion      
-                df, market_last_year = diffunc.calc_diffusion(df, year, sector) 
+                df, market_last_year = diffunc.calc_diffusion(df, year) 
  
                 # reeds stuff... # TODO: Refactor
                 if mode == 'ReEDS':
                     market_last_year_solar = market_last_year[market_last_year.tech == 'solar']
                 
                 # write the incremental results to the database
-                datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
+                datfunc.write_outputs(con, cur, df, sectors, schema) 
                 datfunc.write_last_year(con, cur, market_last_year, schema)
                          
             #==============================================================================

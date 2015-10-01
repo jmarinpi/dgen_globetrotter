@@ -28,7 +28,7 @@ logger = utilfunc.get_logger()
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
-def calc_diffusion(df, year, sector):
+def calc_diffusion(df, year):
 
     ''' Calculates the market share (ms) added in the solve year. Market share must be less
         than max market share (mms) except initial ms is greater than the calculated mms.
@@ -57,8 +57,8 @@ def calc_diffusion(df, year, sector):
     df['number_of_adopters'] = df['number_of_adopters_last_year'] + df['new_adopters']
     df['installed_capacity'] = df['installed_capacity_last_year'] + df['new_capacity'] # All capacity in kW in the model
     df['market_value'] = df['market_value_last_year'] + df['new_market_value']
-    market_last_year = df[['county_id','bin_id', 'tech', 'market_share', 'max_market_share','number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
-    market_last_year.columns = ['county_id', 'bin_id', 'tech', 'market_share_last_year', 'max_market_share_last_year','number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
+    market_last_year = df[['county_id','bin_id', 'sector_abbr', 'tech', 'market_share', 'max_market_share','number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
+    market_last_year.columns = ['county_id', 'bin_id', 'sector_abbr', 'tech', 'market_share_last_year', 'max_market_share_last_year','number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
 
     return df, market_last_year
 

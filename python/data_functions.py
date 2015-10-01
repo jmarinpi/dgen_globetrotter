@@ -293,7 +293,7 @@ def clear_outputs(con, cur, schema):
     con.commit()
 
 
-def write_outputs(con, cur, outputs_df, sector_abbr, schema):
+def write_outputs(con, cur, outputs_df, sectors, schema):
     
     inputs = locals().copy()    
     
@@ -344,17 +344,20 @@ def write_outputs(con, cur, outputs_df, sector_abbr, schema):
 
     # convert formatting of fields list
     inputs['fields_str'] = utilfunc.pylist_2_pglist(fields).replace("'","")       
-    # open an in memory stringIO file (like an in memory csv)
-    s = StringIO()
-    # write the data to the stringIO
-    outputs_df[fields].to_csv(s, index = False, header = False)
-    # seek back to the beginning of the stringIO file
-    s.seek(0)
-    # copy the data from the stringio file to the postgres table
-    cur.copy_expert('COPY %(schema)s.outputs_%(sector_abbr)s (%(fields_str)s) FROM STDOUT WITH CSV' % inputs, s)
-    # commit the additions and close the stringio file (clears memory)
-    con.commit()    
-    s.close()
+    
+    for sector_abbr, sector in sectors.iteritems():    
+        inputs['sector_abbr'] = sector_abbr
+        # open an in memory stringIO file (like an in memory csv)
+        s = StringIO()
+        # write the data to the stringIO
+        outputs_df.loc[outputs_df['sector_abbr'] == sector_abbr, fields].to_csv(s, index = False, header = False)
+        # seek back to the beginning of the stringIO file
+        s.seek(0)
+        # copy the data from the stringio file to the postgres table
+        cur.copy_expert('COPY %(schema)s.outputs_%(sector_abbr)s (%(fields_str)s) FROM STDOUT WITH CSV' % inputs, s)
+        # commit the additions and close the stringio file (clears memory)
+        con.commit()    
+        s.close()
      
 def p_execute(pg_conn_string, sql):
     try:
