@@ -71,7 +71,9 @@ def select_financing_and_tech(df, prng, alpha_lkup, sectors, choose_tech = False
         raise ValueError("Incorrect number of sectors for each customer bin")
         sys.exit(-1)       
     
+    pd.set_option('mode.chained_assignment', None)
     df['uid'] = range(0, df.shape[0])
+    pd.set_option('mode.chained_assignment', 'raise')
     df = df.merge(alpha_lkup)
     #npv may be negative so, if the alpha is even, it won't rank the npvs properly eg. (-100)^2 > 5^2
     #we need to rescale the npvs to the range observed in the data
@@ -104,21 +106,25 @@ def select_financing_and_tech(df, prng, alpha_lkup, sectors, choose_tech = False
     # and re-initialize the random seed for each tech. This ensures that results will be consistent
     # for each technology regardless of whether the model is run with multiple techs or just
     # a single tech.
-    if choose_tech == True:
-        selected_uids = df.groupby(group_by_cols).apply(weighted_choice, prng).reset_index()
-        selected_uids.columns = group_by_cols + ['best']
-    else:
-        selected_uids_list = []
-        # get the initial seed
-        seed = prng.get_state()[1][0]
-        for tech in techs:
-            prng.seed(seed)
-            # split by technologies
-            tech_df = df[df['tech'] == tech]
-            selected_tech_uids = tech_df.groupby(group_by_cols).apply(weighted_choice, prng).reset_index()
-            selected_tech_uids.columns = group_by_cols + ['best']
-            selected_uids_list.append(selected_tech_uids)
-        selected_uids = pd.concat(selected_uids_list, axis = 0, ignore_index = True)
+    seed = prng.get_state()[1][0]
+    selected_uids_list = []
+    for sector_abbr, sector in sectors.iteritems():
+        sector_df = df[df['sector_abbr'] == sector_abbr]
+        prng.seed(seed)
+        if choose_tech == True:
+            selected_uids = sector_df.groupby(group_by_cols).apply(weighted_choice, prng).reset_index()
+            selected_uids.columns = group_by_cols + ['best']
+            selected_uids_list.append(selected_uids)
+        else:
+            for tech in techs:
+                prng.seed(seed)
+                # split by technologies
+                tech_df = sector_df[sector_df['tech'] == tech]
+                selected_tech_uids = tech_df.groupby(group_by_cols).apply(weighted_choice, prng).reset_index()
+                selected_tech_uids.columns = group_by_cols + ['best']
+                selected_uids_list.append(selected_tech_uids)
+    prng.seed(seed)
+    selected_uids = pd.concat(selected_uids_list, axis = 0, ignore_index = True)
     
     # Filter by the best choice by matching the p-values returned above
     df_selected = df.merge(selected_uids, left_on = group_by_cols + ['uid'], right_on = group_by_cols + ['best'], how = 'outer')

@@ -267,10 +267,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                            cur, con, year, dsire_incentives, deprec_schedule, 
                                            ann_system_degradation, mode, curtailment_method, 
                                            tech_lifetime = 25)
-
                 
                 # select from choices for business model and (optionally) technology
-                df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)  
+                df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
+#                df_list = []
+#                for sector_abbr, sector in sectors.iteritems():
+#                    df_sec = df[df['sector_abbr'] == sector_abbr]
+#                    sectors_d = {sector_abbr : sector}
+#                    df_sec = tech_choice.select_financing_and_tech(df_sec, prng, cfg.alpha_lkup, sectors_d, choose_tech, techs)  
+#                    df_list.append(df_sec)
+#                df = pd.concat(df_list, axis = 0, ignore_index = True)
+
                 
                 # calculate diffusion based on economics and bass diffusion      
                 df, market_last_year = diffunc.calc_diffusion(df, year) 
@@ -282,7 +289,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
                 datfunc.write_last_year(con, cur, market_last_year, schema)
-                         
+    
             #==============================================================================
             #    Outputs & Visualization
             #==============================================================================

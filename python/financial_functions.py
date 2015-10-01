@@ -56,8 +56,7 @@ def calc_economics(df, schema, market_projections,
     
     # get customer expected rate escalations
     # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
-    if mode == 'ReEDS' and max(df['ReEDS_elec_price_mult'])>0:
-        
+    if mode == 'ReEDS' and max(df['ReEDS_elec_price_mult']) > 0:
         rate_growth_mult = np.ones((len(df), tech_lifetime))
         rate_growth_mult *= df['ReEDS_elec_price_mult'][:,np.newaxis]
         df['rate_escalations'] = rate_growth_mult.tolist()
@@ -76,11 +75,11 @@ def calc_economics(df, schema, market_projections,
     value_of_incentives_all = pd.concat([value_of_incentives_manual, value_of_incentives_dsire], axis = 0, ignore_index = True)
     df = pd.merge(df, value_of_incentives_all, how = 'left', on = ['county_id','bin_id','business_model', 'tech', 'sector_abbr'])
 
-    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives = calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime, max_incentive_fraction)
-    
+    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives = calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime, max_incentive_fraction)    
     df['total_value_of_incentives'] = total_value_of_incentives
+
     ## Calc metric value here
-    df['metric_value_precise'] = calc_metric_value(df,cfs,revenue,costs, tech_lifetime)
+    df['metric_value_precise'] = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate, tech_lifetime)
     npv = calc_npv(cfs, np.array([0.04]))
     with np.errstate(invalid = 'ignore'):
@@ -277,7 +276,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     
     # Calc interest paid on serving the loan
     interest_paid = calc_interest_pmt_schedule(df,tech_lifetime)
-    interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * ((df.sector_abbr == 'ind') | (df.sector_abbr == 'com') & (df.business_model == 'host_owned'))[:,np.newaxis]
+    interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * (((df.sector_abbr == 'ind') | (df.sector_abbr == 'com')) & (df.business_model == 'host_owned'))[:,np.newaxis]
     
     '''
     7) Revenue from other incentives

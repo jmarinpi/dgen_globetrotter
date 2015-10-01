@@ -39,8 +39,7 @@ CREATE TABLE diffusion_wind.incentives AS
             wind_res_tax_deduction_pcnt_cost AS tax_deduction_pcnt_cost, 
             wind_tax_credit_max_size_kw AS tax_credit_max_size_kw, 
             wind_tax_credit_min_size_kw AS tax_credit_min_size_kw, 
-            'res'::character varying(3) AS sector_abbr,
-            'residential'::text as sector
+            'res'::character varying(3) AS sector_abbr
            FROM geo_incentives.wind_incentives
           WHERE is_res = true
 UNION ALL 
@@ -81,8 +80,7 @@ UNION ALL
             wind_com_tax_deduction_pcnt_cost AS tax_deduction_pcnt_cost, 
             wind_tax_credit_max_size_kw AS tax_credit_max_size_kw, 
             wind_tax_credit_min_size_kw AS tax_credit_min_size_kw, 
-            'com'::character varying(3) AS sector_abbr,
-            'commercial'::text as sector
+            'com'::character varying(3) AS sector_abbr
            FROM geo_incentives.wind_incentives
           WHERE is_com = true
 UNION ALL 
@@ -123,8 +121,7 @@ UNION ALL
             wind_com_tax_deduction_pcnt_cost AS tax_deduction_pcnt_cost, 
             wind_tax_credit_max_size_kw AS tax_credit_max_size_kw, 
             wind_tax_credit_min_size_kw AS tax_credit_min_size_kw, 
-            'ind'::character varying(3) AS sector_abbr,
-            'industrial'::text as sector
+            'ind'::character varying(3) AS sector_abbr
            FROM geo_incentives.wind_incentives
           WHERE is_com = true;
 
@@ -182,8 +179,7 @@ CREATE TABLE diffusion_solar.incentives AS
             pv_res_tax_deduction_pcnt_cost AS tax_deduction_pcnt_cost, 
             pv_tax_credit_max_size_kw AS tax_credit_max_size_kw, 
             pv_tax_credit_min_size_kw AS tax_credit_min_size_kw, 
-            'res'::character varying(3) AS sector_abbr,
-            'residential'::text as sector
+            'res'::character varying(3) AS sector_abbr
            FROM geo_incentives.pv_incentives
           WHERE is_res = true
 UNION ALL 
@@ -224,8 +220,7 @@ UNION ALL
             pv_com_tax_deduction_pcnt_cost AS tax_deduction_pcnt_cost, 
             pv_tax_credit_max_size_kw AS tax_credit_max_size_kw, 
             pv_tax_credit_min_size_kw AS tax_credit_min_size_kw, 
-            'com'::character varying(3) AS sector_abbr,
-            'commercial'::text as sector
+            'com'::character varying(3) AS sector_abbr
            FROM geo_incentives.pv_incentives
           WHERE is_com = true
 UNION ALL 
@@ -266,8 +261,7 @@ UNION ALL
             pv_com_tax_deduction_pcnt_cost AS tax_deduction_pcnt_cost, 
             pv_tax_credit_max_size_kw AS tax_credit_max_size_kw, 
             pv_tax_credit_min_size_kw AS tax_credit_min_size_kw, 
-            'ind'::character varying(3) AS sector_abbr,
-            'industrial'::text as sector
+            'ind'::character varying(3) AS sector_abbr
            FROM geo_incentives.pv_incentives
           WHERE is_com = true;
 

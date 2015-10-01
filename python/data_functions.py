@@ -2651,17 +2651,26 @@ def get_manual_incentives(con, schema):
     '''
     inputs = locals().copy()    
     
-    sql = '''SELECT region as state_abbr, lower(sector) as sector, type, incentive, cap, expire, incentives_c_per_kwh, 
+    sql = '''SELECT region as state_abbr, 
+                    CASE WHEN lower(sector) = 'residential' THEN 'res'::VARCHAR(3)
+                         WHEN lower(sector) = 'commercial' THEN 'com'::VARCHAR(3)
+                         WHEN lower(sector) = 'industrial' THEN 'ind'::VARCHAR(3)
+                    END as sector_abbr, 
+                    type, incentive, cap, expire, incentives_c_per_kwh, 
                     no_years, dol_per_kw, utility_type, 
                     'solar'::TEXT as tech
              FROM %(schema)s.input_solar_incentives
             UNION ALL
-            SELECT region as state_abbr, lower(sector) as sector, type, incentive, cap, expire, incentives_c_per_kwh, 
+            SELECT region as state_abbr, 
+                    CASE WHEN lower(sector) = 'residential' THEN 'res'::VARCHAR(3)
+                         WHEN lower(sector) = 'commercial' THEN 'com'::VARCHAR(3)
+                         WHEN lower(sector) = 'industrial' THEN 'ind'::VARCHAR(3)
+                    END as sector_abbr, 
+                    type, incentive, cap, expire, incentives_c_per_kwh, 
                     no_years, dol_per_kw, utility_type,
                     'wind'::TEXT as tech
             FROM %(schema)s.input_wind_incentives;''' % inputs
     df = pd.read_sql(sql, con)
-    df['sector'] = df['sector'].str.lower()
 
     return df
  
@@ -2676,7 +2685,7 @@ def calc_manual_incentives(df, con, cur_year, schema):
     '''
     # Join manual incentives with main df   
     inc = get_manual_incentives(con, schema)
-    df = pd.merge(df, inc, how = 'left', on = ['state_abbr','sector','utility_type', 'tech'])
+    df = pd.merge(df, inc, how = 'left', on = ['state_abbr','sector_abbr','utility_type', 'tech'])
         
     # Calculate value of incentive and rebate, and value and length of PBI
     df['value_of_tax_credit_or_deduction'] = df['incentive'] * df['installed_costs_dollars_per_kw'] * df['system_size_kw'] * (cur_year <= df['expire'])
