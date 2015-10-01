@@ -138,7 +138,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             if cfg.init_model:
                 # create the output schema
 #                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
-                schema = 'diffusion_results_2015_10_01_09h54m07s' # TODO: COMMENT/DELETE # 
+                schema = 'diffusion_results_2015_10_01_09h41m35s' # TODO: COMMENT/DELETE # 
                 datfunc.clear_outputs(con, cur, schema)
                 # write the reeds settings to postgres
                 reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
@@ -270,14 +270,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 # select from choices for business model and (optionally) technology
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
-#                df_list = []
-#                for sector_abbr, sector in sectors.iteritems():
-#                    df_sec = df[df['sector_abbr'] == sector_abbr]
-#                    sectors_d = {sector_abbr : sector}
-#                    df_sec = tech_choice.select_financing_and_tech(df_sec, prng, cfg.alpha_lkup, sectors_d, choose_tech, techs)  
-#                    df_list.append(df_sec)
-#                df = pd.concat(df_list, axis = 0, ignore_index = True)
-
                 
                 # calculate diffusion based on economics and bass diffusion      
                 df, market_last_year = diffunc.calc_diffusion(df, year) 
