@@ -142,14 +142,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             if cfg.init_model:
                 # create the output schema
 #                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
-                schema = 'diffusion_results_2015_09_29_16h53m03s' # TODO: COMMENT/DELETE # 
+                schema = 'diffusion_results_2015_10_01_09h54m07s' # TODO: COMMENT/DELETE # 
                 datfunc.clear_outputs(con, cur, schema)
                 # write the reeds settings to postgres
                 reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
                 ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
                 
                 try:
-                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
+#                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
                     pass
                 except Exception, e:
                     logger.error('\tLoading failed with the following error: %s\nModel Aborted' % e      )

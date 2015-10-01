@@ -662,19 +662,19 @@ def create_tech_choice_report(choose_tech, schema, scen_name, out_scen_path, cur
     if choose_tech == True:
         logger.info('\tCompiling Technology Choice Report')        
     
-    # path to the plot_outputs R script        
-    plot_outputs_path = '%s/r/graphics/tech_choice_report.R' % os.path.dirname(os.getcwd())        
-        
-    out_path = os.path.join(out_scen_path, 'tech_choice')
-    #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
-    # for linux and mac, this needs to be formatted as a list of args passed to subprocess
-    command = [Rscript_path,'--vanilla', plot_outputs_path, out_path, scen_name, schema, pg_params_file]
-    proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-    messages = proc.communicate()
-    if 'error' in messages[1].lower():
-        logger.error(messages[1])
-    if 'warning' in messages[1].lower():
-        logger.warning(messages[1])
+        # path to the plot_outputs R script        
+        plot_outputs_path = '%s/r/graphics/tech_choice_report.R' % os.path.dirname(os.getcwd())        
+            
+        out_path = os.path.join(out_scen_path, 'tech_choice')
+        #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
+        # for linux and mac, this needs to be formatted as a list of args passed to subprocess
+        command = [Rscript_path,'--vanilla', plot_outputs_path, out_path, scen_name, schema, pg_params_file]
+        proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        messages = proc.communicate()
+        if 'error' in messages[1].lower():
+            logger.error(messages[1])
+        if 'warning' in messages[1].lower():
+            logger.warning(messages[1])
   
 
 def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year, end_year,
