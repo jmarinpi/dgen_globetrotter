@@ -36,7 +36,7 @@ def which_max_npv4(group):
     return uid
 
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
-def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind']):
+def select_financing_and_tech(df, prng, alpha_lkup, sectors, choose_tech = False, techs = ['solar', 'wind']):
         
     if choose_tech == True:
         msg = "\t\tSelecting Financing Option and Technology"
@@ -47,24 +47,29 @@ def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs =
     
     in_columns = df.columns.tolist()
 
-    # check each customer bin has four entries
+    # check each customer bin has number of entries = 2 * number of techs * number of sectors
     test = df.groupby(['county_id', 'bin_id'])['npv4'].count().reset_index()
-    if np.any(test.iloc[:,2] <> len(techs) * 2):
+    if np.any(test.iloc[:, 2] <> 2 * len(techs) * len(sectors)):
         raise ValueError("Incorrect number of entries for each customer bin")
         sys.exit(-1)
     
-    # check each customer bin + tech has two business models
-    test = df.groupby(['county_id', 'bin_id', 'tech'])['business_model'].count().reset_index()
-    if np.any(test.iloc[:,3] <> 2):
+    # check each customer bin + tech + sector_abbr has two business models
+    test = df.groupby(['county_id', 'bin_id', 'sector_abbr', 'tech'])['business_model'].count().reset_index()
+    if np.any(test.iloc[:, 4] <> 2):
         raise ValueError("Incorrect number of business models for each customer bin")
         sys.exit(-1)
         
-     # check each customer bin + business model has the correct nmber of techs
-    test = df.groupby(['county_id', 'bin_id', 'business_model'])['tech'].count().reset_index()
-    if np.any(test.iloc[:,3] <> len(techs)):
+    # check each customer bin + business model + sector has the correct nmber of techs
+    test = df.groupby(['county_id', 'bin_id', 'sector_abbr', 'business_model'])['tech'].count().reset_index()
+    if np.any(test.iloc[:, 4] <> len(techs)):
         raise ValueError("Incorrect number of techs for each customer bin")
         sys.exit(-1)
-        
+ 
+    # check each customer bin + business model + tech has the correct nmber of sectors
+    test = df.groupby(['county_id', 'bin_id', 'tech', 'business_model'])['sector_abbr'].count().reset_index()
+    if np.any(test.iloc[:, 4] <> len(sectors)):
+        raise ValueError("Incorrect number of sectors for each customer bin")
+        sys.exit(-1)       
     
     df['uid'] = range(0, df.shape[0])
     df = df.merge(alpha_lkup)
@@ -72,9 +77,9 @@ def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs =
     #we need to rescale the npvs to the range observed in the data
   
     if choose_tech == True:
-        group_by_cols = ['county_id', 'bin_id']
+        group_by_cols = ['county_id', 'bin_id', 'sector_abbr']
     else:
-        group_by_cols = ['county_id', 'bin_id', 'tech']
+        group_by_cols = ['county_id', 'bin_id', 'sector_abbr', 'tech']
   
     # Change any negative npvs to zero
     df['npv'] = np.where(df['npv4'] < 0, 0, df['npv4'])
@@ -121,18 +126,18 @@ def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs =
     
     if choose_tech == False:
         # return only the selected options
-        return_df =  df_selected[df_selected['selected_option'] == True].sort(columns = ['county_id', 'bin_id', 'tech'])       
+        return_df =  df_selected[df_selected['selected_option'] == True].sort(columns = ['county_id', 'bin_id', 'sector_abbr', 'tech'])       
     else:
         # isolate the selected options
-        selected_techs = df_selected[df_selected['selected_option'] == True].groupby(['county_id', 'bin_id', 'tech']).size().reset_index()
-        selected_techs.columns = ['county_id', 'bin_id', 'tech', 'selected_tech']
+        selected_techs = df_selected[df_selected['selected_option'] == True].groupby(['county_id', 'bin_id', 'sector_abbr', 'tech']).size().reset_index()
+        selected_techs.columns = ['county_id', 'bin_id', 'sector_abbr', 'tech', 'selected_tech']
         # identify which technology was not selected for each agent
-        unselected_techs = df_selected.merge(selected_techs, on = ['county_id', 'bin_id', 'tech'], how = 'outer')
+        unselected_techs = df_selected.merge(selected_techs, on = ['county_id', 'bin_id', 'sector_abbr', 'tech'], how = 'outer')
         unselected_techs = unselected_techs[unselected_techs.selected_tech.isnull()]
         # rank the remainders by npv4
-        best_unselected_tech = unselected_techs.groupby(['county_id', 'bin_id']).apply(which_max_npv4).reset_index()
-        best_unselected_tech.columns = ['county_id', 'bin_id', 'best_alternative']
-        best_unselected_tech.drop(['county_id', 'bin_id'], axis = 1, inplace = True)
+        best_unselected_tech = unselected_techs.groupby(['county_id', 'bin_id', 'sector_abbr',]).apply(which_max_npv4).reset_index()
+        best_unselected_tech.columns = ['county_id', 'bin_id', 'sector_abbr', 'best_alternative']
+        best_unselected_tech.drop(['county_id', 'bin_id', 'sector_abbr'], axis = 1, inplace = True)
         df_selected_and_unselected = df_selected.merge(best_unselected_tech, left_on = ['uid'], right_on = ['best_alternative'], how = 'outer')      
         df_selected_and_unselected['best_unselected'] = df_selected_and_unselected.best_alternative.isnull() == False 
         return_df = df_selected_and_unselected[(df_selected_and_unselected.selected_option == True) | (df_selected_and_unselected.best_unselected == True)]
@@ -155,7 +160,7 @@ def select_financing_and_tech(df, prng, alpha_lkup, choose_tech = False, techs =
             sys.exit(-1)
             
     # subset the columns to return
-    return_df = return_df[in_columns + ['selected_option']].sort(columns = ['county_id', 'bin_id', 'tech'])      
+    return_df = return_df[in_columns + ['selected_option']].sort(columns = ['county_id', 'bin_id', 'sector_abbr', 'tech'])      
     
     
     return return_df

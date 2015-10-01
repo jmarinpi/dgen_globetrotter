@@ -270,7 +270,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 
                 # select from choices for business model and (optionally) technology
-                df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, choose_tech, techs)  
+                df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)  
                 
                 # calculate diffusion based on economics and bass diffusion      
                 df, market_last_year = diffunc.calc_diffusion(df, year, sector) 
