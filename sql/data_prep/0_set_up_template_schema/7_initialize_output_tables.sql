@@ -167,5 +167,6 @@ CREATE TABLE diffusion_template.output_market_last_year
 	number_of_adopters_last_year NUMERIC,
 	installed_capacity_last_year NUMERIC,
 	market_value_last_year NUMERIC,
-	tech text
+	tech text,
+	sector_abbr character varying(3)
 );

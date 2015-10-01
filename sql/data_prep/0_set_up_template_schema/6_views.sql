@@ -193,33 +193,34 @@ SELECT CASE WHEN markets = 'All' THEN 'res=>Residential,com=>Commercial,ind=>Ind
 	   end as sectors
 FROM diffusion_template.input_main_scenario_options;
 
-
+set role 'diffusion-writers';
 -- max market share
 DROP VIEW IF EXISTS diffusion_template.max_market_curves_to_model;
 CREATE OR REPLACE VIEW diffusion_template.max_market_curves_to_model As
 with user_inputs as 
 (
 	-- user selections for host owned curves
-	SELECT 'residential' as sector, 'host_owned' as business_model,
+	SELECT 'residential' as sector, 'res'::character varying(3) as sector_abbr, 'host_owned' as business_model,
 		res_max_market_curve as source
 	FROM diffusion_template.input_main_scenario_options
 	UNION
-	SELECT 'commercial' as sector, 'host_owned' as business_model,
+	SELECT 'commercial' as sector, 'com'::character varying(3) as sector_abbr, 'host_owned' as business_model,
 		com_max_market_curve as source
 	FROM diffusion_template.input_main_scenario_options
 	UNION
-	SELECT 'industrial' as sector, 'host_owned' as business_model,
+	SELECT 'industrial' as sector, 'ind'::character varying(3) as sector_abbr, 'host_owned' as business_model,
 		ind_max_market_curve as source
 	FROM diffusion_template.input_main_scenario_options
 	UNION
 	-- default selections for third party owned curves (only one option -- NREL)
 	SELECT unnest(array['residential','commercial','industrial']) as sector, 
+		unnest(array['res','com','ind']) as sector_abbr, 
 		'tpo' as business_model,
 		'NREL' as source	
 ),
 all_maxmarket as 
 (
-	SELECT metric_value, sector, max_market_share, metric, 
+	SELECT metric_value, sector, sector_abbr, max_market_share, metric, 
 		source, business_model
 	FROM diffusion_shared.max_market_share
 )
@@ -425,10 +426,18 @@ set role 'diffusion-writers';
 
 DROP VIEW IF EXISTS diffusion_template.input_financial_parameters;
 CREATE VIEW diffusion_template.input_financial_parameters AS
-select *, 'wind'::text as tech
+select *, 'wind'::text as tech,
+	case   when sector = 'residential' then 'res'::CHARACTER VARYING(3)
+		when sector = 'commercial' then 'com'::CHARACTER VARYING(3)
+		when sector = 'industrial' then 'ind'::CHARACTER VARYING(3)
+	end as sector_abbr
 from diffusion_template.input_wind_finances
 UNION ALL
-select *, 'solar'::text as tech
+select *, 'solar'::text as tech,
+	case   when sector = 'residential' then 'res'::CHARACTER VARYING(3)
+		when sector = 'commercial' then 'com'::CHARACTER VARYING(3)
+		when sector = 'industrial' then 'ind'::CHARACTER VARYING(3)
+	end as sector_abbr
 from diffusion_template.input_solar_finances;
 
 ------------------------------------------------------------------------------------------------

@@ -2368,25 +2368,27 @@ def get_scenario_options(cur, schema):
     return results
 
 
-def get_dsire_incentives(cur, con, schema, techs, sector_abbr, npar, pg_conn_string):
+def get_dsire_incentives(cur, con, schema, techs, sectors, npar, pg_conn_string):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
     
     sql_list = []
-    for tech in techs:
-        inputs['tech'] = tech
-        sql =   """SELECT a.incentive_array_id, c.*, '%(tech)s'::TEXT as tech
-                    FROM 
-                    (SELECT DISTINCT incentive_array_id as incentive_array_id
-                    	FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s
-                    	WHERE year = 2014) a
-                    LEFT JOIN diffusion_%(tech)s.dsire_incentives_simplified_lkup_%(sector_abbr)s b
-                        ON a.incentive_array_id = b.incentive_array_id
-                    LEFT JOIN diffusion_%(tech)s.incentives c
-                        ON b.incentives_uid = c.uid
-                    WHERE lower(c.sector_abbr) = '%(sector_abbr)s'
-                """ % inputs
-        sql_list.append(sql)
+    for sector_abbr, sector in sectors.iteritems():
+        inputs['sector_abbr'] = sector_abbr
+        for tech in techs:
+            inputs['tech'] = tech
+            sql =   """SELECT a.incentive_array_id, c.*, '%(tech)s'::TEXT as tech
+                        FROM 
+                        (SELECT DISTINCT incentive_array_id as incentive_array_id
+                        	FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s
+                        	WHERE year = 2014) a
+                        LEFT JOIN diffusion_%(tech)s.dsire_incentives_simplified_lkup_%(sector_abbr)s b
+                            ON a.incentive_array_id = b.incentive_array_id
+                        LEFT JOIN diffusion_%(tech)s.incentives c
+                            ON b.incentives_uid = c.uid
+                        WHERE c.sector_abbr = '%(sector_abbr)s'
+                    """ % inputs
+            sql_list.append(sql)
     
     sql = ' UNION ALL '.join(sql_list)
             
@@ -2394,7 +2396,7 @@ def get_dsire_incentives(cur, con, schema, techs, sector_abbr, npar, pg_conn_str
     return df
 
 
-def get_initial_market_shares(cur, con, techs, sector_abbr, sector, schema):
+def get_initial_market_shares(cur, con, techs, sectors, schema):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()     
@@ -2402,57 +2404,60 @@ def get_initial_market_shares(cur, con, techs, sector_abbr, sector, schema):
     inputs['cap_table'] = 'starting_capacities_mw_2012_q4_us'
     
     sql_list = []
-    for tech in techs:
-        inputs['tech'] = tech
-        sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;
-                 CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s AS
-                 WITH a as
-                 (
-    			SELECT county_id, bin_id, state_abbr,
-    				CASE  WHEN system_size_kw = 0 then 0
-    					ELSE customers_in_bin
-    				END AS customers_in_bin, installed_costs_dollars_per_kw
-    			FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s	
-    			WHERE year = 2014			
-                 ),
-                 b as
-                 (
-                    	SELECT a.county_id, a.bin_id,
-                    		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
-                    		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
-                    		a.customers_in_bin,
-                             a.installed_costs_dollars_per_kw
-                    	FROM a
-                    	LEFT JOIN diffusion_%(tech)s.starting_capacities_mw_2012_q4_us b
-                    		ON a.state_abbr = b.state_abbr
-                ) 
-                SELECT b.county_id, b.bin_id,
-                     ROUND(COALESCE(b.initial_number_of_adopters, 0)::NUMERIC, 6) as initial_number_of_adopters,
-                     1000 * ROUND(COALESCE(b.initial_capacity_mw, 0)::NUMERIC, 6) as initial_capacity_kw,
-            	     CASE  WHEN customers_in_bin = 0 then 0
-                           ELSE ROUND(COALESCE(b.initial_number_of_adopters/b.customers_in_bin, 0)::NUMERIC, 6) 
-                     END AS initial_market_share,
-                     b.installed_costs_dollars_per_kw
-                FROM b;""" % inputs
-        cur.execute(sql)
-        con.commit()    
+    for sector_abbr, sector in sectors.iteritems():
+        inputs['sector_abbr'] = sector_abbr
+        inputs['sector'] = sector
+        for tech in techs:
+            inputs['tech'] = tech
+            sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;
+                     CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s AS
+                     WITH a as
+                     (
+        			SELECT county_id, bin_id, state_abbr,
+        				CASE  WHEN system_size_kw = 0 then 0
+        					ELSE customers_in_bin
+        				END AS customers_in_bin, installed_costs_dollars_per_kw
+        			FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s	
+        			WHERE year = 2014			
+                     ),
+                     b as
+                     (
+                        	SELECT a.county_id, a.bin_id,
+                        		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
+                        		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
+                        		a.customers_in_bin,
+                                 a.installed_costs_dollars_per_kw
+                        	FROM a
+                        	LEFT JOIN diffusion_%(tech)s.starting_capacities_mw_2012_q4_us b
+                        		ON a.state_abbr = b.state_abbr
+                    ) 
+                    SELECT b.county_id, b.bin_id,
+                         ROUND(COALESCE(b.initial_number_of_adopters, 0)::NUMERIC, 6) as initial_number_of_adopters,
+                         1000 * ROUND(COALESCE(b.initial_capacity_mw, 0)::NUMERIC, 6) as initial_capacity_kw,
+                	     CASE  WHEN customers_in_bin = 0 then 0
+                               ELSE ROUND(COALESCE(b.initial_number_of_adopters/b.customers_in_bin, 0)::NUMERIC, 6) 
+                         END AS initial_market_share,
+                         b.installed_costs_dollars_per_kw
+                    FROM b;""" % inputs
+            cur.execute(sql)
+            con.commit()    
         
         
-        sql = """CREATE INDEX pt_%(sector_abbr)s_initial_market_shares_%(tech)s_join_fields_btree 
-                 ON %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s 
-                 USING BTREE(county_id,bin_id);""" % inputs
-        cur.execute(sql)
-        con.commit()
+            sql = """CREATE INDEX pt_%(sector_abbr)s_initial_market_shares_%(tech)s_join_fields_btree 
+                     ON %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s 
+                     USING BTREE(county_id,bin_id);""" % inputs
+            cur.execute(sql)
+            con.commit()
 
 
-        sql = """SELECT county_id, bin_id, 
-                        initial_market_share AS market_share_last_year,
-                        initial_number_of_adopters AS number_of_adopters_last_year,
-                        initial_capacity_kw AS installed_capacity_last_year,
-                        installed_costs_dollars_per_kw * initial_capacity_kw as market_value_last_year,
-                        '%(tech)s'::TEXT as tech
-                FROM %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s""" % inputs
-        sql_list.append(sql)
+            sql = """SELECT county_id, bin_id, 
+                            initial_market_share AS market_share_last_year,
+                            initial_number_of_adopters AS number_of_adopters_last_year,
+                            initial_capacity_kw AS installed_capacity_last_year,
+                            installed_costs_dollars_per_kw * initial_capacity_kw as market_value_last_year,
+                            '%(tech)s'::TEXT as tech, '%(sector_abbr)s'::Character Varying(3) as sector_abbr
+                    FROM %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s""" % inputs
+            sql_list.append(sql)
         
     sql = ' UNION ALL '.join(sql_list)
     df = pd.read_sql(sql, con)
@@ -2461,13 +2466,13 @@ def get_initial_market_shares(cur, con, techs, sector_abbr, sector, schema):
     return df  
 
 
-def get_market_last_year(cur, con, is_first_year, techs, sector_abbr, sector, schema):
+def get_market_last_year(cur, con, is_first_year, techs, sectors, schema):
     
     inputs = locals().copy()
     
     
     if is_first_year == True:
-        last_year_df = get_initial_market_shares(cur, con, techs, sector_abbr, sector, schema)
+        last_year_df = get_initial_market_shares(cur, con, techs, sectors, schema)
     else:
         sql = """SELECT *
                 FROM %(schema)s.output_market_last_year;""" % inputs
@@ -2476,7 +2481,7 @@ def get_market_last_year(cur, con, is_first_year, techs, sector_abbr, sector, sc
     return last_year_df
     
 
-def write_last_year(con, cur, market_last_year, sector_abbr, schema):
+def write_last_year(con, cur, market_last_year, schema):
     
     inputs = locals().copy()    
     
@@ -2489,7 +2494,7 @@ def write_last_year(con, cur, market_last_year, sector_abbr, schema):
     # open an in memory stringIO file (like an in memory csv)
     s = StringIO()
     # write the data to the stringIO
-    out_cols = ['county_id', 'bin_id', 'market_share_last_year', 'max_market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year', 'tech']
+    out_cols = ['county_id', 'bin_id', 'market_share_last_year', 'max_market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year', 'tech', 'sector_abbr']
     market_last_year[out_cols].to_csv(s, index = False, header = False)
     # seek back to the beginning of the stringIO file
     s.seek(0)
@@ -2500,7 +2505,7 @@ def write_last_year(con, cur, market_last_year, sector_abbr, schema):
     s.close()
 
 
-def get_main_dataframe(con, sector_abbr, schema, year, techs):
+def get_main_dataframe(con, sectors, schema, year, techs):
     ''' Pull main pre-processed dataframe from dB
     
         IN: con - pg con object - connection object
@@ -2525,42 +2530,44 @@ def get_main_dataframe(con, sector_abbr, schema, year, techs):
             inputs['add_cols'] = """a.tilt, a.azimuth, a.available_roof_sqft, 
                                     a.inverter_cost_dollars_per_kw, a.inverter_lifetime_yrs, 
                                     'solar'::TEXT as tech"""       
-
-        sql = """SELECT a.micro_id, 
-                        a.county_id, 
-                        a.bin_id, 
-                        a.year, 
-                        a.state_abbr, 
-                        a.census_division_abbr, 
-                        a.utility_type, 
-                        a.pca_reg, 
-                        a.reeds_reg, 
-                        a.incentive_array_id, 
-                        a.carbon_price_cents_per_kwh, 
-                        a.fixed_om_dollars_per_kw_per_yr, 
-                        a.variable_om_dollars_per_kwh, 
-                        a.installed_costs_dollars_per_kw, 
-                        a.customers_in_bin, 
-                        a.load_kwh_per_customer_in_bin, 
-                        a.system_size_kw, 
-                        a.aep,  
-                        a.owner_occupancy_status,
-                        %(add_cols)s,
-                        b.first_year_bill_with_system, 
-                        b.first_year_bill_without_system, 
-                        b.excess_generation_percent, 
-                        c.leasing_allowed
-                FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s a
-                LEFT JOIN %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s b
-                        ON a.county_id = b.county_id
-                        AND a.bin_id = b.bin_id
-                        AND a.year = b.year
-                -- LEASING AVAILABILITY
-                LEFT JOIN %(schema)s.input_%(tech)s_leasing_availability c
-                    ON a.state_abbr = c.state_abbr
-                    AND a.year = c.year                                     
-                WHERE a.year = %(year)s""" % inputs
-        sql_list.append(sql)
+        for sector_abbr, sector in sectors.iteritems():
+            inputs['sector_abbr'] = sector_abbr
+            sql = """SELECT a.micro_id, 
+                            a.county_id, 
+                            a.bin_id, 
+                            a.year, 
+                            a.state_abbr, 
+                            a.census_division_abbr, 
+                            a.utility_type, 
+                            a.pca_reg, 
+                            a.reeds_reg, 
+                            a.incentive_array_id, 
+                            a.carbon_price_cents_per_kwh, 
+                            a.fixed_om_dollars_per_kw_per_yr, 
+                            a.variable_om_dollars_per_kwh, 
+                            a.installed_costs_dollars_per_kw, 
+                            a.customers_in_bin, 
+                            a.load_kwh_per_customer_in_bin, 
+                            a.system_size_kw, 
+                            a.aep,  
+                            a.owner_occupancy_status,
+                            %(add_cols)s,
+                            b.first_year_bill_with_system, 
+                            b.first_year_bill_without_system, 
+                            b.excess_generation_percent, 
+                            c.leasing_allowed,
+                            '%(sector_abbr)s'::CHARACTER VARYING(3) as sector_abbr
+                    FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s a
+                    LEFT JOIN %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s b
+                            ON a.county_id = b.county_id
+                            AND a.bin_id = b.bin_id
+                            AND a.year = b.year
+                    -- LEASING AVAILABILITY
+                    LEFT JOIN %(schema)s.input_%(tech)s_leasing_availability c
+                        ON a.state_abbr = c.state_abbr
+                        AND a.year = c.year                                     
+                    WHERE a.year = %(year)s""" % inputs
+            sql_list.append(sql)
             
     sql = ' UNION ALL '.join(sql_list)
     
@@ -2585,7 +2592,6 @@ def get_financial_parameters(con, schema):
     df = pd.read_sql(sql, con)
     
     # minor formatting for table joins later on
-    df.sector = df.sector.str.lower()
     df['business_model'] = df.ownership_model.str.lower().str.replace(" ", "_").str.replace("leased","tpo")
     df = df.drop('ownership_model', axis = 1)
     
@@ -2693,9 +2699,9 @@ def calc_manual_incentives(df, con, cur_year, schema):
     '''
     
     if df.shape[0] > 0:
-        value_of_incentives = df[['tech', 'sector', 'county_id', 'bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['tech', 'sector', 'county_id','bin_id','business_model']).sum().reset_index() 
+        value_of_incentives = df[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['tech', 'sector_abbr', 'county_id','bin_id','business_model']).sum().reset_index() 
     else:
-        value_of_incentives = df[['tech', 'sector', 'county_id', 'bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
+        value_of_incentives = df[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
     
     return value_of_incentives
     
@@ -2714,7 +2720,7 @@ def calc_dsire_incentives(df, dsire_incentives, cur_year, default_exp_yr = 2016,
                                         mutiyear incentves, the (undiscounted) lifetime value is given 
     '''  
     
-    inc = pd.merge(df, dsire_incentives, how = 'left', on = ['incentive_array_id', 'sector', 'tech'])    
+    inc = pd.merge(df, dsire_incentives, how = 'left', on = ['incentive_array_id', 'sector_abbr', 'tech'])    
     
     # Shorten names
     ic = inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
@@ -2886,9 +2892,9 @@ def calc_dsire_incentives(df, dsire_incentives, cur_year, default_exp_yr = 2016,
     
     # sum results to customer bins
     if inc.shape[0] > 0:
-        inc_summed = inc[['tech', 'sector', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['tech', 'sector', 'county_id','bin_id','business_model']).sum().reset_index() 
+        inc_summed = inc[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['tech', 'sector_abbr', 'county_id','bin_id','business_model']).sum().reset_index() 
     else:
-        inc_summed = inc[['tech', 'sector', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
+        inc_summed = inc[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
         
     inc_summed['value_of_pbi_fit'] = inc_summed['lifetime_value_of_pbi_fit'] / assumed_duration
     inc_summed['pbi_fit_length'] = assumed_duration
@@ -2896,7 +2902,7 @@ def calc_dsire_incentives(df, dsire_incentives, cur_year, default_exp_yr = 2016,
     inc_summed['value_of_ptc'] = inc_summed['lifetime_value_of_ptc'] / assumed_duration
     inc_summed['ptc_length'] = assumed_duration
     
-    return inc_summed[['tech', 'sector', 'county_id','bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
+    return inc_summed[['tech', 'sector_abbr', 'county_id','bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
 
 def get_rate_escalations(con, schema, current_year, tech_lifetime):
     '''

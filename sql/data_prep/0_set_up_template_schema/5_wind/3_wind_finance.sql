@@ -37,20 +37,20 @@ CREATE TABLE diffusion_template.input_wind_finances_ind
 );
 
 
-DROP VIEW IF EXISTS diffusion_template.input_wind_finances;
+DROP VIEW IF EXISTS diffusion_template.input_wind_finances CASCADE;
 CREATE VIEW diffusion_template.input_wind_finances AS
 
-SELECT 'Residential'::text as sector, *, 0::integer as length_of_irr_analysis_yrs
+SELECT 'residential'::text as sector, *, 0::integer as length_of_irr_analysis_yrs
 FROM diffusion_template.input_wind_finances_res
 
 UNION ALL
 
-SELECT 'Commercial'::text as sector, *
+SELECT 'commercial'::text as sector, *
 FROM diffusion_template.input_wind_finances_com
 
 UNION ALL
 
-SELECT 'Industrial'::text as sector, *
+SELECT 'industrial'::text as sector, *
 FROM diffusion_template.input_wind_finances_ind;
 
 

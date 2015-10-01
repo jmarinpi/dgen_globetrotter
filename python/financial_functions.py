@@ -23,7 +23,7 @@ logger = utilfunc.get_logger()
 
 #==============================================================================
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
-def calc_economics(df, schema, sector, sector_abbr, market_projections,
+def calc_economics(df, schema, market_projections,
                    financial_parameters, scenario_opts, incentive_opts, max_market_share, cur, con, 
                    year, dsire_incentives, deprec_schedule, ann_system_degradation, 
                    mode, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
@@ -49,9 +49,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     df = pd.merge(df, business_model, on = 'cross_join')
     df = df.drop('cross_join', axis=1)
     
-    df['sector'] = sector.lower()
-    df['sector_abbr'] = sector_abbr
-    df = pd.merge(df, financial_parameters, how = 'left', on = ['sector', 'business_model', 'tech'])
+    df = pd.merge(df, financial_parameters, how = 'left', on = ['sector_abbr', 'business_model', 'tech'])
     df = pd.merge(df, ann_system_degradation, how = 'left', on = ['tech'])
     df = pd.merge(df, deprec_schedule, how = 'left', on = ['tech'])
     df = pd.merge(df, incentive_opts, how = 'left', on = ['tech'])
@@ -76,7 +74,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, year, default_exp_yr = 2016, assumed_duration = 10)
 
     value_of_incentives_all = pd.concat([value_of_incentives_manual, value_of_incentives_dsire], axis = 0, ignore_index = True)
-    df = pd.merge(df, value_of_incentives_all, how = 'left', on = ['county_id','bin_id','business_model', 'tech', 'sector'])
+    df = pd.merge(df, value_of_incentives_all, how = 'left', on = ['county_id','bin_id','business_model', 'tech', 'sector_abbr'])
 
     revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives = calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime, max_incentive_fraction)
     
@@ -111,7 +109,7 @@ def calc_economics(df, schema, sector, sector_abbr, market_projections,
     max_market_share['metric_value_as_factor'] = (max_market_share['metric_value'] * 100).round().astype('int')
 
     # Join the max_market_share table and df in order to select the ultimate mms based on the metric value. 
-    df = pd.merge(df,max_market_share, how = 'left', on = ['sector', 'metric','metric_value_as_factor','business_model'])
+    df = pd.merge(df, max_market_share, how = 'left', on = ['sector_abbr', 'metric','metric_value_as_factor','business_model'])
     
     # Derate the maximum market share for commercial and industrial customers in leased buildings by (1/3)
     # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
@@ -206,7 +204,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     om_cost = np.zeros(shape);
     om_cost[:] =   (-df.variable_om_dollars_per_kwh * df['aep'])[:,np.newaxis]
     om_cost[:] +=  (-df.fixed_om_dollars_per_kw_per_yr * df['system_size_kw'])[:,np.newaxis]
-    om_cost[:] *= (1 - (df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | (df.business_model == 'tpo'))[:,np.newaxis]))
+    om_cost[:] *= (1 - (df.tax_rate[:,np.newaxis] * ((df.sector_abbr == 'ind') | (df.sector_abbr == 'com') | (df.business_model == 'tpo'))[:,np.newaxis]))
 
     ## Revenue
     """
@@ -242,7 +240,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     
     # Since electricity expenses are tax deductible for commercial & industrial 
     # entities, the net annual savings from a system is reduced by the marginal tax rate
-    generation_revenue *= (1 - df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial'))[:,np.newaxis])
+    generation_revenue *= (1 - df.tax_rate[:,np.newaxis] * ((df.sector_abbr == 'ind') | (df.sector_abbr == 'com'))[:,np.newaxis])
     
     """
     4) Revenue from carbon price.
@@ -270,8 +268,8 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     max_depreciation_reduction = np.minimum(df['total_value_of_incentive'], df['value_of_tax_credit_or_deduction']  + df['value_of_rebate'])
     deprec_basis = np.maximum(df.ic - 0.5 * (max_depreciation_reduction),0)[:,np.newaxis] # depreciable basis reduced by half the incentive
     deprec_schedule_arr = np.array(list(df['deprec']))    
-    depreciation_revenue[:,:20] = deprec_basis * deprec_schedule_arr * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | (df.business_model == 'tpo'))[:,np.newaxis]   
-    deprec_basis * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') | (df.business_model == 'tpo'))[:,np.newaxis]
+    depreciation_revenue[:,:20] = deprec_basis * deprec_schedule_arr * df.tax_rate[:,np.newaxis] * ((df.sector_abbr == 'ind') | (df.sector_abbr == 'com') | (df.business_model == 'tpo'))[:,np.newaxis]   
+    deprec_basis * df.tax_rate[:,np.newaxis] * ((df.sector_abbr == 'ind') | (df.sector_abbr == 'com') | (df.business_model == 'tpo'))[:,np.newaxis]
     '''
     6) Interest paid on loans is tax-deductible for commercial & industrial users; 
     assume can fully monetize. Assume that third-party owners finance system all-cash--thus no interest to deduct. 
@@ -279,7 +277,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     
     # Calc interest paid on serving the loan
     interest_paid = calc_interest_pmt_schedule(df,tech_lifetime)
-    interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * ((df.sector == 'Industrial') | (df.sector == 'Commercial') & (df.business_model == 'host_owned'))[:,np.newaxis]
+    interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * ((df.sector_abbr == 'ind') | (df.sector_abbr == 'com') & (df.business_model == 'host_owned'))[:,np.newaxis]
     
     '''
     7) Revenue from other incentives
@@ -623,7 +621,7 @@ def calc_metric_value(df,cfs,revenue,costs, tech_lifetime):
     Where Avg. annual system payment = Sum(down payment + monthly system payment (aka loan_cost)) / loan term (20 years for TPO and 15 for HO)
     """ 
 
-    metric_value = np.where(df.business_model == 'tpo',df.percent_monthly_bill_savings, np.where((df.sector == 'Industrial') | (df.sector == 'Commercial'),ttd,payback))
+    metric_value = np.where(df.business_model == 'tpo',df.percent_monthly_bill_savings, np.where((df.sector_abbr == 'ind') | (df.sector_abbr == 'com'),ttd,payback))
     
     return metric_value    
 #==============================================================================

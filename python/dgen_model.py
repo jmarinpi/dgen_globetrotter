@@ -71,9 +71,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 out_dir = '%s/runs/results_%s' %(os.path.dirname(os.getcwd()), cdate)        
                 os.makedirs(out_dir)
                 input_scenarios = None
-                market_last_year_res = None
-                market_last_year_ind = None
-                market_last_year_com = None
+                previous_year_results = None
                 # Read in ReEDS UPV Capital Costs
                 Convert2004_dollars = 1.254 #Conversion from 2004$ to 2014$
                 ReEDS_PV_CC = FancyDataFrame(data = ReEDS_df['UPVCC_all'])
@@ -86,9 +84,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             else:                
                 cfg.init_model = False
                 # Load files here
-                market_last_year_res = pd.read_pickle("market_last_year_res.pkl")
-                market_last_year_ind = pd.read_pickle("market_last_year_ind.pkl")   
-                market_last_year_com = pd.read_pickle("market_last_year_com.pkl")   
+                previous_year_results = pd.read_pickle("market_last_year.pkl")
                 with open('saved_vars.pickle', 'rb') as handle:
                     saved_vars = pickle.load(handle)
                 out_dir = saved_vars['out_dir']
@@ -237,70 +233,55 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==========================================================================================================
             # MODEL TECHNOLOGY DEPLOYMENT    
             #==========================================================================================================
-            logger.info("---------Modeling Annual Deployment---------")            
-            for sector_abbr, sector in sectors.iteritems():  
-                logger.info("Modeling Deployment for %s Sector" % sector.title())
-                # get dsire incentives for the generated customer bins
-                dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sector_abbr, cfg.npar, cfg.pg_conn_string)     
-                for year in model_years:
-                    dfs = []
-                    logger.info('\tWorking on %s for %s Sector' % (year, sector))
-                        
-                    # get input agent attributes from postgres
-                    df = datfunc.get_main_dataframe(con, sector_abbr, schema, year, techs)
-                    # reeds stuff...
-                    if mode == 'ReEDS':
-                        # When in ReEDS mode add the values from ReEDS to df
-                        df = pd.merge(df, distPVCurtailment, how = 'left', on = 'pca_reg')
-                        df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
-                        df = pd.merge(df,change_elec_price, how = 'left', on = 'pca_reg')
-                        
-                        if sector_abbr == 'res':
-                            market_last_year = market_last_year_res
-                        if sector_abbr == 'ind':
-                            market_last_year = market_last_year_ind
-                        if sector_abbr == 'com':
-                            market_last_year = market_last_year_com
-                            
-                    else:
-                        # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
-                        df['curtailment_rate'] = 0
-                        df['ReEDS_elec_price_mult'] = 1
-                        curtailment_method = 'net'                
+            logger.info("---------Modeling Annual Deployment---------")      
+            # get dsire incentives for the generated customer bins
+            dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.npar, cfg.pg_conn_string)     
+            for year in model_years:
+                logger.info('\tWorking on %s' % year)
                     
+                # get input agent attributes from postgres
+                df = datfunc.get_main_dataframe(con, sectors, schema, year, techs)
+                
+                # reeds stuff...
+                if mode == 'ReEDS':
+                    # When in ReEDS mode add the values from ReEDS to df
+                    df = pd.merge(df, distPVCurtailment, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
+                    df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
+                    df = pd.merge(df, change_elec_price, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
+                else:
+                    # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
+                    df['curtailment_rate'] = 0
+                    df['ReEDS_elec_price_mult'] = 1
+                    curtailment_method = 'net'           
                     # Market characteristics from previous year
                     is_first_year = year == cfg.start_year
-                    previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sector_abbr, sector, schema)   
-                    df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id', 'bin_id', 'tech'])
-                                        
-                    # Calculate economics of adoption for different busines models
-                    df = finfunc.calc_economics(df, schema, sector, sector_abbr, 
-                                               market_projections, financial_parameters, 
-                                               scenario_opts, incentive_options, max_market_share, 
-                                               cur, con, year, dsire_incentives, deprec_schedule, 
-                                               ann_system_degradation, mode, curtailment_method, 
-                                               tech_lifetime = 25)
+                    previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sectors, schema)   
+                
 
-                    
-                    # select from choices for business model and (optionally) technology
-                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, choose_tech, techs)  
-                    
-                    # calculate diffusion based on economics and bass diffusion      
-                    df, market_last_year = diffunc.calc_diffusion(df, year, sector) 
-     
-                    # reeds stuff... # TODO: Refactor
-                    if mode == 'ReEDS':
-                        market_last_year_solar = market_last_year[market_last_year.tech == 'solar']
-                        if sector_abbr == 'res':
-                            market_last_year_res = market_last_year_solar
-                        if sector_abbr == 'ind':
-                            market_last_year_ind = market_last_year_solar
-                        if sector_abbr == 'com':
-                            market_last_year_com = market_last_year_solar
-                    
-                    # write the incremental results to the database
-                    datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
-                    datfunc.write_last_year(con, cur, market_last_year, sector_abbr, schema)
+                df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])
+                                    
+                # Calculate economics of adoption for different busines models
+                df = finfunc.calc_economics(df, schema, 
+                                           market_projections, financial_parameters, 
+                                           scenario_opts, incentive_options, max_market_share, 
+                                           cur, con, year, dsire_incentives, deprec_schedule, 
+                                           ann_system_degradation, mode, curtailment_method, 
+                                           tech_lifetime = 25)
+
+                
+                # select from choices for business model and (optionally) technology
+                df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, choose_tech, techs)  
+                
+                # calculate diffusion based on economics and bass diffusion      
+                df, market_last_year = diffunc.calc_diffusion(df, year, sector) 
+ 
+                # reeds stuff... # TODO: Refactor
+                if mode == 'ReEDS':
+                    market_last_year_solar = market_last_year[market_last_year.tech == 'solar']
+                
+                # write the incremental results to the database
+                datfunc.write_outputs(con, cur, df, sector_abbr, schema) 
+                datfunc.write_last_year(con, cur, market_last_year, schema)
                          
             #==============================================================================
             #    Outputs & Visualization
@@ -323,9 +304,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 reeds_out = reedsfunc.combine_outputs_reeds(schema, sectors, cur, con)
                 cf_by_pca_and_ts = reedsfunc.summarise_solar_resource_by_ts_and_pca_reg(reeds_out, con)
                 
-                market_last_year_res.to_pickle("market_last_year_res.pkl")
-                market_last_year_ind.to_pickle("market_last_year_ind.pkl")
-                market_last_year_com.to_pickle("market_last_year_com.pkl")
+                market_last_year_solar.to_pickle("market_last_year.pkl")
                 saved_vars = {'out_dir' : out_dir, 'input_scenarios' : input_scenarios}
                 with open('saved_vars.pickle', 'wb') as handle:
                     pickle.dump(saved_vars, handle)  
