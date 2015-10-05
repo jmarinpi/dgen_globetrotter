@@ -26,7 +26,7 @@ def load_resume_vars(cfg, resume_year):
     return cfg.init_model, out_dir, input_scenarios, market_last_year
 
 
-def combine_outputs_reeds(schema, sectors, cur, con):
+def combine_outputs_reeds(schema, sectors, cur, con, year):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()   
@@ -57,6 +57,8 @@ def combine_outputs_reeds(schema, sectors, cur, con):
                     ON a.county_id = b.county_id
                     AND a.bin_id = b.bin_id
                     and a.year = b.year
+                    WHERE a.tech = 'solar'
+                    AND a.year = %(year)s
 
                     ''' % inputs
         sql += sub_sql

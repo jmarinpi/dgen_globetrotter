@@ -18,13 +18,14 @@ def main(year, endyr_ReEDS, reeds_path, gams_path, curtailment_method):
     
     # Change working directory to where dSolar is (must be done before importing dgen_model)
     os.chdir('../SolarDS/python')
+    # os.chdir('c:/reeds/solards/python')
 
     import dgen_model
+    reload(dgen_model)
     
     # Run dSolar
     ReEDS_inputs = {'ReEDS_df': ReEDS_df, 'curtailment_method':curtailment_method}
     df, cf_by_pca_and_ts = dgen_model.main(mode = 'ReEDS', resume_year = year, endyear = endyr_ReEDS, ReEDS_inputs = ReEDS_inputs)
-    df = df[(df['year'] == year)]
 
     dSolarPVcapacity = 0.001* df.groupby('pca_reg')['installed_capacity'].sum() # Convert output from kW to MW and sum to the PCA level   
     dSolarPVcapacity = dSolarPVcapacity.reset_index()
@@ -52,9 +53,11 @@ if __name__ == '__main__':
     # Solve year most recently completed in ReEDS
     year = sys.argv[1]
     year = int(year)
+    #year = 2014
     
     endyr_ReEDS = sys.argv[2]
     endyr_ReEDS = int(endyr_ReEDS)
+    #endyr_ReEDS = 2050
     
     # Path to current ReEDS run
     reeds_path = sys.argv[3]
@@ -62,9 +65,11 @@ if __name__ == '__main__':
     
     # Path to GAMS
     gams_path = sys.argv[4]
+    # gams_path = "C:/Gams/win64/24.1/bin"
 
 	# Curtailment switch
     curtailment_method = sys.argv[5]
     curtailment_method = curtailment_method.lower() # Make sure it's on lower case to prevent errors later on.
-	
+    # curtailment_method = "off"
+ 
     main(year, endyr_ReEDS, reeds_path, gams_path, curtailment_method)

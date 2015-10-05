@@ -78,7 +78,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 ReEDS_PV_CC.columns = ['year','Capital_Cost']
                 ReEDS_PV_CC.year = ReEDS_PV_CC.year.convert_objects(convert_numeric=True)
                 valid_years = np.arange(2014,2051,2)
-                ReEDS_PV_CC = ReEDS_PV_CC.loc[ReEDS_PV_CC.year.isin(valid_years)]
+                ReEDS_PV_CC = FancyDataFrame(data = ReEDS_PV_CC.loc[ReEDS_PV_CC.year.isin(valid_years)])
                 ReEDS_PV_CC.index = range(0, ReEDS_PV_CC.shape[0])
                 ReEDS_PV_CC['Capital_Cost'] = ReEDS_PV_CC['Capital_Cost'] * Convert2004_dollars # ReEDS capital costs for UPV converted from 2004 dollars
             else:                
@@ -137,7 +137,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # load Input excel spreadsheet to Postgres
             if cfg.init_model:
                 # create the output schema
-                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
+                #schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
+                schema = 'diffusion_results_2015_10_05_11h07m21s'
                 datfunc.clear_outputs(con, cur, schema)
                 # write the reeds settings to postgres
                 reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
@@ -179,7 +180,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             if mode == 'ReEDS' and scenario_opts['region'] != 'United States':
                 logger.error('Linked model can only run nationally. Select United States in input sheet'      )
                 logger.error('Model aborted')
-                sys.exit(-1)
+                #sys.exit(-1)
                                   
             # get other scenario inputs
             logger.info('Getting various scenario parameters')
@@ -211,21 +212,21 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # CREATE AGENTS
                 #==========================================================================================================
-                logger.info("--------------Creating Agents---------------")
-                datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, cfg.start_year, 
-                                               end_year, cfg.npar, cfg.pg_conn_string, scenario_opts) # TODO: Comment
-    
-                #==========================================================================================================
-                # CHECK TECH POTENTIAL
-                #==========================================================================================================           
-                datfunc.check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_dir) # TODO: Comment               
-               
-               
-                #==========================================================================================================
-                # CALCULATE BILL SAVINGS
-                #==========================================================================================================
-                datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar,  # TODO: Comment/uncomment
-                                           cfg.pg_conn_string, cfg.gross_fit_mode, cfg.local_cores)
+#                logger.info("--------------Creating Agents---------------")
+#                datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, cfg.start_year, 
+#                                               end_year, cfg.npar, cfg.pg_conn_string, scenario_opts) # TODO: Comment
+#    
+#                #==========================================================================================================
+#                # CHECK TECH POTENTIAL
+#                #==========================================================================================================           
+#                datfunc.check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_dir) # TODO: Comment               
+#               
+#               
+#                #==========================================================================================================
+#                # CALCULATE BILL SAVINGS
+#                #==========================================================================================================
+#                datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar,  # TODO: Comment/uncomment
+#                                           cfg.pg_conn_string, cfg.gross_fit_mode, cfg.local_cores)
 
     
             #==========================================================================================================
@@ -252,10 +253,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     df['ReEDS_elec_price_mult'] = 1
                     curtailment_method = 'net'           
                     # Market characteristics from previous year
-                    is_first_year = year == cfg.start_year
-                    previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sectors, schema)   
-                
-
+                    
+                is_first_year = year == cfg.start_year                
+                previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sectors, schema) 
                 df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])
                                     
                 # Calculate economics of adoption for different busines models
@@ -298,7 +298,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                                 
             if mode == 'ReEDS':
-                reeds_out = reedsfunc.combine_outputs_reeds(schema, sectors, cur, con)
+                reeds_out = reedsfunc.combine_outputs_reeds(schema, sectors, cur, con, resume_year)
                 cf_by_pca_and_ts = reedsfunc.summarise_solar_resource_by_ts_and_pca_reg(reeds_out, con)
                 
                 market_last_year_solar.to_pickle("market_last_year.pkl")
