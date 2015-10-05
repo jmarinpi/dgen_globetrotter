@@ -84,12 +84,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             else:                
                 cfg.init_model = False
                 # Load files here
-                previous_year_results = pd.read_pickle("market_last_year.pkl")
                 with open('saved_vars.pickle', 'rb') as handle:
                     saved_vars = pickle.load(handle)
                 out_dir = saved_vars['out_dir']
                 input_scenarios = saved_vars['input_scenarios']
-            #cfg.init_model,out_dir,input_scenarios, market_last_year = reedsfunc.load_resume_vars(cfg, resume_year)
         else:
             # set input dataframes for reeds-mode settings (these are ingested to postgres later)
             reeds_mode_df = FancyDataFrame(data = [False])
@@ -179,6 +177,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # reeds stuff.. #TODO: Refactor
             if mode == 'ReEDS' and scenario_opts['region'] != 'United States':
                 logger.error('Linked model can only run nationally. Select United States in input sheet'      )
+                logger.error('Model aborted')
+                #sys.exit(-1)
+            
+            if mode == 'ReEDS' and techs != ['solar']:
+                logger.error('Linked model can only run for solar only. Set Run Model for Wind = False in input sheet'      )
                 logger.error('Model aborted')
                 #sys.exit(-1)
                                   
@@ -271,11 +274,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 # calculate diffusion based on economics and bass diffusion      
                 df, market_last_year = diffunc.calc_diffusion(df, year) 
- 
-                # reeds stuff... # TODO: Refactor
-                if mode == 'ReEDS':
-                    market_last_year_solar = market_last_year[market_last_year.tech == 'solar']
-                
+                 
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
                 datfunc.write_last_year(con, cur, market_last_year, schema)
@@ -301,7 +300,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 reeds_out = reedsfunc.combine_outputs_reeds(schema, sectors, cur, con, resume_year)
                 cf_by_pca_and_ts = reedsfunc.summarise_solar_resource_by_ts_and_pca_reg(reeds_out, con)
                 
-                market_last_year_solar.to_pickle("market_last_year.pkl")
                 saved_vars = {'out_dir' : out_dir, 'input_scenarios' : input_scenarios}
                 with open('saved_vars.pickle', 'wb') as handle:
                     pickle.dump(saved_vars, handle)  
