@@ -2781,14 +2781,18 @@ def calc_dsire_incentives(df, dsire_incentives, cur_year, default_exp_yr = 2016,
     inc.tax_deduction_pcnt_cost = inc.tax_deduction_pcnt_cost.astype(float)
     inc.tax_credit_max_size_kw = inc.tax_credit_max_size_kw.astype(float)
     inc.tax_credit_min_size_kw = inc.tax_credit_min_size_kw.astype(float)
-    # replace null values for min/max dollars and size with defaults
+# replace null values for min/max dollars and size with defaults
     exp_date = datetime.date(default_exp_yr, 12, 31) # note: this was formerly set to 1/1/16 for ITC, and 12/31/16 for all other incentives
     max_dlrs = 1e9
     dlrs_per_kwh = 0
+    dlrs_per_kw = 0
     max_size_kw = 10000
     min_size_kw = 0
     min_output_kwh_yr = 0
     increment_incentive_kw = 0
+    pcnt_cost_max = 100
+    # percent cost max
+    inc.loc[:, 'rebate_pcnt_cost_max'] = inc.rebate_pcnt_cost_max.fillna(pcnt_cost_max)
     # expiration date
     inc.loc[:, 'ptc_end_date'] = inc.ptc_end_date.fillna(exp_date)
     inc.loc[:, 'pbi_fit_end_date'] = inc.pbi_fit_end_date.fillna(exp_date) # Assign expiry if no date    
@@ -2796,8 +2800,11 @@ def calc_dsire_incentives(df, dsire_incentives, cur_year, default_exp_yr = 2016,
     inc.loc[:, 'max_dlrs_yr'] = inc.max_dlrs_yr.fillna(max_dlrs)
     inc.loc[:, 'pbi_fit_max_dlrs'] = inc.pbi_fit_max_dlrs.fillna(max_dlrs)
     inc.loc[:, 'max_tax_credit_dlrs'] = inc.max_tax_credit_dlrs.fillna(max_dlrs)
+    inc.loc[:, 'rebate_max_dlrs'] = inc.rebate_max_dlrs.fillna(max_dlrs)     
     # dollars per kwh
     inc.loc[:, 'ptc_dlrs_kwh'] = inc.ptc_dlrs_kwh.fillna(dlrs_per_kwh)
+    # dollars per kw
+    inc.loc[:, 'rebate_dlrs_kw'] = inc.rebate_dlrs_kw.fillna(dlrs_per_kw)
     # max size
     inc.loc[:, 'tax_credit_max_size_kw'] = inc.tax_credit_max_size_kw.fillna(max_size_kw)
     inc.loc[:, 'pbi_fit_max_size_kw' ] = inc.pbi_fit_min_size_kw.fillna(max_size_kw)
