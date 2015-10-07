@@ -37,7 +37,7 @@ import utility_functions as utilfunc
 #==============================================================================
 # raise  numpy and pandas warnings as exceptions
 #==============================================================================
-np.seterr(all='raise')
+#np.seterr(all='raise')
 pd.set_option('mode.chained_assignment', 'raise')
 #==============================================================================
     
