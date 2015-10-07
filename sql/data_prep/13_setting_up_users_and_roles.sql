@@ -14,6 +14,7 @@ CREATE ROLE "diffusion-intermediate" NOCREATEDB NOCREATEUSER NOLOGIN NOCREATEROL
 
 ALTER GROUP "diffusion-intermediate" ADD USER "diffusion-writers";
 ALTER GROUP "diffusion-schema-writers" ADD user "diffusion-intermediate";
+GRANT CREATE ON database dgen_db to "diffusion-schema-writers";
 
 ALTER GROUP "diffusion-writers" ADD user bsigrin;
 ALTER GROUP "diffusion-writers" ADD user wcole;

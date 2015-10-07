@@ -1,4 +1,4 @@
-﻿set role mgleason;
+﻿-- set role mgleason;
 DROP FUNCTION IF EXISTS public.clone_schema(source_schema text, dest_schema text, owner text, include_data boolean);
 CREATE OR REPLACE FUNCTION public.clone_schema(source_schema text, dest_schema text, owner text, include_data boolean default false) RETURNS void AS
 $BODY$
@@ -24,7 +24,35 @@ BEGIN
     END LOOP;
 
     FOR objeto IN
-        SELECT TABLE_NAME::text FROM information_schema.TABLES WHERE table_schema = source_schema and table_type = 'VIEW'
+        -- SELECT TABLE_NAME::text FROM information_schema.TABLES WHERE table_schema = source_schema and table_type = 'VIEW' ORDER BY table_name ASC
+
+	with a as
+	(
+		select TABLE_NAME::text, get_dependencies('diffusion_template', table_name)
+		FROM information_schema.TABLES 
+		WHERE table_schema = 'diffusion_template' 
+			and table_type = 'VIEW'
+		ORDER BY table_name ASC
+	),
+	b as
+	(
+		select table_name, count(*) as count_dependents
+		FROM a
+		group by table_name
+	),
+	c as
+	(
+		select a.table_name, coalesce(b.count_dependents, 0) as count_dependents
+		from information_schema.TABLES a
+		LEFT JOIN b
+		ON a.table_name = b.table_name
+		WHERE a.table_schema = 'diffusion_template' 
+			and table_type = 'VIEW'
+	)
+	SELECT table_name
+	from c
+	order by count_dependents asc
+        
     LOOP        
         buffer := dest_schema || '.' || objeto;
 	select definition FROM pg_views where viewname = objeto and schemaname = source_schema INTO view_definition;
