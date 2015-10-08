@@ -47,29 +47,29 @@ def select_financing_and_tech(df, prng, alpha_lkup, sectors, choose_tech = False
     
     in_columns = df.columns.tolist()
 
-    # check each customer bin has number of entries = 2 * number of techs * number of sectors
-    test = df.groupby(['county_id', 'bin_id'])['npv4'].count().reset_index()
-    if np.any(test.iloc[:, 2] <> 2 * len(techs) * len(sectors)):
-        raise ValueError("Incorrect number of entries for each customer bin")
-        sys.exit(-1)
-    
-    # check each customer bin + tech + sector_abbr has two business models
-    test = df.groupby(['county_id', 'bin_id', 'sector_abbr', 'tech'])['business_model'].count().reset_index()
-    if np.any(test.iloc[:, 4] <> 2):
-        raise ValueError("Incorrect number of business models for each customer bin")
-        sys.exit(-1)
-        
-    # check each customer bin + business model + sector has the correct nmber of techs
-    test = df.groupby(['county_id', 'bin_id', 'sector_abbr', 'business_model'])['tech'].count().reset_index()
-    if np.any(test.iloc[:, 4] <> len(techs)):
-        raise ValueError("Incorrect number of techs for each customer bin")
-        sys.exit(-1)
- 
-    # check each customer bin + business model + tech has the correct nmber of sectors
-    test = df.groupby(['county_id', 'bin_id', 'tech', 'business_model'])['sector_abbr'].count().reset_index()
-    if np.any(test.iloc[:, 4] <> len(sectors)):
-        raise ValueError("Incorrect number of sectors for each customer bin")
-        sys.exit(-1)       
+    #    # check each customer bin has number of entries = 2 * number of techs * number of sectors
+    #    test = df.groupby(['county_id', 'bin_id'])['npv4'].count().reset_index()
+    #    if np.any(test.iloc[:, 2] <> 2 * len(techs) * len(sectors)):
+    #        raise ValueError("Incorrect number of entries for each customer bin")
+    #        sys.exit(-1)
+    #    
+    #    # check each customer bin + tech + sector_abbr has two business models
+    #    test = df.groupby(['county_id', 'bin_id', 'sector_abbr', 'tech'])['business_model'].count().reset_index()
+    #    if np.any(test.iloc[:, 4] <> 2):
+    #        raise ValueError("Incorrect number of business models for each customer bin")
+    #        sys.exit(-1)
+    #        
+    #    # check each customer bin + business model + sector has the correct nmber of techs
+    #    test = df.groupby(['county_id', 'bin_id', 'sector_abbr', 'business_model'])['tech'].count().reset_index()
+    #    if np.any(test.iloc[:, 4] <> len(techs)):
+    #        raise ValueError("Incorrect number of techs for each customer bin")
+    #        sys.exit(-1)
+    # 
+    #    # check each customer bin + business model + tech has the correct nmber of sectors
+    #    test = df.groupby(['county_id', 'bin_id', 'tech', 'business_model'])['sector_abbr'].count().reset_index()
+    #    if np.any(test.iloc[:, 4] <> len(sectors)):
+    #        raise ValueError("Incorrect number of sectors for each customer bin")
+    #        sys.exit(-1)       
     
     df['uid'] = range(0, df.shape[0])
     df = df.merge(alpha_lkup)
