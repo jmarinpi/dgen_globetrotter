@@ -27,7 +27,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 
 # set the name of the pg_params_file
 #pg_params_file = 'pg_params.json'
-pg_params_file = 'pg_params_db.json'
+pg_params_file = 'pg_params.json'
 #pg_params_file = 'pg_params_dev.json'
 
 # load pg params from pg_params.json
@@ -75,7 +75,7 @@ init_model = True
 #==============================================================================
 # In non-NEM mode, should generation be allowed to offset self-consumption (False), 
 # or directly sold to grid (True)
-gross_fit_mode = True
+gross_fit_mode = False
 
 #==============================================================================
 #  Set a cap on value of incentives

@@ -1,7 +1,12 @@
 {	
-	"dbname": "", 
-	"host": "", 
+	"dbname": "",
+ 
+		"host": "",
+	 
 	"port": "",
-	"password": "", 
+	
+	"password": "",
+	 
 	"user": ""
+
 }
