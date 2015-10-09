@@ -26,7 +26,7 @@ logger = utilfunc.get_logger()
 def calc_economics(df, schema, market_projections,
                    financial_parameters, scenario_opts, incentive_opts, max_market_share, cur, con, 
                    year, dsire_incentives, deprec_schedule, ann_system_degradation, 
-                   mode, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
+                   mode, curtailment_method, itc_options, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
     Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
 
@@ -71,10 +71,13 @@ def calc_economics(df, schema, market_projections,
     
     value_of_incentives_manual = datfunc.calc_manual_incentives(df_manual_incentives, con, year, schema)
     value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, year, default_exp_yr = 2016, assumed_duration = 10)
-
+    
     value_of_incentives_all = pd.concat([value_of_incentives_manual, value_of_incentives_dsire], axis = 0, ignore_index = True)
     df = pd.merge(df, value_of_incentives_all, how = 'left', on = ['county_id','bin_id','business_model', 'tech', 'sector_abbr'])
-
+    
+    # Calculates value of ITC, return df with a new column 'value_of_itc'
+    df = datfunc.calc_value_of_itc(df, itc_options, year)
+    
     revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives = calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime, max_incentive_fraction)    
     df['total_value_of_incentives'] = total_value_of_incentives
 
@@ -177,7 +180,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     # Constrain fraction to [0,1]
     max_incent_fraction = min(max(max_incentive_fraction, 0), 1)
     #np.minimum(max_incent_fraction * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'])
-    df['total_value_of_incentive'] = np.minimum(max_incent_fraction * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'])
+    df['total_value_of_incentive'] = np.minimum(max_incent_fraction * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'] + df['value_of_itc'])
     
     # Assume that incentives received in first year are directly credited against installed cost; This help avoid
     # ITC cash flow imbalances in first year

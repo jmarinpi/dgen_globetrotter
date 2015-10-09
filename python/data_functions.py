@@ -338,6 +338,7 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
                 'first_year_bill_without_system',
                 'npv4',
                 'excess_generation_percent',
+                'value_of_itc',
                 'total_value_of_incentives',
                 'tech',
                 'selected_option']    
@@ -414,7 +415,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
                     a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, 
-                    a.npv4, a.excess_generation_percent, a.total_value_of_incentives, a.selected_option,
+                    a.npv4, a.excess_generation_percent, a.value_of_itc, a.total_value_of_incentives, a.selected_option,
 
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id,
@@ -506,7 +507,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
                     a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
                     a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, 
-                    a.npv4, a.excess_generation_percent, a.total_value_of_incentives, a.selected_option,
+                    a.npv4, a.excess_generation_percent, a.value_of_itc, a.total_value_of_incentives, a.selected_option,
 
                     
                     b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
@@ -587,7 +588,7 @@ def combine_output_view(schema, cur, con, techs):
                         new_adopters, new_capacity, new_market_value, market_share, 
                         number_of_adopters, installed_capacity, market_value, 
                         first_year_bill_with_system, first_year_bill_without_system, 
-                        npv4, excess_generation_percent, total_value_of_incentives, 
+                        npv4, excess_generation_percent, value_of_itc, total_value_of_incentives, 
                         state_abbr, census_division_abbr, utility_type, hdf_load_index, 
                         pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, 
                         carbon_price_cents_per_kwh, fixed_om_dollars_per_kw_per_yr, 
@@ -2389,7 +2390,7 @@ def get_dsire_incentives(cur, con, schema, techs, sectors, npar, pg_conn_string)
                             ON a.incentive_array_id = b.incentive_array_id
                         LEFT JOIN diffusion_%(tech)s.incentives c
                             ON b.incentives_uid = c.uid
-                        WHERE c.sector_abbr = '%(sector_abbr)s'
+                        WHERE c.sector_abbr = '%(sector_abbr)s' AND c.incentive_id <> 124 
                     """ % inputs
             sql_list.append(sql)
     
@@ -3166,5 +3167,23 @@ def excess_generation_vectorized(df, gross_fit_mode = False):
 
     return df
 
+def calc_value_of_itc(df, itc_options, year):
+    itc_options['sector_abbr'] = itc_options['sector'].str.lower()
+    itc_options['sector_abbr'] = itc_options['sector_abbr'].str[:3] 
+    
+    d = pd.merge(df, itc_options)
+    
+    # Correct for res TPO systems so they get the commercial ITC value
+    # A complicated way to determine the tpo fraction for that given year
+    tpo_fraction = itc_options.query("sector == 'commercial' & year == %s"%year)['itc_fraction'].values[0]
+    
+    # overwrite the res-tpo value       
+    d.loc[(d['sector_abbr'] == 'res') & (d['business_model'] == 'tpo'),'itc_fraction'] = tpo_fraction 
+    
+    # Calculate the value of ITC
+    d['value_of_itc'] = d['installed_costs_dollars_per_kw'] * d['system_size_kw'] * d['itc_fraction'] #'ic' not in the df at this point
+    d = d.drop(['sector','itc_fraction'], 1)
+    
+    return d
 
     
