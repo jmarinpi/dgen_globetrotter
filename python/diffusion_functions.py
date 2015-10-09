@@ -16,6 +16,7 @@ Last Revision: 3/26/14
 """
 
 import numpy as np
+import pandas as pd
 import utility_functions as utilfunc
 import decorators
 from config import show_times
@@ -28,7 +29,7 @@ logger = utilfunc.get_logger()
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
-def calc_diffusion(df, year):
+def calc_diffusion(df, con, cfg, year):
 
     ''' Calculates the market share (ms) added in the solve year. Market share must be less
         than max market share (mms) except initial ms is greater than the calculated mms.
@@ -42,9 +43,9 @@ def calc_diffusion(df, year):
             market_last_year - pd dataframe - market to inform diffusion in next year
     '''
     
-    logger.info("\t\tCalculating Diffusion")    
-    
-    df['diffusion_market_share'] = calc_diffusion_market_share(df) * df['selected_option'] # ensure no diffusion for non-selected options
+    logger.info("\t\tCalculating Diffusion")
+
+    df['diffusion_market_share'] = calc_diffusion_market_share(df, cfg, con) * df['selected_option'] # ensure no diffusion for non-selected options
    
     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
     df['new_market_share'] = df['market_share']-df['market_share_last_year']
@@ -64,7 +65,60 @@ def calc_diffusion(df, year):
 
 
 #=============================================================================
-# ^^^^  Bass Diffusion Calculator  ^^^^
+
+#  ^^^^ Calculate new diffusion in market segment ^^^^
+def calc_diffusion_market_share(df, cfg, con):
+    ''' Calculate the fraction of overall population that have adopted the 
+        technology in the current period. Note that this does not specify the 
+        actual new adoption fraction without knowing adoption in the previous period. 
+
+        IN: payback_period - numpy array - payback in years
+            max_market_share - numpy array - maximum market share as decimal
+            current_market_share - numpy array - current market share as decimal
+                        
+        OUT: new_market_share - numpy array - fraction of overall population 
+                                                that have adopted the technology
+    '''
+    # The relative economic attractiveness controls the p,q values in Bass diffusion
+    # Current assumption is that only payback and MBS are being used, that pp is bounded [0-30] and MBS bounded [0-120]
+       
+    p,q  = set_bass_param(df, cfg, con) 
+    teq = calc_equiv_time(df.market_share_last_year, df.max_market_share, p, q); # find the 'equivalent time' on the newly scaled diffusion curve
+    teq2 = teq + 2; # now step forward two years from the 'new location'
+    new_adopt_fraction = bass_diffusion(p, q, teq2); # calculate the new diffusion by stepping forward 2 years
+    market_share = df.max_market_share * new_adopt_fraction; # new market adoption    
+    market_share = np.where(df.market_share_last_year > df.max_market_share, df.market_share_last_year, market_share)
+    
+    return market_share
+#==============================================================================  
+    
+#=============================================================================
+def set_bass_param(df, cfg, con):
+    ''' Set the p & q parameters which define the Bass diffusion curve.
+    p is the coefficient of innovation, external influence or advertising effect. 
+    q is the coefficient of imitation, internal influence or word-of-mouth effect.
+
+        IN: scaled_metric_value - numpy array - scaled value of economic attractiveness [0-1]
+        OUT: p,q - numpy arrays - Bass diffusion parameters
+    '''
+    bass_params_solar = pd.read_sql('SELECT * FROM diffusion_solar.bass_pq_calibrated_params_solar', con)
+    scaled_metric_value = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'percent_monthly_bill_savings', df.metric_value/2,np.nan))
+    
+    # set p and q values
+    if cfg.bass_method == 'sunshot':
+        p = np.array([0.0015] * df.scaled_metric_value.size);
+        q = np.where(scaled_metric_value >= 0.9, 0.5, np.where((scaled_metric_value >=0.66) & (scaled_metric_value < 0.9), 0.4, 0.3))
+        
+    if cfg.bass_method == 'calibrated':
+        # NOTE: assumes same p,q values for non-solar techs!!
+        df = pd.merge(df, bass_params_solar, how = 'left', on  = ['state_abbr','sector_abbr'])
+        p = df.p.values
+        q = df.q.values
+        
+    return p, q
+    
+#=============================================================================
+# ^^^^  Bass Diffusion Calculator  ^^^^ 
 def bass_diffusion(p, q, t):
     ''' Calculate the fraction of population that diffuse into the max_market_share.
         Note that this is different than the fraction of population that will 
@@ -103,47 +157,4 @@ def calc_equiv_time(msly, mms, p, q):
     
 #=============================================================================
 
-#=============================================================================
-def set_bass_param(scaled_metric_value,pval = 0.0015):
-    ''' Set the p & q parameters which define the Bass diffusion curve.
-    p is the coefficient of innovation, external influence or advertising effect. 
-    q is the coefficient of imitation, internal influence or word-of-mouth effect.
 
-        IN: scaled_metric_value - numpy array - scaled value of economic attractiveness [0-1]
-        OUT: p,q - numpy arrays - Bass diffusion parameters
-    '''
-    # set p and q values
-    p = np.array([pval] * scaled_metric_value.size);
-    # q value is set based off how attractive the technology is; these values are arbitrary and inherited from SolarDS
-    q = np.where(scaled_metric_value >= 0.9, 0.5, np.where((scaled_metric_value >=0.66) & (scaled_metric_value < 0.9), 0.4, 0.3))
-
-    return p, q
-    
-#=============================================================================
-
-#==============================================================================
-#  ^^^^ Calculate new diffusion in market segment ^^^^
-def calc_diffusion_market_share(df):
-    ''' Calculate the fraction of overall population that have adopted the 
-        technology in the current period. Note that this does not specify the 
-        actual new adoption fraction without knowing adoption in the previous period. 
-
-        IN: payback_period - numpy array - payback in years
-            max_market_share - numpy array - maximum market share as decimal
-            current_market_share - numpy array - current market share as decimal
-                        
-        OUT: new_market_share - numpy array - fraction of overall population 
-                                                that have adopted the technology
-    '''
-    # The relative economic attractiveness controls the p,q values in Bass diffusion
-    # Current assumption is that only payback and MBS are being used, that pp is bounded [0-30] and MBS bounded [0-120]
-    scaled_metric_value = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'percent_monthly_bill_savings', df.metric_value/120,np.nan))    
-    p,q  = set_bass_param(scaled_metric_value) 
-    teq = calc_equiv_time(df.market_share_last_year, df.max_market_share, p, q); # find the 'equivalent time' on the newly scaled diffusion curve
-    teq2 = teq + 2; # now step forward two years from the 'new location'
-    new_adopt_fraction = bass_diffusion(p, q, teq2); # calculate the new diffusion by stepping forward 2 years
-    market_share = df.max_market_share * new_adopt_fraction; # new market adoption    
-    market_share = np.where(df.market_share_last_year > df.max_market_share, df.market_share_last_year, market_share)
-    
-    return market_share
-#==============================================================================  

@@ -84,6 +84,13 @@ gross_fit_mode = False
 # (effectively capping incentive value beyond this point)
 max_incentive_fraction = 0.4
 
+#==============================================================================
+#  Set method for determining Bass parameters
+#==============================================================================
+# 'sunshot' - Use p,q parameters based on 2012 SunShot study; p = 0.0015, q = [0.3 - 0.5] increasing with metric_value 
+# 'calibrated' - Use state and sector-specific p,q parameters based on fitting historic deployment to a Bass curve. 
+bass_method = 'calibrated'
+#bass_method = 'sunshot'
 
 #==============================================================================
 #  Set up the alpha lookup table used by datfunc.select_financing_and_tech
