@@ -1,6 +1,6 @@
 #Development best practices:
 - changes made to the database need to be replicated on both gispgdb and dnpdb001
-	- if you make changes to only one of the two databases, open a new issue with high priority, assigned to mgleason, indicating what you changed and on which database
+	- if you make changes to only one of the two databases, open a new issue with high priority, assigned to mgleason, indicating what you changed and on which database. provide a commit hash, if appropriate.
 - if you open an issue, be sure to assign it each of the following:
 	- a milestone
 	- a priority level
