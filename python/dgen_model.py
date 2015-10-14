@@ -187,11 +187,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # get other scenario inputs
             logger.info('Getting various scenario parameters')
             with utilfunc.Timer() as t:
-                if cfg.calibrate_mode:
-                    max_market_share = pd.read_csv('max_market_share_test.csv').query('source == "NREL"')
-                    #TODO commit this as more proper change
-                else:
-                    max_market_share = datfunc.get_max_market_share(con, schema)
+                max_market_share = datfunc.get_max_market_share(con, schema)
                 market_projections = datfunc.get_market_projections(con, schema)
                 load_growth_scenario = scenario_opts['load_growth_scenario'].lower() # get financial variables
                 # these are technology specific, set up in tidy form with a "tech" field
