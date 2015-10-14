@@ -1028,7 +1028,7 @@ def sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, 
             CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
             WITH binned as
             (
-                SELECT a.*, b.crb_model, b.ann_cons_kwh, b.weight, 
+                SELECT a.*, b.crb_model, b.ann_cons_kwh, b.weight as eia_weight, 
                        CASE WHEN b.roof_sqft < 5000 THEN 'small'::character varying(6)
                             WHEN b.roof_sqft >= 5000 and b.roof_sqft < 25000 THEN 'medium'::character varying(6)
                             WHEN b.roof_sqft >= 25000 THEN 'large'::character varying(6)
@@ -1430,6 +1430,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   installed_costs_dollars_per_kw numeric, -- *** THIS MAY NOT BE CORRECT-- CHECK WITH BEN ***
                   inverter_cost_dollars_per_kw numeric,
                   ann_cons_kwh numeric,
+                  eia_weight numeric,
                   customers_in_bin double precision,
                   initial_customers_in_bin double precision,
                   load_kwh_in_bin double precision,
@@ -1481,6 +1482,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                 	b.capital_cost_dollars_per_kw * a.cap_cost_multiplier_solar::NUMERIC as capital_cost_dollars_per_kw,
                   b.inverter_cost_dollars_per_kw * a.cap_cost_multiplier_solar::NUMERIC as inverter_cost_dollars_per_kw,
                 	a.ann_cons_kwh, 
+                  a.eia_weight,
                 	b.load_multiplier * a.customers_in_bin * a.pct_developable as customers_in_bin, 
                 	a.customers_in_bin * a.pct_developable as initial_customers_in_bin, 
                 	b.load_multiplier * a.load_kwh_in_bin * a.pct_developable AS load_kwh_in_bin,
@@ -1535,7 +1537,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    capital_cost_dollars_per_kw as installed_costs_dollars_per_kw, -- *** THIS MAY NOT BE CORRECT -- CHECK WITH BEN ***
                    inverter_cost_dollars_per_kw,
             
-                   ann_cons_kwh, 
+                   ann_cons_kwh, eia_weight,
                    customers_in_bin, initial_customers_in_bin, 
                    load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
                    crb_model, max_demand_kw, rate_id_alias, rate_source,
@@ -1752,7 +1754,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 	e.fixed_om_dollars_per_kw_per_yr, 
                 	e.variable_om_dollars_per_kwh,
                 	e.installed_costs_dollars_per_kw * a.cap_cost_multiplier_wind::numeric as installed_costs_dollars_per_kw,
-                	a.ann_cons_kwh, 
+                	a.ann_cons_kwh, a.eia_weight,
                 	b.load_multiplier * a.customers_in_bin as customers_in_bin, 
                 	a.customers_in_bin as initial_customers_in_bin, 
                 	b.load_multiplier * a.load_kwh_in_bin AS load_kwh_in_bin,
@@ -1811,7 +1813,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                    variable_om_dollars_per_kwh, 
                    installed_costs_dollars_per_kw, 
             
-                   ann_cons_kwh, 
+                   ann_cons_kwh, eia_weight,
                    customers_in_bin, initial_customers_in_bin, 
                    load_kwh_in_bin, initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, 
                    crb_model, max_demand_kw, rate_id_alias, rate_source,
