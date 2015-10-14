@@ -64,10 +64,14 @@ CREATE TABLE diffusion_config.sceninp_rate_escalation
   val text unique not null
 );
 
+DELETE FROM diffusion_config.sceninp_rate_escalation;
+
 INSERT INTO diffusion_config.sceninp_rate_escalation
 select *
 from unnest(array[
 	'AEO2014',
+	'AEO2015',
+	'AEO2015 Extended',
 	'No Growth',
 	'User Defined'
 	]);
@@ -169,9 +173,16 @@ CREATE TABLE diffusion_config.sceninp_load_growth_scenario
   val text unique not null
 );
 
+DELETE FROM diffusion_config.sceninp_load_growth_scenario;
+
 INSERT INTO diffusion_config.sceninp_load_growth_scenario
 select *
 from unnest(array[
+	'AEO 2015 No Load growth after 2014',
+	'AEO 2015 Low Growth Case',
+	'AEO 2015 Reference Case',
+	'AEO 2015 High Growth Case',
+	'AEO 2015 2x Growth Rate of Reference Case',
 	'AEO 2014 No Load growth after 2014',
 	'AEO 2014 Low Growth Case',
 	'AEO 2014 Reference Case',
