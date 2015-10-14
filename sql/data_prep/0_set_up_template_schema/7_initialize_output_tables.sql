@@ -44,6 +44,7 @@ CREATE TABLE diffusion_template.outputs_res
   npv4 numeric,
   excess_generation_percent numeric,
   total_value_of_incentives numeric,
+  value_of_itc numeric,
   tech text,
   selected_option boolean
 );
@@ -96,6 +97,7 @@ CREATE TABLE diffusion_template.outputs_com
   npv4 numeric,
   excess_generation_percent numeric,
   total_value_of_incentives numeric,
+  value_of_itc numeric,
   tech text,
   selected_option boolean
 );
@@ -148,6 +150,7 @@ CREATE TABLE diffusion_template.outputs_ind
   npv4 numeric,
   excess_generation_percent numeric,
   total_value_of_incentives numeric,
+  value_of_itc numeric,
   tech text,
   selected_option boolean
 );

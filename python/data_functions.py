@@ -338,8 +338,8 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
                 'first_year_bill_without_system',
                 'npv4',
                 'excess_generation_percent',
-                'value_of_itc',
                 'total_value_of_incentives',
+                'value_of_itc',
                 'tech',
                 'selected_option']    
 
