@@ -52,7 +52,7 @@ CREATE TABLE diffusion_shared.net_metering_availability_2015
 	nem_system_limit_kw DOUBLE PRECISION
 );
 
-\COPY diffusion_shared.net_metering_availability_2015 FROM '/Volumes/Staff/mgleason/DG_Solar/Data/Source_Data/nem_update_20150929/nem_bau_update_20150929_reformat.csv' with csv header;
+\COPY diffusion_shared.net_metering_availability_2015 FROM '/Volumes/Staff/mgleason/DG_Solar/Data/Source_Data/nem_update_20151014/nem_bau_update_20151014_reformat.csv' with csv header;
 
 DROP tABlE IF EXISTS diffusion_shared.nem_scenario_bau CASCADE;
 CREATE TABLE diffusion_shared.nem_scenario_bau AS
@@ -71,6 +71,10 @@ select year, state_abbr, sector_abbr,
 	       system_size_limit_kw, year_end_excess_sell_rate_dlrs_per_kwh,
 	       hourly_excess_sell_rate_dlrs_per_kwh
 from a;
+
+select count(*)
+FROM diffusion_shared.nem_scenario_bau;
+-- 6960
 
 -- make sure count matches for full everywhere and none everywhere
 select count(*)
