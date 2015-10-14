@@ -183,6 +183,16 @@ LEFT JOIN diffusion_template.carbon_intensities_to_model l
 ON e.state_abbr = l.state_abbr;
 ------------------------------------------------------------------------
 
+-- create a view of the load data
+DROP VIEW IF EXISTS diffusion_shared.aeo_load_growth_projections;
+CREATE VIEW diffusion_shared.aeo_load_growth_projections AS
+SELECT *
+FROM diffusion_shared.aeo_load_growth_projections_2014
+UNION ALL
+SELECT *
+FROM diffusion_shared.aeo_load_growth_projections_2015;
+
+
 -- create view of sectors to model
 DROP VIEW IF EXIStS diffusion_template.sectors_to_model;
 CREATE OR REPLACE VIEW diffusion_template.sectors_to_model AS

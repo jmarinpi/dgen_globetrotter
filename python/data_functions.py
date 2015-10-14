@@ -146,7 +146,7 @@ def combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_a
             LEFT JOIN %(schema)s.rate_escalations_to_model c
                 ON a.year = c.year
                 AND b.sector = c.sector
-            LEFT JOIN diffusion_shared.aeo_load_growth_projections_2014 d
+            LEFT JOIN diffusion_shared.aeo_load_growth_projections d
                 ON c.census_division_abbr = d.census_division_abbr
                 AND a.year = d.year
                 AND b.sector = d.sector_abbr
@@ -231,7 +231,7 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
                     	b.load_multiplier,
                     	c.carbon_dollars_per_ton
             FROM %(schema)s.rate_escalations_to_model a
-            LEFT JOIN diffusion_shared.aeo_load_growth_projections_2014 b
+            LEFT JOIN diffusion_shared.aeo_load_growth_projections b
                 	ON a.census_division_abbr = b.census_division_abbr
                  AND a.year = b.year
                  AND a.sector = b.sector_abbr               
