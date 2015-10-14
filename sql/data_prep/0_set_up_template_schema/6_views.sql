@@ -308,7 +308,15 @@ aeo AS
 	SELECT census_division_abbr, year, sector_abbr as sector, 
 		escalation_factor, 
 		source
-	FROM diffusion_shared.rate_escalations
+	FROM diffusion_shared.aeo_rate_escalations_2014
+	where year >= 2014
+
+	UNION ALL
+
+	SELECT census_division_abbr, year, sector_abbr as sector, 
+		escalation_factor, 
+		source
+	FROM diffusion_shared.aeo_rate_escalations_2015
 	where year >= 2014
 ),
 esc_combined AS

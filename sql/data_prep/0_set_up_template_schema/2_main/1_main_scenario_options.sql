@@ -25,52 +25,38 @@ CREATE TABLE diffusion_template.input_main_scenario_options
 	-- add check/fkey constraints to ensure only valid values are entered in each column
 	-- carbon price
 	CONSTRAINT input_main_scenario_options_carbon_price_fkey FOREIGN KEY (carbon_price)
-		REFERENCES diffusion_config.sceninp_carbon_price (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_carbon_price (val) MATCH SIMPLE,
 	-- max market curves
 	CONSTRAINT input_main_scenario_options_com_max_market_curve_fkey FOREIGN KEY (com_max_market_curve)
-		REFERENCES diffusion_config.sceninp_max_market_curve_nonres (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_max_market_curve_nonres (val) MATCH SIMPLE,
 	CONSTRAINT input_main_scenario_options_res_max_market_curve_fkey FOREIGN KEY (res_max_market_curve)
-		REFERENCES diffusion_config.sceninp_max_market_curve_res (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_max_market_curve_res (val) MATCH SIMPLE,
 	CONSTRAINT input_main_scenario_options_ind_max_market_curve_fkey FOREIGN KEY (ind_max_market_curve)
-		REFERENCES diffusion_config.sceninp_max_market_curve_nonres (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_max_market_curve_nonres (val) MATCH SIMPLE,
 	-- rate escalations
 	CONSTRAINT input_main_scenario_options_com_rate_escalation_fkey FOREIGN KEY (com_rate_escalation)
-		REFERENCES diffusion_config.sceninp_rate_escalation (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_rate_escalation (val) MATCH SIMPLE,
 	CONSTRAINT input_main_scenario_options_ind_rate_escalation_fkey FOREIGN KEY (ind_rate_escalation)
-		REFERENCES diffusion_config.sceninp_rate_escalation (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_rate_escalation (val) MATCH SIMPLE,
 	CONSTRAINT input_main_scenario_options_res_rate_escalation_fkey FOREIGN KEY (res_rate_escalation)
-		REFERENCES diffusion_config.sceninp_rate_escalation (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_rate_escalation (val) MATCH SIMPLE,
 	-- rate structures
 	CONSTRAINT input_main_scenario_options_com_rate_structure_fkey FOREIGN KEY (com_rate_structure)
-		REFERENCES diffusion_config.sceninp_rate_structure (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_rate_structure (val) MATCH SIMPLE,
 	CONSTRAINT input_main_scenario_options_ind_rate_structure_fkey FOREIGN KEY (ind_rate_structure)
-		REFERENCES diffusion_config.sceninp_rate_structure (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_rate_structure (val) MATCH SIMPLE,
 	CONSTRAINT input_main_scenario_options_res_rate_structure_fkey FOREIGN KEY (res_rate_structure)
-		REFERENCES diffusion_config.sceninp_rate_structure (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_rate_structure (val) MATCH SIMPLE,
 	-- end year
 	CONSTRAINT input_main_scenario_options_end_year_fkey FOREIGN KEY (end_year)
-		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE,
 	-- load growth
 	CONSTRAINT input_main_scenario_options_load_growth_scenario_fkey FOREIGN KEY (load_growth_scenario)
-		REFERENCES diffusion_config.sceninp_load_growth_scenario (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_load_growth_scenario (val) MATCH SIMPLE,
 	-- markets (i.e., sectors)
 	CONSTRAINT input_main_scenario_options_markets_fkey FOREIGN KEY (markets)
-		REFERENCES diffusion_config.sceninp_markets (val) MATCH SIMPLE
-		ON DELETE RESTRICT,
+		REFERENCES diffusion_config.sceninp_markets (val) MATCH SIMPLE,
 	-- region
 	CONSTRAINT input_main_scenario_options_region_fkey FOREIGN KEY (region)
 		REFERENCES diffusion_config.sceninp_region (val) MATCH SIMPLE
-		ON DELETE RESTRICT
 );

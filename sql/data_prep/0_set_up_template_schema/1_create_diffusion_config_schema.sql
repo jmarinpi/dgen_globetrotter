@@ -58,7 +58,7 @@ from unnest(array[
 
 ------------------------------------------------------------------------
 -- rate escalations
-DROP TABLE IF EXISTS diffusion_config.sceninp_rate_escalation;
+DROP TABLE IF EXISTS diffusion_config.sceninp_rate_escalation CASCADE;
 CREATE TABLE diffusion_config.sceninp_rate_escalation
 (
   val text unique not null
@@ -69,9 +69,10 @@ DELETE FROM diffusion_config.sceninp_rate_escalation;
 INSERT INTO diffusion_config.sceninp_rate_escalation
 select *
 from unnest(array[
-	'AEO2014',
 	'AEO2015',
 	'AEO2015 Extended',
+	'AEO2014',
+	'AEO2014 Extended'
 	'No Growth',
 	'User Defined'
 	]);
@@ -167,7 +168,7 @@ from unnest(array[
 
 ------------------------------------------------------------------------
 -- load growth scenario
-DROP TABLE IF EXISTS diffusion_config.sceninp_load_growth_scenario;
+DROP TABLE IF EXISTS diffusion_config.sceninp_load_growth_scenario cASCADE;
 CREATE TABLE diffusion_config.sceninp_load_growth_scenario
 (
   val text unique not null

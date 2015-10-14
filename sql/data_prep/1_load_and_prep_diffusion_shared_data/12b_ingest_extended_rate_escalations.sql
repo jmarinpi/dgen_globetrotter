@@ -34,7 +34,7 @@ where round(a.escalation_factor, 4) <> round(b.escalation_factor, 4)
 order by year; 
 
 -- insert rate_escalations_extended into rate_escalations
-INSERT INTO diffusion_shared.rate_escalations
+INSERT INTO diffusion_shared.aeo_rate_escalations_2014
 select *
 FROM diffusion_shared.rate_escalations_extended;
 -- 1809 rows
