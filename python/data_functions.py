@@ -2374,7 +2374,7 @@ def get_scenario_options(cur, schema):
     return results
 
 
-def get_dsire_incentives(cur, con, schema, techs, sectors, npar, pg_conn_string):
+def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
     
@@ -2395,6 +2395,24 @@ def get_dsire_incentives(cur, con, schema, techs, sectors, npar, pg_conn_string)
                         WHERE c.sector_abbr = '%(sector_abbr)s' AND c.incentive_id <> 124 
                     """ % inputs
             sql_list.append(sql)
+    
+    sql = ' UNION ALL '.join(sql_list)
+            
+    df = pd.read_sql(sql, con, coerce_float = False)
+    return df
+
+
+def get_srecs(cur, con, schema, techs, pg_conn_string):
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs = locals().copy()
+    
+    sql_list = []
+    for tech in techs:
+        inputs['tech'] = tech
+        sql =   """SELECT *, '%(tech)s'::TEXT as tech
+                    FROM diffusion_%(tech)s.srecs
+                """ % inputs
+        sql_list.append(sql)
     
     sql = ' UNION ALL '.join(sql_list)
             
@@ -2720,7 +2738,7 @@ def calc_manual_incentives(df, con, cur_year, schema):
     
     return value_of_incentives
     
-def calc_dsire_incentives(df, dsire_incentives, cur_year, default_exp_yr = 2016, assumed_duration = 10):
+def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr = 2016, assumed_duration = 10):
     '''
     Calculate the value of incentives based on DSIRE database. There may be many incentives per each customer bin (county_id+bin_id),
     so the value is calculated for each row (incentives)
@@ -2735,7 +2753,11 @@ def calc_dsire_incentives(df, dsire_incentives, cur_year, default_exp_yr = 2016,
                                         mutiyear incentves, the (undiscounted) lifetime value is given 
     '''  
     
-    inc = pd.merge(df, dsire_incentives, how = 'left', on = ['incentive_array_id', 'sector_abbr', 'tech'])    
+    dsire_df = pd.merge(df, dsire_incentives, how = 'left', on = ['incentive_array_id', 'sector_abbr', 'tech'])    
+    srecs_df = pd.merge(df, srecs, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
+
+    # combine sr and inc
+    inc = pd.concat([dsire_df, srecs_df], axis = 0, ignore_index = True) 
     
     # Shorten names
     ic = inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']

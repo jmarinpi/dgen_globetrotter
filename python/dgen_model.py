@@ -235,8 +235,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # MODEL TECHNOLOGY DEPLOYMENT    
             #==========================================================================================================
             logger.info("---------Modeling Annual Deployment---------")      
-            # get dsire incentives for the generated customer bins
-            dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.npar, cfg.pg_conn_string)
+            # get dsire incentives, srecs, and itc for the generated customer bins
+            dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string)
+            srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string)
             itc_options = pd.read_sql('SELECT * FROM %s.input_main_itc_options; ' % schema, con) 
             for year in model_years:
                 logger.info('\tWorking on %s' % year)
@@ -265,7 +266,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 df = finfunc.calc_economics(df, schema, 
                                            market_projections, financial_parameters, 
                                            scenario_opts, incentive_options, max_market_share, 
-                                           cur, con, year, dsire_incentives, deprec_schedule, 
+                                           cur, con, year, dsire_incentives, srecs, deprec_schedule, 
                                            ann_system_degradation, mode, curtailment_method, itc_options,
                                            tech_lifetime = 25)
                 
