@@ -135,12 +135,14 @@ def write_reeds_offline_mode_data(schema, con, out_scen_path):
             (
                 	SELECT pca_reg, azimuth, tilt, year, sum(installed_capacity) as installed_capacity
                 	FROM %(schema)s.outputs_all_solar a
+			WHERE installed_capacity > 0
                 	GROUP BY pca_reg, azimuth, tilt, year
             ),
             b AS
             (
                 	SELECT pca_reg, year, sum(installed_capacity) as installed_capacity
                 	FROM %(schema)s.outputs_all_solar a
+			WHERE installed_capacity > 0
                 	GROUP BY pca_reg, year
             ),
             c AS
