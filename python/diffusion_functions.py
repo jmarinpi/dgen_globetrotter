@@ -52,8 +52,8 @@ def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, 
     previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sectors, schema, calibrate_mode, df) 
     df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])    
     
-
-    df['diffusion_market_share'] = calc_diffusion_market_share(df, cfg, con) * df['selected_option'] # ensure no diffusion for non-selected options
+    df['diffusion_market_share'] = calc_diffusion_market_share(df, cfg, con) 
+    df['diffusion_market_share'] = df['diffusion_market_share'] * df['selected_option'] # ensure no diffusion for non-selected options
    
     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
     df['new_market_share'] = df['market_share']-df['market_share_last_year']
@@ -90,14 +90,15 @@ def calc_diffusion_market_share(df, cfg, con):
     # The relative economic attractiveness controls the p,q values in Bass diffusion
     # Current assumption is that only payback and MBS are being used, that pp is bounded [0-30] and MBS bounded [0-120]
        
-    p,q  = set_bass_param(df, cfg, con) 
-    teq = calc_equiv_time(df.market_share_last_year, df.max_market_share, p, q); # find the 'equivalent time' on the newly scaled diffusion curve
-    teq2 = teq + 2; # now step forward two years from the 'new location'
-    new_adopt_fraction = bass_diffusion(p, q, teq2); # calculate the new diffusion by stepping forward 2 years
-    market_share = df.max_market_share * new_adopt_fraction; # new market adoption    
-    market_share = np.where(df.market_share_last_year > df.max_market_share, df.market_share_last_year, market_share)
+    df  = set_bass_param(df, cfg, con) 
+    df = calc_equiv_time(df); # find the 'equivalent time' on the newly scaled diffusion curve
+    df['teq2'] = df['teq'] + 2 # now step forward two years from the 'new location'
+    df = bass_diffusion(df); # calculate the new diffusion by stepping forward 2 years
+
+    df['bass_market_share'] = df.max_market_share * df.new_adopt_fraction; # new market adoption    
+    df['diffusion_market_share'] = np.where(df.market_share_last_year > df.bass_market_share, df.market_share_last_year, df.bass_market_share)
     
-    return market_share
+    return df
 #==============================================================================  
     
 #=============================================================================
@@ -118,21 +119,19 @@ def set_bass_param(df, cfg, con, p_scalar = 1):
     # set p and q values
     if cfg.bass_method == 'sunshot':
         # set the scaled metric value
-        scaled_metric_value = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'percent_monthly_bill_savings', df.metric_value/2,np.nan))
-        p = np.array([0.0015] * df.scaled_metric_value.size);
-        q = np.where(scaled_metric_value >= 0.9, 0.5, np.where((scaled_metric_value >=0.66) & (scaled_metric_value < 0.9), 0.4, 0.3))
+        df['scaled_metric_value'] = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'percent_monthly_bill_savings', df.metric_value/2,np.nan))
+        df['p'] = np.array([0.0015] * df.scaled_metric_value.size);
+        df['q'] = np.where(df['scaled_metric_value'] >= 0.9, 0.5, np.where((df['scaled_metric_value'] >=0.66) & (df['scaled_metric_value'] < 0.9), 0.4, 0.3))
         
     if cfg.bass_method == 'calibrated':
         # NOTE: assumes same p,q values for non-solar techs!!
         df = pd.merge(df, bass_params_solar, how = 'left', on  = ['state_abbr','sector_abbr'])
-        p = df.p.values
-        q = df.q.values
         
-    return p, q
+    return df
     
 #=============================================================================
 # ^^^^  Bass Diffusion Calculator  ^^^^ 
-def bass_diffusion(p, q, t):
+def bass_diffusion(df):
     ''' Calculate the fraction of population that diffuse into the max_market_share.
         Note that this is different than the fraction of population that will 
         adopt, which is the max market share
@@ -144,14 +143,14 @@ def bass_diffusion(p, q, t):
         OUT: new_adopt_fraction - numpy array - fraction of overall population 
                                                 that will adopt the technology
     '''
-    f = np.e**(-1*(p+q)*t); 
-    new_adopt_fraction = (1-f) / (1 + (q/p)*f); # Bass Diffusion - cumulative adoption
-    return new_adopt_fraction
+    df['f'] = np.e**(-1*(df['p'] + df['q']) * df['teq2']); 
+    df['new_adopt_fraction'] = (1-df['f']) / (1 + (df['q']/df['p'])*df['f']); # Bass Diffusion - cumulative adoption
+    return df
     
 #=============================================================================
 
 #=============================================================================
-def calc_equiv_time(msly, mms, p, q):
+def calc_equiv_time(df):
     ''' Calculate the "equivalent time" on the diffusion curve. This defines the
     gradient of adoption.
 
@@ -162,11 +161,12 @@ def calc_equiv_time(msly, mms, p, q):
         OUT: t_eq - numpy array - Equivalent number of years after diffusion 
                                   started on the diffusion curve
     '''
-    mms = np.where(mms == 0, 1e-9, mms)
-    ratio = np.where(msly > mms, 0, msly/mms)
-    #ratio=msly/mms;  # ratio of adoption at present to adoption at terminal period
-    t_eq = np.log( ( 1 - ratio) / (1 + ratio*(q/p))) / (-1*(p+q)); # solve for equivalent time
-    return t_eq
+    
+    df['mms_fix_zeros'] = np.where(df['max_market_share'] == 0, 1e-9, df['max_market_share'])
+    df['ratio'] = np.where(df['market_share_last_year'] > df['mms_fix_zeros'], 0, df['market_share_last_year']/df['mms_fix_zeros'])
+   #ratio=msly/mms;  # ratio of adoption at present to adoption at terminal period
+    df['teq'] = np.log( ( 1 - df['ratio']) / (1 + df['ratio']*(df['q']/df['p']))) / (-1*(df['p']+df['q'])); # solve for equivalent time
+    return df
     
 #=============================================================================
 
