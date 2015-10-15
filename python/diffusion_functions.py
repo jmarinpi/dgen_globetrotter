@@ -109,7 +109,12 @@ def set_bass_param(df, cfg, con):
         IN: scaled_metric_value - numpy array - scaled value of economic attractiveness [0-1]
         OUT: p,q - numpy arrays - Bass diffusion parameters
     '''
+    
+    # get the calibrated bass parameters
     bass_params_solar = pd.read_sql('SELECT * FROM diffusion_solar.bass_pq_calibrated_params_solar', con)
+    # scale the p values by a factor of 10
+    bass_params_solar.loc[:, 'p'] = bass_params_solar['p'] * 10
+    # set the scaled metric_value
     scaled_metric_value = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'percent_monthly_bill_savings', df.metric_value/2,np.nan))
     
     # set p and q values

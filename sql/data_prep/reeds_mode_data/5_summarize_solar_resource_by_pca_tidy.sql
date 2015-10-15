@@ -13,6 +13,9 @@ lEFT JOIN diffusion_solar.reeds_avg_cf_by_orientation_and_time_slice b
 ON a.solar_re_9809_gid = b.solar_re_9809_gid
 group by a.pca_reg, b.tilt, b.azimuth, b.reeds_time_slice;
 
+-- add a primary key on pca_reg, tilt, azimuth, and time_slice
+ALTER TABLE diffusion_solar.reeds_solar_resource_by_pca_summary_tidy
+ADD PRIMARY KEY (pca_reg, tilt, azimuth, reeds_time_slice);
 
 -- add indices on tilt, azimuth, pca_reg, and time_slice
 CREATE INDEX reeds_solar_resource_by_pca_summary_tidy_pca_reg_btree

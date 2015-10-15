@@ -20,5 +20,15 @@ head(df_wide)
 
 dbWriteTable(conn, c('diffusion_solar', 'reeds_solar_resource_by_pca_summary_wide'), df_wide, overwrite = T, row.names = F)
 
-sql = 'ALTER TABLE diffusion_solar.reeds_solar_resource_by_pca_summary_tidy OWNER TO "diffusion-writers";'
+# add primary key
+sql = "ALTER TABLE diffusion_solar.reeds_solar_resource_by_pca_summary_wide
+ADD PRIMARY KEY (pca_reg, tilt, azimuth);"
 dbSendQuery(conn, sql)
+
+# change owner
+sql = 'ALTER TABLE diffusion_solar.reeds_solar_resource_by_pca_summary_wide OWNER TO "diffusion-writers";'
+dbSendQuery(conn, sql)
+
+
+
+
