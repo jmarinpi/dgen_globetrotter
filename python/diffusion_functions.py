@@ -101,7 +101,7 @@ def calc_diffusion_market_share(df, cfg, con):
 #==============================================================================  
     
 #=============================================================================
-def set_bass_param(df, cfg, con):
+def set_bass_param(df, cfg, con, p_scalar = 1):
     ''' Set the p & q parameters which define the Bass diffusion curve.
     p is the coefficient of innovation, external influence or advertising effect. 
     q is the coefficient of imitation, internal influence or word-of-mouth effect.
@@ -113,8 +113,8 @@ def set_bass_param(df, cfg, con):
     # get the calibrated bass parameters
     bass_params_solar = pd.read_sql('SELECT * FROM diffusion_solar.bass_pq_calibrated_params_solar', con)
     # scale the p values by a factor of 10
-    bass_params_solar.loc[:, 'p'] = bass_params_solar['p'] * 10
-    # set the scaled metric_value
+    bass_params_solar.loc[:, 'p'] = bass_params_solar['p'] * p_scalar
+    # set the scaled metric value
     scaled_metric_value = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'percent_monthly_bill_savings', df.metric_value/2,np.nan))
     
     # set p and q values
