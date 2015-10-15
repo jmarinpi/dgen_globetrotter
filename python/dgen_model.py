@@ -142,7 +142,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
                 
                 try:
-#                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
+                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
                     pass
                 except Exception, e:
                     logger.error('\tLoading failed with the following error: %s\nModel Aborted' % e      )
