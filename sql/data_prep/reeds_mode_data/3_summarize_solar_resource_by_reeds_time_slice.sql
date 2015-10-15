@@ -108,7 +108,19 @@ select parsel_2('dav-gis','mgleason', 'mgleason',
 		',
 		'diffusion_solar.reeds_avg_cf_by_orientation_and_time_slice', 
 		'a', 24);
--- ** working on above right now
+
+-- check count, should be equal to 16 (reeds time slices) * 2743140 solar resource combinations
+select count(*)
+FROM diffusion_solar.solar_resource_hourly
+where tilt <> -1;
+-- 2743140
+
+select 2743140*16; -- 43,890,240
+
+select count(*)
+FROM diffusion_solar.reeds_avg_cf_by_orientation_and_time_slice
+-- 43,890,240
+-- all set!
 
 
 -- create indices
@@ -121,3 +133,9 @@ ON diffusion_solar.reeds_avg_cf_by_orientation_and_time_slice
 USING BTREE(tilt, azimuth, reeds_time_slice);
 
 vACUUM ANALYZE diffusion_solar.reeds_avg_cf_by_orientation_and_time_slice;
+
+-- check ranges of values
+select min(cf_avg), max(cf_avg), avg(cf_avg)
+from diffusion_solar.reeds_avg_cf_by_orientation_and_time_slice;
+-- 0, .175, 0.744
+-- seems a bit off, but due to time slices, it may actually be ok...
