@@ -69,7 +69,7 @@ select parsel_2('dav-gis','mgleason', 'mgleason',
 		',
 		'diffusion_solar.reeds_avg_cf_by_orientation_and_time_slice', 
 		'a', 24);
--- ** working on above right now
+
 -- sw
 select parsel_2('dav-gis','mgleason', 'mgleason',
 		'diffusion_solar.solar_resource_hourly_sw','solar_re_9809_gid',
@@ -88,8 +88,7 @@ select parsel_2('dav-gis','mgleason', 'mgleason',
 		',
 		'diffusion_solar.reeds_avg_cf_by_orientation_and_time_slice', 
 		'a', 24);
-
-
+		
 -- south
 select parsel_2('dav-gis','mgleason', 'mgleason',
 		'diffusion_solar.solar_resource_hourly_s','solar_re_9809_gid',
@@ -103,11 +102,13 @@ select parsel_2('dav-gis','mgleason', 'mgleason',
 		select a.solar_re_9809_gid, a.tilt, a.azimuth, b.reeds_time_slice, 
 			round(r_mean_array(a.cf, b.hour_indices)/1e6, 6) as cf_avg
 		from diffusion_solar.solar_resource_hourly_s a
-		CROSS JOIN b;
+		CROSS JOIN b
+		where a.tilt <> -1
 
 		',
 		'diffusion_solar.reeds_avg_cf_by_orientation_and_time_slice', 
 		'a', 24);
+-- ** working on above right now
 
 
 -- create indices
