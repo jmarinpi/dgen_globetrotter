@@ -112,23 +112,58 @@ def summarise_solar_resource_by_ts_and_pca_reg(df, con):
     
     
 def write_reeds_offline_mode_data(schema, con, out_scen_path):
-    # Installed capacity and average electricity cost by pca and year
+   
+    inputs = locals().copy()   
+   
+   # Installed capacity and average electricity cost by pca and year
     sql = '''SELECT year, pca_reg, 
                      SUM(installed_capacity)/1000 as installed_capacity_mw, 
                      SUM(number_of_adopters * cost_of_elec_dols_per_kwh)/SUM(number_of_adopters) as cost_of_elec_dols_per_kwh
-             FROM %s.outputs_all_solar
+             FROM %(schema)s.outputs_all_solar
              WHERE number_of_adopters > 0
              GROUP BY year, pca_reg
-             ORDER BY year, pca_reg;''' %schema
-             
+             ORDER BY year, pca_reg;''' % inputs
+    # read to data frame 
     installed_capacity_and_elec_cost_pca_year = pd.read_sql(sql, con)
+    # write to csv
+    installed_capacity_and_elec_cost_pca_year.to_csv(os.path.join(out_scen_path,'installed_capacity_and_elec_cost_pca_year.csv'), index = False)
     
-    # 
-    sql2 = '''SELECT SUM(installed_capacity) as installed_capacity, pca_reg, azimuth, tilt, year
-              FROM %s.outputs_all_solar
-              GROUP BY pca_reg, azimuth, tilt, year;'''%schema
-              
-    installed_capacity_by_az_tilt = pd.read_sql(sql2, con)
     
-    installed_capacity_and_elec_cost_pca_year.to_csv(os.path.join(out_scen_path,'installed_capacity_and_elec_cost_pca_year.csv'))
-    installed_capacity_by_az_tilt.to_csv(os.path.join(out_scen_path,'installed_capacity_by_az_tilt.csv'))
+    # calculate the weighted average capacity factor by pca_reg, year, and time slice
+    # (weighted by the percent of installed capacity with each orientation)
+    sql = """WITH a AS
+            (
+                	SELECT pca_reg, azimuth, tilt, year, sum(installed_capacity) as installed_capacity
+                	FROM %(schema)s.outputs_all_solar a
+                	GROUP BY pca_reg, azimuth, tilt, year
+            ),
+            b AS
+            (
+                	SELECT pca_reg, year, sum(installed_capacity) as installed_capacity
+                	FROM %(schema)s.outputs_all_solar a
+                	GROUP BY pca_reg, year
+            ),
+            c AS
+            (
+                	SELECT a.pca_reg, a.azimuth, a.tilt, a.year,
+                		a.installed_capacity/b.installed_capacity as pct_installed_capacity,
+                		c.reeds_time_slice as ts,
+                		c.cf_avg as cf
+                	FROM a
+                	LEFT JOIN b
+                    	ON a.pca_reg = b.pca_reg
+                    	AND a.year = b.year
+                	LEFT JOIN diffusion_solar.reeds_solar_resource_by_pca_summary_tidy c
+                     ON a.pca_reg = c.pca_reg
+                     AND a.azimuth = c.azimuth
+                     AND a.tilt = c.tilt
+            )
+            SELECT c.pca_reg, c.year, c.ts,
+                	SUM(c.pct_installed_capacity * c.cf)/SUM(c.pct_installed_capacity) AS cf
+            FROM c
+            GROUP BY c.pca_reg, c.year, c.ts;""" % inputs
+    # read to data frame
+    cf_by_time_slice_pca_and_year = pd.read_sql(sql, con)
+    # write to csv
+    cf_by_time_slice_pca_and_year.to_csv(os.path.join(out_scen_path,'cf_by_time_slice_pca_and_year.csv'), index = False)
+    
