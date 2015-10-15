@@ -135,14 +135,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # load Input excel spreadsheet to Postgres
             if cfg.init_model:
                 # create the output schema
-                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment
+                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment           
                 datfunc.clear_outputs(con, cur, schema)
                 # write the reeds settings to postgres
                 reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
                 ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
                 
                 try:
-                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
+#                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
+                    pass
                 except Exception, e:
                     logger.error('\tLoading failed with the following error: %s\nModel Aborted' % e      )
                     logger.error('Model aborted')
@@ -256,11 +257,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     df['curtailment_rate'] = 0
                     df['ReEDS_elec_price_mult'] = 1
                     curtailment_method = 'net'           
-                    # Market characteristics from previous year
-                    
-                is_first_year = year == cfg.start_year                
-                previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sectors, schema) 
-                df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])
+                
+
                                     
                 # Calculate economics of adoption for different busines models
                 df = finfunc.calc_economics(df, schema, 
@@ -274,7 +272,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
                 
                 # calculate diffusion based on economics and bass diffusion      
-                df, market_last_year = diffunc.calc_diffusion(df, con, cfg, year) 
+                df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, cfg.start_year, cfg.calibrate_mode) 
                  
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
