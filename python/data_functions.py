@@ -2509,14 +2509,19 @@ def get_initial_market_shares(cur, con, techs, sectors, schema, calibrate_mode, 
                 cur.execute(sql)
                 con.commit()                         
                 
-                # now disaggregate the data to bins relative to max_market_share
+                # now disaggregate the data to bins relative to one of the 2014 economic factors
+                weight_factor = 'max_market_share'
+                # or
+                # weight_factor = 'npv4'
+                inputs['weight_factor'] = weight_factor
+                
                 sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;
                          CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s AS
                          WITH b as
                          (
                             	SELECT a.county_id, a.bin_id,
-                            		((a.customers_in_bin * a.npv4)/sum(a.customers_in_bin * a.npv4) OVER (PARTITION BY a.state_abbr)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
-                            		((a.customers_in_bin * a.npv4 * a.system_size_kw)/sum(a.customers_in_bin * a.npv4 * a.system_size_kw) OVER (PARTITION BY a.state_abbr)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
+                            		((a.customers_in_bin * a.%(weight_factor)s)/sum(a.customers_in_bin * a.%(weight_factor)s) OVER (PARTITION BY a.state_abbr)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
+                            		((a.customers_in_bin * a.%(weight_factor)s * a.system_size_kw)/sum(a.customers_in_bin * a.%(weight_factor)s * a.system_size_kw) OVER (PARTITION BY a.state_abbr)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
                             		a.customers_in_bin,
                                      a.installed_costs_dollars_per_kw
                             	FROM %(schema)s.pt_%(sector_abbr)s_first_year_economics_%(tech)s a
@@ -2524,7 +2529,7 @@ def get_initial_market_shares(cur, con, techs, sectors, schema, calibrate_mode, 
                             		ON a.state_abbr = b.state_abbr
                               WHERE a.customers_in_bin > 0
                                 AND a.system_size_kw > 0
-                                AND a.npv4 > 0
+                                AND a.%(weight_factor)s > 0
                         ) 
                         SELECT a.county_id, a.bin_id,
                              ROUND(COALESCE(b.initial_number_of_adopters, 0)::NUMERIC, 6) AS initial_number_of_adopters,
