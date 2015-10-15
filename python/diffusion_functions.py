@@ -114,11 +114,11 @@ def set_bass_param(df, cfg, con, p_scalar = 1):
     bass_params_solar = pd.read_sql('SELECT * FROM diffusion_solar.bass_pq_calibrated_params_solar', con)
     # scale the p values by a factor of 10
     bass_params_solar.loc[:, 'p'] = bass_params_solar['p'] * p_scalar
-    # set the scaled metric value
-    scaled_metric_value = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'percent_monthly_bill_savings', df.metric_value/2,np.nan))
     
     # set p and q values
     if cfg.bass_method == 'sunshot':
+        # set the scaled metric value
+        scaled_metric_value = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'percent_monthly_bill_savings', df.metric_value/2,np.nan))
         p = np.array([0.0015] * df.scaled_metric_value.size);
         q = np.where(scaled_metric_value >= 0.9, 0.5, np.where((scaled_metric_value >=0.66) & (scaled_metric_value < 0.9), 0.4, 0.3))
         
