@@ -52,7 +52,7 @@ def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, 
     previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sectors, schema, calibrate_mode, df) 
     df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])    
     
-    df['diffusion_market_share'] = calc_diffusion_market_share(df, cfg, con) 
+    df = calc_diffusion_market_share(df, cfg, con) 
     df['diffusion_market_share'] = df['diffusion_market_share'] * df['selected_option'] # ensure no diffusion for non-selected options
    
     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
