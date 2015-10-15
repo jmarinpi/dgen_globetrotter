@@ -6,6 +6,7 @@ Created on Thu Sep 17 10:54:39 2015
 """
 import pickle
 import pandas as pd
+import os
 
 
 def load_resume_vars(cfg, resume_year):
@@ -108,3 +109,26 @@ def summarise_solar_resource_by_ts_and_pca_reg(df, con):
     d.drop(['tilt','installed_capacity'], axis = 1, inplace = True)
     
     return d
+    
+    
+def write_reeds_offline_mode_data(schema, con, out_scen_path):
+    # Installed capacity and average electricity cost by pca and year
+    sql = '''SELECT year, pca_reg, 
+                     SUM(installed_capacity)/1000 as installed_capacity_mw, 
+                     SUM(number_of_adopters * cost_of_elec_dols_per_kwh)/SUM(number_of_adopters) as cost_of_elec_dols_per_kwh
+             FROM %s.outputs_all_solar
+             WHERE number_of_adopters > 0
+             GROUP BY year, pca_reg
+             ORDER BY year, pca_reg;''' %schema
+             
+    installed_capacity_and_elec_cost_pca_year = pd.read_sql(sql, con)
+    
+    # 
+    sql2 = '''SELECT SUM(installed_capacity) as installed_capacity, pca_reg, azimuth, tilt, year
+              FROM %s.outputs_all_solar
+              GROUP BY pca_reg, azimuth, tilt, year;'''%schema
+              
+    installed_capacity_by_az_tilt = pd.read_sql(sql2, con)
+    
+    installed_capacity_and_elec_cost_pca_year.to_csv(os.path.join(out_scen_path,'installed_capacity_and_elec_cost_pca_year.csv'))
+    installed_capacity_by_az_tilt.to_csv(os.path.join(out_scen_path,'installed_capacity_by_az_tilt.csv'))
