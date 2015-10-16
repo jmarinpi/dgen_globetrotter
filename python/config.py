@@ -118,7 +118,7 @@ calibrate_mode = True
 #  Parameters for the calibrate_diffusion_params.py script
 #==============================================================================
 # pre-existing schema to use
-static_schema = 'diffusion_results_2015_10_15_09h35m32s'
+static_schema = 'diffusion_results_2015_10_14_21h48m22s'
 
 # list of p_scalars to test
 p_scalar_list = [1, 10, 50, 100, 250, 500, 750, 1000]
