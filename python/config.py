@@ -128,8 +128,8 @@ teq_yr1_list = [2, 3, 3.5, 4]
 
 # should scenario HTML reports be created?
 # WARNING: Setting to True will slow down your runs dramatically
-make_reports = True
+make_reports = False
 
 # should full output results be saved to outputs.csv.gz?
 # WARNING: Setting to True will slow down your runs dramatically
-save_all_outputs = True
+save_all_outputs = False
