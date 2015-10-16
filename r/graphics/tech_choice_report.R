@@ -31,7 +31,7 @@ runpath<-commandArgs(T)[1]
 scen_name<-commandArgs(T)[2]
 schema = commandArgs(T)[3]
 pg_params_file = commandArgs(T)[4]
-
+file_suffix = commandArgs(T)[5]
 
 # get pg connection params
 pg_params = fromJSON(txt = sprintf('../python/%s', pg_params_file))
@@ -55,7 +55,7 @@ sectors = as.character(collect(summarise(df, distinct(sector))))
 source("../r/graphics/output_funcs.R") # TODO: REMOVE AFTER DEBUGGING
 opts_knit$set(base.dir = runpath)
 report_title = 'dGen Tech Choice Report'
-report_filepath = sprintf('%s/dGen_Tech_Choice_Report.html', runpath)
+report_filepath = sprintf('%s/dGen_Tech_Choice_Report%s.html', runpath, file_suffix)
 opts_chunk$set(fig.path = sprintf('%s/figure/',runpath ))
 knit2html("../r/graphics/tech_choice_report.md", output = report_filepath, title = report_title, 
             stylesheet = "../r/graphics/plot_outputs.css",

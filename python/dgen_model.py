@@ -286,7 +286,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 out_subfolders = datfunc.create_tech_subfolders(out_scen_path, techs, out_subfolders, choose_tech)
                 
                 # copy outputs to csv     
-                datfunc.copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con)
+                datfunc.combine_outputs(techs, schema, sectors, cur, con)
+                datfunc.copy_outputs_to_csv(techs, schema, out_scen_path, cur, con)
                 
                 # write reeds mode outputs to csvs in case they're needed
                 reedsfunc.write_reeds_offline_mode_data(schema, con,out_scen_path)

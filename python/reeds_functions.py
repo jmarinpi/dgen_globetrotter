@@ -111,7 +111,7 @@ def summarise_solar_resource_by_ts_and_pca_reg(df, con):
     return d
     
     
-def write_reeds_offline_mode_data(schema, con, out_scen_path):
+def write_reeds_offline_mode_data(schema, con, out_scen_path, file_suffix = ''):
    
     inputs = locals().copy()   
    
@@ -126,7 +126,7 @@ def write_reeds_offline_mode_data(schema, con, out_scen_path):
     # read to data frame 
     installed_capacity_and_elec_cost_pca_year = pd.read_sql(sql, con)
     # write to csv
-    installed_capacity_and_elec_cost_pca_year.to_csv(os.path.join(out_scen_path,'installed_capacity_and_elec_cost_pca_year.csv'), index = False)
+    installed_capacity_and_elec_cost_pca_year.to_csv(os.path.join(out_scen_path,'installed_capacity_and_elec_cost_pca_year%s.csv' % file_suffix), index = False)
     
     
     # calculate the weighted average capacity factor by pca_reg, year, and time slice
@@ -167,5 +167,5 @@ def write_reeds_offline_mode_data(schema, con, out_scen_path):
     # read to data frame
     cf_by_time_slice_pca_and_year = pd.read_sql(sql, con)
     # write to csv
-    cf_by_time_slice_pca_and_year.to_csv(os.path.join(out_scen_path,'cf_by_time_slice_pca_and_year.csv'), index = False)
+    cf_by_time_slice_pca_and_year.to_csv(os.path.join(out_scen_path,'cf_by_time_slice_pca_and_year%s.csv' % file_suffix), index = False)
     

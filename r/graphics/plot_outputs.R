@@ -35,6 +35,7 @@ scen_name<-commandArgs(T)[2]
 tech = commandArgs(T)[3]
 schema = commandArgs(T)[4]
 pg_params_file = commandArgs(T)[5]
+file_suffix = commandArgs(T)[6]
 
 # get pg connection params
 pg_params = fromJSON(txt = sprintf('../python/%s', pg_params_file))
@@ -60,7 +61,7 @@ sectors = as.character(collect(summarise(df, distinct(sector))))
 # set up markdown params and knit markdown file
 opts_knit$set(base.dir = runpath)
 report_title = sprintf('d%s Report', tech)
-report_filepath = sprintf('%s/d%s_Report.html', runpath, tech)
+report_filepath = sprintf('%s/d%s_Report%s.html', runpath, tech, file_suffix)
 opts_chunk$set(fig.path = sprintf('%s/figure/',runpath ))
 source("../r/graphics/output_funcs.R")
 source("../r/maps/r2js/r2js.R")

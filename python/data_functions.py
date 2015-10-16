@@ -53,7 +53,7 @@ def create_tech_subfolders(out_scen_path, techs, out_subfolders, choose_tech):
     
     return out_subfolders
 
-def create_scenario_results_folder(input_scenario, scen_name, scenario_names, out_dir, dup_n):
+def create_scenario_results_folder(input_scenario, scen_name, scenario_names, out_dir, dup_n = 0):
     
     if scen_name in scenario_names:
         logger.warning("Warning: Scenario name %s is a duplicate. Renaming to %s_%s" % (scen_name, scen_name, dup_n))
@@ -63,7 +63,8 @@ def create_scenario_results_folder(input_scenario, scen_name, scenario_names, ou
     out_scen_path = os.path.join(out_dir, scen_name)
     os.makedirs(out_scen_path)
     # copy the input scenario spreadsheet
-    shutil.copy(input_scenario, out_scen_path)
+    if input_scenario is not None:
+        shutil.copy(input_scenario, out_scen_path)
     
     return out_scen_path, scenario_names, dup_n
 
@@ -611,11 +612,9 @@ def combine_output_view(schema, cur, con, techs):
     cur.execute(sql)
     con.commit()
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con):
-    
-    logger.info('\tExporting Results from Database')
-    
+
+def combine_outputs(techs, schema, sectors, cur, con):
+        
     if 'wind' in techs:
         combine_outputs_wind(schema, sectors, cur, con)
 
@@ -624,9 +623,14 @@ def copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con):
 
     combine_output_view(schema, cur, con, techs)
 
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def copy_outputs_to_csv(techs, schema, out_scen_path, cur, con, file_suffix = ''):
+    
+    logger.info('\tExporting Results from Database')
+
     # copy data to csv
     for tech in techs:
-        out_file = os.path.join(out_scen_path, tech, 'outputs_%s.csv.gz' % tech)
+        out_file = os.path.join(out_scen_path, tech, 'outputs_%s%s.csv.gz' % (tech, file_suffix))
         f = gzip.open(out_file,'w',1)
         cur.copy_expert('COPY %s.outputs_all_%s TO STDOUT WITH CSV HEADER;' % (schema, tech), f)
         f.close()
@@ -638,7 +642,7 @@ def copy_outputs_to_csv(techs, schema, out_scen_path, sectors, cur, con):
     
     
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rscript_path, pg_params_file):
+def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rscript_path, pg_params_file, file_suffix = ''):
     
     if len(techs) > 1:
         logger.info('\tCompiling Output Reports')
@@ -648,11 +652,12 @@ def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rs
     # path to the plot_outputs R script        
     plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
     
+    
     for tech in techs:
         out_tech_path = os.path.join(out_scen_path, tech)
         #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
         # for linux and mac, this needs to be formatted as a list of args passed to subprocess
-        command = [Rscript_path,'--vanilla', plot_outputs_path, out_tech_path, scen_name, tech, schema, pg_params_file]
+        command = [Rscript_path,'--vanilla', plot_outputs_path, out_tech_path, scen_name, tech, schema, pg_params_file, file_suffix]
         proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         messages = proc.communicate()
         if 'error' in messages[1].lower():
@@ -661,7 +666,7 @@ def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rs
             logger.warning(messages[1])
 
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def create_tech_choice_report(choose_tech, schema, scen_name, out_scen_path, cur, con, Rscript_path, pg_params_file):
+def create_tech_choice_report(choose_tech, schema, scen_name, out_scen_path, cur, con, Rscript_path, pg_params_file, file_suffix = ''):
     
     if choose_tech == True:
         logger.info('\tCompiling Technology Choice Report')        
@@ -672,14 +677,67 @@ def create_tech_choice_report(choose_tech, schema, scen_name, out_scen_path, cur
         out_path = os.path.join(out_scen_path, 'tech_choice')
         #command = ("%s --vanilla ../r/graphics/plot_outputs.R %s" %(Rscript_path, runpath))
         # for linux and mac, this needs to be formatted as a list of args passed to subprocess
-        command = [Rscript_path,'--vanilla', plot_outputs_path, out_path, scen_name, schema, pg_params_file]
+        command = [Rscript_path,'--vanilla', plot_outputs_path, out_path, scen_name, schema, pg_params_file, file_suffix]
         proc = subprocess.Popen(command,stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         messages = proc.communicate()
         if 'error' in messages[1].lower():
             logger.error(messages[1])
         if 'warning' in messages[1].lower():
             logger.warning(messages[1])
-  
+    else:
+        logger.info("\tSkipping Creation of Technology Choice Report (Not Applicable)")
+
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
+def create_deployment_summary_table(cur, con, schema):
+    
+    inputs = locals().copy()
+    
+    logger.info("Creating Deployment Summary Table")
+    
+    sql = """DROP TABLE IF EXISTS %(schema)s.deployment_summary;
+             CREATE TABLE %(schema)s.deployment_summary
+             (
+                tech text,
+                year integer,
+                sector text,
+                installed_capacity_gw numeric,
+                number_of_adopters numeric,
+                p_scalar numeric,
+                teq_yr1 numeric
+             );""" % inputs
+    cur.execute(sql)
+    con.commit()
+
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def summarize_deployment(cur, con, schema, p_scalar, teq_yr1):
+    
+    inputs = locals().copy()
+    
+    logger.info("\tSummarizing Deployment from p/teq_yr1 combination")    
+    
+    sql = """INSERT INTO %(schema)s.deployment_summary
+             SELECT tech, year, sector, 
+                SUM(installed_capacity)/1e6 as installed_capacity_gw, 
+                SUM(number_of_adopters) as number_of_adopters,
+                %(p_scalar)s::NUMERIC as p_scalar,
+                %(teq_yr1)s::NUMERIC as teq_yr1
+            FROM %(schema)s.outputs_all
+            GROUP BY tech, year, sector;""" % inputs
+    cur.execute(sql)
+    con.commit()
+
+
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
+def copy_deployment_summary_to_csv(schema, out_scen_path, cur, con):
+    
+    logger.info('Exporting Deployment Summary from Database')
+
+    # copy data to csv
+    out_file = os.path.join(out_scen_path, 'deployment_summary.csv.gz')
+    f = gzip.open(out_file,'w',1)
+    cur.copy_expert('COPY %s.deployment_summary TO STDOUT WITH CSV HEADER;' % schema, f)
+    f.close()
+
 
 def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year, end_year,
                            npar, pg_conn_string, scenario_opts):
