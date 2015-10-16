@@ -708,6 +708,125 @@ def create_deployment_summary_table(cur, con, schema):
     cur.execute(sql)
     con.commit()
 
+def create_economics_results_table(cur, con, schema):
+    
+    inputs = locals().copy()    
+    
+    #==============================================================================
+    #     CREATE TABLE TO HOLD RESULTS
+    #==============================================================================
+    sql = """DROP TABLE IF EXISTS %(schema)s.economic_results;
+             CREATE UNLOGGED TABLE %(schema)s.economic_results
+             (
+                    micro_id integer,
+                    county_id integer,
+                    bin_id integer,
+                    year integer,
+                    state_abbr text,
+                    census_division_abbr text,
+                    utility_type text,
+                    pca_reg text,
+                    reeds_reg integer,
+                    incentive_array_id integer,
+                    carbon_price_cents_per_kwh numeric,
+                    fixed_om_dollars_per_kw_per_yr numeric,
+                    variable_om_dollars_per_kwh numeric,
+                    installed_costs_dollars_per_kw numeric,
+                    customers_in_bin numeric,
+                    load_kwh_per_customer_in_bin integer,
+                    system_size_kw numeric,
+                    aep numeric,
+                    owner_occupancy_status numeric,
+                    tilt integer,
+                    azimuth text,
+                    available_roof_sqft integer,
+                    inverter_cost_dollars_per_kw numeric,
+                    inverter_lifetime_yrs integer,
+                    tech text,
+                    first_year_bill_with_system numeric,
+                    first_year_bill_without_system numeric,
+                    excess_generation_percent numeric,
+                    leasing_allowed boolean,
+                    sector_abbr text,
+                    curtailment_rate integer,
+                    ReEDS_elec_price_mult integer,
+                    business_model text,
+                    metric text,
+                    loan_term_yrs integer,
+                    loan_rate numeric,
+                    down_payment numeric,
+                    discount_rate numeric,
+                    tax_rate numeric,
+                    length_of_irr_analysis_yrs integer,
+                    ann_system_degradation numeric,
+                    deprec text,
+                    overwrite_exist_inc boolean,
+                    incentive_start_year integer,
+                    rate_escalations text,
+                    value_of_increment numeric,
+                    value_of_pbi_fit numeric,
+                    value_of_ptc numeric,
+                    pbi_fit_length integer,
+                    ptc_length integer,
+                    value_of_rebate numeric,
+                    value_of_tax_credit_or_deduction numeric,
+                    value_of_itc numeric,
+                    ic numeric,
+                    total_value_of_incentive numeric,
+                    first_year_energy_savings numeric,
+                    monthly_bill_savings numeric,
+                    percent_monthly_bill_savings numeric,
+                    total_value_of_incentives numeric,
+                    metric_value_precise numeric,
+                    lcoe numeric,
+                    npv4 numeric,
+                    metric_value_bounded numeric,
+                    metric_value_as_factor integer,
+                    metric_value numeric,
+                    sector text,
+                    max_market_share numeric,
+                    source text,
+                    selected_option boolean
+             );
+             """ % inputs
+    cur.execute(sql)
+    con.commit()
+
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
+def write_economics_df_to_csv(cur, con, schema, df):
+    
+    inputs = locals().copy()
+    
+    logger.info("\t\tWriting economics results to database")
+    
+    # open an in memory stringIO file (like an in memory csv)
+    s = StringIO()
+    # write the data to the stringIO
+    df.to_csv(s, index = False, header = False)
+    # seek back to the beginning of the stringIO file
+    s.seek(0)
+    # copy the data from the stringio file to the postgres table
+    cur.copy_expert('COPY %(schema)s.economic_results FROM STDOUT WITH CSV' % inputs, s)
+    # commit the additions and close the stringio file (clears memory)
+    con.commit()    
+    s.close()
+
+
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
+def get_economics_df(con, schema, year):
+
+    inputs = locals().copy()
+    
+    logger.info("\t\tLoading economics results from database")
+
+    sql = """SELECT * FROM 
+            %(schema)s.economic_results
+            WHERE year = %(year)s;""" % inputs
+
+    df = pd.read_sql(sql, con)
+    
+    return df
+
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def summarize_deployment(cur, con, schema, p_scalar, teq_yr1):
     
