@@ -112,3 +112,24 @@ delete_output_schema = False
 #==============================================================================
 calibrate_mode = True
 #calibrate_mode = False
+
+
+#==============================================================================
+#  Parameters for the calibrate_diffusion_params.py script
+#==============================================================================
+# pre-existing schema to use
+static_schema = 'diffusion_results_2015_10_15_09h35m32s'
+
+# list of p_scalars to test
+p_scalar_list = [1, 10, 50, 100, 250, 500, 750, 1000]
+
+# list of teq_yr1 values to test
+teq_yr1_list = [2, 3, 3.5, 4]
+
+# should scenario HTML reports be created?
+# WARNING: Setting to True will slow down your runs dramatically
+make_reports = True
+
+# should full output results be saved to outputs.csv.gz?
+# WARNING: Setting to True will slow down your runs dramatically
+save_all_outputs = True

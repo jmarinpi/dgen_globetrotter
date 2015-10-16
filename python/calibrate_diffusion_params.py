@@ -43,7 +43,7 @@ pd.set_option('mode.chained_assignment', 'raise')
 #==============================================================================
     
 
-def main(schema, p_scalar_list = [1], teq_yr1_list = [2], make_reports = True, save_all_outputs = True):
+def main(schema, p_scalar_list, teq_yr1_list, make_reports = False, save_all_outputs = False):
 
     try:
         model_init = time.time()
@@ -222,7 +222,5 @@ def main(schema, p_scalar_list = [1], teq_yr1_list = [2], make_reports = True, s
             utilfunc.code_profiler(out_dir)
     
 if __name__ == '__main__':
-    main('diffusion_results_2015_10_15_17h18m08s', 
-         p_scalar_list = [1, 10], 
-         teq_yr1_list = [2, 3], 
-         make_reports = True, save_all_outputs = True)
+    
+    main(cfg.static_schema, cfg.p_scalar_list, cfg.teq_yr1_list, cfg.make_reports, cfg.save_all_outputs)
