@@ -30,7 +30,8 @@ logger = utilfunc.get_logger()
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
-def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, calibrate_mode):
+def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, calibrate_mode,
+                   p_scalar = 1, teq_yr1 = 2):
 
     ''' Calculates the market share (ms) added in the solve year. Market share must be less
         than max market share (mms) except initial ms is greater than the calculated mms.
@@ -52,7 +53,7 @@ def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, 
     previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sectors, schema, calibrate_mode, df) 
     df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])    
     
-    df = calc_diffusion_market_share(df, cfg, con) 
+    df = calc_diffusion_market_share(df, cfg, con, is_first_year, p_scalar, teq_yr1) 
     df['diffusion_market_share'] = df['diffusion_market_share'] * df['selected_option'] # ensure no diffusion for non-selected options
    
     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
@@ -75,7 +76,7 @@ def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, 
 #=============================================================================
 
 #  ^^^^ Calculate new diffusion in market segment ^^^^
-def calc_diffusion_market_share(df, cfg, con):
+def calc_diffusion_market_share(df, cfg, con, is_first_year, p_scalar = 1, teq_yr1 = 2):
     ''' Calculate the fraction of overall population that have adopted the 
         technology in the current period. Note that this does not specify the 
         actual new adoption fraction without knowing adoption in the previous period. 
@@ -91,8 +92,14 @@ def calc_diffusion_market_share(df, cfg, con):
     # Current assumption is that only payback and MBS are being used, that pp is bounded [0-30] and MBS bounded [0-120]
        
     df  = set_bass_param(df, cfg, con) 
+    # scale the p values by a factor of p_scalar
+    df.loc[:, 'p'] = df['p'] * p_scalar
     df = calc_equiv_time(df); # find the 'equivalent time' on the newly scaled diffusion curve
-    df['teq2'] = df['teq'] + 2 # now step forward two years from the 'new location'
+    if is_first_year == True:
+        df['teq2'] = df['teq'] + teq_yr1
+    else:
+        df['teq2'] = df['teq'] + 2 # now step forward two years from the 'new location'
+    
     df = bass_diffusion(df); # calculate the new diffusion by stepping forward 2 years
 
     df['bass_market_share'] = df.max_market_share * df.new_adopt_fraction; # new market adoption    
@@ -102,7 +109,7 @@ def calc_diffusion_market_share(df, cfg, con):
 #==============================================================================  
     
 #=============================================================================
-def set_bass_param(df, cfg, con, p_scalar = 1):
+def set_bass_param(df, cfg, con):
     ''' Set the p & q parameters which define the Bass diffusion curve.
     p is the coefficient of innovation, external influence or advertising effect. 
     q is the coefficient of imitation, internal influence or word-of-mouth effect.
@@ -113,9 +120,7 @@ def set_bass_param(df, cfg, con, p_scalar = 1):
     
     # get the calibrated bass parameters
     bass_params_solar = pd.read_sql('SELECT * FROM diffusion_solar.bass_pq_calibrated_params_solar', con)
-    # scale the p values by a factor of 10
-    bass_params_solar.loc[:, 'p'] = bass_params_solar['p'] * p_scalar
-    
+   
     # set p and q values
     if cfg.bass_method == 'sunshot':
         # set the scaled metric value
