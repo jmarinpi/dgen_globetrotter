@@ -70,7 +70,7 @@ def combine_outputs_reeds(schema, sectors, cur, con, year):
     return pd.read_sql(sql2,con)
 
 
-def summarise_solar_resource_by_ts_and_pca_reg(df, con):
+def summarise_solar_resource_by_ts_and_pca_reg(schema, con):
     '''
     Outputs for ReEDS linkage the solar capacity factor by time slice and PCA 
     weighted by the existing azimuth/tilts deployed. Summary is based
@@ -86,29 +86,46 @@ def summarise_solar_resource_by_ts_and_pca_reg(df, con):
         pandas dataframe [pca_reg, ts, cf]
     '''
     
+    inputs = locals().copy()    
+    
     # Query the solar resource by pca, tilt, azimuth, & timeslice and rename columns e.g. at this point resource has already been averaged over solar_re_9809_gid 
-    resource = pd.read_sql("SELECT * FROM diffusion_solar.solar_resource_by_pca_summary;", con)
-    resource.drop('npoints', axis =1, inplace = True)
-    resource['pca_reg'] = 'p' + resource.pca_reg.map(str)
-    resource.columns = ['pca_reg','tilt','azimuth','H1','H2','H3','H4','H5','H6','H7','H8','H9','H10','H11','H12','H13','H14','H15','H16','H17']
+    sql = """WITH a AS
+            (
+                	SELECT pca_reg, azimuth, tilt, year, sum(installed_capacity) as installed_capacity
+                	FROM %(schema)s.reeds_outputs a
+			WHERE installed_capacity > 0
+                	GROUP BY pca_reg, azimuth, tilt, year
+            ),
+            b AS
+            (
+                	SELECT pca_reg, year, sum(installed_capacity) as installed_capacity
+                	FROM %(schema)s.reeds_outputs a
+			WHERE installed_capacity > 0
+                	GROUP BY pca_reg, year
+            ),
+            c AS
+            (
+                	SELECT a.pca_reg, a.azimuth, a.tilt, a.year,
+                		a.installed_capacity/b.installed_capacity as pct_installed_capacity,
+                		c.reeds_time_slice as ts,
+                		c.cf_avg as cf
+                	FROM a
+                	LEFT JOIN b
+                    	ON a.pca_reg = b.pca_reg
+                    	AND a.year = b.year
+                	LEFT JOIN diffusion_solar.reeds_solar_resource_by_pca_summary_tidy c
+                     ON a.pca_reg = c.pca_reg
+                     AND a.azimuth = c.azimuth
+                     AND a.tilt = c.tilt
+            )
+            SELECT c.pca_reg, c.year, c.ts,
+                	SUM(c.pct_installed_capacity * c.cf)/SUM(c.pct_installed_capacity) AS cf
+            FROM c
+            GROUP BY c.pca_reg, c.year, c.ts;""" % inputs
+    # read to data frame
+    cf_by_time_slice_pca_and_year = pd.read_sql(sql, con)
 
-    # Determine the percentage of adopters that have selected a given azimuth/tilt combination in the pca
-    d = df[['installed_capacity','pca_reg', 'azimuth', 'tilt']].groupby(['pca_reg', 'azimuth', 'tilt']).sum()    
-    d = d.groupby(level=0).apply(lambda x: x/float(x.sum())).reset_index()
-    
-    # Join the resource to get the capacity factor by time slice, azimuth, tilt & pca
-    d = pd.merge(d, resource, how = 'left', on = ['pca_reg','azimuth','tilt'])
-    
-    # Pivot to tall format
-    d = d.set_index(['pca_reg','azimuth','tilt','installed_capacity']).stack().reset_index()
-    d.columns = ['pca_reg','azimuth','tilt','installed_capacity','ts','cf']
-    
-    # Finally, calculate weighted mean CF by timeslice using number_of_adopters as the weight 
-    d['cf'] = d['cf'] * d['installed_capacity']
-    d = d.groupby(['pca_reg','ts']).sum().reset_index()
-    d.drop(['tilt','installed_capacity'], axis = 1, inplace = True)
-    
-    return d
+    return cf_by_time_slice_pca_and_year
     
     
 def write_reeds_offline_mode_data(schema, con, out_scen_path, file_suffix = ''):

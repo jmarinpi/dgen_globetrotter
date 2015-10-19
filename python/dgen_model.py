@@ -302,7 +302,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                 
             if mode == 'ReEDS':
                 reeds_out = reedsfunc.combine_outputs_reeds(schema, sectors, cur, con, resume_year)
-                cf_by_pca_and_ts = reedsfunc.summarise_solar_resource_by_ts_and_pca_reg(reeds_out, con)
+                cf_by_pca_and_ts = reedsfunc.summarise_solar_resource_by_ts_and_pca_reg(schema, con)
                 
                 saved_vars = {'out_dir' : out_dir, 'input_scenarios' : input_scenarios}
                 with open('saved_vars.pickle', 'wb') as handle:
