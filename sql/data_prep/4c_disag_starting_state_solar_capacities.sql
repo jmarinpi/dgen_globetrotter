@@ -56,3 +56,32 @@ or systems_count_industrial is null;
 ALTER TABLE diffusion_solar.starting_capacities_mw_2012_q4_us
   ADD CONSTRAINT starting_capacities_mw_2012_q4_us_pkey PRIMARY KEY(state_abbr);
 
+
+------------------------------------------------------------------------------------------------
+-- manual addition of MAINE, based on data provided by state of Maine to Ben
+-- 10/19/2015
+INSERT INTO diffusion_solar.starting_capacities_mw_2012_q4_us
+(
+	state_abbr,
+	capacity_mw_residential,
+	capacity_mw_commercial,
+	capacity_mw_industrial,
+	systems_count_residential,
+	systems_count_commercial,
+	systems_count_industrial
+) 
+
+VALUES
+(
+	'ME', 
+	3.27262678,
+	1.729382611,
+	0.072057609,
+	845.5202738,
+	74.38053712,
+	3.099189047
+);
+
+select *
+FROM diffusion_solar.starting_capacities_mw_2012_q4_us
+where state_abbr = 'ME';
