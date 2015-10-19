@@ -2597,7 +2597,7 @@ def get_srecs(cur, con, schema, techs, pg_conn_string):
     return df
 
 
-def get_initial_market_shares(cur, con, techs, sectors, schema, calibrate_mode, econ_df):
+def get_initial_market_shares(cur, con, techs, sectors, schema, initial_market_calibrate_mode, econ_df):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()     
@@ -2610,7 +2610,7 @@ def get_initial_market_shares(cur, con, techs, sectors, schema, calibrate_mode, 
         inputs['sector'] = sector
         for tech in techs:
             inputs['tech'] = tech
-            if calibrate_mode == False:
+            if initial_market_calibrate_mode == False:
                 sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;
                          CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s AS
                          WITH a as
@@ -2745,13 +2745,13 @@ def get_initial_market_shares(cur, con, techs, sectors, schema, calibrate_mode, 
     return df  
 
 
-def get_market_last_year(cur, con, is_first_year, techs, sectors, schema, calibrate_mode, econ_df):
+def get_market_last_year(cur, con, is_first_year, techs, sectors, schema, initial_market_calibrate_mode, econ_df):
 
     inputs = locals().copy()
     
     
     if is_first_year == True:
-        last_year_df = get_initial_market_shares(cur, con, techs, sectors, schema, calibrate_mode, econ_df)
+        last_year_df = get_initial_market_shares(cur, con, techs, sectors, schema, initial_market_calibrate_mode, econ_df)
     else:
         sql = """SELECT *
                 FROM %(schema)s.output_market_last_year;""" % inputs

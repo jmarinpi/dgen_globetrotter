@@ -108,11 +108,14 @@ alpha_lkup = pd.DataFrame({'tech' : ['solar', 'solar', 'wind', 'wind'],
 delete_output_schema = False
 
 #==============================================================================
-#  Should the model be run in calibration mode? [TEMPORARY CHANGES--delete!]
+#  Should initial market shared be assigned proportional to 2014 economics?
 #==============================================================================
-calibrate_mode = True
-#calibrate_mode = False
+initial_market_calibrate_mode = True
 
+#==============================================================================
+#  Value for the teq for yr 1 (2014)
+#==============================================================================
+teq_yr1 = 3
 
 #==============================================================================
 #  Parameters for the calibrate_diffusion_params.py script

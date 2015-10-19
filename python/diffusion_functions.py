@@ -30,7 +30,7 @@ logger = utilfunc.get_logger()
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
-def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, calibrate_mode,
+def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, initial_market_calibrate_mode,
                    p_scalar = 1, teq_yr1 = 2):
 
     ''' Calculates the market share (ms) added in the solve year. Market share must be less
@@ -50,7 +50,7 @@ def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, 
     
     # get market characteristics from previous year                    
     is_first_year = year == cfg.start_year                
-    previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sectors, schema, calibrate_mode, df) 
+    previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sectors, schema, initial_market_calibrate_mode, df) 
     df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])    
     
     df = calc_diffusion_market_share(df, cfg, con, is_first_year, p_scalar, teq_yr1) 

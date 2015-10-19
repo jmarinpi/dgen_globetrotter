@@ -272,7 +272,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
                 
                 # calculate diffusion based on economics and bass diffusion      
-                df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, cfg.start_year, cfg.calibrate_mode) 
+                df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, cfg.start_year, 
+                                                              cfg.calibrate_mode, teq_yr1 = cfg.teq_yr1) 
                  
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
