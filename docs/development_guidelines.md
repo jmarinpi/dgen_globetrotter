@@ -6,3 +6,4 @@
 	- a priority level
 	- an assignee
 - if you hack a solution into the code (e.g., loading something from csv instead of the database, manually excluding something from a sql query ,etc.), open a new issue referencing the commit hash, assigned to mgleason
+- to the degree possible, avoid adding any decision logic or complex code to dgen.py (i.e., no loops, no if/else clauses, no sql statements). Any logic of this type should be either integrated into existing functions or added as new functions.
