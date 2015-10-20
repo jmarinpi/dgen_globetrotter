@@ -273,7 +273,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 # calculate diffusion based on economics and bass diffusion      
                 df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, cfg.start_year, 
-                                                              cfg.calibrate_mode, teq_yr1 = cfg.teq_yr1) 
+                                                              cfg.initial_market_calibrate_mode, teq_yr1 = cfg.teq_yr1) 
                  
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
