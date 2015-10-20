@@ -295,7 +295,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 datfunc.copy_outputs_to_csv(techs, schema, out_scen_path, cur, con)
                 
                 # write reeds mode outputs to csvs in case they're needed
-                reedsfunc.write_reeds_offline_mode_data(schema, con,out_scen_path)
+                reedsfunc.write_reeds_offline_mode_data(schema, con, out_scen_path)
                 
                 # create output html report                
                 datfunc.create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, cfg.Rscript_path, cfg.pg_params_file)
@@ -316,6 +316,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # after all techs have been processed:
             #####################################################################
             # drop the new schema
+#            con.close()
             datfunc.drop_output_schema(cfg.pg_conn_string, schema, cfg.delete_output_schema)
             #####################################################################
             
