@@ -316,7 +316,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # after all techs have been processed:
             #####################################################################
             # drop the new schema
-#            con.close()
             datfunc.drop_output_schema(cfg.pg_conn_string, schema, cfg.delete_output_schema)
             #####################################################################
             
