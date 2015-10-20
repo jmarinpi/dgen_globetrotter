@@ -5,6 +5,10 @@ National Renewable Energy Lab
 @author: bsigrin
 """
 
+# before doing anything, check model dependencies
+import tests
+tests.check_dependencies()
+
 # 1. # Initialize Model
 import time
 import os

@@ -5,6 +5,9 @@
 # make sure the environment doesn't exist
 conda remove -n dgen_pyenv --all
 
+# move into the python folder
+# e.g., cd ~/github/diffusion/python
+
 # create the new environment
 conda env create -f environment.yml
 
