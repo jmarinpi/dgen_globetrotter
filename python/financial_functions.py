@@ -26,7 +26,7 @@ logger = utilfunc.get_logger()
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def calc_economics(df, schema, market_projections, financial_parameters, rate_growth_df, 
                    scenario_opts, incentive_opts, max_market_share, cur, con, 
-                   year, dsire_incentives, srecs, deprec_schedule, ann_system_degradation, 
+                   year, dsire_incentives, srecs, manual_incentives, deprec_schedule, ann_system_degradation, 
                    mode, curtailment_method, itc_options, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
     Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
@@ -70,19 +70,17 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
         df['rate_escalations'] = rate_growth_mult.tolist()
     else:
         # if not in ReEDS mode, use the calc_expected_rate_escal function
-        t0 = time.time()
         start_i = year - 2014
         end_i = start_i + tech_lifetime
         rate_esc = rate_growth_df.copy()
         rate_esc.loc[:, 'rate_escalations'] = np.array(rate_esc.rate_escalations.tolist(), dtype = 'float64')[:, start_i:end_i].tolist()
-        print 'get escalaations', time.time() - t0 
         df = pd.merge(df, rate_esc, how = 'left', on = ['sector_abbr', 'census_division_abbr'])
     print 'initial prep', time.time()-t0
     # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
     df_manual_incentives = df[df['overwrite_exist_inc'] == True]
     df_dsire_incentives = df[df['overwrite_exist_inc'] == False]
     
-    value_of_incentives_manual = datfunc.calc_manual_incentives(df_manual_incentives, con, year, schema)
+    value_of_incentives_manual = datfunc.calc_manual_incentives(df_manual_incentives, year, manual_incentives)
     print 'manual incentives', time.time()-t0
     value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, srecs, year, default_exp_yr = 2016, assumed_duration = 10)
     print 'dsire incentives', time.time()-t0

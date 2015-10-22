@@ -203,6 +203,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 deprec_schedule = datfunc.get_depreciation_schedule(con, schema, macrs = True)
                 ann_system_degradation = datfunc.get_system_degradation(con, schema) 
                 rate_growth_df = datfunc.get_rate_escalations(con, schema)
+                manual_incentives = datfunc.get_manual_incentives(con, schema)
             logger.info('\tCompleted in: %0.1fs' % t.interval)
 
             # set model years depending on whether in reeds mode
@@ -271,7 +272,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 df = finfunc.calc_economics(df, schema, 
                                            market_projections, financial_parameters, rate_growth_df,
                                            scenario_opts, incentive_options, max_market_share, 
-                                           cur, con, year, dsire_incentives, srecs, deprec_schedule, 
+                                           cur, con, year, dsire_incentives, srecs, manual_incentives, deprec_schedule, 
                                            ann_system_degradation, mode, curtailment_method, itc_options,
                                            tech_lifetime = 25)
                 

@@ -2950,7 +2950,7 @@ def get_manual_incentives(con, schema):
 
     return df
  
-def calc_manual_incentives(df, con, cur_year, schema):
+def calc_manual_incentives(df, cur_year, inc):
     ''' Calculate the value in first year and length for incentives manually 
     entered in input sheet. 
 
@@ -2960,7 +2960,6 @@ def calc_manual_incentives(df, con, cur_year, schema):
         OUT: manual_incentives_value - pandas DataFrame - value of rebate, tax incentives, and PBI
     '''
     # Join manual incentives with main df   
-    inc = get_manual_incentives(con, schema)
     df = pd.merge(df, inc, how = 'left', on = ['state_abbr','sector_abbr','utility_type', 'tech'])
         
     # Calculate value of incentive and rebate, and value and length of PBI
