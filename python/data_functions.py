@@ -2994,7 +2994,6 @@ def calc_manual_incentives(df, con, cur_year, schema):
     return value_of_incentives
 
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
 def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr = 2016, assumed_duration = 10):
     '''
     Calculate the value of incentives based on DSIRE database. There may be many incentives per each customer bin (county_id+bin_id),
@@ -3009,8 +3008,6 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
     OUT: value_of_incentives - pandas df - Values of incentives by type. For 
                                         mutiyear incentves, the (undiscounted) lifetime value is given 
     '''  
-    
-    logger.info("Calculating dsire incentives")    
     
     dsire_df = pd.merge(df, dsire_incentives, how = 'left', on = ['incentive_array_id', 'sector_abbr', 'tech'])    
     srecs_df = pd.merge(df, srecs, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
@@ -3205,7 +3202,7 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
     
     return inc_summed[['tech', 'sector_abbr', 'county_id','bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
 
-def get_rate_escalations(con, schema, current_year, tech_lifetime):
+def get_rate_escalations(con, schema):
     '''
     Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
     resulting in an average real compounding rate growth. This rate is then used to calculate cash flows
@@ -3214,15 +3211,12 @@ def get_rate_escalations(con, schema, current_year, tech_lifetime):
     OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
     '''  
     inputs = locals().copy()
-    inputs['year_max'] = current_year + tech_lifetime
     
     sql = """SELECT census_division_abbr, lower(sector) as sector_abbr, 
                     array_agg(escalation_factor order by year asc) as rate_escalations
             FROM %(schema)s.rate_escalations_to_model
-            WHERE year < %(year_max)s 
-                  AND year >= %(current_year)s 
             GROUP BY census_division_abbr, sector""" % inputs
-    rate_escalations = pd.read_sql(sql, con)
+    rate_escalations = pd.read_sql(sql, con, coerce_float = False)
     
     return rate_escalations
 

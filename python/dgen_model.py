@@ -139,7 +139,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # load Input excel spreadsheet to Postgres
             if cfg.init_model:
                 # create the output schema
-                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment           
+                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment     
+#                schema = 'diffusion_results_2015_10_22_12h58m28s' # full CA run to 2030 for all sectors, solar only
+#                schema = 'diffusion_results_2015_10_22_13h15m20s' # full national run to 2030 for all sectors, solar only
                 datfunc.clear_outputs(con, cur, schema)
                 # write the reeds settings to postgres
                 reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
@@ -199,7 +201,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 financial_parameters = datfunc.get_financial_parameters(con, schema)
                 incentive_options = datfunc.get_manual_incentive_options(con, schema)
                 deprec_schedule = datfunc.get_depreciation_schedule(con, schema, macrs = True)
-                ann_system_degradation = datfunc.get_system_degradation(con, schema)      
+                ann_system_degradation = datfunc.get_system_degradation(con, schema) 
+                rate_growth_df = datfunc.get_rate_escalations(con, schema)
             logger.info('\tCompleted in: %0.1fs' % t.interval)
 
             # set model years depending on whether in reeds mode
@@ -266,7 +269,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                     
                 # Calculate economics of adoption for different busines models
                 df = finfunc.calc_economics(df, schema, 
-                                           market_projections, financial_parameters, 
+                                           market_projections, financial_parameters, rate_growth_df,
                                            scenario_opts, incentive_options, max_market_share, 
                                            cur, con, year, dsire_incentives, srecs, deprec_schedule, 
                                            ann_system_degradation, mode, curtailment_method, itc_options,

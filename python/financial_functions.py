@@ -13,6 +13,7 @@ import data_functions as datfunc
 import utility_functions as utilfunc
 import decorators
 from config import show_times
+import time
 
 #==============================================================================
 # Load logger
@@ -23,8 +24,8 @@ logger = utilfunc.get_logger()
 
 #==============================================================================
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
-def calc_economics(df, schema, market_projections,
-                   financial_parameters, scenario_opts, incentive_opts, max_market_share, cur, con, 
+def calc_economics(df, schema, market_projections, financial_parameters, rate_growth_df, 
+                   scenario_opts, incentive_opts, max_market_share, cur, con, 
                    year, dsire_incentives, srecs, deprec_schedule, ann_system_degradation, 
                    mode, curtailment_method, itc_options, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
@@ -40,20 +41,27 @@ def calc_economics(df, schema, market_projections,
     '''
     
     logger.info("\t\tCalculating System Economics")
-    
-    # Evaluate economics of leasing or buying for all customers who are able to lease
-    business_model = pd.DataFrame({'business_model' : ('host_owned','tpo'), 
-                                   'metric' : ('payback_period','percent_monthly_bill_savings'),
-                                   'cross_join' : (1, 1)})
-    df['cross_join'] = 1
-    df = pd.merge(df, business_model, on = 'cross_join')
-    df = df.drop('cross_join', axis=1)
-    
-    df = pd.merge(df, financial_parameters, how = 'left', on = ['sector_abbr', 'business_model', 'tech'])
+    t0 = time.time()
+    # join in additional information
     df = pd.merge(df, ann_system_degradation, how = 'left', on = ['tech'])
     df = pd.merge(df, deprec_schedule, how = 'left', on = ['tech'])
-    df = pd.merge(df, incentive_opts, how = 'left', on = ['tech'])
+    df = pd.merge(df, incentive_opts, how = 'left', on = ['tech'])    
     
+    # duplicate the data frame for each business model
+    df_tpo = df.copy()
+    df_tpo['business_model'] = 'tpo'
+    df_tpo['metric'] = 'percent_monthly_bill_savings'
+
+    df_ho = df.copy()
+    df_ho['business_model'] = 'host_owned'
+    df_ho['metric'] = 'payback_period'
+
+    # recombine into a single data frame    
+    df = pd.concat([df_ho, df_tpo], axis = 0, ignore_index = True)
+    
+    # merge in financial parameters
+    df = pd.merge(df, financial_parameters, how = 'left', on = ['sector_abbr', 'business_model', 'tech'])
+
     # get customer expected rate escalations
     # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
     if mode == 'ReEDS' and max(df['ReEDS_elec_price_mult']) > 0:
@@ -62,26 +70,33 @@ def calc_economics(df, schema, market_projections,
         df['rate_escalations'] = rate_growth_mult.tolist()
     else:
         # if not in ReEDS mode, use the calc_expected_rate_escal function
-        rate_growth_df = datfunc.get_rate_escalations(con, schema, year, tech_lifetime)
-        df = pd.merge(df, rate_growth_df, how = 'left', on = ['sector_abbr', 'census_division_abbr'])
-
+        t0 = time.time()
+        start_i = year - 2014
+        end_i = start_i + tech_lifetime
+        rate_esc = rate_growth_df.copy()
+        rate_esc.loc[:, 'rate_escalations'] = np.array(rate_esc.rate_escalations.tolist(), dtype = 'float64')[:, start_i:end_i].tolist()
+        print 'get escalaations', time.time() - t0 
+        df = pd.merge(df, rate_esc, how = 'left', on = ['sector_abbr', 'census_division_abbr'])
+    print 'initial prep', time.time()-t0
     # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
     df_manual_incentives = df[df['overwrite_exist_inc'] == True]
     df_dsire_incentives = df[df['overwrite_exist_inc'] == False]
     
     value_of_incentives_manual = datfunc.calc_manual_incentives(df_manual_incentives, con, year, schema)
+    print 'manual incentives', time.time()-t0
     value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, srecs, year, default_exp_yr = 2016, assumed_duration = 10)
-    
+    print 'dsire incentives', time.time()-t0
     value_of_incentives_all = pd.concat([value_of_incentives_manual, value_of_incentives_dsire], axis = 0, ignore_index = True)
     df = pd.merge(df, value_of_incentives_all, how = 'left', on = ['county_id','bin_id','business_model', 'tech', 'sector_abbr'])
-    
+    print 'combining', time.time()-t0
     # Calculates value of ITC, return df with a new column 'value_of_itc'
     df = datfunc.calc_value_of_itc(df, itc_options, year)
-    
+    print 'itc', time.time()-t0
     revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime, max_incentive_fraction)    
-
+    print 'cashflows', time.time()-t0
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
+    print 'metric value', time.time()-t0
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate, tech_lifetime)
     npv = calc_npv(cfs, np.array([0.04]))
     with np.errstate(invalid = 'ignore'):
@@ -440,7 +455,7 @@ def calc_npv(cfs,dr):
     
     
 #==============================================================================
-    
+ 
 def calc_payback(cfs,revenue,costs,tech_lifetime):
     '''payback calculator ### VECTORIZE THIS ###
     IN: cfs - numpy array - project cash flows ($/yr)
