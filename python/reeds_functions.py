@@ -183,7 +183,7 @@ def write_reeds_offline_mode_data(schema, con, out_scen_path, file_suffix = ''):
             GROUP BY c.pca_reg, c.year, c.ts;""" % inputs
     # read to data frame
     cf_by_time_slice_pca_and_year = pd.read_sql(sql, con)
+    con.rollback()
     # write to csv
     cf_by_time_slice_pca_and_year.to_csv(os.path.join(out_scen_path,'cf_by_time_slice_pca_and_year%s.csv' % file_suffix), index = False)
     
-    con.close()
