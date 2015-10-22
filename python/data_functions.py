@@ -3449,22 +3449,37 @@ def excess_generation_vectorized(df, gross_fit_mode = False):
     return df
 
 def calc_value_of_itc(df, itc_options, year):
+    
+    # add the sector_abbr column
     itc_options['sector_abbr'] = itc_options['sector'].str.lower()
     itc_options['sector_abbr'] = itc_options['sector_abbr'].str[:3] 
     
-    d = pd.merge(df, itc_options)
+    # create duplicates of the itc data for each business model
+    # host-owend
+    itc_ho = itc_options.copy() 
+    # set the business model
+    itc_ho['business_model'] = 'host_owned'
     
-    # Correct for res TPO systems so they get the commercial ITC value
-    # A complicated way to determine the tpo fraction for that given year
-    tpo_fraction = itc_options.query("sector == 'commercial' & year == %s"%year)['itc_fraction'].values[0]
+    # tpo
+    itc_tpo_nonres = itc_options[itc_options['sector_abbr'] <> 'res'].copy() 
+    itc_tpo_res = itc_options[itc_options['sector_abbr'] == 'com'].copy() 
+    # reset the sector_abbr to res
+    itc_tpo_res.loc[:, 'sector_abbr'] = 'res'
+    # combine the data
+    itc_tpo = pd.concat([itc_tpo_nonres, itc_tpo_res], axis = 0, ignore_index = True)
+    # set the business model
+    itc_tpo['business_model'] = 'tpo'    
     
-    # overwrite the res-tpo value       
-    d.loc[(d['sector_abbr'] == 'res') & (d['business_model'] == 'tpo'),'itc_fraction'] = tpo_fraction 
+    # concatente the business models
+    itc_all = pd.concat([itc_ho, itc_tpo], axis = 0, ignore_index = True)
     
+    # merge to df
+    df = pd.merge(df, itc_all, how = 'left', on = ['sector_abbr', 'year', 'business_model'])
+        
     # Calculate the value of ITC
-    d['value_of_itc'] = d['installed_costs_dollars_per_kw'] * d['system_size_kw'] * d['itc_fraction'] #'ic' not in the df at this point
-    d = d.drop(['sector','itc_fraction'], 1)
+    df['value_of_itc'] = df['installed_costs_dollars_per_kw'] * df['system_size_kw'] * df['itc_fraction'] #'ic' not in the df at this point
+    df = df.drop(['sector', 'itc_fraction'], axis = 1)
     
-    return d
+    return df
 
     
