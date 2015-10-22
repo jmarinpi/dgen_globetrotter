@@ -78,8 +78,7 @@ def calc_economics(df, schema, market_projections,
     # Calculates value of ITC, return df with a new column 'value_of_itc'
     df = datfunc.calc_value_of_itc(df, itc_options, year)
     
-    revenue, costs, cfs, first_year_bill_with_system, first_year_bill_without_system, total_value_of_incentives = calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime, max_incentive_fraction)    
-    df['total_value_of_incentives'] = total_value_of_incentives
+    revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime, max_incentive_fraction)    
 
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
@@ -152,6 +151,9 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
         
         
 """                
+    # extract a list of the input columns
+    in_cols = df.columns.tolist()
+
     # default is 25 year analysis periods
     shape=(len(df),tech_lifetime); 
     df['ic'] = df['installed_costs_dollars_per_kw'] * df['system_size_kw']
@@ -171,7 +173,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     ## COSTS    
     
     # 1)  Cost of servicing loan/leasing payments
-    crf = (df.loan_rate*(1 + df.loan_rate)**df.loan_term_yrs) / ( (1+df.loan_rate)**df.loan_term_yrs - 1);
+    df['crf'] = (df.loan_rate*(1 + df.loan_rate)**df.loan_term_yrs) / ( (1+df.loan_rate)**df.loan_term_yrs - 1);
 
     # Cap the fraction of capital costs that incentives may offset
     # TODO: Applying this as a hot-fix for bugs in the DSIRE dataset. We should review dsire dataset to ensure incentives are being
@@ -184,15 +186,15 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     
     # Assume that incentives received in first year are directly credited against installed cost; This help avoid
     # ITC cash flow imbalances in first year
-    net_installed_cost = df['ic'] - df['total_value_of_incentive']
+    df['net_installed_cost'] = df['ic'] - df['total_value_of_incentive']
     
     # Calculate the annual payment net the downpayment and upfront incentives
-    pmt = - (1 - df.down_payment) * net_installed_cost * crf    
+    pmt = - (1 - df.down_payment) * df['net_installed_cost'] * df['crf']    
     annual_loan_pmts = datfunc.fill_jagged_array(pmt,df.loan_term_yrs,cols = tech_lifetime)
 
     # Pay the down payment in year zero and loan payments thereafter. The downpayment is added at
     # the end of the cash flow calculations to make the year zero framing simpler
-    down_payment_cost = (-net_installed_cost * df.down_payment)[:,np.newaxis] 
+    down_payment_cost = (-df['net_installed_cost'] * df.down_payment)[:,np.newaxis] 
     
     # wind turbines do not have inverters hence no replacement cost.
     # but for solar, calculate and replace the inverter replacement costs with actual values
@@ -314,7 +316,12 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     df['monthly_bill_savings'] = monthly_bill_savings
     df['percent_monthly_bill_savings'] = percent_monthly_bill_savings
     
-    return revenue, costs, cfs, df.first_year_bill_with_system, df.first_year_bill_without_system,df.total_value_of_incentive
+    new_cols = ['total_value_of_incentive', 'monthly_bill_savings', 'percent_monthly_bill_savings']
+    out_cols = in_cols + new_cols
+    out_df = df[out_cols]    
+    
+    
+    return revenue, costs, cfs, out_df #df.first_year_bill_with_system, df.first_year_bill_without_system,df.total_value_of_incentive
 
 #==============================================================================    
 def calc_lcoe(costs,aep, dr, tech_lifetime):
