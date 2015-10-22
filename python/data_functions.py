@@ -2992,7 +2992,9 @@ def calc_manual_incentives(df, con, cur_year, schema):
         value_of_incentives = df[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model','value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
     
     return value_of_incentives
-    
+
+
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
 def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr = 2016, assumed_duration = 10):
     '''
     Calculate the value of incentives based on DSIRE database. There may be many incentives per each customer bin (county_id+bin_id),
@@ -3008,6 +3010,8 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
                                         mutiyear incentves, the (undiscounted) lifetime value is given 
     '''  
     
+    logger.info("Calculating dsire incentives")    
+    
     dsire_df = pd.merge(df, dsire_incentives, how = 'left', on = ['incentive_array_id', 'sector_abbr', 'tech'])    
     srecs_df = pd.merge(df, srecs, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
 
@@ -3015,7 +3019,7 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
     inc = pd.concat([dsire_df, srecs_df], axis = 0, ignore_index = True) 
     
     # Shorten names
-    ic = inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
+    inc['ic'] = inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
     
     cur_date = np.array([datetime.date(cur_year, 1, 1)]*len(inc))
     
@@ -3102,47 +3106,47 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
     
     # 1. # Calculate Value of Increment Incentive
     # The amount of capacity that qualifies for the increment
-    cap_1 = np.minimum(inc.increment_1_capacity_kw, inc['system_size_kw'])
-    cap_2 = np.maximum(inc['system_size_kw'] - inc.increment_1_capacity_kw,0)
-    cap_3 = np.maximum(inc['system_size_kw'] - inc.increment_2_capacity_kw,0)
-    cap_4 = np.maximum(inc['system_size_kw'] - inc.increment_3_capacity_kw,0)
+    inc['cap_1'] = np.minimum(inc.increment_1_capacity_kw, inc['system_size_kw'])
+    inc['cap_2'] = np.maximum(inc['system_size_kw'] - inc.increment_1_capacity_kw, 0)
+    inc['cap_3'] = np.maximum(inc['system_size_kw'] - inc.increment_2_capacity_kw, 0)
+    inc['cap_4'] = np.maximum(inc['system_size_kw'] - inc.increment_3_capacity_kw, 0)
     
-    value_of_increment = cap_1 * inc.increment_1_rebate_dlrs_kw + cap_2 * inc.increment_2_rebate_dlrs_kw + cap_3 * inc.increment_3_rebate_dlrs_kw + cap_4 * inc.increment_4_rebate_dlrs_kw
+    value_of_increment = inc['cap_1'] * inc.increment_1_rebate_dlrs_kw + inc['cap_2'] * inc.increment_2_rebate_dlrs_kw + inc['cap_3'] * inc.increment_3_rebate_dlrs_kw + inc['cap_4'] * inc.increment_4_rebate_dlrs_kw
     inc['value_of_increment'] = value_of_increment.fillna(0)
     # Don't let increment exceed 20% of project cost
-    exceeds_20 = inc['value_of_increment'] > 0.2 * inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
-    inc.loc[exceeds_20, 'value_of_increment'] = 0.2 * inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
+    inc['exceeds_20'] = inc['value_of_increment'] > 0.2 * inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
+    inc.loc[inc['exceeds_20'], 'value_of_increment'] = 0.2 * inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
     
     # 2. # Calculate lifetime value of PBI & FIT
-    pbi_fit_still_exists = cur_date <= inc.pbi_fit_end_date # Is the incentive still valid
-    pbi_fit_cap = np.where(inc['system_size_kw'] < inc.pbi_fit_min_size_kw, 0, inc['system_size_kw'])
-    pbi_fit_cap = np.where(pbi_fit_cap > inc.pbi_fit_max_size_kw, inc.pbi_fit_max_size_kw, pbi_fit_cap)
-    pbi_fit_aep = np.where(inc['aep'] < inc.pbi_fit_min_output_kwh_yr, 0, inc['aep'])
+    inc['pbi_fit_still_exists'] = cur_date <= inc.pbi_fit_end_date # Is the incentive still valid
+    inc['pbi_fit_cap'] = np.where(inc['system_size_kw'] < inc.pbi_fit_min_size_kw, 0, inc['system_size_kw'])
+    inc['pbi_fit_cap'] = np.where(inc['pbi_fit_cap'] > inc.pbi_fit_max_size_kw, inc.pbi_fit_max_size_kw, inc['pbi_fit_cap'])
+    inc['pbi_fit_aep'] = np.where(inc['aep'] < inc.pbi_fit_min_output_kwh_yr, 0, inc['aep'])
     
     # If exists pbi_fit_kwh > 0 but no duration, assume duration
     inc.loc[(inc.pbi_fit_dlrs_kwh > 0) & inc.pbi_fit_duration_years.isnull(), 'pbi_fit_duration_years']  = assumed_duration
-    value_of_pbi_fit = pbi_fit_still_exists * np.minimum(inc.pbi_fit_dlrs_kwh, inc.max_dlrs_yr) * pbi_fit_aep
-    value_of_pbi_fit = np.minimum(value_of_pbi_fit,inc.pbi_fit_max_dlrs)
-    value_of_pbi_fit[np.isnan(value_of_pbi_fit)] = 0
-    length_of_pbi_fit = inc.pbi_fit_duration_years.fillna(0)
+    inc['value_of_pbi_fit'] = inc['pbi_fit_still_exists'] * np.minimum(inc.pbi_fit_dlrs_kwh, inc.max_dlrs_yr) * inc['pbi_fit_aep']
+    inc['value_of_pbi_fit'] = np.minimum(inc['value_of_pbi_fit'], inc.pbi_fit_max_dlrs)
+    inc.loc[:, 'value_of_pbi_fit'] = inc.value_of_pbi_fit.fillna(0)
+    inc['length_of_pbi_fit'] = inc.pbi_fit_duration_years.fillna(0)
     
     # 3. # Lifetime value of the pbi/fit. Assume all pbi/fits are disbursed over 10 years. 
     # This will get the undiscounted sum of incentive correct, present value may have small error
-    inc['lifetime_value_of_pbi_fit'] = length_of_pbi_fit * value_of_pbi_fit
+    inc['lifetime_value_of_pbi_fit'] = inc['length_of_pbi_fit'] * inc['value_of_pbi_fit']
     
     ## Calculate first year value and length of PTC
-    ptc_still_exists = cur_date <= inc.ptc_end_date # Is the incentive still valid
-    ptc_max_size = np.minimum(inc['system_size_kw'], inc.tax_credit_max_size_kw)
+    inc['ptc_still_exists'] = cur_date <= inc.ptc_end_date # Is the incentive still valid
+    inc['ptc_max_size'] = np.minimum(inc['system_size_kw'], inc.tax_credit_max_size_kw)
     inc.loc[(inc.ptc_dlrs_kwh > 0) & (inc.ptc_duration_years.isnull()), 'ptc_duration_years'] = assumed_duration
     with np.errstate(invalid = 'ignore'):
-        value_of_ptc =  np.where(ptc_still_exists & inc.system_size_kw > 0, np.minimum(inc.ptc_dlrs_kwh * inc.aep * (ptc_max_size/inc.system_size_kw), inc.max_dlrs_yr), 0)
-    value_of_ptc[np.isnan(value_of_ptc)] = 0
-    value_of_ptc = np.where(value_of_ptc < inc.max_tax_credit_dlrs, value_of_ptc,inc.max_tax_credit_dlrs)
-    length_of_ptc = inc.ptc_duration_years.fillna(0)
+        inc['value_of_ptc'] =  np.where(inc['ptc_still_exists'] & inc.system_size_kw > 0, np.minimum(inc.ptc_dlrs_kwh * inc.aep * (inc['ptc_max_size']/inc.system_size_kw), inc.max_dlrs_yr), 0)
+    inc.loc[:, 'value_of_ptc'] = inc.value_of_ptc.fillna(0)    
+    inc['value_of_ptc'] = np.where(inc['value_of_ptc'] < inc.max_tax_credit_dlrs, inc['value_of_ptc'], inc.max_tax_credit_dlrs)
+    inc['length_of_ptc'] = inc.ptc_duration_years.fillna(0)
     
     # Lifetime value of the ptc. Assume all ptcs are disbursed over 10 years
     # This will get the undiscounted sum of incentive correct, present value may have small error
-    inc['lifetime_value_of_ptc'] = length_of_ptc * value_of_ptc
+    inc['lifetime_value_of_ptc'] = inc['length_of_ptc'] * inc['value_of_ptc']
 
     # 4. #Calculate Value of Rebate
 
@@ -3150,17 +3154,15 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
     # about expirations for each tax credit or deduction). 
     #Assume that expiration date is inclusive e.g. consumer receives incentive in 2016 if expiration date of 2016 (or greater)
     if datetime.date(cur_year, 1, 1) >= datetime.date(default_exp_yr, 12, 31):
-        value_of_rebate = 0.0
+        inc['value_of_rebate'] = 0.0
     else:
-        rebate_cap = np.where(inc['system_size_kw'] < inc.rebate_min_size_kw, 0, inc['system_size_kw'])
-        rebate_cap = np.where(rebate_cap > inc.rebate_max_size_kw, inc.rebate_max_size_kw, rebate_cap)
-        value_of_rebate = inc.rebate_dlrs_kw * rebate_cap
-        value_of_rebate = np.minimum(inc.rebate_max_dlrs, value_of_rebate)
-        value_of_rebate = np.minimum(inc.rebate_pcnt_cost_max * ic, value_of_rebate)
-        value_of_rebate[np.isnan(value_of_rebate)] = 0
-    
-    inc['value_of_rebate'] = value_of_rebate
-    
+        inc['rebate_cap'] = np.where(inc['system_size_kw'] < inc.rebate_min_size_kw, 0, inc['system_size_kw'])
+        inc['rebate_cap'] = np.where(inc['rebate_cap'] > inc.rebate_max_size_kw, inc.rebate_max_size_kw, inc['rebate_cap'])
+        inc['value_of_rebate'] = inc.rebate_dlrs_kw * inc['rebate_cap']
+        inc['value_of_rebate'] = np.minimum(inc.rebate_max_dlrs, inc['value_of_rebate'])
+        inc['value_of_rebate'] = np.minimum(inc.rebate_pcnt_cost_max * inc['ic'], inc['value_of_rebate'])
+        inc.loc[:, 'value_of_rebate'] = inc.value_of_rebate.fillna(0)    
+
     # 5. # Calculate Value of Tax Credit
     # Assume able to fully monetize tax credits
     
@@ -3174,20 +3176,20 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
         inc.loc[inc.tax_credit_pcnt_cost >= 1, 'tax_credit_pcnt_cost'] = 0.01 * inc.tax_credit_pcnt_cost
         inc.loc[inc.tax_deduction_pcnt_cost.isnull(), 'tax_deduction_pcnt_cost'] = 0
         inc.loc[inc.tax_deduction_pcnt_cost >= 1, 'tax_deduction_pcnt_cost'] =  0.01 * inc.tax_deduction_pcnt_cost
-        tax_pcnt_cost = inc.tax_credit_pcnt_cost + inc.tax_deduction_pcnt_cost
+        inc['tax_pcnt_cost'] = inc.tax_credit_pcnt_cost + inc.tax_deduction_pcnt_cost
         
         inc.max_tax_credit_dlrs = np.where(inc.max_tax_credit_dlrs.isnull(), 1e9, inc.max_tax_credit_dlrs)
         inc.max_tax_deduction_dlrs = np.where(inc.max_tax_deduction_dlrs.isnull(), 1e9, inc.max_tax_deduction_dlrs)
-        max_tax_credit_or_deduction_value = np.maximum(inc.max_tax_credit_dlrs,inc.max_tax_deduction_dlrs)
+        inc['max_tax_credit_or_deduction_value'] = np.maximum(inc.max_tax_credit_dlrs,inc.max_tax_deduction_dlrs)
         
         inc['tax_credit_dlrs_kw'] = inc['tax_credit_dlrs_kw'].fillna(0)
         
-        value_of_tax_credit_or_deduction = tax_pcnt_cost * ic + inc['tax_credit_dlrs_kw'] * inc['system_size_kw']
-        value_of_tax_credit_or_deduction = np.minimum(max_tax_credit_or_deduction_value, value_of_tax_credit_or_deduction)
-        value_of_tax_credit_or_deduction = np.where(inc.tax_credit_max_size_kw < inc['system_size_kw'], tax_pcnt_cost * inc.tax_credit_max_size_kw * inc.installed_costs_dollars_per_kw, value_of_tax_credit_or_deduction)
-        value_of_tax_credit_or_deduction = pd.Series(value_of_tax_credit_or_deduction).fillna(0)        
+        inc['value_of_tax_credit_or_deduction'] = inc['tax_pcnt_cost'] * inc['ic'] + inc['tax_credit_dlrs_kw'] * inc['system_size_kw']
+        inc['value_of_tax_credit_or_deduction'] = np.minimum(inc['max_tax_credit_or_deduction_value'], inc['value_of_tax_credit_or_deduction'])
+        inc['value_of_tax_credit_or_deduction'] = np.where(inc.tax_credit_max_size_kw < inc['system_size_kw'], inc['tax_pcnt_cost'] * inc.tax_credit_max_size_kw * inc.installed_costs_dollars_per_kw, inc['value_of_tax_credit_or_deduction'])
+        inc['value_of_tax_credit_or_deduction'] = pd.Series(inc['value_of_tax_credit_or_deduction']).fillna(0)        
         #value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
-        inc['value_of_tax_credit_or_deduction'] = value_of_tax_credit_or_deduction.astype(float)
+        inc['value_of_tax_credit_or_deduction'] = inc['value_of_tax_credit_or_deduction'].astype(float)
     
     # sum results to customer bins
     if inc.shape[0] > 0:
