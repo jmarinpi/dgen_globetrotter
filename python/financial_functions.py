@@ -630,9 +630,11 @@ def calc_metric_value(df,cfs,revenue,costs, tech_lifetime):
         OUT:
             metric_value - pd series - series of values given the business_model and sector
     '''
-    
+    t0 = time.time()
     payback = calc_payback(cfs,revenue,costs,tech_lifetime)
+    print '\tpayback', time.time()-t0
     ttd = calc_ttd(cfs)
+    print '\tttd', time.time()-t0    
     
     """ MBS is calculated in the calc_cashflows function using this method:
     Annual bill savings = [First year bill w/o tech] - [First year bill w/ tech] - [Avg. annual system payment]
@@ -645,6 +647,6 @@ def calc_metric_value(df,cfs,revenue,costs, tech_lifetime):
     """ 
 
     metric_value = np.where(df.business_model == 'tpo',df.percent_monthly_bill_savings, np.where((df.sector_abbr == 'ind') | (df.sector_abbr == 'com'),ttd,payback))
-    
+    print '\tcombine', time.time()-t0
     return metric_value    
 #==============================================================================

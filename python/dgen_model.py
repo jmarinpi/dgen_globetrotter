@@ -140,8 +140,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             if cfg.init_model:
                 # create the output schema
 #                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment     
-                schema = 'diffusion_results_2015_10_22_12h58m28s' # full CA run to 2030 for all sectors, solar only
-#                schema = 'diffusion_results_2015_10_22_13h15m20s' # full national run to 2030 for all sectors, solar only
+#                schema = 'diffusion_results_2015_10_22_12h58m28s' # full CA run to 2030 for all sectors, solar only
+                schema = 'diffusion_results_2015_10_22_13h15m20s' # full national run to 2030 for all sectors, solar only
                 datfunc.clear_outputs(con, cur, schema)
                 # write the reeds settings to postgres
                 reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
@@ -248,7 +248,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
             srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
             itc_options = pd.read_sql('SELECT * FROM %s.input_main_itc_options; ' % schema, con) 
-            for year in model_years:
+            for year in model_years[0:1]:
                 logger.info('\tWorking on %s' % year)
                     
                 # get input agent attributes from postgres
