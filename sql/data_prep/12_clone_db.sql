@@ -73,4 +73,8 @@ where sequence_schema in ('diffusion_shared','diffusion_solar','diffusion_config
 -- solar_system_sizing.sql
 -- wind_scoe.sql
 
-
+--- to archive an old version:
+-- either
+-- ALTER DATABASE dgen_db RENAME TO something_else;
+-- or 
+-- CREATE DATABASE dgen_db_fy16q1_tc_extensions WITH TEMPLATE dgen_db;
