@@ -2,8 +2,8 @@
 
 -- CG did a fairly rapid review of the DSIRE incentives for Solar
 -- and made some manual edits. we will use his new version and archive the original incentives
-ALTER TABLE diffusion_solar.incentives
-RENAME TO incentives_archive;
+-- ALTER TABLE diffusion_solar.incentives
+-- RENAME TO incentives_archive;
 
 DROP TABLE IF EXISTS diffusion_solar.incentives;
 CREATE TABLE diffusion_solar.incentives

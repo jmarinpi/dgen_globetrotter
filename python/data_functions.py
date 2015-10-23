@@ -2575,7 +2575,50 @@ def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string):
     
     sql = ' UNION ALL '.join(sql_list)
             
-    df = pd.read_sql(sql, con, coerce_float = False)
+    df = pd.read_sql(sql, con, coerce_float = True)
+    
+    # add in columns that may be missing
+    for col in ['increment_4_capacity_kw','increment_4_rebate_dlrs_kw',
+                'pbi_fit_max_size_for_dlrs_calc_kw','tax_credit_dlrs_kw',
+                'pbi_fit_min_output_kwh_yr','increment_3_rebate_dlrs_kw',
+                'increment_4_rebate_dlrs_kw']:
+        if col not in df.columns:
+            df[col] = np.nan
+    
+    # fix data types for float columns (may come in as type 'O' due to all nulls)
+    float_cols = ['increment_1_capacity_kw', 
+                    'increment_2_capacity_kw', 
+                    'increment_3_capacity_kw', 
+                    'increment_4_capacity_kw', 
+                    'increment_1_rebate_dlrs_kw', 
+                    'increment_2_rebate_dlrs_kw', 
+                    'increment_3_rebate_dlrs_kw', 
+                    'increment_4_rebate_dlrs_kw', 
+                    'pbi_fit_duration_years', 
+                    'pbi_fit_max_size_kw', 
+                    'pbi_fit_min_output_kwh_yr', 
+                    'pbi_fit_min_size_kw', 
+                    'pbi_dlrs_kwh', 
+                    'fit_dlrs_kwh', 
+                    'pbi_fit_max_dlrs', 
+                    'pbi_fit_pcnt_cost_max', 
+                    'ptc_duration_years', 
+                    'ptc_dlrs_kwh', 
+                    'max_dlrs_yr', 
+                    'rebate_dlrs_kw', 
+                    'rebate_max_dlrs', 
+                    'rebate_max_size_kw', 
+                    'rebate_min_size_kw', 
+                    'rebate_pcnt_cost_max', 
+                    'max_tax_credit_dlrs', 
+                    'max_tax_deduction_dlrs', 
+                    'tax_credit_pcnt_cost', 
+                    'tax_deduction_pcnt_cost', 
+                    'tax_credit_max_size_kw', 
+                    'tax_credit_min_size_kw']
+    
+    df.loc[:, float_cols] = df[float_cols].astype(float)
+
     return df
 
 
@@ -3007,61 +3050,19 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
     OUT: value_of_incentives - pandas df - Values of incentives by type. For 
                                         mutiyear incentves, the (undiscounted) lifetime value is given 
     '''  
-    
+    t0 = time.time()
     dsire_df = pd.merge(df, dsire_incentives, how = 'left', on = ['incentive_array_id', 'sector_abbr', 'tech'])    
     srecs_df = pd.merge(df, srecs, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
 
     # combine sr and inc
     inc = pd.concat([dsire_df, srecs_df], axis = 0, ignore_index = True) 
-    
+    print '\tcombining', time.time()-t0
     # Shorten names
     inc['ic'] = inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
     
     cur_date = np.array([datetime.date(cur_year, 1, 1)]*len(inc))
     
-    # Column names differ btw the wind and solar tables. 
-    # Adding this exception handling so they have common set of columns
-    
-    for col in ['increment_4_capacity_kw','increment_4_rebate_dlrs_kw',
-    'pbi_fit_max_size_for_dlrs_calc_kw','tax_credit_dlrs_kw',
-    'pbi_fit_min_output_kwh_yr','increment_3_rebate_dlrs_kw',
-    'increment_4_rebate_dlrs_kw']:
-        if col not in inc.columns:
-            inc[col] = None
-    
-    ## Coerce incentives to following types:
-    # Don't loop over column names, because some are strings e.g. don't coerce all to floats
-    inc.increment_1_capacity_kw = inc.increment_1_capacity_kw.astype(float)
-    inc.increment_2_capacity_kw = inc.increment_2_capacity_kw.astype(float)
-    inc.increment_3_capacity_kw = inc.increment_3_capacity_kw.astype(float)
-    inc.increment_4_capacity_kw = inc.increment_4_capacity_kw.astype(float)
-    inc.increment_1_rebate_dlrs_kw = inc.increment_1_rebate_dlrs_kw.astype(float)
-    inc.increment_2_rebate_dlrs_kw = inc.increment_2_rebate_dlrs_kw.astype(float)
-    inc.increment_3_rebate_dlrs_kw = inc.increment_3_rebate_dlrs_kw.astype(float)
-    inc.increment_4_rebate_dlrs_kw = inc.increment_4_rebate_dlrs_kw.astype(float)
-    inc.pbi_fit_duration_years = inc.pbi_fit_duration_years.astype(float)
-    inc.pbi_fit_max_size_kw = inc.pbi_fit_max_size_kw.astype(float)
-    inc.pbi_fit_min_output_kwh_yr = inc.pbi_fit_min_output_kwh_yr.astype(float)
-    inc.pbi_fit_min_size_kw = inc.pbi_fit_min_size_kw.astype(float)
-    inc.pbi_dlrs_kwh = inc.pbi_dlrs_kwh.astype(float)
-    inc.fit_dlrs_kwh = inc.fit_dlrs_kwh.astype(float)
-    inc.pbi_fit_max_dlrs = inc.pbi_fit_max_dlrs.astype(float)
-    inc.pbi_fit_pcnt_cost_max = inc.pbi_fit_pcnt_cost_max.astype(float)
-    inc.ptc_duration_years = inc.ptc_duration_years.astype(float)
-    inc.ptc_dlrs_kwh = inc.ptc_dlrs_kwh.astype(float)
-    inc.max_dlrs_yr = inc.max_dlrs_yr.astype(float)
-    inc.rebate_dlrs_kw = inc.rebate_dlrs_kw.astype(float)
-    inc.rebate_max_dlrs = inc.rebate_max_dlrs.astype(float)
-    inc.rebate_max_size_kw = inc.rebate_max_size_kw.astype(float)
-    inc.rebate_min_size_kw = inc.rebate_min_size_kw.astype(float)
-    inc.rebate_pcnt_cost_max = inc.rebate_pcnt_cost_max.astype(float)
-    inc.max_tax_credit_dlrs = inc.max_tax_credit_dlrs.astype(float)
-    inc.max_tax_deduction_dlrs = inc.max_tax_deduction_dlrs.astype(float)
-    inc.tax_credit_pcnt_cost = inc.tax_credit_pcnt_cost.astype(float)
-    inc.tax_deduction_pcnt_cost = inc.tax_deduction_pcnt_cost.astype(float)
-    inc.tax_credit_max_size_kw = inc.tax_credit_max_size_kw.astype(float)
-    inc.tax_credit_min_size_kw = inc.tax_credit_min_size_kw.astype(float)
-# replace null values for min/max dollars and size with defaults
+    # replace null values for min/max dollars and size with defaults
     exp_date = datetime.date(default_exp_yr, 12, 31) # note: this was formerly set to 1/1/16 for ITC, and 12/31/16 for all other incentives
     max_dlrs = 1e9
     dlrs_per_kwh = 0
@@ -3097,7 +3098,7 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
     # increment incentives
     increment_vars = ['increment_1_capacity_kw','increment_2_capacity_kw','increment_3_capacity_kw','increment_4_capacity_kw', 'increment_1_rebate_dlrs_kw','increment_2_rebate_dlrs_kw','increment_3_rebate_dlrs_kw','increment_4_rebate_dlrs_kw']    
     inc.loc[:, increment_vars] = inc[increment_vars].fillna(increment_incentive_kw)
-    
+    print '\tfixing nulls', time.time()-t0
     
     
     # 1. # Calculate Value of Increment Incentive
