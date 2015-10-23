@@ -481,6 +481,35 @@ def calc_payback(cfs,revenue,costs,tech_lifetime):
         out.append(pp)
     return np.array(out).round(decimals =1) # must be rounded to nearest 0.1 to join with max_market_share
     
+def calc_payback_vectorized(cfs, tech_lifetime):
+    '''payback calculator ### VECTORIZE THIS ###
+    IN: cfs - numpy array - project cash flows ($/yr)
+    OUT: pp - numpy array - interpolated payback period (years)
+    '''
+    
+    years = np.array([np.arange(0, tech_lifetime)] * cfs.shape[0])
+    
+    cum_cfs = cfs.cumsum(axis = 1)   
+    no_payback = np.logical_or(cum_cfs[:, -1] < 0, np.all(cum_cfs < 0, axis = 1))
+    instant_payback = np.all(cum_cfs > 0, axis = 1)
+    neg_to_pos_years = np.diff(np.sign(cum_cfs)) > 0
+    base_years = np.amax(np.where(neg_to_pos_years, years, -1), axis = 1)
+    # replace values of -1 with 30
+    base_years_fix = np.where(base_years == -1, tech_lifetime - 1, base_years)
+    base_year_mask = years == base_years_fix[:, np.newaxis]
+    # base year values
+    base_year_values = cum_cfs[:, :-1][base_year_mask]
+    next_year_values = cum_cfs[:, 1:][base_year_mask]
+    frac_years = base_year_values/(base_year_values - next_year_values)
+    pp_year = base_years_fix + frac_years
+    pp_precise = np.where(no_payback, 30, np.where(instant_payback, 0, pp_year))
+    
+    # round to nearest 0.1 to join with max_market_share
+    pp_final = np.array(pp_precise).round(decimals =1)
+    
+    
+    return pp_final
+    
 #==============================================================================
 
 def recalc_down_payment(df):
@@ -631,7 +660,8 @@ def calc_metric_value(df,cfs,revenue,costs, tech_lifetime):
             metric_value - pd series - series of values given the business_model and sector
     '''
     t0 = time.time()
-    payback = calc_payback(cfs,revenue,costs,tech_lifetime)
+#    payback = calc_payback(cfs,revenue,costs,tech_lifetime)
+    payback = calc_payback_vectorized(cfs, tech_lifetime)
     print '\tpayback', time.time()-t0
     ttd = calc_ttd(cfs)
     print '\tttd', time.time()-t0    

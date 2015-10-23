@@ -248,7 +248,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
             srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
             itc_options = pd.read_sql('SELECT * FROM %s.input_main_itc_options; ' % schema, con) 
-            for year in model_years[0:1]:
+            for year in model_years:
                 logger.info('\tWorking on %s' % year)
                     
                 # get input agent attributes from postgres
