@@ -41,7 +41,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     '''
     
     logger.info("\t\tCalculating System Economics")
-    t0 = time.time()
+
     # join in additional information
     df = pd.merge(df, ann_system_degradation, how = 'left', on = ['tech'])
     df = pd.merge(df, deprec_schedule, how = 'left', on = ['tech'])
@@ -75,27 +75,26 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
         rate_esc = rate_growth_df.copy()
         rate_esc.loc[:, 'rate_escalations'] = np.array(rate_esc.rate_escalations.tolist(), dtype = 'float64')[:, start_i:end_i].tolist()
         df = pd.merge(df, rate_esc, how = 'left', on = ['sector_abbr', 'census_division_abbr'])
-    print 'initial prep', time.time()-t0
+
     # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
     df_manual_incentives = df[df['overwrite_exist_inc'] == True]
     df_dsire_incentives = df[df['overwrite_exist_inc'] == False]
     
     value_of_incentives_manual = datfunc.calc_manual_incentives(df_manual_incentives, year, manual_incentives)
-    print 'manual incentives', time.time()-t0
     value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, srecs, year, 
                                                               default_exp_yr = dsire_inc_def_exp_year, assumed_duration = 10)
-    print 'dsire incentives', time.time()-t0
     value_of_incentives_all = pd.concat([value_of_incentives_manual, value_of_incentives_dsire], axis = 0, ignore_index = True)
     df = pd.merge(df, value_of_incentives_all, how = 'left', on = ['county_id','bin_id','business_model', 'tech', 'sector_abbr'])
-    print 'combining', time.time()-t0
+
     # Calculates value of ITC, return df with a new column 'value_of_itc'
     df = datfunc.calc_value_of_itc(df, itc_options, year)
-    print 'itc', time.time()-t0
+
+    # calculate cashflows
     revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime, max_incentive_fraction)    
-    print 'cashflows', time.time()-t0
+
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
-    print 'metric value', time.time()-t0
+
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate, tech_lifetime)
     npv = calc_npv(cfs, np.array([0.04]))
     with np.errstate(invalid = 'ignore'):
@@ -659,12 +658,10 @@ def calc_metric_value(df,cfs,revenue,costs, tech_lifetime):
         OUT:
             metric_value - pd series - series of values given the business_model and sector
     '''
-    t0 = time.time()
-#    payback = calc_payback(cfs,revenue,costs,tech_lifetime)
+    # calculate payback period
     payback = calc_payback_vectorized(cfs, tech_lifetime)
-    print '\tpayback', time.time()-t0
+    # calculate time to double
     ttd = calc_ttd(cfs)
-    print '\tttd', time.time()-t0    
     
     """ MBS is calculated in the calc_cashflows function using this method:
     Annual bill savings = [First year bill w/o tech] - [First year bill w/ tech] - [Avg. annual system payment]
@@ -677,6 +674,6 @@ def calc_metric_value(df,cfs,revenue,costs, tech_lifetime):
     """ 
 
     metric_value = np.where(df.business_model == 'tpo',df.percent_monthly_bill_savings, np.where((df.sector_abbr == 'ind') | (df.sector_abbr == 'com'),ttd,payback))
-    print '\tcombine', time.time()-t0
+
     return metric_value    
 #==============================================================================
