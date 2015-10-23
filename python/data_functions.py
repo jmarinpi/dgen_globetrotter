@@ -2551,7 +2551,7 @@ def get_scenario_options(cur, schema):
     return results
 
 
-def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string):
+def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string, default_exp_yr = 2016):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
     
@@ -2619,10 +2619,47 @@ def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string):
     
     df.loc[:, float_cols] = df[float_cols].astype(float)
 
+    # replace null values with defaults
+    exp_date = datetime.date(default_exp_yr, 12, 31) # note: this was formerly set to 1/1/16 for ITC, and 12/31/16 for all other incentives
+    max_dlrs = 1e9
+    dlrs_per_kwh = 0
+    dlrs_per_kw = 0
+    max_size_kw = 10000
+    min_size_kw = 0
+    min_output_kwh_yr = 0
+    increment_incentive_kw = 0
+    pcnt_cost_max = 100
+    # percent cost max
+    df.loc[:, 'rebate_pcnt_cost_max'] = df.rebate_pcnt_cost_max.fillna(pcnt_cost_max)
+    # expiration date
+    df.loc[:, 'ptc_end_date'] = df.ptc_end_date.fillna(exp_date)
+    df.loc[:, 'pbi_fit_end_date'] = df.pbi_fit_end_date.fillna(exp_date) # Assign expiry if no date    
+    # max dollars
+    df.loc[:, 'max_dlrs_yr'] = df.max_dlrs_yr.fillna(max_dlrs)
+    df.loc[:, 'pbi_fit_max_dlrs'] = df.pbi_fit_max_dlrs.fillna(max_dlrs)
+    df.loc[:, 'max_tax_credit_dlrs'] = df.max_tax_credit_dlrs.fillna(max_dlrs)
+    df.loc[:, 'rebate_max_dlrs'] = df.rebate_max_dlrs.fillna(max_dlrs)     
+    # dollars per kwh
+    df.loc[:, 'ptc_dlrs_kwh'] = df.ptc_dlrs_kwh.fillna(dlrs_per_kwh)
+    # dollars per kw
+    df.loc[:, 'rebate_dlrs_kw'] = df.rebate_dlrs_kw.fillna(dlrs_per_kw)
+    # max size
+    df.loc[:, 'tax_credit_max_size_kw'] = df.tax_credit_max_size_kw.fillna(max_size_kw)
+    df.loc[:, 'pbi_fit_max_size_kw' ] = df.pbi_fit_min_size_kw.fillna(max_size_kw)
+    df.loc[:, 'rebate_max_size_kw'] = df.rebate_min_size_kw.fillna(max_size_kw)
+    # min size
+    df.loc[:, 'pbi_fit_min_size_kw' ] = df.pbi_fit_min_size_kw.fillna(min_size_kw)
+    df.loc[:, 'rebate_min_size_kw'] = df.rebate_min_size_kw.fillna(min_size_kw)
+    # minimum output kwh
+    df.loc[:, 'pbi_fit_min_output_kwh_yr'] = df['pbi_fit_min_output_kwh_yr'].fillna(min_output_kwh_yr)    
+    # increment incentives
+    increment_vars = ['increment_1_capacity_kw','increment_2_capacity_kw','increment_3_capacity_kw','increment_4_capacity_kw', 'increment_1_rebate_dlrs_kw','increment_2_rebate_dlrs_kw','increment_3_rebate_dlrs_kw','increment_4_rebate_dlrs_kw']    
+    df.loc[:, increment_vars] = df[increment_vars].fillna(increment_incentive_kw)
+
     return df
 
 
-def get_srecs(cur, con, schema, techs, pg_conn_string):
+def get_srecs(cur, con, schema, techs, pg_conn_string, default_exp_yr):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
     
@@ -2637,6 +2674,87 @@ def get_srecs(cur, con, schema, techs, pg_conn_string):
     sql = ' UNION ALL '.join(sql_list)
             
     df = pd.read_sql(sql, con, coerce_float = False)
+    
+    # add in columns that may be missing
+    for col in ['increment_4_capacity_kw','increment_4_rebate_dlrs_kw',
+                'pbi_fit_max_size_for_dlrs_calc_kw','tax_credit_dlrs_kw',
+                'pbi_fit_min_output_kwh_yr','increment_3_rebate_dlrs_kw',
+                'increment_4_rebate_dlrs_kw']:
+        if col not in df.columns:
+            df[col] = np.nan
+    
+    # fix data types for float columns (may come in as type 'O' due to all nulls)
+    float_cols = ['increment_1_capacity_kw', 
+                    'increment_2_capacity_kw', 
+                    'increment_3_capacity_kw', 
+                    'increment_4_capacity_kw', 
+                    'increment_1_rebate_dlrs_kw', 
+                    'increment_2_rebate_dlrs_kw', 
+                    'increment_3_rebate_dlrs_kw', 
+                    'increment_4_rebate_dlrs_kw', 
+                    'pbi_fit_duration_years', 
+                    'pbi_fit_max_size_kw', 
+                    'pbi_fit_min_output_kwh_yr', 
+                    'pbi_fit_min_size_kw', 
+                    'pbi_dlrs_kwh', 
+                    'fit_dlrs_kwh', 
+                    'pbi_fit_max_dlrs', 
+                    'pbi_fit_pcnt_cost_max', 
+                    'ptc_duration_years', 
+                    'ptc_dlrs_kwh', 
+                    'max_dlrs_yr', 
+                    'rebate_dlrs_kw', 
+                    'rebate_max_dlrs', 
+                    'rebate_max_size_kw', 
+                    'rebate_min_size_kw', 
+                    'rebate_pcnt_cost_max', 
+                    'max_tax_credit_dlrs', 
+                    'max_tax_deduction_dlrs', 
+                    'tax_credit_pcnt_cost', 
+                    'tax_deduction_pcnt_cost', 
+                    'tax_credit_max_size_kw', 
+                    'tax_credit_min_size_kw']
+    
+    df.loc[:, float_cols] = df[float_cols].astype(float)
+
+    # replace null values with defaults
+    exp_date = datetime.date(default_exp_yr, 12, 31) # note: this was formerly set to 1/1/16 for ITC, and 12/31/16 for all other incentives
+    max_dlrs = 1e9
+    dlrs_per_kwh = 0
+    dlrs_per_kw = 0
+    max_size_kw = 10000
+    min_size_kw = 0
+    min_output_kwh_yr = 0
+    increment_incentive_kw = 0
+    pcnt_cost_max = 100
+    # percent cost max
+    df.loc[:, 'rebate_pcnt_cost_max'] = df.rebate_pcnt_cost_max.fillna(pcnt_cost_max)
+    # expiration date
+    df.loc[:, 'ptc_end_date'] = df.ptc_end_date.fillna(exp_date)
+    df.loc[:, 'pbi_fit_end_date'] = df.pbi_fit_end_date.fillna(exp_date) # Assign expiry if no date    
+    # max dollars
+    df.loc[:, 'max_dlrs_yr'] = df.max_dlrs_yr.fillna(max_dlrs)
+    df.loc[:, 'pbi_fit_max_dlrs'] = df.pbi_fit_max_dlrs.fillna(max_dlrs)
+    df.loc[:, 'max_tax_credit_dlrs'] = df.max_tax_credit_dlrs.fillna(max_dlrs)
+    df.loc[:, 'rebate_max_dlrs'] = df.rebate_max_dlrs.fillna(max_dlrs)     
+    # dollars per kwh
+    df.loc[:, 'ptc_dlrs_kwh'] = df.ptc_dlrs_kwh.fillna(dlrs_per_kwh)
+    # dollars per kw
+    df.loc[:, 'rebate_dlrs_kw'] = df.rebate_dlrs_kw.fillna(dlrs_per_kw)
+    # max size
+    df.loc[:, 'tax_credit_max_size_kw'] = df.tax_credit_max_size_kw.fillna(max_size_kw)
+    df.loc[:, 'pbi_fit_max_size_kw' ] = df.pbi_fit_min_size_kw.fillna(max_size_kw)
+    df.loc[:, 'rebate_max_size_kw'] = df.rebate_min_size_kw.fillna(max_size_kw)
+    # min size
+    df.loc[:, 'pbi_fit_min_size_kw' ] = df.pbi_fit_min_size_kw.fillna(min_size_kw)
+    df.loc[:, 'rebate_min_size_kw'] = df.rebate_min_size_kw.fillna(min_size_kw)
+    # minimum output kwh
+    df.loc[:, 'pbi_fit_min_output_kwh_yr'] = df['pbi_fit_min_output_kwh_yr'].fillna(min_output_kwh_yr)    
+    # increment incentives
+    increment_vars = ['increment_1_capacity_kw','increment_2_capacity_kw','increment_3_capacity_kw','increment_4_capacity_kw', 'increment_1_rebate_dlrs_kw','increment_2_rebate_dlrs_kw','increment_3_rebate_dlrs_kw','increment_4_rebate_dlrs_kw']    
+    df.loc[:, increment_vars] = df[increment_vars].fillna(increment_incentive_kw)    
+    
+    
     return df
 
 
@@ -3061,45 +3179,6 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
     inc['ic'] = inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
     
     cur_date = np.array([datetime.date(cur_year, 1, 1)]*len(inc))
-    
-    # replace null values for min/max dollars and size with defaults
-    exp_date = datetime.date(default_exp_yr, 12, 31) # note: this was formerly set to 1/1/16 for ITC, and 12/31/16 for all other incentives
-    max_dlrs = 1e9
-    dlrs_per_kwh = 0
-    dlrs_per_kw = 0
-    max_size_kw = 10000
-    min_size_kw = 0
-    min_output_kwh_yr = 0
-    increment_incentive_kw = 0
-    pcnt_cost_max = 100
-    # percent cost max
-    inc.loc[:, 'rebate_pcnt_cost_max'] = inc.rebate_pcnt_cost_max.fillna(pcnt_cost_max)
-    # expiration date
-    inc.loc[:, 'ptc_end_date'] = inc.ptc_end_date.fillna(exp_date)
-    inc.loc[:, 'pbi_fit_end_date'] = inc.pbi_fit_end_date.fillna(exp_date) # Assign expiry if no date    
-    # max dollars
-    inc.loc[:, 'max_dlrs_yr'] = inc.max_dlrs_yr.fillna(max_dlrs)
-    inc.loc[:, 'pbi_fit_max_dlrs'] = inc.pbi_fit_max_dlrs.fillna(max_dlrs)
-    inc.loc[:, 'max_tax_credit_dlrs'] = inc.max_tax_credit_dlrs.fillna(max_dlrs)
-    inc.loc[:, 'rebate_max_dlrs'] = inc.rebate_max_dlrs.fillna(max_dlrs)     
-    # dollars per kwh
-    inc.loc[:, 'ptc_dlrs_kwh'] = inc.ptc_dlrs_kwh.fillna(dlrs_per_kwh)
-    # dollars per kw
-    inc.loc[:, 'rebate_dlrs_kw'] = inc.rebate_dlrs_kw.fillna(dlrs_per_kw)
-    # max size
-    inc.loc[:, 'tax_credit_max_size_kw'] = inc.tax_credit_max_size_kw.fillna(max_size_kw)
-    inc.loc[:, 'pbi_fit_max_size_kw' ] = inc.pbi_fit_min_size_kw.fillna(max_size_kw)
-    inc.loc[:, 'rebate_max_size_kw'] = inc.rebate_min_size_kw.fillna(max_size_kw)
-    # min size
-    inc.loc[:, 'pbi_fit_min_size_kw' ] = inc.pbi_fit_min_size_kw.fillna(min_size_kw)
-    inc.loc[:, 'rebate_min_size_kw'] = inc.rebate_min_size_kw.fillna(min_size_kw)
-    # minimum output kwh
-    inc.loc[:, 'pbi_fit_min_output_kwh_yr'] = inc['pbi_fit_min_output_kwh_yr'].fillna(min_output_kwh_yr)    
-    # increment incentives
-    increment_vars = ['increment_1_capacity_kw','increment_2_capacity_kw','increment_3_capacity_kw','increment_4_capacity_kw', 'increment_1_rebate_dlrs_kw','increment_2_rebate_dlrs_kw','increment_3_rebate_dlrs_kw','increment_4_rebate_dlrs_kw']    
-    inc.loc[:, increment_vars] = inc[increment_vars].fillna(increment_incentive_kw)
-    print '\tfixing nulls', time.time()-t0
-    
     
     # 1. # Calculate Value of Increment Incentive
     # The amount of capacity that qualifies for the increment

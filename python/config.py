@@ -71,6 +71,11 @@ init_model = True
 
 
 #==============================================================================
+#  Default expiration year for dsire incentives
+#==============================================================================
+dsire_inc_def_exp_year = 2016
+
+#==============================================================================
 # Toggle gross fit vs net fit
 #==============================================================================
 # In non-NEM mode, should generation be allowed to offset self-consumption (False), 

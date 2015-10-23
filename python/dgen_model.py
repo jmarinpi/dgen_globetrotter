@@ -245,8 +245,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==========================================================================================================
             logger.info("---------Modeling Annual Deployment---------")      
             # get dsire incentives, srecs, and itc for the generated customer bins
-            dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string)
-            srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string)
+            dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
+            srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
             itc_options = pd.read_sql('SELECT * FROM %s.input_main_itc_options; ' % schema, con) 
             for year in model_years:
                 logger.info('\tWorking on %s' % year)
@@ -272,9 +272,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 df = finfunc.calc_economics(df, schema, 
                                            market_projections, financial_parameters, rate_growth_df,
                                            scenario_opts, incentive_options, max_market_share, 
-                                           cur, con, year, dsire_incentives, srecs, manual_incentives, deprec_schedule, 
+                                           cur, con, year, dsire_incentives, cfg.dsire_inc_def_exp_year, 
+                                           srecs, manual_incentives, deprec_schedule, 
                                            ann_system_degradation, mode, curtailment_method, itc_options,
                                            tech_lifetime = 25)
+                              
                 
                 # select from choices for business model and (optionally) technology
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
