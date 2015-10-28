@@ -26,14 +26,13 @@ def pg_connect(pg_params):
     return con, cur
 
 
-def get_rate_keys(cur, lookup_table):
+def get_rate_keys(con, lookup_sql):
     # get rate ids that we want to load
-    sql = """SELECT DISTINCT(urdb_rate_id) as rate_key
-             FROM %s;""" % lookup_table
-    cur.execute(sql)
-    rate_keys = [row['rate_key'] for row in cur.fetchall()]
-    
-    return rate_keys
+    sql = """SELECT DISTINCT a.urdb_rate_id, a.rate_id_alias, a.sub_territory_name
+            FROM (%s) as a;""" % lookup_sql
+    rate_info = pd.read_sql(sql, con)
+
+    return rate_info
 
 def create_output_table(cur, con, sql_params):
     
@@ -48,13 +47,15 @@ def create_output_table(cur, con, sql_params):
             jsonurl TEXT,
             ur_description TEXT,
             sam_json JSON,
-            applicability JSON
+            applicability JSON,
+            sub_territory_name TEXT,
+            rate_id_alias INTEGER
          );""" % sql_params
     cur.execute(sql)
     con.commit()
     
 
-def urdb_to_pg(rate_keys, cur, con, sql_params, log):
+def urdb_to_pg(rate_info, cur, con, sql_params, log):
     
     # open an in-memory stringio file
     f = StringIO()
@@ -63,7 +64,10 @@ def urdb_to_pg(rate_keys, cur, con, sql_params, log):
     output_fields = ['urdb_rate_id', 'ur_name', 'ur_schedule_name', 'ur_source', 'rateurl', 'jsonurl', 'ur_description', 'sam_json', 'applicability']
     
     # 
-    for rate_key in rate_keys:
+    for i, row in rate_info.iterrows():
+        rate_key = row['urdb_rate_id']
+        sub_territory = row['sub_territory_name']
+        rate_id_alias = row['rate_id_alias']
         print rate_key
         try:
             rate_data = urdb_to_sam.urdb_rate_to_sam_structure(rate_key)
@@ -78,6 +82,7 @@ def urdb_to_pg(rate_keys, cur, con, sql_params, log):
                     output_list.append(str(rate_data[field]))
                 else:
                     output_list.append('')
+            output_list = output_list + [sub_territory, rate_id_alias]
             # convert list to a single text string
             output_line = ','.join(['^%s^' % s for s in output_list]) + '\n'
             f.write(output_line)
@@ -117,7 +122,7 @@ pg_params = {'host'     : 'gispgdb',
  
 #==============================================================================
 
-def main(rate_type):
+def main(lookup_sql, output_table, append = False):
     
     # OPEN LOG FILE
     log = open_log()
@@ -125,27 +130,28 @@ def main(rate_type):
     # CONNECT TO POSTGRES
     con, cur = pg_connect(pg_params)
     
-    # SET THE OUTPUT TABLE AND LOOKUP TABLE NAMES BASED ON THE RATE TYPE    
-    lookup_table = 'urdb_rates.urdb3_%s_rates_lookup_20141202' % rate_type
-    output_table = 'urdb_rates.urdb3_%s_rates_sam_data_20141202' % rate_type
     sql_params = {'output_table' : output_table}    
     
     # GET URDB IDS FOR THE RATES TO COLLECT
-    rate_keys = get_rate_keys(cur, lookup_table)
+    rate_info = get_rate_keys(con, lookup_sql)
     
     # CREATE (EMPTY) OUTPUT TABLE
-    create_output_table(cur, con, sql_params)
+    if append == False:
+        create_output_table(cur, con, sql_params)
     
     # RUN THE CONVERSION PROCESS
-    urdb_to_pg(rate_keys, cur, con, sql_params, log)
+    urdb_to_pg(rate_info, cur, con, sql_params, log)
     
     # CLOSE THE LOGGER
     log.close()
 
 if __name__ == '__main__':
     
-#    rate_type = 'singular'
-    rate_type = 'verified'    
-
-    main(rate_type)
+    lookup_sql = """SELECT *
+                    FROM urdb_rates.urdb3_verified_rates_lookup_20151028
+                    WHERE state_code = 'ME'
+                    """
+    output_table =    'urdb_rates.urdb3_verified_rates_sam_data_20151028'   
+    
+    main(lookup_sql, output_table, append = True)
     
