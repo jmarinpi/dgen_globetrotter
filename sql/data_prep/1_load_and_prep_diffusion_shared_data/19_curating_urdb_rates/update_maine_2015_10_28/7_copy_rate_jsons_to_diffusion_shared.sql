@@ -2,8 +2,8 @@
 set role 'diffusion-writers';
 
 -- archive the old data
-ALTER TABLE diffusion_shared.urdb3_rate_sam_jsons
-RENAME TO urdb3_rate_sam_jsons_20141202;
+-- ALTER TABLE diffusion_shared.urdb3_rate_sam_jsons
+-- RENAME TO urdb3_rate_sam_jsons_20141202;
 
 DROP TABLE IF EXISTS diffusion_shared.urdb3_rate_sam_jsons;
 CREATE TABLE diffusion_shared.urdb3_rate_sam_jsons AS
