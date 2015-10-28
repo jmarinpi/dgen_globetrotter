@@ -246,7 +246,7 @@ def extract_energy_rate_structure(raw_json):
                         if not(ec_enable) and buy_rate <> 0:
                             ec_enable = True
     
-    d['ec_enable'] = int(ec_enable)
+    d['ur_ec_enable'] = int(ec_enable)
     
     return d
 
@@ -405,9 +405,9 @@ def extract_sam_fields(raw_json):
     # update the dc_enable field (if any of the ur_dc_*_dc fields are nonzero, set it true)
     demand_charge_rates = [rate[k] for k in rate.keys() if k.endswith('_dc') and k.startswith('ur_dc') and rate[k] <> 0]
     if len(demand_charge_rates) > 0:
-        rate['dc_enable'] = 1
+        rate['ur_dc_enable'] = 1
     else:
-        rate['dc_enable'] = 0
+        rate['ur_dc_enable'] = 0
 
 
     # Manually add additional fields
