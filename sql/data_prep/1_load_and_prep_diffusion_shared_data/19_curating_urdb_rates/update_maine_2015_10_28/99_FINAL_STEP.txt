@@ -1,4 +1,4 @@
--- updateview : diffusion_template.all_rate_jsons;
+-- update view : diffusion_template.all_rate_jsons;
 
 -- tables to replace on bigde:
 	- pt_grid_us_com
@@ -14,3 +14,6 @@
 	- diffusion_shared.point_microdata_com_us
 	- diffusion_shared.point_microdata_ind_us
 	- diffusion_shared.point_microdata_res_us
+
+- to manually transfer these, drop the tables in dgen_db, then use a modified version of this:
+pg_dump -h localhost -U mgleason -t diffusion_shared.point_microdata_com_us -t diffusion_shared.point_microdata_ind_us -t diffusion_shared.point_microdata_res_us -v dav-gis  | psql -h dnpdb001.bigde.nrel.gov -p 5433 -U mgleason_su -e dgen_db
