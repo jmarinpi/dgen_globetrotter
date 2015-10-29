@@ -1283,6 +1283,7 @@ def find_rates(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, r
                     	SELECT a.county_id, a.bin_id, 
                     		b.rate_id_alias,
                               b.rate_type,
+                              b.pct_of_customers,
                     		c.rank as rate_rank
                     	FROM %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s a
                     	LEFT JOIN diffusion_shared.urdb_rates_by_state_%(sector_abbr)s b
@@ -1299,7 +1300,7 @@ def find_rates(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, r
                     	SELECT *, rank() OVER (PARTITION BY county_id, bin_id ORDER BY rate_rank ASC) as rank
                     	FROM a
                 )
-                SELECT b.*, c.%(sector_abbr)s_weight as rate_type_weight
+                SELECT b.*, COALESCE(b.pct_of_customers, c.%(sector_abbr)s_weight) as rate_type_weight
                 FROM b 
                 LEFT JOIN %(schema)s.input_main_market_rate_type_weights c
                 ON b.rate_type = c.rate_type

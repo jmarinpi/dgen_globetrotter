@@ -1,4 +1,16 @@
-to do: update point microdata for maine!!!
+-- updateview : diffusion_template.all_rate_jsons;
 
--- tables to repalce on bigde:
-	- 
+-- tables to replace on bigde:
+	- pt_grid_us_com
+	- pt_grid_us_res
+	- pt_grid_us_ind
+	- ranked_rate_array_lkup_com
+	- ranked_rate_array_lkup_res
+	- ranked_rate_array_lkup_ind
+	- urdb3_rate_sam_jsons
+	- urdb_rates_by_state_com
+	- urdb_rates_by_state_ind
+	- urdb_rates_by_state_res
+	- diffusion_shared.point_microdata_com_us
+	- diffusion_shared.point_microdata_ind_us
+	- diffusion_shared.point_microdata_res_us
