@@ -106,13 +106,13 @@ ON a.rate_id_alias = c.rate_id_alias;
 
 -- fix these by adding in the constant value array
 UPDATE diffusion_shared.urdb3_rate_sam_jsons
-set sam_json = mgleason.add_constant_array(sam_json, 'ur_dc_sched_weekday', 1, 12, 24)
+set sam_json = add_constant_array(sam_json, 'ur_dc_sched_weekday', 1, 12, 24)
 where get_key(sam_json, 'ur_dc_enable')::integer = 1
 and get_key(sam_json, 'ur_dc_sched_weekday') is null;
 -- 470 rows affected
 
 UPDATE diffusion_shared.urdb3_rate_sam_jsons
-set sam_json = mgleason.add_constant_array(sam_json, 'ur_dc_sched_weekend', 1, 12, 24)
+set sam_json = add_constant_array(sam_json, 'ur_dc_sched_weekend', 1, 12, 24)
 where get_key(sam_json, 'ur_dc_enable')::integer = 1
 and get_key(sam_json, 'ur_dc_sched_weekend') is null;
 -- 470 rows

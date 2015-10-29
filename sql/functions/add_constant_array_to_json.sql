@@ -1,7 +1,6 @@
-﻿
-DROP FUNCTION IF EXISTS mgleason.add_constant_array(j json, k text, c integer, rows integer, cols integer);
-SET ROLE 'server-superusers';
-CREATE OR REPLACE FUNCTION mgleason.add_constant_array(j json, k text, c integer, rows integer, cols integer)
+﻿SET ROLE 'server-superusers';
+DROP FUNCTION IF EXISTS add_constant_array(j json, k text, c integer, rows integer, cols integer);
+CREATE OR REPLACE FUNCTION add_constant_array(j json, k text, c integer, rows integer, cols integer)
   RETURNS json AS
   $BODY$
 
@@ -22,4 +21,4 @@ RESET ROLE;
 
 
 
-select mgleason.add_constant_array('{}'::json, 'val', 1, 12, 24)
+select add_constant_array('{}'::json, 'val', 1, 12, 24)
