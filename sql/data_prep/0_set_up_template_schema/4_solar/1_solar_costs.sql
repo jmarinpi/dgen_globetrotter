@@ -113,7 +113,7 @@ b as
 SELECT b.year, 
 	case when d.reeds_mode = true then c.capital_cost_dollars_per_kw
 	else b.capital_cost_dollars_per_kw
-	end as capital_cost_dollars_per_kw,
+	end as installed_costs_dollars_per_kw,
 	b.inverter_cost_dollars_per_kw, 
 	b.fixed_om_dollars_per_kw_per_yr, b.variable_om_dollars_per_kwh, 
 	b.sector, 

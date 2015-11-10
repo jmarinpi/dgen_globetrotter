@@ -42,7 +42,7 @@ import utility_functions as utilfunc
 # raise  numpy and pandas warnings as exceptions
 #==============================================================================
 #np.seterr(all='raise')
-pd.set_option('mode.chained_assignment', 'raise')
+#pd.set_option('mode.chained_assignment', 'raise')
 #==============================================================================
     
 
@@ -139,14 +139,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # load Input excel spreadsheet to Postgres
             if cfg.init_model:
                 # create the output schema
-                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment     
+#                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment 
+                schema = 'diffusion_results_2015_11_10_15h13m46s'
                 datfunc.clear_outputs(con, cur, schema)
                 # write the reeds settings to postgres
                 reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
                 ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
                 
                 try:
-                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
+#                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
                     pass
                 except Exception, e:
                     logger.error('\tLoading failed with the following error: %s\nModel Aborted' % e      )
@@ -222,20 +223,20 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # CREATE AGENTS
                 #==========================================================================================================
                 logger.info("--------------Creating Agents---------------")
-                datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, cfg.start_year, 
-                                               end_year, cfg.npar, cfg.pg_conn_string, scenario_opts) # TODO: Comment
-    
-                #==========================================================================================================
-                # CHECK TECH POTENTIAL
-                #==========================================================================================================           
-                datfunc.check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_dir) # TODO: Comment               
-               
-               
-                #==========================================================================================================
-                # CALCULATE BILL SAVINGS
-                #==========================================================================================================
-                datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar,  # TODO: Comment/uncomment
-                                           cfg.pg_conn_string, cfg.gross_fit_mode, cfg.local_cores)
+#                datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, cfg.start_year, 
+#                                               end_year, cfg.npar, cfg.pg_conn_string, scenario_opts) # TODO: Comment
+#    
+#                #==========================================================================================================
+#                # CHECK TECH POTENTIAL
+#                #==========================================================================================================           
+#                datfunc.check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_dir) # TODO: Comment               
+#               
+#               
+#                #==========================================================================================================
+#                # CALCULATE BILL SAVINGS
+#                #==========================================================================================================
+#                datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar,  # TODO: Comment/uncomment
+#                                           cfg.pg_conn_string, cfg.gross_fit_mode, cfg.local_cores)
 
     
             #==========================================================================================================

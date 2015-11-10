@@ -1,5 +1,5 @@
-one  = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/az_benchmarks/one/solar/outputs.csv.gz')
-two = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20150911_140350/one/solar/outputs.csv.gz')
+one  = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20151110_130540_benchmark_cost_move/a_BAU_SPT/solar/outputs_solar.csv.gz')
+two = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20151110_133800/a_BAU_SPT/solar/outputs_solar.csv.gz')
 
 
 # check sizes

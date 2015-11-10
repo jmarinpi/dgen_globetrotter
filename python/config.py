@@ -27,8 +27,8 @@ path = os.path.dirname(os.path.abspath(__file__))
 
 # set the name of the pg_params_file
 #pg_params_file = 'pg_params.json'
-pg_params_file = 'pg_params_bigde.json'
-#pg_params_file = 'pg_params_gis.json'
+#pg_params_file = 'pg_params_bigde.json'
+pg_params_file = 'pg_params_gis.json'
 
 # load pg params from pg_params.json
 pg_params, pg_conn_string = utilfunc.get_pg_params(os.path.join(path, pg_params_file))
@@ -110,7 +110,7 @@ alpha_lkup = pd.DataFrame({'tech' : ['solar', 'solar', 'wind', 'wind'],
 #==============================================================================
 #  Should the output schema be deleted after the model run
 #==============================================================================
-delete_output_schema = True
+delete_output_schema = False
 
 #==============================================================================
 #  Should initial market shared be assigned proportional to 2014 economics?
