@@ -318,16 +318,30 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     # solve sequence, they are calculated once in the first year of the model. Thus, they are multiplied by the rate growth multiplier
     # in the current solve year to update for rate changes
     #first_year_energy_savings = (df.first_year_bill_without_system - df.first_year_bill_with_system) * rate_growth_mult[:,0] 
-    avg_annual_payment = (annual_loan_pmts.sum(axis = 1)/df.loan_term_yrs) + down_payment_cost.sum(axis = 1)/20
-    first_year_bill_savings = df.first_year_energy_savings.values + avg_annual_payment # first_year_energy_savings is positive, avg_annual_payment is a negative
-    monthly_bill_savings = first_year_bill_savings/12
-    percent_monthly_bill_savings = first_year_bill_savings/df.first_year_bill_without_system
+#    avg_annual_payment = (annual_loan_pmts.sum(axis = 1)/df.loan_term_yrs) + down_payment_cost.sum(axis = 1)/df.loan_term_yrs
+#    first_year_bill_savings = df.first_year_energy_savings.values + avg_annual_payment # first_year_energy_savings is positive, avg_annual_payment is a negative
+#    monthly_bill_savings = first_year_bill_savings/12
+#    percent_monthly_bill_savings = first_year_bill_savings/df.first_year_bill_without_system
     
+    
+    annual_payments = annual_loan_pmts + down_payment_cost/df.loan_term_yrs[:, np.newaxis]
+    
+    # NOT SURE WHICH OF THE NEXT TWO LINES TO USE
+    # the difference is due to generation_revenue accounting for marginal tax rate of com/ind customers, leading to worse economics
+    # I think we should use generate_revenue, but waiting for confirmation from ben
+    yearly_bill_savings = generation_revenue + annual_payments
+#    yearly_bill_savings = df['first_year_energy_savings'][:,np.newaxis] * np.array(list(df['rate_escalations']), dtype = 'float64') * system_degradation_factor + annual_payments
+    ################################################################################
+
+    monthly_bill_savings = yearly_bill_savings/12
+    yearly_bills_without_system = df.first_year_bill_without_system[:,np.newaxis] * np.array(list(df['rate_escalations']), dtype = 'float64')
+    percent_monthly_bill_savings = yearly_bill_savings/yearly_bills_without_system
+    avg_percent_monthly_bill_savings = percent_monthly_bill_savings.sum(axis = 1)/df.loan_term_yrs
     
     # If monthly_bill_savings is zero, percent_mbs will be non-finite
-    percent_monthly_bill_savings = np.where(df.first_year_bill_without_system.values == 0, 0, percent_monthly_bill_savings)
-    df['monthly_bill_savings'] = monthly_bill_savings
-    df['percent_monthly_bill_savings'] = percent_monthly_bill_savings
+    avg_percent_monthly_bill_savings = np.where(df.first_year_bill_without_system.values == 0, 0, avg_percent_monthly_bill_savings)
+    df['monthly_bill_savings'] = monthly_bill_savings.mean(axis = 1)
+    df['percent_monthly_bill_savings'] = avg_percent_monthly_bill_savings
     
     new_cols = ['total_value_of_incentive', 'monthly_bill_savings', 'percent_monthly_bill_savings']
     out_cols = in_cols + new_cols
