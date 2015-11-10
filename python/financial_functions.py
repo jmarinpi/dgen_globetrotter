@@ -326,12 +326,17 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     df['monthly_bill_savings'] = monthly_bill_savings.mean(axis = 1)
     df['percent_monthly_bill_savings'] = avg_percent_monthly_bill_savings
     
+    # overwrite the values for first_year_bill_without_system and with system
+    # to account for the first year rate escalation (the original values are always based on year = 2014)
+    df.loc[:, 'first_year_bill_without_system'] = yearly_bills_without_system[:, 0] 
+    df.loc[:, 'first_year_bill_with_system'] = df.first_year_bill_with_system * np.array(list(df['rate_escalations']), dtype = 'float64')[:, 0]
+    
     new_cols = ['total_value_of_incentive', 'monthly_bill_savings', 'percent_monthly_bill_savings']
     out_cols = in_cols + new_cols
     out_df = df[out_cols]    
     
     
-    return revenue, costs, cfs, out_df #df.first_year_bill_with_system, df.first_year_bill_without_system,df.total_value_of_incentive
+    return revenue, costs, cfs, out_df
 
 #==============================================================================    
 def calc_lcoe(costs,aep, dr, tech_lifetime):

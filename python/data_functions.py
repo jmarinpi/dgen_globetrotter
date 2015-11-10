@@ -439,7 +439,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     b.turbine_height_m, b.scoe,
                     b.rate_escalation_factor,
                     
-                    (b.rate_escalation_factor * a.first_year_bill_without_system)/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
+                    a.first_year_bill_without_system/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
                     c.initial_capacity_kw * 1000 as initial_capacity_mw
@@ -534,7 +534,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                                         
                     b.rate_escalation_factor,
                     
-                    (b.rate_escalation_factor * a.first_year_bill_without_system)/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
+                    a.first_year_bill_without_system/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
                      c.initial_capacity_kw * 1000 as initial_capacity_mw
