@@ -2808,7 +2808,7 @@ def get_main_dataframe(con, sectors, schema, year, techs):
                                              AND a.turbine_height_m = d.turbine_height_m"""
         elif tech == 'solar':
             inputs['add_cols'] = """a.tilt, a.azimuth, a.available_roof_sqft, 
-                                    d.inverter_cost_dollars_per_kw, a.inverter_lifetime_yrs, 
+                                    d.inverter_cost_dollars_per_kw * a.cap_cost_multiplier as inverter_cost_dollars_per_kw, a.inverter_lifetime_yrs, 
                                     'solar'::TEXT as tech"""       
             cost_table_join = """LEFT JOIN %(schema)s.input_solar_cost_projections_to_model d
                                              ON a.year = d.year
