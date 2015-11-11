@@ -491,7 +491,7 @@ def calc_payback_vectorized(cfs, tech_lifetime):
     years = np.array([np.arange(0, tech_lifetime)] * cfs.shape[0])
     
     cum_cfs = cfs.cumsum(axis = 1)   
-    no_payback = np.logical_or(cum_cfs[:, -1] < 0, np.all(cum_cfs < 0, axis = 1))
+    no_payback = np.logical_or(cum_cfs[:, -1] <= 0, np.all(cum_cfs <= 0, axis = 1))
     instant_payback = np.all(cum_cfs > 0, axis = 1)
     neg_to_pos_years = np.diff(np.sign(cum_cfs)) > 0
     base_years = np.amax(np.where(neg_to_pos_years, years, -1), axis = 1)
