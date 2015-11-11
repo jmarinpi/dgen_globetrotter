@@ -235,13 +235,11 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
                 'down_payment',
                 'discount_rate',
                 'tax_rate',
-                #
                 'carbon_price_cents_per_kwh', 
                 'fixed_om_dollars_per_kw_per_yr',
                 'variable_om_dollars_per_kwh', 
                 'installed_costs_dollars_per_kw',    
                 'inverter_cost_dollars_per_kw',
-                #
                 'length_of_irr_analysis_yrs',
                 'market_share_last_year',
                 'number_of_adopters_last_year',
@@ -1528,7 +1526,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   incentive_array_id integer,
                   ranked_rate_array_id integer,
                   cap_cost_multiplier numeric,
-                  carbon_intensity_t_per_kwh numeric,
                   ann_cons_kwh numeric,
                   eia_weight numeric,
                   customers_in_bin double precision,
@@ -1576,7 +1573,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   a.incentive_array_id_solar as incentive_array_id,
                   a.ranked_rate_array_id,
                   a.cap_cost_multiplier_solar as cap_cost_multiplier,
-                  a.carbon_intensity_t_per_kwh,
                 	a.ann_cons_kwh, 
                   a.eia_weight,
                 	b.load_multiplier * a.customers_in_bin * a.pct_developable as customers_in_bin, 
@@ -1627,7 +1623,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id,
                    
                    cap_cost_multiplier,
-                   carbon_intensity_t_per_kwh,
             
                    ann_cons_kwh, eia_weight,
                    customers_in_bin, initial_customers_in_bin, 
@@ -1843,7 +1838,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                       a.ownocc8,
                   
                   a.cap_cost_multiplier_wind as cap_cost_multiplier,
-                  a.carbon_intensity_t_per_kwh,
                   
                 	a.ann_cons_kwh, a.eia_weight,
                 	b.load_multiplier * a.customers_in_bin as customers_in_bin, 
@@ -1897,7 +1891,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
                    pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, 
                    cap_cost_multiplier,
-                   carbon_intensity_t_per_kwh, 
             
                    ann_cons_kwh, eia_weight,
                    customers_in_bin, initial_customers_in_bin, 
@@ -2840,7 +2833,7 @@ def get_main_dataframe(con, sectors, schema, year, techs):
                             a.pca_reg, 
                             a.reeds_reg, 
                             a.incentive_array_id, 
-                            a.carbon_intensity_t_per_kwh * 100 * e.carbon_dollars_per_ton as carbon_price_cents_per_kwh, 
+                            f.carbon_intensity_t_per_kwh * 100 * e.carbon_dollars_per_ton as carbon_price_cents_per_kwh, 
                             -- use coalesce for wind agents with no allowable system
                             COALESCE(d.fixed_om_dollars_per_kw_per_yr, 0) as fixed_om_dollars_per_kw_per_yr, 
                             COALESCE(d.variable_om_dollars_per_kwh, 0) as variable_om_dollars_per_kwh, 
@@ -2870,6 +2863,8 @@ def get_main_dataframe(con, sectors, schema, year, techs):
                     -- CARBON COSTS
                     LEFT JOIN %(schema)s.input_main_market_projections e
                         ON a.year = e.year
+                    LEFT JOIN %(schema)s.carbon_intensities_to_model f
+                        ON a.state_abbr = f.state_abbr
                     WHERE a.year = %(year)s""" % inputs
             sql_list.append(sql)
             

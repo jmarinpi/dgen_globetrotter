@@ -44,7 +44,6 @@ SELECT  a.micro_id,
 	a.ranked_rate_array_id,
 	b.total_customers_2011_industrial as county_total_customers_2011,
 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
-	l.carbon_intensity_t_per_kwh,
 	-- solar only
 	a.ulocale,
 	a.solar_re_9809_gid,
@@ -72,10 +71,7 @@ LEFT JOIN diffusion_shared.county_geom e
 ON a.county_id = e.county_id
 -- subset to counties of interest
 INNER JOIN diffusion_template.counties_to_model h 
-ON a.county_id = h.county_id
--- carbon intensities
-LEFT JOIN diffusion_template.carbon_intensities_to_model l
-ON e.state_abbr = l.state_abbr;
+ON a.county_id = h.county_id;
 
 
 -- res
@@ -95,7 +91,6 @@ SELECT 	a.micro_id,
 	a.ranked_rate_array_id,
 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011,
 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
-	l.carbon_intensity_t_per_kwh,
 	-- solar only
 	a.ulocale,
 	a.solar_re_9809_gid,
@@ -126,10 +121,7 @@ LEFT JOIN diffusion_shared.county_geom e
 ON a.county_id = e.county_id
 -- subset to counties of interest
 INNER JOIN diffusion_template.counties_to_model h 
-ON a.county_id = h.county_id
--- carbon intensities
-LEFT JOIN diffusion_template.carbon_intensities_to_model l
-ON e.state_abbr = l.state_abbr;
+ON a.county_id = h.county_id;
 
 
 -- comm
@@ -149,7 +141,6 @@ SELECT 	a.micro_id,
 	a.ranked_rate_array_id,
 	b.total_customers_2011_commercial as county_total_customers_2011,
 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
-	l.carbon_intensity_t_per_kwh,
 	-- solar only
 	a.ulocale,
 	a.solar_re_9809_gid,
@@ -177,10 +168,7 @@ LEFT JOIN diffusion_shared.county_geom e
 ON a.county_id = e.county_id
 -- subset to counties of interest
 INNER JOIN diffusion_template.counties_to_model h 
-ON a.county_id = h.county_id
--- carbon intensities
-LEFT JOIN diffusion_template.carbon_intensities_to_model l
-ON e.state_abbr = l.state_abbr;
+ON a.county_id = h.county_id;
 ------------------------------------------------------------------------
 
 -- create a view of the load data
