@@ -70,18 +70,19 @@ def create_scenario_results_folder(input_scenario, scen_name, scenario_names, ou
 
 
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
-def create_output_schema(pg_conn_string, source_schema = 'diffusion_template'):
-    
-    logger.info('Creating output schema')
+def create_output_schema(pg_conn_string, source_schema = 'diffusion_template', include_data = False):
     
     inputs = locals().copy()
+    
+    logger.info('Creating output schema based on %(source_schema)s' % inputs)
+    
     con, cur = utilfunc.make_con(pg_conn_string, role = "diffusion-schema-writers")
 
     cdt = utilfunc.current_datetime()
     dest_schema = 'diffusion_results_%s' % cdt
     inputs['dest_schema'] = dest_schema
     
-    sql = '''SELECT clone_schema('%(source_schema)s', '%(dest_schema)s', 'diffusion-writers');''' % inputs
+    sql = '''SELECT clone_schema('%(source_schema)s', '%(dest_schema)s', 'diffusion-writers', %(include_data)s);''' % inputs
     cur.execute(sql)        
     con.commit()
 
@@ -948,7 +949,8 @@ def cleanup_intermediate_tables(schema, sector_abbr, county_chunks, npar, pg_con
                             '%(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s' % inputs,
                             '%(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s' % inputs,
                             '%(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s' % inputs,
-                            '%(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs,                       
+                            '%(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs,   
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_rooftop_cities__%(i_place_holder)s' % inputs                 
                             ]
         
     sql = 'DROP TABLE IF EXISTS %s;'
@@ -2607,17 +2609,30 @@ def get_initial_market_shares(cur, con, techs, sectors, schema, initial_market_c
         inputs['sector'] = sector
         for tech in techs:
             inputs['tech'] = tech
+            if tech == 'wind':
+                inputs['cost_table_join'] = """LEFT JOIN %(schema)s.turbine_costs_per_size_and_year b
+                                             ON a.turbine_size_kw = b.turbine_size_kw
+                                             AND a.year = b.year
+                                             AND a.turbine_height_m = b.turbine_height_m"""
+            elif tech == 'solar':
+                inputs['cost_table_join'] = """LEFT JOIN %(schema)s.input_solar_cost_projections_to_model b
+                                             ON a.year = b.year
+                                             AND b.sector = '%(sector_abbr)s'""" % inputs
+            
+            
             if initial_market_calibrate_mode == False:
                 sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s;
                          CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s AS
                          WITH a as
                          (
-            			SELECT county_id, bin_id, state_abbr,
-            				CASE  WHEN system_size_kw = 0 then 0
-            					ELSE customers_in_bin
-            				END AS customers_in_bin, installed_costs_dollars_per_kw
-            			FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s	
-            			WHERE year = 2014			
+            			SELECT a.county_id, a.bin_id, a.state_abbr,
+            				CASE  WHEN a.system_size_kw = 0 then 0
+            					ELSE a.customers_in_bin
+            				END AS customers_in_bin, 
+                              COALESCE(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier, 0) as installed_costs_dollars_per_kw
+            			FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s a
+                        %(cost_table_join)s
+            			WHERE a.year = 2014			
                          ),
                          b as
                          (

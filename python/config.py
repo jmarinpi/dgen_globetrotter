@@ -69,7 +69,6 @@ local_cores = multiprocessing.cpu_count()/2
 #==============================================================================
 init_model = True
 
-
 #==============================================================================
 #  Default expiration year for dsire incentives
 #==============================================================================
@@ -106,11 +105,27 @@ alpha_lkup = pd.DataFrame({'tech' : ['solar', 'solar', 'wind', 'wind'],
 
 })
 
-
 #==============================================================================
 #  Should the output schema be deleted after the model run
 #==============================================================================
-delete_output_schema = False
+delete_output_schema = True
+
+#==============================================================================
+#  Do you want to use an existing schema?
+
+#  Warning: Using an existing schema will skip the following steps:
+#   1) generation of agents, 
+#   2) bill savings calculations
+#   3) evaluation of agent tech potential against tech potential caps
+# Because some scenario inputs are embedded in agents and bill savings calcs,
+# using an existing schema for multiple scenarios may not yield correct results,
+# depending on which scenario inputs you modify.
+# Please check with Mike Gleason (NREL) to determine whether this is a safe setting
+# for your scenario analysis.
+#==============================================================================
+use_existing_schema = False
+# change this to the schema with existing agents/bill savings that you want to use
+existing_schema_name = 'diffusion_results_2015_11_10_17h07m21s'
 
 #==============================================================================
 #  Should initial market shared be assigned proportional to 2014 economics?

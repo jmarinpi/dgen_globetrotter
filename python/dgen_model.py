@@ -139,8 +139,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # load Input excel spreadsheet to Postgres
             if cfg.init_model:
                 # create the output schema
-                schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template') # TODO: Comment 
-#                schema = 'diffusion_results_2015_11_10_15h13m46s'
+                if cfg.use_existing_schema == True:
+                    # create a schema from the existing schema of interest
+                    schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = cfg.existing_schema_name, include_data = True)
+                else:
+                    # create an empty schema from diffusion_template
+                    schema = datfunc.create_output_schema(cfg.pg_conn_string, source_schema = 'diffusion_template', include_data = False)                    
+                # clear output results either way (this ensures that outputs are empty for each model run)
                 datfunc.clear_outputs(con, cur, schema)
                 # write the reeds settings to postgres
                 reeds_mode_df.to_postgres(con, cur, schema, 'input_reeds_mode')
@@ -219,24 +224,25 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # create psuedo-rangom number generator (not used until tech/finance choice function)
                 prng = np.random.RandomState(scenario_opts['random_generator_seed'])
 
-                #==========================================================================================================
-                # CREATE AGENTS
-                #==========================================================================================================
-                logger.info("--------------Creating Agents---------------")
-                datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, cfg.start_year, 
-                                               end_year, cfg.npar, cfg.pg_conn_string, scenario_opts) # TODO: Comment
-    
-                #==========================================================================================================
-                # CHECK TECH POTENTIAL
-                #==========================================================================================================           
-                datfunc.check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_dir) # TODO: Comment               
-               
-               
-                #==========================================================================================================
-                # CALCULATE BILL SAVINGS
-                #==========================================================================================================
-                datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar,  # TODO: Comment/uncomment
-                                           cfg.pg_conn_string, cfg.gross_fit_mode, cfg.local_cores)
+                if cfg.use_existing_schema == False:
+                    #==========================================================================================================
+                    # CREATE AGENTS
+                    #==========================================================================================================
+                    logger.info("--------------Creating Agents---------------")
+                    datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, cfg.start_year, 
+                                                   end_year, cfg.npar, cfg.pg_conn_string, scenario_opts) # TODO: Comment
+        
+                    #==========================================================================================================
+                    # CHECK TECH POTENTIAL
+                    #==========================================================================================================           
+                    datfunc.check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_dir) # TODO: Comment               
+                   
+                   
+                    #==========================================================================================================
+                    # CALCULATE BILL SAVINGS
+                    #==========================================================================================================
+                    datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar,  # TODO: Comment/uncomment
+                                               cfg.pg_conn_string, cfg.gross_fit_mode, cfg.local_cores)
 
     
             #==========================================================================================================
