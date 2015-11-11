@@ -128,7 +128,7 @@ def summarise_solar_resource_by_ts_and_pca_reg(schema, con):
     return cf_by_time_slice_pca_and_year
     
     
-def write_reeds_offline_mode_data(schema, con, out_scen_path, techs, file_suffix = ''):
+def write_reeds_offline_mode_data(schema, con, techs, out_scen_path, file_suffix = ''):
     
     if 'solar' in techs:   
         inputs = locals().copy()   
