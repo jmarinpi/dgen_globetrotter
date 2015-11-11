@@ -125,7 +125,7 @@ delete_output_schema = True
 #==============================================================================
 use_existing_schema = False
 # change this to the schema with existing agents/bill savings that you want to use
-existing_schema_name = 'diffusion_results_2015_11_10_17h07m21s'
+existing_schema_name = 'diffusion_results_2015_11_11_10h24m06s'
 
 #==============================================================================
 #  Should initial market shared be assigned proportional to 2014 economics?
