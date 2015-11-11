@@ -21,3 +21,24 @@ USING BTREE(sector_abbr);
 CREATE INDEX bass_pq_calibrated_params_solar_state_abbr_btree
 ON diffusion_solar.bass_pq_calibrated_params_solar
 USING BTREE(state_abbr);
+
+--- update parameters for Maine based on manually calibrated values
+-- from  FY16Q1 Maine TA work
+select *
+FROM diffusion_solar.bass_pq_calibrated_params_solar
+where state_abbr = 'ME';
+
+UPDATE diffusion_solar.bass_pq_calibrated_params_solar
+SET (p, q) = (0.00059, 0.525)
+where state_abbr = 'ME'
+and sector_abbr = 'res';
+
+UPDATE diffusion_solar.bass_pq_calibrated_params_solar
+SET (p, q) = (0.00208, 0.325)
+where state_abbr = 'ME'
+and sector_abbr = 'com';
+
+UPDATE diffusion_solar.bass_pq_calibrated_params_solar
+SET (p, q) = (0.00208, 0.325)
+where state_abbr = 'ME'
+and sector_abbr = 'ind';
