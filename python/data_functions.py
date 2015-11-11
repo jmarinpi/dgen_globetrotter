@@ -1838,12 +1838,11 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                  	a.micro_id, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr,
                       a.utility_type, a.hdf_load_index,
                       a.pca_reg, a.reeds_reg,
-                      b.rate_escalation_factor,
                       a.incentive_array_id_wind as incentive_array_id,
                       a.ranked_rate_array_id,
                       a.ownocc8,
                   
-                  a.cap_cost_multiplier_wind as cap_cost_multiplier
+                  a.cap_cost_multiplier_wind as cap_cost_multiplier,
                   a.carbon_intensity_t_per_kwh,
                   
                 	a.ann_cons_kwh, a.eia_weight,
@@ -1882,7 +1881,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                 INNER JOIN diffusion_shared.aeo_load_growth_projections b
                     	ON a.census_division_abbr = b.census_division_abbr
                         AND b.sector_abbr = '%(sector_abbr)s'  
-                        AND b.load_growth_scenario = '%(load_growth_scenario)s'                    
+                        AND b.scenario = '%(load_growth_scenario)s'                    
                         AND b.year = e.year
                    
                 LEFT JOIN %(schema)s.input_main_nem_scenario c
@@ -1896,9 +1895,9 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
 
             )
                 SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
-                   pca_reg, reeds_reg, rate_escalation_factor, incentive_array_id, ranked_rate_array_id, 
-                   cap_cost_multiplier
-                   carbon_intensity_t_per_kwh,, 
+                   pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, 
+                   cap_cost_multiplier,
+                   carbon_intensity_t_per_kwh, 
             
                    ann_cons_kwh, eia_weight,
                    customers_in_bin, initial_customers_in_bin, 
