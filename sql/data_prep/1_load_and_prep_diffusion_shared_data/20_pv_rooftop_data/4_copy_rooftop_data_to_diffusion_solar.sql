@@ -249,11 +249,15 @@ CREATE TABLE diffusion_solar.rooftop_tech_potential_limits_by_state
 	gen_gwh numeric
 );
 
-\COPY diffusion_solar.rooftop_tech_potential_limits_by_state FROM '/Volumes/Staff/mgleason/DG_Solar/Data/Source_Data/pv_rooftop_tech_potential/from_pgagnon_20150928/State_results_simplified_reformatted.csv' with csv header;
+\COPY diffusion_solar.rooftop_tech_potential_limits_by_state FROM '/Volumes/Staff/mgleason/DG_Solar/Data/Source_Data/pv_rooftop_tech_potential/from_pgagnon_20151007/State_results_simplified_reformatted.csv' with csv header;
 
 -- add a primary key
 ALTER TABLE diffusion_solar.rooftop_tech_potential_limits_by_state
 ADD PRIMARY KEY (state_abbr, size_class);
+
+-- look at the results
+select *
+from diffusion_solar.rooftop_tech_potential_limits_by_state 
 
 -- check three entries for each state
 select  state_abbr, count(*)
