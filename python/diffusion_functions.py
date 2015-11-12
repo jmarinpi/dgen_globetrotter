@@ -31,7 +31,7 @@ logger = utilfunc.get_logger()
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, initial_market_calibrate_mode,
-                   p_scalar = 1, teq_yr1 = 2):
+                   bass_params, override_p_value = None, override_q_value = None, override_teq_yr1_value = None):
 
     ''' Calculates the market share (ms) added in the solve year. Market share must be less
         than max market share (mms) except initial ms is greater than the calculated mms.
@@ -52,8 +52,12 @@ def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, 
     is_first_year = year == cfg.start_year                
     previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sectors, schema, initial_market_calibrate_mode, df) 
     df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])    
+
+    # set p/q/teq_yr1 params    
+    df  = set_bass_param(df, cfg, con, bass_params, override_p_value, override_q_value, override_teq_yr1_value)
     
-    df = calc_diffusion_market_share(df, cfg, con, is_first_year, p_scalar, teq_yr1) 
+    # calc diffusion market share
+    df = calc_diffusion_market_share(df, cfg, con, is_first_year)
     df['diffusion_market_share'] = df['diffusion_market_share'] * df['selected_option'] # ensure no diffusion for non-selected options
    
     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
@@ -76,7 +80,7 @@ def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, 
 #=============================================================================
 
 #  ^^^^ Calculate new diffusion in market segment ^^^^
-def calc_diffusion_market_share(df, cfg, con, is_first_year, p_scalar = 1, teq_yr1 = 2):
+def calc_diffusion_market_share(df, cfg, con, is_first_year):
     ''' Calculate the fraction of overall population that have adopted the 
         technology in the current period. Note that this does not specify the 
         actual new adoption fraction without knowing adoption in the previous period. 
@@ -91,12 +95,9 @@ def calc_diffusion_market_share(df, cfg, con, is_first_year, p_scalar = 1, teq_y
     # The relative economic attractiveness controls the p,q values in Bass diffusion
     # Current assumption is that only payback and MBS are being used, that pp is bounded [0-30] and MBS bounded [0-120]
        
-    df  = set_bass_param(df, cfg, con) 
-    # scale the p values by a factor of p_scalar
-    df.loc[:, 'p'] = df['p'] * p_scalar
     df = calc_equiv_time(df); # find the 'equivalent time' on the newly scaled diffusion curve
     if is_first_year == True:
-        df['teq2'] = df['teq'] + teq_yr1
+        df['teq2'] = df['teq'] + df['teq_yr1']
     else:
         df['teq2'] = df['teq'] + 2 # now step forward two years from the 'new location'
     
@@ -109,7 +110,7 @@ def calc_diffusion_market_share(df, cfg, con, is_first_year, p_scalar = 1, teq_y
 #==============================================================================  
     
 #=============================================================================
-def set_bass_param(df, cfg, con):
+def set_bass_param(df, cfg, con, bass_params, override_p_value, override_q_value, override_teq_yr1_value):
     ''' Set the p & q parameters which define the Bass diffusion curve.
     p is the coefficient of innovation, external influence or advertising effect. 
     q is the coefficient of imitation, internal influence or word-of-mouth effect.
@@ -117,21 +118,31 @@ def set_bass_param(df, cfg, con):
         IN: scaled_metric_value - numpy array - scaled value of economic attractiveness [0-1]
         OUT: p,q - numpy arrays - Bass diffusion parameters
     '''
-    
-    # get the calibrated bass parameters
-    bass_params_solar = pd.read_sql('SELECT * FROM diffusion_solar.bass_pq_calibrated_params_solar', con)
-   
+      
     # set p and q values
     if cfg.bass_method == 'sunshot':
         # set the scaled metric value
         df['scaled_metric_value'] = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'percent_monthly_bill_savings', df.metric_value/2,np.nan))
         df['p'] = np.array([0.0015] * df.scaled_metric_value.size);
         df['q'] = np.where(df['scaled_metric_value'] >= 0.9, 0.5, np.where((df['scaled_metric_value'] >=0.66) & (df['scaled_metric_value'] < 0.9), 0.4, 0.3))
+        df['teq_yr1'] = np.array([2] * df.scaled_metric_value.size);
         
-    if cfg.bass_method == 'calibrated':
-        # NOTE: assumes same p,q values for non-solar techs!!
-        df = pd.merge(df, bass_params_solar, how = 'left', on  = ['state_abbr','sector_abbr'])
+    if cfg.bass_method == 'user_input':
+        # NOTE: we haven't calibrated individual states for solar, or anything at all for wind
+        df = pd.merge(df, bass_params, how = 'left', on  = ['state_abbr','sector_abbr', 'tech'])
+    
+    # if override values were provided for p, q, or teq_yr1, apply them to all agents
+    if override_p_value is not None:
+        df.loc[:, 'p'] = override_p_value
+
+    if override_q_value is not None:
+        df.loc[:, 'q'] = override_q_value
         
+    if override_teq_yr1_value is not None:
+        df.loc[:, 'teq_yr1'] = override_teq_yr1_value
+
+
+    
     return df
     
 #=============================================================================

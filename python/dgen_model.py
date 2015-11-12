@@ -208,6 +208,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 ann_system_degradation = datfunc.get_system_degradation(con, schema) 
                 rate_growth_df = datfunc.get_rate_escalations(con, schema)
                 manual_incentives = datfunc.get_manual_incentives(con, schema)
+                bass_params = datfunc.get_bass_params(con, schema)
             logger.info('\tCompleted in: %0.1fs' % t.interval)
 
             # set model years depending on whether in reeds mode
@@ -288,7 +289,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 # calculate diffusion based on economics and bass diffusion      
                 df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, cfg.start_year, 
-                                                              cfg.initial_market_calibrate_mode, teq_yr1 = cfg.teq_yr1) 
+                                                              cfg.initial_market_calibrate_mode, bass_params) 
                  
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 

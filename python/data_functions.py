@@ -2538,6 +2538,21 @@ def cleanup_incentives(df, default_exp_yr):
     
     return df
 
+
+def get_bass_params(con, schema):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT *
+             FROM %(schema)s.input_solar_bass_params
+             UNION ALL
+             SELECT *
+             FROM %(schema)s.input_wind_bass_params;""" % inputs
+    
+    bass_df = pd.read_sql(sql, con, coerce_float = True)
+    
+    return bass_df
+
 def get_itc_incentives(con, schema):
     
     inputs = locals().copy()

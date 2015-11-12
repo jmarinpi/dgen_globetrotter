@@ -1,4 +1,8 @@
 ﻿set role 'diffusion-writers';
+
+-- NOTE: These are not actually used in the model -- they are really just loaded into the database
+-- to have a primary record separate from the defaults in the Excel input sheet 
+
 DROP TABLE IF EXISTS diffusion_solar.bass_pq_calibrated_params_solar;
 CREATE TABLE diffusion_solar.bass_pq_calibrated_params_solar
 (

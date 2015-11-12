@@ -92,8 +92,8 @@ max_incentive_fraction = 0.4
 #  Set method for determining Bass parameters
 #==============================================================================
 # 'sunshot' - Use p,q parameters based on 2012 SunShot study; p = 0.0015, q = [0.3 - 0.5] increasing with metric_value 
-# 'calibrated' - Use state and sector-specific p,q parameters based on fitting historic deployment to a Bass curve. 
-bass_method = 'calibrated'
+# 'user_input' - Use state and sector-specific p,q parameters based on input sheet. Solar defaults in input sheet are based on fitting historic deployment to a Bass curve. 
+bass_method = 'user_input'
 #bass_method = 'sunshot'
 
 #==============================================================================
@@ -108,7 +108,7 @@ alpha_lkup = pd.DataFrame({'tech' : ['solar', 'solar', 'wind', 'wind'],
 #==============================================================================
 #  Should the output schema be deleted after the model run
 #==============================================================================
-delete_output_schema = True
+delete_output_schema = False
 
 #==============================================================================
 #  Do you want to use an existing schema?
@@ -133,21 +133,19 @@ existing_schema_name = 'diffusion_results_2015_11_11_10h24m06s'
 initial_market_calibrate_mode = False
 
 #==============================================================================
-#  Value for the teq for yr 1 (2014)
-#==============================================================================
-teq_yr1 = 3
-
-#==============================================================================
 #  Parameters for the calibrate_diffusion_params.py script
 #==============================================================================
 # pre-existing schema to use
 static_schema = 'diffusion_results_2015_10_14_21h48m22s'
 
-# list of p_scalars to test
-p_scalar_list = [1, 10, 50, 100, 250, 500, 750, 1000]
+# list of p values to test
+override_p_values = [0.0004, 0.0005, 0.0006]
+
+# list of q values to test
+override_q_values = [0.3, 0.3, 0.5]
 
 # list of teq_yr1 values to test
-teq_yr1_list = [2, 3, 3.5, 4]
+override_teq_yr1_values = [2, 3, 4]
 
 # should scenario HTML reports be created?
 # WARNING: Setting to True will slow down your runs dramatically
