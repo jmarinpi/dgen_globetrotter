@@ -130,7 +130,7 @@ existing_schema_name = 'diffusion_results_2015_11_11_10h24m06s'
 #==============================================================================
 #  Should initial market shared be assigned proportional to 2014 economics?
 #==============================================================================
-initial_market_calibrate_mode = True
+initial_market_calibrate_mode = False
 
 #==============================================================================
 #  Value for the teq for yr 1 (2014)
