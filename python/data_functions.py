@@ -803,16 +803,13 @@ def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year,
     # combine all temporally varying data
     combine_temporal_data(cur, con, schema, techs, start_year, end_year, utilfunc.pylist_2_pglist(sectors.keys()))                           
     
+    # break counties into subsets for parallel processing
+    county_chunks, npar = split_counties(cur, schema, npar)    
+    
     for sector_abbr, sector in sectors.iteritems():
         with utilfunc.Timer() as t:
             logger.info("Creating Agents for %s Sector" % sector)
                 
-            #==============================================================================
-            #     break counties into subsets for parallel processing
-            #==============================================================================
-            # get list of counties
-            county_chunks = split_counties(cur, schema, npar)
-            
             #==============================================================================
             #     sample customer locations and load. and link together    
             #==============================================================================
@@ -1020,9 +1017,14 @@ def split_counties(cur, schema, npar):
                ORDER BY county_id;""" % inputs
     cur.execute(sql)
     counties = [row['county_id'] for row in cur.fetchall()]
-    county_chunks = map(list,np.array_split(counties, npar))    
     
-    return county_chunks
+    if len(counties) > npar:
+        county_chunks = map(list,np.array_split(counties, npar))
+    else:
+        county_chunks = [counties]
+        npar = 1
+    
+    return county_chunks, npar
 
 def sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, npar, pg_conn_string):
 
