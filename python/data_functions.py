@@ -630,7 +630,8 @@ def create_deployment_summary_table(cur, con, schema):
                 sector text,
                 installed_capacity_gw numeric,
                 number_of_adopters numeric,
-                p_scalar numeric,
+                p numeric,
+                q numeric,
                 teq_yr1 numeric
              );""" % inputs
     cur.execute(sql)
@@ -756,7 +757,7 @@ def get_economics_df(con, schema, year):
     return df
 
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def summarize_deployment(cur, con, schema, p_scalar, teq_yr1):
+def summarize_deployment(cur, con, schema, p, q, teq_yr1):
     
     inputs = locals().copy()
     
@@ -766,7 +767,8 @@ def summarize_deployment(cur, con, schema, p_scalar, teq_yr1):
              SELECT tech, year, sector, 
                 SUM(installed_capacity)/1e6 as installed_capacity_gw, 
                 SUM(number_of_adopters) as number_of_adopters,
-                %(p_scalar)s::NUMERIC as p_scalar,
+                %(p)s::NUMERIC as p,
+                %(q)s::NUMERIC as q,
                 %(teq_yr1)s::NUMERIC as teq_yr1
             FROM %(schema)s.outputs_all
             GROUP BY tech, year, sector;""" % inputs

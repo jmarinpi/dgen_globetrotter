@@ -136,16 +136,16 @@ initial_market_calibrate_mode = False
 #  Parameters for the calibrate_diffusion_params.py script
 #==============================================================================
 # pre-existing schema to use
-static_schema = 'diffusion_results_2015_10_14_21h48m22s'
+static_schema = 'diffusion_results_2015_11_12_15h07m43s'
 
 # list of p values to test
-override_p_values = [0.0004, 0.0005, 0.0006]
+override_p_values = [0.0004, 0.0005]
 
 # list of q values to test
-override_q_values = [0.3, 0.3, 0.5]
+override_q_values = [0.3, 0.4]
 
 # list of teq_yr1 values to test
-override_teq_yr1_values = [2, 3, 4]
+override_teq_yr1_values = [2, 3]
 
 # should scenario HTML reports be created?
 # WARNING: Setting to True will slow down your runs dramatically

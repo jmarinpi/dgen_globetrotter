@@ -43,7 +43,7 @@ pd.set_option('mode.chained_assignment', 'raise')
 #==============================================================================
     
 
-def main(schema, p_scalar_list, teq_yr1_list, make_reports = False, save_all_outputs = False):
+def main(schema, p_list, q_list, teq_yr1_list, make_reports = False, save_all_outputs = False, mode = None):
 
     try:
         model_init = time.time()
@@ -104,7 +104,10 @@ def main(schema, p_scalar_list, teq_yr1_list, make_reports = False, save_all_out
             financial_parameters = datfunc.get_financial_parameters(con, schema)
             incentive_options = datfunc.get_manual_incentive_options(con, schema)
             deprec_schedule = datfunc.get_depreciation_schedule(con, schema, macrs = True)
-            ann_system_degradation = datfunc.get_system_degradation(con, schema)      
+            ann_system_degradation = datfunc.get_system_degradation(con, schema)     
+            rate_growth_df = datfunc.get_rate_escalations(con, schema)
+            manual_incentives = datfunc.get_manual_incentives(con, schema)
+            bass_params = datfunc.get_bass_params(con, schema)
         logger.info('\tCompleted in: %0.1fs' % t.interval)
 
         # set model years
@@ -118,7 +121,7 @@ def main(schema, p_scalar_list, teq_yr1_list, make_reports = False, save_all_out
 
 
         # find combinatorial product of p_scalars and teq_yr1s
-        combinations = pd.DataFrame(list(itertools.product(p_scalar_list, teq_yr1_list)), columns = ['p_scalar', 'teq_yr1'])
+        combinations = pd.DataFrame(list(itertools.product(p_list, q_list, teq_yr1_list)), columns = ['p', 'q', 'teq_yr1'])
         n_combos = combinations.shape[0]
         
         # create table to hold the summary results of all iterations
@@ -133,7 +136,8 @@ def main(schema, p_scalar_list, teq_yr1_list, make_reports = False, save_all_out
             logger.info("Combination %s of %s" % (i, n_combos))
             # get the actual combination
             combo = row[1]
-            p_scalar = combo['p_scalar']
+            p = combo['p']
+            q = combo['q']
             teq_yr1 = combo['teq_yr1']
 
             # clear output tables
@@ -144,7 +148,7 @@ def main(schema, p_scalar_list, teq_yr1_list, make_reports = False, save_all_out
    
             # get dsire incentives, srecs, and itc for the generated customer bins
             dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string)
-            srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string)
+            srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
             itc_options = pd.read_sql('SELECT * FROM %s.input_main_itc_options; ' % schema, con) 
             for year in model_years:
                 logger.info('\tWorking on %s' % year)
@@ -159,19 +163,22 @@ def main(schema, p_scalar_list, teq_yr1_list, make_reports = False, save_all_out
                 
                 # Calculate economics of adoption for different busines models
                 df = finfunc.calc_economics(df, schema, 
-                                           market_projections, financial_parameters, 
+                                           market_projections, financial_parameters, rate_growth_df,
                                            scenario_opts, incentive_options, max_market_share, 
-                                           cur, con, year, dsire_incentives, srecs, deprec_schedule, 
-                                           ann_system_degradation, None, curtailment_method, itc_options,
+                                           cur, con, year, dsire_incentives, cfg.dsire_inc_def_exp_year, 
+                                           srecs, manual_incentives, deprec_schedule, 
+                                           ann_system_degradation, mode, curtailment_method, itc_options,
                                            tech_lifetime = 25)
+                                           
+
                 
                 # select from choices for business model and (optionally) technology
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
                 
                 # calculate diffusion based on economics and bass diffusion      
                 df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, 
-                                                              cfg.start_year, cfg.calibrate_mode, 
-                                                              p_scalar, teq_yr1) 
+                                                              cfg.start_year, cfg.initial_market_calibrate_mode, bass_params, 
+                                                              p, q, teq_yr1) 
                  
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
@@ -185,9 +192,9 @@ def main(schema, p_scalar_list, teq_yr1_list, make_reports = False, save_all_out
             datfunc.combine_outputs(techs, schema, sectors, cur, con)
                 
             # summarize overall deployment by technology and year
-            datfunc.summarize_deployment(cur, con, schema, p_scalar, teq_yr1)
+            datfunc.summarize_deployment(cur, con, schema, p, q, teq_yr1)
 
-            file_suffix = '_p%s_teq%s' % (p_scalar, teq_yr1)
+            file_suffix = '_p%s_q%s_teq%s' % (p, q, teq_yr1)
             
             if save_all_outputs == True:
                 # copy outputs to csv     
@@ -223,4 +230,4 @@ def main(schema, p_scalar_list, teq_yr1_list, make_reports = False, save_all_out
     
 if __name__ == '__main__':
     
-    main(cfg.static_schema, cfg.p_scalar_list, cfg.teq_yr1_list, cfg.make_reports, cfg.save_all_outputs)
+    main(cfg.static_schema, cfg.override_p_values, cfg.override_q_values, cfg.override_teq_yr1_values, cfg.make_reports, cfg.save_all_outputs)
