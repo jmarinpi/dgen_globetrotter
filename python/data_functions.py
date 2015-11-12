@@ -2536,6 +2536,16 @@ def cleanup_incentives(df, default_exp_yr):
     
     return df
 
+def get_itc_incentives(con, schema):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT year, lower(sector) as sector, itc_fraction
+             FROM %(schema)s.input_main_itc_options;""" % inputs
+    itc_options = pd.read_sql(sql, con) 
+    
+    return itc_options
+
 def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string, default_exp_yr = 2016):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()

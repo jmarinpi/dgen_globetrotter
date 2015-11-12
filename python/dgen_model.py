@@ -230,18 +230,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     logger.info("--------------Creating Agents---------------")
                     datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, cfg.start_year, 
-                                                   end_year, cfg.npar, cfg.pg_conn_string, scenario_opts) # TODO: Comment
+                                                   end_year, cfg.npar, cfg.pg_conn_string, scenario_opts)
         
                     #==========================================================================================================
                     # CHECK TECH POTENTIAL
                     #==========================================================================================================           
-                    datfunc.check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_dir) # TODO: Comment               
+                    datfunc.check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_dir)              
                    
                    
                     #==========================================================================================================
                     # CALCULATE BILL SAVINGS
                     #==========================================================================================================
-                    datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar,  # TODO: Comment/uncomment
+                    datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar, 
                                                cfg.pg_conn_string, cfg.gross_fit_mode, cfg.local_cores)
 
     
@@ -252,7 +252,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # get dsire incentives, srecs, and itc for the generated customer bins
             dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
             srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
-            itc_options = pd.read_sql('SELECT * FROM %s.input_main_itc_options; ' % schema, con) 
+            itc_options = datfunc.get_itc_incentives(con, schema)
             for year in model_years:
                 logger.info('\tWorking on %s' % year)
                     
