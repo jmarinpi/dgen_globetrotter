@@ -1,0 +1,57 @@
+Tab,Input,Can Be Used with Existing Shema,Explanation
+Main - Scenario Options,Scenario Name,True,
+Main - Scenario Options,Tech Choice Mode,Sometimes,Can be set to True if both Wind and Solar were originally set to True, can always be set to False
+Main - Scenario Options,Run model for Wind,Sometimes,Can only be changed from True to False
+Main - Scenario Options,Run model for Solar,Sometimes,Can only be changed from True to False
+Main - Scenario Options,Region to Analyze,False,
+Main - Scenario Options,Analysis End Year,Unknown,Need to test
+Main - Scenario Options,Markets,Unknown,Need to test
+Main - Scenario Options,Load Growth Scenario,False,
+Main - Scenario Options,Res Rate Structure,False,
+Main - Scenario Options,Com Rate Structure,False,
+Main - Scenario Options,Ind Rate Structure,False,
+Main - Scenario Options,Res Rate Escalation,True,
+Main - Scenario Options,Com Rate Escalation,True,
+Main - Scenario Options,Ind Rate Escalation,True,
+Main - Scenario Options,Res Max Market Curve,True,
+Main - Scenario Options,Com Max Market Curve,True,
+Main - Scenario Options,Ind Max Market Curve,True,
+Main - Scenario Options,Carbon Price,True,
+Main - Market Projections,Annual Infaltion,True,
+Main - Market Projections,Avoided Costs,False,
+Main - Market Projections,Carbon Price,True,
+Main - Market Projections,User Defined Res. Rate Escalations,True,
+Main - Market Projections,User Defined Com. Rate Escalations,True,
+Main - Market Projections,User Defined Ind. Rate Escalations,True,
+Main - Market Projections,User-Defined Flat Electric Rates,False,
+Main - Market Projections,Rate Type Popularity Weights,False,
+Main - Market Projections,Carbon and Natural Gas Intensities,True,
+Main - Market Projections,State Wholesale Electricity Price,False,
+Main - Net Metering,All Inputs,False,
+Main - Federal Incentives,ITC Options,True,
+Solar - Cost,User-Input Residential PV Cost,True,
+Solar - Cost,User-Input Commercial PV Cost,True,
+Solar - Cost,User-Input Industrial PV Cost,True,
+Solar - Cost,All Other Inputs,False,All other inputs are not active in the model
+Solar - Performance,PV Efficiency Improvement Factor,False,
+Solar - Performance,Panel Power Density,False,
+Solar - Performance,Inveter Lifetime,True,
+Solar - Performance,Annual System Degradation,True,
+Solar - Performance,System Sizing,False,
+Solar - Performance,Rooftop Characteristics Data Source,False,
+Solar - Finance,Residential Inputs,True,
+Solar - Finance,Commercial Inputs,True,
+Solar - Finance,Industrial Inputs,True,
+Solar - Finance,Depreciation Schedule,True,
+Solar - Leasing,Leasing Availability,True,
+Solar - Incentives,Overwrite Existing Incentives,True,
+Solar - Incentives,Incentive Start Year,True,
+Solar - Incentives,Policy Scenario,True,
+Solar - Incentives,Manual Entry of Policies,True,
+Solar - Diffusion Parameters,Residential,True,
+Solar - Diffusion Parameters,Commercial,True,
+Solar - Diffusion Parameters,Industrial,True,
+
+
+
+
