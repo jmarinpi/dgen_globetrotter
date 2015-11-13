@@ -2514,8 +2514,8 @@ def cleanup_incentives(df, default_exp_yr):
     # percent cost max
     df.loc[:, 'rebate_pcnt_cost_max'] = df.rebate_pcnt_cost_max.fillna(pcnt_cost_max)
     # expiration date
-    df.loc[:, 'ptc_end_date'] = df.ptc_end_date.fillna(exp_date)
-    df.loc[:, 'pbi_fit_end_date'] = df.pbi_fit_end_date.fillna(exp_date) # Assign expiry if no date    
+    df.loc[:, 'ptc_end_date'] = df.ptc_end_date.astype('O').fillna(exp_date)
+    df.loc[:, 'pbi_fit_end_date'] = df.pbi_fit_end_date.astype('O').fillna(exp_date) # Assign expiry if no date    
     # max dollars
     df.loc[:, 'max_dlrs_yr'] = df.max_dlrs_yr.fillna(max_dlrs)
     df.loc[:, 'pbi_fit_max_dlrs'] = df.pbi_fit_max_dlrs.fillna(max_dlrs)
@@ -2634,7 +2634,7 @@ def get_initial_market_shares(cur, con, techs, sectors, schema, initial_market_c
                 inputs['cost_table_join'] = """LEFT JOIN %(schema)s.turbine_costs_per_size_and_year b
                                              ON a.turbine_size_kw = b.turbine_size_kw
                                              AND a.year = b.year
-                                             AND a.turbine_height_m = b.turbine_height_m"""
+                                             AND a.turbine_height_m = b.turbine_height_m""" % inputs
             elif tech == 'solar':
                 inputs['cost_table_join'] = """LEFT JOIN %(schema)s.input_solar_cost_projections_to_model b
                                              ON a.year = b.year
