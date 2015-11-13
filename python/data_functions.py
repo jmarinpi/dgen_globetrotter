@@ -1510,7 +1510,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
     #==============================================================================
-    msg = "\t\tCombining Cost and Resource and Selecting System Configuration for Each Agent"
+    msg = "\t\tCombining Temporal Factors and Resource and Selecting System Configuration for Each Agent"
     t0 = time.time()
     logger.info(msg)
     
@@ -1826,7 +1826,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
     #==============================================================================
-    msg = "\t\tCombining Cost and Resource Data"
+    msg = "\t\tCombining Temporal Factors and Resource Data"
     t0 = time.time()
     logger.info(msg)       
     sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s;
