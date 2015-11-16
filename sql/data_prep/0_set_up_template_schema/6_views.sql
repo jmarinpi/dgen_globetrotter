@@ -415,20 +415,12 @@ set role 'diffusion-writers';
 
 DROP VIEW IF EXISTS diffusion_template.input_financial_parameters;
 CREATE VIEW diffusion_template.input_financial_parameters AS
-select ownership_model, loan_term_yrs, loan_rate, down_payment, 
-       discount_rate, tax_rate, length_of_irr_analysis_yrs, 'wind'::text as tech,
-	case   when sector = 'residential' then 'res'::CHARACTER VARYING(3)
-		when sector = 'commercial' then 'com'::CHARACTER VARYING(3)
-		when sector = 'industrial' then 'ind'::CHARACTER VARYING(3)
-	end as sector_abbr
+select year, business_model, sector_abbr, loan_term_yrs, loan_rate, down_payment, 
+       discount_rate, tax_rate, length_of_irr_analysis_yrs, 'wind'::text as tech
 from diffusion_template.input_wind_finances
 UNION ALL
-select ownership_model, loan_term_yrs, loan_rate, down_payment, 
-       discount_rate, tax_rate, length_of_irr_analysis_yrs, 'solar'::text as tech,
-	case   when sector = 'residential' then 'res'::CHARACTER VARYING(3)
-		when sector = 'commercial' then 'com'::CHARACTER VARYING(3)
-		when sector = 'industrial' then 'ind'::CHARACTER VARYING(3)
-	end as sector_abbr
+select year, business_model, sector_abbr, loan_term_yrs, loan_rate, down_payment, 
+       discount_rate, tax_rate, length_of_irr_analysis_yrs, 'solar'::text as tech
 from diffusion_template.input_solar_finances;
 
 ------------------------------------------------------------------------------------------------

@@ -58,9 +58,9 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
 
     # recombine into a single data frame    
     df = pd.concat([df_ho, df_tpo], axis = 0, ignore_index = True)
-    
+        
     # merge in financial parameters
-    df = pd.merge(df, financial_parameters, how = 'left', on = ['sector_abbr', 'business_model', 'tech'])
+    df = pd.merge(df, financial_parameters, how = 'left', on = ['sector_abbr', 'business_model', 'tech', 'year'])
 
     # get customer expected rate escalations
     # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed

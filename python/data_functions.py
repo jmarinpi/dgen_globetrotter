@@ -2928,10 +2928,6 @@ def get_financial_parameters(con, schema):
              FROM %(schema)s.input_financial_parameters;''' % inputs
     df = pd.read_sql(sql, con)
     
-    # minor formatting for table joins later on
-    df['business_model'] = df.ownership_model.str.lower().str.replace(" ", "_").str.replace("leased","tpo")
-    df = df.drop('ownership_model', axis = 1)
-    
     return df
  
 #==============================================================================
