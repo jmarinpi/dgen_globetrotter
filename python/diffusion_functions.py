@@ -75,8 +75,8 @@ def calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, year,
         market_share_cap.drop('market_share', inplace = True, axis = 1)
         # merge to df
         df = pd.merge(df, market_share_cap, how = 'left', on = ['county_id', 'bin_id', 'sector_abbr'])
-        # cap the market share
-        df['market_share'] = np.minimum(df['market_share'], df['market_share_cap'])
+        # cap the market share (for the selected option only)
+        df['market_share'] = np.where(df['selected_option'] == True, np.minimum(df['market_share'], df['market_share_cap']), df['market_share'])
         # drop the market share cap field
         df.drop('market_share_cap', inplace = True, axis = 1)
    
