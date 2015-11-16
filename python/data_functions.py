@@ -78,6 +78,15 @@ def create_output_schema(pg_conn_string, source_schema = 'diffusion_template', i
     
     con, cur = utilfunc.make_con(pg_conn_string, role = "diffusion-schema-writers")
 
+    # check that the source schema exists
+    sql = """SELECT count(*)
+            FROM pg_catalog.pg_namespace
+            WHERE nspname = '%(source_schema)s';""" % inputs
+    check = pd.read_sql(sql, con)
+    if check['count'][0] <> 1:
+        msg = "Specified source_schema (%(source_schema)s) does not exist." % inputs
+        raise ValueError(msg)
+
     cdt = utilfunc.current_datetime()
     dest_schema = 'diffusion_results_%s' % cdt
     inputs['dest_schema'] = dest_schema
