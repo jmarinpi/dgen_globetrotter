@@ -176,7 +176,7 @@ def main(schema, p_list, q_list, teq_yr1_list, make_reports = False, save_all_ou
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
                 
                 # calculate diffusion based on economics and bass diffusion      
-                df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, 
+                df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, year, 
                                                               cfg.start_year, cfg.initial_market_calibrate_mode, bass_params, 
                                                               p, q, teq_yr1) 
                  

@@ -30,7 +30,7 @@ logger = utilfunc.get_logger()
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
-def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, initial_market_calibrate_mode,
+def calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, year, start_year, initial_market_calibrate_mode,
                    bass_params, override_p_value = None, override_q_value = None, override_teq_yr1_value = None):
 
     ''' Calculates the market share (ms) added in the solve year. Market share must be less
@@ -58,12 +58,33 @@ def calc_diffusion(df, cur, con, cfg, techs, sectors, schema, year, start_year, 
     
     # calc diffusion market share
     df = calc_diffusion_market_share(df, cfg, con, is_first_year)
-    df['diffusion_market_share'] = df['diffusion_market_share'] * df['selected_option'] # ensure no diffusion for non-selected options
-   
+    
+    # ensure no diffusion for non-selected options
+    df['diffusion_market_share'] = df['diffusion_market_share'] * df['selected_option'] 
+    
+    # market share floor is based on last year's market share
     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
-    df['new_market_share'] = df['market_share']-df['market_share_last_year']
+
+    # if in tech choice mode, ensure that total market share doesn't exceed 1   
+    if choose_tech == True:
+        # extract out the rows for unselected technologies
+        market_share_cap = df[df['selected_option'] == False][['county_id', 'bin_id', 'sector_abbr', 'market_share']]
+        # determine how much market share is allowable based on 1 - the MS of the unselected techs
+        market_share_cap['market_share_cap'] = 1 - market_share_cap['market_share']
+        # drop the market share column
+        market_share_cap.drop('market_share', inplace = True, axis = 1)
+        # merge to df
+        df = pd.merge(df, market_share_cap, how = 'left', on = ['county_id', 'bin_id', 'sector_abbr'])
+        # cap the market share
+        df['market_share'] = np.minimum(df['market_share'], df['market_share_cap'])
+        # drop the market share cap field
+        df.drop('market_share_cap', inplace = True, axis = 1)
+   
+    # calculate the "new" market share (old - current)
+    df['new_market_share'] = df['market_share'] - df['market_share_last_year']
+    # cap the new_market_share where the market share exceeds the max market share
     df['new_market_share'] = np.where(df['market_share'] > df['max_market_share'], 0, df['new_market_share'])
-            
+    # calculate new adopters, capacity and market value            
     df['new_adopters'] = df['new_market_share'] * df['customers_in_bin']
     df['new_capacity'] = df['new_adopters'] * df['system_size_kw']
     df['new_market_value'] = df['new_adopters'] * df['system_size_kw'] * df['installed_costs_dollars_per_kw']
