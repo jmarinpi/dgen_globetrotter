@@ -68,7 +68,7 @@ def calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, year,
     # if in tech choice mode, ensure that total market share doesn't exceed 1   
     if choose_tech == True:
         # extract out the rows for unselected technologies
-        market_share_cap = df[df['selected_option'] == False][['county_id', 'bin_id', 'sector_abbr', 'market_share']]
+        market_share_cap = df[df['selected_option'] == False][['county_id', 'bin_id', 'sector_abbr', 'market_share']].groupby(['county_id', 'bin_id', 'sector_abbr']).sum().reset_index()
         # determine how much market share is allowable based on 1 - the MS of the unselected techs
         market_share_cap['market_share_cap'] = 1 - market_share_cap['market_share']
         # drop the market share column
