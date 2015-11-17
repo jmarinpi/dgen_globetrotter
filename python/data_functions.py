@@ -3026,7 +3026,7 @@ def calc_manual_incentives(df, cur_year, inc):
     # set to zero if cur_year < incentive_start_year    
     df['value_of_pbi_fit'] = np.where(cur_year >= df['incentive_start_year'], df['value_of_pbi_fit'], 0)
 
-    df['value_of_rebate'] = np.minimum(1000 * df['dol_per_kw'] * df['system_size_kw'] * (cur_year <= df['expire']), df['system_size_kw'])
+    df['value_of_rebate'] = df['dol_per_kw'] * df['system_size_kw'] * (cur_year <= df['expire'])
     # set to zero if cur_year < incentive_start_year        
     df['value_of_rebate'] = np.where(cur_year >= df['incentive_start_year'], df['value_of_rebate'], 0)
 
