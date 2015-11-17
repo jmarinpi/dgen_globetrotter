@@ -524,6 +524,33 @@ boxplot_by_year = function(df, title, by_tech = F, adopters_only = T, label = NU
 }
 
 
+summarize_deployment_by_state_sector_year = function(df, runpath, scen_name, by_tech = F){
+  if (by_tech == T){  
+    g = group_by(df, year, state_abbr, sector, tech)
+    melt_vars = c('year', 'state_abbr', 'sector', 'tech')
+  } else {
+    g = group_by(df, year, state_abbr, sector)
+    melt_vars = c('year', 'state_abbr', 'sector')
+  }
+  data = collect(summarise(g, nat_installed_capacity_gw  = sum(installed_capacity)/1e6, 
+                           # We have no way calculating CFs for existing capacity, so assume it had a 23% capacity factor
+                           nat_market_share = sum(number_of_adopters)/sum(customers_in_bin), 
+                           nat_max_market_share = sum(max_market_share * customers_in_bin)/sum(customers_in_bin),
+                           nat_market_value = sum(market_value),
+                           nat_generation_kwh = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (0.23 * 8760 * initial_capacity_mw * 1000)), 
+                           nat_number_of_adopters = sum(number_of_adopters)
+  )
+  )  
+  
+  data = melt(data = data, id.vars = melt_vars)
+  data$scenario = scen_name
+  data$data_type = 'Cumulative'
+  
+  save(data,file = paste0(runpath,'/diffusion_trends_by_state.RData'), compress = T, compression_level = 1)    
+  
+}
+  
+
 
 diffusion_trends<-function(df, runpath, scen_name, by_tech = F, save_results = T){
   # Diffusion trends
@@ -570,6 +597,9 @@ diffusion_trends<-function(df, runpath, scen_name, by_tech = F, save_results = T
     save(data,file = paste0(runpath,'/diffusion_trends.RData'),compress = T, compression_level = 1)    
   }
 
+  # summarize state level cumulative deployment too
+  summarize_deployment_by_state_sector_year(df, runpath, scen_name, by_tech)
+  
   # order the data by sector and year
   yearly_data = collect(summarise(g, nat_installed_capacity_gw  = sum(installed_capacity-installed_capacity_last_year)/1e6, 
                            # We have no way calculating CFs for existing capacity, so assume it had a 23% capacity factor
