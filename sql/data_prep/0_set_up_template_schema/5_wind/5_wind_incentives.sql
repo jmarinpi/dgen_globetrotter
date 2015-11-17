@@ -86,7 +86,7 @@ CREATE TABLE diffusion_template.input_wind_incentives_raw
 );
 
 
-DROP VIEW IF EXISTS diffusion_template.input_wind_incentives_standardized;
+DROP VIEW IF EXISTS diffusion_template.input_wind_incentives_standardized CASCADE;
 CREATE VIEW diffusion_template.input_wind_incentives_standardized AS
 -- tax incentives
 select region, 
@@ -185,7 +185,7 @@ select region,
 	coalesce(rebate_res_expire, 0) as expire,
 	0::numeric as incentives_c_per_kwh,
 	0::numeric as no_years,
-	coalesce(rebate_res_dol_per_w/1000., 0) as dol_per_kw
+	coalesce(rebate_res_dol_per_w * 1000., 0) as dol_per_kw
 FROM diffusion_template.input_wind_incentives_raw
 
 UNION ALL
@@ -199,7 +199,7 @@ select region,
 	coalesce(rebate_com_expire, 0) as expire,
 	0::numeric as incentives_c_per_kwh,
 	0::numeric as no_years,
-	coalesce(rebate_com_dol_per_w/1000., 0) as dol_per_kw
+	coalesce(rebate_com_dol_per_w * 1000., 0) as dol_per_kw
 FROM diffusion_template.input_wind_incentives_raw
 
 UNION ALL
@@ -213,7 +213,7 @@ select region,
 	coalesce(rebate_ind_expire, 0) as expire,
 	0::numeric as incentives_c_per_kwh,
 	0::numeric as no_years,
-	coalesce(rebate_ind_dol_per_w/1000., 0) as dol_per_kw
+	coalesce(rebate_ind_dol_per_w * 1000., 0) as dol_per_kw
 FROM diffusion_template.input_wind_incentives_raw;
 
 
@@ -221,4 +221,4 @@ DROP VIEW IF EXISTS diffusion_template.input_wind_incentives;
 CREATE VIEW diffusion_template.input_wind_incentives AS
 SELECT a.*, b.utility_type
 FROM diffusion_template.input_wind_incentives_standardized a
-CROSS JOIN diffusion_template.input_wind_incentive_utility_types_tidy b
+CROSS JOIN diffusion_template.input_wind_incentive_utility_types_tidy b;
