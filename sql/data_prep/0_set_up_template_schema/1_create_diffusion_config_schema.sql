@@ -165,6 +165,22 @@ from unnest(array[
 	]);
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- incentive source options
+DROP TABLE IF EXISTS diffusion_config.sceninp_incentive_source cASCADE;
+CREATE TABLE diffusion_config.sceninp_incentive_source
+(
+  val text unique not null
+);
+
+INSERT INTO diffusion_config.sceninp_incentive_source
+select *
+from unnest(array[
+	'Existing Policies',
+	'Manual Policies',
+	'Both'
+	]);
+------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 -- load growth scenario

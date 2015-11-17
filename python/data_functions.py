@@ -3019,10 +3019,21 @@ def calc_manual_incentives(df, cur_year, inc):
     # Calculate value of incentive and rebate, and value and length of PBI
     df['value_of_tax_credit_or_deduction'] = df['incentive'] * df['installed_costs_dollars_per_kw'] * df['system_size_kw'] * (cur_year <= df['expire'])
     df['value_of_tax_credit_or_deduction'] = df['value_of_tax_credit_or_deduction'].astype(float)
-    df['value_of_pbi_fit'] = 0.01 * df['incentives_c_per_kwh'] * df['aep'] * (cur_year <= df['expire']) # First year value  
-    df['value_of_rebate'] = np.minimum(1000 * df['dol_per_kw'] * df['system_size_kw'] * (cur_year <= df['expire']), df['system_size_kw'])
-    df['pbi_fit_length'] = df['no_years']
+    # set to zero if cur_year < incentive_start_year    
+    df['value_of_tax_credit_or_deduction'] = np.where(df['incentive_start_year'] >= cur_year, df['value_of_tax_credit_or_deduction'], 0)
     
+    df['value_of_pbi_fit'] = 0.01 * df['incentives_c_per_kwh'] * df['aep'] * (cur_year <= df['expire']) # First year value  
+    # set to zero if cur_year < incentive_start_year    
+    df['value_of_pbi_fit'] = np.where(df['incentive_start_year'] >= cur_year, df['value_of_pbi_fit'], 0)
+
+    df['value_of_rebate'] = np.minimum(1000 * df['dol_per_kw'] * df['system_size_kw'] * (cur_year <= df['expire']), df['system_size_kw'])
+    # set to zero if cur_year < incentive_start_year        
+    df['value_of_rebate'] = np.where(df['incentive_start_year'] >= cur_year, df['value_of_rebate'], 0)
+
+    df['pbi_fit_length'] = df['no_years']
+    # set to zero if cur_year < incentive_start_year        
+    df['pbi_fit_length'] = np.where(df['incentive_start_year'] >= cur_year, df['pbi_fit_length'], 0)
+
     # These values are not used, but necessary for cashflow calculations later
     # Convert dtype to float s.t. columns are included in groupby calculation.
     df['value_of_increment'] = 0

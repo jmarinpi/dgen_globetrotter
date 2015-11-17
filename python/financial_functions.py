@@ -76,15 +76,19 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
         rate_esc.loc[:, 'rate_escalations'] = np.array(rate_esc.rate_escalations.tolist(), dtype = 'float64')[:, start_i:end_i].tolist()
         df = pd.merge(df, rate_esc, how = 'left', on = ['sector_abbr', 'census_division_abbr'])
 
-    # Calculate value of incentives. Manual and DSIRE incentives can't stack. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
-    df_manual_incentives = df[df['overwrite_exist_inc'] == True]
-    df_dsire_incentives = df[df['overwrite_exist_inc'] == False]
-    
+    # split out rows to run through manual and dsire incentives
+    df_manual_incentives = df[(df['incentive_source'] == 'Manual Policies') | (df['incentive_source'] == 'Both')]
+    df_dsire_incentives = df[(df['incentive_source'] == 'Existing Policies') | (df['incentive_source'] == 'Both')]
+    # Calculate value of incentives. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
     value_of_incentives_manual = datfunc.calc_manual_incentives(df_manual_incentives, year, manual_incentives)
     value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, srecs, year, 
                                                               default_exp_yr = dsire_inc_def_exp_year, assumed_duration = 10)
+    # combine the results by concatenating the dataframes
     value_of_incentives_all = pd.concat([value_of_incentives_manual, value_of_incentives_dsire], axis = 0, ignore_index = True)
-    df = pd.merge(df, value_of_incentives_all, how = 'left', on = ['county_id','bin_id','business_model', 'tech', 'sector_abbr'])
+    # sum up total incentives by agent
+    value_of_incentives_all_summed = value_of_incentives_all[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['tech', 'sector_abbr', 'county_id','bin_id','business_model']).sum().reset_index()     
+    # join back to the main df
+    df = pd.merge(df, value_of_incentives_all_summed, how = 'left', on = ['county_id','bin_id','business_model', 'tech', 'sector_abbr'])
 
     # Calculates value of ITC, return df with a new column 'value_of_itc'
     df = datfunc.calc_value_of_itc(df, itc_options, year)

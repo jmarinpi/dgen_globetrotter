@@ -1,14 +1,16 @@
 ﻿set role 'diffusion-writers';
 
-DROP TABLE IF EXISTs diffusion_template.input_wind_incentive_options;
+DROP TABLE IF EXISTs diffusion_template.input_wind_incentive_options CASCADE;
 CREATE TABLE diffusion_template.input_wind_incentive_options
 (
-	overwrite_exist_inc boolean not null,
+	incentive_source text not null,
 	incentive_start_year integer not null,
-	CONSTRAINT input_wind_incentive_options_year_fkey FOREIGN KEY (incentive_start_year)
+	CONSTRAINT incentive_source_fkey FOREIGN KEY (incentive_source)
+		REFERENCES diffusion_config.sceninp_incentive_source (val) MATCH SIMPLE,
+	CONSTRAINT input_solar_incentive_options_year_fkey FOREIGN KEY (incentive_start_year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
-		ON UPDATE NO ACTION ON DELETE RESTRICT
 );
+
 
 
 DROP TABLE IF EXISTS diffusion_template.input_wind_incentive_utility_types CASCADE;

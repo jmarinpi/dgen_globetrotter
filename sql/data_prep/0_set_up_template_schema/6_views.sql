@@ -425,12 +425,14 @@ from diffusion_template.input_solar_finances;
 
 ------------------------------------------------------------------------------------------------
 -- manual incentive options
+set role 'diffusion-writers';
+
 DROP VIEW IF EXISTS diffusion_template.input_incentive_options;
 CREATE VIEW diffusion_template.input_incentive_options AS
-SELECT overwrite_exist_inc, incentive_start_year, 'wind'::text as tech
+SELECT incentive_source, incentive_start_year, 'wind'::text as tech
 FROM diffusion_template.input_wind_incentive_options
 UNION ALL
-SELECT overwrite_exist_inc, incentive_start_year, 'solar'::text as tech
+SELECT incentive_source, incentive_start_year, 'solar'::text as tech
 FROM diffusion_template.input_solar_incentive_options;
 
 ------------------------------------------------------------------------------------------------
