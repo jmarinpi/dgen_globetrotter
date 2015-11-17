@@ -3451,8 +3451,9 @@ def calc_value_of_itc(df, itc_options, year):
     # merge to df
     df = pd.merge(df, itc_all, how = 'left', on = ['sector_abbr', 'year', 'business_model'])
         
-    # Calculate the value of ITC
-    df['value_of_itc'] = df['installed_costs_dollars_per_kw'] * df['system_size_kw'] * df['itc_fraction'] #'ic' not in the df at this point
+    # Calculate the value of ITC (accounting for reduced costs from state/local incentives)
+    df['value_of_itc'] = ((df['installed_costs_dollars_per_kw'] * df['system_size_kw']) - # deduct off value of state/local incentives
+                                (df['value_of_tax_credit_or_deduction'] + df['value_of_rebate'] + df['value_of_increment'])) * df['itc_fraction'] #'ic' not in the df at this point
     df = df.drop(['sector', 'itc_fraction'], axis = 1)
     
     return df
