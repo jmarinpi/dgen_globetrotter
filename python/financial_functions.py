@@ -100,9 +100,11 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     df['metric_value_precise'] = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
 
     df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate, tech_lifetime)
-    npv = calc_npv(cfs, np.array([0.04]))
+    npv4 = calc_npv(cfs, np.array([0.04]))
+    npv_agent = calc_npv(cfs, df.discount_rate)
     with np.errstate(invalid = 'ignore'):
-        df['npv4'] = np.where(df.system_size_kw == 0, 0, npv/df.system_size_kw)
+        df['npv4'] = np.where(df.system_size_kw == 0, 0, npv4/df.system_size_kw)
+        df['npv_agent'] = np.where(df.system_size_kw == 0, 0, npv_agent/df.system_size_kw)
 
     
     # Convert metric value to integer as a primary key, then bound within max market share ranges
@@ -199,11 +201,11 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     # Constrain fraction to [0,1]
     max_incent_fraction = min(max(max_incentive_fraction, 0), 1)
     #np.minimum(max_incent_fraction * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'])
-    df['total_value_of_incentive'] = np.minimum(max_incent_fraction * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'] + df['value_of_itc'])
+    df['total_value_of_incentives'] = np.minimum(max_incent_fraction * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'] + df['value_of_itc'])
     
     # Assume that incentives received in first year are directly credited against installed cost; This help avoid
     # ITC cash flow imbalances in first year
-    df['net_installed_cost'] = df['ic'] - df['total_value_of_incentive']
+    df['net_installed_cost'] = df['ic'] - df['total_value_of_incentives']
     
     # Calculate the annual payment net the downpayment and upfront incentives
     pmt = - (1 - df.down_payment) * df['net_installed_cost'] * df['crf']    
@@ -286,7 +288,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     Revenue comes from taxable deduction [basis * tax rate * schedule] and cannot be monetized by Residential
     '''
     depreciation_revenue = np.zeros(shape)
-    max_depreciation_reduction = np.minimum(df['total_value_of_incentive'], df['value_of_tax_credit_or_deduction']  + df['value_of_rebate'])
+    max_depreciation_reduction = np.minimum(df['total_value_of_incentives'], df['value_of_tax_credit_or_deduction']  + df['value_of_rebate'])
     deprec_basis = np.maximum(df.ic - 0.5 * (max_depreciation_reduction),0)[:,np.newaxis] # depreciable basis reduced by half the incentive
     deprec_schedule_arr = np.array(list(df['deprec']))    
     depreciation_revenue[:,:20] = deprec_basis * deprec_schedule_arr * df.tax_rate[:,np.newaxis] * ((df.sector_abbr == 'ind') | (df.sector_abbr == 'com') | (df.business_model == 'tpo'))[:,np.newaxis]   
@@ -306,8 +308,8 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     
     incentive_revenue = np.zeros(shape)
     
-    ptc_revenue = datfunc.fill_jagged_array(np.minimum(df.value_of_ptc,df.total_value_of_incentive/df.ptc_length),df.ptc_length, cols = tech_lifetime)
-    pbi_fit_revenue = datfunc.fill_jagged_array(np.minimum(df.value_of_pbi_fit,df.total_value_of_incentive/df.ptc_length) ,df.pbi_fit_length, cols = tech_lifetime)    
+    ptc_revenue = datfunc.fill_jagged_array(np.minimum(df.value_of_ptc,df.total_value_of_incentives/df.ptc_length),df.ptc_length, cols = tech_lifetime)
+    pbi_fit_revenue = datfunc.fill_jagged_array(np.minimum(df.value_of_pbi_fit,df.total_value_of_incentives/df.ptc_length) ,df.pbi_fit_length, cols = tech_lifetime)    
 
     incentive_revenue += ptc_revenue + pbi_fit_revenue
     
@@ -335,7 +337,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     df.loc[:, 'first_year_bill_without_system'] = yearly_bills_without_system[:, 0] 
     df.loc[:, 'first_year_bill_with_system'] = df.first_year_bill_with_system * np.array(list(df['rate_escalations']), dtype = 'float64')[:, 0]
     
-    new_cols = ['total_value_of_incentive', 'monthly_bill_savings', 'percent_monthly_bill_savings']
+    new_cols = ['total_value_of_incentives', 'monthly_bill_savings', 'percent_monthly_bill_savings']
     out_cols = in_cols + new_cols
     out_df = df[out_cols]    
     
