@@ -383,7 +383,9 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.first_year_bill_without_system/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
-                    c.initial_capacity_kw * 1000 as initial_capacity_mw
+                    c.initial_capacity_kw / 1000 as initial_capacity_mw,
+                    
+                    ((a.number_of_adopters - c.initial_number_of_adopters) * b.aep * 1e-9) + (0.23 * 8760 * c.initial_capacity_kw * 1e-9) as total_gen_twh
                                         
                     
                     FROM %(schema)s.outputs_%(sector_abbr)s a
@@ -475,7 +477,9 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     a.first_year_bill_without_system/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
-                     c.initial_capacity_kw * 1000 as initial_capacity_mw
+                     c.initial_capacity_kw / 1000 as initial_capacity_mw,
+
+                    ((a.number_of_adopters - c.initial_number_of_adopters) * b.aep * 1e-9) + (0.23 * 8760 * c.initial_capacity_kw * 1e-9) as total_gen_twh
                     
                     FROM %(schema)s.outputs_%(sector_abbr)s a
                     
@@ -539,7 +543,7 @@ def combine_output_view(schema, cur, con, techs):
                         cf, naep, aep, system_size_kw, system_size_factors, 
                         cost_of_elec_dols_per_kwh, 
                         initial_market_share, initial_number_of_adopters, 
-                        initial_capacity_mw, selected_option
+                        initial_capacity_mw, total_gen_twh, selected_option
                  FROM %(schema)s.outputs_all_%(tech)s""" % inputs
         sql_list.append(sql)
     

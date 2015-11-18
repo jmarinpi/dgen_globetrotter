@@ -20,15 +20,19 @@ library(gtable, quietly = T)
 # setwd('/Volumes/Staff/mgleason/DG_Wind/diffusion_repo/python')
 # setwd('S:/mgleason/DG_Wind/diffusion_repo/python')
 # setwd('/Users/jduckwor/WorkRelated/managed_code/diffusion/python')
+# setwd('/Users/mgleason/NREL_Projects/github/diffusion/python')
 
 # source('../r/maps/map_functions.R', chdir = T)
 source("../r/maps/r2js/r2js.R")
 source("../r/graphics/output_funcs.R")
 
-# runpath<-'/Users/jduckwor/WorkRelated/managed_code/diffusion/runs_solar/results_20150422_074738/dSolar'
-# scen_name<-'solar_test'
-# tech = 'solar'
-# schema = 'diffusion_solar'
+
+# runpath<-'/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20151118_103352/BAU/wind'
+# scen_name<-'test'
+# tech = 'wind'
+# schema = 'diffusion_results_2015_11_18_11h29m24s'
+# pg_params_file = 'pg_params_gis.json'
+# file_suffix = 'test'
 
 runpath<-commandArgs(T)[1]
 scen_name<-commandArgs(T)[2]

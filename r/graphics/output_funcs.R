@@ -537,7 +537,7 @@ summarize_deployment_by_state_sector_year = function(df, runpath, scen_name, by_
                            nat_market_share = sum(number_of_adopters)/sum(customers_in_bin), 
                            nat_max_market_share = sum(max_market_share * customers_in_bin)/sum(customers_in_bin),
                            nat_market_value = sum(market_value),
-                           nat_generation_kwh = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (0.23 * 8760 * initial_capacity_mw * 1000)), 
+                           nat_generation_twh = sum(total_gen_twh), 
                            nat_number_of_adopters = sum(number_of_adopters)
   )
   )  
@@ -567,7 +567,7 @@ diffusion_trends<-function(df, runpath, scen_name, by_tech = F, save_results = T
                             nat_installed_capacity_gw  = sum(installed_capacity_last_year)/1e6, 
                             # We have no way calculating CFs for existing capacity, so assume it had a 23% capacity factor
                             nat_market_value = sum(market_value_last_year),
-                            nat_generation_kwh = sum(0.23 * 8760 * initial_capacity_mw * 1000), 
+                            nat_generation_twh = sum(0.23 * 8760 * initial_capacity_mw * 1e-6), 
                             nat_number_of_adopters = sum(number_of_adopters_last_year)                    
                     ) %>%
                   collect()
@@ -585,7 +585,7 @@ diffusion_trends<-function(df, runpath, scen_name, by_tech = F, save_results = T
                            nat_market_share = sum(number_of_adopters)/sum(customers_in_bin), 
                            nat_max_market_share = sum(max_market_share * customers_in_bin)/sum(customers_in_bin),
                            nat_market_value = sum(market_value),
-                           nat_generation_kwh = sum(((number_of_adopters-initial_number_of_adopters) * aep) + (0.23 * 8760 * initial_capacity_mw * 1000)), 
+                           nat_generation_twh = sum(total_gen_twh),
                            nat_number_of_adopters = sum(number_of_adopters)
   )
   )
@@ -698,8 +698,8 @@ diffusion_trends<-function(df, runpath, scen_name, by_tech = F, save_results = T
   
   # NATIONAL GENERATION
   national_generation_bar <-  add_generation_data_source_note(
-                                                              ggplot(subset(cumulative_data, variable %in% c("nat_generation_kwh")))+
-                                                              geom_bar(aes_string(x = 'factor(year)', fill = color_var, weight = 'value/1e9')) +
+                                                              ggplot(subset(cumulative_data, variable %in% c("nat_generation_twh")))+
+                                                              geom_bar(aes_string(x = 'factor(year)', weight = 'value', fill = color_var)) +
                                                               scale_color_manual(values = colors) +
                                                               scale_fill_manual(name = simpleCap(color_var), values = colors, guide = guide_legend(reverse=TRUE)) +
                                                               scale_y_continuous(name ='National Annual Generation (TWh)', labels = comma) +
@@ -827,7 +827,7 @@ diffusion_all_map <- function(df){
                                     Market.Value = sum(market_value),
                                     Number.of.Adopters = sum(number_of_adopters),
                                     Installed.Capacity = sum(installed_capacity)/1000,
-                                    Annual.Generation =  sum(((number_of_adopters-initial_number_of_adopters) * aep) + (0.23 * 8760 * initial_capacity_mw * 1000))/1e6
+                                    Annual.Generation =  sum(total_gen_twh)
                                   )
                           )
   # reset variable names
@@ -882,7 +882,7 @@ diffusion_sectors_map <- function(df){
                                          Market.Value = sum(market_value),
                                          Number.of.Adopters = sum(number_of_adopters),
                                          Installed.Capacity = sum(installed_capacity)/1000,
-                                         Annual.Generation =  sum(((number_of_adopters-initial_number_of_adopters) * aep) + (0.23 * 8760 * initial_capacity_mw * 1000))/1e6
+                                         Annual.Generation =  sum(total_gen_twh)
                                         )
                               )
     
