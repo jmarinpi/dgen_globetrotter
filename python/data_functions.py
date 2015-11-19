@@ -204,17 +204,9 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
     
     
     # create indices for subsequent joins
-    sql =  """CREATE INDEX temporal_factors_technology_turbine_height_m_btree 
+    sql =  """CREATE INDEX temporal_factors_technology_join_fields_btree 
               ON %(schema)s.temporal_factors_wind
-              USING BTREE(turbine_height_m);
-              
-              CREATE INDEX temporal_factors_technology_turbine_size_kw_btree 
-              ON %(schema)s.temporal_factors_wind
-              USING BTREE(turbine_size_kw);
-              
-              CREATE INDEX temporal_factors_technology_power_curve_id_btree 
-              ON %(schema)s.temporal_factors_wind
-              USING BTREE(power_curve_id);
+              USING BTREE(turbine_height_m, turbine_size_kw, power_curve_id);
               
               CREATE INDEX temporal_factors_technology_year_btree 
               ON %(schema)s.temporal_factors_wind
@@ -1840,29 +1832,17 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     p_run(pg_conn_string, sql, county_chunks, npar)
     
     # create indices for subsequent joins
-    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_turbine_height_m_btree 
+    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_temporal_factors_btree 
               ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
-              USING BTREE(turbine_height_m);
-              
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_turbine_size_kw_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
-              USING BTREE(turbine_size_kw);
+              USING BTREE(turbine_height_m, turbine_size_kw, power_curve_id);              
               
               CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_census_division_abbr_btree 
               ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
               USING BTREE(census_division_abbr);
               
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_power_curve_id_btree 
+              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_nem_fields_btree 
               ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
-              USING BTREE(power_curve_id);
-              
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_state_abbr_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
-              USING BTREE(state_abbr);
-              
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_utility_type_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
-              USING BTREE(utility_type);              
+              USING BTREE(state_abbr, utility_type);           
               """ % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
@@ -1960,11 +1940,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                    turbine_height_m, 
                    (round((scoe_return).scoe,4)*1000)::BIGINT as scoe,
                    ownocc8 as owner_occupancy_status
-          FROM combined;
-          
-          CREATE INDEX pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s_sort_fields_btree
-             ON %(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s
-             USING BTREE(county_id ASC, bin_id ASC, year ASC, scoe ASC, system_size_kw ASC, turbine_height_m ASC);           
+          FROM combined;     
           """ % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  

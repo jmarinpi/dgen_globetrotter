@@ -48,4 +48,3 @@ LEFT join diffusion_shared.aeo_load_growth_projections_2014 b
 where b.year is null;
 -- all set
 
-

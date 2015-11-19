@@ -171,15 +171,6 @@ INNER JOIN diffusion_template.counties_to_model h
 ON a.county_id = h.county_id;
 ------------------------------------------------------------------------
 
--- create a view of the load data
-DROP VIEW IF EXISTS diffusion_shared.aeo_load_growth_projections;
-CREATE VIEW diffusion_shared.aeo_load_growth_projections AS
-SELECT *
-FROM diffusion_shared.aeo_load_growth_projections_2014
-UNION ALL
-SELECT *
-FROM diffusion_shared.aeo_load_growth_projections_2015;
-
 
 -- create view of sectors to model
 DROP VIEW IF EXIStS diffusion_template.sectors_to_model;
