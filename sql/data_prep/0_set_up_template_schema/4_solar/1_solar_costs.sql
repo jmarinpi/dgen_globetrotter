@@ -108,7 +108,7 @@ b as
 	SELECT a.*
 	FROM a
 	INNER JOIN diffusion_template.input_solar_cost_assumptions b
-	ON a.source = b.cost_assumptions
+	ON lower(a.source) = lower(b.cost_assumptions)
 )
 SELECT b.year, 
 	case when d.reeds_mode = true then c.capital_cost_dollars_per_kw

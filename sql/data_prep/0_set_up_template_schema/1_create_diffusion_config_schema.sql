@@ -110,9 +110,9 @@ delete from diffusion_config.sceninp_cost_assumptions_solar;
 INSERT INTO diffusion_config.sceninp_cost_assumptions_solar
 select *
 from unnest(array[
-		'Sunshot 50%',
-		'Sunshot 62.5 -> 75%',
-		'Sunshot 75%',
+		'SunShot 50%',
+		'SunShot 62.5 -> 75%',
+		'SunShot 75%',
 		'AEO 2014',
 		'User Defined'
 	]);
