@@ -817,7 +817,10 @@ def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year,
     rate_structures = get_rate_structures(con, schema)
     
     # combine all temporally varying data
-    combine_temporal_data(cur, con, schema, techs, start_year, end_year, utilfunc.pylist_2_pglist(sectors.keys()))                           
+    combine_temporal_data(cur, con, schema, techs, start_year, end_year, utilfunc.pylist_2_pglist(sectors.keys()))       
+
+    # convert the nem scenario table from view to table
+    create_nem_scenario(cur, con, schema)                    
     
     # break counties into subsets for parallel processing
     county_chunks, npar = split_counties(cur, schema, npar)    
@@ -1635,7 +1638,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                     ON a.census_division_abbr = b.census_division_abbr
                     AND b.sector_abbr = '%(sector_abbr)s'
                     AND b.load_growth_scenario = '%(load_growth_scenario)s'
-                LEFT JOIN %(schema)s.input_main_nem_scenario c
+                LEFT JOIN %(schema)s.input_main_nem_scenario_table c
                     ON c.state_abbr = a.state_abbr
                     AND c.utility_type = a.utility_type
                     AND c.year = b.year
@@ -1792,6 +1795,39 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string):
     p_run(pg_conn_string, sql, county_chunks, npar)              
 
 
+
+def create_nem_scenario(cur, con, schema):
+    
+    inputs = locals().copy()
+    
+    sql = """DROP TABLE IF EXISTS %(schema)s.input_main_nem_scenario_table;
+             CREATE TABLE %(schema)s.input_main_nem_scenario_table AS
+             SELECT *
+             FROM %(schema)s.input_main_nem_scenario;""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
+    # add indices
+    sql = """CREATE INDEX input_main_nem_scenario_table_btree_state_abbr
+            ON %(schema)s.input_main_nem_scenario_table
+            USING BTREE(state_abbr);
+            
+            CREATE INDEX input_main_nem_scenario_table_btree_utility_type
+            ON %(schema)s.input_main_nem_scenario_table
+            USING BTREE(utility_type);
+            
+            CREATE INDEX input_main_nem_scenario_table_btree_year
+            ON %(schema)s.input_main_nem_scenario_table
+            USING BTREE(year);        
+            
+            CREATE INDEX input_main_nem_scenario_table_btree_sector_abbr
+            ON %(schema)s.input_main_nem_scenario_table
+            USING BTREE(sector_abbr); """ % inputs
+            
+    cur.execute(sql)
+    con.commit()            
+
+    
 ########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
@@ -1907,7 +1943,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                         AND b.scenario = '%(load_growth_scenario)s'                    
                         AND b.year = e.year
                    
-                LEFT JOIN %(schema)s.input_main_nem_scenario c
+                LEFT JOIN %(schema)s.input_main_nem_scenario_table c
                     ON c.state_abbr = a.state_abbr
                     AND c.utility_type = a.utility_type
                     AND c.year = b.year
