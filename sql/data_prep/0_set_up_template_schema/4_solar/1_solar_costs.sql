@@ -93,7 +93,7 @@ WITH a as
 
 	SELECT year, capital_cost_dollars_per_kw, inverter_cost_dollars_per_kw, 
 		fixed_om_dollars_per_kw_per_yr, variable_om_dollars_per_kwh, 
-		sector, 'Solar Program Targets'::text as source
+		sector, scenario as source
 	FROM diffusion_solar.solar_program_target_cost_projections
 
 	UNION ALL

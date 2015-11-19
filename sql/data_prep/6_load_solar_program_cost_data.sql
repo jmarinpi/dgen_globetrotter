@@ -33,3 +33,7 @@ USING BTREE(year);
 CREATE INDEX solar_program_target_cost_projections_btree_scenario
 ON diffusion_solar.solar_program_target_cost_projections
 USING BTREE(scenario);
+
+
+select distinct scenario, sector
+from diffusion_solar.solar_program_target_cost_projections;
