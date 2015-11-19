@@ -2894,18 +2894,25 @@ def get_main_dataframe(con, sectors, schema, year, techs):
         if tech == 'wind':
             inputs['add_cols'] = """NULL::INTEGER as tilt, NULL::TEXT as azimuth, NULL::INTEGER as available_roof_sqft, 
                                     0::NUMERIC as inverter_cost_dollars_per_kw, 0::INTEGER as inverter_lifetime_yrs, 
-                                    'wind'::text as tech"""
+                                    'wind'::text as tech, 
+                                    COALESCE(d.installed_costs_dollars_per_kw * a.cap_cost_multiplier, 0) as installed_costs_dollars_per_kw"""
+                                    
             cost_table_join = """LEFT JOIN %(schema)s.turbine_costs_per_size_and_year d
                                              ON a.turbine_size_kw = d.turbine_size_kw
                                              AND a.year = d.year
                                              AND a.turbine_height_m = d.turbine_height_m"""
         elif tech == 'solar':
             inputs['add_cols'] = """a.tilt, a.azimuth, a.available_roof_sqft, 
-                                    d.inverter_cost_dollars_per_kw * a.cap_cost_multiplier as inverter_cost_dollars_per_kw, a.inverter_lifetime_yrs, 
-                                    'solar'::TEXT as tech"""       
+                                    d.inverter_cost_dollars_per_kw * a.cap_cost_multiplier * (1 - (g.size_adjustment_factor * (g.base_size_kw - a.system_size_kw))) as inverter_cost_dollars_per_kw, 
+                                    a.inverter_lifetime_yrs, 
+                                    'solar'::TEXT as tech,
+                                    COALESCE(d.installed_costs_dollars_per_kw * a.cap_cost_multiplier * (1 - (g.size_adjustment_factor * (g.base_size_kw - a.system_size_kw))), 0) as installed_costs_dollars_per_kw"""   
+                                    
             cost_table_join = """LEFT JOIN %(schema)s.input_solar_cost_projections_to_model d
                                              ON a.year = d.year
-                                             AND d.sector = '%(sector_abbr)s'"""
+                                             AND d.sector = '%(sector_abbr)s'
+                                LEFT JOIN %(schema)s.input_solar_cost_multipliers g
+                                             ON g.sector = '%(sector_abbr)s'"""
         for sector_abbr, sector in sectors.iteritems():
             inputs['sector_abbr'] = sector_abbr
             inputs['cost_table_join'] = cost_table_join % inputs
@@ -2923,7 +2930,6 @@ def get_main_dataframe(con, sectors, schema, year, techs):
                             -- use coalesce for wind agents with no allowable system
                             COALESCE(d.fixed_om_dollars_per_kw_per_yr, 0) as fixed_om_dollars_per_kw_per_yr, 
                             COALESCE(d.variable_om_dollars_per_kwh, 0) as variable_om_dollars_per_kwh, 
-                            COALESCE(d.installed_costs_dollars_per_kw * a.cap_cost_multiplier, 0) as installed_costs_dollars_per_kw, 
                             a.customers_in_bin, 
                             a.load_kwh_per_customer_in_bin, 
                             a.system_size_kw, 
