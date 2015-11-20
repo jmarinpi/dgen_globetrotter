@@ -83,3 +83,33 @@ FROM diffusion_shared.nem_scenario_full_everywhere;
 select count(*)
 FROM diffusion_shared.nem_scenario_none_everywhere;
 -- 11628
+
+-- update nem expiration years again
+DROP TABLE IF EXISTS diffusion_shared_nem_expirations;
+CREATE TABLE diffusion_shared_nem_expirations
+(
+	state_abbr varchar(2),
+	year integer
+);
+
+\COPY diffusion_shared_nem_expirations FROM '/Volumes/Staff/mgleason/DG_Solar/Data/Source_Data/nem_update_20151120/nem_expiration_update_2015_11_20.txt' with csv header;
+
+select *
+FROM diffusion_shared_nem_expirations a;
+
+select *
+FROM diffusion_shared.nem_scenario_bau;
+
+-- apply these to diffusion_shared.nem_scenario_bau
+UPDATE diffusion_shared.nem_scenario_bau a
+SET year = b.year
+FROM diffusion_shared_nem_expirations b
+where a.state_abbr = b.state_abbr;
+
+
+-- drop the table with the exp years
+DROP TABLE IF EXISTS diffusion_shared_nem_expirations;
+
+select distinct state_abbr, year
+from diffusion_shared.nem_scenario_bau
+order by 1;
