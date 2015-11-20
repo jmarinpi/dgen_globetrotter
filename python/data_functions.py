@@ -964,7 +964,7 @@ def cleanup_intermediate_tables(schema, sector_abbr, county_chunks, npar, pg_con
                             '%(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s' % inputs,
                             '%(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s' % inputs,
                             '%(schema)s.pt_%(sector_abbr)s_sample_all_combinations_%(i_place_holder)s' % inputs,   
-                            '%(schema)s.pt_%(sector_abbr)s_sample_load_rooftop_cities__%(i_place_holder)s' % inputs                 
+                            '%(schema)s.pt_%(sector_abbr)s_sample_load_rooftop_cities_%(i_place_holder)s' % inputs                 
                             ]
         
     sql = 'DROP TABLE IF EXISTS %s;'
