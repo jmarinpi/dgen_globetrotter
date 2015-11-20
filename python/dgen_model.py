@@ -152,7 +152,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
                 
                 try:
-                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
+#                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
                     pass
                 except Exception, e:
                     logger.error('\tLoading failed with the following error: %s\nModel Aborted' % e      )
@@ -209,6 +209,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 rate_growth_df = datfunc.get_rate_escalations(con, schema)
                 manual_incentives = datfunc.get_manual_incentives(con, schema)
                 bass_params = datfunc.get_bass_params(con, schema)
+                learning_curves_mode = datfunc.get_learning_curves_mode(con, schema)
+                datfunc.write_first_year_costs(con, cur, schema, cfg.start_year)
             logger.info('\tCompleted in: %0.1fs' % t.interval)
 
             # set model years depending on whether in reeds mode
@@ -294,6 +296,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
                 datfunc.write_last_year(con, cur, market_last_year, schema)
+                datfunc.write_cumulative_deployment(con, cur, df, schema, techs)
+#                datfunc.write_costs(con, cur, schema, learning_curves_mode, year, end_year)
     
             #==============================================================================
             #    Outputs & Visualization

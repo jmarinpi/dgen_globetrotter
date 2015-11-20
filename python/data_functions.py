@@ -224,7 +224,12 @@ def clear_outputs(con, cur, schema):
     
     sql = """DELETE FROM %(schema)s.outputs_res;
             DELETE FROM %(schema)s.outputs_com;
-            DELETE FROM %(schema)s.outputs_ind;""" % inputs
+            DELETE FROM %(schema)s.outputs_ind;
+            DELETE FROM %(schema)s.cumulative_installed_capacity_solar;            
+            DELETE FROM %(schema)s.cumulative_installed_capacity_wind;            
+            DELETE FROM %(schema)s.yearly_technology_costs_solar;
+            DELETE FROM %(schema)s.yearly_technology_costs_wind;
+            """ % inputs
     cur.execute(sql)
     con.commit()
 
@@ -2874,6 +2879,184 @@ def write_last_year(con, cur, market_last_year, schema):
     s.close()
 
 
+def write_cumulative_deployment(con, cur, df, schema, techs):
+    
+    inputs = locals().copy()    
+    
+    dfs = {}
+    if 'wind' in techs:
+        wind_df = df[df['tech'] == 'wind'][['year', 'turbine_size_kw', 'installed_capacity']].groupby(['year', 'turbine_size_kw']).sum().reset_index()
+        dfs['wind'] = wind_df
+    
+    if 'solar' in techs:
+        solar_df = df[df['tech'] == 'solar'][['year', 'installed_capacity']].groupby(['year']).sum().reset_index()
+        dfs['solar'] = solar_df
+  
+    
+    for tech, tech_df in dfs.iteritems():
+        inputs['tech'] = tech
+        # open an in memory stringIO file (like an in memory csv)
+        s = StringIO()
+        # write the data to the stringIO
+        tech_df.to_csv(s, index = False, header = False)
+        # seek back to the beginning of the stringIO file
+        s.seek(0)
+        # copy the data from the stringio file to the postgres table
+        sql = 'COPY %(schema)s.cumulative_installed_capacity_%(tech)s FROM STDOUT WITH CSV' % inputs
+        cur.copy_expert(sql, s)
+        # commit the additions and close the stringio file (clears memory)
+        con.commit()    
+        s.close()        
+
+def get_learning_curves_mode(con, schema):
+    
+    inputs = locals().copy()    
+    
+    sql = """SELECT 'wind'::TEXT as tech, learning_curves_enabled as enabled
+            FROM %(schema)s.input_cost_learning_curves_enabled_wind
+            
+            UNION ALL
+            
+            SELECT 'solar'::TEXT as tech, learning_curves_enabled as enabled
+            FROM %(schema)s.input_cost_learning_curves_enabled_solar""" % inputs
+            
+    sql = """SELECT 'wind'::TEXT as tech, TRUE as enabled
+            
+            UNION ALL
+            
+            SELECT 'solar'::TEXT as tech, TRUE as enabled";"""
+            
+    learning_curves_mode = pd.read_sql(sql, con)
+
+    return learning_curves_mode
+
+def write_first_year_costs(con, cur, schema, start_year):
+    
+    inputs = locals().copy()
+    
+    # solar
+    sql = """INSERT INTO %(schema)s.yearly_technology_costs_solar
+             SELECT a.year, a.sector_abbr, 
+                    a.inverter_cost_dollars_per_kw,
+                    a.installed_costs_dollars_per_kw,
+                    a.fixed_om_dollars_per_kw_per_yr,
+                    a.variable_om_dollars_per_kwh
+                FROM %(schema)s.input_solar_cost_projections_to_model a
+                WHERE a.year = %(start_year)s;""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
+    # wind
+    sql = """INSERT INTO %(schema)s.yearly_technology_costs_wind
+             SELECT a.year, 
+                    a.turbine_size_kw,
+                    a.turbine_height_m,
+                    a.installed_costs_dollars_per_kw,
+                    a.fixed_om_dollars_per_kw_per_yr,
+                    a.variable_om_dollars_per_kwh
+                FROM %(schema)s.turbine_costs_per_size_and_year e
+                WHERE a.year = %(start_year)s""" % inputs
+    cur.execute(sql)
+    con.commit()    
+
+def write_costs(con, cur, schema, learning_curves_mode, year, end_year):
+    
+    inputs = locals().copy()
+    inputs['prev_year'] = year - 2    
+    inputs['next_year'] = year + 2
+    
+    # do not run if in the final model year
+    if year == end_year:
+        return
+    
+    for i, row in learning_curves_mode.iterrows():
+        lc_enabled = row['enabled']
+        tech = row['tech']
+        if lc_enabled == True:
+            if tech == 'solar':
+                sql = """INSERT INTO %(schema)s.yearly_technology_costs_solar
+                        WITH a AS
+                        (
+                            SELECT a.year, a.sector_abbr, 
+                                	((c.cumulative_installed_capacity/d.cumulative_installed_capacity)/b.frac_of_global_mkt)^(ln(1-b.learning_rate)/ln(2)) as cost_scalar,
+                                a.inverter_cost_dollars_per_kw,
+                                a.installed_costs_dollars_per_kw,
+                                e.fixed_om_dollars_per_kw_per_yr,
+                                e.variable_om_dollars_per_kwh
+                            FROM %(schema)s.yearly_technology_costs_solar a
+                            LEFT JOIN %(schema)s.input_solar_cost_learning_rates b
+                                ON a.year = b.year
+                            LEFT JOIN %(schema)s.cumulative_installed_capacity_solar c
+                                ON c.year = %(year)s
+                            LEFT JOIN %(schema)s.cumulative_installed_capacity_solar d
+                                ON d.year = %(prev_year)s
+                            LEFT JOIN %(schema)s.input_solar_cost_projections_to_model e
+                                ON e.year = %(next_year)s
+                                AND e.sector = a.sector_abbr
+                            WHERE a.year = %(prev_year)s
+                        )
+                        SELECT year + 2 as year, sector_abbr,
+                            installed_costs_dollars_per_kw * cost_sclar as installed_costs_dollars_per_kw,
+                            inverter_cost_dollars_per_kw * cost_scalar as inverter_cost_dollars_per_kw,
+                            fixed_om_dollars_per_kw_per_yr,
+                            variable_om_dollars_per_kwh""" % inputs
+            elif tech == 'wind':
+                sql = """INSERT INTO %(schema)s.yearly_technology_costs_wind
+                        WITH a AS
+                        (
+                            SELECT a.year, a.turbine_size_kw, a.turbine_height_m, 
+                                	((c.cumulative_installed_capacity/d.cumulative_installed_capacity)/b.frac_of_global_mkt)^(ln(1-b.learning_rate)/ln(2)) as cost_scalar,
+                                a.installed_costs_dollars_per_kw,
+                                e.fixed_om_dollars_per_kw_per_yr,
+                                e.variable_om_dollars_per_kwh
+                            FROM %(schema)s.yearly_technology_costs_wind a
+                            LEFT JOIN %(schema)s.input_wind_cost_learning_rates b
+                                ON a.year = b.year
+                                AND a.turbine_size_kw = b.turbine_size_kw
+                            LEFT JOIN %(schema)s.cumulative_installed_capacity_wind c
+                                ON c.year = %(year)s
+                                AND a.turbine_size_kw = c.turbine_size_kw
+                            LEFT JOIN %(schema)s.cumulative_installed_capacity_wind d
+                                ON d.year = %(prev_year)s
+                                AND a.turbine_size_kw = d.turbine_size_kw
+                            LEFT JOIN %(schema)s.turbine_costs_per_size_and_year e
+                                ON a.year = %(next_year)s
+                                AND a.turbine_size_kw = e.turbine_size_kw
+                                AND a.turbine_height_m = e.turbine_height_m
+                            WHERE a.year = %(prev_year)s
+                        )
+                        SELECT year + 2 as year, turbine_size_kw, turbine_height_m,
+                            installed_costs_dollars_per_kw * cost_sclar as installed_costs_dollars_per_kw,
+                            fixed_om_dollars_per_kw_per_yr,
+                            variable_om_dollars_per_kwh""" % inputs
+        else:
+            if tech == 'solar':
+                sql = """INSERT INTO %(schema)s.yearly_technology_costs_solar
+                         SELECT a.year, a.sector_abbr, 
+                                a.inverter_cost_dollars_per_kw,
+                                a.installed_costs_dollars_per_kw,
+                                a.fixed_om_dollars_per_kw_per_yr,
+                                a.variable_om_dollars_per_kwh
+                            FROM %(schema)s.input_solar_cost_projections_to_model a
+                            WHERE a.year = %(next_year)s
+                        """ % inputs
+            elif tech == 'wind':
+                sql = """INSERT INTO %(schema)s.yearly_technology_costs_wind
+                         SELECT a.year, 
+                                a.turbine_size_kw,
+                                a.turbine_height_m,
+                                a.installed_costs_dollars_per_kw,
+                                a.fixed_om_dollars_per_kw_per_yr,
+                                a.variable_om_dollars_per_kwh
+                            FROM %(schema)s.turbine_costs_per_size_and_year e
+                            WHERE a.year = %(next_year)s
+                        """ % inputs     
+        cur.execute(sql)
+        con.commit()
+                
+
+               
+
 def get_main_dataframe(con, sectors, schema, year, techs):
     ''' Pull main pre-processed dataframe from dB
     
@@ -2894,11 +3077,11 @@ def get_main_dataframe(con, sectors, schema, year, techs):
         if tech == 'wind':
             inputs['add_cols'] = """NULL::INTEGER as tilt, NULL::TEXT as azimuth, NULL::INTEGER as available_roof_sqft, 
                                     0::NUMERIC as inverter_cost_dollars_per_kw, 0::INTEGER as inverter_lifetime_yrs, 
-                                    turbine_size_kw,
+                                    a.turbine_size_kw,
                                     'wind'::text as tech, 
                                     COALESCE(d.installed_costs_dollars_per_kw * a.cap_cost_multiplier, 0) as installed_costs_dollars_per_kw"""
                                     
-            cost_table_join = """LEFT JOIN %(schema)s.turbine_costs_per_size_and_year d
+            cost_table_join = """LEFT JOIN %(schema)s.yearly_technology_costs_wind d
                                              ON a.turbine_size_kw = d.turbine_size_kw
                                              AND a.year = d.year
                                              AND a.turbine_height_m = d.turbine_height_m"""
@@ -2906,11 +3089,11 @@ def get_main_dataframe(con, sectors, schema, year, techs):
             inputs['add_cols'] = """a.tilt, a.azimuth, a.available_roof_sqft, 
                                     d.inverter_cost_dollars_per_kw * a.cap_cost_multiplier * (1 - (g.size_adjustment_factor * (g.base_size_kw - a.system_size_kw))) as inverter_cost_dollars_per_kw, 
                                     a.inverter_lifetime_yrs, 
-                                    NULL:NUMERIC as turbine_size_kw,
+                                    NULL::NUMERIC as turbine_size_kw,
                                     'solar'::TEXT as tech,
                                     COALESCE(d.installed_costs_dollars_per_kw * a.cap_cost_multiplier * (1 - (g.size_adjustment_factor * (g.base_size_kw - a.system_size_kw))), 0) as installed_costs_dollars_per_kw"""   
                                     
-            cost_table_join = """LEFT JOIN %(schema)s.input_solar_cost_projections_to_model d
+            cost_table_join = """LEFT JOIN %(schema)s.yearly_technology_costs_wind d
                                              ON a.year = d.year
                                              AND d.sector = '%(sector_abbr)s'
                                 LEFT JOIN %(schema)s.input_solar_cost_multipliers g
