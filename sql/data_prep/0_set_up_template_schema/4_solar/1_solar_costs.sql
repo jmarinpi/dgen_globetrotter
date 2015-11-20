@@ -135,6 +135,13 @@ CREATE TABLE diffusion_template.input_solar_cost_multipliers
 
 
 ------------------------------------------------------------------------------------ 
+-- learning rates on/off
+DROP TABLE IF EXISTS diffusion_template.input_cost_learning_curves_enabled_solar;
+CREATE TABLE diffusion_template.input_cost_learning_curves_enabled_solar
+(
+	enabled boolean not null
+);
+
 -- learning curves
 DROP TABLE IF EXISTS diffusion_template.input_solar_cost_learning_rates;
 CREATE TABLE diffusion_template.input_solar_cost_learning_rates

@@ -123,9 +123,9 @@ delete_output_schema = False
 # Refer to https://github.nrel.gov/dg-wind/diffusion/blob/dev_misc/docs/existing_schema_inputs.csv
 # to determine whether this is a safe setting  for your scenario analysis.
 #==============================================================================
-use_existing_schema = True
+use_existing_schema = False
 # change this to the schema with existing agents/bill savings that you want to use
-existing_schema_name = 'diffusion_results_2015_11_19_14h51m55s'
+existing_schema_name = 'diffusion_results_2015_11_20_08h40m52s'
 
 #==============================================================================
 #  Should initial market shared be assigned proportional to 2014 economics?

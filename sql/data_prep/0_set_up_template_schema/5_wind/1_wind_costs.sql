@@ -217,6 +217,13 @@ LEFT JOIN diffusion_template.input_wind_cost_projections b  --this join will rep
 ON a.turbine_size_kw = b.turbine_size_kw;
 
 ------------------------------------------------------------------------------------
+-- learning rates on/off
+DROP TABLE IF EXISTS diffusion_template.input_cost_learning_curves_enabled_wind;
+CREATE TABLE diffusion_template.input_cost_learning_curves_enabled_wind
+(
+	enabled boolean not null
+);
+
 -- learning curves
 DROP TABLE IF EXISTS diffusion_template.input_wind_cost_learning_rates;
 CREATE TABLE diffusion_template.input_wind_cost_learning_rates

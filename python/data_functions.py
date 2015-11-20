@@ -2944,19 +2944,13 @@ def get_learning_curves_mode(con, schema):
     
     inputs = locals().copy()    
     
-#    sql = """SELECT 'wind'::TEXT as tech, learning_curves_enabled as enabled
-#            FROM %(schema)s.input_cost_learning_curves_enabled_wind
-#            
-#            UNION ALL
-#            
-#            SELECT 'solar'::TEXT as tech, learning_curves_enabled as enabled
-#            FROM %(schema)s.input_cost_learning_curves_enabled_solar""" % inputs
-#            
-    sql = """SELECT 'wind'::TEXT as tech, TRUE as enabled
+    sql = """SELECT 'wind'::TEXT as tech, enabled
+            FROM %(schema)s.input_cost_learning_curves_enabled_wind
             
             UNION ALL
             
-            SELECT 'solar'::TEXT as tech, TRUE as enabled;"""
+            SELECT 'solar'::TEXT as tech, enabled
+            FROM %(schema)s.input_cost_learning_curves_enabled_solar""" % inputs
             
     learning_curves_mode = pd.read_sql(sql, con)
 
