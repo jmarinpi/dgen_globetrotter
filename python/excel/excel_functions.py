@@ -11,7 +11,7 @@ import sys
 import os
 from excel_objects import FancyNamedRange, ExcelError
 import pandas as pd
-import decorators
+#import decorators
 
 
 path = os.path.dirname(os.path.abspath(__file__))
@@ -59,7 +59,7 @@ def load_scenario(xls_file, schema, conn = None, test = False):
             fnr = FancyNamedRange(wb, range_name)
             if transpose == True:
                 fnr.__transpose_values__()
-            elif melt == True:
+            if melt == True:
                 fnr.__melt__()
             fnr.to_postgres(conn, cur, schema, table)
 
@@ -74,5 +74,5 @@ def load_scenario(xls_file, schema, conn = None, test = False):
 
 if __name__ == '__main__':
     input_xls = '../../excel/scenario_inputs.xlsm'
-    load_scenario(input_xls, schema = 'diffusion_results_2015_11_11_12h15m07s',  test = True)
+    load_scenario(input_xls, schema = 'diffusion_results_2015_11_19_14h51m55s',  test = True)
     

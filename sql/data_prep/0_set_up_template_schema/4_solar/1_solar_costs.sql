@@ -62,7 +62,7 @@ CREATE TABLE diffusion_template.input_solar_cost_learning_rates
 (
 	year integer NOT NULL,
 	learning_rate numeric NOT NULL,
-	us_frac_of_global_mkt numeric NOT NULL,
+	frac_of_global_mkt numeric NOT NULL,
 	CONSTRAINT input_solar_cost_learning_rates_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT

@@ -215,3 +215,27 @@ CREATE OR REPLACE VIEW diffusion_template.turbine_costs_per_size_and_year AS
 FROM diffusion_wind.allowable_turbine_sizes a
 LEFT JOIN diffusion_template.input_wind_cost_projections b  --this join will repeat the cost projections for each turbine height associated with each size
 ON a.turbine_size_kw = b.turbine_size_kw;
+
+
+-- learning curves
+DROP TABLE IF EXISTS diffusion_template.input_wind_cost_learning_rates;
+CREATE TABLE diffusion_template.input_wind_cost_learning_rates
+(
+	year integer NOT NULL,
+	system_size_kw numeric not null,
+	learning_rate numeric NOT NULL,
+	CONSTRAINT input_wind_cost_learning_rates_year_fkey FOREIGN KEY (year)
+		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
+		ON UPDATE NO ACTION ON DELETE RESTRICT
+);
+
+
+DROP TABLE IF EXISTS diffusion_template.input_wind_cost_global_fraction;
+CREATE TABLE diffusion_template.input_wind_cost_global_fraction
+(
+	year integer NOT NULL,
+	frac_of_global_mkt numeric not null,
+	CONSTRAINT input_wind_cost_global_fraction_year_fkey FOREIGN KEY (year)
+		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
+		ON UPDATE NO ACTION ON DELETE RESTRICT
+);
