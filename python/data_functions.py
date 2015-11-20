@@ -2894,6 +2894,7 @@ def get_main_dataframe(con, sectors, schema, year, techs):
         if tech == 'wind':
             inputs['add_cols'] = """NULL::INTEGER as tilt, NULL::TEXT as azimuth, NULL::INTEGER as available_roof_sqft, 
                                     0::NUMERIC as inverter_cost_dollars_per_kw, 0::INTEGER as inverter_lifetime_yrs, 
+                                    turbine_size_kw,
                                     'wind'::text as tech, 
                                     COALESCE(d.installed_costs_dollars_per_kw * a.cap_cost_multiplier, 0) as installed_costs_dollars_per_kw"""
                                     
@@ -2905,6 +2906,7 @@ def get_main_dataframe(con, sectors, schema, year, techs):
             inputs['add_cols'] = """a.tilt, a.azimuth, a.available_roof_sqft, 
                                     d.inverter_cost_dollars_per_kw * a.cap_cost_multiplier * (1 - (g.size_adjustment_factor * (g.base_size_kw - a.system_size_kw))) as inverter_cost_dollars_per_kw, 
                                     a.inverter_lifetime_yrs, 
+                                    NULL:NUMERIC as turbine_size_kw,
                                     'solar'::TEXT as tech,
                                     COALESCE(d.installed_costs_dollars_per_kw * a.cap_cost_multiplier * (1 - (g.size_adjustment_factor * (g.base_size_kw - a.system_size_kw))), 0) as installed_costs_dollars_per_kw"""   
                                     

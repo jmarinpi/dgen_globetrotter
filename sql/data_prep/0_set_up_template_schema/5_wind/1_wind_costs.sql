@@ -216,26 +216,95 @@ FROM diffusion_wind.allowable_turbine_sizes a
 LEFT JOIN diffusion_template.input_wind_cost_projections b  --this join will repeat the cost projections for each turbine height associated with each size
 ON a.turbine_size_kw = b.turbine_size_kw;
 
-
+------------------------------------------------------------------------------------
 -- learning curves
 DROP TABLE IF EXISTS diffusion_template.input_wind_cost_learning_rates;
 CREATE TABLE diffusion_template.input_wind_cost_learning_rates
 (
 	year integer NOT NULL,
-	system_size_kw numeric not null,
+	turbine_size_kw numeric not null,
 	learning_rate numeric NOT NULL,
 	CONSTRAINT input_wind_cost_learning_rates_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
 );
+-- add primary key
+ALTER TABLE diffusion_template.input_wind_cost_learning_rates
+ADD PRIMARY KEY (year, turbine_size_kw);
 
 
 DROP TABLE IF EXISTS diffusion_template.input_wind_cost_global_fraction;
-CREATE TABLE diffusion_template.input_wind_cost_global_fraction
+CREATE TABLE  diffusion_template.input_wind_cost_global_fraction
 (
-	year integer NOT NULL,
+	year integer NOT NULL primary key,
 	frac_of_global_mkt numeric not null,
 	CONSTRAINT input_wind_cost_global_fraction_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
 );
+
+-- table to hold cumulative installed capacity (for learning curves)
+DROP TABLE IF EXISTS diffusion_template.cumulative_installed_capacity_wind;
+CREATE TABLE diffusion_template.cumulative_installed_capacity_wind
+(
+	year integer,
+	turbine_size_kw numeric,
+	cumulative_installed_capacity numeric
+-- add primary key
+ALTER TABLE diffusion_template.cost_and_cumulative_installed_capacity_wind
+ADD PRIMARY KEY (year, turbine_size_kw);
+-- add an index on year
+CREATE INDEX cost_and_cumulative_installed_capacity_wind_year_btree
+on diffusion_template.cost_and_cumulative_installed_capacity_wind
+USING BTREE(year);
+
+
+DROP TABLE IF EXISTS diffusion_template.previous_lr_costs_wind;
+CREATE TABLE diffusion_template.previous_lr_costs_wind
+(
+	year integer,
+	turbine_size_kw numeric,
+	turbine_height_m integer,
+	installed_costs_dollars_per_kw NUMERIC--,
+	--inverter_cost_dollars_per_kw NUMERIC
+);
+-- add primary key
+ALTER TABLE diffusion_template.previous_lr_costs_wind
+ADD PRIMARY KEY (year, turbine_size_kw, turbine_height_m);
+-- add an index on year
+CREATE INDEX previous_lr_costs_wind_year_btree
+on diffusion_template.previous_lr_costs_wind
+USING BTREE(year);
+
+
+DROP VIEW IF EXISTS diffusion_template.learning_curve_costs_wind;
+CREATE VIEW diffusion_template.learning_curve_costs_wind AS
+with a as
+(
+	SELECT a.year, a.turbine_size_kw, e.turbine_height_m,
+		((c.cumulative_installed_capacity/d.cumulative_installed_capacity)/b.frac_of_global_mkt)^(ln(1-a.learning_rate)/ln(2)) as cost_scalar,
+		e.installed_costs_dollars_per_kw--,
+		--e.inverter_cost_dollars_per_kw
+	FROM diffusion_template.input_wind_cost_learning_rates a
+	LEFT JOIN diffusion_template.input_wind_cost_global_fraction b
+		ON a.year = b.year
+	LEFT JOIN diffusion_template.cost_and_cumulative_installed_capacity_wind c
+		ON a.year = c.year
+		and a.turbine_size_kw = c.turbine_size_kw
+	LEFT JOIN diffusion_template.cost_and_cumulative_installed_capacity_wind d
+		ON a.year = d.year - 2
+		and a.turbine_size_kw = d.turbine_size_kw
+	LEFT JOIN diffusion_template.previous_lr_costs_wind e
+		ON a.year = e.year
+		and a.turbine_size_kw = e.turbine_size_kw
+)
+select a.year + 2 as year, a.turbine_size_kw,
+	cost_scalar * installed_costs_dollars_per_kw as installed_costs_dollars_per_kw--,
+	--cost_scalar * inverter_cost_dollars_per_kw as inverter_cost_dollars_per_kw
+from a;
+
+-- python components:
+-- write starting capacity and costs for first year to learning_curve_cost_scalars_wind
+-- write costs and starting capacity for each year to 
+
+

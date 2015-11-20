@@ -57,18 +57,6 @@ SELECT *, 'ind'::character varying(3) as sector_abbr
 FROM diffusion_template.input_solar_cost_projections_ind;
 
 
-DROP TABLE IF EXISTS diffusion_template.input_solar_cost_learning_rates;
-CREATE TABLE diffusion_template.input_solar_cost_learning_rates
-(
-	year integer NOT NULL,
-	learning_rate numeric NOT NULL,
-	frac_of_global_mkt numeric NOT NULL,
-	CONSTRAINT input_solar_cost_learning_rates_year_fkey FOREIGN KEY (year)
-		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
-		ON UPDATE NO ACTION ON DELETE RESTRICT
-);
-
-
 DROP TABLE IF EXISTS diffusion_template.input_solar_cost_assumptions;
 CREATE TABLE diffusion_template.input_solar_cost_assumptions
 (
@@ -146,3 +134,61 @@ CREATE TABLE diffusion_template.input_solar_cost_multipliers
 );
 
 
+------------------------------------------------------------------------------------ 
+-- learning curves
+DROP TABLE IF EXISTS diffusion_template.input_solar_cost_learning_rates;
+CREATE TABLE diffusion_template.input_solar_cost_learning_rates
+(
+	year integer NOT NULL primary key,
+	learning_rate numeric NOT NULL,
+	frac_of_global_mkt numeric NOT NULL,
+	CONSTRAINT input_solar_cost_learning_rates_year_fkey FOREIGN KEY (year)
+		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
+		ON UPDATE NO ACTION ON DELETE RESTRICT
+);
+
+DROP TABLE IF EXISTS diffusion_template.cost_and_cumulative_installed_capacity_solar;
+CREATE TABLE diffusion_template.cost_and_cumulative_installed_capacity_solar
+(
+	year integer,
+	cumulative_installed_capacity numeric
+);
+-- add primary key
+ALTER TABLE diffusion_template.cost_and_cumulative_installed_capacity_solar
+ADD PRIMARY KEY (year);
+
+
+DROP TABLE IF EXISTS diffusion_template.previous_costs_solar;
+CREATE TABLE diffusion_template.previous_costs_solar
+(
+	year integer,
+	sector_abbr character varying(3),
+	installed_costs_dollars_per_kw NUMERIC,
+	inverter_cost_dollars_per_kw NUMERIC
+);
+-- add primary key
+ALTER TABLE diffusion_template.previous_costs_solar
+ADD PRIMARY KEY (year, sector_abbr);
+
+
+DROP VIEW IF EXISTS diffusion_template.learning_curve_costs_solar;
+CREATE VIEW diffusion_template.learning_curve_costs_solar AS
+with a as
+(
+	SELECT a.year, b.sector_abbr,
+		((c.cumulative_installed_capacity/d.cumulative_installed_capacity)/a.frac_of_global_mkt)^(ln(1-a.learning_rate)/ln(2)) as cost_scalar,
+		b.installed_costs_dollars_per_kw,
+		b.inverter_cost_dollars_per_kw
+	FROM diffusion_template.input_solar_cost_learning_rates a
+	LEFT JOIN diffusion_template.previous_costs_solar b
+		ON a.year = b.year
+	LEFT JOIN diffusion_template.cumulative_installed_capacity_solar c
+		ON a.year = c.year
+	LEFT JOIN diffusion_template.cumulative_installed_capacity_solar d
+		ON a.year = d.year - 2
+)
+select a.year + 2 as year,
+	b.sector_abbr,
+	cost_scalar * installed_costs_dollars_per_kw as installed_costs_dollars_per_kw,
+	cost_scalar * inverter_cost_dollars_per_kw as inverter_cost_dollars_per_kw
+from a;

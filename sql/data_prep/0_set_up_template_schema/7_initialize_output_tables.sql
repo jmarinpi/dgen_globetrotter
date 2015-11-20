@@ -191,3 +191,9 @@ CREATE TABLE diffusion_template.output_market_last_year
 	tech text,
 	sector_abbr character varying(3)
 );
+
+
+------------------------------------------------------------------------------------------------------------
+
+
+
