@@ -296,7 +296,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
                 datfunc.write_last_year(con, cur, market_last_year, schema)
-                datfunc.write_cumulative_deployment(con, cur, df, schema, techs)
+                datfunc.write_cumulative_deployment(con, cur, df, schema, techs, year, cfg.start_year)
                 datfunc.write_costs(con, cur, schema, learning_curves_mode, year, end_year)
     
             #==============================================================================

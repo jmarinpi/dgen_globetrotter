@@ -2879,7 +2879,7 @@ def write_last_year(con, cur, market_last_year, schema):
     s.close()
 
 
-def write_cumulative_deployment(con, cur, df, schema, techs):
+def write_cumulative_deployment(con, cur, df, schema, techs, year, start_year):
     
     inputs = locals().copy()    
     
@@ -2906,7 +2906,39 @@ def write_cumulative_deployment(con, cur, df, schema, techs):
         cur.copy_expert(sql, s)
         # commit the additions and close the stringio file (clears memory)
         con.commit()    
-        s.close()        
+        s.close()     
+        
+    if year == start_year:
+        dfs = {}
+        if 'wind' in techs:
+            wind_df = df[df['tech'] == 'wind'][['year', 'turbine_size_kw', 'installed_capacity_last_year']].groupby(['year', 'turbine_size_kw']).sum().reset_index()
+            wind_df['year'] = start_year - 2
+            dfs['wind'] = wind_df
+        
+        if 'solar' in techs:
+            solar_df = df[df['tech'] == 'solar'][['year', 'installed_capacity_last_year']].groupby(['year']).sum().reset_index()
+            solar_df['year'] = start_year - 2
+            dfs['solar'] = solar_df
+            
+        for tech, tech_df in dfs.iteritems():
+            inputs['tech'] = tech
+            # open an in memory stringIO file (like an in memory csv)
+            s = StringIO()
+            # write the data to the stringIO
+            tech_df.to_csv(s, index = False, header = False)
+            # seek back to the beginning of the stringIO file
+            s.seek(0)
+            # copy the data from the stringio file to the postgres table
+            sql = 'COPY %(schema)s.cumulative_installed_capacity_%(tech)s FROM STDOUT WITH CSV' % inputs
+            cur.copy_expert(sql, s)
+            # commit the additions and close the stringio file (clears memory)
+            con.commit()    
+            s.close()     
+            
+            
+            
+        
+        
 
 def get_learning_curves_mode(con, schema):
     
@@ -3001,7 +3033,6 @@ def write_costs(con, cur, schema, learning_curves_mode, year, end_year):
                             fixed_om_dollars_per_kw_per_yr,
                             variable_om_dollars_per_kwh
                         FROM a""" % inputs
-                print sql
             elif tech == 'wind':
                 sql = """INSERT INTO %(schema)s.yearly_technology_costs_wind
                         WITH a AS
@@ -3024,7 +3055,7 @@ def write_costs(con, cur, schema, learning_curves_mode, year, end_year):
                                 ON d.year = %(prev_year)s
                                 AND a.turbine_size_kw = d.turbine_size_kw
                             LEFT JOIN %(schema)s.turbine_costs_per_size_and_year e
-                                ON a.year = %(next_year)s
+                                ON e.year = %(next_year)s
                                 AND a.turbine_size_kw = e.turbine_size_kw
                                 AND a.turbine_height_m = e.turbine_height_m
                             WHERE a.year = %(year)s
@@ -3034,7 +3065,6 @@ def write_costs(con, cur, schema, learning_curves_mode, year, end_year):
                             fixed_om_dollars_per_kw_per_yr,
                             variable_om_dollars_per_kwh
                         FROM a""" % inputs
-                print sql
         else:
             if tech == 'solar':
                 sql = """INSERT INTO %(schema)s.yearly_technology_costs_solar
