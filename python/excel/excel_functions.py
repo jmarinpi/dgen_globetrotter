@@ -11,7 +11,7 @@ import sys
 import os
 from excel_objects import FancyNamedRange, ExcelError
 import pandas as pd
-#import decorators
+import decorators
 
 
 path = os.path.dirname(os.path.abspath(__file__))
