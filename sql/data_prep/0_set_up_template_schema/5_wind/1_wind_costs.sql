@@ -259,17 +259,18 @@ CREATE INDEX cumulative_installed_capacity_wind_year_btree
 on diffusion_template.cumulative_installed_capacity_wind
 USING BTREE(year);
 
+set role 'diffusion-writers';
 -- table to hold annual costs (will be updated to allow for dynamic learning curves)
 DROP TABLE IF EXISTS diffusion_template.yearly_technology_costs_wind;
-CREATE TABLE diffusion_template.year_technology_costs_wind
+CREATE TABLE diffusion_template.yearly_technology_costs_wind
 (
 	year integer,
-	turbine_size kw numeric,
+	turbine_size_kw numeric,
 	turbine_height_m integer,
 	installed_costs_dollars_per_kw numeric,
 	fixed_om_dollars_per_kw_per_yr numeric,
 	variable_om_dollars_per_kwh numeric
 );
-ALTER TABLE diffusion_template.year_technology_costs_wind
+ALTER TABLE diffusion_template.yearly_technology_costs_wind
 ADD PRIMARY KEY (year, turbine_size_kw, turbine_height_m);
 
