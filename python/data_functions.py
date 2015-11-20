@@ -2920,11 +2920,11 @@ def get_learning_curves_mode(con, schema):
 #            SELECT 'solar'::TEXT as tech, learning_curves_enabled as enabled
 #            FROM %(schema)s.input_cost_learning_curves_enabled_solar""" % inputs
 #            
-    sql = """SELECT 'wind'::TEXT as tech, FALSE as enabled
+    sql = """SELECT 'wind'::TEXT as tech, TRUE as enabled
             
             UNION ALL
             
-            SELECT 'solar'::TEXT as tech, FALSE as enabled;"""
+            SELECT 'solar'::TEXT as tech, TRUE as enabled;"""
             
     learning_curves_mode = pd.read_sql(sql, con)
 
@@ -2985,7 +2985,7 @@ def write_costs(con, cur, schema, learning_curves_mode, year, end_year):
                                 e.variable_om_dollars_per_kwh
                             FROM %(schema)s.yearly_technology_costs_solar a
                             LEFT JOIN %(schema)s.input_solar_cost_learning_rates b
-                                ON a.year = b.year
+                                ON b.year = %(year)s
                             LEFT JOIN %(schema)s.cumulative_installed_capacity_solar c
                                 ON c.year = %(year)s
                             LEFT JOIN %(schema)s.cumulative_installed_capacity_solar d
@@ -2993,26 +2993,30 @@ def write_costs(con, cur, schema, learning_curves_mode, year, end_year):
                             LEFT JOIN %(schema)s.input_solar_cost_projections_to_model e
                                 ON e.year = %(next_year)s
                                 AND e.sector = a.sector_abbr
-                            WHERE a.year = %(prev_year)s
+                            WHERE a.year = %(year)s
                         )
                         SELECT year + 2 as year, sector_abbr,
-                            installed_costs_dollars_per_kw * cost_sclar as installed_costs_dollars_per_kw,
+                            installed_costs_dollars_per_kw * cost_scalar as installed_costs_dollars_per_kw,
                             inverter_cost_dollars_per_kw * cost_scalar as inverter_cost_dollars_per_kw,
                             fixed_om_dollars_per_kw_per_yr,
-                            variable_om_dollars_per_kwh""" % inputs
+                            variable_om_dollars_per_kwh
+                        FROM a""" % inputs
+                        print sql
             elif tech == 'wind':
                 sql = """INSERT INTO %(schema)s.yearly_technology_costs_wind
                         WITH a AS
                         (
                             SELECT a.year, a.turbine_size_kw, a.turbine_height_m, 
-                                	((c.cumulative_installed_capacity/d.cumulative_installed_capacity)/b.frac_of_global_mkt)^(ln(1-b.learning_rate)/ln(2)) as cost_scalar,
+                                	((c.cumulative_installed_capacity/d.cumulative_installed_capacity)/f.frac_of_global_mkt)^(ln(1-b.learning_rate)/ln(2)) as cost_scalar,
                                 a.installed_costs_dollars_per_kw,
                                 e.fixed_om_dollars_per_kw_per_yr,
                                 e.variable_om_dollars_per_kwh
                             FROM %(schema)s.yearly_technology_costs_wind a
                             LEFT JOIN %(schema)s.input_wind_cost_learning_rates b
-                                ON a.year = b.year
+                                ON b.year = %(year)s
                                 AND a.turbine_size_kw = b.turbine_size_kw
+                            LEFT JOIN %(schema)s.input_wind_cost_global_fraction f
+                                ON f.year = %(year)s
                             LEFT JOIN %(schema)s.cumulative_installed_capacity_wind c
                                 ON c.year = %(year)s
                                 AND a.turbine_size_kw = c.turbine_size_kw
@@ -3023,12 +3027,14 @@ def write_costs(con, cur, schema, learning_curves_mode, year, end_year):
                                 ON a.year = %(next_year)s
                                 AND a.turbine_size_kw = e.turbine_size_kw
                                 AND a.turbine_height_m = e.turbine_height_m
-                            WHERE a.year = %(prev_year)s
+                            WHERE a.year = %(year)s
                         )
                         SELECT year + 2 as year, turbine_size_kw, turbine_height_m,
-                            installed_costs_dollars_per_kw * cost_sclar as installed_costs_dollars_per_kw,
+                            installed_costs_dollars_per_kw * cost_scalar as installed_costs_dollars_per_kw,
                             fixed_om_dollars_per_kw_per_yr,
-                            variable_om_dollars_per_kwh""" % inputs
+                            variable_om_dollars_per_kwh
+                        FROM a""" % inputs
+                        print sql
         else:
             if tech == 'solar':
                 sql = """INSERT INTO %(schema)s.yearly_technology_costs_solar
