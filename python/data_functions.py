@@ -3001,7 +3001,7 @@ def write_costs(con, cur, schema, learning_curves_mode, year, end_year):
                             fixed_om_dollars_per_kw_per_yr,
                             variable_om_dollars_per_kwh
                         FROM a""" % inputs
-                        print sql
+                print sql
             elif tech == 'wind':
                 sql = """INSERT INTO %(schema)s.yearly_technology_costs_wind
                         WITH a AS
@@ -3034,7 +3034,7 @@ def write_costs(con, cur, schema, learning_curves_mode, year, end_year):
                             fixed_om_dollars_per_kw_per_yr,
                             variable_om_dollars_per_kwh
                         FROM a""" % inputs
-                        print sql
+                print sql
         else:
             if tech == 'solar':
                 sql = """INSERT INTO %(schema)s.yearly_technology_costs_solar
