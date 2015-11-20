@@ -2912,19 +2912,19 @@ def get_learning_curves_mode(con, schema):
     
     inputs = locals().copy()    
     
-    sql = """SELECT 'wind'::TEXT as tech, learning_curves_enabled as enabled
-            FROM %(schema)s.input_cost_learning_curves_enabled_wind
+#    sql = """SELECT 'wind'::TEXT as tech, learning_curves_enabled as enabled
+#            FROM %(schema)s.input_cost_learning_curves_enabled_wind
+#            
+#            UNION ALL
+#            
+#            SELECT 'solar'::TEXT as tech, learning_curves_enabled as enabled
+#            FROM %(schema)s.input_cost_learning_curves_enabled_solar""" % inputs
+#            
+    sql = """SELECT 'wind'::TEXT as tech, FALSE as enabled
             
             UNION ALL
             
-            SELECT 'solar'::TEXT as tech, learning_curves_enabled as enabled
-            FROM %(schema)s.input_cost_learning_curves_enabled_solar""" % inputs
-            
-    sql = """SELECT 'wind'::TEXT as tech, TRUE as enabled
-            
-            UNION ALL
-            
-            SELECT 'solar'::TEXT as tech, TRUE as enabled";"""
+            SELECT 'solar'::TEXT as tech, FALSE as enabled;"""
             
     learning_curves_mode = pd.read_sql(sql, con)
 
@@ -2936,9 +2936,9 @@ def write_first_year_costs(con, cur, schema, start_year):
     
     # solar
     sql = """INSERT INTO %(schema)s.yearly_technology_costs_solar
-             SELECT a.year, a.sector_abbr, 
-                    a.inverter_cost_dollars_per_kw,
+             SELECT a.year, a.sector as sector_abbr, 
                     a.installed_costs_dollars_per_kw,
+                    a.inverter_cost_dollars_per_kw,
                     a.fixed_om_dollars_per_kw_per_yr,
                     a.variable_om_dollars_per_kwh
                 FROM %(schema)s.input_solar_cost_projections_to_model a
@@ -2954,7 +2954,7 @@ def write_first_year_costs(con, cur, schema, start_year):
                     a.installed_costs_dollars_per_kw,
                     a.fixed_om_dollars_per_kw_per_yr,
                     a.variable_om_dollars_per_kwh
-                FROM %(schema)s.turbine_costs_per_size_and_year e
+                FROM %(schema)s.turbine_costs_per_size_and_year a
                 WHERE a.year = %(start_year)s""" % inputs
     cur.execute(sql)
     con.commit()    
@@ -3032,9 +3032,9 @@ def write_costs(con, cur, schema, learning_curves_mode, year, end_year):
         else:
             if tech == 'solar':
                 sql = """INSERT INTO %(schema)s.yearly_technology_costs_solar
-                         SELECT a.year, a.sector_abbr, 
-                                a.inverter_cost_dollars_per_kw,
+                         SELECT a.year, a.sector as sector_abbr, 
                                 a.installed_costs_dollars_per_kw,
+                                a.inverter_cost_dollars_per_kw,
                                 a.fixed_om_dollars_per_kw_per_yr,
                                 a.variable_om_dollars_per_kwh
                             FROM %(schema)s.input_solar_cost_projections_to_model a
@@ -3048,7 +3048,7 @@ def write_costs(con, cur, schema, learning_curves_mode, year, end_year):
                                 a.installed_costs_dollars_per_kw,
                                 a.fixed_om_dollars_per_kw_per_yr,
                                 a.variable_om_dollars_per_kwh
-                            FROM %(schema)s.turbine_costs_per_size_and_year e
+                            FROM %(schema)s.turbine_costs_per_size_and_year a
                             WHERE a.year = %(next_year)s
                         """ % inputs     
         cur.execute(sql)
@@ -3093,9 +3093,9 @@ def get_main_dataframe(con, sectors, schema, year, techs):
                                     'solar'::TEXT as tech,
                                     COALESCE(d.installed_costs_dollars_per_kw * a.cap_cost_multiplier * (1 - (g.size_adjustment_factor * (g.base_size_kw - a.system_size_kw))), 0) as installed_costs_dollars_per_kw"""   
                                     
-            cost_table_join = """LEFT JOIN %(schema)s.yearly_technology_costs_wind d
+            cost_table_join = """LEFT JOIN %(schema)s.yearly_technology_costs_solar d
                                              ON a.year = d.year
-                                             AND d.sector = '%(sector_abbr)s'
+                                             AND d.sector_abbr = '%(sector_abbr)s'
                                 LEFT JOIN %(schema)s.input_solar_cost_multipliers g
                                              ON g.sector = '%(sector_abbr)s'"""
         for sector_abbr, sector in sectors.iteritems():

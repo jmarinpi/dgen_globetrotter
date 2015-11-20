@@ -152,7 +152,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
                 
                 try:
-#                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
+                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
                     pass
                 except Exception, e:
                     logger.error('\tLoading failed with the following error: %s\nModel Aborted' % e      )
@@ -297,7 +297,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
                 datfunc.write_last_year(con, cur, market_last_year, schema)
                 datfunc.write_cumulative_deployment(con, cur, df, schema, techs)
-#                datfunc.write_costs(con, cur, schema, learning_curves_mode, year, end_year)
+                datfunc.write_costs(con, cur, schema, learning_curves_mode, year, end_year)
     
             #==============================================================================
             #    Outputs & Visualization
