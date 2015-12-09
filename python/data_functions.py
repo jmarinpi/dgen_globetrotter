@@ -1684,6 +1684,12 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
           FROM combined;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     
+    # add primary key on county_id, bin_id, and year
+    sql = """ALTER TABLE %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
+                 ADD PRIMARY KEY (county_id, bin_id, year);""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
     # create indices
     sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_join_fields_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
@@ -1809,6 +1815,13 @@ def create_nem_scenario(cur, con, schema):
              CREATE TABLE %(schema)s.input_main_nem_scenario_table AS
              SELECT *
              FROM %(schema)s.input_main_nem_scenario;""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
+    # add primary key
+    sql = """ALTER TABLE %(schema)s.input_main_nem_scenario_table
+            ADD PRIMARY KEY (state_abbr, utility_type, year, sector_abbr);
+          """ % inputs    
     cur.execute(sql)
     con.commit()
     
@@ -2008,6 +2021,13 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
               ORDER BY a.county_id ASC, a.bin_id ASC, a.year ASC, a.scoe ASC,
                        a.system_size_kw ASC, a.turbine_height_m ASC;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
+    
+    
+    # add primary key on county_id, bin_id, and year
+    sql = """ALTER TABLE %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
+                 ADD PRIMARY KEY (county_id, bin_id, year);""" % inputs
+    cur.execute(sql)
+    con.commit()    
     
     # create indices
     sql = """CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_join_fields_btree 
@@ -2426,14 +2446,9 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech):
         cur.execute(sql)
         con.commit()
     
-        # add indices on: county_id, bin_id, year
-        sql = """CREATE INDEX pt_%(sector_abbr)s_elec_costs_%(tech)s_join_fields_btree 
-                 ON %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s
-                 USING BTREE(county_id,bin_id);
-             
-                 CREATE INDEX pt_%(sector_abbr)s_elec_costs_%(tech)s_year_btree 
-                 ON %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s
-                 USING BTREE(year);""" % inputs_dict
+        # add primary key on: county_id, bin_id, year
+        sql = """ALTER TABLE %(schema)s.pt_%(sector_abbr)s_elec_costs_%(tech)s
+                 ADD PRIMARY KEY (county_id, bin_id, year);""" % inputs_dict
         cur.execute(sql)
         con.commit()
 
@@ -3176,6 +3191,7 @@ def get_main_dataframe(con, sectors, schema, year, techs):
             sql_list.append(sql)
             
     sql = ' UNION ALL '.join(sql_list)
+    print sql
     
     df = pd.read_sql(sql, con, coerce_float = False)
 
