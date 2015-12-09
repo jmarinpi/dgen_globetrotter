@@ -3191,7 +3191,6 @@ def get_main_dataframe(con, sectors, schema, year, techs):
             sql_list.append(sql)
             
     sql = ' UNION ALL '.join(sql_list)
-    print sql
     
     df = pd.read_sql(sql, con, coerce_float = False)
 
