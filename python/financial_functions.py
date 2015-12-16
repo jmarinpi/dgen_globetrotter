@@ -320,8 +320,9 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     cfs = revenue + costs
     
     # Calculate the avg  and avg pct monthly bill savings (accounting for rate escalations, generation revenue, and average over all years)
+    tpo_revenue = generation_revenue + carbon_tax_revenue + incentive_revenue
     annual_payments = annual_loan_pmts + down_payment_cost/df.loan_term_yrs[:, np.newaxis]
-    yearly_bill_savings = generation_revenue + annual_payments
+    yearly_bill_savings = tpo_revenue + annual_payments
     monthly_bill_savings = yearly_bill_savings/12
     yearly_bills_without_system = df.first_year_bill_without_system[:,np.newaxis] * np.array(list(df['rate_escalations']), dtype = 'float64')
     percent_monthly_bill_savings = yearly_bill_savings/yearly_bills_without_system
