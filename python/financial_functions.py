@@ -280,7 +280,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     """
     
     carbon_tax_revenue = np.empty(shape)
-    carbon_tax_revenue[:] = 100 * (df.carbon_price_cents_per_kwh * df.aep)[:,np.newaxis] * system_degradation_factor
+    carbon_tax_revenue[:] = (df.carbon_price_cents_per_kwh * df.aep)[:,np.newaxis] * system_degradation_factor / 100
         
     '''
     5) Revenue from depreciation.  
