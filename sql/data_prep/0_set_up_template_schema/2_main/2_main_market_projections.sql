@@ -58,10 +58,19 @@ LEFT JOIN diffusion_shared.rate_type_desc_lkup b
 ON a.rate_type_desc = b.rate_type_desc;
 
 
-DROP TABLE IF EXISTS diffusion_template.input_main_market_carbon_intensities;
-CREATE TABLE diffusion_template.input_main_market_carbon_intensities
+DROP TABLE IF EXISTS diffusion_template.input_main_market_carbon_intensities_grid CASCADE;
+CREATE TABLE diffusion_template.input_main_market_carbon_intensities_grid
 (
-	state_abbr character varying(2) NOT NULL,
-	no_carbon_price_t_per_kwh numeric NOT NULL,
-	ng_intensity numeric NOT NULL
+  state_abbr character(2),
+  year integer,
+  t_co2_per_kwh numeric
+);
+
+
+DROP TABLE IF EXISTS diffusion_template.input_main_market_carbon_intensities_ng CASCADE;
+CREATE TABLE diffusion_template.input_main_market_carbon_intensities_ng
+(
+  state_abbr character(2),
+  year integer,
+  t_co2_per_kwh numeric
 );
