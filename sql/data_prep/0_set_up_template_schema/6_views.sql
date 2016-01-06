@@ -12,18 +12,6 @@ ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)
 		end
 where a.state not in ('Hawaii','Alaska');
 
--- view for carbon intensities
-DROP VIEW IF EXISTS diffusion_template.carbon_intensities_to_model CASCADE;
-CREATE OR REPLACE VIEW diffusion_template.carbon_intensities_to_model AS
-SELECT state_abbr,
-	CASE WHEN b.carbon_price = 'No Carbon Price' THEN no_carbon_price_t_per_kwh
-	WHEN b.carbon_price = 'Price Based On State Carbon Intensity' THEN state_carbon_price_t_per_kwh
-	WHEN b.carbon_price = 'Price Based On NG Offset' THEN ng_offset_t_per_kwh
-	END as carbon_intensity_t_per_kwh
-FROM diffusion_shared.carbon_intensities a
-CROSS JOIN diffusion_template.input_main_scenario_options b;
-
-
 ------------------------------------------------------------------------------------
 -- joined point microdata
 

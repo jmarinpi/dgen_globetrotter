@@ -211,6 +211,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 bass_params = datfunc.get_bass_params(con, schema)
                 learning_curves_mode = datfunc.get_learning_curves_mode(con, schema)
                 datfunc.write_first_year_costs(con, cur, schema, cfg.start_year)
+                # create carbon intensities to model
+                datfunc.create_carbon_intensities_to_model(con, cur, schema)
             logger.info('\tCompleted in: %0.1fs' % t.interval)
 
             # set model years depending on whether in reeds mode
