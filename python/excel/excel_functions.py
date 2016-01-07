@@ -74,5 +74,5 @@ def load_scenario(xls_file, schema, conn = None, test = False):
 
 if __name__ == '__main__':
     input_xls = '../../excel/scenario_inputs.xlsm'
-    load_scenario(input_xls, schema = 'diffusion_results_2015_11_19_14h51m55s',  test = True)
+    load_scenario(input_xls, schema = 'diffusion_results_2016_01_07_07h28m00s',  test = True)
     

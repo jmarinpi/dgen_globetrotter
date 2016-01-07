@@ -2510,7 +2510,7 @@ def get_depreciation_schedule(con, schema):
     '''
     inputs = locals().copy()    
     
-    sql = '''SELECT tech, array_agg(deprec_rate ORDER BY ownership_year ASC)::DOUBLE PRECISION[] as deprec
+    sql = '''SELECT tech, year, array_agg(deprec_rate ORDER BY ownership_year ASC)::DOUBLE PRECISION[] as deprec
             FROM %(schema)s.input_finances_depreciation_schedule
             GROUP BY tech, year
             ORDER BY tech, year;''' % inputs

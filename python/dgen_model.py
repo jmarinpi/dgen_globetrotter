@@ -204,7 +204,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # these are technology specific, set up in tidy form with a "tech" field
                 financial_parameters = datfunc.get_financial_parameters(con, schema)
                 incentive_options = datfunc.get_manual_incentive_options(con, schema)
-                deprec_schedule = datfunc.get_depreciation_schedule(con, schema, macrs = True)
+                deprec_schedule = datfunc.get_depreciation_schedule(con, schema)
                 ann_system_degradation = datfunc.get_system_degradation(con, schema) 
                 rate_growth_df = datfunc.get_rate_escalations(con, schema)
                 manual_incentives = datfunc.get_manual_incentives(con, schema)
