@@ -2501,7 +2501,7 @@ def get_system_degradation(con, schema):
     return ann_system_degradation    
     
         
-def get_depreciation_schedule(con, schema, macrs = True):
+def get_depreciation_schedule(con, schema):
     ''' Pull depreciation schedule from dB
     
         IN: type - string - [all, macrs, standard] 
@@ -2510,15 +2510,10 @@ def get_depreciation_schedule(con, schema, macrs = True):
     '''
     inputs = locals().copy()    
     
-    if macrs == True:
-        inputs['field'] = 'macrs'
-    else:
-        inputs['field'] = 'standard'
-        
-    sql = '''SELECT tech, array_agg(%(field)s ORDER BY year ASC)::DOUBLE PRECISION[] as deprec
+    sql = '''SELECT tech, array_agg(deprec_rate ORDER BY ownership_year ASC)::DOUBLE PRECISION[] as deprec
             FROM %(schema)s.input_finances_depreciation_schedule
-            GROUP BY tech
-            ORDER BY tech;''' % inputs
+            GROUP BY tech, year
+            ORDER BY tech, year;''' % inputs
     df = pd.read_sql(sql, con)
     
     return df

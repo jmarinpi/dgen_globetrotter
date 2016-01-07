@@ -44,7 +44,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
 
     # join in additional information
     df = pd.merge(df, ann_system_degradation, how = 'left', on = ['tech'])
-    df = pd.merge(df, deprec_schedule, how = 'left', on = ['tech'])
+    df = pd.merge(df, deprec_schedule, how = 'left', on = ['tech', 'year'])
     df = pd.merge(df, incentive_opts, how = 'left', on = ['tech'])    
     
     # duplicate the data frame for each business model

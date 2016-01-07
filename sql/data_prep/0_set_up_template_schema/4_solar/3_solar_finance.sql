@@ -131,7 +131,7 @@ FROM diffusion_template.input_solar_finances_ind;
 DROP TABLE IF EXIStS diffusion_template.input_solar_finances_depreciation_schedule CASCADE;
 CREATE TABLE diffusion_template.input_solar_finances_depreciation_schedule
 (
+	ownership_year integer NOT NULL,
 	year integer NOT NULL,
-	macrs numeric NOT NULL,
-	standard numeric NOT NULL
+	deprec_rate numeric NOT NULL
 );
