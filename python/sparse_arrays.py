@@ -110,13 +110,13 @@ def load_data(row_count):
            LIMIT %s""" % row_count
     df = pd.read_sql(sql, con)
     
-    df = df.apply(list_to_sparse, axis = 1, args = ('cf', 'cf_pds', 0, 'int', 'pandas'))
+    df = df.apply(list_to_sparse, axis = 1, args = ('cf', 'cf_pds', 0, 'int16', 'pandas'))
     df = df.apply(apply_cpickle, axis = 1, args = ('cf_pds', 'cf_pdb'))
     
-    df = df.apply(list_to_sparse, axis = 1, args = ('cf', 'cf_cs', 0, 'int', 'custom'))
+    df = df.apply(list_to_sparse, axis = 1, args = ('cf', 'cf_cs', 0, 'int16', 'custom'))
     df = df.apply(apply_cpickle, axis = 1, args = ('cf_cs', 'cf_cb'))
     
-    df = df.apply(list_to_sparse, axis = 1, args = ('cf', 'cf_cw', 0, 'int', 'custom', True))
+    df = df.apply(list_to_sparse, axis = 1, args = ('cf', 'cf_cw', 0, 'int16', 'custom', True))
     df = df.apply(apply_cpickle, axis = 1, args = ('cf_cw', 'cf_cwb'))
     
     
@@ -181,7 +181,7 @@ def load_data(row_count):
 
     sql = """DROP TABLE IF EXISTS mgleason.regular_data;
             CREATE TABLE mgleason.regular_data AS
-            SELECT cf
+            SELECT cf::SMALLINT[]
             FROM diffusion_wind.wind_resource_hourly
             LIMIT %s;""" % row_count
     cur.execute(sql)
@@ -190,7 +190,7 @@ def load_data(row_count):
 
 
 t0 = time.time()
-load_data(100)
+load_data(1000)
 print 'Load Time: %s' % (time.time()-t0, )
 
 t0 = time.time()
@@ -209,12 +209,12 @@ df_custom = df_custom.apply(bytea_to_list, axis = 1, args = ('cf_bytes', 'cf'))
 print 'Custom Sparse Data: %s' % (time.time()-t0, )
    
    
-t0 = time.time()
-sql = """SELECT cf as cf_bytes
-         FROM mgleason.sparse_data_custom_wavelets;"""
-df_custom_waves = pd.read_sql(sql, con)
-df_custom_waves = df_custom_waves.apply(bytea_to_list, axis = 1, args = ('cf_bytes', 'cf'))
-print 'Custom Sparse Wavelets Data: %s' % (time.time()-t0, )   
+#t0 = time.time()
+#sql = """SELECT cf as cf_bytes
+#         FROM mgleason.sparse_data_custom_wavelets;"""
+#df_custom_waves = pd.read_sql(sql, con)
+#df_custom_waves = df_custom_waves.apply(bytea_to_list, axis = 1, args = ('cf_bytes', 'cf'))
+#print 'Custom Sparse Wavelets Data: %s' % (time.time()-t0, )   
    
    
    
@@ -231,7 +231,7 @@ a_custom = np.array(df_custom['cf'].tolist())
 a_custom_waves = np.array(df_custom_waves['cf'].tolist())
 a_regular = np.array(df_regular['cf'].tolist())
 print np.all(a_pd == a_custom)
-print np.all(a_pd == a_custom_waves)
+#print np.all(a_pd == a_custom_waves)#
 print np.all(a_pd == a_regular)
 # test taht all data match
 
