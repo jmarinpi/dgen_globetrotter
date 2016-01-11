@@ -1,0 +1,4 @@
+python ~/github/windpy/windspeed2power/windspeed2power.py -mode each_turbine -turbines dwind_turbine_1_2016_01_11 -hts 20 30 40 50 80 -o /srv2/mgleason_backups/dwind_powercurves_update_2016_01_11/
+python ~/github/windpy/windspeed2power/windspeed2power.py -mode each_turbine -turbines dwind_turbine_2_2016_01_11 -hts 20 30 40 50 80 -o /srv2/mgleason_backups/dwind_powercurves_update_2016_01_11/
+python ~/github/windpy/windspeed2power/windspeed2power.py -mode each_turbine -turbines dwind_turbine_5_2016_01_11 -hts 20 30 40 50 80 -o /srv2/mgleason_backups/dwind_powercurves_update_2016_01_11/
+python ~/github/windpy/windspeed2power/windspeed2power.py -mode each_turbine -turbines dwind_turbine_6_2016_01_11 -hts 20 30 40 50 80 -o /srv2/mgleason_backups/dwind_powercurves_update_2016_01_11/

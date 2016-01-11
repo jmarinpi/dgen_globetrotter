@@ -1,0 +1,15 @@
+1) copy turbine power curves from format provided by robert preus to a new csv. this should look similar to '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/2a_prep_wind_resource_data/2_create_powercurve_csvs/powercurve_update_2016_01_08.csv'
+	- save new csv in same folder as example above
+	- rename first column to windspeed_ms and all other columns to the turbine names that will be used
+2) run 1_powercurves_to_separate_csvs.R
+	- this will dump the power curves out to the windpy powercurves folder
+	- review individual csvs and make sure they are right
+3) manually update documentation.csv in windpy powercurves folder to reflect the new power curves
+4) Commit and push changes from local windpy to github
+5) Edit 1_dwind_gen_update.sh with new powercurve names and output folder location
+6) Run windspeed2power on gispgdb
+	- ssh onto gispgdb
+	- update local windpy repo (git pull origin master)
+	- scp 1_dwind_gen_update.sh to gispgdb
+	- kick it off in screen
+7) 
