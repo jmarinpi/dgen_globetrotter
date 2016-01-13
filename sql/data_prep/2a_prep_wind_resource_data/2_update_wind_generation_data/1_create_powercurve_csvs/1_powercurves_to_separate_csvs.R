@@ -1,4 +1,4 @@
-in_csv = '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/2a_prep_wind_resource_data/2_create_powercurve_csvs/powercurve_update_2016_01_08.csv'
+in_csv = '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/2a_prep_wind_resource_data/2_update_wind_generation_data/1_create_powercurve_csvs/powercurve_minor_update_2016_01_12.csv'
 out_folder = '/Users/mgleason/NREL_Projects/github/windpy/windspeed2power/powercurves'
 cur_date = format(Sys.time(), '%Y_%m_%d')
 precision_digits = 3
