@@ -164,7 +164,7 @@ in_path = '/srv2/mgleason_backups/dwind_powercurves_update_2016_01_11'
 result_list = []
 # get list of hdf files
 hdfs = glob.glob1(in_path, '*.hdf5')
-pool = multiprocessing.Pool(processes = len(hdfs))
+pool = multiprocessing.Pool(processes = 4)
 # kick off loading process 
 for hdf in hdfs:
     res = pool.apply_async(hdf2pg, (hdf, in_path, pg_params, schema, scale_offset))
