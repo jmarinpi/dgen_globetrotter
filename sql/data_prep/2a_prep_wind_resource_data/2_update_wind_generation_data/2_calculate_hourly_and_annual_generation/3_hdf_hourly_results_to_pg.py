@@ -15,7 +15,9 @@ import glob
 import os
 import pandas as pd
 from cStringIO import StringIO
+import multiprocessing
 
+ 
 def getFilteredData(hfile,path,indices = [], mask = None):
     '''
     Return the filtered data, scale factor, fill value mask, and optionally list of indexes. If indices is not specified, data for all locations will be returned
@@ -66,29 +68,18 @@ def pg_connect(pg_params):
     
     return con, cur
 
-pg_params = {'host'     : 'localhost',
-             'dbname'   : 'dav-gis',
-             'user'     : 'mgleason',
-             'password' : 'mgleason',
-             'role'     : 'diffusion-writers',
-             'port'     : 5432
-             }
- 
-pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s port=%(port)s' % pg_params
-con = pg.connect(pg_conn_string)
-cur = con.cursor(cursor_factory=pgx.RealDictCursor)
 
-if 'role' in pg_params.keys():
-    sql = "SET ROLE '%(role)s';" % pg_params
-    cur.execute(sql)
-    con.commit()
+def hdf2pg(hdf, hdf_path, pg_params, schema, scale_offset):
+    
+    pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s port=%(port)s' % pg_params
+    con = pg.connect(pg_conn_string)
+    cur = con.cursor(cursor_factory=pgx.RealDictCursor)
 
-schema = 'diffusion_wind'
-in_path = '/srv2/mgleason_backups/dwind_powercurves_update_2016_01_11'
-scale_offset = 1e3
+    if 'role' in pg_params.keys():
+        sql = "SET ROLE '%(role)s';" % pg_params
+        cur.execute(sql)
+        con.commit()
 
-hdfs = glob.glob1(in_path, '*.hdf5')
-for hdf in hdfs:
     # split the turbine name
     filename_parts = hdf.split('_')
     turbine_i = 4
@@ -96,7 +87,6 @@ for hdf in hdfs:
     
     # create the output table
     out_table = '%s.wind_resource_hourly_turbine_%s' % (schema, turbine_id)
-    print out_table
     
     # create the table
     sql = 'DROP TABLE IF EXISTS %s;' % out_table
@@ -117,10 +107,8 @@ for hdf in hdfs:
     sql = """COMMENT ON COLUMN %s.cf IS 'scale_offset = %s';""" % (out_table, scale_offset)
     cur.execute(sql)
     con.commit()
-    
-    print 'Loading %s to %s' % (hdf, out_table)
 
-    hf = h5py.File(os.path.join(in_path, hdf),'r')
+    hf = h5py.File(os.path.join(hdf_path, hdf),'r')
     
     cf_bins = [k for k in hf.keys() if 'cfbin' in k]
     
@@ -153,6 +141,35 @@ for hdf in hdfs:
                 con.commit()
 
 
-    hf.close()
+    hf.close()    
 
-        
+    return hdf
+    
+# INPUTS
+pg_params = {'host'     : 'localhost',
+             'dbname'   : 'dav-gis',
+             'user'     : 'mgleason',
+             'password' : 'mgleason',
+             'role'     : 'diffusion-writers',
+             'port'     : 5432
+             }
+schema = 'diffusion_wind'
+scale_offset = 1e3
+in_path = '/srv2/mgleason_backups/dwind_powercurves_update_2016_01_11'
+
+# MAIN
+# set up pool of workers
+
+# initialize results object
+result_list = []
+# get list of hdf files
+hdfs = glob.glob1(in_path, '*.hdf5')
+pool = multiprocessing.Pool(processes = len(hdfs))
+# kick off loading process 
+for hdf in hdfs:
+    res = pool.apply_async(hdf2pg, (hdf, in_path, pg_params, schema, scale_offset))
+    result_list.append(res)  
+
+for result in result_list:
+    msg = result.get()
+    print 'Finished %s' % msg

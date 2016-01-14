@@ -12,4 +12,14 @@
 	- update local windpy repo (git pull origin master)
 	- scp 1_dwind_gen_update.sh to gispgdb
 	- kick it off in screen
-7) 
+7) Load the data from hdf to postgres (both hourly and annual data)
+	- archive old tables, if they will be overwritten
+	- run:
+		- 2_hdf_results_to_pg.py
+		- 3_hdf_hourly_results_to_pg.py
+8) QA/QC the results
+	- check annual aep is not very different from previous results for same turbine class and model
+	- compare annual aep across 3 performance improvements for each turbine class -- should see moderate improvements in the 10% and 25% ranges from "current tech"
+	- check cf_avg is close to the cf_bin (depending on the turbine height and power curve, it will likely be lower -- could be higher for future big turbines )
+	- sum cf timeseries and compare to aep values -- should be close
+	- other checks???
