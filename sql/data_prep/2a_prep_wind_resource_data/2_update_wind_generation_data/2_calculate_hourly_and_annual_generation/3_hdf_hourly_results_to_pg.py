@@ -66,45 +66,36 @@ def pg_connect(pg_params):
     
     return con, cur
 
-pg_params = {'host'     : 'dnpdb001.bigde.nrel.gov',
-             'dbname'   : 'diffusion_3',
-             'user'     : 'jduckwor',
-             'password' : 'H2v1^gFu^',
+pg_params = {'host'     : 'localhost',
+             'dbname'   : 'dav-gis',
+             'user'     : 'mgleason',
+             'password' : 'mgleason',
              'role'     : 'diffusion-writers',
-             'port'     : 5433
+             'port'     : 5432
              }
  
-# CONNECT TO POSTGRES
-con, cur = pg_connect(pg_params)
+pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s port=%(port)s' % pg_params
+con = pg.connect(pg_conn_string)
+cur = con.cursor(cursor_factory=pgx.RealDictCursor)
+
+if 'role' in pg_params.keys():
+    sql = "SET ROLE '%(role)s';" % pg_params
+    cur.execute(sql)
+    con.commit()
 
 schema = 'diffusion_wind'
-turbine_id_lookup = {'current_residential'          : 1,
-                    'current_small_commercial'      : 2,
-                    'current_mid_size'              : 3,
-                    'current_large'                 : 4,
-                    'residential_near_future'       : 5,
-                    'residential_far_future'        : 6,
-                    'sm_mid_lg_near_future'         : 7,
-                    'sm_mid_lg_far_future'          : 8}
-
-# hdf_path = '/home/mgleason/data/dg_wind/aws_2014_wind_generation_update/outputs'
-hdf_path = '/home/jduckwor/wind_curves/hdf'
-hdfs = glob.glob1(hdf_path, '*.hdf5')
-
-print(hdfs)
-
+in_path = '/srv2/mgleason_backups/dwind_powercurves_update_2016_01_11'
 scale_offset = 1e3
 
+hdfs = glob.glob1(in_path, '*.hdf5')
 for hdf in hdfs:
-     # split the turbine name
+    # split the turbine name
     filename_parts = hdf.split('_')
-    turbine_start_i = filename_parts.index('turbine')+2
-    turbine_end_i = filename_parts.index('2015')
-    turbine = '_'.join(filename_parts[turbine_start_i:turbine_end_i])
-    turbine_id = turbine_id_lookup[turbine]
+    turbine_i = 4
+    turbine_id = int(filename_parts[turbine_i])
     
     # create the output table
-    out_table = '%s.wind_resource_hourly_%s_turbine' % (schema, turbine)
+    out_table = '%s.wind_resource_hourly_turbine_%s' % (schema, turbine_id)
     print out_table
     
     # create the table
@@ -113,11 +104,11 @@ for hdf in hdfs:
     con.commit()
     
     sql = """CREATE TABLE %s (
+                cf SMALLINT[],
                 i integer,
                 j integer,
                 cf_bin integer,
                 height integer,
-                cf integer[],
                 turbine_id integer
             );""" % out_table
     cur.execute(sql)
@@ -129,7 +120,7 @@ for hdf in hdfs:
     
     print 'Loading %s to %s' % (hdf, out_table)
 
-    hf = h5py.File(os.path.join(hdf_path, hdf),'r')
+    hf = h5py.File(os.path.join(in_path, hdf),'r')
     
     cf_bins = [k for k in hf.keys() if 'cfbin' in k]
     
@@ -147,11 +138,11 @@ for hdf in hdfs:
             ijs_data = ijs[unmasked]
 
             df = pd.DataFrame()
+            df['cf'] = pd.Series(cf_list).apply(lambda l: '{%s}' % str(l)[1:-1])
             df['i'] = ijs_data['i']
             df['j'] = ijs_data['j']
             df['cf_bin'] = int(cf_bin.split('_')[0])/10
             df['height'] = int(height)
-            df['cf'] = pd.Series(cf_list).apply(lambda l: '{%s}' % str(l)[1:-1])
             df['turbine_id'] = turbine_id
             
             # dump to a csv (can't use in memory because it is too large)

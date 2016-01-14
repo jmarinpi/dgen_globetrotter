@@ -13,6 +13,8 @@ import numpy as np
 # import hdfaccess
 import glob
 import os
+import pandas as pd
+from cStringIO import StringIO
 
 def getFilteredData(hfile,path,indices = [], mask = None):
     '''
@@ -55,12 +57,12 @@ def getFilteredData(hfile,path,indices = [], mask = None):
 # connect to pg
 # conn, cur = pgdbUtil.pgdbConnect(True)
 
-pg_params = {'host'     : 'dnpdb001.bigde.nrel.gov',
-             'dbname'   : 'diffusion_3',
-             'user'     : 'jduckwor',
-             'password' : 'H2v1^gFu^',
+pg_params = {'host'     : 'localhost',
+             'dbname'   : 'dav-gis',
+             'user'     : 'mgleason',
+             'password' : 'mgleason',
              'role'     : 'diffusion-writers',
-             'port'     : 5433
+             'port'     : 5432
              }
 
 pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s port=%(port)s' % pg_params
@@ -73,32 +75,17 @@ if 'role' in pg_params.keys():
     conn.commit()
 
 schema = 'diffusion_wind'
-turbine_id_lookup = {'current_residential'          : 1, 
-                    'current_small_commercial'      : 2, 
-                    'current_mid_size'              : 3, 
-                    'current_large'                 : 4, 
-                    'residential_near_future'       : 5,
-                    'residential_far_future'        : 6,
-                    'sm_mid_lg_near_future'         : 7,
-                    'sm_mid_lg_far_future'          : 8}
+in_path = '/srv2/mgleason_backups/dwind_powercurves_update_2016_01_11'
 
-#in_path = '/home/mgleason/data/dg_wind/aws_2014_wind_generation_update/outputs'
-# in_path = '/Users/mgleason/gispgdb_home/mgleason/data/dg_wind/aws_2014_wind_generation_update/outputs'
-in_path = '/home/jduckwor/wind_curves/hdf'
 hdfs = glob.glob1(in_path, '*.hdf5')
-
-# print(hdfs)
-
 for hdf in hdfs:
     # split the turbine name
     filename_parts = hdf.split('_')
-    turbine_start_i = filename_parts.index('turbine')+2
-    turbine_end_i = filename_parts.index('2015')
-    turbine = '_'.join(filename_parts[turbine_start_i:turbine_end_i])
-    turbine_id = turbine_id_lookup[turbine]
+    turbine_i = 4
+    turbine_id = int(filename_parts[turbine_i])
 
     # create the output table
-    out_table = '%s.wind_resource_%s_turbine' % (schema, turbine)
+    out_table = '%s.wind_resource_annual_turbine_%s' % (schema, turbine_id)
     print out_table
     
     # NOTE: Be sure to archive the table before dropping and replacing
@@ -108,24 +95,28 @@ for hdf in hdfs:
     cur.execute(sql)
     conn.commit()
     
-    sql = 'CREATE TABLE %s (\
-            i integer,\
-            j integer,\
-            cf_bin integer,\
-            height integer,\
-            aep numeric,\
-            cf_avg numeric,\
-            turbine_id integer\
-            );' % out_table
+    sql = """CREATE TABLE %s 
+            (
+                    i integer,
+                    j integer,
+                    cf_bin integer,
+                    height integer,
+                    aep numeric,
+                    cf_avg numeric,
+                    turbine_id integer
+            );""" % out_table
     cur.execute(sql)
     conn.commit()
     
     print 'Loading %s to %s' % (hdf, out_table)
 
+    # open hdf
     hf = h5py.File(os.path.join(in_path, hdf),'r')
-    
+
+    # get cf_bins
     cf_bins = [k for k in hf.keys() if 'cfbin' in k]
-    
+
+    # get ijs
     ijs = np.array(hf['meta'])
 
     for cf_bin in cf_bins:
@@ -133,32 +124,40 @@ for hdf in hdfs:
         heights = hf[cf_bin].keys()
         for height in heights:
             print '\tWorking on height = %s' % height
+            # get aep data
             aep_path = '%s/%s/%s' % (cf_bin,height,'aep')
-            # aep = hdfaccess.getFilteredData(hf,aep_path)
             aep = getFilteredData(hf,aep_path)
-            
+            # get avg cf data
             cf_avg_path = '%s/%s/%s' % (cf_bin,height,'cf_avg')
-            # cf_avg = hdfaccess.getFilteredData(hf,cf_avg_path)
             cf_avg = getFilteredData(hf,cf_avg_path)
-<<<<<<< Updated upstream
-            out_array = np.recarray((np.invert(aep.mask).sum(),), dtype = [('i', '<i4'), ('j', '<i4'), ('height','<i4'), ('cf_bin','<i4'), ('aep','f4'), ('cf_avg','f4'), ('turbine_id', '<i4')])
-            out_array['aep'] = aep.data[np.invert(aep.mask)]
-=======
-            out_array = np.recarray((np.invert(aep.mask).sum(),), dtype = [('i', '<i4'), ('j', '<i4'), ('height','<i4'), ('cf_bin','<i4'), ('aep','f4'), ('cf_avg','f4')])
-            out_array['aep'] = aep.data[np.invert(aep.mask)]   
->>>>>>> Stashed changes
-            out_array['cf_avg'] = cf_avg.data[np.invert(cf_avg.mask)]
+            # mask ijs data
             ijs_data = ijs[np.invert(aep.mask)]
-            out_array ['i'] = ijs_data['i']
-            out_array ['j'] = ijs_data['j']
-            out_array['height'] = height
-            out_array['cf_bin'] = int(cf_bin.split('_')[0])/10
-            out_array['turbine_id'] = turbine_id
-            
-            for row in out_array:
-                sql = 'INSERT INTO %s (i, j, height, cf_bin, aep, cf_avg, turbine_id) VALUES %s;' % (out_table, row)
-                cur.execute(sql)
-            conn.commit()
+            # combine into a dataframe
+            df = pd.DataFrame(
+                    data={
+                        'i': ijs_data['i'],
+                        'j': ijs_data['j'],
+                        'height': height,
+                        'cf_bin': int(cf_bin.split('_')[0])/10,
+                        'aep': aep.data[np.invert(aep.mask)],
+                        'cf_avg': cf_avg.data[np.invert(cf_avg.mask)],
+                        'turbine_id': turbine_id                     
+                   },
+                   index = np.arange(0, np.shape(ijs_data)[0]))
+            # dump to an in memory csv   
+            print 'Writing to postgres'
+            # open an in memory stringIO file (like an in memory csv)
+            s = StringIO()
+            # write the data to the stringIO
+            columns = ['i', 'j', 'height', 'cf_bin', 'aep', 'cf_avg', 'turbine_id']
+            df[columns].to_csv(s, index = False, header = False)
+            # seek back to the beginning of the stringIO file
+            s.seek(0)
+            # copy the data from the stringio file to the postgres table
+            cur.copy_expert('COPY %s FROM STDOUT WITH CSV' % out_table, s)
+            # commit the additions and close the stringio file (clears memory)
+            conn.commit()    
+            s.close()   
     hf.close()
 
         
