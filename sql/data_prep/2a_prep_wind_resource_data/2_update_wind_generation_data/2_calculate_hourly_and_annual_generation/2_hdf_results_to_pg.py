@@ -137,8 +137,8 @@ for hdf in hdfs:
                     data={
                         'i': ijs_data['i'],
                         'j': ijs_data['j'],
-                        'height': height,
                         'cf_bin': int(cf_bin.split('_')[0])/10,
+                        'height': height,
                         'aep': aep.data[np.invert(aep.mask)],
                         'cf_avg': cf_avg.data[np.invert(cf_avg.mask)],
                         'turbine_id': turbine_id                     
