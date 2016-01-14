@@ -149,7 +149,7 @@ for hdf in hdfs:
             # open an in memory stringIO file (like an in memory csv)
             s = StringIO()
             # write the data to the stringIO
-            columns = ['i', 'j', 'height', 'cf_bin', 'aep', 'cf_avg', 'turbine_id']
+            columns = ['i', 'j', 'cf_bin', 'height', 'aep', 'cf_avg', 'turbine_id']
             df[columns].to_csv(s, index = False, header = False)
             # seek back to the beginning of the stringIO file
             s.seek(0)
