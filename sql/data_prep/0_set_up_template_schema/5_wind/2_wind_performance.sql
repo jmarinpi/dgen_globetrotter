@@ -1,21 +1,48 @@
 ﻿set role 'diffusion-writers';
 
 
+DROP TABLE IF EXISTS diffusion_template.input_wind_performance_allowable_system_sizes_raw CASCADE;
+CREATE TABLE diffusion_template.input_wind_performance_allowable_system_sizes_raw
+(
+	turbine_size_kw numeric NOT NULL,
+	turbine_height_m integer NOT NULL,
+	allowed boolean NOT NULL
+);
+
+
+DROP VIEW IF EXISTS diffusion_template.input_wind_performance_allowable_system_sizes CASCADE;
+CREATE VIEW diffusion_template.input_wind_performance_allowable_system_sizes AS
+SELECT turbine_size_kw, turbine_height_m
+from diffusion_template.input_wind_performance_allowable_system_sizes_raw
+where allowed = True ;
+
+
+DROP TABLE IF EXISTS diffusion_template.input_wind_performance_turbine_size_classes;
+CREATE TABLE diffusion_template.input_wind_performance_turbine_size_classes
+(
+	turbine_size_kw numeric NOT NULL,
+	power_curve_size_class text NOT NULL
+);
+
+
 DROP TABLE IF EXISTS diffusion_template.input_wind_performance_improvements;
 CREATE TABLE diffusion_template.input_wind_performance_improvements
 (
 	turbine_size_kw numeric not null,
 	year integer not null,
-	power_curve_id integer not null,
+	perf_improvement_factor integer not null,
 	CONSTRAINT input_wind_performance_improvements_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
-		ON UPDATE NO ACTION ON DELETE RESTRICT,
-	CONSTRAINT input_wind_performance_improvements_power_curve_id_fkey FOREIGN KEY (power_curve_id)
-		REFERENCES diffusion_config.sceninp_power_curve_ids (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
 );
 
 
+
+
+
+
+---------------------------------------------------------------------------------------------------------
+-- no changes
 DROP TABLE IF EXISTS diffusion_template.input_wind_performance_gen_derate_factors;
 CREATE TABLE diffusion_template.input_wind_performance_gen_derate_factors
 (
