@@ -184,8 +184,8 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
                     	a.power_curve_id,
                     	b.turbine_height_m,
                     	d.derate_factor
-            FROM %(schema)s.input_wind_performance_improvements a
-            LEFT JOIN diffusion_wind.allowable_turbine_sizes b
+            FROM %(schema)s.input_wind_performance_power_curve_schedule a
+            LEFT JOIN %(schema)s.input_wind_performance_allowable_turbine_sizes b
                 	ON a.turbine_size_kw = b.turbine_size_kw
             LEFT JOIN %(schema)s.input_wind_performance_gen_derate_factors d
                 	ON a.year = d.year
@@ -1769,7 +1769,7 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string):
                          b.min_acres_per_hu,
                          c.max_hi_dev_pct,
                          d.required_clearance_m
-                	FROM diffusion_wind.allowable_turbine_sizes a
+                	FROM %(schema)s.input_wind_performance_allowable_turbine_sizes a
                 	-- min. acres per housing unit
                 	LEFT JOIN %(schema)s.input_wind_siting_parcel_size b
                 		ON a.turbine_height_m = b.turbine_height_m

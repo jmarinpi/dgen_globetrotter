@@ -25,7 +25,7 @@
 	- sum cf timeseries and compare to aep values -- should be close
 	- other checks???
 
-	select 	max(@((b.aep-(r_array_sum(a.cf::NUMERIC[])/1e3))/b.aep))
+select 	max(@((b.aep-(r_array_sum(a.cf::NUMERIC[])/1e3))/b.aep))
 from diffusion_wind.wind_resource_hourly_current_large_turbine a
 LEFT JOIN diffusion_wind.wind_resource_current_large_turbine b
 on a.i = b.i
@@ -33,3 +33,5 @@ and a.j = b.j
 and a.cf_bin = b.cf_bin
 and a.height = b.height
 where b.aep > 0
+
+9) Load powercurves to postgres for archiving/documentation????

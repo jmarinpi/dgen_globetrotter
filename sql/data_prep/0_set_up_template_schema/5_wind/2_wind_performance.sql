@@ -1,8 +1,8 @@
 ﻿set role 'diffusion-writers';
 
 
-DROP TABLE IF EXISTS diffusion_template.input_wind_performance_allowable_system_sizes_raw CASCADE;
-CREATE TABLE diffusion_template.input_wind_performance_allowable_system_sizes_raw
+DROP TABLE IF EXISTS diffusion_template.input_wind_performance_allowable_turbine_sizes_raw CASCADE;
+CREATE TABLE diffusion_template.input_wind_performance_allowable_turbine_sizes_raw
 (
 	turbine_size_kw numeric NOT NULL,
 	turbine_height_m integer NOT NULL,
@@ -10,10 +10,10 @@ CREATE TABLE diffusion_template.input_wind_performance_allowable_system_sizes_ra
 );
 
 
-DROP VIEW IF EXISTS diffusion_template.input_wind_performance_allowable_system_sizes CASCADE;
-CREATE VIEW diffusion_template.input_wind_performance_allowable_system_sizes AS
+DROP VIEW IF EXISTS diffusion_template.input_wind_performance_allowable_turbine_sizes CASCADE;
+CREATE VIEW diffusion_template.input_wind_performance_allowable_turbine_sizes AS
 SELECT turbine_size_kw, turbine_height_m
-from diffusion_template.input_wind_performance_allowable_system_sizes_raw
+from diffusion_template.input_wind_performance_allowable_turbine_sizes_raw
 where allowed = True ;
 
 
@@ -21,7 +21,7 @@ DROP TABLE IF EXISTS diffusion_template.input_wind_performance_turbine_size_clas
 CREATE TABLE diffusion_template.input_wind_performance_turbine_size_classes
 (
 	turbine_size_kw numeric NOT NULL,
-	power_curve_size_class text NOT NULL
+	size_class text NOT NULL
 );
 
 
@@ -30,19 +30,27 @@ CREATE TABLE diffusion_template.input_wind_performance_improvements
 (
 	turbine_size_kw numeric not null,
 	year integer not null,
-	perf_improvement_factor integer not null,
+	perf_improvement_factor numeric not null,
 	CONSTRAINT input_wind_performance_improvements_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
 );
 
 
+DROP VIEW IF EXISTs diffusion_template.input_wind_performance_power_curve_schedule;
+CREATE VIEW diffusion_template.input_wind_performance_power_curve_schedule as
+select a.turbine_size_kw, a.year, a.perf_improvement_factor, 
+	b.size_class, c.turbine_id as power_curve_id
+from diffusion_template.input_wind_performance_improvements a
+LEFT JOIN diffusion_template.input_wind_performance_turbine_size_classes b
+	ON a.turbine_size_kw = b.turbine_size_kw
+LEFT JOIN diffusion_wind.power_curve_lkup c
+	ON b.size_class = c.size_class
+	and a.perf_improvement_factor = c.perf_improvement_factor
+order by turbine_size_kw, year;
 
 
 
-
----------------------------------------------------------------------------------------------------------
--- no changes
 DROP TABLE IF EXISTS diffusion_template.input_wind_performance_gen_derate_factors;
 CREATE TABLE diffusion_template.input_wind_performance_gen_derate_factors
 (
