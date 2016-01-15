@@ -18,8 +18,18 @@
 		- 2_hdf_results_to_pg.py
 		- 3_hdf_hourly_results_to_pg.py
 8) QA/QC the results
+	- check row counts of all tables is the same 888875
 	- check annual aep is not very different from previous results for same turbine class and model
 	- compare annual aep across 3 performance improvements for each turbine class -- should see moderate improvements in the 10% and 25% ranges from "current tech"
 	- check cf_avg is close to the cf_bin (depending on the turbine height and power curve, it will likely be lower -- could be higher for future big turbines )
 	- sum cf timeseries and compare to aep values -- should be close
 	- other checks???
+
+	select 	max(@((b.aep-(r_array_sum(a.cf::NUMERIC[])/1e3))/b.aep))
+from diffusion_wind.wind_resource_hourly_current_large_turbine a
+LEFT JOIN diffusion_wind.wind_resource_current_large_turbine b
+on a.i = b.i
+and a.j = b.j
+and a.cf_bin = b.cf_bin
+and a.height = b.height
+where b.aep > 0
