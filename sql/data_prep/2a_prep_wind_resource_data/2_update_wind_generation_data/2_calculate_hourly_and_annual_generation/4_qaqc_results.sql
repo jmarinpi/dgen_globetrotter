@@ -157,6 +157,8 @@ from a;
 
 -- I asked Robert and Trudy about the average differences and they will confirm taht the values are within
 -- a reasonable range
+-- response from robert (regarding turbine 1 differences): 
+ -- "So the bottom line is that I think that we have corrected a distortion rather than created one."
 
 -----------------------------------------------------------------------------------------------------
 -- compare annual aep across 3 performance improvements for each turbine class -- should see moderate improvements in the 10% and 25% ranges from "current tech"
@@ -251,6 +253,8 @@ select round(avg(diff_1),2), round(avg(diff_2),2)
 from a;
 -- 1.15, 1.30
 -- why is the mid size turbine less performant than the small commercial????????
+-- are these improvement numbers within reasonable range?
+-- response from robert: "The improvements over time make sense"
 
 -----------------------------------------------------------------------------------------------------
 -- check that aep increases at each fixed time from small res --> small com --> midsize --> large
@@ -284,6 +288,7 @@ from a;
 -- biggest improvement over small res is small com, then large, then mid size
 -- check with Robert...
 -- (these results ARE consistent with the power curves ordering....)
+-- response from robert: "what you see is exactly what I would expect."
 
 -- 10% improvement (i.e., "near future")
 with a as
@@ -601,8 +606,5 @@ from a;
 -- in the fixed precision hourly values
 
 -----------------------------------------------------------------------------------------------------
--- to check with robert and trudy:
--- 1) improvements in AEP over old power curves
--- 2) Performance Comparison for Current Technology Across Size Classes
--- 3) Improvements for Size Classes Over Time
+
 

@@ -22,3 +22,4 @@
 9) Load powercurves definitions to postgres (for the purpose of documentation only)
 	- run 5_load_power_curves_for_documentation.sql
 10) recreate parent tables
+	
