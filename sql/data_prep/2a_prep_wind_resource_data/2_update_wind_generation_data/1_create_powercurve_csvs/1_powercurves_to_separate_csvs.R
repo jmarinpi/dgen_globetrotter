@@ -1,3 +1,8 @@
+library(reshape2)
+library(ggplot2)
+library(dplyr)
+
+
 in_csv = '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/2a_prep_wind_resource_data/2_update_wind_generation_data/1_create_powercurve_csvs/powercurve_minor_update_2016_01_12.csv'
 out_folder = '/Users/mgleason/NREL_Projects/github/windpy/windspeed2power/powercurves'
 cur_date = format(Sys.time(), '%Y_%m_%d')
@@ -14,3 +19,19 @@ for (col in 2:ncol(pcm)){
   out_file_path = file.path(out_folder, out_file)
   write.csv(pc, out_file_path, row.names = F)
 }
+
+
+m = melt(pcm, id.vars = c('windspeed_ms'), variable.name = 'power_curve', value.name = 'kwh')
+write.csv(m, '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/2a_prep_wind_resource_data/2_update_wind_generation_data/1_create_powercurve_csvs/powercurve_update_tidy_2016_01_08.csv', row.names = F)
+
+cols = c('#66c2a4', '#e31a1c', '#fec44f', '#c994c7', '#238b45', '#005824', '#e7298a', '#91003f')
+ggplot(data = m) +
+  geom_line(aes(x = windspeed_ms, y = kwh, colour = power_curve)) +
+  scale_colour_manual(values = cols)
+
+# current turbines only
+m_c = filter(m, power_curve %in% c(1, 2, 3, 4))
+
+ggplot(data = m_c) +
+  geom_line(aes(x = windspeed_ms, y = kwh, colour = power_curve), size = .75) +
+  scale_colour_manual(values = cols)
