@@ -1715,9 +1715,9 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
              USING BTREE(azimuth);        
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_system_size_kw_btree 
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_aep_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
-             USING BTREE(system_size_kw);  
+             USING BTREE(aep);  
 
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_solar_rate_id_alias_source_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_solar
@@ -2050,9 +2050,9 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(turbine_id);   
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_system_size_kw_btree 
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_aep_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
-             USING BTREE(system_size_kw);
+             USING BTREE(aep);
              
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_rate_id_alias_source_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
@@ -2100,12 +2100,12 @@ def get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors):
         inputs_dict['sector_abbr'] = sector_abbr
         sql = """SELECT  rate_id_alias, rate_source,
                     	hdf_load_index, crb_model, load_kwh_per_customer_in_bin,
-                        %(resource_keys)s, system_size_kw, 
+                        %(resource_keys)s, aep,
                         ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate
                 FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s
                 GROUP BY  rate_id_alias, rate_source,
                     	 hdf_load_index, crb_model, load_kwh_per_customer_in_bin,
-                    	 %(resource_keys)s, system_size_kw,
+                    	 %(resource_keys)s, aep,
                          ur_enable_net_metering, ur_nm_yearend_sell_rate, ur_flat_sell_rate""" % inputs_dict
         sqls.append(sql)      
     
@@ -2139,9 +2139,9 @@ def get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors):
              ON %(schema)s.unique_rate_gen_load_combinations_%(tech)s
              USING BTREE(load_kwh_per_customer_in_bin);
              
-             CREATE INDEX unique_rate_gen_load_combinations_%(tech)s_system_size_kw_btree
+             CREATE INDEX unique_rate_gen_load_combinations_%(tech)s_aep_btree
              ON %(schema)s.unique_rate_gen_load_combinations_%(tech)s
-             USING BTREE(system_size_kw);
+             USING BTREE(aep);
              
              CREATE INDEX unique_rate_gen_load_combinations_%(tech)s_resource_keys_btree
              ON %(schema)s.unique_rate_gen_load_combinations_%(tech)s
@@ -2239,7 +2239,7 @@ def get_utilityrate3_inputs(uids, cur, con, tech, schema, npar, pg_conn_string, 
             SELECT 	a.uid, 
                     	b.sam_json as rate_json, 
                         a.load_kwh_per_customer_in_bin, c.nkwh as consumption_hourly,
-                        a.system_size_kw,
+                        a.aep,
                         COALESCE(d.cf,  array_fill(1, array[8760])) as generation_hourly, -- fill in for customers with no matching wind resource (values don't matter because they will be zeroed out)
                         a.ur_enable_net_metering as apply_net_metering, a.ur_nm_yearend_sell_rate, a.ur_flat_sell_rate
             	
@@ -2295,7 +2295,8 @@ def update_rate_json_w_nem_fields(row):
 
 def scale_array(row, array_col, scale_col, prec_offset_value):
     
-    row[array_col] = (np.array(row[array_col], dtype = 'int64') * np.float(row[scale_col]))/prec_offset_value
+    hourly_array = np.array(row[array_col], dtype = 'float64') / prec_offset_value
+    row[array_col] = hourly_array/hourly_array.sum() * np.float64(row[scale_col])
     
     return row
 
@@ -2313,7 +2314,7 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue, gross_fit
         df = df.apply(scale_array, axis = 1, args = ('consumption_hourly','load_kwh_per_customer_in_bin', inputs_dict['load_scale_offset']))
         
         # scale the hourly cfs into hourly kw using the system size
-        df = df.apply(scale_array, axis = 1, args = ('generation_hourly','system_size_kw', inputs_dict['gen_scale_offset']))
+        df = df.apply(scale_array, axis = 1, args = ('generation_hourly','aep', inputs_dict['gen_scale_offset']))
 
         # calculate the excess generation and make necessary NEM modifications
         df = excess_generation_vectorized(df, gross_fit_mode)
@@ -2432,7 +2433,7 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech):
                         AND a.hdf_load_index = b.hdf_load_index
                         AND a.crb_model = b.crb_model
                         AND a.load_kwh_per_customer_in_bin = b.load_kwh_per_customer_in_bin
-                        AND a.system_size_kw = b.system_size_kw
+                        AND a.aep = b.aep
                         AND %(resource_join_clause)s
                         AND a.ur_enable_net_metering = b.ur_enable_net_metering
                         AND a.ur_nm_yearend_sell_rate = b.ur_nm_yearend_sell_rate
