@@ -174,6 +174,11 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()       
     
+    #==============================================================================
+    #     create table defining power curve partial transitions
+    #==============================================================================  
+    create_pc_transitions(cur, con, schema)        
+    
     # combine the temporal data (this only needs to be done once for all sectors)
     
     # combined temporal data for technology specific factors
@@ -181,10 +186,12 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
             CREATE UNLOGGED TABLE %(schema)s.temporal_factors_wind as
             SELECT      a.year, 
                     	a.turbine_size_kw, 
-                    	a.power_curve_id,
+                         a.power_curve_1,
+                         a.power_curve_2,
+                    	a.interp_factor,
                     	b.turbine_height_m,
                     	d.derate_factor
-            FROM %(schema)s.input_wind_performance_power_curve_schedule a
+            FROM %(schema)s.input_wind_performance_power_curve_transitions a
             LEFT JOIN %(schema)s.input_wind_performance_allowable_turbine_sizes b
                 	ON a.turbine_size_kw = b.turbine_size_kw
             LEFT JOIN %(schema)s.input_wind_performance_gen_derate_factors d
@@ -196,7 +203,9 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
             
             SELECT GENERATE_SERIES(%(start_year)s, %(end_year)s, 2) as year,
                 	0 as turbine_size_kw,
-                	0 as power_curve_id,
+                	0 as power_curve_1,
+                  0 as power_curve_2,
+                  0 as interp_factor,
                 	0 as turbine_height_m,
                 	0 as derate_factor;""" % inputs
     cur.execute(sql)
@@ -206,7 +215,7 @@ def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_ab
     # create indices for subsequent joins
     sql =  """CREATE INDEX temporal_factors_technology_join_fields_btree 
               ON %(schema)s.temporal_factors_wind
-              USING BTREE(turbine_height_m, turbine_size_kw, power_curve_id);
+              USING BTREE(turbine_height_m, turbine_size_kw, power_curve_1, power_curve_2);
               
               CREATE INDEX temporal_factors_technology_year_btree 
               ON %(schema)s.temporal_factors_wind
@@ -1845,6 +1854,48 @@ def create_nem_scenario(cur, con, schema):
     cur.execute(sql)
     con.commit()            
 
+
+def create_pc_transitions(cur, con, schema):
+    
+    inputs = locals().copy()    
+    
+    sql = """DROP TABLE IF EXISTS %(schema)s.input_wind_performance_power_curve_transitions;
+            CREATE TABLE %(schema)s.input_wind_performance_power_curve_transitions AS
+            with a as
+            (
+                	SELECT turbine_size_kw, power_curve_id, min(year), max(year)
+                	FROM %(schema)s.input_wind_performance_power_curve_schedule
+                	GROUP BY turbine_size_kw, power_curve_id
+                	ORDER BY turbine_size_kw, power_curve_id
+            ),
+            b as
+            (
+                	SELECT a.turbine_size_kw, 
+                		a.min as year_1, a.power_curve_id as power_curve_1,
+                		COALESCE(b.min, 2050) as year_2, coalesce(b.power_curve_id, a.power_curve_id) as power_curve_2
+                	FROM a
+                	LEFT JOIN a b
+                	ON a.turbine_size_kw = b.turbine_size_kw
+                	AND a.max = b.min - 2
+                	ORDER BY a.turbine_size_kw, a.min
+            ),
+            c as
+            (
+                	SELECT generate_series(b.year_1, b.year_2-2, 2) as year,
+                		b.*
+                	FROM b
+            )
+            SELECT c.*,
+                	CASE when power_curve_1 = power_curve_2 then 0
+                	ELSE (year::NUMERIC-year_1)/(year_2::NUMERIC-year_1) 
+                	END AS interp_factor
+            FROM c
+            UNION ALL
+            SELECT 2050 as year, c.turbine_size_kw, c.year_1, c.power_curve_1, c.year_2, c.power_curve_2, 0 as interp_factor
+            FROM c
+            WHERE year = 2048;""" % inputs
+    cur.execute(sql)
+    con.commit()
     
 ########################################################################################################################
 ########################################################################################################################
@@ -1865,41 +1916,42 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     apply_siting_restrictions(inputs, county_chunks, npar, pg_conn_string)
     logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
     
+    
     #==============================================================================
     #     Find All Combinations of Points and Wind Resource
     #==============================================================================  
-    msg = "\t\tFinding Wind Resource for Each Agent"
-    t0 = time.time()
-    logger.info(msg)
-    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s;
-                CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s AS
-                SELECT a.*,
-                    COALESCE(b.aep, 0) as naep_no_derate,
-                    COALESCE(b.turbine_id, 0) as power_curve_id
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s a
-                LEFT JOIN diffusion_wind.wind_resource_annual b
-                    ON a.i = b.i
-                    AND a.j = b.j
-                    AND a.cf_bin = b.cf_bin
-                    AND a.turbine_height_m = b.height;
-                    """ % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)
-    
-    # create indices for subsequent joins
-    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_temporal_factors_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
-              USING BTREE(turbine_height_m, turbine_size_kw, power_curve_id);              
-              
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_census_division_abbr_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
-              USING BTREE(census_division_abbr);
-              
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_nem_fields_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
-              USING BTREE(state_abbr, utility_type);           
-              """ % inputs
-    p_run(pg_conn_string, sql, county_chunks, npar)
-    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
+#    msg = "\t\tFinding Wind Resource for Each Agent"
+#    t0 = time.time()
+#    logger.info(msg)
+#    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s;
+#                CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s AS
+#                SELECT a.*,
+#                    COALESCE(b.aep, 0) as naep_no_derate,
+#                    COALESCE(b.turbine_id, 0) as power_curve_id
+#                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s a
+#                LEFT JOIN diffusion_wind.wind_resource_annual b
+#                    ON a.i = b.i
+#                    AND a.j = b.j
+#                    AND a.cf_bin = b.cf_bin
+#                    AND a.turbine_height_m = b.height;
+#                    """ % inputs
+#    p_run(pg_conn_string, sql, county_chunks, npar)
+#    
+#    # create indices for subsequent joins
+#    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_temporal_factors_btree 
+#              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
+#              USING BTREE(turbine_height_m, turbine_size_kw, power_curve_id);              
+#              
+#              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_census_division_abbr_btree 
+#              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
+#              USING BTREE(census_division_abbr);
+#              
+#              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_nem_fields_btree 
+#              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
+#              USING BTREE(state_abbr, utility_type);           
+#              """ % inputs
+#    p_run(pg_conn_string, sql, county_chunks, npar)
+#    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
 
     #==============================================================================
@@ -1932,8 +1984,13 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                   a.max_demand_kw,
                   a.rate_id_alias,
                   a.rate_source,
-                	a.naep_no_derate * e.derate_factor as naep,
-                  a.power_curve_id as turbine_id,
+                  
+                  COALESCE(e.interp_factor * (w2.aep-w1.aep) + w1.aep, 0) * e.derate_factor as naep,
+                  COALESCE(e.power_curve_1, -1) as turbine_id,
+                  COALESCE(e.power_curve_1, -1) as power_curve_1,
+                  COALESCE(e.power_curve_2, -1) as power_curve_2,
+                  e.interp_factor,
+
                   a.i, a.j, a.cf_bin,
                 	e.turbine_size_kw,
                 	a.turbine_height_m,
@@ -1941,19 +1998,31 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                   c.year_end_excess_sell_rate_dlrs_per_kwh as ur_nm_yearend_sell_rate,
                   c.hourly_excess_sell_rate_dlrs_per_kwh as ur_flat_sell_rate,
                 	diffusion_wind.scoe(a.load_kwh_per_customer_in_bin,
-                                  a.naep_no_derate * e.derate_factor, 
+                                  COALESCE(e.interp_factor * (w2.aep-w1.aep) + w1.aep, 0) * e.derate_factor, 
                                   e.turbine_size_kw,
                                   c.system_size_limit_kw,
                                   d.sys_size_target_nem,
                                   d.sys_oversize_limit_nem,
                                   d.sys_size_target_no_nem,
                                   d.sys_oversize_limit_no_nem) as scoe_return
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s a
+                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s a
 
                 INNER JOIN %(schema)s.temporal_factors_wind e
                     ON a.turbine_height_m = e.turbine_height_m
                     AND a.turbine_size_kw = e.turbine_size_kw
-                    AND a.power_curve_id = e.power_curve_id
+                
+                LEFT JOIN diffusion_wind.wind_resource_annual w1
+                    ON a.i = w1.i
+                    AND a.j = w1.j
+                    AND a.cf_bin = w1.cf_bin
+                    AND a.turbine_height_m = w1.height
+                    AND e.power_curve_1 = w1.turbine_id
+                LEFT JOIN diffusion_wind.wind_resource_annual w2
+                    ON a.i = w2.i
+                    AND a.j = w2.j
+                    AND a.cf_bin = w2.cf_bin
+                    AND a.turbine_height_m = w2.height
+                    AND e.power_curve_2 = w2.turbine_id
                 
                 INNER JOIN diffusion_shared.aeo_load_growth_projections b
                     	ON a.census_division_abbr = b.census_division_abbr
@@ -1988,7 +2057,9 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                    naep*(scoe_return).nturb*turbine_size_kw as aep,
                    (scoe_return).nturb*turbine_size_kw as system_size_kw,
                    (scoe_return).nturb as nturb,
-                   turbine_id,
+                   
+                   turbine_id, power_curve_1, power_curve_2, interp_factor,                   
+
                    i, j, cf_bin,
                    turbine_size_kw, 
                    turbine_height_m, 
