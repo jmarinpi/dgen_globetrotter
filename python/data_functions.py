@@ -1915,44 +1915,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
     t0 = time.time()
     apply_siting_restrictions(inputs, county_chunks, npar, pg_conn_string)
     logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
-    
-    
-    #==============================================================================
-    #     Find All Combinations of Points and Wind Resource
-    #==============================================================================  
-#    msg = "\t\tFinding Wind Resource for Each Agent"
-#    t0 = time.time()
-#    logger.info(msg)
-#    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s;
-#                CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s AS
-#                SELECT a.*,
-#                    COALESCE(b.aep, 0) as naep_no_derate,
-#                    COALESCE(b.turbine_id, 0) as power_curve_id
-#                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s a
-#                LEFT JOIN diffusion_wind.wind_resource_annual b
-#                    ON a.i = b.i
-#                    AND a.j = b.j
-#                    AND a.cf_bin = b.cf_bin
-#                    AND a.turbine_height_m = b.height;
-#                    """ % inputs
-#    p_run(pg_conn_string, sql, county_chunks, npar)
-#    
-#    # create indices for subsequent joins
-#    sql =  """CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_temporal_factors_btree 
-#              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
-#              USING BTREE(turbine_height_m, turbine_size_kw, power_curve_id);              
-#              
-#              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_census_division_abbr_btree 
-#              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
-#              USING BTREE(census_division_abbr);
-#              
-#              CREATE INDEX pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s_nem_fields_btree 
-#              ON %(schema)s.pt_%(sector_abbr)s_sample_load_rate_turbine_resource_%(i_place_holder)s 
-#              USING BTREE(state_abbr, utility_type);           
-#              """ % inputs
-#    p_run(pg_conn_string, sql, county_chunks, npar)
-#    logger.info('\t\t\tCompleted in: %0.1fs' %(time.time() - t0))  
-
 
     #==============================================================================
     #     Find All Combinations of Costs and Resource for Each Customer Bin
