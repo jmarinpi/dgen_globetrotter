@@ -1948,7 +1948,9 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                   a.rate_source,
                   
                   COALESCE(e.interp_factor * (w2.aep-w1.aep) + w1.aep, 0) * e.derate_factor as naep,
-                  COALESCE(e.power_curve_1, -1) as turbine_id,
+                  COALESCE(CASE WHEN e.interp_factor <= 0.5 THEN e.power_curve_1
+                                ELSE e.power_curve_2 
+                           END, -1) as turbine_id,
                   COALESCE(e.power_curve_1, -1) as power_curve_1,
                   COALESCE(e.power_curve_2, -1) as power_curve_2,
                   e.interp_factor,
