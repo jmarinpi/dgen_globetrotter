@@ -389,7 +389,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     CASE WHEN b.turbine_size_kw = 1500 AND b.nturb > 1 THEN '1500+'::TEXT 
                     ELSE b.turbine_size_kw::TEXT 
                     END as system_size_factors,
-                    b.turbine_id,
+                    b.power_curve_1, b.power_curve_2, b.interp_factor,
                     b.i, b.j, b.cf_bin,
                     b.nturb, b.turbine_size_kw, 
                     b.turbine_height_m, b.scoe,
@@ -1948,9 +1948,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                   a.rate_source,
                   
                   COALESCE(e.interp_factor * (w2.aep-w1.aep) + w1.aep, 0) * e.derate_factor as naep,
-                  COALESCE(CASE WHEN e.interp_factor <= 0.5 THEN e.power_curve_1
-                                ELSE e.power_curve_2 
-                           END, -1) as turbine_id,
                   COALESCE(e.power_curve_1, -1) as power_curve_1,
                   COALESCE(e.power_curve_2, -1) as power_curve_2,
                   e.interp_factor,
@@ -2022,7 +2019,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                    (scoe_return).nturb*turbine_size_kw as system_size_kw,
                    (scoe_return).nturb as nturb,
                    
-                   turbine_id, power_curve_1, power_curve_2, interp_factor,                   
+                   power_curve_1, power_curve_2, interp_factor,                   
 
                    i, j, cf_bin,
                    turbine_size_kw, 
