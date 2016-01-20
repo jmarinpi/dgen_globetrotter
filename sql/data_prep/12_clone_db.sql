@@ -9,25 +9,25 @@ GRANT CONNECT, TEMPORARY ON DATABASE "dgen_db" TO "diffusion-writers";
 GRANT CONNECT, TEMPORARY ON DATABASE "dgen_db" TO "diffusion-schema-writers";
 GRANT CONNECT, TEMPORARY ON DATABASE "dgen_db" TO "diffusion-intermediate";
 ALTER DATABASE dgen_db owner to "diffusion-admins";
-
+GRANT CREATE ON database "dgen_db" to "diffusion-schema-writers" ;
 -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** 
 -- CHANGE DATABASE CONNECTION MANUALLY BEFORE PROCEEDING!!!!!!
 -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** -- *** 
 
 -- add extensions
- CREATE EXTENSION plr;
+ -- CREATE EXTENSION plr;
 
- CREATE EXTENSION hstore;
+--  CREATE EXTENSION hstore;
   
- CREATE EXTENSION postgis
-  SCHEMA public
-  VERSION "2.0.2";
+--  CREATE EXTENSION postgis
+--   SCHEMA public
+--   VERSION "2.0.2";
   
-CREAte extension plpythonu;
-
-   CREATE EXTENSION dblink
-  SCHEMA public
-  VERSION "1.0";
+-- CREAte extension plpythonu;
+-- 
+--    CREATE EXTENSION dblink
+--   SCHEMA public
+--   VERSION "1.0";
 
 -- clone the schemas that we need to the new database
 -- ssh to gispgdb, then:
