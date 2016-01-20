@@ -2081,9 +2081,13 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
              USING BTREE(i, j, cf_bin, turbine_height_m);     
              
-             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_turbine_id_btree 
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_power_curve_1_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
-             USING BTREE(turbine_id);   
+             USING BTREE(power_curve_1);   
+
+             CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_power_curve_2_btree 
+             ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
+             USING BTREE(power_curve_2);   
              
              CREATE INDEX pt_%(sector_abbr)s_best_option_each_year_wind_aep_btree 
              ON %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
@@ -2124,7 +2128,7 @@ def get_unique_parameters_for_urdb3(cur, con, tech, schema, sectors):
     inputs_dict = locals().copy()     
        
     if tech == 'wind':
-        inputs_dict['resource_keys'] = 'i, j, cf_bin, turbine_height_m, turbine_id'
+        inputs_dict['resource_keys'] = 'i, j, cf_bin, turbine_height_m, power_curve_1, power_curve_2, interp_factor'
     elif tech == 'solar':
         inputs_dict['resource_keys'] = 'solar_re_9809_gid, tilt, azimuth'
 
@@ -2239,62 +2243,111 @@ def get_utilityrate3_inputs(uids, cur, con, tech, schema, npar, pg_conn_string, 
     
     
     inputs_dict = locals().copy()     
-       
-    inputs_dict['load_scale_offset'] = 1e8
-    if tech == 'wind':
-        inputs_dict['gen_join_clause'] = """a.i = d.i
-                                            AND a.j = d.j
-                                            AND a.cf_bin = d.cf_bin
-                                            AND a.turbine_height_m = d.height
-                                            AND a.turbine_id = d.turbine_id"""
-        inputs_dict['gen_scale_offset'] = 1e3
-    elif tech == 'solar':
-        inputs_dict['gen_join_clause'] = """a.solar_re_9809_gid = d.solar_re_9809_gid
-                                            AND a.tilt = d.tilt
-                                            AND a.azimuth = d.azimuth"""
-        inputs_dict['gen_scale_offset'] = 1e6
-
     # split the uids up into chunks for parallel processing        
     uid_chunks = map(list, np.array_split(uids, npar))    
-    inputs_dict['chunk_place_holder'] = '%(uids)s'        
+    inputs_dict['chunk_place_holder'] = '%(uids)s'           
+    inputs_dict['load_scale_offset'] = 1e8
+        
+    if tech == 'solar':
+        inputs_dict['gen_scale_offset'] = 1e6
 
-    # build out the sql query that will be used to collect the data
-    sql = """
-            -- COMBINE LOAD DATA FOR RES AND COM INTO SINGLE TABLE
-            WITH eplus as 
-            (
-                	SELECT hdf_index, crb_model, nkwh
-                	FROM diffusion_shared.energy_plus_normalized_load_res
-                	WHERE crb_model = 'reference'
-                	UNION ALL
-                	SELECT hdf_index, crb_model, nkwh
-                	FROM diffusion_shared.energy_plus_normalized_load_com
-            )
-                   
-            SELECT 	a.uid, 
-                    	b.sam_json as rate_json, 
-                        a.load_kwh_per_customer_in_bin, c.nkwh as consumption_hourly,
-                        a.aep,
-                        COALESCE(d.cf,  array_fill(1, array[8760])) as generation_hourly, -- fill in for customers with no matching wind resource (values don't matter because they will be zeroed out)
-                        a.ur_enable_net_metering as apply_net_metering, a.ur_nm_yearend_sell_rate, a.ur_flat_sell_rate
-            	
-            FROM %(schema)s.unique_rate_gen_load_combinations_%(tech)s a
+        # build out the sql query that will be used to collect the data
+        sql = """
+                -- COMBINE LOAD DATA FOR RES AND COM INTO SINGLE TABLE
+                WITH eplus as 
+                (
+                    	SELECT hdf_index, crb_model, nkwh
+                    	FROM diffusion_shared.energy_plus_normalized_load_res
+                    	WHERE crb_model = 'reference'
+                    	UNION ALL
+                    	SELECT hdf_index, crb_model, nkwh
+                    	FROM diffusion_shared.energy_plus_normalized_load_com
+                )
+                       
+                SELECT 	a.uid, 
+                        	b.sam_json as rate_json, 
+                            a.load_kwh_per_customer_in_bin, c.nkwh as consumption_hourly,
+                            a.aep,
+                            0::NUMERIC as interp_factor,
+                            COALESCE(d.cf,  array_fill(1, array[8760])) as generation_hourly_1, -- fill in for customers with no matching wind resource (values don't matter because they will be zeroed out)
+                            ARRAY[]::SMALLINT[] as generation_hourly_2,                            
+                            a.ur_enable_net_metering as apply_net_metering, a.ur_nm_yearend_sell_rate, a.ur_flat_sell_rate
+                	
+                FROM %(schema)s.unique_rate_gen_load_combinations_%(tech)s a
+                
+                -- JOIN THE RATE DATA
+                LEFT JOIN %(schema)s.all_rate_jsons b 
+                        ON a.rate_id_alias = b.rate_id_alias
+                        AND a.rate_source = b.rate_source
+                
+                -- JOIN THE LOAD DATA
+                LEFT JOIN eplus c
+                        ON a.crb_model = c.crb_model
+                        AND a.hdf_load_index = c.hdf_index
+                
+                -- JOIN THE RESOURCE DATA
+                LEFT JOIN diffusion_%(tech)s.%(tech)s_resource_hourly d
+                        ON a.solar_re_9809_gid = d.solar_re_9809_gid
+                        AND a.tilt = d.tilt
+                        AND a.azimuth = d.azimuth
+                
+                WHERE a.uid IN (%(chunk_place_holder)s);""" % inputs_dict
+    elif tech == 'wind':
+        inputs_dict['gen_join_clause'] = """"""
+        inputs_dict['gen_scale_offset'] = 1e3        
             
-            -- JOIN THE RATE DATA
-            LEFT JOIN %(schema)s.all_rate_jsons b 
-                    ON a.rate_id_alias = b.rate_id_alias
-                    AND a.rate_source = b.rate_source
             
-            -- JOIN THE LOAD DATA
-            LEFT JOIN eplus c
-                    ON a.crb_model = c.crb_model
-                    AND a.hdf_load_index = c.hdf_index
+            # build out the sql query that will be used to collect the data
+        sql = """
+                -- COMBINE LOAD DATA FOR RES AND COM INTO SINGLE TABLE
+                WITH eplus as 
+                (
+                    	SELECT hdf_index, crb_model, nkwh
+                    	FROM diffusion_shared.energy_plus_normalized_load_res
+                    	WHERE crb_model = 'reference'
+                    	UNION ALL
+                    	SELECT hdf_index, crb_model, nkwh
+                    	FROM diffusion_shared.energy_plus_normalized_load_com
+                )
+                       
+                SELECT 	a.uid, 
+                        	b.sam_json as rate_json, 
+                            a.load_kwh_per_customer_in_bin, c.nkwh as consumption_hourly,
+                            a.aep,
+                            a.interp_factor,
+                            COALESCE(d1.cf,  array_fill(1, array[8760])) as generation_hourly_1, -- fill in for customers with no matching wind resource (values don't matter because they will be zeroed out)
+                            COALESCE(d2.cf,  array_fill(1, array[8760])) as generation_hourly_2, -- fill in for customers with no matching wind resource (values don't matter because they will be zeroed out)
+                            a.ur_enable_net_metering as apply_net_metering, a.ur_nm_yearend_sell_rate, a.ur_flat_sell_rate
+                	
+                FROM %(schema)s.unique_rate_gen_load_combinations_%(tech)s a
+                
+                -- JOIN THE RATE DATA
+                LEFT JOIN %(schema)s.all_rate_jsons b 
+                        ON a.rate_id_alias = b.rate_id_alias
+                        AND a.rate_source = b.rate_source
+                
+                -- JOIN THE LOAD DATA
+                LEFT JOIN eplus c
+                        ON a.crb_model = c.crb_model
+                        AND a.hdf_load_index = c.hdf_index
+                
+                -- JOIN THE RESOURCE DATA
+                LEFT JOIN diffusion_%(tech)s.%(tech)s_resource_hourly d1
+                        ON a.i = d1.i
+                        AND a.j = d1.j
+                        AND a.cf_bin = d1.cf_bin
+                        AND a.turbine_height_m = d1.height
+                        AND a.power_curve_1 = d1.turbine_id
+                
+                LEFT JOIN diffusion_%(tech)s.%(tech)s_resource_hourly d2
+                        ON a.i = d2.i
+                        AND a.j = d2.j
+                        AND a.cf_bin = d2.cf_bin
+                        AND a.turbine_height_m = d2.height
+                        AND a.power_curve_2 = d2.turbine_id
+                
+                WHERE a.uid IN (%(chunk_place_holder)s);""" % inputs_dict            
             
-            -- JOIN THE RESOURCE DATA
-            LEFT JOIN diffusion_%(tech)s.%(tech)s_resource_hourly d
-                    ON %(gen_join_clause)s
-            
-            WHERE a.uid IN (%(chunk_place_holder)s);""" % inputs_dict
 
     results = JoinableQueue()    
     jobs = []
@@ -2335,6 +2388,16 @@ def scale_array(row, array_col, scale_col, prec_offset_value):
     
     return row
 
+def interpolate_array(row, array_1_col, array_2_col, interp_factor_col, out_col):
+    
+    if row[interp_factor_col] <> 0:
+        interpolated = row[interp_factor_col] * (row[array_2_col] - row[array_1_col]) + row[array_1_col]
+    else:
+        interpolated = row[array_1_col]
+    row[out_col] = interpolated
+    
+    return row
+
 def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue, gross_fit_mode = False):
     try:
         # create cursor and connection
@@ -2349,8 +2412,14 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue, gross_fit
         df = df.apply(scale_array, axis = 1, args = ('consumption_hourly','load_kwh_per_customer_in_bin', inputs_dict['load_scale_offset']))
         
         # scale the hourly cfs into hourly kw using the system size
-        df = df.apply(scale_array, axis = 1, args = ('generation_hourly','aep', inputs_dict['gen_scale_offset']))
+        df = df.apply(scale_array, axis = 1, args = ('generation_hourly_1','aep', inputs_dict['gen_scale_offset']))
+        df = df.apply(scale_array, axis = 1, args = ('generation_hourly_2','aep', inputs_dict['gen_scale_offset']))
 
+        # interpolate hourly generation data
+        df = df.apply(interpolate_array, axis = 1, args = ('generation_hourly_1', 'generation_hourly_2', 'interp_factor', 'generation_hourly'))
+        df.drop('generation_hourly_1', axis = 1, inplace = True)
+        df.drop('generation_hourly_2', axis = 1, inplace = True)
+        
         # calculate the excess generation and make necessary NEM modifications
         df = excess_generation_vectorized(df, gross_fit_mode)
         #df = df.apply(excess_generation_calcs, axis = 1, args = (gross_fit_mode,))
@@ -2363,7 +2432,6 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue, gross_fit
         
     except Exception, e:
         print 'Error: %s' % e
-        print sql
     
 
 def run_utilityrate3(df):
@@ -2406,7 +2474,8 @@ def write_utilityrate3_to_pg(cur, con, sam_results_list, schema, sectors, tech):
                                             AND a.j = b.j
                                             AND a.cf_bin = b.cf_bin
                                             AND a.turbine_height_m = b.turbine_height_m
-                                            AND a.turbine_id = b.turbine_id """
+                                            AND a.power_curve_1 = b.power_curve_1
+                                            AND a.power_curve_2 = b.power_curve_2"""
     elif tech == 'solar':
         inputs_dict['resource_join_clause'] = """a.solar_re_9809_gid = b.solar_re_9809_gid
                                             AND a.tilt = b.tilt
