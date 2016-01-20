@@ -2378,12 +2378,19 @@ def update_rate_json_w_nem_fields(row):
     return row
 
 
-def scale_array(row, array_col, scale_col, prec_offset_value):
+def scale_array_precision(row, array_col, prec_offset_value):
     
-    hourly_array = np.array(row[array_col], dtype = 'float64') / prec_offset_value
+    row[array_col] = np.array(row[array_col], dtype = 'float64') / prec_offset_value
+    
+    return row
+    
+def scale_array_sum(row, array_col, scale_col):
+
+    hourly_array = np.array(row[array_col], dtype = 'float64')
     row[array_col] = hourly_array/hourly_array.sum() * np.float64(row[scale_col])
     
     return row
+    
 
 def interpolate_array(row, array_1_col, array_2_col, interp_factor_col, out_col):
     
@@ -2405,17 +2412,19 @@ def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue, gross_fit
         con.close()
         cur.close()
         
-        # scale the normalized hourly load based on the annual load and scale offset factor
-        df = df.apply(scale_array, axis = 1, args = ('consumption_hourly','load_kwh_per_customer_in_bin', inputs_dict['load_scale_offset']))
+        # scale the normalized hourly load based on the scale offset factor and annual load 
+        df = df.apply(scale_array_precision, axis = 1, args = ('consumption_hourly', inputs_dict['load_scale_offset']))
+        df = df.apply(scale_array_sum, axis = 1, args = ('consumption_hourly', 'load_kwh_per_customer_in_bin'))
         
-        # scale the hourly cfs into hourly kw using the system size
-        df = df.apply(scale_array, axis = 1, args = ('generation_hourly_1','aep', inputs_dict['gen_scale_offset']))
-        df = df.apply(scale_array, axis = 1, args = ('generation_hourly_2','aep', inputs_dict['gen_scale_offset']))
-
-        # interpolate hourly generation data
+        # scale the hourly cfs into floats
+        df = df.apply(scale_array_precision, axis = 1, args = ('generation_hourly_1', inputs_dict['gen_scale_offset']))
+        df = df.apply(scale_array_precision, axis = 1, args = ('generation_hourly_2', inputs_dict['gen_scale_offset']))
+        # interpolate hourly generation data between power curves (if necessary)
         df = df.apply(interpolate_array, axis = 1, args = ('generation_hourly_1', 'generation_hourly_2', 'interp_factor', 'generation_hourly'))
         df.drop('generation_hourly_1', axis = 1, inplace = True)
         df.drop('generation_hourly_2', axis = 1, inplace = True)
+        # scale interpolated hourly generation data sum to aep
+        df = df.apply(scale_array_sum, axis = 1, args = ('generation_hourly', 'aep'))
         
         # calculate the excess generation and make necessary NEM modifications
         df = excess_generation_vectorized(df, gross_fit_mode)
