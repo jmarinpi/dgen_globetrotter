@@ -69,12 +69,15 @@ DELETE FROM diffusion_config.sceninp_rate_escalation;
 INSERT INTO diffusion_config.sceninp_rate_escalation
 select *
 from unnest(array[
-	'AEO2015',
-	'AEO2015 Extended',
-	'AEO2014',
-	'AEO2014 Extended'
-	'No Growth',
-	'User Defined'
+		'AEO2014 Reference',
+		'AEO2015 Low Prices',
+		'AEO2015 Reference',
+		'AEO2015 High Growth',
+		'AEO2015 High Prices',
+		'AEO2015 Low Growth',
+		'AEO2015 High Resource',
+		'No Growth',
+		'User Defined'
 	]);
 ------------------------------------------------------------------------
 
