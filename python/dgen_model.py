@@ -257,6 +257,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # get dsire incentives, srecs, and itc for the generated customer bins
             dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
             srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
+            state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, cfg.dsire_default_exp_date)            
             itc_options = datfunc.get_itc_incentives(con, schema)
             for year in model_years:
                 logger.info('\tWorking on %s' % year)
@@ -282,7 +283,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 df = finfunc.calc_economics(df, schema, 
                                            market_projections, financial_parameters, rate_growth_df,
                                            scenario_opts, incentive_options, max_market_share, 
-                                           cur, con, year, dsire_incentives, cfg.dsire_inc_def_exp_year, 
+                                           cur, con, year, dsire_incentives, cfg.dsire_inc_def_exp_year, state_dsire,
                                            srecs, manual_incentives, deprec_schedule, 
                                            ann_system_degradation, mode, curtailment_method, itc_options,
                                            tech_lifetime = 25)

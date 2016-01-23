@@ -27,8 +27,8 @@ path = os.path.dirname(os.path.abspath(__file__))
 
 # set the name of the pg_params_file
 #pg_params_file = 'pg_params.json'
-#pg_params_file = 'pg_params_bigde.json'
-pg_params_file = 'pg_params_gis.json'
+pg_params_file = 'pg_params_bigde.json'
+#pg_params_file = 'pg_params_gis.json'
 
 # load pg params from pg_params.json
 pg_params, pg_conn_string = utilfunc.get_pg_params(os.path.join(path, pg_params_file))
@@ -73,6 +73,7 @@ init_model = True
 #  Default expiration year for dsire incentives
 #==============================================================================
 dsire_inc_def_exp_year = 2016
+dsire_default_exp_date = '1/1/%s' % dsire_inc_def_exp_year
 
 #==============================================================================
 # Toggle gross fit vs net fit
