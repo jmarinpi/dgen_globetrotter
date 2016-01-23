@@ -205,7 +205,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 financial_parameters = datfunc.get_financial_parameters(con, schema)
                 incentive_options = datfunc.get_manual_incentive_options(con, schema)
                 deprec_schedule = datfunc.get_depreciation_schedule(con, schema)
-                ann_system_degradation = datfunc.get_system_degradation(con, schema) 
+                ann_system_degradation = datfunc.get_system_degradation(con, schema)
+                inflation_rate = datfunc.get_annual_inflation(con,schema)
                 rate_growth_df = datfunc.get_rate_escalations(con, schema)
                 manual_incentives = datfunc.get_manual_incentives(con, schema)
                 bass_params = datfunc.get_bass_params(con, schema)
@@ -284,7 +285,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                            scenario_opts, incentive_options, max_market_share, 
                                            cur, con, year, dsire_incentives, cfg.dsire_inc_def_exp_year, 
                                            srecs, manual_incentives, deprec_schedule, 
-                                           ann_system_degradation, mode, curtailment_method, itc_options,
+                                           ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate,
                                            tech_lifetime = 25)
                               
                 
