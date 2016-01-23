@@ -2821,6 +2821,187 @@ def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string, defau
     return df
 
 
+def get_state_dsire_incentives(cur, con, schema, techs, default_exp_date = '1/1/2016'):
+    
+    # create a dictionary out of the input arguments -- this is used through sql queries    
+    inputs = locals().copy()
+    
+    sql_list = []
+    for tech in techs:
+        inputs['tech'] = tech
+        sql =   """SELECT incentive_type, state_abbr, sector_abbr, dlrs_per_kw, fixed_dlrs, 
+                           fixed_kw, min_size_kw, max_size_kw, cap_dlrs, cap_pct_cost, 
+                           COALESCE(exp_date, '%(default_exp_date)s'::DATE) as exp_date,
+                           dsire_program_name, dsire_last_updated, dsire_link, dlrs_per_kwh, 
+                           duration_years, cap_dlrs_yr, val_pct_cost, fixed_kwh, min_aep_kwh, 
+                           max_aep_kwh, '%(tech)s'::TEXT as tech
+                   FROM diffusion_%(tech)s.state_dsire_incentives
+                """ % inputs
+        sql_list.append(sql)
+    
+    sql = ' UNION ALL '.join(sql_list)
+    # get the data
+    df = pd.read_sql(sql, con, coerce_float = True)
+    # convert exp_date to datetime
+    df['exp_date'] = pd.to_datetime(df['exp_date'])
+
+
+    return df  
+
+
+def calc_state_dsire_incentives(df, state_dsire_df, year):
+    
+    # convert current year into a datetime object (assume current date is the first day of the 2 year period ending in YEAR)
+    df['cur_date'] = pd.to_datetime((df['year']-2).apply(str))    
+    
+    # calculate installed costs
+    df['ic'] = df['installed_costs_dollars_per_kw'] * df['system_size_kw']    
+
+    # join data frames
+    inc = pd.merge(df, state_dsire_df, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])    
+
+    # drop rows that don't fit within the correct ranges for system size
+    inc = inc[(inc['system_size_kw'] >= inc['min_size_kw']) & (inc['system_size_kw'] < inc['max_size_kw'])]
+    # drop rows that don't fit within correct aep range
+    inc = inc[(inc['aep'] >= inc['min_aep_kwh']) & (inc['aep'] < inc['max_aep_kwh'])]
+    # drop rows that don't fit within the correct date
+    inc = inc[inc['cur_date'] <= inc['exp_date']]
+
+    
+    # calculate ITC
+    inc['value_of_itc'] = 0.0
+    inc.loc[inc['incentive_type'] == 'ITC', 
+                'value_of_itc'] = np.minimum(
+                                            inc['val_pct_cost'] * inc['ic'] * 
+                                            (inc['system_size_kw'] >= inc['min_size_kw']) * 
+                                            (inc['system_size_kw'] < inc['max_size_kw']) * 
+                                            (inc['cur_date'] <= inc['exp_date']), 
+                                        inc['cap_dlrs']
+                                    )
+                                    
+    # calculate PTC
+    inc['value_of_ptc'] = 0.0
+    inc.loc[inc['incentive_type'] == 'PTC', 
+                'value_of_ptc'] = np.minimum(
+                                            inc['dlrs_per_kwh'] * inc['aep'] *
+                                            (inc['system_size_kw'] >= inc['min_size_kw']) * 
+                                            (inc['system_size_kw'] < inc['max_size_kw']) *
+                                            (inc['aep'] >= inc['min_aep_kwh']) * 
+                                            (inc['aep'] < inc['max_aep_kwh']) *
+                                            (inc['cur_date'] <= inc['exp_date']),
+                                        np.minimum(
+                                                inc['cap_dlrs'], 
+                                                inc['cap_pct_cost'] * inc['ic']
+                                            )
+                                    )
+    inc['ptc_length'] = 0.0
+    inc.loc[inc['incentive_type'] == 'PTC', 
+                'ptc_length'] = inc['duration_years']
+
+
+    # calculate capacity based rebates
+    inc['value_of_cap_rebate'] = 0.0
+    inc.loc[inc['incentive_type'] == 'capacity_based_rebate', 
+            'value_of_cap_rebate'] = np.minimum(
+                                                (inc['dlrs_per_kw'] * (inc['system_size_kw']-inc['fixed_kw']) + inc['fixed_dlrs']) *
+                                                (inc['system_size_kw'] >= inc['min_size_kw']) * 
+                                                (inc['system_size_kw'] < inc['max_size_kw']) *                                             
+                                                (inc['cur_date'] <= inc['exp_date']),
+                                            np.minimum(
+                                                inc['cap_dlrs'], 
+                                                inc['cap_pct_cost'] * inc['ic']
+                                            )
+                                    )
+    # calculate production based rebates
+    inc['value_of_prod_rebate'] = 0.0
+    inc.loc[inc['incentive_type'] == 'production_based_rebate', 
+            'value_of_prod_rebate'] = np.minimum(
+                                                (inc['dlrs_per_kwh'] * (inc['aep']-inc['fixed_kwh']) + inc['fixed_dlrs']) *
+                                                (inc['system_size_kw'] >= inc['min_size_kw']) * 
+                                                (inc['system_size_kw'] < inc['max_size_kw']) *
+                                                (inc['aep'] >= inc['min_aep_kwh']) * 
+                                                (inc['aep'] < inc['max_aep_kwh']) *
+                                                (inc['cur_date'] <= inc['exp_date']),
+                                            np.minimum(
+                                                inc['cap_dlrs'], 
+                                                inc['cap_pct_cost'] * inc['ic']
+                                            )
+                                    )
+
+
+    # calculate FIT
+    inc['value_of_pbi_fit'] = 0.0
+    inc.loc[inc['incentive_type'] == 'FIT', 
+            'value_of_pbi_fit'] = np.minimum(
+                                            np.minimum(
+                                                        inc['dlrs_per_kwh'] * inc['aep'],
+                                                        inc['cap_dlrs_yr']
+                                                        ) * 
+                                            (inc['system_size_kw'] >= inc['min_size_kw']) * 
+                                            (inc['system_size_kw'] < inc['max_size_kw']) *
+                                            (inc['aep'] >= inc['min_aep_kwh']) * 
+                                            (inc['aep'] < inc['max_aep_kwh']) *
+                                            (inc['cur_date'] <= inc['exp_date']),
+                                        inc['cap_pct_cost'] * inc['ic']
+                                    )
+    inc['pbi_fit_length'] = 0.0
+    inc.loc[inc['incentive_type'] == 'FIT', 
+                'pbi_fit_length'] = inc['duration_years']
+    
+    # calculate ITD
+    inc['value_of_itd'] = 0.0
+    inc.loc[inc['incentive_type'] == 'ITD', 
+            'value_of_itd'] = np.minimum(
+                                            inc['val_pct_cost'] * inc['ic'] * 
+                                            (inc['system_size_kw'] >= inc['min_size_kw']) * 
+                                            (inc['system_size_kw'] < inc['max_size_kw']) * 
+                                            (inc['cur_date'] <= inc['exp_date']), 
+                                        inc['cap_dlrs']
+                                    )
+
+    # combine tax credits and deductions
+    inc['value_of_tax_credit_or_deduction'] = inc['value_of_itc'] + inc['value_of_itc']  
+    # combine cap and prod rebates
+    inc['value_of_rebate'] = inc['value_of_cap_rebate'] + inc['value_of_prod_rebate']
+    # add "value of increment" for backwards compatbility with old dsire and manual incentives (note: this is already built into rebates)
+    inc['value_of_increment'] = 0.0 
+    
+    # sum results to customer bins
+    out_cols = ['tech',
+                 'sector_abbr',
+                 'county_id',
+                 'bin_id',
+                 'business_model',
+                 'value_of_increment',
+                 'value_of_pbi_fit',
+                 'value_of_ptc',
+                 'pbi_fit_length',
+                 'ptc_length',
+                 'value_of_rebate',
+                 'value_of_tax_credit_or_deduction']
+    sum_cols = [ 'value_of_increment',
+                 'value_of_pbi_fit',
+                 'value_of_ptc',
+                 'value_of_rebate',
+                 'value_of_tax_credit_or_deduction']
+    max_cols = [ 'pbi_fit_length',
+                 'ptc_length'] # there should never be multiples of either of these, so taking the max is the correct choice
+    group_cols = ['tech', 
+                    'sector_abbr', 
+                    'county_id',
+                    'bin_id',
+                    'business_model']
+    if inc.shape[0] > 0:
+        inc_summed = inc[group_cols + sum_cols].groupby(group_cols).sum().reset_index() 
+        inc_max = inc[group_cols + max_cols].groupby(group_cols).max().reset_index() 
+        inc_combined = pd.merge(inc_summed, inc_max, how = 'left', on = group_cols)
+    else:    
+        inc_combined = inc[out_cols]
+
+    return inc_combined[out_cols]
+
+
+
 def get_srecs(cur, con, schema, techs, pg_conn_string, default_exp_yr):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()

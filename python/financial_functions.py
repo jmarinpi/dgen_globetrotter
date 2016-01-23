@@ -26,7 +26,7 @@ logger = utilfunc.get_logger()
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def calc_economics(df, schema, market_projections, financial_parameters, rate_growth_df, 
                    scenario_opts, incentive_opts, max_market_share, cur, con,
-                   year, dsire_incentives, dsire_inc_def_exp_year, srecs, manual_incentives, deprec_schedule, 
+                   year, dsire_incentives, dsire_inc_def_exp_year, state_dsire, srecs, manual_incentives, deprec_schedule, 
                    ann_system_degradation, mode, curtailment_method, itc_options, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
     Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
@@ -78,13 +78,15 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
 
     # split out rows to run through manual and dsire incentives
     df_manual_incentives = df[(df['incentive_source'] == 'Manual Policies') | (df['incentive_source'] == 'Both')]
-    df_dsire_incentives = df[(df['incentive_source'] == 'Existing Policies') | (df['incentive_source'] == 'Both')]
+    df_dsire_incentives = df[(df['tech'] == 'solar') & (df['incentive_source'] == 'Existing Policies') | (df['incentive_source'] == 'Both')]
+    df_state_dsire_incentives = df[(df['tech'] == 'wind') & (df['incentive_source'] == 'Existing Policies') | (df['incentive_source'] == 'Both')]
     # Calculate value of incentives. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
     value_of_incentives_manual = datfunc.calc_manual_incentives(df_manual_incentives, year, manual_incentives)
     value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, srecs, year, 
                                                               default_exp_yr = dsire_inc_def_exp_year, assumed_duration = 10)
+    value_of_incentives_state_dsire = datfunc.calc_state_dsire_incentives(df_state_dsire_incentives, state_dsire, year)
     # combine the results by concatenating the dataframes
-    value_of_incentives_all = pd.concat([value_of_incentives_manual, value_of_incentives_dsire], axis = 0, ignore_index = True)
+    value_of_incentives_all = pd.concat([value_of_incentives_manual, value_of_incentives_dsire, value_of_incentives_state_dsire], axis = 0, ignore_index = True)
     # sum up total incentives by agent
     value_of_incentives_all_summed = value_of_incentives_all[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['tech', 'sector_abbr', 'county_id','bin_id','business_model']).sum().reset_index()     
     # join back to the main df
@@ -308,8 +310,16 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     
     incentive_revenue = np.zeros(shape)
     
-    ptc_revenue = datfunc.fill_jagged_array(np.minimum(df.value_of_ptc,df.total_value_of_incentives/df.ptc_length),df.ptc_length, cols = tech_lifetime)
-    pbi_fit_revenue = datfunc.fill_jagged_array(np.minimum(df.value_of_pbi_fit,df.total_value_of_incentives/df.ptc_length) ,df.pbi_fit_length, cols = tech_lifetime)    
+    # cap value of ptc and pbi fit
+    remainder_for_incentive_revenues = np.maximum((max_incent_fraction * df['ic']) - df['total_value_of_incentives'], 0)
+    df['adj_value_of_ptc'] = np.minimum(remainder_for_incentive_revenues/df['ptc_length'], df['value_of_ptc'] * df['ptc_length'])
+    df['adj_value_of_ptc'] = df['adj_value_of_ptc'].fillna(0)
+    remainder_for_incentive_revenues = np.maximum(remainder_for_incentive_revenues - df['adj_value_of_ptc'] * df['ptc_length'], 0)
+    df['adj_value_of_pbi_fit'] = np.minimum(remainder_for_incentive_revenues/df['pbi_fit_length'], df['value_of_pbi_fit'] * df['pbi_fit_length'])
+    df['adj_value_of_pbi_fit'] = df['adj_value_of_pbi_fit'].fillna(0)
+    
+    ptc_revenue = datfunc.fill_jagged_array(df['adj_value_of_ptc'], df.ptc_length, cols = tech_lifetime)
+    pbi_fit_revenue = datfunc.fill_jagged_array(df['adj_value_of_pbi_fit'], df.pbi_fit_length, cols = tech_lifetime)    
 
     incentive_revenue += ptc_revenue + pbi_fit_revenue
     
