@@ -3052,25 +3052,37 @@ def get_initial_market_shares(cur, con, techs, sectors, schema, initial_market_c
                          CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_initial_market_shares_%(tech)s AS
                          WITH a as
                          (
-            			SELECT a.county_id, a.bin_id, a.state_abbr,
-            				CASE  WHEN a.system_size_kw = 0 then 0
-            					ELSE a.customers_in_bin
-            				END AS customers_in_bin, 
-                              COALESCE(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier, 0) as installed_costs_dollars_per_kw
-            			FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s a
-                        %(cost_table_join)s
-            			WHERE a.year = 2014			
-                         ),
+                			SELECT a.county_id, a.bin_id, a.state_abbr,
+                				CASE  WHEN a.system_size_kw = 0 then 0
+                					ELSE a.customers_in_bin
+                				END AS customers_in_bin, 
+                                  COALESCE(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier, 0) as installed_costs_dollars_per_kw
+                			FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s a
+                            %(cost_table_join)s
+                			WHERE a.year = 2014
+                        ),
+                        s as
+                        (
+                            SELECT a.state_abbr, sum(a.customers_in_bin) as state_total_customers, count(a.customers_in_bin)::NUMERIC as count_customer_bins
+                            FROM a
+                            GROUP BY a.state_abbr
+                        ),
                          b as
                          (
                             	SELECT a.county_id, a.bin_id,
-                            		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
-                            		(a.customers_in_bin/sum(a.customers_in_bin) OVER (PARTITION BY a.state_abbr)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
+                                     CASE WHEN s.state_total_customers > 0 THEN (a.customers_in_bin/s.state_total_customers) * b.systems_count_%(sector)s
+                                     ELSE 1/count_customer_bins * b.systems_count_%(sector)s
+                            		 END AS initial_number_of_adopters,
+                                    CASE WHEN s.state_total_customers > 0 THEN (a.customers_in_bin/s.state_total_customers) * b.capacity_mw_%(sector)s
+                                    ELSE 1/count_customer_bins * b.capacity_mw_%(sector)s
+                                    END AS initial_capacity_mw,
                             		a.customers_in_bin,
                                      a.installed_costs_dollars_per_kw
                             	FROM a
                             	LEFT JOIN diffusion_%(tech)s.starting_capacities_mw_2012_q4_us b
                             		ON a.state_abbr = b.state_abbr
+                              LEFT JOIN s
+                                    ON a.state_abbr = b.state_abbr
                         ) 
                         SELECT b.county_id, b.bin_id,
                              ROUND(COALESCE(b.initial_number_of_adopters, 0)::NUMERIC, 6) as initial_number_of_adopters,
