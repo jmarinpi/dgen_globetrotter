@@ -27,7 +27,7 @@ logger = utilfunc.get_logger()
 def calc_economics(df, schema, market_projections, financial_parameters, rate_growth_df, 
                    scenario_opts, incentive_opts, max_market_share, cur, con,
                    year, dsire_incentives, dsire_inc_def_exp_year, state_dsire, srecs, manual_incentives, deprec_schedule, 
-                   ann_system_degradation, mode, curtailment_method, itc_options, tech_lifetime = 25, max_incentive_fraction = 0.4):
+                   ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
     Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
 
@@ -108,7 +108,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
 
-    df['lcoe'] = calc_lcoe(costs,df.aep.values, df.discount_rate, tech_lifetime)
+    df = calc_lcoe(df, inflation_rate, econ_life = 20)
     npv4 = calc_npv(cfs, np.array([0.04]))
     npv_agent = calc_npv(cfs, df.discount_rate)
     with np.errstate(invalid = 'ignore'):
@@ -363,28 +363,49 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     return revenue, costs, cfs, out_df
 
 #==============================================================================    
-def calc_lcoe(costs,aep, dr, tech_lifetime):
-    ''' LCOE calculation. LCOE is the net present cost, divided by the net present
-    energy production. Assume that aep is constant over lifetime of system###
+def calc_lcoe(df, inflation_rate, econ_life = 20):
+    ''' LCOE calculation, following ATB assumptions. There will be some small differences
+    since the model is already in real terms and doesn't need conversion of nominal terms
     
-    IN: costs - numpy ndarray - project costs ($/yr) [customer bin x system year]
-        aep   - numpy array - annual energy production of system (kWh/year)
-        dr    - numpy array - annual discount rate (decimal)
-
+    IN: df
+        deprec schedule
+        inflation rate
+        econ life -- investment horizon, may be different than system lifetime.
+    
     OUT: lcoe - numpy array - Levelized cost of energy (c/kWh) 
     '''
     
-    num = -100 * calc_npv(costs, dr)
-    aep_time_series = np.repeat(aep[:,np.newaxis], tech_lifetime, axis = 1)
-    aep_time_series = np.hstack((np.zeros((len(aep),1)),aep_time_series))
-    denom = calc_npv(aep_time_series, dr)
+    # extract a list of the input columns
+    in_cols = df.columns.tolist()
     
-    # where system size is zero, lcoe should be nan
-    # otherwise, calc using num/denom
-    with np.errstate(invalid = 'ignore'):
-        lcoe =  np.where(aep == 0, np.nan, num/denom)
+    df['IR'] = inflation_rate
+    df['DF'] = 1 - df['down_payment']
+    df['CoE'] = df['discount_rate']
+    df['CoD'] = df['loan_rate']
+    df['TR'] = df['tax_rate']
     
-    return lcoe
+    
+    df['WACC'] = ((1 + ((1-df['DF'])*((1+df['CoE'])*(1+df['IR'])-1)) + (df['DF'] * ((1+df['CoD'])*(1+df['IR']) - 1) *  (1 - df['TR'])))/(1 + df['IR'])) -1
+    df['CRF'] = (df['WACC'])/ (1 - (1/(1+df['WACC'])**econ_life))# real crf
+    
+    #df = df.merge(deprec_schedule, how = 'left', on = ['tech','year'])
+    df['PVD'] = calc_npv(np.array(list(df['deprec'])),((1+df['WACC'] * 1+ df['IR'])-1)) # Discount rate used for depreciation is 1 - (WACC + 1)(Inflation + 1)
+    df['PVD'] /= (1 + df['WACC']) # In calc_npv we assume first entry of an array corresponds to year zero; the first entry of the depreciation schedule is for the first year, so we need to discount the PVD by one additional year
+    
+    df['PFF'] = (1 - df['TR'] * df['PVD'])/(1 - df['TR'])#project finance factor
+    df['CFF'] = 1 # construction finance factor -- cost of capital during construction, assume projects are built overnight, which is not true for larger systems   
+    df['OCC'] = df['installed_costs_dollars_per_kw'] # overnight capital cost $/kW
+    df['GCC'] = 0 # grid connection cost $/kW, assume cost of interconnecting included in OCC
+    df['FOM']  = df['fixed_om_dollars_per_kw_per_yr'] # fixed o&m $/kW-yr
+    df['CF'] = df['aep']/df['system_size_kw']/8760 # capacity factor
+    df['VOM'] = df['variable_om_dollars_per_kwh'] #variable O&M $/kWh
+    
+    df['lcoe'] = 100 * (((df['CRF'] * df['PFF'] * df['CFF'] * (df['OCC'] * 1 + df['GCC']) + df['FOM'])/(df['CF'] * 8760)) + df['VOM'])# LCOE 2014c/kWh
+    
+    out_cols = in_cols + ['lcoe']    
+    
+    return df[out_cols]
+   
 #==============================================================================    
 
 def calc_irr(cfs):
