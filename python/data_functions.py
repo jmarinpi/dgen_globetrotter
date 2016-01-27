@@ -3885,7 +3885,19 @@ def get_lease_availability(con, schema, tech):
                 FROM %(schema)s.input_%(tech)s_leasing_availability;''' % inputs
     df = pd.read_sql(sql, con)
     return df
+
+def get_annual_inflation(con,schema):
+    '''
+    Get inflation rate (constant for all years & sectors)
     
+    IN: con - connection to server, schema
+    OUT: Float value of inflation rate
+    '''  
+    inputs = locals().copy() 
+    sql = '''SELECT *
+             FROM %(schema)s.input_main_market_inflation;''' % inputs
+    df = pd.read_sql(sql, con)
+    return df.values[0][0] # Just want the inflation as a float (for now)
 
 def fill_jagged_array(vals,lens, cols):
     '''

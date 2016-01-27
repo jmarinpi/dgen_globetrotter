@@ -26,7 +26,7 @@ logger = utilfunc.get_logger()
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def calc_economics(df, schema, market_projections, financial_parameters, rate_growth_df, 
                    scenario_opts, incentive_opts, max_market_share, cur, con,
-                   year, dsire_incentives, dsire_inc_def_exp_year, srecs, manual_incentives, deprec_schedule, 
+                   year, dsire_incentives, dsire_inc_def_exp_year, state_dsire, srecs, manual_incentives, deprec_schedule, 
                    ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
     Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
@@ -107,7 +107,8 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
 
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
-    df['lcoe'] = calc_lcoe(df, inflation_rate, econ_life = 20)
+
+    df = calc_lcoe(df, inflation_rate, econ_life = 20)
     npv4 = calc_npv(cfs, np.array([0.04]))
     npv_agent = calc_npv(cfs, df.discount_rate)
     with np.errstate(invalid = 'ignore'):
@@ -362,7 +363,6 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     return revenue, costs, cfs, out_df
 
 #==============================================================================    
-
 def calc_lcoe(df, inflation_rate, econ_life = 20):
     ''' LCOE calculation, following ATB assumptions. There will be some small differences
     since the model is already in real terms and doesn't need conversion of nominal terms
@@ -374,6 +374,9 @@ def calc_lcoe(df, inflation_rate, econ_life = 20):
     
     OUT: lcoe - numpy array - Levelized cost of energy (c/kWh) 
     '''
+    
+    # extract a list of the input columns
+    in_cols = df.columns.tolist()
     
     df['IR'] = inflation_rate
     df['DF'] = 1 - df['down_payment']
@@ -397,11 +400,13 @@ def calc_lcoe(df, inflation_rate, econ_life = 20):
     df['CF'] = df['aep']/df['system_size_kw']/8760 # capacity factor
     df['VOM'] = df['variable_om_dollars_per_kwh'] #variable O&M $/kWh
     
-    df['LCOE'] = 100 * (((df['CRF'] * df['PFF'] * df['CFF'] * (df['OCC'] * 1 + df['GCC']) + df['FOM'])/(df['CF'] * 8760)) + df['VOM'])# LCOE 2014c/kWh
+    df['lcoe'] = 100 * (((df['CRF'] * df['PFF'] * df['CFF'] * (df['OCC'] * 1 + df['GCC']) + df['FOM'])/(df['CF'] * 8760)) + df['VOM'])# LCOE 2014c/kWh
     
-    return df['LCOE']
-#============================================================================== 
-
+    out_cols = in_cols + ['lcoe']    
+    
+    return df[out_cols]
+   
+#==============================================================================    
 
 def calc_irr(cfs):
     ''' IRR calculation. Take minimum of return values ### Vectorize this ###
