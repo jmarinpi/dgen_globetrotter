@@ -91,7 +91,14 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     value_of_incentives_all_summed = value_of_incentives_all[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['tech', 'sector_abbr', 'county_id','bin_id','business_model']).sum().reset_index()     
     # join back to the main df
     df = pd.merge(df, value_of_incentives_all_summed, how = 'left', on = ['county_id','bin_id','business_model', 'tech', 'sector_abbr'])
-
+    fill_vals = {'value_of_increment' : 0,
+                'value_of_pbi_fit' : 0,
+                'value_of_ptc' : 0,
+                'pbi_fit_length' : 0,
+                'ptc_length' : 0,
+                'value_of_rebate' : 0,
+                'value_of_tax_credit_or_deduction' : 0}    
+    df.fillna(fill_vals, inplace = True)
     # Calculates value of ITC, return df with a new column 'value_of_itc'
     df = datfunc.calc_value_of_itc(df, itc_options, year)
 
