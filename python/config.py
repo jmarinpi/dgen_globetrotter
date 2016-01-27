@@ -27,8 +27,8 @@ path = os.path.dirname(os.path.abspath(__file__))
 
 # set the name of the pg_params_file
 #pg_params_file = 'pg_params.json'
-#pg_params_file = 'pg_params_bigde.json'
-pg_params_file = 'pg_params_gis.json'
+pg_params_file = 'pg_params_bigde.json'
+#pg_params_file = 'pg_params_gis.json'
 
 # load pg params from pg_params.json
 pg_params, pg_conn_string = utilfunc.get_pg_params(os.path.join(path, pg_params_file))
@@ -124,7 +124,7 @@ delete_output_schema = False
 # Refer to https://github.nrel.gov/dg-wind/diffusion/blob/dev_misc/docs/existing_schema_inputs.csv
 # to determine whether this is a safe setting  for your scenario analysis.
 #==============================================================================
-use_existing_schema = True
+use_existing_schema = False
 # change this to the schema with existing agents/bill savings that you want to use
 existing_schema_name = 'diffusion_results_2016_01_23_07h08m11s'
 
