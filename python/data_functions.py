@@ -1878,22 +1878,48 @@ def create_pc_transitions(cur, con, schema):
                 	ON a.turbine_size_kw = b.turbine_size_kw
                 	AND a.max = b.min - 2
                 	ORDER BY a.turbine_size_kw, a.min
-            ),
+            )            ,
             c as
             (
-                	SELECT generate_series(b.year_1, b.year_2-2, 2) as year,
+                	SELECT CASE WHEN year_1 = 2050 then 2050
+				ELSE generate_series(b.year_1, b.year_2-2, 2) 
+				end as year,
                 		b.*
                 	FROM b
-            )
+            )            
             SELECT c.*,
                 	CASE when power_curve_1 = power_curve_2 then 0
                 	ELSE (year::NUMERIC-year_1)/(year_2::NUMERIC-year_1) 
                 	END AS interp_factor
-            FROM c
-            UNION ALL
-            SELECT 2050 as year, c.turbine_size_kw, c.year_1, c.power_curve_1, c.year_2, c.power_curve_2, 0 as interp_factor
-            FROM c
-            WHERE year = 2048;""" % inputs
+            FROM c;""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
+    sql = """with a as
+                (
+                	select distinct turbine_size_kw
+                	from %(schema)s.input_wind_performance_power_curve_transitions
+                ), 
+                b as
+                (
+                	select distinct turbine_size_kw
+                	from %(schema)s.input_wind_performance_power_curve_transitions
+                	where year = 2050	
+                ),
+                c as
+                (
+                	select a.turbine_size_kw
+                	from a
+                	left join b
+                	ON a.turbine_size_kw = b.turbine_size_kw
+                	where b.turbine_size_kw is null
+                )
+                INSERT INTO %(schema)s.input_wind_performance_power_curve_transitions
+                select 2050 as year, d.turbine_size_kw, d.year_1, d.power_curve_1, d.year_2, d.power_curve_2, 0 as interp_factor
+                from %(schema)s.input_wind_performance_power_curve_transitions d
+                inner join c
+                ON d.turbine_size_kw = c.turbine_size_kw
+                where d.year = 2048;""" % inputs
     cur.execute(sql)
     con.commit()
     
