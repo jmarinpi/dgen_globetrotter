@@ -287,16 +287,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                            cur, con, year, dsire_incentives, cfg.dsire_inc_def_exp_year, state_dsire,
                                            srecs, manual_incentives, deprec_schedule, 
                                            ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate,
-                                           25, cfg.max_incentive_fraction)
-                              
+                                           25, cfg.max_incentive_fraction)         
                 
                 # select from choices for business model and (optionally) technology
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
-                
+
                 # calculate diffusion based on economics and bass diffusion      
                 df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, year, 
                                                               cfg.start_year, cfg.initial_market_calibrate_mode, bass_params) 
-                 
+ 
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
                 datfunc.write_last_year(con, cur, market_last_year, schema)
@@ -307,7 +306,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #    Outputs & Visualization
             #==============================================================================
             if mode != 'ReEDS' or resume_year == endyear:
-                "---------Saving Model Results---------"
+                logger.info("---------Saving Model Results---------")
                 out_subfolders = datfunc.create_tech_subfolders(out_scen_path, techs, out_subfolders, choose_tech)
                 
                 # copy outputs to csv     

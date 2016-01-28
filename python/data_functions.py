@@ -3108,7 +3108,7 @@ def get_initial_market_shares(cur, con, techs, sectors, schema, initial_market_c
                             	LEFT JOIN diffusion_%(tech)s.starting_capacities_mw_2012_q4_us b
                             		ON a.state_abbr = b.state_abbr
                               LEFT JOIN s
-                                    ON a.state_abbr = b.state_abbr
+                                    ON a.state_abbr = s.state_abbr
                         ) 
                         SELECT b.county_id, b.bin_id,
                              ROUND(COALESCE(b.initial_number_of_adopters, 0)::NUMERIC, 6) as initial_number_of_adopters,
