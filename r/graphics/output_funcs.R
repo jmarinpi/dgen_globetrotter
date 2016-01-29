@@ -240,7 +240,7 @@ lcoe_contour<-function(df, schema, tech, start_year, end_year, dr = 0.05, n = 30
 }
 
 
-dist_of_cap_selected<-function(df,scen_name, start_year, end_year, first_year_only = T){
+dist_of_cap_selected<-function(df,scen_name, start_year, end_year, weight, first_year_only = T){
   # What size system are customers selecting in 2014?
   
   # filter to only the start year, returning only the cost_of_elec_dols_per_kwh and load_kwh_in_bin cols
@@ -251,22 +251,38 @@ dist_of_cap_selected<-function(df,scen_name, start_year, end_year, first_year_on
   }
 
   g = group_by(f, system_size_factors, sector, year)
-  cap_picked = collect(summarise(g,
-                                 installed_capacity = sum(installed_capacity)
-  ))
+  if (weight == 'customers'){
+    cap_picked = collect(summarise(g,
+                                   s = sum(customers_in_bin)
+    ))    
+    y_title = 'Percent of Customers'
+  } else if (weight == 'capacity') {
+    cap_picked = collect(summarise(g,
+                                   s = sum(installed_capacity)
+    ))    
+    y_title = 'Percent of Installed Capacity'
+  }
+
+
   tmp<-group_by(cap_picked, sector, year) %>%
-	summarise(total_capacity = sum(installed_capacity, na.rm = T))
+	summarise(total = sum(s, na.rm = T))
 
   cap_picked<-merge(cap_picked,tmp)
-  cap_picked<-transform(cap_picked, p = installed_capacity/total_capacity)
-  cap_picked$system_size_factors <- ordered( cap_picked$system_size_factors, levels = c('2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
+  cap_picked<-transform(cap_picked, p = s/total)
+  if (weight == 'capacity') {
+    cap_picked = filter(cap_picked, system_size_factors != '0')
+    cap_picked$system_size_factors <- ordered(cap_picked$system_size_factors, levels = c('2.5', '5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
+  } else if (weight == 'customers'){
+    cap_picked$system_size_factors = ifelse(cap_picked$system_size_factors == '0', 'Excluded', cap_picked$system_size_factors)
+    cap_picked$system_size_factors <- ordered(cap_picked$system_size_factors, levels = c('Excluded','2.5', '5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
+  }
   cap_picked$sector = sector2factor(cap_picked$sector)
   
   
   p<-ggplot(cap_picked) +
     geom_histogram(aes(x = system_size_factors, weight = p, fill = sector), position = 'dodge') +
     facet_wrap(~sector) +
-    scale_y_continuous(name ='Percent of Installed Capacity', labels = percent) +
+    scale_y_continuous(name = y_title, labels = percent) +
     scale_x_discrete(name = 'Selected System Size (kW)') +
     scale_fill_manual(values = sector_col) +
     theme_custom +
@@ -275,7 +291,9 @@ dist_of_cap_selected<-function(df,scen_name, start_year, end_year, first_year_on
   
   cap_picked$scenario<-scen_name
 #   write.csv(cap_picked,paste0(runpath,'/cap_selected_trends.csv'),row.names = FALSE)
-  save(cap_picked,file = paste0(runpath,'/cap_selected_trends.RData'),compress = T, compression_level = 1)
+  if (weight == 'capacity') {
+    save(cap_picked,file = paste0(runpath,'/cap_selected_trends.RData'),compress = T, compression_level = 1)
+  }
   return(p)
 }
 
@@ -291,12 +309,13 @@ dist_of_height_selected<-function(df,scen_name,start_year){
                                     load_in_gw = sum(load_kwh_in_bin)/(1e6*8760)
   )
   )
-  height_picked$system_size_factors <- ordered( height_picked$system_size_factors, levels = c('2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
+  height_picked$system_size_factors = ifelse(height_picked$system_size_factors == '0', 'Excluded', height_picked$system_size_factors)
+  height_picked$system_size_factors <- ordered( height_picked$system_size_factors, levels = c('Excluded', '2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
   height_picked$sector = sector2factor(height_picked$sector)
   
   p<-ggplot(height_picked)+
     geom_point(aes(x = factor(system_size_factors), y = factor(turbine_height_m), size = load_in_gw, color = sector), aes = 0.2)+
-    scale_size_continuous(name = 'Potential Customer Load (GW)', range = c(4,12))+
+    scale_size_continuous(name = 'Potential Customer Load (GW)', range = c(3,10))+
     facet_wrap(~sector,scales="free_y")+
     scale_color_manual(values = sector_col, name = "Sector") +
     scale_fill_manual(values = sector_fil, name = "Sector") +

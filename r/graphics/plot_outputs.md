@@ -75,8 +75,10 @@ ggsave(sprintf('%s/cumulative_capacity_by_business_model.png', ppt_dir), dpi = 6
 options(warn=-1)
 cf_by_sector_and_year(df)
 if (tech == 'wind'){
-  print(dist_of_cap_selected(df,scen_name,start_year,end_year))
-  ggsave(sprintf('%s/selected_capacities.png', ppt_dir), dpi = 600, height = 5, width = 8, units = 'in' )
+  print(dist_of_cap_selected(df, scen_name, start_year, end_year, 'customers'))
+  ggsave(sprintf('%s/selected_capacities_by_customers.png', ppt_dir), dpi = 600, height = 5, width = 8, units = 'in' )
+  print(dist_of_cap_selected(df, scen_name, start_year, end_year, 'capacity'))
+  ggsave(sprintf('%s/selected_capacities_by_capacity.png', ppt_dir), dpi = 600, height = 5, width = 8, units = 'in' )
   print(dist_of_height_selected(df,scen_name,start_year))
   ggsave(sprintf('%s/selected_heights.png', ppt_dir), dpi = 600, height = 5, width = 8, units = 'in' )
 } else if(tech == 'solar'){
