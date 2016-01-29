@@ -10,17 +10,25 @@
 options(warn=-1)
 out<-diffusion_trends(df,runpath,scen_name)
 grid.draw(out$national_installed_capacity_bar)
-ggsave(sprintf('%s/total_capacity.png', ppt_dir), dpi = 600, height = 5, width = 8, units = 'in' )
+g = arrangeGrob(out$national_installed_capacity_bar)
+ggsave(sprintf('%s/total_capacity.png', ppt_dir), g, dpi = 600, height = 5, width = 8, units = 'in' )
 grid.newpage()
+
 grid.draw(out$national_num_of_adopters_bar)
-ggsave(sprintf('%s/total_adopters.png', ppt_dir), dpi = 600, height = 5, width = 8, units = 'in' )
+g = arrangeGrob(out$national_num_of_adopters_bar)
+ggsave(sprintf('%s/total_adopters.png', ppt_dir), g, dpi = 600, height = 5, width = 8, units = 'in' )
 grid.newpage()
+
 grid.draw(out$national_market_cap_bar)
-ggsave(sprintf('%s/total_market.png', ppt_dir), dpi = 600, height = 5, width = 8, units = 'in' )
+g = arrangeGrob(out$national_market_cap_bar)
+ggsave(sprintf('%s/total_market.png', ppt_dir), g, dpi = 600, height = 5, width = 8, units = 'in' )
 grid.newpage()
+
 grid.draw(out$national_generation_bar)
-ggsave(sprintf('%s/total_generation.png', ppt_dir), dpi = 600, height = 5, width = 8, units = 'in' )
+g = arrangeGrob(out$national_generation_bar)
+ggsave(sprintf('%s/total_generation.png', ppt_dir), g, dpi = 600, height = 5, width = 8, units = 'in' )
 grid.newpage()
+
 print_table(total_value_by_state_table(df,'installed_capacity', unit_factor = 0.001), caption = "Installed Capacity (MW)")
 print_table(mean_value_by_state_table(df,'market_share'), caption = "Mean Adoption Share")
 out$national_adopters_trends_bar

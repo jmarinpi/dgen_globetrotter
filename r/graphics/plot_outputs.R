@@ -14,6 +14,8 @@ library(jsonlite, quietly = T, warn.conflicts = F)
 library (dplyr, quietly = T, warn.conflicts = F)
 library(grid, quietly = T)
 library(gtable, quietly = T)
+library(gridExtra, quietly = T)
+
 
 # use for testing/debugging only:
 # setwd('C:/Users/bsigrin/Desktop/diffusion/python')

@@ -6,6 +6,7 @@ year_colors = c("2014" = '#fd8d3c', '2020' = '#fc4e2a', '2030' = '#e31a1c', '204
 turb_size_fil <- c('Small: < 50 kW' = "#a1dab4", 'Mid: 51 - 500 kW' = "#41b6c4", 'Large: 501 - 3,000 kW' = "#253494") 
 # ======================= DATA FUNCTIONS =================================================
 
+ggsave <- ggplot2::ggsave; body(ggsave) <- body(ggplot2::ggsave)[-2]
 
 standard_formatting = theme_few() +
   theme(strip.text = element_text(size = 14, face = 'bold')) +
@@ -46,7 +47,7 @@ sector2factor = function(sector_vector){
 
 add_data_source_note = function(g){
   gt <- ggplot_gtable(ggplot_build(g))
-  final_gt = gtable_add_grob(gt, textGrob("Note: \nCumulative 2012 data\nare historical.\nAll other years\nare model outputs.", 
+  final_gt = gtable_add_grob(gt, textGrob("Note: \n2012 data\nare historical.\nAll other years\nare model outputs.", 
                                                              y = .11, x = .1, just = 'left',
                                                              #hjust = -.5, vjust = .5, 
                                                              gp=gpar(fontsize=12)), 
@@ -66,7 +67,7 @@ add_generation_data_source_note = function(g){
 
 add_market_cap_data_source_note = function(g){
   gt <- ggplot_gtable(ggplot_build(g))
-  final_gt = gtable_add_grob(gt, textGrob("Note: \n2012 data based\non historical installed\ncapacity and 2012 PV\ncosts. All other years\nare model outputs.", 
+  final_gt = gtable_add_grob(gt, textGrob("Note: \n2012 data based\non historical installed\ncapacity and 2012\ncosts. All other years\nare model outputs.", 
                                           y = .11, x = .1, just = 'left',
                                           #hjust = -.5, vjust = .5, 
                                           gp=gpar(fontsize=12)), 
@@ -187,7 +188,8 @@ cf_by_sector_and_year<-function(df){
     scale_y_continuous(name = 'Annual average capacity factor', label = percent)+
     scale_x_continuous(name = 'Year', breaks = unique(data$year)) +
     theme_custom +
-    ggtitle('Range of Capacity Factor by Sector and Year')
+    ggtitle('Range of Capacity Factor by Sector and Year') +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 }
 
 lcoe_contour<-function(df, schema, tech, start_year, end_year, dr = 0.05, n = 30){
@@ -224,7 +226,7 @@ lcoe_contour<-function(df, schema, tech, start_year, end_year, dr = 0.05, n = 30
   ggplot()+
     geom_ribbon(data = d, aes(x = npc, y = cf, ymin = cf_min, ymax = cf_max, fill = factor(lcoe)), alpha = 0.5)+
     scale_x_continuous(name = 'Net Present Cost ($/W)', limits = c(0,10))+
-    scale_y_continuous(name = 'Annual Capacity Factor', limits = c(0,.5))+
+    scale_y_continuous(name = 'Capacity Factor', limits = c(0,.5))+
     scale_fill_brewer(name = 'LCOE Range ($/kWh)', 
                       labels=c('< 0.1' ,"0.1 - 0.2", "0.2 - 0.3", "0.3 - 0.4", "0.4 - 0.5", "0.5 - 0.6", "0.6 - 0.7", "> 0.7"), 
                       palette = 'Spectral')+
@@ -262,14 +264,14 @@ dist_of_cap_selected<-function(df,scen_name, start_year, end_year, first_year_on
   cap_picked$sector = sector2factor(cap_picked$sector)
   
   
-  p<-ggplot(cap_picked, aes(x = factor(system_size_factors), weight = p), fill = '#0076BC')+
-    geom_histogram(position = 'dodge')+
+  p<-ggplot(cap_picked, aes(x = factor(system_size_factors), weight = p))+
+    geom_histogram(position = 'dodge', fill = '#0076BC')+
     facet_wrap(~sector)+
     scale_y_continuous(name ='Percent of Customers', labels = percent)+
     scale_x_discrete(name ='Selected System Size (kW)')+
     theme_custom +
-    theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
-    ggtitle('Size of Systems Being Considered')
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+    ggtitle('System Sizing')
   
   cap_picked$scenario<-scen_name
 #   write.csv(cap_picked,paste0(runpath,'/cap_selected_trends.csv'),row.names = FALSE)
@@ -301,8 +303,8 @@ dist_of_height_selected<-function(df,scen_name,start_year){
     scale_y_discrete(name ='Turbine Hub Height (m)')+
     scale_x_discrete(name ='System Size (kW)')+
     theme_custom +
-    theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
-    ggtitle('Preferred System Sizes and Heights')
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+    ggtitle('System Sizes and Heights')
   height_picked$scenario<-scen_name
 #   write.csv(height_picked,paste0(runpath,'/height_selected_trends.csv'),row.names = FALSE)
   save(height_picked,file = paste0(runpath,'/height_selected_trends.RData'),compress = T, compression_level = 1)
@@ -332,10 +334,11 @@ national_econ_attractiveness_line<-function(df,scen_name){
     scale_y_continuous('') +
     annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf, size = 2, colour = "#9D9D9D") +
     scale_x_continuous(name = 'Year', breaks = c(unique(data$year))) +
-    ggtitle('National Economic Attractiveness') +
+    ggtitle('Economic Attractiveness') +
     theme_custom +
     theme(axis.line.x = element_blank()) +
-    theme(strip.text.y = element_text(angle = 90, vjust = 1))
+    theme(strip.text.y = element_text(angle = 270, vjust = 1)) +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
   # move facet lables to left side
   g <- ggplotGrob(p)
   g$layout[g$layout$name == "strip-right",c("l", "r")] <- 2
@@ -655,25 +658,28 @@ diffusion_trends<-function(df, runpath, scen_name, by_tech = F, save_results = T
     geom_line() +
     scale_color_manual(values = colors) +
     scale_fill_manual(values = colors) +
-    scale_y_continuous(name ='Market Share (% of adopters)', labels = percent) +
+    scale_y_continuous(name ='Market Share', labels = percent) +
     scale_x_continuous(name ='Year', breaks = c(unique(trends_data$year))) +
     guides(color = FALSE) +
     expand_limits(y = 0) + 
     ggtitle('National Adoption Trends') +
-    theme_custom
+    theme_custom +
+    theme(legend.title = element_blank()) +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
   
-  # NATIONAL INSTALLED CAPACITY
+  # INSTALLED CAPACITY
   national_installed_capacity_bar <- add_data_source_note(
                                                           ggplot(data = subset(combined_data, variable %in% c("nat_installed_capacity_gw")))+
                                                           geom_bar(aes_string(x = 'factor(year)', fill = color_var, weight = 'value')) +  
                                                           facet_wrap(~ data_type, scales = 'free') +
                                                           scale_color_manual(values = colors) +
                                                           scale_fill_manual(name = simpleCap(color_var), values = colors, guide = guide_legend(reverse=TRUE)) +
-                                                          scale_y_continuous(name ='National Installed Capacity (GW)', labels = comma) +
+                                                          scale_y_continuous(name ='Installed Capacity (GW)', labels = comma) +
                                                           expand_limits(weight=0) +
                                                           scale_x_discrete(name ='Year') +
-                                                          ggtitle('National Installed Capacity (GW)') +
-                                                          theme_custom
+                                                          ggtitle('Installed Capacity') +
+                                                          theme_custom +
+                                                          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
                                                         )
   
   # NATIONAL NUMBER OF ADOPTERS
@@ -686,8 +692,9 @@ diffusion_trends<-function(df, runpath, scen_name, by_tech = F, save_results = T
                                                         scale_y_continuous(name ='Number of Adopters', labels = comma) +
                                                         expand_limits(weight=0) +
                                                         scale_x_discrete(name ='Year') +
-                                                        ggtitle('National Number of Adopters') +
-                                                        theme_custom
+                                                        ggtitle('Number of Adopters') +
+                                                        theme_custom +
+                                                        theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
                                                       )
   
   # NATIONAL MARKET CAP
@@ -700,8 +707,9 @@ diffusion_trends<-function(df, runpath, scen_name, by_tech = F, save_results = T
                                                     scale_y_continuous(name ='Value of Installed Capacity (Billion $)', labels = comma) +
                                                     expand_limits(weight=0) +
                                                     scale_x_discrete(name ='Year') +
-                                                    ggtitle('National Value of Installed Capacity (Billion $)') +
-                                                    theme_custom
+                                                    ggtitle('Value of Installed Capacity') +
+                                                    theme_custom +
+                                                    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
                                                   )
   
   # NATIONAL GENERATION
@@ -710,11 +718,12 @@ diffusion_trends<-function(df, runpath, scen_name, by_tech = F, save_results = T
                                                               geom_bar(aes_string(x = 'factor(year)', weight = 'value', fill = color_var)) +
                                                               scale_color_manual(values = colors) +
                                                               scale_fill_manual(name = simpleCap(color_var), values = colors, guide = guide_legend(reverse=TRUE)) +
-                                                              scale_y_continuous(name ='National Annual Generation (TWh)', labels = comma) +
+                                                              scale_y_continuous(name ='Annual Generation (TWh)', labels = comma) +
                                                               expand_limits(weight=0) +
                                                               scale_x_discrete(name ='Year') +
-                                                              ggtitle('National Annual Generation (TWh)') +
-                                                              theme_custom
+                                                              ggtitle('Annual Generation') +
+                                                              theme_custom +
+                                                              theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
                                                               )             
 
   list("national_installed_capacity_bar" = national_installed_capacity_bar,
@@ -763,10 +772,11 @@ national_installed_capacity_by_system_size_bar<-function(df,tech){
     facet_wrap(~sector, scales="free_y")+
     geom_area(aes(x = year, fill = system_size_factors, y = installed_cap_by_size), position = 'stack')+
     scale_fill_manual(name = 'System Size (kW)', values = getPalette(colourCount)) +
-    scale_y_continuous(name ='National Installed Capacity (GW)') +
+    scale_y_continuous(name ='Installed Capacity (GW)') +
     scale_x_continuous(name = 'Year', breaks = c(unique(data$year))) +
     theme_custom +
-    ggtitle('National Installed Capacity by System Size (GW)')  
+    ggtitle('Installed Capacity by System Size (GW)') +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 }
 
 
@@ -779,9 +789,10 @@ lcoe_boxplot<-function(df){
     facet_wrap(~sector) +
     scale_y_continuous(name = 'LCOE (c/kWh)') +
     scale_x_discrete(name = 'Year') +
-    ggtitle('Cost of Energy by Sector For All Sites Modeled') +
+    ggtitle('LCOE for All Agents') +
     scale_fill_manual(name = 'Sector', values = sector_fil) +
-    theme_custom
+    theme_custom +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
   # aggregate summary stas on median and iqr to save to csv
   g = group_by(df,year,sector)
   out_data = collect(summarise(g, 
@@ -1023,7 +1034,7 @@ elec_rate_supply_curve<-function(df, start_year){
     theme(axis.text.x = element_text(angle = 0, hjust = .5, vjust = 0)) +
     guides(size = FALSE)+
     scale_y_continuous(name ='Customer Load (GW)')+
-    scale_x_continuous(name ='Average Electric Rate ($/kWh)', lim = c(0,quantile(data$rate,0.98)))+
+    scale_x_continuous(name ='Average Cost of Electricity ($/kWh)', lim = c(0,quantile(data$rate,0.98)))+
     ggtitle('Electricity Rate Supply Curve') +
     theme(legend.position = c(1, 0.79)) +
     theme(legend.justification = 'right')
@@ -1093,7 +1104,7 @@ make_npv_supply_curve = function(df, by_load = T, by_tech = F, years = c(2014,20
     scale_y_continuous(name ='Net Present Value ($2014/kW)')+
     scale_x_continuous(name = title) +
     scale_color_manual(name = simpleCap(color_var), values = colors, labels = names(colors)) +
-    ggtitle('Net Present Value per kW ($/kW)\n Assuming 4% discount rate') +
+    ggtitle('Net Present Value per kW ($/kW)\n(4% discount rate)') +
     theme_custom +
     theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5)) +
     theme(legend.position = c(1, 0.79)) +
@@ -1123,7 +1134,7 @@ make_npv_supply_curve_by_sector = function(df, years = 2014){
     scale_y_continuous(name ='Net Present Value ($2014/kW)')+
     scale_x_continuous(name ='Capacity (GW)')+
     scale_fill_manual(name = 'Sector', values = sector_fil) +
-    ggtitle('Net Present Value per kW ($/kW)\n Assuming 4% discount rate') +
+    ggtitle('Net Present Value per kW ($/kW)\n(4% discount rate)') +
     theme_custom +
     theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5)) +
     theme(legend.position = c(0, 0.2)) +
@@ -1385,10 +1396,11 @@ leasing_mkt_share<-function(df, start_year, end_year, sectors){
     geom_area(aes(x = year, y = per_mkt_share, fill = sector), alpha = 0.75) +
     facet_wrap(~sector)+
     scale_fill_manual(values = sector_col, name = 'Sector')+
-    scale_y_continuous("% of New Capacity", label = percent) +
+    scale_y_continuous("% of Added Capacity", label = percent) +
     scale_x_continuous(name ='Year', breaks = seq(start_year, end_year, 2)) +
-    ggtitle("Leasing Market Share: Percent of New Capacity Added") +
-    theme_custom
+    ggtitle("Leasing Market Share") +
+    theme_custom +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
   
   # Table of market share by state and year (aggregating sectors)
   data = collect(
@@ -1448,7 +1460,8 @@ cum_installed_capacity_by_bm<-function(df, start_year, end_year){
     scale_x_continuous(name = "Year", breaks = seq(start_year, end_year, 2)) +
     scale_fill_manual(name = 'Business Model', guide = guide_legend(reverse=TRUE), values = c('dark green','light green')) +
     ggtitle("Cumulative Installed Capacity Since 2014") +
-    theme_custom
+    theme_custom +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
   
   return(plot)
   
