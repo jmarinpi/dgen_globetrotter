@@ -252,23 +252,23 @@ dist_of_cap_selected<-function(df,scen_name, start_year, end_year, first_year_on
 
   g = group_by(f, system_size_factors, sector, year)
   cap_picked = collect(summarise(g,
-                                 cust_num = sum(customers_in_bin)
-  )
-  )
+                                 installed_capacity = sum(installed_capacity)
+  ))
   tmp<-group_by(cap_picked, sector, year) %>%
-	summarise(n = sum(cust_num, na.rm = T))
+	summarise(total_capacity = sum(installed_capacity, na.rm = T))
 
   cap_picked<-merge(cap_picked,tmp)
-  cap_picked<-transform(cap_picked, p = cust_num/n)
+  cap_picked<-transform(cap_picked, p = installed_capacity/total_capacity)
   cap_picked$system_size_factors <- ordered( cap_picked$system_size_factors, levels = c('2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
   cap_picked$sector = sector2factor(cap_picked$sector)
   
   
-  p<-ggplot(cap_picked, aes(x = factor(system_size_factors), weight = p))+
-    geom_histogram(position = 'dodge', fill = '#0076BC')+
-    facet_wrap(~sector)+
-    scale_y_continuous(name ='Percent of Customers', labels = percent)+
-    scale_x_discrete(name ='Selected System Size (kW)')+
+  p<-ggplot(cap_picked) +
+    geom_histogram(aes(x = system_size_factors, weight = p, fill = sector), position = 'dodge') +
+    facet_wrap(~sector) +
+    scale_y_continuous(name ='Percent of Installed Capacity', labels = percent) +
+    scale_x_discrete(name = 'Selected System Size (kW)') +
+    scale_fill_manual(values = sector_col) +
     theme_custom +
     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
     ggtitle('System Sizing')

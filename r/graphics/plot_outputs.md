@@ -77,7 +77,7 @@ cf_by_sector_and_year(df)
 if (tech == 'wind'){
   print(dist_of_cap_selected(df,scen_name,start_year,end_year))
   ggsave(sprintf('%s/selected_capacities.png', ppt_dir), dpi = 600, height = 5, width = 8, units = 'in' )
-  dist_of_height_selected(df,scen_name,start_year)
+  print(dist_of_height_selected(df,scen_name,start_year))
   ggsave(sprintf('%s/selected_heights.png', ppt_dir), dpi = 600, height = 5, width = 8, units = 'in' )
 } else if(tech == 'solar'){
   dist_of_azimuth_selected(df, start_year)
