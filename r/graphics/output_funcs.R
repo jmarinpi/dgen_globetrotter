@@ -798,13 +798,31 @@ national_installed_capacity_by_system_size_bar<-function(df,tech){
     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 }
 
+boxplot_whisker = function(x, bound = 'lower') {
+  if (bound == 'lower'){
+    y = boxplot.stats(x)$stats[1]
+  } else if (bound == 'upper'){
+    y = boxplot.stats(x)$stats[5]
+  }
+  
+  return(y)
+}
 
 lcoe_boxplot<-function(df){
   data = collect(select(df,year,lcoe,sector))
   data$sector = sector2factor(data$sector)
   # Boxplot of LCOE over time, faceted by sector
-  p<-ggplot(data) +
-    geom_boxplot(aes(x = factor(year), y = lcoe, fill = sector), outlier.shape = NA, na.rm = T) +
+  boxstats = group_by(data, sector, year) %>%
+             summarise(ymin = boxplot_whisker(lcoe, 'lower'),
+                       lower = quantile(lcoe, c(0.25), na.rm = T),
+                       middle = median(lcoe, na.rm = T),
+                       upper = quantile(lcoe, c(0.75), na.rm = T),
+                       ymax = boxplot_whisker(lcoe, 'upper')
+                       )
+  
+  
+  p<-ggplot(boxstats) +
+    geom_boxplot(aes(x = factor(year), fill = sector, ymin = ymin, ymax = ymax, middle = middle, upper = upper, lower = lower ), stat = 'identity', outlier.shape = NA, na.rm = T) +
     facet_wrap(~sector) +
     scale_y_continuous(name = 'LCOE (c/kWh)') +
     scale_x_discrete(name = 'Year') +
