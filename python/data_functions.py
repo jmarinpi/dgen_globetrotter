@@ -2810,7 +2810,7 @@ def get_itc_incentives(con, schema):
     
     inputs = locals().copy()
     
-    sql = """SELECT year, lower(sector) as sector, itc_fraction
+    sql = """SELECT year, lower(sector) as sector, itc_fraction, tech, min_kw, max_kw
              FROM %(schema)s.input_main_itc_options;""" % inputs
     itc_options = pd.read_sql(sql, con) 
     
@@ -4111,14 +4111,26 @@ def calc_value_of_itc(df, itc_options, year):
     
     # concatente the business models
     itc_all = pd.concat([itc_ho, itc_tpo], axis = 0, ignore_index = True)
-    
+
+    row_count = df.shape[0]   
     # merge to df
-    df = pd.merge(df, itc_all, how = 'left', on = ['sector_abbr', 'year', 'business_model'])
+    df = pd.merge(df, itc_all, how = 'left', on = ['sector_abbr', 'year', 'business_model', 'tech'])
+    # drop the rows that are outside of the allowable system sizes
+    df = df[(df['system_size_kw'] > df['min_kw']) & (df['system_size_kw'] <= df['max_kw'])]
+    # confirm shape hasn't changed
+    if df.shape[0] <> row_count:
+        raise ValueError('Row count of dataframe changed during merge')
         
-    # Calculate the value of ITC (accounting for reduced costs from state/local incentives)
-    df['value_of_itc'] = ((df['installed_costs_dollars_per_kw'] * df['system_size_kw']) - # deduct off value of state/local incentives
-                                (df['value_of_tax_credit_or_deduction'] + df['value_of_rebate'] + df['value_of_increment'])) * df['itc_fraction'] #'ic' not in the df at this point
-    df = df.drop(['sector', 'itc_fraction'], axis = 1)
+#    # Calculate the value of ITC (accounting for reduced costs from state/local incentives)
+    df['applicable_ic'] = (df['installed_costs_dollars_per_kw'] * df['system_size_kw']) - (df['value_of_tax_credit_or_deduction'] + df['value_of_rebate'] + df['value_of_increment'])
+    df['value_of_itc'] =  (
+                            df['applicable_ic'] *
+                            df['itc_fraction'] *
+                            (df['system_size_kw'] > df['min_kw']) * # filter for system sizes (only applies to wind) [ this is redundant with the filter above ]
+                            (df['system_size_kw'] <= df['max_kw'])
+                          )
+                          
+    df = df.drop(['applicable_ic', 'sector', 'itc_fraction'], axis = 1)
     
     return df
 
