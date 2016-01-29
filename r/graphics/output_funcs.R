@@ -20,6 +20,22 @@ standard_formatting = theme_few() +
   theme(legend.key = element_rect(colour = 'white', size = 2)) +
   theme(strip.text.x = element_text(size = 14, face = 'bold'))
 
+theme_custom =    
+  theme(panel.grid.minor = element_blank()) +
+  theme(text = element_text(colour = ggthemes_data$fivethirtyeight["dkgray"])) +
+  theme(plot.margin = unit(c(1, 1, 1, 1), "lines")) +
+  theme(axis.title = element_text(size = rel(1.2))) +
+  theme(axis.title.x = element_text(vjust = 0.1)) +
+  theme(axis.title.y = element_text(vjust = 1.1)) +
+  theme(axis.text = element_text(size = rel(1))) +
+  theme(plot.title = element_text(size = rel(1.5), face = "bold")) +
+  theme(legend.text = element_text(size = rel(1))) +
+  theme(legend.title = element_text(size = rel(1.2))) +
+  theme(legend.key=element_blank()) +
+  theme(axis.line = element_line(colour =  ggthemes_data$fivethirtyeight["dkgray"], size = 1)) +
+  theme(panel.grid.major = element_line(colour = "light grey")) +
+  theme(panel.background = element_rect(fill = "white")) +
+  theme(legend.background = element_rect(fill = alpha('white', 0.5)))
 
 sector2factor = function(sector_vector){
   f = factor(toProper(as.character(sector_vector)), levels = names(sector_col))
@@ -219,22 +235,6 @@ lcoe_contour<-function(df, schema, tech, start_year, end_year, dr = 0.05, n = 30
     standard_formatting
 }
 
-elec_rate_supply_curve<-function(df, start_year){
-  #' National electricity rate supply curve
-  # filter to only the start year, returning only the cost_of_elec_dols_per_kwh and load_kwh_in_bin cols
-  data = collect(select(filter(df, year == start_year),cost_of_elec_dols_per_kwh,load_kwh_in_bin))  
-  data <- transform(data, load = load_kwh_in_bin/(1e6 * 8760), rate = cost_of_elec_dols_per_kwh) %>% arrange(desc(rate))
-  data$load<-cumsum(data$load)
-  
-  ggplot(data,aes(x = rate, y = load, size = 0.75))+
-    geom_line()+
-    standard_formatting +
-    theme(axis.text.x = element_text(angle = 0, hjust = .5, vjust = 0)) +
-    guides(size = FALSE)+
-    scale_y_continuous(name ='Customer Load (GW)')+
-    scale_x_continuous(name ='Average Electric Rate ($/kWh)', lim = c(0,quantile(data$rate,0.98)))+
-    ggtitle('Electricity Rate Supply Curve (Available Cust Load in 2014)')
-}
 
 dist_of_cap_selected<-function(df,scen_name, start_year, end_year){
   # What size system are customers selecting in 2014?
@@ -918,6 +918,10 @@ diffusion_sectors_map <- function(df){
 #   return(iframes)
 }
 
+
+################################################################################################################################################
+# SUPPLY CURVES
+
 cf_supply_curve<-function(df, by_load = T, by_tech = F, years = c(2014,2020,2030,2040,2050)){
   
   #' National capacity factor supply curve
@@ -983,17 +987,41 @@ cf_supply_curve<-function(df, by_load = T, by_tech = F, years = c(2014,2020,2030
   
   
   p = ggplot(data)+
-    geom_line(aes_string(x = 'xmax', y = 'cf', color = color_var), size = 2)+
+    geom_line(aes_string(x = 'xmax', y = 'cf', color = color_var), size = 1.1)+
     fgrid + 
     scale_y_continuous(name = 'Capacity Factor', label = percent)+
     scale_x_continuous(name = title) +
     scale_color_manual(name = simpleCap(color_var), values = colors, labels = names(colors)) +
     ggtitle('Capacity Factor Supply Curve') +
-    standard_formatting +
-    theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5))
+    theme_custom +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5)) +
+    theme(legend.position = c(1, 0.79)) +
+    theme(legend.justification = 'right')
   
   return(p)
 }
+
+
+
+elec_rate_supply_curve<-function(df, start_year){
+  #' National electricity rate supply curve
+  # filter to only the start year, returning only the cost_of_elec_dols_per_kwh and load_kwh_in_bin cols
+  data = collect(select(filter(df, year == start_year),cost_of_elec_dols_per_kwh,load_kwh_in_bin))  
+  data <- transform(data, load = load_kwh_in_bin/(1e6 * 8760), rate = cost_of_elec_dols_per_kwh) %>% arrange(desc(rate))
+  data$load<-cumsum(data$load)
+  
+  ggplot(data)+
+    geom_line(aes(x = rate, y = load), size = 1.1)+
+    theme_custom +
+    theme(axis.text.x = element_text(angle = 0, hjust = .5, vjust = 0)) +
+    guides(size = FALSE)+
+    scale_y_continuous(name ='Customer Load (GW)')+
+    scale_x_continuous(name ='Average Electric Rate ($/kWh)', lim = c(0,quantile(data$rate,0.98)))+
+    ggtitle('Electricity Rate Supply Curve (Available Cust Load in 2014)') +
+    theme(legend.position = c(1, 0.79)) +
+    theme(legend.justification = 'right')
+}
+
 
 make_npv_supply_curve = function(df, by_load = T, by_tech = F, years = c(2014,2020,2030,2040,2050)){
   
@@ -1053,14 +1081,16 @@ make_npv_supply_curve = function(df, by_load = T, by_tech = F, years = c(2014,20
   data$year = as.factor(data$year)
   
   p = ggplot(data)+
-    geom_line(aes_string(x = 'xmax', y = 'npv4', color = color_var), size = 2)+
+    geom_line(aes_string(x = 'xmax', y = 'npv4', color = color_var), size = 1.1)+
     fgrid + 
     scale_y_continuous(name ='Net Present Value ($2014/kW)')+
     scale_x_continuous(name = title) +
     scale_color_manual(name = simpleCap(color_var), values = colors, labels = names(colors)) +
     ggtitle('Net Present Value per kW ($/kW)\n Assuming 4% discount rate') +
-    standard_formatting +
-    theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5))
+    theme_custom +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5)) +
+    theme(legend.position = c(1, 0.79)) +
+    theme(legend.justification = 'right')
   
   return(p)
 }
@@ -1087,14 +1117,16 @@ make_npv_supply_curve_by_sector = function(df, years = 2014){
     scale_x_continuous(name ='Capacity (GW)')+
     scale_fill_manual(name = 'Sector', values = sector_fil) +
     ggtitle('Net Present Value per kW ($/kW)\n Assuming 4% discount rate') +
-    standard_formatting +
-    theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5))
+    theme_custom +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5)) +
+    theme(legend.position = c(0, 0.2)) +
+    theme(legend.justification = 'left')
   
   return(p)
 }
 
 
-make_lcoe_supply_curve = function(df, years = c(2014,2020,2030,2040,2050)){
+make_lcoe_supply_curve = function(df, years = c(2014,2020,2030,2040,2050), max_lcoe = .30){
   
   data = select(df, year, lcoe, load_kwh_in_bin, naep,sector) %>%
     filter(year %in% years & naep > 0) %>%
@@ -1106,16 +1138,20 @@ make_lcoe_supply_curve = function(df, years = c(2014,2020,2030,2040,2050)){
   
   # If we chose to shade, this defines the width of the rectangle
   data[2:nrow(data),'load_xmin'] = data[1:nrow(data)-1,'load_xmax']
+  data$lcoe = data$lcoe/100.
+  ymax = min(1.2*max(data$lcoe), max_lcoe)
+  data = filter(data, lcoe <= ymax)
+  xmax = max(data$load_xmax)
+          
   
   p = ggplot(data)+
-    geom_line(aes(x = load_xmax,y = lcoe, color = factor(year)), size = 2)+
-    #geom_rect(aes(xmin = load_xmin, xmax = load_xmax, ymin = 0, ymax = npv4, color = year), alpha = 1)+
-    scale_y_continuous(name ='LCOE (c/kWh)', limits =c(0,min(max(1.2*data$lcoe),100)), breaks = seq(0,min(max(1.2*data$lcoe),100),5))+
-    scale_x_continuous(name ='Capacity (GW)')+
+    geom_line(aes(x = load_xmax, y = lcoe, color = factor(year)), size = 1.1)+
+    scale_y_continuous(name ='LCOE ($/kWh)', limits =c(0, ymax), breaks = seq(0, ymax, 0.05)) +
+    scale_x_continuous(name ='Capacity (GW)', limits = c(0, xmax))+
     scale_color_manual(name = 'Year', values = year_colors, labels = names(year_colors)) +
-    ggtitle('') +
-    standard_formatting +
-    theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust = 0.5))
+    theme_custom + 
+    theme(legend.position = c(1, 0.2)) +
+    theme(legend.justification = 'right')
   
   return(p)
 }
