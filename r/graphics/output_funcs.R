@@ -189,7 +189,9 @@ cf_by_sector_and_year<-function(df){
     scale_x_continuous(name = 'Year', breaks = unique(data$year)) +
     theme_custom +
     ggtitle('Range of Capacity Factor by Sector and Year') +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+    annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf, colour =  "#9D9D9D", lwd = 2) +
+    theme(axis.line.y = element_blank())
 }
 
 lcoe_contour<-function(df, schema, tech, start_year, end_year, dr = 0.05, n = 30){
@@ -250,12 +252,12 @@ dist_of_cap_selected<-function(df,scen_name, start_year, end_year, weight, first
     f = filter(df, year %in% c(start_year,end_year))      
   }
 
-  g = group_by(f, system_size_factors, sector, year)
-  if (weight == 'customers'){
+  g = group_by(f, system_size_factors, year)
+  if (weight == 'systems'){
     cap_picked = collect(summarise(g,
-                                   s = sum(customers_in_bin)
+                                   s = sum(number_of_adopters)
     ))    
-    y_title = 'Percent of Customers'
+    y_title = 'Percent of Installed Systems'
   } else if (weight == 'capacity') {
     cap_picked = collect(summarise(g,
                                    s = sum(installed_capacity)
@@ -264,30 +266,24 @@ dist_of_cap_selected<-function(df,scen_name, start_year, end_year, weight, first
   }
 
 
-  tmp<-group_by(cap_picked, sector, year) %>%
+  tmp<-group_by(cap_picked, year) %>%
 	summarise(total = sum(s, na.rm = T))
 
-  cap_picked<-merge(cap_picked,tmp)
+  cap_picked<-merge(cap_picked, tmp)
   cap_picked<-transform(cap_picked, p = s/total)
-  if (weight == 'capacity') {
-    cap_picked = filter(cap_picked, system_size_factors != '0')
-    cap_picked$system_size_factors <- ordered(cap_picked$system_size_factors, levels = c('2.5', '5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
-  } else if (weight == 'customers'){
-    cap_picked$system_size_factors = ifelse(cap_picked$system_size_factors == '0', 'Excluded', cap_picked$system_size_factors)
-    cap_picked$system_size_factors <- ordered(cap_picked$system_size_factors, levels = c('Excluded','2.5', '5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
-  }
-  cap_picked$sector = sector2factor(cap_picked$sector)
-  
+  cap_picked = filter(cap_picked, system_size_factors != '0')
+  cap_picked$system_size_factors <- ordered(cap_picked$system_size_factors, levels = c('2.5', '5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))
+
   
   p<-ggplot(cap_picked) +
-    geom_histogram(aes(x = system_size_factors, weight = p, fill = sector), position = 'dodge') +
-    facet_wrap(~sector) +
+    geom_histogram(aes(x = system_size_factors, weight = p), position = 'dodge', fill = '#0076BC') +
     scale_y_continuous(name = y_title, labels = percent) +
     scale_x_discrete(name = 'Selected System Size (kW)') +
-    scale_fill_manual(values = sector_col) +
     theme_custom +
     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
-    ggtitle('System Sizing')
+    ggtitle('System Sizing') +
+    annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf, colour =  "#9D9D9D", lwd = 2) +
+    theme(axis.line.y = element_blank())
   
   cap_picked$scenario<-scen_name
 #   write.csv(cap_picked,paste0(runpath,'/cap_selected_trends.csv'),row.names = FALSE)
@@ -357,7 +353,9 @@ national_econ_attractiveness_line<-function(df,scen_name){
     theme_custom +
     theme(axis.line.x = element_blank()) +
     theme(strip.text.y = element_text(angle = 270, vjust = 1)) +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+    annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf, colour =  "#9D9D9D", lwd = 2) +
+    theme(axis.line.y = element_blank())
   # move facet lables to left side
   g <- ggplotGrob(p)
   g$layout[g$layout$name == "strip-right",c("l", "r")] <- 2
@@ -684,7 +682,9 @@ diffusion_trends<-function(df, runpath, scen_name, by_tech = F, save_results = T
     ggtitle('National Adoption Trends') +
     theme_custom +
     theme(legend.title = element_blank()) +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+    annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf, colour =  "#9D9D9D", lwd = 2) +
+    theme(axis.line.y = element_blank())
   
   # INSTALLED CAPACITY
   national_installed_capacity_bar <- add_data_source_note(
@@ -829,7 +829,7 @@ lcoe_boxplot<-function(df){
     ggtitle('LCOE for All Agents') +
     scale_fill_manual(name = 'Sector', values = sector_fil) +
     theme_custom +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) 
   # aggregate summary stas on median and iqr to save to csv
   g = group_by(df,year,sector)
   out_data = collect(summarise(g, 
@@ -869,7 +869,9 @@ lcoe_cdf<-function(df, start_year, end_year){
     scale_x_continuous(name = 'Levelized Cost of Energy (c/kWh)') +
     scale_y_continuous(name = 'Cumulative Probability', label = percent) +
     scale_color_discrete(name = 'Model Years') +
-    theme_custom
+    theme_custom +
+    annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf, colour =  "#9D9D9D", lwd = 2) +
+    theme(axis.line.y = element_blank())
 }
 
 
@@ -1437,7 +1439,9 @@ leasing_mkt_share<-function(df, start_year, end_year, sectors){
     scale_x_continuous(name ='Year', breaks = seq(start_year, end_year, 2)) +
     ggtitle("Leasing Market Share") +
     theme_custom +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+    annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf, colour =  "#9D9D9D", lwd = 2) +
+    theme(axis.line.y = element_blank())
   
   # Table of market share by state and year (aggregating sectors)
   data = collect(
