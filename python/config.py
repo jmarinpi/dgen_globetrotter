@@ -87,7 +87,7 @@ gross_fit_mode = False
 #==============================================================================
 # Maximum fraction of system capital cost that incentives offset 
 # (effectively capping incentive value beyond this point)
-max_incentive_fraction = 0.4
+max_incentive_fraction = 1.
 
 #==============================================================================
 #  Set method for determining Bass parameters
@@ -126,7 +126,7 @@ delete_output_schema = False
 #==============================================================================
 use_existing_schema = False
 # change this to the schema with existing agents/bill savings that you want to use
-existing_schema_name = 'diffusion_results_2016_01_23_07h08m11s'
+existing_schema_name = 'diffusion_results_2016_01_29_11h31m03s'
 
 #==============================================================================
 #  Should initial market shared be assigned proportional to 2014 economics?
