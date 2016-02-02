@@ -1984,7 +1984,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                   c.system_size_limit_kw as nem_system_size_limit_kw,
                   c.year_end_excess_sell_rate_dlrs_per_kwh as ur_nm_yearend_sell_rate,
                   c.hourly_excess_sell_rate_dlrs_per_kwh as ur_flat_sell_rate,
-                	diffusion_wind.scoe(a.load_kwh_per_customer_in_bin,
+                	diffusion_wind.scoe_2(a.load_kwh_per_customer_in_bin,
                                   COALESCE(e.interp_factor * (w2.aep-w1.aep) + w1.aep, 0) * e.derate_factor, 
                                   e.turbine_size_kw,
                                   c.system_size_limit_kw,
@@ -2040,17 +2040,34 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                    ur_nm_yearend_sell_rate,
                    ur_flat_sell_rate,
 
-                   naep,
+                   CASE WHEN (scoe_return).scoe = 'Inf'::DOUBLE PRECISION THEN 0
+                   ELSE naep
+                   END as naep,
+                   
                    naep*(scoe_return).nturb*turbine_size_kw as aep,
                    (scoe_return).nturb*turbine_size_kw as system_size_kw,
                    (scoe_return).nturb as nturb,
-                   
-                   power_curve_1, power_curve_2, interp_factor,                   
+
+                   CASE WHEN (scoe_return).scoe = 'Inf'::DOUBLE PRECISION THEN -1
+                   ELSE power_curve_1
+                   END as power_curve_1,                   
+                   CASE WHEN (scoe_return).scoe = 'Inf'::DOUBLE PRECISION THEN -1
+                   ELSE power_curve_2
+                   END as power_curve_2,                     
+                   CASE WHEN (scoe_return).scoe = 'Inf'::DOUBLE PRECISION THEN 0
+                   ELSE interp_factor
+                   END as interp_factor,     
 
                    i, j, cf_bin,
-                   turbine_size_kw, 
-                   turbine_height_m, 
-                   (round((scoe_return).scoe,4)*1000)::BIGINT as scoe,
+                   
+                   CASE WHEN (scoe_return).scoe = 'Inf'::DOUBLE PRECISION THEN 0
+                   ELSE turbine_size_kw
+                   END as turbine_size_kw,                              
+                   CASE WHEN (scoe_return).scoe = 'Inf'::DOUBLE PRECISION THEN 0
+                   ELSE turbine_height_m
+                   END as turbine_height_m,   
+
+                   (scoe_return).scoe as scoe,
                    ownocc8 as owner_occupancy_status
           FROM combined;     
           """ % inputs
