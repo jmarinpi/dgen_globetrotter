@@ -94,28 +94,4 @@ for year in range(2041, 2081):
     
     final_df = final_df.append(new_rows, ignore_index = False)
     
-final_df.to_csv('/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/1_load_and_prep_diffusion_shared_data/2b_eia_state_avg_costs/aeo_data.csv', indices = False)
-#sectors = ['res','ind','com']
-#regions = ['NE','MA','ENC','WNC','SA','ESC','WSC','MTN','PAC']
-#scenarios = ['AEO2015 Reference','AEO2015 High Growth','AEO2015 Low Growth','AEO2015 Low Prices','AEO2015 High Resource','AEO2015 High Prices']
-#
-#df.year = df.year.astype(float) # just in case
-## Subset each unique forecast and then perform operations
-#final_df = pd.DataFrame()
-#for sector in sectors:
-#    for region in regions:
-#        for scenario in scenarios:            
-#            temp_df = df.query('sector == "%s" and region == "%s" and scenario == "%s"' %(sector,region,scenario))
-#            
-#            
-#            # Find the 2040 value
-#            val = float(temp_df.query('year == 2040')['dlrs_per_mmbtu'])
-#            temp_df2 = pd.DataFrame({'year':range(2041,2081)})
-#            temp_df2['dlrs_per_mmbtu'] = val
-#            temp_df2['scenario'] = scenario
-#            temp_df2['region'] = region
-#            temp_df2['sector'] = sector
-#            
-#            temp_df3 = temp_df.append(temp_df2, ignore_index = True)
-#            final_df = final_df.append(temp_df3, ignore_index = True)
-#            
+final_df.to_csv('/Volumes/Staff/mgleason/dGeo/Data/Source_Data/EIA_AEO_2015_Energy_Prices/aeo_2015_energy_price_projections.csv', index = False)
