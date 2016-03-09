@@ -1689,7 +1689,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                    available_roof_sqft,
                    bldg_size_class,
                    ground_cover_ratio,
-                   ownocc8 as owner_occupancy_state
+                   ownocc8 as owner_occupancy_status
           FROM combined;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
     
