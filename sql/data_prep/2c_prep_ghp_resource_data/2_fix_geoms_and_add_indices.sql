@@ -192,4 +192,12 @@ from diffusion_geo.smu_thermal_conductivity_cores;
 -- all units are: Watt per meter per Kelvin
 -- perfect
 
--- next: load the data into R and check distributions
+-- add a column for the thermal conductivity in BTU/hr-ft-F
+ALTER TABLE diffusion_geo.smu_thermal_conductivity_cores
+ADD COLUMN tc_btuhftf numeric;
+
+UPDATE diffusion_geo.smu_thermal_conductivity_cores
+set tc_btuhftf = sitethermalconductivity/1.7307;
+-- 52254 rows
+
+---------------------------------------------------------------------------------

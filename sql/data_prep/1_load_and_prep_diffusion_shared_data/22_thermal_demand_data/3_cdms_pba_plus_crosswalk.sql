@@ -67,3 +67,8 @@ USING BTREE(cdms);
 CREATE INDEX cdms_bldg_types_to_pba_plus_lkup_btree_pbaplus
 ON diffusion_shared.cdms_bldg_types_to_pba_plus_lkup
 USING BTREE(pbaplus);
+
+-- convert cdms to lower case
+UPDATE diffusion_shared.cdms_bldg_types_to_pba_plus_lkup
+set cdms = lower(cdms);
+-- 57 rows
