@@ -33,17 +33,20 @@ FROM  diffusion_shared.aeo_new_building_projections_2015;
 
 ------------------------------------------------------------------------------------------------------------
 -- spot check some national total values against the AEO site
-select sum(commercial_sq_ft_billions) * 1000/1e9
+select year, sum(commercial_sq_ft_billions) * 1000/1e9
 from diffusion_shared.aeo_new_building_projections_2015
-where year = 2021
-and scenario = 'Reference';
--- 84.6, should be 90.1
+where scenario = 'Reference'
+GROUP BY year
+order by year;
 
-select sum(housing_starts_single_family_millions + housing_starts_multi_family_millions)
+-- 2021 = 84.6, should be 90.1
+
+select year, sum(housing_starts_single_family_millions + housing_starts_multi_family_millions)
 from diffusion_shared.aeo_new_building_projections_2015
-where year = 2021
-and scenario = 'Reference';
--- 1.65, should be 1.64
+where scenario = 'Reference'
+GROUP BY year
+order by year;
+-- 1.68, should be 1.64
 
 ------------------------------------------------------------------------------------------------------------
 -- convert fips to lpadded
