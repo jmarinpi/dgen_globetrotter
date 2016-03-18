@@ -165,8 +165,20 @@ ALTER TABLE hazus.hzsqfootageoccupb_wa ADD PRIMARY KEY(censusblock);
 ALTER TABLE hazus.hzsqfootageoccupb_wi ADD PRIMARY KEY(censusblock);
 ALTER TABLE hazus.hzsqfootageoccupb_wv ADD PRIMARY KEY(censusblock);
 ALTER TABLE hazus.hzsqfootageoccupb_wy ADD PRIMARY KEY(censusblock);
+
 ------------------------------------------------------------------------------------------
--- add a new integer alias id
+-- TRACTS
+------------------------------------------------------------------------------------------
+-- add primary keys to tract tables
+ALTER TABLE hazus.hzbldgcountoccupt ADD PRIMARY KEY (tract);
+ALTER TABLE hazus.hzsqfootageoccupt ADD PRIMARY KEY (tract);
+ALTER TABLE hazus.hz_tract ADD PRIMARY KEY (tract);
+
+------------------------------------------------------------------------------------------
+
+-- CHECK TABLE COMPLETENESS
+
+
 -- check counts of all tables
 SELECT COUNT(*) FROM hazus.hzbldgcountoccupb; -- 11098632
 SELECT COUNT(*) FROM hazus.hzsqfootageoccupb; -- 11098632
@@ -200,39 +212,7 @@ or b.censusblock is null;
 
 
 
-------------------------------------------------------------------------------------------
--- TRACTS
-------------------------------------------------------------------------------------------
--- add primary keys to tract tables
-ALTER TABLE hazus.hzbldgcountoccupt ADD PRIMARY KEY (tract);
-ALTER TABLE hazus.hzsqfootageoccupt ADD PRIMARY KEY (tract);
-ALTER TABLE hazus.hz_tract ADD PRIMARY KEY (tract);
 
--- add an alternative integer id
-ALTER TABLE hazus.hz_tract
-ADD COLUMN alias_id serial;
-
--- copy it to the othter tables
-ALTER TABLE hazus.hzsqfootageoccupt
-ADD COLUMN alias_id integer;
-
-UPDATE hazus.hzsqfootageoccupt a
-set alias_id = b.alias_id
-from hazus.hz_tract b
-where a.tract = b.tract;
-
-ALTER TABLE hazus.hzbldgcountoccupt
-ADD COLUMN alias_id integer;
-
-UPDATE hazus.hzbldgcountoccupt a
-set alias_id = b.alias_id
-from hazus.hz_tract b
-where a.tract = b.tract;
-
--- create indices on alias id
-CREATE INDEX hzbldgcountoccupt_alias_id_btree ON hazus.hzbldgcountoccupt USING BTREE(alias_id);
-CREATE INDEX hzsqfootageoccupt_alias_id_btree ON hazus.hzsqfootageoccupt USING BTREE(alias_id);
-CREATE INDEX hz_tract_alias_id_btree ON hazus.hz_tract USING BTREE(alias_id);
 
 -- make sure row counts match across tables
 SELECT COUNT(*) FROM hazus.hzbldgcountoccupt; -- 73669
