@@ -136,3 +136,8 @@ ADD COLUMN acres_per_hu_or_bldg numeric;
 UPDATE diffusion_shared.pt_grid_us_res
 SET acres_per_hu_or_bldg = r_min(array[acres_per_hu, acres_per_bldg]);
 
+-- make sure no nulls
+select count(*)
+FROM diffusion_shared.pt_grid_us_res
+where acres_per_hu_or_bldg is null;
+-- 0 -- all set
