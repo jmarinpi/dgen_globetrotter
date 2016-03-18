@@ -80,7 +80,7 @@ select
 	  WHEN fuelheat = 4 THEN 'distallate fuel oil'
 	  WHEN fuelheat = 5 THEN 'electricity'
 	  WHEN fuelheat = 7 THEN 'wood'
-	  WHEN fuelheat = 8 THEN 'solar_energy'
+	  WHEN fuelheat = 8 THEN 'solar energy'
 	  WHEN fuelheat = 9 THEN 'other'
 	  WHEN fuelheat = 21 THEN 'other'
 	  WHEN fuelheat = -2 THEN 'no fuel'
