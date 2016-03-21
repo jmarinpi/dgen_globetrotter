@@ -79,13 +79,13 @@ FROM diffusion_shared.pt_grid_us_ind a
 where acres_per_bldg is null;
 -- 66406 rows
 
--- inspected the in Q -- they actually seem reasonably correct as non-commercial
+-- inspected the in Q -- they actually seem reasonably correct as non-industrial
 -- some have bldgs, but they are res; others have no development at all
 
 -- delete them
 DELeTE FROM diffusion_shared.pt_grid_us_ind a
 where acres_per_bldg is null;
--- 105128 rows deleted
+-- 66406 rows deleted
 
 -- map it for a couple counties?
 DROP TABLE IF EXISTS diffusion_data_shared.pt_grid_us_ind_boulder_county_extract;
@@ -94,10 +94,7 @@ select *
 FROM diffusion_shared.pt_grid_us_ind
 where county_id = 549;
 -- 1420 rows
--- in areas where there is primarily commercial activity
--- this DEFINITELY improves the previous estimates that used acres per hu --
--- many areas just had the default size of 100 acres per HU -- now they are refined lower,
--- and much lower in some cases -- e.g., from 100 to <2 or 3
+
 
 
 
@@ -110,7 +107,7 @@ UPDATE diffusion_shared.pt_grid_us_ind
 SET acres_per_hu_or_bldg = CASE WHEN acres_per_hu = 100 THEN acres_per_bldg
 			   ELSE r_min(array[acres_per_hu, acres_per_bldg])
 			   END;
--- 1498830 rows updated
+-- 1078781 rows updated
 
 -- make sure no nulls
 select count(*)
@@ -128,7 +125,7 @@ where acres_per_hu_or_bldg = 100;
 select count(*)
 FROM diffusion_shared.pt_grid_us_ind
 where acres_per_hu_or_bldg < acres_per_hu;
--- 875,715 -- this is slightly more than 1/2, which seems reasonable
+-- 702,640-- this is slightly more than 3/4, which seems reasonable
 
 ------------------------------------------------------------------------------------
 -- QA/QC for bldg type array
@@ -145,7 +142,7 @@ or bldg_type_probs = array[]::INTEGER[];
 select count(*)
 FROM diffusion_shared.pt_grid_us_ind
 where r_array_sum(bldg_type_probs) = 0;
--- 287,571
+--  532,451 -- more than 50% !!!!!
 
 -- archive these
 DROP TABLE IF EXISTS diffusion_data_shared.pt_grid_us_ind_no_bldg_types;
@@ -153,7 +150,7 @@ CREATE TABLE diffusion_data_shared.pt_grid_us_ind_no_bldg_types AS
 SELECT *
 FROM diffusion_shared.pt_grid_us_ind
 where r_array_sum(bldg_type_probs) = 0;
--- 287571 rows
+-- 532,451 rows
 -- look at these in Q
 
 -- alot of these do look like they are isolated pts in residential areas, so i guess it is reasonable to delte them
@@ -162,8 +159,34 @@ where r_array_sum(bldg_type_probs) = 0;
 -- delete
 DELETE FROM diffusion_shared.pt_grid_us_ind
 where r_array_sum(bldg_type_probs) = 0;
--- 287571 points deleted
+-- 532451 points deleted
 
+-- are there still points in every county??
+select distinct county_id
+from  diffusion_shared.pt_grid_us_ind;
+-- 3087
+
+-- some counties have no industrial points!
+with b as
+(
+	select distinct county_id
+	from  diffusion_shared.pt_grid_us_ind
+),
+c as
+(
+	select a.state, a.county, a.county_id
+	from diffusion_shared.county_geom a
+	LEFT join b
+	ON a.county_id = b.county_id
+	where b.county_id is null
+	order by 1, 2
+)
+select c.*, a.bldg_count
+from diffusion_shared.county_building_counts_by_sector a
+inner join c
+ON a.county_id = c.county_id
+where a.sector_abbr = 'ind'
+and a.bldg_count > 0;
 
 
 ------------------------------------------------------------------------------------
