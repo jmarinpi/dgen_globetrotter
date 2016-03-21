@@ -1,8 +1,7 @@
-﻿set role 'diffusion-writers';
+﻿Set role 'diffusion-writers';
 
 
-
-------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
 -- IND
 ------------------------------------------------------------------------------------------------------
 -- add new column to table
@@ -25,11 +24,11 @@ WITH b as
 		array
 		[
 			b.ind1i::INTEGER, b.ind2i::INTEGER, b.ind3i::INTEGER, b.ind4i::INTEGER, b.ind5i::INTEGER,
-			b.agr1i::INTEGER, 
+			b.agr1i::INTEGER
 		] as bldg_type_probs
 	from diffusion_data_wind.pt_grid_us_ind_new_census_2010_block_lkup a
 	LEFT JOIN hazus.hzbldgcountoccupb b
-	ON b.block_gisjoin = b.census_2010_gisjoin
+	ON a.block_gisjoin = b.census_2010_gisjoin
 	where b.has_bldgs = True
 )
 UPDATE diffusion_shared.pt_grid_us_ind a
@@ -42,29 +41,140 @@ set (acres_per_bldg, bldg_type_probs) =
     )
 FROM b
 where a.gid = b.gid;
+-- 1078781 rows
 
 -- add a comment on the column defining the order of the fuel types
 COMMENT ON COLUMN diffusion_shared.pt_grid_us_ind.bldg_type_probs IS
 'Bldg Types are (in order): ind1, ind2, ind3, ind4, ind5, agr1';
 
--- acres_per_bldg
-	-- check for nulls
-	-- check for zeros
-	-- check for values = 1000
--- array
-	-- check for rows with sum = 0?
+------------------------------------------------------------------------------------------------------------
+-- QA/QC for acres_per_bldg
+select count(*)
+FROM diffusion_shared.pt_grid_us_ind;
+--1145187 -- row counts do not match those updated
+
+-- check for zeros
+select count(*)
+from diffusion_shared.pt_grid_us_ind
+where acres_per_bldg = 0;
+-- 0  -- good
+
+-- check for values = 1000
+select count(*)
+from diffusion_shared.pt_grid_us_ind
+where acres_per_bldg = 1000;
+-- 0 -- perfect, no blocks that had zero buildings... except for the nulls below...
+
+-- check for nulls
+select count(*)
+from diffusion_shared.pt_grid_us_ind
+where acres_per_bldg is null;
+-- 66406
+
+-- what to do with these?
+DROP TABLE IF EXISTS diffusion_data_shared.pt_grid_us_ind_no_cdms_bldgs;
+CREATE TABLE diffusion_data_shared.pt_grid_us_ind_no_cdms_bldgs AS
+select a.*
+FROM diffusion_shared.pt_grid_us_ind a
+where acres_per_bldg is null;
+-- 66406 rows
+
+-- inspected the in Q -- they actually seem reasonably correct as non-commercial
+-- some have bldgs, but they are res; others have no development at all
+
+-- delete them
+DELeTE FROM diffusion_shared.pt_grid_us_ind a
+where acres_per_bldg is null;
+-- 105128 rows deleted
 
 -- map it for a couple counties?
+DROP TABLE IF EXISTS diffusion_data_shared.pt_grid_us_ind_boulder_county_extract;
+CREATE TABLE diffusion_data_shared.pt_grid_us_ind_boulder_county_extract AS
+select *
+FROM diffusion_shared.pt_grid_us_ind
+where county_id = 549;
+-- 1420 rows
+-- in areas where there is primarily commercial activity
+-- this DEFINITELY improves the previous estimates that used acres per hu --
+-- many areas just had the default size of 100 acres per HU -- now they are refined lower,
+-- and much lower in some cases -- e.g., from 100 to <2 or 3
 
 
+
+-- for conservative purposes, add a column that is the smaller of acres_per_hu and acres_per_building 
+ALTER TABLE diffusion_shared.pt_grid_us_ind
+ADD COLUMN acres_per_hu_or_bldg numeric;
+
+-- (ignore cases where acres_per_hu = 100, since these were just backfilled values for where no hu exist)
+UPDATE diffusion_shared.pt_grid_us_ind
+SET acres_per_hu_or_bldg = CASE WHEN acres_per_hu = 100 THEN acres_per_bldg
+			   ELSE r_min(array[acres_per_hu, acres_per_bldg])
+			   END;
+-- 1498830 rows updated
+
+-- make sure no nulls
+select count(*)
+FROM diffusion_shared.pt_grid_us_ind
+where acres_per_hu_or_bldg is null;
+-- 0 -- all set
+
+-- make sure no 100s
+select count(*)
+FROM diffusion_shared.pt_grid_us_ind
+where acres_per_hu_or_bldg = 100;
+-- 0 -- all set
+
+-- how many have values that are smaller because of the bldgs?
+select count(*)
+FROM diffusion_shared.pt_grid_us_ind
+where acres_per_hu_or_bldg < acres_per_hu;
+-- 875,715 -- this is slightly more than 1/2, which seems reasonable
+
+------------------------------------------------------------------------------------
+-- QA/QC for bldg type array
+-- check for empty array or array of all zero
+
+-- check for nulls
+select count(*)
+FROM diffusion_shared.pt_grid_us_ind
+where bldg_type_probs is null
+or bldg_type_probs = array[]::INTEGER[];
+-- 0 -- good
+
+-- check for pts with sum of all probs = 0
+select count(*)
+FROM diffusion_shared.pt_grid_us_ind
+where r_array_sum(bldg_type_probs) = 0;
+-- 287,571
+
+-- archive these
+DROP TABLE IF EXISTS diffusion_data_shared.pt_grid_us_ind_no_bldg_types;
+CREATE TABLE diffusion_data_shared.pt_grid_us_ind_no_bldg_types AS
+SELECT *
+FROM diffusion_shared.pt_grid_us_ind
+where r_array_sum(bldg_type_probs) = 0;
+-- 287571 rows
+-- look at these in Q
+
+-- alot of these do look like they are isolated pts in residential areas, so i guess it is reasonable to delte them
+-- even though there are so many
+
+-- delete
+DELETE FROM diffusion_shared.pt_grid_us_ind
+where r_array_sum(bldg_type_probs) = 0;
+-- 287571 points deleted
+
+
+
+------------------------------------------------------------------------------------
 -- create a table that defines the order of all commercial bldg types
-DROP TABLE IF EXISTS diffusion_shared.cdms_com_type_array_ind;
-CREATE TABLE diffusion_shared.cdms_com_type_array_ind;
+DROP TABLE IF EXISTS diffusion_shared.cdms_bldg_type_array_ind;
+CREATE TABLE diffusion_shared.cdms_bldg_type_array_ind
 (
 	bldg_type_array text[]
 );
 
-INSERT INTO diffusion_shared.cdms_com_type_array_ind
+INSERT INTO diffusion_shared.cdms_bldg_type_array_ind
 select array
 [
 	'ind1', 
@@ -74,22 +184,9 @@ select array
 	'ind5', 
 	'agr1'
 ];
--- note: the formatting matches the distinct space_heat_fuel values in diffusion_shared.eia_microdata_recs_2009_expanded_bldgs
 
 -- check results
 select *
-FROM diffusion_shared.cdms_com_type_array_ind;
-
--- check for no bldg types
-	-- delete if not that many
-	
--- CHECK THAT CBECS ROW EXIST???
--- NOT SURE WHAT TO DO FOR IND....
-
--- for conservative purposes, add a column that is the smaller of acres_per_hu and acres_per_building
-ALTER TABLE diffusion_shared.pt_grid_us_ind
-ADD COLUMN acres_per_hu_or_bldg numeric;
-
-UPDATE diffusion_shared.pt_grid_us_ind
-SET acres_per_hu_or_bldg = r_min(array[acres_per_hu, acres_per_bldg]);
+FROM diffusion_shared.cdms_bldg_type_array_ind;
+-- looks good!
 
