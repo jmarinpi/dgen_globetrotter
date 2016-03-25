@@ -189,6 +189,15 @@ where a.sector_abbr = 'ind'
 and a.bldg_count > 0;
 
 
+-- upon further consideration, these should not be deleted at this point in time 
+-- (if they are removed, some counties will have no commercial points)
+-- (also, to avoid this problem, we are switching to use the hazus data directly instead of pt grids)
+-- re-add them to the main table for legacy purposes
+INSERT INTO diffusion_shared.pt_grid_us_ind
+select *
+FROM diffusion_data_shared.pt_grid_us_ind_no_bldg_types;
+-- 532451 points re-added
+
 ------------------------------------------------------------------------------------
 -- create a table that defines the order of all commercial bldg types
 DROP TABLE IF EXISTS diffusion_shared.cdms_bldg_type_array_ind;

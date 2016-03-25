@@ -169,6 +169,15 @@ DELETE FROM diffusion_shared.pt_grid_us_com
 where r_array_sum(bldg_type_probs) = 0;
 -- 287571 points deleted
 
+-- upon further consideration, these should not be deleted at this point in time 
+-- (if they are removed, some counties will have no commercial points)
+-- (also, to avoid this problem, we are switching to use the hazus data directly instead of pt grids)
+-- re-add them to the main table for legacy purposes
+INSERT INTO diffusion_shared.pt_grid_us_com
+select *
+FROM diffusion_data_shared.pt_grid_us_com_no_bldg_types;
+-- 287571 points re-added
+
 ------------------------------------------------------------------------------------------------
 -- create a table that defines the order of all commercial bldg types
 DROP TABLE IF EXISTS diffusion_shared.cdms_bldg_type_array_com;
