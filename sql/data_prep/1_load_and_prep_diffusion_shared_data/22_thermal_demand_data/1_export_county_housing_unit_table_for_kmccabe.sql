@@ -82,11 +82,11 @@ where a.county_fips is null;
 -- Alaska,Wrangell City and Borough
 
 -- should be able to fix as follows
--- Alaska,Hoonah-Angoon Census Area -- maps to Skagway-Hoonah-Angoon,Alaska 2,232
--- Alaska,Petersburg Borough -- maps to  Wrangell-Petersburg,Alaska 2,280
--- Alaska,Prince of Wales-Hyder Census Area -- maps to Prince of Wales-Outer Ketchikan,Alaska 2,201
--- Alaska,Skagway Municipality -- maps to Skagway-Hoonah-Angoon,Alaska 2,232
--- Alaska,Wrangell City and Borough -- maps to  Wrangell-Petersburg,Alaska 2,280
+-- Alaska,Hoonah-Angoon Census Area -- maps to 9,Skagway-Hoonah-Angoon,Alaska 2,232
+-- Alaska,Petersburg Borough -- maps to  4,Wrangell-Petersburg,Alaska 2,280
+-- Alaska,Prince of Wales-Hyder Census Area -- maps to 3,Prince of Wales-Outer Ketchikan,Alaska 2,201
+-- Alaska,Skagway Municipality -- maps to 9,Skagway-Hoonah-Angoon,Alaska 2,232
+-- Alaska,Wrangell City and Borough -- maps to  4,Wrangell-Petersburg,Alaska 2,280
 
 -- add the RECS climate zone and reportable domain
 ALTEr TABLE diffusion_shared.acs_2013_county_housing_units
@@ -108,7 +108,42 @@ or recs_reportable_domain is null;
 -- 5 rows identified above
 
 -- fix manually
+UPdATE diffusion_shared.acs_2013_county_housing_units a
+set (recs_climate_region_pub, recs_reportable_domain) = (b.climate_zone_building_america, b.recs_2009_reportable_domain)
+from diffusion_shared.county_geom b
+where a.fips = '02105'
+and b.county_id = 9;
 
+UPdATE diffusion_shared.acs_2013_county_housing_units a
+set (recs_climate_region_pub, recs_reportable_domain) = (b.climate_zone_building_america, b.recs_2009_reportable_domain)
+from diffusion_shared.county_geom b
+where a.fips = '02230'
+and b.county_id = 9;
+
+UPdATE diffusion_shared.acs_2013_county_housing_units a
+set (recs_climate_region_pub, recs_reportable_domain) = (b.climate_zone_building_america, b.recs_2009_reportable_domain)
+from diffusion_shared.county_geom b
+where a.fips = '02195'
+and b.county_id = 4;
+
+UPdATE diffusion_shared.acs_2013_county_housing_units a
+set (recs_climate_region_pub, recs_reportable_domain) = (b.climate_zone_building_america, b.recs_2009_reportable_domain)
+from diffusion_shared.county_geom b
+where a.fips = '02275'
+and b.county_id = 4;
+
+UPdATE diffusion_shared.acs_2013_county_housing_units a
+set (recs_climate_region_pub, recs_reportable_domain) = (b.climate_zone_building_america, b.recs_2009_reportable_domain)
+from diffusion_shared.county_geom b
+where a.fips = '02198'
+and b.county_id = 3;
+
+-- recheck for nulls
+select *
+from diffusion_shared.acs_2013_county_housing_units
+where recs_climate_region_pub is null
+or recs_reportable_domain is null;
+-- 0 -- all set
 
 -- add description fields
 ALTEr TABLE diffusion_shared.acs_2013_county_housing_units
@@ -157,7 +192,7 @@ set recs_reportable_domain_desc =
 		WHEN recs_reportable_domain = 26 THEN 'California'
 		WHEN recs_reportable_domain = 27 THEN 'Alaska, Hawaii, Oregon, Washington'
 	END;
--- 3141 rows
+-- 3143 rows
 
 -- check for nulls?
 select count(*)
@@ -166,4 +201,4 @@ where recs_climate_region_pub_desc is null
 or recs_reportable_domain_desc is null;
 
 -- dump the data out for kevin
-\COPY diffusion_shared.acs_2013_county_housing_units TO '/Volumes/Staff/mgleason/dGeo/Data/Output/counties_to_recs_regions_lkup/county_housing_units_w_recs_regions.csv' with csv header;
+\COPY diffusion_shared.acs_2013_county_housing_units TO '/Volumes/Staff/mgleason/dGeo/Data/Output/counties_to_recs_regions_lkup/county_housing_units_w_recs_regions_2016_04_05.csv' with csv header;
