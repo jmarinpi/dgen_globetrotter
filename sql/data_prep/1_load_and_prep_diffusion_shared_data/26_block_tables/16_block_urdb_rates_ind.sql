@@ -53,23 +53,34 @@ select parsel_2('dav-gis', 'mgleason', 'mgleason',
 			'diffusion_blocks.block_urdb_rates_ind', 'a', 16);
 -----------------------------------------------------------------------------------------------------------
 -- add primary key
-ALTER TABLE diffusion_blocks.block_urdb_rates_com 
+ALTER TABLE diffusion_blocks.block_urdb_rates_ind 
 ADD PRIMARY KEY (pgid);
 
 -- check count
 select count(*)
-FROM diffusion_blocks.block_urdb_rates_com;
+FROM diffusion_blocks.block_urdb_rates_ind;
 -- 10535171
 
 -- check for nulls
 select count(*)
-FROM diffusion_blocks.block_urdb_rates_com
+FROM diffusion_blocks.block_urdb_rates_ind
+where ranked_rate_ids = array[null]::INTEGER[];
+-- 50641
+
+-- change to actual nulls
+UPDATE diffusion_blocks.block_urdb_rates_ind
+set ranked_rate_ids = NULL
+where ranked_rate_ids = array[null]::INTEGER[];
+
+-- recheck
+select count(*)
+FROM diffusion_blocks.block_urdb_rates_ind
 where ranked_rate_ids is null;
 -- 50641
 
 -- where are they?
 select distinct b.state_abbr
-FROM diffusion_blocks.block_urdb_rates_com a
+FROM diffusion_blocks.block_urdb_rates_ind a
 left join diffusion_blocks.block_geoms b
 on a.pgid = b.pgid
 where a.ranked_rate_ids is null;

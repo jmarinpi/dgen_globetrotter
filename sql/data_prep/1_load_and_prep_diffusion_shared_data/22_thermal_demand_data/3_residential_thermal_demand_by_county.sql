@@ -23,13 +23,13 @@ CREATE TABLE diffusion_shared.county_thermal_demand_res
 
 -- note: data comes in in tbtu -- convert to mmbtu
 UPDATE diffusion_shared.county_thermal_demand_res
-set space_heating_thermal_load_mmbtu = space_heating_thermal_load_mmbtu/1e6;
+set space_heating_thermal_load_mmbtu = space_heating_thermal_load_mmbtu * 1e6;
 
 UPDATE diffusion_shared.county_thermal_demand_res
-set water_heating_thermal_load_mmbtu = water_heating_thermal_load_mmbtu/1e6;
+set water_heating_thermal_load_mmbtu = water_heating_thermal_load_mmbtu * 1e6;
 
 UPDATE diffusion_shared.county_thermal_demand_res
-set space_cooling_thermal_load_mmbtu = space_cooling_thermal_load_mmbtu/1e6;
+set space_cooling_thermal_load_mmbtu = space_cooling_thermal_load_mmbtu * 1e6;
 
 
 

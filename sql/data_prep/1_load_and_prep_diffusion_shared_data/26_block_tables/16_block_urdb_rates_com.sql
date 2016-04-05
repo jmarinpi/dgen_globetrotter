@@ -22,9 +22,9 @@ select parsel_2('dav-gis', 'mgleason', 'mgleason',
 				c.rate_id_alias, 
 				ST_Distance(a.the_point_96703, c.the_geom_96703) as distance_m
 			FROM diffusion_blocks.block_geoms a
-			INNER JOIN diffusion_shared.urdb_rates_by_state_com b
+			LEFT JOIN diffusion_shared.urdb_rates_by_state_com b
 			ON a.state_abbr = b.state_abbr
-			INNER JOIN diffusion_data_shared.urdb_rates_geoms_com c
+			LEFT JOIN diffusion_data_shared.urdb_rates_geoms_com c
 			ON b.rate_id_alias = c.rate_id_alias
 		),
 		b as -- grouping is necessary because rate geoms are exploded (same utility might have several geoms)
@@ -56,6 +56,17 @@ FROM diffusion_blocks.block_urdb_rates_com;
 -- check for nulls
 select count(*)
 FROM diffusion_blocks.block_urdb_rates_com
+where ranked_rate_ids = array[null]::INTEGER[];
+-- 50641
+
+-- change to actual nulls
+UPDATE diffusion_blocks.block_urdb_rates_com
+set ranked_rate_ids = NULL
+where ranked_rate_ids = array[null]::INTEGER[];
+
+-- recheck
+select count(*)
+FROM diffusion_blocks.block_urdb_rates_ind
 where ranked_rate_ids is null;
 -- 50641
 
