@@ -1,0 +1,2 @@
+/usr/pgsql-9.2/bin/pg_dump dgen_db_tag_1p4 -v -U mgleason_su -p 5433 | gzip -9 > dgen_db_tag_1p4.sql.gz
+/usr/pgsql-9.2/bin/pg_dump dgen_db_fy16q2_wind_dwea -v -U mgleason_su -p 5433 | gzip -9 > dgen_db_fy16q2_wind_dwea.sql.gz
