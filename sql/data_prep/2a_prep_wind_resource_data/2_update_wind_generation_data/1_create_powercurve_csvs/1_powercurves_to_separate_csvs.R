@@ -2,9 +2,12 @@ library(reshape2)
 library(ggplot2)
 library(dplyr)
 
-
-in_csv = '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/2a_prep_wind_resource_data/2_update_wind_generation_data/1_create_powercurve_csvs/powercurve_minor_update_2016_01_12.csv'
+######################################################################################################
+# INPUTS
+in_csv = '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/2a_prep_wind_resource_data/2_update_wind_generation_data/1_create_powercurve_csvs/powercurve_update_2016_04_25.csv'
 out_folder = '/Users/mgleason/NREL_Projects/github/windpy/windspeed2power/powercurves'
+out_tidy = '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/2a_prep_wind_resource_data/2_update_wind_generation_data/1_create_powercurve_csvs/powercurve_update_tidy_2016_04_25.csv'
+######################################################################################################
 cur_date = format(Sys.time(), '%Y_%m_%d')
 precision_digits = 3
 
@@ -22,7 +25,7 @@ for (col in 2:ncol(pcm)){
 
 
 m = melt(pcm, id.vars = c('windspeed_ms'), variable.name = 'power_curve', value.name = 'kwh')
-write.csv(m, '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/2a_prep_wind_resource_data/2_update_wind_generation_data/1_create_powercurve_csvs/powercurve_update_tidy_2016_01_08.csv', row.names = F)
+write.csv(m, out_tidy, row.names = F)
 
 cols = c('#66c2a4', '#e31a1c', '#fec44f', '#c994c7', '#238b45', '#005824', '#e7298a', '#91003f')
 ggplot(data = m) +
