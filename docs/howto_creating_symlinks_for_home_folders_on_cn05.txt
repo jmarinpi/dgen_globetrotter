@@ -1,0 +1,16 @@
+sudo -s
+
+# moving an existing directory
+
+mv /home/username/ /data/home/username
+cp -r /etc/skel/.bash* /data/home/username
+chown -R $(id -nu username) /data/home/username
+chgrp -R "$(id -ng username)" /data/home/username
+ln -s /data/home/username /home/username
+
+# creating a new directory
+mkdir /data/home/username
+cp -r /etc/skel/.bash* /data/home/username
+chown -R $(id -nu username) /data/home/username
+chgrp -R "$(id -ng username)" /data/home/username
+ln -s /data/home/username /home/username
