@@ -9,9 +9,6 @@ library(grid)
 library(scales)
 
 
-# TODO: 
-# find an additional predictive variable uncorelated with t35km and depth_m?
-
 ################################################################################################
 # CONSTANTS 
 outpath = '/Users/mgleason/NREL_Projects/Projects/local_data/dgeo_misc/egs_resource/graphics/for_report'
@@ -49,20 +46,22 @@ dbSendQuery(con, sql)
 ################################################################################################################################################
 # LOAD DATA FROM PG
 
-sql = "SELECT x_96703 as x, y_96703 as y, 
-  t35km, 
-  depthofmeasurement as depth_m, 
-  correctedtemperature as t  
-  FROM dgeo.bht_smu
-  WHERE depthofmeasurement >= 304.8 and depthofmeasurement <= 3250
+sql = "SELECT gid, x_96703 as x, y_96703 as y, 
+              t35km, 
+              depthfinal as depth_m, 
+              temperaturefinal as t  
+  FROM dgeo.bht_compilation
+  WHERE depthfinal >= 300 and depthfinal <= 3250
+  AND gid <> 349391 -- outlier point
   AND t35km IS NOT NULL;"
 df = dbGetQuery(con, sql)
 
 sql = "SELECT gid, x_96703 as x, y_96703 as y,  
-  t35km
-  FROM dgeo.egs_empty_grid"
+              temp_c as t35km
+       FROM dgeo.smu_t35km_2016"
 grid = dbGetQuery(con, sql)
 
+# remove point where x = 1255815 and y = 1941685 and depth_m = 1221.037
 ################################################################################################
 
 ################################################################################################
@@ -73,7 +72,7 @@ grid = dbGetQuery(con, sql)
 set.seed(1)
 df$x2 = df$x + runif(nrow(df), -1, 1)
 df$y2 = df$y + runif(nrow(df), -1, 1)
-# cehck results
+# check results
 hist(df$x2 - df$x)
 hist(df$y2 - df$y)
 # looks perfect
@@ -90,7 +89,7 @@ nrow(dupes)
 # 0 -- all set
 
 # drop the x and y columns(so as to not mistakenly use them later)
-df = df[, c('x2', 'y2', 't35km', 'depth_m', 't')]
+df = df[, c('x2', 'y2', 't35km', 'depth_m', 't', 'gid')]
 # rename x2 and y2
 names(df)[1:2] = c('x', 'y')
 
@@ -106,14 +105,14 @@ df$z_slice = cut(df$depth_m, breaks = breaks, labels = labels)
 df$g = (df$t35km - df$t) / (3500 - df$depth_m)
 # inspect the results
 summary(df$g)
-# Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
-# -0.656700  0.001008  0.014520  0.006584  0.020210  0.237000 
+# Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+# -0.69580  0.01667  0.01996  0.02369  0.03196  0.40230 
 hist(df$g)
 
 # does g vary spatially?
 ggplot(data = df) +
   geom_point(aes(x = x, y = y, colour = g)) +
-  scale_colour_distiller(palette = 'Spectral', breaks =  c(-1, -.5, seq(0, 0.25, 0.05)))
+  scale_colour_distiller(palette = 'Spectral', breaks =  c(-1, -.5, seq(0, 0.5, 0.1)))
 # generally speaking, not a lot of obvious spatial variation here
 
 # does g vary with the depth of the well?
@@ -146,31 +145,31 @@ ggplot(data = df) +
 
 # create univariate model -- depth only
 m1 = lm(t ~ depth_m, data = df)
-summary(m1) # r2 = 73.71
-# t = -2.648 + 0.0409 * depth_m
-plot(m1$residuals ~ m1$model$depth_m)
-hist(m1$residuals)
+summary(m1) # r2 =  0.778 
+# t = 0.481 + 0.0381 * depth_m
+plot(m1$residuals ~ m1$model$depth_m) # there is a relationship here -- negative
+hist(m1$residuals) # not very normal
 summary(m1$residuals)
-# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# -95.170 -10.940  -1.912   0.000  11.150 255.800 
+# Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+# -101.7000   -5.8150   -0.7124    0.0000    4.2500  491.4000 
 
 # next univariate model, t35km only
 m2 = lm(t ~ t35km, data = df)
-summary(m2) # r2 = 0.386
-# t = -30 + 1.09 * t35km
-plot(m2$residuals ~ m2$model$t35km)
-hist(m2$residuals)
+summary(m2) # r2 = 0.3989
+# t = -14.6 + 0.689 * t35km
+plot(m2$residuals ~ m2$model$t35km)# as before, relationship and it is negative
+hist(m2$residuals) # not ver normal
 summary(m2$residuals)
 # Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-# -163.300  -20.180   -0.516    0.000   20.650  228.400 
+# -98.6600 -12.2400  -0.2177   0.0000   9.4140 489.3000 
 
 # create multivariate model
 m3 = lm(t ~ t35km + depth_m, data = df)
-summary(m3) # R2 = 0.8385 (better than univariate models)
-# t= -50.27 + 0.6052 * t35km + 0.03467 * depth_m
+summary(m3) # R2 = 0.8302 (better than univariate models)
+# t= -21 + .2862 * t35km + 0.03257 * depth_m
 # what is the t at depth 0 assuming a t35km = 100
-# -50.27 + 0.6052*100 + 0.03467 * 0 = 10.25  -- this seems reasonable
-# -50.27 + 0.6052*75 + 0.03467 * 0 = -4 -- this is not reasonable but it points out
+# -21 + .2862 * 100 + 0.03257 * 0 = 7.62  -- this seems reasonable
+# -21 + .2862 * 75 + 0.03257 * 00 = 0.465 -- this is not totally unreasonable but it points out
 # the limitations of applying this method below the depth range of the data
 ################################################################################################
 
@@ -178,20 +177,22 @@ summary(m3) # R2 = 0.8385 (better than univariate models)
 ################################################################################################
 # REGRESSION RESIDUAL ANALYSIS/MODEL VALIDATION
 mean(m3$residuals) # ~0
-mean(m3$residuals**2)**.5 # 14.80692
+mean(m3$residuals**2)**.5 # 11.62874
 hist(m3$residuals) # mostly between +/- 50 degrees
-min(m3$residuals) # -91.70114
-max(m3$residuals) # 231.1028
-sd(m3$residuals)*2 # 29.61406
+boxplot(m3$residuals)
+min(m3$residuals) # -97.67524
+max(m3$residuals) # 494.459
+sd(m3$residuals)*2 # 23.25752
 summary(m3$residuals)
 # Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-# -91.7000  -8.0990  -0.7514   0.0000   7.7000 231.1000 
+# -97.6800  -5.3480   0.2349   0.0000   4.4640 494.5000 
 # some pretty massive outliers, particularly on the high side
 # but the only way to fix this is awith a better regression model
+# or removing more outliers...
 
 # is there any relationship between depth and resid?
-plot(m3$residuals ~ m3$model$depth_m) # nope
-cor(m3$residuals, m3$model$depth_m) # 0
+plot(m3$residuals ~ m3$model$depth_m) # yes at the high side...
+cor(m3$residuals, m3$model$depth_m) # 0 # bot not significant
 
 # how about t35km and residuals?
 plot(m3$residuals ~ m3$model$t35km)
@@ -226,15 +227,6 @@ ggplot(data = df) +
 df$resid_m1 = m1$residuals
 df$t_m1 = m1$fitted.values
 
-# two additional diagnostics
-# create boxplot of residuals and temp by slice
-ggplot(data = df) +
-  geom_boxplot(aes(x = z_slice, y = resid))
-# definitely not much of a relationship here -- residuals are roughly the same regardless of well depth
-# boxplot of predictions by z slice 
-ggplot(data = df) +
-  geom_boxplot(aes(x = z_slice, y = t_pred))
-# definitely a strong relationship between temp and depth here (as expected)
 # how does this compare to the actual temperatures?
 ggplot(data = df) +
   geom_boxplot(aes(x = z_slice, y = t))
@@ -246,13 +238,13 @@ ggplot(data = df) +
 # map the results 
 ggplot(data = df) +
   geom_point(aes(x = x, y = y, colour = t_pred), size = 1.1) +
-  scale_colour_distiller(palette = 'YlOrRd', breaks = seq(0, 200, 25)) +
+  scale_colour_distiller(palette = 'YlOrRd', breaks = seq(0, 150, 25)) +
   facet_wrap(~z_slice)
 
 # is there a spatial pattern in the residuals?
 ggplot(data = df) +
   geom_point(aes(x = x, y = y, colour = resid), size = 1.1) +
-  scale_colour_distiller(palette = 'Spectral', breaks = seq(-100, 250, 25))
+  scale_colour_distiller(palette = 'Spectral', breaks = c(seq(-100, 100, 25), 500))
 # there are definitely patterns, not sure how they will affect stationarity of the procss
 # definitely some spatial autocorrelation, but trends are not super obvious
 ################################################################################################
