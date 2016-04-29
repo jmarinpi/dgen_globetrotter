@@ -76,5 +76,14 @@ CREATE INDEX egs_temp_at_depth_all_update_gist_the_geom_4326
 ON dgeo.egs_temp_at_depth_all_update
 USING GIST(the_geom_4326);
 
+-- calculate area of each cell
+ALTER TABLE dgeo.egs_temp_at_depth_all_update
+ADD COLUMN area_sqm numeric;
+
+UPDATE dgeo.egs_temp_at_depth_all_update
+set area_sqm = ST_Area(the_geom_96703);
+
+select min(area_sqm), avg(area_sqm), max(area_sqm)
+from dgeo.egs_temp_at_depth_all_update;
 
 -- investigate the data in Q
