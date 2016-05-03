@@ -190,7 +190,7 @@ vm
 # CROSS VALIDATION OF MODEL (DO THIS BEFORE RUNNING ACTUAL KRIGIN)
 
 
-cvk_rk <- krige.cv(formula = resid ~ 1, sf, model = vm, nfold = 10, nmax = 100)
+cvk_rk <- krige.cv(formula = resid ~ 1, sf, model = vm, nfold = 100, nmax = 100)
 summary(cvk_rk)
 res_rk <- as.data.frame(cvk_rk)$residual
 sqrt(mean(res_rk^2)) # 10.31593
@@ -204,7 +204,7 @@ cvk_rk_data = cvk_rk@data
 cvk_rk_data$x = cvk_rk@coords[, 1]
 cvk_rk_data$y = cvk_rk@coords[, 2]
 dfcv = merge(cvk_rk_data, dfg, by = c('x', 'y'))
-plot(dfcv$residual ~ dfcv$z)
+boxplot(dfcv$residual ~ dfcv$z)
 # no visual relationship with depth -- this is an improvement over regression alone
 plot(dfcv$residual ~ dfcv$t35km) 
 # this is consitent with regresion kriging
