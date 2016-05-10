@@ -2,7 +2,7 @@
 -- try 80 as a threshold
 with a as
 (
-	select rate_id_alias, find_ec_tier_errors(sam_json, 80) as ec_tier_error
+	select rate_id_alias, diffusion_shared.find_ec_tier_errors(sam_json, 80) as ec_tier_error
 	from diffusion_shared.urdb3_rate_sam_jsons
 )
 select *
@@ -14,7 +14,7 @@ order by rate_id_alias;
 -- try 100 as a threshold
 with a as
 (
-	select rate_id_alias, find_ec_tier_errors(sam_json, 100) as ec_tier_error
+	select rate_id_alias, diffusion_shared.find_ec_tier_errors(sam_json, 100) as ec_tier_error
 	from diffusion_shared.urdb3_rate_sam_jsons
 )
 select *
@@ -26,7 +26,7 @@ order by rate_id_alias;
 -- try 200 as a threshold
 with a as
 (
-	select rate_id_alias, find_ec_tier_errors(sam_json, 200) as ec_tier_error
+	select rate_id_alias, diffusion_shared.find_ec_tier_errors(sam_json, 200) as ec_tier_error
 	from diffusion_shared.urdb3_rate_sam_jsons
 )
 select *
@@ -41,7 +41,7 @@ order by rate_id_alias;
 -- how do these compare to the rates CG identified as problmatic?
 with a as
 (
-	select rate_id_alias, find_ec_tier_errors(sam_json, 100) as ec_tier_error
+	select rate_id_alias, diffusion_shared.find_ec_tier_errors(sam_json, 100) as ec_tier_error
 	from diffusion_shared.urdb3_rate_sam_jsons
 ),
 b as
@@ -112,9 +112,9 @@ with a as
 b as
 (
 	select b.rate_id_alias, 
--- 		find_ec_tier_errors(b.sam_json, 80) as ec_tier_error
--- 		find_ec_tier_errors(b.sam_json, 100) as ec_tier_error
-		find_ec_tier_errors(b.sam_json, 200) as ec_tier_error
+-- 		diffusion_shared.find_ec_tier_errors(b.sam_json, 80) as ec_tier_error
+-- 		diffusion_shared.find_ec_tier_errors(b.sam_json, 100) as ec_tier_error
+		diffusion_shared.find_ec_tier_errors(b.sam_json, 200) as ec_tier_error
 	from diffusion_shared.urdb3_rate_sam_jsons b
 	inner join a
 	on a.rate_id_alias = b.rate_id_alias
@@ -148,13 +148,13 @@ with a as
 ), -- 100 rates in CA
 b as
 (
-	select b.rate_id_alias, find_ec_tier_errors(b.sam_json, 100) as ec_tier_error
+	select b.rate_id_alias, diffusion_shared.find_ec_tier_errors(b.sam_json, 100) as ec_tier_error
 	from diffusion_shared.urdb3_rate_sam_jsons b
 	inner join a
 	on a.rate_id_alias = b.rate_id_alias
 )
 select c.rate_id_alias, sam_json, extract_orig_ec_tier_values(c.sam_json) as json_orig,
-			 test_fix_ec_tier_errors(c.sam_json) as json_fix
+			 test_diffusion_shared.fix_ec_tier_errors(c.sam_json) as json_fix
 FROM diffusion_shared.urdb3_rate_sam_jsons c
 inner join b
 ON c.rate_id_alias = b.rate_id_alias
@@ -165,8 +165,8 @@ order by rate_id_alias;
 -- actually fix the data
 -- create an archive of the table
 SET ROLE 'diffusion-writers';
-DROP TABLE IF EXISTS diffusion_shared.urdb3_rate_sam_jsons_archive;
-CREATE TABLE diffusion_shared.urdb3_rate_sam_jsons_archive AS
+DROP TABLE IF EXISTS diffusion_data_shared.urdb3_rate_sam_jsons_archive;
+CREATE TABLE diffusion_data_shared.urdb3_rate_sam_jsons_archive AS
 SELECT *
 FROM diffusion_shared.urdb3_rate_sam_jsons;
 
@@ -187,7 +187,7 @@ with a as
 ), -- 100 rates in CA
 b as
 (
-	select b.rate_id_alias, find_ec_tier_errors(b.sam_json, 100) as ec_tier_error
+	select b.rate_id_alias, diffusion_shared.find_ec_tier_errors(b.sam_json, 100) as ec_tier_error
 	from diffusion_shared.urdb3_rate_sam_jsons b
 	inner join a
 	on a.rate_id_alias = b.rate_id_alias
@@ -195,7 +195,7 @@ b as
 c as
 (
 
-	select c.rate_id_alias, fix_ec_tier_errors(c.sam_json) as json_fix
+	select c.rate_id_alias, diffusion_shared.fix_ec_tier_errors(c.sam_json) as json_fix
 	FROM diffusion_shared.urdb3_rate_sam_jsons c
 	inner join b
 	ON c.rate_id_alias = b.rate_id_alias
@@ -205,7 +205,7 @@ UPDATE diffusion_shared.urdb3_rate_sam_jsons d
 set sam_json = c.json_fix
 from c
 where d.rate_id_alias = c.rate_id_alias;
---- 
+--- 30 rows affected
 
 -- for archival purposes, which 30 rates were fixed?
 with a as
@@ -224,13 +224,13 @@ with a as
 ), -- 100 rates in CA
 b as
 (
-	select b.rate_id_alias, find_ec_tier_errors(b.sam_json, 100) as ec_tier_error
-	from diffusion_shared.urdb3_rate_sam_jsons_archive b
+	select b.rate_id_alias, diffusion_shared.find_ec_tier_errors(b.sam_json, 100) as ec_tier_error
+	from diffusion_data_shared.urdb3_rate_sam_jsons_archive b
 	inner join a
 	on a.rate_id_alias = b.rate_id_alias
 )
 select c.rate_id_alias
-FROM diffusion_shared.urdb3_rate_sam_jsons_archive c
+FROM diffusion_data_shared.urdb3_rate_sam_jsons_archive c
 inner join b
 ON c.rate_id_alias = b.rate_id_alias
 where b.ec_tier_error = True
