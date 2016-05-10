@@ -1,7 +1,7 @@
 ﻿
-DROP FUNCTION IF EXISTS public.fix_ec_tier_errors(j json);
+DROP FUNCTION IF EXISTS diffusion_shared.fix_ec_tier_errors(j json);
 -- SET ROLE 'server-superusers';
-CREATE OR REPLACE FUNCTION public.fix_ec_tier_errors(j json)
+CREATE OR REPLACE FUNCTION diffusion_shared.fix_ec_tier_errors(j json)
   RETURNS json AS
   $BODY$
 
