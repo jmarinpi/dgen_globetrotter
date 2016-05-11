@@ -74,8 +74,8 @@ if 'role' in pg_params.keys():
     cur.execute(sql)
     conn.commit()
 
-schema = 'diffusion_wind'
-in_path = '/srv2/mgleason_backups/dwind_powercurves_update_2016_01_11'
+schema = 'diffusion_resource_wind'
+in_path = '/srv2/mgleason_backups/dwind_powercurves_update_2016_04_25'
 
 hdfs = glob.glob1(in_path, '*.hdf5')
 for hdf in hdfs:

@@ -1,5 +1,4 @@
 ﻿-- move the solar datasets
--- (but not the parent tables)
 SET Role 'server-superusers';
 
 SELECT add_schema('diffusion_resource_solar', 'diffusion');
@@ -18,10 +17,12 @@ ALTER TABLE diffusion_solar.solar_resource_hourly_se SET SCHEMA diffusion_resour
 ALTER TABLE diffusion_solar.solar_resource_hourly_sw SET SCHEMA diffusion_resource_solar;
 ALTER TABLE diffusion_solar.solar_resource_hourly_w SET SCHEMA diffusion_resource_solar;
 
+-- move parent tables
+ALTER TABLE diffusion_solar.solar_resource_hourly SET SCHEMA diffusion_resource_solar;
+ALTER TABLE diffusion_solar.solar_resource_annual SET SCHEMA diffusion_resource_solar;
 
 ---------------------------------------------------------------------------------------------------
 -- move the wind datasets
--- (but not the parent tables)
 SET Role 'server-superusers';
 
 SELECT add_schema('diffusion_resource_wind', 'diffusion');
@@ -45,3 +46,8 @@ ALTER TABLE diffusion_wind.wind_resource_hourly_turbine_5 SET SCHEMA diffusion_r
 ALTER TABLE diffusion_wind.wind_resource_hourly_turbine_6 SET SCHEMA diffusion_resource_wind;
 ALTER TABLE diffusion_wind.wind_resource_hourly_turbine_7 SET SCHEMA diffusion_resource_wind;
 ALTER TABLE diffusion_wind.wind_resource_hourly_turbine_8 SET SCHEMA diffusion_resource_wind;
+
+
+-- move parent tables
+ALTER TABLE diffusion_wind.wind_resource_hourly SET SCHEMA diffusion_resource_wind;
+ALTER TABLE diffusion_wind.wind_resource_annual SET SCHEMA diffusion_resource_wind;

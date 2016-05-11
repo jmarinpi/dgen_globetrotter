@@ -1521,7 +1521,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                 SELECT a.*,
                         b.naep
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rooftops_%(i_place_holder)s a
-                LEFT JOIN diffusion_solar.solar_resource_annual b
+                LEFT JOIN diffusion_resource_solar.solar_resource_annual b
                     ON a.solar_re_9809_gid = b.solar_re_9809_gid
                     AND a.tilt = b.tilt
                     AND a.azimuth = b.azimuth""" % inputs
@@ -1998,13 +1998,13 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                     ON a.turbine_height_m = e.turbine_height_m
                     AND a.turbine_size_kw = e.turbine_size_kw
                 
-                LEFT JOIN diffusion_wind.wind_resource_annual w1
+                LEFT JOIN diffusion_resource_wind.wind_resource_annual w1
                     ON a.i = w1.i
                     AND a.j = w1.j
                     AND a.cf_bin = w1.cf_bin
                     AND a.turbine_height_m = w1.height
                     AND e.power_curve_1 = w1.turbine_id
-                LEFT JOIN diffusion_wind.wind_resource_annual w2
+                LEFT JOIN diffusion_resource_wind.wind_resource_annual w2
                     ON a.i = w2.i
                     AND a.j = w2.j
                     AND a.cf_bin = w2.cf_bin
@@ -2326,7 +2326,7 @@ def get_utilityrate3_inputs(uids, cur, con, tech, schema, npar, pg_conn_string, 
                         AND a.hdf_load_index = c.hdf_index
                 
                 -- JOIN THE RESOURCE DATA
-                LEFT JOIN diffusion_%(tech)s.%(tech)s_resource_hourly d
+                LEFT JOIN diffusion_resource_%(tech)s.%(tech)s_resource_hourly d
                         ON a.solar_re_9809_gid = d.solar_re_9809_gid
                         AND a.tilt = d.tilt
                         AND a.azimuth = d.azimuth
@@ -2372,14 +2372,14 @@ def get_utilityrate3_inputs(uids, cur, con, tech, schema, npar, pg_conn_string, 
                         AND a.hdf_load_index = c.hdf_index
                 
                 -- JOIN THE RESOURCE DATA
-                LEFT JOIN diffusion_%(tech)s.%(tech)s_resource_hourly d1
+                LEFT JOIN diffusion_resource_%(tech)s.%(tech)s_resource_hourly d1
                         ON a.i = d1.i
                         AND a.j = d1.j
                         AND a.cf_bin = d1.cf_bin
                         AND a.turbine_height_m = d1.height
                         AND a.power_curve_1 = d1.turbine_id
                 
-                LEFT JOIN diffusion_%(tech)s.%(tech)s_resource_hourly d2
+                LEFT JOIN diffusion_resource_%(tech)s.%(tech)s_resource_hourly d2
                         ON a.i = d2.i
                         AND a.j = d2.j
                         AND a.cf_bin = d2.cf_bin

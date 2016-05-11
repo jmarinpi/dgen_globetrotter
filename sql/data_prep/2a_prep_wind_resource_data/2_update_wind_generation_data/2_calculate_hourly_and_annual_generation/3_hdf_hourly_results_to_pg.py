@@ -134,12 +134,28 @@ def hdf2pg(hdf, hdf_path, pg_params, schema, scale_offset):
             df['turbine_id'] = turbine_id
             
             # dump to a csv (can't use in memory because it is too large)
-            print 'Writing to postgres'
-            for i in range(0,df.shape[0]):
-                sql = 'INSERT INTO %s VALUES %s;' % (out_table, tuple(df.ix[i].values))
-                cur.execute(sql)
-                con.commit()
+#            print 'Writing to postgres'
+#            for i in range(0,df.shape[0]):
+#                sql = 'INSERT INTO %s VALUES %s;' % (out_table, tuple(df.ix[i].values))
+#                cur.execute(sql)
+#                con.commit()
 
+            
+            nrows = df.shape[0]
+            block_size = np.min([10000, nrows])
+            nblocks = np.ceil(nrows/block_size)
+            blocks = np.array_split(df.index, nblocks)
+            print 'Writing to postgres'
+            for block in blocks:
+                s = StringIO()         
+                df.ix[block].to_csv(s, index = False, header = False)
+                # seek back to the beginning of the stringIO file
+                s.seek(0)
+                # copy the data from the stringio file to the postgres table
+                cur.copy_expert('COPY %s FROM STDOUT WITH CSV' % out_table, s)
+                # commit the additions and close the stringio file (clears memory)
+                con.commit()    
+                s.close()
 
     hf.close()    
 
@@ -153,9 +169,9 @@ pg_params = {'host'     : 'localhost',
              'role'     : 'diffusion-writers',
              'port'     : 5432
              }
-schema = 'diffusion_wind'
+schema = 'diffusion_resource_wind'
 scale_offset = 1e3
-in_path = '/srv2/mgleason_backups/dwind_powercurves_update_2016_01_11'
+in_path = '/srv2/mgleason_backups/dwind_powercurves_update_2016_04_25'
 
 # MAIN
 # set up pool of workers
@@ -164,7 +180,7 @@ in_path = '/srv2/mgleason_backups/dwind_powercurves_update_2016_01_11'
 result_list = []
 # get list of hdf files
 hdfs = glob.glob1(in_path, '*.hdf5')
-pool = multiprocessing.Pool(processes = 4)
+pool = multiprocessing.Pool(processes = 2)
 # kick off loading process 
 for hdf in hdfs:
     res = pool.apply_async(hdf2pg, (hdf, in_path, pg_params, schema, scale_offset))
