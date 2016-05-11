@@ -258,8 +258,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # get dsire incentives, srecs, and itc for the generated customer bins
             dsire_opts = datfunc.get_dsire_settings(con, schema)
             incentives_cap = datfunc.get_incentives_cap(con, schema)
-            # TO DO: dig into the next three lines to apply dsire opts appropriately to each function...
-                # ???? Should max incentive fraction be input as a separate table in the input sheet?
             dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, dsire_opts)
             srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, dsire_opts)
             state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, dsire_opts)            
@@ -291,7 +289,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                            cur, con, year, dsire_incentives, dsire_opts, state_dsire,
                                            srecs, manual_incentives, deprec_schedule, 
                                            ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate,
-                                           25, cfg.max_incentive_fraction)         
+                                           incentives_cap, 25)         
                 
                 # select from choices for business model and (optionally) technology
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 

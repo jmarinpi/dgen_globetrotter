@@ -27,7 +27,7 @@ logger = utilfunc.get_logger()
 def calc_economics(df, schema, market_projections, financial_parameters, rate_growth_df, 
                    scenario_opts, incentive_opts, max_market_share, cur, con,
                    year, dsire_incentives, dsire_opts, state_dsire, srecs, manual_incentives, deprec_schedule, 
-                   ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate, tech_lifetime = 25, max_incentive_fraction = 0.4):
+                   ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate, incentive_cap, tech_lifetime = 25):
     '''
     Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
 
@@ -103,7 +103,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     df = datfunc.calc_value_of_itc(df, itc_options, year)
 
     # calculate cashflows
-    revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime, max_incentive_fraction)    
+    revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime)    
 
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
@@ -150,7 +150,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     
     
 #==============================================================================
-def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, max_incentive_fraction = 0.4):
+def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime = 25):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 
@@ -186,6 +186,9 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     shape=(len(df),tech_lifetime); 
     df['ic'] = df['installed_costs_dollars_per_kw'] * df['system_size_kw']
     
+    # merge in the incentives cap
+    df = pd.merge(df, incentive_cap, how = 'left', on = ['tech'])
+    
     # Remove NAs if not rebate are passed in input sheet   
     df.ptc_length = df.ptc_length.fillna(0)
     df.ptc_length = df.ptc_length.astype(int)
@@ -207,10 +210,8 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     # TODO: Applying this as a hot-fix for bugs in the DSIRE dataset. We should review dsire dataset to ensure incentives are being
     # accurately valued
 
-    # Constrain fraction to [0,1]
-    max_incent_fraction = min(max(max_incentive_fraction, 0), 1)
-    #np.minimum(max_incent_fraction * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'])
-    df['total_value_of_incentives'] = np.minimum(max_incent_fraction * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'] + df['value_of_itc'])
+    # Constrain incentive to max incente fraction
+    df['total_value_of_incentives'] = np.minimum(df['max_incentive_fraction'] * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'] + df['value_of_itc'])
     
     # Assume that incentives received in first year are directly credited against installed cost; This help avoid
     # ITC cash flow imbalances in first year
@@ -318,7 +319,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, tech_lifetime = 25, ma
     incentive_revenue = np.zeros(shape)
     
     # cap value of ptc and pbi fit
-    remainder_for_incentive_revenues = np.maximum((max_incent_fraction * df['ic']) - df['total_value_of_incentives'], 0)
+    remainder_for_incentive_revenues = np.maximum((df['max_incentive_fraction'] * df['ic']) - df['total_value_of_incentives'], 0)
     df['adj_value_of_ptc'] = np.minimum(remainder_for_incentive_revenues/df['ptc_length'], df['value_of_ptc'] * df['ptc_length'])
     df['adj_value_of_ptc'] = df['adj_value_of_ptc'].fillna(0)
     remainder_for_incentive_revenues = np.maximum(remainder_for_incentive_revenues - df['adj_value_of_ptc'] * df['ptc_length'], 0)

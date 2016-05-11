@@ -69,12 +69,6 @@ local_cores = multiprocessing.cpu_count()/2
 #==============================================================================
 init_model = True
 
-##==============================================================================
-##  Default expiration year for dsire incentives
-##==============================================================================
-#dsire_inc_def_exp_year = 2016
-#dsire_default_exp_date = '1/1/%s' % dsire_inc_def_exp_year
-
 #==============================================================================
 # Toggle gross fit vs net fit
 #==============================================================================
@@ -82,12 +76,6 @@ init_model = True
 # or directly sold to grid (True)
 gross_fit_mode = False
 
-#==============================================================================
-#  Set a cap on value of incentives
-#==============================================================================
-# Maximum fraction of system capital cost that incentives offset 
-# (effectively capping incentive value beyond this point)
-max_incentive_fraction = 1.
 
 #==============================================================================
 #  Set method for determining Bass parameters
