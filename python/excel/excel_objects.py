@@ -9,6 +9,7 @@ import openpyxl as xl
 from cStringIO import StringIO
 import numpy as np
 import pandas as pd
+import datetime
 #import excel_functions as xl_funcs
 
 
@@ -137,7 +138,7 @@ class FancyNamedRange(object):
         
     def __cell_value__(self, cell, floats = True):
         
-        if floats == True and cell.data_type == 'n':
+        if floats == True and cell.data_type == 'n' and type(cell.value) <> datetime.datetime:
             cell_value = float(cell.value)
         else:
             cell_value = cell.value
@@ -159,7 +160,7 @@ class FancyNamedRange(object):
         cols = []
         for j in range(self.cell_array.shape[1]):
             col = cell_values(self.cell_array[i_begin:, j])
-            if col.dtype.kind not in ('S', 'b', 'U') and np.all(col.astype('int') == col):
+            if col.dtype.kind not in ('S', 'b', 'U', 'O') and np.all(col.astype('int') == col):
                 col = col.astype('int')
             cols.append(col)
         

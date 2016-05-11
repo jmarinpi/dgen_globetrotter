@@ -26,7 +26,7 @@ logger = utilfunc.get_logger()
 #==============================================================================
 
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
-def load_scenario(xls_file, schema, conn = None, test = False):
+def load_scenario(xls_file, schema, conn = None):
     
     logger.info('Loading Input Scenario Worksheet')    
     
@@ -48,8 +48,8 @@ def load_scenario(xls_file, schema, conn = None, test = False):
         if os.path.exists(mapping_file) == False:
             raise ExcelError('The required file that maps from named ranges to postgres tables (%s) does not exist' % mapping_file)
         mappings = pd.read_csv(mapping_file)
-        if test == True:
-            mappings = mappings[mappings.run == True]
+        # only run the mappings that are marked to run
+        mappings = mappings[mappings.run == True]
             
         # open the workbook                
         wb = xl.load_workbook(xls_file, data_only = True)
@@ -74,5 +74,5 @@ def load_scenario(xls_file, schema, conn = None, test = False):
 
 if __name__ == '__main__':
     input_xls = '../../excel/scenario_inputs.xlsm'
-    load_scenario(input_xls, schema = 'diffusion_results_2016_01_07_07h28m00s',  test = True)
+    load_scenario(input_xls, schema = 'diffusion_results_2016_05_11_12h13m35s')
     
