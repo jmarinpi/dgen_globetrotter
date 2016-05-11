@@ -17,6 +17,24 @@ from unnest(array[
 	]);
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- technologies
+DROP TABLE IF EXISTS diffusion_config.sceninp_technologies CASCADE;
+CREATE TABLE diffusion_config.sceninp_technologies
+(
+  val text unique not null
+);
+
+INSERT INTO diffusion_config.sceninp_technologies
+select *
+from unnest(array[
+	'Solar',
+	'Wind',
+	'GHP',
+	'DU'
+	]);
+------------------------------------------------------------------------
+
 
 ------------------------------------------------------------------------
 -- max market curve (residential)

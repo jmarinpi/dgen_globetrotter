@@ -2683,7 +2683,7 @@ def get_scenario_options(cur, schema):
     return results
 
 
-def cleanup_incentives(df, default_exp_yr):
+def cleanup_incentives(df, dsire_opts):
     
     # add in columns that may be missing
     for col in ['increment_4_capacity_kw','increment_4_rebate_dlrs_kw',
@@ -2692,6 +2692,12 @@ def cleanup_incentives(df, default_exp_yr):
                 'increment_4_rebate_dlrs_kw']:
         if col not in df.columns:
             df[col] = np.nan
+    
+    # isolate the output columns
+    out_cols = df.columns
+    
+    # merge the dsire options dataframe
+    df = pd.merge(df, dsire_opts, how = 'left', on = ['tech'])    
     
     # fix data types for float columns (may come in as type 'O' due to all nulls)
     float_cols = ['increment_1_capacity_kw', 
@@ -2727,8 +2733,8 @@ def cleanup_incentives(df, default_exp_yr):
     
     df.loc[:, float_cols] = df[float_cols].astype(float)
 
+
     # replace null values with defaults
-    exp_date = datetime.date(default_exp_yr, 12, 31) # note: this was formerly set to 1/1/16 for ITC, and 12/31/16 for all other incentives
     max_dlrs = 1e9
     dlrs_per_kwh = 0
     dlrs_per_kw = 0
@@ -2740,8 +2746,8 @@ def cleanup_incentives(df, default_exp_yr):
     # percent cost max
     df.loc[:, 'rebate_pcnt_cost_max'] = df.rebate_pcnt_cost_max.fillna(pcnt_cost_max)
     # expiration date
-    df.loc[:, 'ptc_end_date'] = df.ptc_end_date.astype('O').fillna(exp_date)
-    df.loc[:, 'pbi_fit_end_date'] = df.pbi_fit_end_date.astype('O').fillna(exp_date) # Assign expiry if no date    
+    df.loc[:, 'ptc_end_date'] = df.ptc_end_date.astype('O').fillna(df['dsire_default_exp_date'])
+    df.loc[:, 'pbi_fit_end_date'] = df.pbi_fit_end_date.astype('O').fillna(df['dsire_default_exp_date']) # Assign expiry if no date    
     # max dollars
     df.loc[:, 'max_dlrs_yr'] = df.max_dlrs_yr.fillna(max_dlrs)
     df.loc[:, 'pbi_fit_max_dlrs'] = df.pbi_fit_max_dlrs.fillna(max_dlrs)
@@ -2764,7 +2770,7 @@ def cleanup_incentives(df, default_exp_yr):
     increment_vars = ['increment_1_capacity_kw','increment_2_capacity_kw','increment_3_capacity_kw','increment_4_capacity_kw', 'increment_1_rebate_dlrs_kw','increment_2_rebate_dlrs_kw','increment_3_rebate_dlrs_kw','increment_4_rebate_dlrs_kw']    
     df.loc[:, increment_vars] = df[increment_vars].fillna(increment_incentive_kw)
     
-    return df
+    return df[out_cols]
 
 
 def create_carbon_intensities_to_model(con, cur, schema):
@@ -2809,6 +2815,31 @@ def create_carbon_intensities_to_model(con, cur, schema):
     assert row_count_actual == row_count_expected, '%(schema)s.carbon_intensities_to_model has %(row_count_actual)s rows, but should have %(row_count_expected)s' % inputs
             
 
+def get_dsire_settings(con, schema):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT *
+             FROM %(schema)s.input_main_dsire_incentive_options;""" % inputs
+    
+    dsire_opts = pd.read_sql(sql, con, coerce_float = True)
+    
+    return dsire_opts
+    
+
+def get_incentives_cap(con, schema):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT *
+             FROM %(schema)s.input_main_incentives_cap;""" % inputs
+    
+    incentives_cap = pd.read_sql(sql, con, coerce_float = True)
+    
+    return incentives_cap    
+
+
+
 def get_bass_params(con, schema):
     
     inputs = locals().copy()
@@ -2833,7 +2864,7 @@ def get_itc_incentives(con, schema):
     
     return itc_options
 
-def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string, default_exp_yr = 2016):
+def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string, dsire_opts):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
     
@@ -2859,12 +2890,12 @@ def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string, defau
     # get the data
     df = pd.read_sql(sql, con, coerce_float = True)
     # clean it up
-    df = cleanup_incentives(df, default_exp_yr)
+    df = cleanup_incentives(df, dsire_opts)
 
     return df
 
 
-def get_state_dsire_incentives(cur, con, schema, techs, default_exp_date = '1/1/2016'):
+def get_state_dsire_incentives(cur, con, schema, techs, dsire_opts):
     
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
@@ -2873,8 +2904,7 @@ def get_state_dsire_incentives(cur, con, schema, techs, default_exp_date = '1/1/
     for tech in techs:
         inputs['tech'] = tech
         sql =   """SELECT incentive_type, state_abbr, sector_abbr, dlrs_per_kw, fixed_dlrs, 
-                           fixed_kw, min_size_kw, max_size_kw, cap_dlrs, cap_pct_cost, 
-                           COALESCE(exp_date, '%(default_exp_date)s'::DATE) as exp_date,
+                           fixed_kw, min_size_kw, max_size_kw, cap_dlrs, cap_pct_cost, exp_date,
                            dsire_program_name, dsire_last_updated, dsire_link, dlrs_per_kwh, 
                            duration_years, cap_dlrs_yr, val_pct_cost, fixed_kwh, min_aep_kwh, 
                            max_aep_kwh, '%(tech)s'::TEXT as tech
@@ -2885,11 +2915,20 @@ def get_state_dsire_incentives(cur, con, schema, techs, default_exp_date = '1/1/
     sql = ' UNION ALL '.join(sql_list)
     # get the data
     df = pd.read_sql(sql, con, coerce_float = True)
+    
+    # isolate the output columns
+    out_cols = df.columns
+    
+    # fill in expiration dates with default from input sheet if missing
+    # merge dsire opts
+    df = pd.merge(df, dsire_opts, how = 'left', on = ['tech'])  
+    # fill in missing values
+    df.loc[:, 'exp_date'] = df.exp_date.astype('O').fillna(df['dsire_default_exp_date'])
+    
     # convert exp_date to datetime
     df['exp_date'] = pd.to_datetime(df['exp_date'])
 
-
-    return df  
+    return df[out_cols]  
 
 
 def calc_state_dsire_incentives(df, state_dsire_df, year):
@@ -3045,7 +3084,7 @@ def calc_state_dsire_incentives(df, state_dsire_df, year):
 
 
 
-def get_srecs(cur, con, schema, techs, pg_conn_string, default_exp_yr):
+def get_srecs(cur, con, schema, techs, pg_conn_string, dsire_opts):
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
     
@@ -3061,7 +3100,7 @@ def get_srecs(cur, con, schema, techs, pg_conn_string, default_exp_yr):
     # get the data
     df = pd.read_sql(sql, con, coerce_float = True)
     # clean it up
-    df = cleanup_incentives(df, default_exp_yr)
+    df = cleanup_incentives(df, dsire_opts)
     
     return df
 
@@ -3727,7 +3766,7 @@ def calc_manual_incentives(df, cur_year, inc):
     return value_of_incentives
 
 
-def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr = 2016, assumed_duration = 10):
+def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, dsire_opts, assumed_duration = 10):
     '''
     Calculate the value of incentives based on DSIRE database. There may be many incentives per each customer bin (county_id+bin_id),
     so the value is calculated for each row (incentives)
@@ -3747,6 +3786,8 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
 
     # combine sr and inc
     inc = pd.concat([dsire_df, srecs_df], axis = 0, ignore_index = True) 
+    # merge dsire opts
+    inc = pd.merge(inc, dsire_opts, how = 'left', on = 'tech')
 
     # Shorten names
     inc['ic'] = inc['installed_costs_dollars_per_kw'] * inc['system_size_kw']
@@ -3796,19 +3837,15 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
     inc['lifetime_value_of_ptc'] = inc['length_of_ptc'] * inc['value_of_ptc']
 
     # 4. #Calculate Value of Rebate
-
-    # check whether the credits are still active (this can be applied universally because DSIRE does not provide specific info 
-    # about expirations for each tax credit or deduction). 
-    #Assume that expiration date is inclusive e.g. consumer receives incentive in 2016 if expiration date of 2016 (or greater)
-    if datetime.date(cur_year, 1, 1) >= datetime.date(default_exp_yr, 12, 31):
-        inc['value_of_rebate'] = 0.0
-    else:
-        inc['rebate_cap'] = np.where(inc['system_size_kw'] < inc.rebate_min_size_kw, 0, inc['system_size_kw'])
-        inc.loc[:, 'rebate_cap'] = np.where(inc['rebate_cap'] > inc.rebate_max_size_kw, inc.rebate_max_size_kw, inc['rebate_cap'])
-        inc['value_of_rebate'] = inc.rebate_dlrs_kw * inc['rebate_cap']
-        inc.loc[:, 'value_of_rebate'] = np.minimum(inc.rebate_max_dlrs, inc['value_of_rebate'])
-        inc.loc[:, 'value_of_rebate'] = np.minimum(inc.rebate_pcnt_cost_max * inc['ic'], inc['value_of_rebate'])
-        inc.loc[:, 'value_of_rebate'] = inc.value_of_rebate.fillna(0)    
+    inc['rebate_cap'] = np.where(inc['system_size_kw'] < inc.rebate_min_size_kw, 0, inc['system_size_kw'])
+    inc.loc[:, 'rebate_cap'] = np.where(inc['rebate_cap'] > inc.rebate_max_size_kw, inc.rebate_max_size_kw, inc['rebate_cap'])
+    inc['value_of_rebate'] = inc.rebate_dlrs_kw * inc['rebate_cap']
+    inc.loc[:, 'value_of_rebate'] = np.minimum(inc.rebate_max_dlrs, inc['value_of_rebate'])
+    inc.loc[:, 'value_of_rebate'] = np.minimum(inc.rebate_pcnt_cost_max * inc['ic'], inc['value_of_rebate'])
+    inc.loc[:, 'value_of_rebate'] = inc.value_of_rebate.fillna(0)    
+    # overwrite these values with zero where the incentive has expired
+    inc.loc[:, 'value_of_rebate'] = np.where(np.array(datetime.date(cur_year, 1, 1)) >= np.array(inc['dsire_default_exp_date']), 0.0, inc['value_of_rebate'])
+    
 
     # 5. # Calculate Value of Tax Credit
     # Assume able to fully monetize tax credits
@@ -3816,28 +3853,28 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, default_exp_yr 
     # check whether the credits are still active (this can be applied universally because DSIRE does not provide specific info 
     # about expirations for each tax credit or deduction). 
     #Assume that expiration date is inclusive e.g. consumer receives incentive in 2016 if expiration date of 2016 (or greater)
-    if datetime.date(cur_year, 1, 1) >= datetime.date(default_exp_yr, 12, 31):
-        inc['value_of_tax_credit_or_deduction'] = 0.0
-    else:
-        inc.loc[inc.tax_credit_pcnt_cost.isnull(), 'tax_credit_pcnt_cost'] = 0
-        inc.loc[inc.tax_credit_pcnt_cost >= 1, 'tax_credit_pcnt_cost'] = 0.01 * inc.tax_credit_pcnt_cost
-        inc.loc[inc.tax_deduction_pcnt_cost.isnull(), 'tax_deduction_pcnt_cost'] = 0
-        inc.loc[inc.tax_deduction_pcnt_cost >= 1, 'tax_deduction_pcnt_cost'] =  0.01 * inc.tax_deduction_pcnt_cost
-        inc['tax_pcnt_cost'] = inc.tax_credit_pcnt_cost + inc.tax_deduction_pcnt_cost
+    inc.loc[inc.tax_credit_pcnt_cost.isnull(), 'tax_credit_pcnt_cost'] = 0
+    inc.loc[inc.tax_credit_pcnt_cost >= 1, 'tax_credit_pcnt_cost'] = 0.01 * inc.tax_credit_pcnt_cost
+    inc.loc[inc.tax_deduction_pcnt_cost.isnull(), 'tax_deduction_pcnt_cost'] = 0
+    inc.loc[inc.tax_deduction_pcnt_cost >= 1, 'tax_deduction_pcnt_cost'] =  0.01 * inc.tax_deduction_pcnt_cost
+    inc['tax_pcnt_cost'] = inc.tax_credit_pcnt_cost + inc.tax_deduction_pcnt_cost
+    
+    inc.max_tax_credit_dlrs = np.where(inc.max_tax_credit_dlrs.isnull(), 1e9, inc.max_tax_credit_dlrs)
+    inc.max_tax_deduction_dlrs = np.where(inc.max_tax_deduction_dlrs.isnull(), 1e9, inc.max_tax_deduction_dlrs)
+    inc['max_tax_credit_or_deduction_value'] = np.maximum(inc.max_tax_credit_dlrs,inc.max_tax_deduction_dlrs)
+    
+    inc['tax_credit_dlrs_kw'] = inc['tax_credit_dlrs_kw'].fillna(0)
+    
+    inc['value_of_tax_credit_or_deduction'] = inc['tax_pcnt_cost'] * inc['ic'] + inc['tax_credit_dlrs_kw'] * inc['system_size_kw']
+    inc.loc[:, 'value_of_tax_credit_or_deduction'] = np.minimum(inc['max_tax_credit_or_deduction_value'], inc['value_of_tax_credit_or_deduction'])
+    inc.loc[:, 'value_of_tax_credit_or_deduction'] = np.where(inc.tax_credit_max_size_kw < inc['system_size_kw'], inc['tax_pcnt_cost'] * inc.tax_credit_max_size_kw * inc.installed_costs_dollars_per_kw, inc['value_of_tax_credit_or_deduction'])
+    inc.loc[:, 'value_of_tax_credit_or_deduction'] = pd.Series(inc['value_of_tax_credit_or_deduction']).fillna(0)        
+    #value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
+    inc.loc[:, 'value_of_tax_credit_or_deduction'] = inc['value_of_tax_credit_or_deduction'].astype(float)
+    # overwrite these values with zero where the incentive has expired
+    inc.loc[:, 'value_of_tax_credit_or_deduction'] = np.where(np.array(datetime.date(cur_year, 1, 1)) >= np.array(inc['dsire_default_exp_date']), 0.0, inc['value_of_tax_credit_or_deduction'])
         
-        inc.max_tax_credit_dlrs = np.where(inc.max_tax_credit_dlrs.isnull(), 1e9, inc.max_tax_credit_dlrs)
-        inc.max_tax_deduction_dlrs = np.where(inc.max_tax_deduction_dlrs.isnull(), 1e9, inc.max_tax_deduction_dlrs)
-        inc['max_tax_credit_or_deduction_value'] = np.maximum(inc.max_tax_credit_dlrs,inc.max_tax_deduction_dlrs)
         
-        inc['tax_credit_dlrs_kw'] = inc['tax_credit_dlrs_kw'].fillna(0)
-        
-        inc['value_of_tax_credit_or_deduction'] = inc['tax_pcnt_cost'] * inc['ic'] + inc['tax_credit_dlrs_kw'] * inc['system_size_kw']
-        inc.loc[:, 'value_of_tax_credit_or_deduction'] = np.minimum(inc['max_tax_credit_or_deduction_value'], inc['value_of_tax_credit_or_deduction'])
-        inc.loc[:, 'value_of_tax_credit_or_deduction'] = np.where(inc.tax_credit_max_size_kw < inc['system_size_kw'], inc['tax_pcnt_cost'] * inc.tax_credit_max_size_kw * inc.installed_costs_dollars_per_kw, inc['value_of_tax_credit_or_deduction'])
-        inc.loc[:, 'value_of_tax_credit_or_deduction'] = pd.Series(inc['value_of_tax_credit_or_deduction']).fillna(0)        
-        #value_of_tax_credit_or_deduction[np.isnan(value_of_tax_credit_or_deduction)] = 0
-        inc.loc[:, 'value_of_tax_credit_or_deduction'] = inc['value_of_tax_credit_or_deduction'].astype(float)
-
     # sum results to customer bins
     if inc.shape[0] > 0:
         inc_summed = inc[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'lifetime_value_of_pbi_fit', 'lifetime_value_of_ptc', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['tech', 'sector_abbr', 'county_id','bin_id','business_model']).sum().reset_index() 

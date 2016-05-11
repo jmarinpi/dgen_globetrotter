@@ -26,7 +26,7 @@ logger = utilfunc.get_logger()
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def calc_economics(df, schema, market_projections, financial_parameters, rate_growth_df, 
                    scenario_opts, incentive_opts, max_market_share, cur, con,
-                   year, dsire_incentives, dsire_inc_def_exp_year, state_dsire, srecs, manual_incentives, deprec_schedule, 
+                   year, dsire_incentives, dsire_opts, state_dsire, srecs, manual_incentives, deprec_schedule, 
                    ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate, tech_lifetime = 25, max_incentive_fraction = 0.4):
     '''
     Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
@@ -83,7 +83,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     # Calculate value of incentives. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
     value_of_incentives_manual = datfunc.calc_manual_incentives(df_manual_incentives, year, manual_incentives)
     value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, srecs, year, 
-                                                              default_exp_yr = dsire_inc_def_exp_year, assumed_duration = 10)
+                                                              dsire_opts, assumed_duration = 10)
     value_of_incentives_state_dsire = datfunc.calc_state_dsire_incentives(df_state_dsire_incentives, state_dsire, year)
     # combine the results by concatenating the dataframes
     value_of_incentives_all = pd.concat([value_of_incentives_manual, value_of_incentives_dsire, value_of_incentives_state_dsire], axis = 0, ignore_index = True)

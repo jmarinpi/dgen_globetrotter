@@ -152,7 +152,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
                 
                 try:
-                    excel_functions.load_scenario(input_scenario, schema, con, test = False) # TODO: Comment
+                    excel_functions.load_scenario(input_scenario, schema, con) # TODO: Comment
 #                    pass
                 except Exception, e:
                     logger.error('\tLoading failed with the following error: %s\nModel Aborted' % e      )
@@ -256,9 +256,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==========================================================================================================
             logger.info("---------Modeling Annual Deployment---------")      
             # get dsire incentives, srecs, and itc for the generated customer bins
-            dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
-            srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, cfg.dsire_inc_def_exp_year)
-            state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, cfg.dsire_default_exp_date)            
+            dsire_opts = datfunc.get_dsire_settings(con, schema)
+            incentives_cap = datfunc.get_incentives_cap(con, schema)
+            # TO DO: dig into the next three lines to apply dsire opts appropriately to each function...
+                # ???? Should max incentive fraction be input as a separate table in the input sheet?
+            dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, dsire_opts)
+            srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, dsire_opts)
+            state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, dsire_opts)            
             itc_options = datfunc.get_itc_incentives(con, schema)
             for year in model_years:
                 logger.info('\tWorking on %s' % year)
@@ -284,7 +288,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 df = finfunc.calc_economics(df, schema, 
                                            market_projections, financial_parameters, rate_growth_df,
                                            scenario_opts, incentive_options, max_market_share, 
-                                           cur, con, year, dsire_incentives, cfg.dsire_inc_def_exp_year, state_dsire,
+                                           cur, con, year, dsire_incentives, dsire_opts, state_dsire,
                                            srecs, manual_incentives, deprec_schedule, 
                                            ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate,
                                            25, cfg.max_incentive_fraction)         
