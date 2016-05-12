@@ -2994,10 +2994,10 @@ def calc_state_dsire_incentives(df, state_dsire_df, year):
 
     # calculate FIT
     inc['value_of_pbi_fit'] = 0.0
-    inc.loc[inc['incentive_type'] == 'FIT', 
+    inc.loc[inc['incentive_type'] == 'PBI', 
             'value_of_pbi_fit'] = np.minimum(
                                             np.minimum(
-                                                        inc['dlrs_per_kwh'] * inc['aep'],
+                                                        inc['dlrs_per_kwh'] * inc['aep'] + inc['fixed_dlrs'],
                                                         inc['cap_dlrs_yr']
                                                         ) * 
                                             (inc['system_size_kw'] >= inc['min_size_kw']) * 
@@ -3008,7 +3008,7 @@ def calc_state_dsire_incentives(df, state_dsire_df, year):
                                         inc['cap_pct_cost'] * inc['ic']
                                     )
     inc['pbi_fit_length'] = 0.0
-    inc.loc[inc['incentive_type'] == 'FIT', 
+    inc.loc[inc['incentive_type'] == 'PBI', 
                 'pbi_fit_length'] = inc['duration_years']
     
     # calculate ITD
