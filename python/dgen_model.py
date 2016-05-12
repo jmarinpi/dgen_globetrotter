@@ -204,12 +204,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 load_growth_scenario = scenario_opts['load_growth_scenario'].lower() # get financial variables
                 # these are technology specific, set up in tidy form with a "tech" field
                 financial_parameters = datfunc.get_financial_parameters(con, schema)
-                incentive_options = datfunc.get_manual_incentive_options(con, schema)
                 deprec_schedule = datfunc.get_depreciation_schedule(con, schema)
                 ann_system_degradation = datfunc.get_system_degradation(con, schema) 
                 inflation_rate = datfunc.get_annual_inflation(con,schema)
                 rate_growth_df = datfunc.get_rate_escalations(con, schema)
-                manual_incentives = datfunc.get_manual_incentives(con, schema)
                 bass_params = datfunc.get_bass_params(con, schema)
                 learning_curves_mode = datfunc.get_learning_curves_mode(con, schema)
                 datfunc.write_first_year_costs(con, cur, schema, cfg.start_year)
@@ -286,9 +284,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # Calculate economics of adoption for different busines models
                 df = finfunc.calc_economics(df, schema, 
                                            market_projections, financial_parameters, rate_growth_df,
-                                           scenario_opts, incentive_options, max_market_share, 
+                                           scenario_opts, max_market_share, 
                                            cur, con, year, dsire_incentives, dsire_opts, state_dsire,
-                                           srecs, manual_incentives, deprec_schedule, 
+                                           srecs, deprec_schedule, 
                                            ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate,
                                            incentives_cap, 25)         
                 

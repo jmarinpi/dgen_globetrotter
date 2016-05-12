@@ -25,8 +25,8 @@ logger = utilfunc.get_logger()
 #==============================================================================
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def calc_economics(df, schema, market_projections, financial_parameters, rate_growth_df, 
-                   scenario_opts, incentive_opts, max_market_share, cur, con,
-                   year, dsire_incentives, dsire_opts, state_dsire, srecs, manual_incentives, deprec_schedule, 
+                   scenario_opts, max_market_share, cur, con,
+                   year, dsire_incentives, dsire_opts, state_dsire, srecs, deprec_schedule, 
                    ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate, incentive_cap, tech_lifetime = 25):
     '''
     Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
@@ -45,8 +45,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     # join in additional information
     df = pd.merge(df, ann_system_degradation, how = 'left', on = ['tech'])
     df = pd.merge(df, deprec_schedule, how = 'left', on = ['tech', 'year'])
-    df = pd.merge(df, incentive_opts, how = 'left', on = ['tech'])    
-    
+
     # duplicate the data frame for each business model
     df_tpo = df.copy()
     df_tpo['business_model'] = 'tpo'
@@ -76,17 +75,15 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
         rate_esc.loc[:, 'rate_escalations'] = np.array(rate_esc.rate_escalations.tolist(), dtype = 'float64')[:, start_i:end_i].tolist()
         df = pd.merge(df, rate_esc, how = 'left', on = ['sector_abbr', 'census_division_abbr'])
 
-    # split out rows to run through manual and dsire incentives
-    df_manual_incentives = df[(df['incentive_source'] == 'Manual Policies') | (df['incentive_source'] == 'Both')]
-    df_dsire_incentives = df[(df['tech'] == 'solar') & (df['incentive_source'] == 'Existing Policies') | (df['incentive_source'] == 'Both')]
-    df_state_dsire_incentives = df[(df['tech'] == 'wind') & (df['incentive_source'] == 'Existing Policies') | (df['incentive_source'] == 'Both')]
+    # split out rows to run through state and old dsire incentives
+    df_dsire_incentives = df[(df['tech'] == 'solar')]
+    df_state_dsire_incentives = df[(df['tech'] == 'wind')]
     # Calculate value of incentives. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
-    value_of_incentives_manual = datfunc.calc_manual_incentives(df_manual_incentives, year, manual_incentives)
     value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, srecs, year, 
                                                               dsire_opts, assumed_duration = 10)
     value_of_incentives_state_dsire = datfunc.calc_state_dsire_incentives(df_state_dsire_incentives, state_dsire, year)
     # combine the results by concatenating the dataframes
-    value_of_incentives_all = pd.concat([value_of_incentives_manual, value_of_incentives_dsire, value_of_incentives_state_dsire], axis = 0, ignore_index = True)
+    value_of_incentives_all = pd.concat([value_of_incentives_dsire, value_of_incentives_state_dsire], axis = 0, ignore_index = True)
     # sum up total incentives by agent
     value_of_incentives_all_summed = value_of_incentives_all[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['tech', 'sector_abbr', 'county_id','bin_id','business_model']).sum().reset_index()     
     # join back to the main df
