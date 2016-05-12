@@ -13,6 +13,7 @@ import os
 import multiprocessing
 import pandas as pd
 import utility_functions as utilfunc
+import json
 
 #==============================================================================
 #  Show timing statements for functions
@@ -32,7 +33,7 @@ pg_params_file = 'pg_params_gis.json'
 
 # load pg params from pg_params.json
 pg_params, pg_conn_string = utilfunc.get_pg_params(os.path.join(path, pg_params_file))
-
+pg_params_log = json.dumps(json.loads(pd.DataFrame([pg_params])[['host', 'port', 'dbname', 'user']].ix[0].to_json()), indent = 4, sort_keys = True)
 #==============================================================================
 #   set the number of customer bins to model in each county
 #==============================================================================

@@ -114,6 +114,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         # 4. Connect to Postgres and configure connection(s) (to edit login information, edit config.py)
         # create a single connection to Postgres Database -- this will serve as the main cursor/connection
         con, cur = utilfunc.make_con(cfg.pg_conn_string)
+        logger.info("Connected to Postgres with the following params:\n%s" % cfg.pg_params_log)
         pgx.register_hstore(con) # register access to hstore in postgres    
         
         # find the input excel spreadsheets
