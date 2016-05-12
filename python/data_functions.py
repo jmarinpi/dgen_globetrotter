@@ -1855,73 +1855,54 @@ def create_nem_scenario(cur, con, schema):
     con.commit()            
 
 
+    
 def create_pc_transitions(cur, con, schema):
     
     inputs = locals().copy()    
     
     sql = """DROP TABLE IF EXISTS %(schema)s.input_wind_performance_power_curve_transitions;
             CREATE TABLE %(schema)s.input_wind_performance_power_curve_transitions AS
-            with a as
+
+            WITH a AS
             (
-                	SELECT turbine_size_kw, power_curve_id, min(year), max(year)
-                	FROM %(schema)s.input_wind_performance_power_curve_schedule
-                	GROUP BY turbine_size_kw, power_curve_id
-                	ORDER BY turbine_size_kw, power_curve_id
+                	SELECT year, turbine_size_kw, 
+                		CASE WHEN perf_improvement_factor >= 0 and perf_improvement_factor < .1 THEN array[0, 0.1]
+                		     WHEN perf_improvement_factor >= .1 and perf_improvement_factor < .25 THEN array[0.1, 0.25]
+                		     WHEN perf_improvement_factor >=25 THEN array[0.25, 0.25]
+                		END as perf_improvement_factor_bounds,
+                		CASE WHEN perf_improvement_factor >= 0 and perf_improvement_factor < .1 THEN perf_improvement_factor/0.1
+                		     WHEN perf_improvement_factor >= .1 and perf_improvement_factor < .25 THEN perf_improvement_factor/0.25
+                		     WHEN perf_improvement_factor >=25 THEN 0
+                		END as interp_factor
+                	FROM %(schema)s.input_wind_performance_improvements
             ),
-            b as
+            b AS
             (
-                	SELECT a.turbine_size_kw, 
-                		a.min as year_1, a.power_curve_id as power_curve_1,
-                		COALESCE(b.min, 2050) as year_2, coalesce(b.power_curve_id, a.power_curve_id) as power_curve_2
+                	SELECT year, turbine_size_kw, 
+                		perf_improvement_factor_bounds[1] as perf_improvement_factor_1,
+                		perf_improvement_factor_bounds[2] as perf_improvement_factor_2,
+                		interp_factor
                 	FROM a
-                	LEFT JOIN a b
-                	ON a.turbine_size_kw = b.turbine_size_kw
-                	AND a.max = b.min - 2
-                	ORDER BY a.turbine_size_kw, a.min
-            )            ,
-            c as
-            (
-                	SELECT CASE WHEN year_1 = 2050 then 2050
-				ELSE generate_series(b.year_1, b.year_2-2, 2) 
-				end as year,
-                		b.*
-                	FROM b
-            )            
-            SELECT c.*,
-                	CASE when power_curve_1 = power_curve_2 then 0
-                	ELSE (year::NUMERIC-year_1)/(year_2::NUMERIC-year_1) 
-                	END AS interp_factor
-            FROM c;""" % inputs
+            )
+            SELECT b.year, b.turbine_size_kw,
+                	c.size_class,
+                	d.turbine_id as power_curve_1,
+                	e.turbine_id as power_curve_2,
+                  b.interp_factor
+            from b
+            LEFT JOIN %(schema)s.input_wind_performance_turbine_size_classes c
+                	ON b.turbine_size_kw = c.turbine_size_kw
+            LEFT JOIN diffusion_wind.power_curve_lkup d
+                	ON c.size_class = d.size_class
+                  AND b.perf_improvement_factor_1 = d.perf_improvement_factor
+            LEFT JOIN diffusion_wind.power_curve_lkup e
+                	ON c.size_class = e.size_class
+                 AND b.perf_improvement_factor_2 = e.perf_improvement_factor
+            ORDER BY year, turbine_size_kw;""" % inputs
     cur.execute(sql)
     con.commit()
     
-    sql = """with a as
-                (
-                	select distinct turbine_size_kw
-                	from %(schema)s.input_wind_performance_power_curve_transitions
-                ), 
-                b as
-                (
-                	select distinct turbine_size_kw
-                	from %(schema)s.input_wind_performance_power_curve_transitions
-                	where year = 2050	
-                ),
-                c as
-                (
-                	select a.turbine_size_kw
-                	from a
-                	left join b
-                	ON a.turbine_size_kw = b.turbine_size_kw
-                	where b.turbine_size_kw is null
-                )
-                INSERT INTO %(schema)s.input_wind_performance_power_curve_transitions
-                select 2050 as year, d.turbine_size_kw, d.year_1, d.power_curve_1, d.year_2, d.power_curve_2, 0 as interp_factor
-                from %(schema)s.input_wind_performance_power_curve_transitions d
-                inner join c
-                ON d.turbine_size_kw = c.turbine_size_kw
-                where d.year = 2048;""" % inputs
-    cur.execute(sql)
-    con.commit()
+    
     
 ########################################################################################################################
 ########################################################################################################################

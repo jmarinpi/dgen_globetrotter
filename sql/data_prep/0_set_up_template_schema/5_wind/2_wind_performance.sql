@@ -25,7 +25,7 @@ CREATE TABLE diffusion_template.input_wind_performance_turbine_size_classes
 );
 
 
-DROP TABLE IF EXISTS diffusion_template.input_wind_performance_improvements;
+DROP TABLE IF EXISTS diffusion_template.input_wind_performance_improvements CASCADE;
 CREATE TABLE diffusion_template.input_wind_performance_improvements
 (
 	turbine_size_kw numeric not null,
@@ -33,21 +33,9 @@ CREATE TABLE diffusion_template.input_wind_performance_improvements
 	perf_improvement_factor numeric not null,
 	CONSTRAINT input_wind_performance_improvements_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
-		ON UPDATE NO ACTION ON DELETE RESTRICT
+		ON UPDATE NO ACTION ON DELETE RESTRICT,
+	CONSTRAINT perf_improvement_factor_check CHECK (perf_improvement_factor >= 0 and perf_improvement_factor <= .25)	
 );
-
-
-DROP VIEW IF EXISTs diffusion_template.input_wind_performance_power_curve_schedule;
-CREATE VIEW diffusion_template.input_wind_performance_power_curve_schedule as
-select a.turbine_size_kw, a.year, a.perf_improvement_factor, 
-	b.size_class, c.turbine_id as power_curve_id
-from diffusion_template.input_wind_performance_improvements a
-LEFT JOIN diffusion_template.input_wind_performance_turbine_size_classes b
-	ON a.turbine_size_kw = b.turbine_size_kw
-LEFT JOIN diffusion_wind.power_curve_lkup c
-	ON b.size_class = c.size_class
-	and a.perf_improvement_factor = c.perf_improvement_factor
-order by turbine_size_kw, year;
 
 
 
