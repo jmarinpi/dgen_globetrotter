@@ -63,3 +63,22 @@ from diffusion_shared.max_market_share;
 -- looks fine
 
 -- all looks good to me
+
+
+----------------------------------------------------------------------------------------------------------------
+-- per issue #512, reproduce  the NREL host-owned residential MMS curve for industrial and commercial sectors
+insert into diffusion_shared.max_market_share
+select metric, metric_value, max_market_share, source, business_model, 
+	unnest(array['commercial', 'industrial']) as sector,
+	unnest(array['com', 'ind']) as sector_abbr
+FROM diffusion_shared.max_market_share
+where source = 'NREL'
+and business_model = 'host_owned'
+and sector = 'residential';
+-- 3206 rows
+
+select distinct sector_abbr, business_model, source
+FROM diffusion_shared.max_market_share
+order by 1, 2, 3
+
+-- check that it worked

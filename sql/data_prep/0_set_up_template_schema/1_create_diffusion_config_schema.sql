@@ -69,7 +69,8 @@ select *
 from unnest(array[
 	'NEMS',
 	'Navigant',
-	'RW Beck'
+	'RW Beck',
+	'NREL'
 	]);
 ------------------------------------------------------------------------
 
