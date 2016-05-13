@@ -2,9 +2,9 @@
 
 ----------------------------------------------------------------------------------------
 -- residential
-DROP TABLE IF EXISTS diffusion_shared.point_microdata_res_us CASCADE;
+DROP TABLE IF EXISTS diffusion_points.point_microdata_res_us CASCADE;
 SET seed to 1;
-CREATE TABLE diffusion_shared.point_microdata_res_us AS
+CREATE TABLE diffusion_points.point_microdata_res_us AS
 WITH a AS
 (
 	SELECT a.county_id, 
@@ -26,7 +26,7 @@ WITH a AS
 		a.ulocale,
 		-- res only		
 		sum(a.blkgrp_ownocc_sf_hu_portion) as point_weight
-	FROM diffusion_shared.pt_grid_us_res a
+	FROM diffusion_points.pt_grid_us_res a
 	LEFT JOIN diffusion_wind.ij_cfbin_lookup_res_pts_us b 
 		ON a.gid = b.pt_gid
 	GROUP BY a.county_id,
@@ -54,25 +54,25 @@ ORDER BY county_id;
 -- 4635943 rows
 
 -- primary key and indices
-ALTER TABLE diffusion_shared.point_microdata_res_us
+ALTER TABLE diffusion_points.point_microdata_res_us
 ADD primary key (micro_id);
 
 CREATE INDEX point_microdata_res_us_county_id_btree
-  ON diffusion_shared.point_microdata_res_us
+  ON diffusion_points.point_microdata_res_us
   USING btree (county_id);
 
 CREATE INDEX point_microdata_res_us_utility_type_btree
-  ON diffusion_shared.point_microdata_res_us
+  ON diffusion_points.point_microdata_res_us
   USING btree (utility_type);
 
-VACUUM ANALYZE diffusion_shared.point_microdata_res_us;
+VACUUM ANALYZE diffusion_points.point_microdata_res_us;
 
 ----------------------------------------------------------------------------------------
 -- commercial
 
-DROP TABLE IF EXISTS diffusion_shared.point_microdata_com_us CASCADE;
+DROP TABLE IF EXISTS diffusion_points.point_microdata_com_us CASCADE;
 SET seed to 1;
-CREATE TABLE diffusion_shared.point_microdata_com_us AS
+CREATE TABLE diffusion_points.point_microdata_com_us AS
 WITH a AS
 (
 	SELECT a.county_id, 
@@ -94,7 +94,7 @@ WITH a AS
 		a.solar_re_9809_gid,
 		--
 		count(*)::integer as point_weight
-	FROM diffusion_shared.pt_grid_us_com a
+	FROM diffusion_points.pt_grid_us_com a
 	LEFT JOIN diffusion_wind.ij_cfbin_lookup_com_pts_us b 
 	ON a.gid = b.pt_gid
 	GROUP BY a.county_id,
@@ -122,26 +122,26 @@ ORDER BY county_id;
 -- 1400715  rows
 
 -- primary key and indices
-ALTER TABLE diffusion_shared.point_microdata_com_us
+ALTER TABLE diffusion_points.point_microdata_com_us
 ADD primary key (micro_id);
 
 CREATE INDEX point_microdata_com_us_county_id_btree
-  ON diffusion_shared.point_microdata_com_us
+  ON diffusion_points.point_microdata_com_us
   USING btree (county_id);
 
 CREATE INDEX point_microdata_com_us_utility_type_btree
-  ON diffusion_shared.point_microdata_com_us
+  ON diffusion_points.point_microdata_com_us
   USING btree (utility_type);
 
-VACUUM ANALYZE diffusion_shared.point_microdata_com_us;
+VACUUM ANALYZE diffusion_points.point_microdata_com_us;
 
 
 ----------------------------------------------------------------------------------------------------
 -- industrial
 
-DROP TABLE IF EXISTS diffusion_shared.point_microdata_ind_us CASCADE;
+DROP TABLE IF EXISTS diffusion_points.point_microdata_ind_us CASCADE;
 SET seed to 1;
-CREATE TABLE diffusion_shared.point_microdata_ind_us AS
+CREATE TABLE diffusion_points.point_microdata_ind_us AS
 WITH a AS
 (
 	SELECT a.county_id, 
@@ -162,7 +162,7 @@ WITH a AS
 		a.solar_incentive_array_id,
 		a.solar_re_9809_gid,
 		count(*)::integer as point_weight
-	FROM diffusion_shared.pt_grid_us_ind a
+	FROM diffusion_points.pt_grid_us_ind a
 	LEFT JOIN diffusion_wind.ij_cfbin_lookup_ind_pts_us b 
 	ON a.gid = b.pt_gid
 	GROUP BY a.county_id,
@@ -190,15 +190,15 @@ ORDER BY county_id;
 -- 1034230 rows
 
 -- primary key and indices
-ALTER TABLE diffusion_shared.point_microdata_ind_us
+ALTER TABLE diffusion_points.point_microdata_ind_us
 ADD primary key (micro_id);
 
 CREATE INDEX point_microdata_ind_us_county_id_btree
-  ON diffusion_shared.point_microdata_ind_us
+  ON diffusion_points.point_microdata_ind_us
   USING btree (county_id);
 
 CREATE INDEX point_microdata_ind_us_utility_type_btree
-  ON diffusion_shared.point_microdata_ind_us
+  ON diffusion_points.point_microdata_ind_us
   USING btree (utility_type);
 
-VACUUM ANALYZE diffusion_shared.point_microdata_ind_us;
+VACUUM ANALYZE diffusion_points.point_microdata_ind_us;

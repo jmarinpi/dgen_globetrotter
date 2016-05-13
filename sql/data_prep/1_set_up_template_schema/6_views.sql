@@ -47,7 +47,7 @@ SELECT  a.micro_id,
 	a.cf_bin,
 	a.wind_incentive_array_id as incentive_array_id_wind,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier_wind
-FROM diffusion_shared.point_microdata_ind_us a
+FROM diffusion_points.point_microdata_ind_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
@@ -94,7 +94,7 @@ SELECT 	a.micro_id,
 	a.cf_bin,
 	a.wind_incentive_array_id as incentive_array_id_wind,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier_wind
-FROM diffusion_shared.point_microdata_res_us a
+FROM diffusion_points.point_microdata_res_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
@@ -144,7 +144,7 @@ SELECT 	a.micro_id,
 	a.cf_bin,
 	a.wind_incentive_array_id as incentive_array_id_wind,
 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier_wind
-FROM diffusion_shared.point_microdata_com_us a
+FROM diffusion_points.point_microdata_com_us a
 -- county_load_and_customers
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
 ON a.county_id = b.county_id
