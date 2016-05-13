@@ -1767,30 +1767,37 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string):
     sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s;
              CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_rate_allowable_turbines_%(i_place_holder)s AS
              
-                WITH restrictions AS
+
+            WITH turbine_sizes as
+            (
+                	SELECT a.turbine_size_kw, a.rotor_radius_m,
+                		b.turbine_height_m,
+                		b.turbine_height_m - a.rotor_radius_m * c.canopy_clearance_rotor_factor as effective_min_blade_height_m,
+                		b.turbine_height_m + a.rotor_radius_m as effective_max_blade_height_m
+                	FROM diffusion_wind.turbine_size_to_rotor_radius_lkup a
+                	LEFT JOIN %(schema)s.input_wind_performance_allowable_turbine_sizes b
+                		ON a.turbine_size_kw = b.turbine_size_kw
+                	CROSS JOIN %(schema)s.input_wind_siting_settings_all c
+            ),
+            points AS
                 (
-                	SELECT a.turbine_height_m, 
-                         a.turbine_size_kw,
-                         b.min_acres_per_hu as min_acres_per_bldg,
-                         d.required_clearance_m
-                	FROM %(schema)s.input_wind_performance_allowable_turbine_sizes a
-                	-- min. acres per housing unit
-                	LEFT JOIN %(schema)s.input_wind_siting_parcel_size b
-                		ON a.turbine_height_m = b.turbine_height_m
-                	-- required canopy clearance
-                	LEFT JOIN %(schema)s.input_wind_siting_canopy_clearance d
-                		ON a.turbine_size_kw = d.turbine_size_kw
+                	SELECT a.*, b.*,
+                	      CASE WHEN a.canopy_pct >= b.canopy_pct_requiring_clearance * 100 THEN a.canopy_ht_m + b.canopy_clearance_static_adder_m
+                		   ELSE 0
+                	      END as min_allowable_blade_height_m,
+                	      CASE WHEN a.acres_per_bldg <= b.required_parcel_size_cap_acres THEN sqrt(a.acres_per_bldg * 4046.86)/(2 * b.blade_height_setback_factor)
+                		   ELSE 'Infinity'::double precision
+                	      END as max_allowable_blade_height_m
+                	FROM  %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
+                	CROSS JOIN %(schema)s.input_wind_siting_settings_all b
                 )
-                SELECT  a.*, 
-                    	COALESCE(b.turbine_height_m, 0) AS turbine_height_m, 
-                    	COALESCE(b.turbine_size_kw, 0) AS turbine_size_kw
-                FROM  %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
-                LEFT JOIN restrictions b
-                	ON a.acres_per_bldg >= b.min_acres_per_bldg
-                	and (   a.canopy_pct < 25
-                		   OR
-                	       (b.turbine_height_m >= (a.canopy_ht_m + b.required_clearance_m))
-                	    );
+                SELECT a.*, 
+                	COALESCE(b.turbine_height_m, 0) AS turbine_height_m,
+                	COALESCE(b.turbine_size_kw, 0) as turbine_size_kw 
+                FROM points a
+                LEFT JOIN turbine_sizes b
+                	ON b.effective_min_blade_height_m >= a.min_allowable_blade_height_m 
+                	AND b.effective_max_blade_height_m <= a.max_allowable_blade_height_m;
              """ % inputs_dict
     p_run(pg_conn_string, sql, county_chunks, npar)
        

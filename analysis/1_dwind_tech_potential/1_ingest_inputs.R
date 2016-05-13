@@ -39,7 +39,7 @@ dbSendQuery(con, sql)
 
 ################################################################################################
 # GLOBAL SETTINGS
-path = '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/2e_dwind_tech_potential'
+path = '/Users/mgleason/NREL_Projects/github/diffusion/analysis/1_dwind_tech_potential'
 setwd(path)
 
 # INPUT PARAMETERS
