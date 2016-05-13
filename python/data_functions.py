@@ -1069,7 +1069,7 @@ def sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, 
     inputs_dict['load_where'] = " AND '%s' = b.sector_abbr" % sector_abbr
 
     # lookup table for finding the normalized max demand
-    inputs_dict['load_demand_lkup'] = 'diffusion_shared.energy_plus_max_normalized_demand'
+    inputs_dict['load_demand_lkup'] = 'diffusion_load_profiles.energy_plus_max_normalized_demand'
     if sector_abbr == 'res':
         inputs_dict['load_region'] = 'reportable_domain'
         # note: climate zone is not currently used. see issue #363
@@ -2278,11 +2278,11 @@ def get_utilityrate3_inputs(uids, cur, con, tech, schema, npar, pg_conn_string, 
                 WITH eplus as 
                 (
                     	SELECT hdf_index, crb_model, nkwh
-                    	FROM diffusion_shared.energy_plus_normalized_load_res
+                    	FROM diffusion_load_profiles.energy_plus_normalized_load_res
                     	WHERE crb_model = 'reference'
                     	UNION ALL
                     	SELECT hdf_index, crb_model, nkwh
-                    	FROM diffusion_shared.energy_plus_normalized_load_com
+                    	FROM diffusion_load_profiles.energy_plus_normalized_load_com
                 )
                        
                 SELECT 	a.uid, 
@@ -2324,11 +2324,11 @@ def get_utilityrate3_inputs(uids, cur, con, tech, schema, npar, pg_conn_string, 
                 WITH eplus as 
                 (
                     	SELECT hdf_index, crb_model, nkwh
-                    	FROM diffusion_shared.energy_plus_normalized_load_res
+                    	FROM diffusion_load_profiles.energy_plus_normalized_load_res
                     	WHERE crb_model = 'reference'
                     	UNION ALL
                     	SELECT hdf_index, crb_model, nkwh
-                    	FROM diffusion_shared.energy_plus_normalized_load_com
+                    	FROM diffusion_load_profiles.energy_plus_normalized_load_com
                 )
                        
                 SELECT 	a.uid, 
