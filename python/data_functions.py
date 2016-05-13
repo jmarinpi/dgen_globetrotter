@@ -1317,17 +1317,13 @@ def find_rates(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, r
     # regardless of the rate structure, the output table needs indices added for subsequent queries
     if 'wind' in inputs_dict['techs']:    
         # add index for exclusions (if they apply)
-        sql =  """  CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_acres_per_hu_btree 
+        sql =  """  CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_acres_per_bldg_btree 
                     ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
-                    USING btree(acres_per_hu);
+                    USING btree(acres_per_bldg);
                     
-                    CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_hi_dev_pct_btree 
+                    CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_canopy_pct_btree 
                     ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
-                    USING btree(hi_dev_pct);
-                    
-                    CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_canopy_pct_hi_btree 
-                    ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
-                    USING btree(canopy_pct_hi);
+                    USING btree(canopy_pct);
                     
                     CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_canopy_ht_m_btree 
                     ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
@@ -1775,16 +1771,12 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string):
                 (
                 	SELECT a.turbine_height_m, 
                          a.turbine_size_kw,
-                         b.min_acres_per_hu,
-                         c.max_hi_dev_pct,
+                         b.min_acres_per_hu as min_acres_per_bldg,
                          d.required_clearance_m
                 	FROM %(schema)s.input_wind_performance_allowable_turbine_sizes a
                 	-- min. acres per housing unit
                 	LEFT JOIN %(schema)s.input_wind_siting_parcel_size b
                 		ON a.turbine_height_m = b.turbine_height_m
-                	-- max high development percent
-                	LEFT JOIN %(schema)s.input_wind_siting_hi_dev c
-                		ON a.turbine_height_m = c.turbine_height_m
                 	-- required canopy clearance
                 	LEFT JOIN %(schema)s.input_wind_siting_canopy_clearance d
                 		ON a.turbine_size_kw = d.turbine_size_kw
@@ -1794,9 +1786,8 @@ def apply_siting_restrictions(inputs_dict, county_chunks, npar, pg_conn_string):
                     	COALESCE(b.turbine_size_kw, 0) AS turbine_size_kw
                 FROM  %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
                 LEFT JOIN restrictions b
-                	ON a.hi_dev_pct <= b.max_hi_dev_pct
-                	and a.acres_per_hu >= b.min_acres_per_hu
-                	and (   a.canopy_pct_hi = false 
+                	ON a.acres_per_bldg >= b.min_acres_per_bldg
+                	and (   a.canopy_pct < 25
                 		   OR
                 	       (b.turbine_height_m >= (a.canopy_ht_m + b.required_clearance_m))
                 	    );
