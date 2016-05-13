@@ -3699,7 +3699,7 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, dsire_opts, ass
     
     # If exists pbi_fit_kwh > 0 but no duration, assume duration
     inc.loc[(inc.pbi_fit_dlrs_kwh > 0) & inc.pbi_fit_duration_years.isnull(), 'pbi_fit_duration_years']  = assumed_duration
-    inc['value_of_pbi_fit'] = inc['pbi_fit_still_exists'] * np.minimum(inc.pbi_fit_dlrs_kwh, inc.max_dlrs_yr) * inc['pbi_fit_aep']
+    inc['value_of_pbi_fit'] = (inc['pbi_fit_still_exists'] * np.minimum(inc.pbi_fit_dlrs_kwh, inc.max_dlrs_yr) * inc['pbi_fit_aep']).astype('float64')
     inc.loc[:, 'value_of_pbi_fit'] = np.minimum(inc['value_of_pbi_fit'], inc.pbi_fit_max_dlrs)
     inc.loc[:, 'value_of_pbi_fit'] = inc.value_of_pbi_fit.fillna(0)
     inc['length_of_pbi_fit'] = inc.pbi_fit_duration_years.fillna(0)
