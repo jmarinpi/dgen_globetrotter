@@ -240,7 +240,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # CHECK TECH POTENTIAL
                     #==========================================================================================================           
-                    datfunc.check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_dir)              
+                    datfunc.check_tech_potential_limits(cur, con, schema, techs, sectors, out_dir)              
                    
                    
                     #==========================================================================================================

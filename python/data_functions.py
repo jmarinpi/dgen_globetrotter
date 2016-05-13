@@ -882,7 +882,7 @@ def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year,
 
 
 
-def check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_dir):
+def check_tech_potential_limits(cur, con, schema, techs, sectors, out_dir):
     
     inputs = locals().copy()    
     
@@ -890,9 +890,74 @@ def check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_di
     
     for tech in techs:
         inputs['tech'] = tech
-        if tech == 'wind':
-            logger.warning('\tTech potential limits are not available for distributed wind. Agents cannot be checked.')
+        if tech == 'wind':            
+            # summarize the tech potential for all agents (by state) in terms of:
+                # capacity, generation, and systems count
+            sql_list = []
+            for sector_abbr, sector in sectors.iteritems():
+                inputs['sector_abbr'] = sector_abbr
+                sql = """SELECT state_abbr,
+                                sum(aep * initial_customers_in_bin)/1e6 as gen_gwh,
+                                sum(initial_customers_in_bin) as systems_count,
+                                sum(system_size_kw * initial_customers_in_bin)/1e6 as cap_gw
+                       FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_wind
+                       WHERE year = 2014
+                       AND system_size_kw <> 0
+                       GROUP BY state_abbr""" % inputs
+                sql_list.append(sql)
+            inputs['sql_all'] = ' UNION ALL '.join(sql_list)
+            sql = """DROP TABLE IF EXISTS %(schema)s.agent_tech_potential_by_state_wind;
+                     CREATE UNLOGGED TABLE %(schema)s.agent_tech_potential_by_state_wind AS
+                     WITH a as
+                     (%(sql_all)s)
+                     SELECT state_abbr, 
+                            sum(gen_gwh) as gen_gwh,
+                            sum(systems_count) as systems_count,
+                            sum(cap_gw) as cap_gw
+                     FROM a
+                     GROUP BY state_abbr;""" % inputs
+            cur.execute(sql)
+            con.commit()            
+            
+            # compare to known tech potential limits
+            sql = """DROP TABLE IF EXISTS %(schema)s.tech_potential_ratios_wind;
+                     CREATE TABLE %(schema)s.tech_potential_ratios_wind AS
+                    SELECT a.state_abbr,
+                            a.cap_gw/b.cap_gw as pct_of_tech_potential_capacity,
+                            a.gen_gwh/b.gen_gwh as pct_of_tech_potential_generation,
+                            a.systems_count/b.systems_count as pct_of_tech_potential_systems_count
+                     FROM %(schema)s.agent_tech_potential_by_state_wind a
+                     LEFT JOIN diffusion_wind.tech_potential_by_state  b
+                         ON a.state_abbr = b.state_abbr""" % inputs
+            cur.execute(sql)
+            con.commit()
+                         
+            # find overages
+            sql = """SELECT *
+                     FROM %(schema)s.tech_potential_ratios_wind
+                         WHERE pct_of_tech_potential_capacity > 1
+                               OR pct_of_tech_potential_generation > 1
+                               OR pct_of_tech_potential_systems_count > 1;""" % inputs
+            overage = pd.read_sql(sql, con)
+            
+            # report overages, if any
+            if overage.shape[0] > 0:
+                inputs['out_overage_csv'] = os.path.join(out_dir, 'tech_potential_overages_wind.csv')
+                logger.warning('\tModel WIND tech potential exceeds actual %(tech)s tech potential for some states. See: %(out_overage_csv)s for details.' % inputs)                
+                overage.to_csv(inputs['out_overage_csv'], index = False, header = True)
+            else:
+                inputs['out_ratios_csv'] = os.path.join(out_dir, 'tech_potential_ratios_wind.csv')
+                logger.info('\tModel WIND tech potential is within state %(tech)s tech potential limits. See: %(out_ratios_csv)s for details.' % inputs)
+                sql = """SELECT *
+                     FROM %(schema)s.tech_potential_ratios_wind""" % inputs
+                ratios = pd.read_sql(sql, con)
+                ratios.to_csv(inputs['out_ratios_csv'], index = False, header = True)
+            
+            
         elif tech == 'solar':
+            
+            # summarize the tech potential for all agents (by state and bldg size class) in terms of:
+                # capacity, generation, and roof area
             sql_list = []
             for sector_abbr, sector in sectors.iteritems():
                 inputs['sector_abbr'] = sector_abbr
@@ -943,11 +1008,11 @@ def check_rooftop_tech_potential_limits(cur, con, schema, techs, sectors, out_di
             # report overages, if any
             if overage.shape[0] > 0:
                 inputs['out_overage_csv'] = os.path.join(out_dir, 'tech_potential_overages_solar.csv')
-                logger.warning('\tModel tech potential exceeds actual %(tech)s tech potential for some states. See: %(out_overage_csv)s for details.' % inputs)                
+                logger.warning('\tModel SOLAR tech potential exceeds actual %(tech)s tech potential for some states. See: %(out_overage_csv)s for details.' % inputs)                
                 overage.to_csv(inputs['out_overage_csv'], index = False, header = True)
             else:
                 inputs['out_ratios_csv'] = os.path.join(out_dir, 'tech_potential_ratios_solar.csv')
-                logger.info('\tModel tech potential is within state %(tech)s tech potential limits. See: %(out_ratios_csv)s for details.' % inputs)
+                logger.info('\tModel SOLAR tech potential is within state %(tech)s tech potential limits. See: %(out_ratios_csv)s for details.' % inputs)
                 sql = """SELECT *
                      FROM %(schema)s.tech_potential_ratios_solar""" % inputs
                 ratios = pd.read_sql(sql, con)
@@ -2023,7 +2088,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                    ELSE naep
                    END as naep,
                    
-                   naep*(scoe_return).nturb*turbine_size_kw as aep,
+                   naep * (scoe_return).nturb * turbine_size_kw as aep,
                    (scoe_return).nturb*turbine_size_kw as system_size_kw,
                    (scoe_return).nturb as nturb,
 
