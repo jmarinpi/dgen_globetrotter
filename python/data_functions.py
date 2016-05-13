@@ -2853,19 +2853,20 @@ def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string, dsire
     for sector_abbr, sector in sectors.iteritems():
         inputs['sector_abbr'] = sector_abbr
         for tech in techs:
-            inputs['tech'] = tech
-            sql =   """SELECT a.incentive_array_id, c.*, '%(tech)s'::TEXT as tech
-                        FROM 
-                        (SELECT DISTINCT incentive_array_id as incentive_array_id
-                        	FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s
-                        	WHERE year = 2014) a
-                        LEFT JOIN diffusion_%(tech)s.dsire_incentives_simplified_lkup_%(sector_abbr)s b
-                            ON a.incentive_array_id = b.incentive_array_id
-                        LEFT JOIN diffusion_%(tech)s.incentives c
-                            ON b.incentives_uid = c.uid
-                        WHERE c.sector_abbr = '%(sector_abbr)s' AND c.incentive_id <> 124 
-                    """ % inputs
-            sql_list.append(sql)
+            if tech == 'solar':
+                inputs['tech'] = tech
+                sql =   """SELECT a.incentive_array_id, c.*, '%(tech)s'::TEXT as tech
+                            FROM 
+                            (SELECT DISTINCT incentive_array_id as incentive_array_id
+                            	FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s
+                            	WHERE year = 2014) a
+                            LEFT JOIN diffusion_%(tech)s.dsire_incentives_simplified_lkup_%(sector_abbr)s b
+                                ON a.incentive_array_id = b.incentive_array_id
+                            LEFT JOIN diffusion_%(tech)s.incentives c
+                                ON b.incentives_uid = c.uid
+                            WHERE c.sector_abbr = '%(sector_abbr)s' AND c.incentive_id <> 124 
+                        """ % inputs
+                sql_list.append(sql)
     
     sql = ' UNION ALL '.join(sql_list)
     # get the data
