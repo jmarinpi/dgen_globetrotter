@@ -1,0 +1,1 @@
+﻿ALTER DATABASE dgen_db RENAME TO dgen_db_fyYRqQTR_versionname;

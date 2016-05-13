@@ -28,17 +28,4 @@ ALTER GROUP "diffusion-writers" ADD user pgagnon;
 
 ALTER GROUP "diffusion-admins" ADD user jduckwor;
 
-ALTER DATABASE diffusion_1
-owner to "diffusion-admins";
 
-ALTER DATABASE diffusion_2
-owner to "diffusion-admins";
-
-ALTER DATABASE diffusion_3
-owner to "diffusion-admins";
-
-ALTER DATABASE diffusion_4
-owner to "diffusion-admins";
-
-ALTER DATABASE diffusion_5
-owner to "diffusion-admins";
