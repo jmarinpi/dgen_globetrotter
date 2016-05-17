@@ -2905,16 +2905,8 @@ def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string, dsire
         for tech in techs:
             if tech == 'solar':
                 inputs['tech'] = tech
-                sql =   """SELECT a.incentive_array_id, c.*, '%(tech)s'::TEXT as tech
-                            FROM 
-                            (SELECT DISTINCT incentive_array_id as incentive_array_id
-                            	FROM %(schema)s.pt_%(sector_abbr)s_best_option_each_year_%(tech)s
-                            	WHERE year = 2014) a
-                            LEFT JOIN diffusion_%(tech)s.dsire_incentives_simplified_lkup_%(sector_abbr)s b
-                                ON a.incentive_array_id = b.incentive_array_id
-                            LEFT JOIN diffusion_%(tech)s.incentives c
-                                ON b.incentives_uid = c.uid
-                            WHERE c.sector_abbr = '%(sector_abbr)s' AND c.incentive_id <> 124 
+                sql =   """SELECT c.*, '%(tech)s'::TEXT as tech
+                            FROM diffusion_%(tech)s.incentives c
                         """ % inputs
                 sql_list.append(sql)
     
@@ -3717,7 +3709,7 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, dsire_opts, ass
                                         mutiyear incentves, the (undiscounted) lifetime value is given 
     '''  
     
-    dsire_df = pd.merge(df, dsire_incentives, how = 'left', on = ['incentive_array_id', 'sector_abbr', 'tech'])    
+    dsire_df = pd.merge(df, dsire_incentives, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])    
     srecs_df = pd.merge(df, srecs, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
 
     # combine sr and inc
