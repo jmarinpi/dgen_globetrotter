@@ -377,7 +377,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     a.variable_om_dollars_per_kwh, a.installed_costs_dollars_per_kw, 
                     a.inverter_cost_dollars_per_kw, 
 
-                    b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
+                    b.state_abbr, b.census_division_abbr, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id,
                     b.ann_cons_kwh, 
                     b.customers_in_bin, b.initial_customers_in_bin, 
@@ -471,7 +471,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     a.variable_om_dollars_per_kwh, a.installed_costs_dollars_per_kw, 
                     a.inverter_cost_dollars_per_kw, 
                     
-                    b.state_abbr, b.census_division_abbr, b.utility_type, b.hdf_load_index,
+                    b.state_abbr, b.census_division_abbr, b.hdf_load_index,
                     b.pca_reg, b.reeds_reg, b.incentive_array_id, b.ranked_rate_array_id,
                     b.ann_cons_kwh, 
                     b.customers_in_bin, b.initial_customers_in_bin, 
@@ -546,7 +546,7 @@ def combine_output_view(schema, cur, con, techs):
                         number_of_adopters, installed_capacity, market_value, 
                         first_year_bill_with_system, first_year_bill_without_system, 
                         npv4, npv_agent, excess_generation_percent, value_of_itc, total_value_of_incentives, 
-                        state_abbr, census_division_abbr, utility_type, hdf_load_index, 
+                        state_abbr, census_division_abbr, hdf_load_index, 
                         pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, 
                         carbon_price_cents_per_kwh, fixed_om_dollars_per_kw_per_yr, 
                         variable_om_dollars_per_kwh, installed_costs_dollars_per_kw, 
@@ -681,7 +681,6 @@ def create_economics_results_table(cur, con, schema):
                     year integer,
                     state_abbr text,
                     census_division_abbr text,
-                    utility_type text,
                     pca_reg text,
                     reeds_reg integer,
                     incentive_array_id integer,
@@ -1595,11 +1594,7 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
               
               CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_state_abbr_btree 
               ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s 
-              USING BTREE(state_abbr);
-              
-              CREATE INDEX pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s_utility_type_btree 
-              ON %(schema)s.pt_%(sector_abbr)s_sample_load_and_resource_%(i_place_holder)s 
-              USING BTREE(utility_type);              
+              USING BTREE(state_abbr);            
               
               """ % inputs
     p_run(pg_conn_string, sql, county_chunks, npar)
@@ -1621,7 +1616,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   year integer,
                   state_abbr character varying(2),
                   census_division_abbr text,
-                  utility_type character varying(9),
                   hdf_load_index integer,
                   pca_reg text,
                   reeds_reg integer,
@@ -1669,7 +1663,6 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                   b.year, 
                   a.state_abbr, 
                   a.census_division_abbr, 
-                  a.utility_type, 
                   a.hdf_load_index,
                   a.pca_reg, a.reeds_reg,
                   a.incentive_array_id_solar as incentive_array_id,
@@ -1715,13 +1708,12 @@ def generate_customer_bins_solar(cur, con, technology, schema, seed, n_bins, sec
                     AND b.load_growth_scenario = '%(load_growth_scenario)s'
                 LEFT JOIN %(schema)s.input_main_nem_scenario_table c
                     ON c.state_abbr = a.state_abbr
-                    AND c.utility_type = a.utility_type
                     AND c.year = b.year
                     AND c.sector_abbr = '%(sector_abbr)s'
                 LEFT JOIN %(schema)s.input_solar_performance_system_sizing_factors d
                     ON d.sector_abbr = '%(sector_abbr)s'
             )
-                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
+                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, hdf_load_index,
                    pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id,
                    
                    cap_cost_multiplier,
@@ -1892,7 +1884,7 @@ def create_nem_scenario(cur, con, schema):
     
     # add primary key
     sql = """ALTER TABLE %(schema)s.input_main_nem_scenario_table
-            ADD PRIMARY KEY (state_abbr, utility_type, year, sector_abbr);
+            ADD PRIMARY KEY (state_abbr, year, sector_abbr);
           """ % inputs    
     cur.execute(sql)
     con.commit()
@@ -1901,10 +1893,6 @@ def create_nem_scenario(cur, con, schema):
     sql = """CREATE INDEX input_main_nem_scenario_table_btree_state_abbr
             ON %(schema)s.input_main_nem_scenario_table
             USING BTREE(state_abbr);
-            
-            CREATE INDEX input_main_nem_scenario_table_btree_utility_type
-            ON %(schema)s.input_main_nem_scenario_table
-            USING BTREE(utility_type);
             
             CREATE INDEX input_main_nem_scenario_table_btree_year
             ON %(schema)s.input_main_nem_scenario_table
@@ -1998,7 +1986,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
             (
                 SELECT
                  	a.micro_id, a.county_id, a.bin_id, b.year, a.state_abbr, a.census_division_abbr,
-                      a.utility_type, a.hdf_load_index,
+                      a.hdf_load_index,
                       a.pca_reg, a.reeds_reg,
                       a.incentive_array_id_wind as incentive_array_id,
                       a.ranked_rate_array_id,
@@ -2063,7 +2051,6 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                    
                 LEFT JOIN %(schema)s.input_main_nem_scenario_table c
                     ON c.state_abbr = a.state_abbr
-                    AND c.utility_type = a.utility_type
                     AND c.year = b.year
                     AND c.sector_abbr = '%(sector_abbr)s'
                 
@@ -2071,7 +2058,7 @@ def generate_customer_bins_wind(cur, con, technology, schema, seed, n_bins, sect
                     ON d.sector_abbr = '%(sector_abbr)s'
 
             )
-                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, utility_type, hdf_load_index,
+                SELECT micro_id, county_id, bin_id, year, state_abbr, census_division_abbr, hdf_load_index,
                    pca_reg, reeds_reg, incentive_array_id, ranked_rate_array_id, 
                    cap_cost_multiplier,
             
@@ -3620,7 +3607,6 @@ def get_main_dataframe(con, sectors, schema, year, techs):
                             a.year, 
                             a.state_abbr, 
                             a.census_division_abbr, 
-                            a.utility_type, 
                             a.pca_reg, 
                             a.reeds_reg, 
                             a.incentive_array_id, 

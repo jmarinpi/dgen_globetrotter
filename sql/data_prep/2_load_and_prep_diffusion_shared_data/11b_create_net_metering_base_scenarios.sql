@@ -6,7 +6,6 @@ CREATE TABLE diffusion_shared.nem_scenario_full_everywhere AS
 SELECT generate_series(2014,2050,2) as year,
 	state_abbr, 
 	unnest(array['res','com','ind']) as sector_abbr,
-       unnest(array['All Other', 'Coop', 'IOU', 'Muni']) as utility_type,
        'Inf'::double precision as system_size_limit_kw,
        0::numeric as year_end_excess_sell_rate_dlrs_per_kwh,
        0::numeric hourly_excess_sell_rate_dlrs_per_kwh
@@ -21,7 +20,6 @@ CREATE TABLE diffusion_shared.nem_scenario_none_everywhere AS
 SELECT generate_series(2014,2050,2) as year,
 	state_abbr, 
 	unnest(array['res','com','ind']) as sector_abbr,
-       unnest(array['All Other', 'Coop', 'IOU', 'Muni']) as utility_type,
        0::double precision as system_size_limit_kw,
        0::numeric as year_end_excess_sell_rate_dlrs_per_kwh,
        0::numeric hourly_excess_sell_rate_dlrs_per_kwh
@@ -84,6 +82,7 @@ where a.state_abbr = b.state_abbr;
 DROP TABLE IF EXISTS diffusion_shared_nem_expirations;
 
 
+set role 'diffusion-writers';
 
 -- create the scenarion bau table
 DROP tABlE IF EXISTS diffusion_shared.nem_scenario_bau CASCADE;
@@ -99,15 +98,14 @@ with a as
 	FROM diffusion_shared.net_metering_availability_2015
 )
 select year, state_abbr, sector_abbr,
-	       unnest(array['All Other', 'Coop', 'IOU', 'Muni']) as utility_type,
 	       system_size_limit_kw, year_end_excess_sell_rate_dlrs_per_kwh,
 	       hourly_excess_sell_rate_dlrs_per_kwh
 from a;
--- add primary key on year, state_abbr, sector_abbr, and utility_type
+-- add primary key on year, state_abbr, sector_abbr
 ALTER TABLE diffusion_shared.nem_scenario_bau 
-ADD PRIMARY KEY (year, state_abbr, sector_abbr, utility_type);
+ADD PRIMARY KEY (year, state_abbr, sector_abbr);
 
 select count(*)
 FROM diffusion_shared.nem_scenario_bau;
--- 6540
+-- 1635
 

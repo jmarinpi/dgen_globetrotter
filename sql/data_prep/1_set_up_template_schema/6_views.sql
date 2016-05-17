@@ -20,7 +20,6 @@ DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined;
 CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined AS
 SELECT  a.micro_id,
 	a.county_id,
-	a.utility_type,
 	a.hdf_load_index,
 	a.pca_reg,
 	a.reeds_reg,
@@ -66,7 +65,6 @@ DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined;
 CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined AS
 SELECT 	a.micro_id,
 	a.county_id,
-	a.utility_type,
 	a.hdf_load_index,
 	a.pca_reg,
 	a.reeds_reg,
@@ -115,7 +113,6 @@ DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined;
 CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined AS
 SELECT 	a.micro_id,
 	a.county_id,
-	a.utility_type,
 	a.hdf_load_index,
 	a.pca_reg,
 	a.reeds_reg,
