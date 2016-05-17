@@ -1136,11 +1136,9 @@ def sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, 
     inputs_dict['load_demand_lkup'] = 'diffusion_load_profiles.energy_plus_max_normalized_demand'
     if sector_abbr == 'res':
         inputs_dict['load_region'] = 'reportable_domain'
-        # note: climate zone is not currently used. see issue #363
-#        inputs_dict['load_climate_zone'] = 'climate_zone_building_america'
     else:
         inputs_dict['load_region'] = 'census_division_abbr'
-#        inputs_dict['load_climate_zone'] = 'climate_zone_cbecs_2003'
+        
     #==============================================================================
     #     randomly sample  N points from each county 
     #==============================================================================    

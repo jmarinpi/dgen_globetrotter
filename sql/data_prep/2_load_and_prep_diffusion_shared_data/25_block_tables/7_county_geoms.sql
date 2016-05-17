@@ -158,5 +158,23 @@ ON diffusion_blocks.county_geoms
 USING BTREE(pca_reg);
 
 ------------------------------------------------------------------------------------------------
+-- add in the old county id field (from diffusion_shared.county_id
+ALTER TABLE diffusion_blocks.county_geoms
+ADD COLUMN old_county_id integer;
+
+UPDATE  diffusion_blocks.county_geoms a
+set old_county_id = b.county_id
+FROM diffusion_shared.county_geom b
+where a.state_fips::INTEGER = b.state_fips
+and a.county_fips = b.county_fips;
+-- 3138 rows
+
+-- check for nulls
+select  *
+FROM diffusion_blocks.county_geoms
+where old_county_id is null;
+-- 5 counties in Alaska -- okay to ignore for now but probably not forever..
+
+------------------------------------------------------------------------------------------------
 -- vacuum
 VACUUM ANALYZE diffusion_blocks.county_geoms;
