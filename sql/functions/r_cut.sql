@@ -1,6 +1,6 @@
 ﻿-- DROP FUNCTION public.r_cut(numeric, numeric[])
 SET ROLE 'server-superusers';
-CREATE OR REPLACE FUNCTION public.r_cut(val numeric, breaks numeric[])
+CREATE OR REPLACE FUNCTION diffusion_shared.r_cut(val numeric, breaks numeric[])
   RETURNS text AS
 $BODY$
 	cls = as.vector(cut(val, breaks))

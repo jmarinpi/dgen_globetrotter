@@ -1,5 +1,6 @@
 ﻿-- DROP FUNCTION public.r_array_multiply(numeric[], numeric);
 set role 'server-superusers';
+DROP FUNCTION IF EXISTS public.pc_interp_r(t0 numeric, t1 numeric, tx numeric, v0 numeric[], v1 numeric[]);
 CREATE OR REPLACE FUNCTION public.pc_interp_r(t0 numeric, t1 numeric, tx numeric, v0 numeric[], v1 numeric[])
   RETURNS numeric[] AS
 $BODY$
@@ -12,6 +13,7 @@ $BODY$
 
 
 set role 'server-superusers';
+DROP FUNCTION IF EXISTS public.pc_interp_py(t0 numeric, t1 numeric, tx numeric, v0 numeric[], v1 numeric[]);
 CREATE OR REPLACE FUNCTION public.pc_interp_py(t0 numeric, t1 numeric, tx numeric, v0 numeric[], v1 numeric[])
   RETURNS numeric[] AS
 $BODY$
@@ -27,6 +29,7 @@ $BODY$
 
 
 set role 'server-superusers';
+DROP FUNCTION IF EXISTS public.pc_interp_r(t0 numeric, t1 numeric, tx numeric, v0 numeric, v1 numeric);
 CREATE OR REPLACE FUNCTION public.pc_interp_r(t0 numeric, t1 numeric, tx numeric, v0 numeric, v1 numeric)
   RETURNS numeric AS
 $BODY$
@@ -38,7 +41,7 @@ $BODY$
   COST 100;
 
 
-
+DROP FUNCTION IF EXISTS public.pc_interp_py(t0 numeric, t1 numeric, tx numeric, v0 numeric, v1 numeric);
 CREATE OR REPLACE FUNCTION public.pc_interp_py(t0 numeric, t1 numeric, tx numeric, v0 numeric, v1 numeric)
   RETURNS numeric AS
 $BODY$

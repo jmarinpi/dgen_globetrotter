@@ -1,6 +1,6 @@
 ﻿SET ROLE 'server-superusers';
-DROP FUNCTION IF EXISTS add_constant_array(j json, k text, c integer, rows integer, cols integer);
-CREATE OR REPLACE FUNCTION add_constant_array(j json, k text, c integer, rows integer, cols integer)
+DROP FUNCTION IF EXISTS diffusion_shared.add_constant_array(j json, k text, c integer, rows integer, cols integer);
+CREATE OR REPLACE FUNCTION diffusion_shared.add_constant_array(j json, k text, c integer, rows integer, cols integer)
   RETURNS json AS
   $BODY$
 

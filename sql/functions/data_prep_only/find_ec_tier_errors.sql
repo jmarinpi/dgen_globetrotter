@@ -1,6 +1,6 @@
 ﻿
 DROP FUNCTION IF EXISTS diffusion_shared.find_ec_tier_errors(j json, max_ub numeric);
--- SET ROLE 'server-superusers';
+SET ROLE 'server-superusers';
 CREATE OR REPLACE FUNCTION diffusion_shared.find_ec_tier_errors(j json, max_ub numeric)
   RETURNS boolean AS
   $BODY$

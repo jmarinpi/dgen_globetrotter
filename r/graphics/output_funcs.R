@@ -175,9 +175,9 @@ cf_by_sector_and_year<-function(df){
   g = group_by(df, year, sector)
   # Median and inner-quartile range of CF over sector and year
   data =  collect(summarise(g,
-                            tql = r_quantile(array_agg(naep), 0.75)/ 8760,
-                            median = r_quantile(array_agg(naep), 0.5)/ 8760,
-                            fql = r_quantile(array_agg(naep), 0.25)/ 8760))
+                            tql = diffusion_shared.r_quantile(array_agg(naep), 0.75)/ 8760,
+                            median = diffusion_shared.r_quantile(array_agg(naep), 0.5)/ 8760,
+                            fql = diffusion_shared.r_quantile(array_agg(naep), 0.25)/ 8760))
   data$sector = sector2factor(data$sector)
   ggplot(data)+
     geom_ribbon(aes(x = year, ymin = fql, ymax = tql, fill = sector), alpha = .3, stat = "identity")+
@@ -330,9 +330,9 @@ national_econ_attractiveness_line<-function(df,scen_name){
   # Median payback period over time and sector
   g = group_by(df, year, sector,metric)
   data = collect(summarise(g, 
-                           uql = r_quantile(array_agg(metric_value), 0.95),
-                           median = r_quantile(array_agg(metric_value), 0.5),
-                           lql = r_quantile(array_agg(metric_value), 0.05)
+                           uql = diffusion_shared.r_quantile(array_agg(metric_value), 0.95),
+                           median = diffusion_shared.r_quantile(array_agg(metric_value), 0.5),
+                           lql = diffusion_shared.r_quantile(array_agg(metric_value), 0.05)
   )
   )
   
@@ -380,9 +380,9 @@ npv4_by_year <-function(df, by_tech = F){
   }
 
   data = collect(summarise(g, 
-                           uql = r_quantile(array_agg(npv4), 0.95),
-                           median = r_quantile(array_agg(npv4), 0.5),
-                           lql = r_quantile(array_agg(npv4), 0.05)
+                           uql = diffusion_shared.r_quantile(array_agg(npv4), 0.95),
+                           median = diffusion_shared.r_quantile(array_agg(npv4), 0.5),
+                           lql = diffusion_shared.r_quantile(array_agg(npv4), 0.05)
   )
   )  
   data$sector = sector2factor(data$sector)
@@ -833,9 +833,9 @@ lcoe_boxplot<-function(df){
   # aggregate summary stas on median and iqr to save to csv
   g = group_by(df,year,sector)
   out_data = collect(summarise(g, 
-                               median = r_median(array_agg(lcoe)), 
-                               lql = r_quantile(array_agg(lcoe), .25), 
-                               uql = r_quantile(array_agg(lcoe), .75)
+                               median = diffusion_shared.r_median(array_agg(lcoe)), 
+                               lql = diffusion_shared.r_quantile(array_agg(lcoe), .25), 
+                               uql = diffusion_shared.r_quantile(array_agg(lcoe), .75)
   )
   )
 #   write.csv(out_data,paste0(runpath,'/lcoe_trends.csv'),row.names = FALSE)
@@ -855,7 +855,7 @@ lcoe_cdf<-function(df, start_year, end_year){
   data$sector = sector2factor(data$sector)
   g = group_by(f, year, sector)
   prices = collect(summarise(g,
-                             price = r_median(array_agg(cost_of_elec_dols_per_kwh))
+                             price = diffusion_shared.r_median(array_agg(cost_of_elec_dols_per_kwh))
   )
   )
   prices$sector = sector2factor(prices$sector)

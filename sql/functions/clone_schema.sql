@@ -1,6 +1,6 @@
 ﻿-- set role mgleason;
-DROP FUNCTION IF EXISTS public.clone_schema(source_schema text, dest_schema text, owner text, include_data boolean);
-CREATE OR REPLACE FUNCTION public.clone_schema(source_schema text, dest_schema text, owner text, include_data boolean default false) RETURNS void AS
+DROP FUNCTION IF EXISTS diffusion_shared.clone_schema(source_schema text, dest_schema text, owner text, include_data boolean);
+CREATE OR REPLACE FUNCTION diffusion_shared.clone_schema(source_schema text, dest_schema text, owner text, include_data boolean default false) RETURNS void AS
 $BODY$
 DECLARE 
   objeto text;
@@ -28,7 +28,7 @@ BEGIN
 
 	with a as
 	(
-		select TABLE_NAME::text, get_dependencies('diffusion_template', table_name)
+		select TABLE_NAME::text, diffusion_shared.get_dependencies('diffusion_template', table_name)
 		FROM information_schema.TABLES 
 		WHERE table_schema = 'diffusion_template' 
 			and table_type = 'VIEW'

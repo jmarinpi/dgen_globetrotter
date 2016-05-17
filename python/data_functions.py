@@ -91,7 +91,7 @@ def create_output_schema(pg_conn_string, source_schema = 'diffusion_template', i
     dest_schema = 'diffusion_results_%s' % cdt
     inputs['dest_schema'] = dest_schema
     
-    sql = '''SELECT clone_schema('%(source_schema)s', '%(dest_schema)s', 'diffusion-writers', %(include_data)s);''' % inputs
+    sql = '''SELECT diffusion_shared.clone_schema('%(source_schema)s', '%(dest_schema)s', 'diffusion-writers', %(include_data)s);''' % inputs
     cur.execute(sql)        
     con.commit()
 
@@ -480,7 +480,7 @@ def combine_outputs_solar(schema, sectors, cur, con):
                     b.ur_enable_net_metering, b.nem_system_size_limit_kw,
                     b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,   
                     b.naep/8760 as cf, b.naep, b.aep, b.system_size_kw, 
-                    r_cut(b.system_size_kw, ARRAY[0,2.5,5.0,10.0,20.0,50.0,100.0,250.0,500.0,750.0,1000.0,1500.0]) 
+                    diffusion_shared.r_cut(b.system_size_kw, ARRAY[0,2.5,5.0,10.0,20.0,50.0,100.0,250.0,500.0,750.0,1000.0,1500.0]) 
                         as system_size_factors,
                     b.npanels, 
                     b.tilt, b.azimuth,
@@ -1153,7 +1153,7 @@ def sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, 
              CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s AS
             WITH b as 
             (
-                SELECT unnest(sample(array_agg(a.micro_id ORDER BY a.micro_id),%(n_bins)s,%(seed)s,True,array_agg(a.point_weight ORDER BY a.micro_id))) as micro_id
+                SELECT unnest(diffusion_shared.sample(array_agg(a.micro_id ORDER BY a.micro_id),%(n_bins)s,%(seed)s,True,array_agg(a.point_weight ORDER BY a.micro_id))) as micro_id
                 FROM diffusion_points.point_microdata_%(sector_abbr)s_us a
                 WHERE a.county_id IN (%(chunk_place_holder)s)
                 GROUP BY a.county_id
@@ -1191,7 +1191,7 @@ def sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, 
         sampled_bins AS 
         (
             SELECT a.county_id, 
-                    unnest(sample(array_agg(a.load_id ORDER BY a.load_id),%(n_bins)s,%(seed)s * a.county_id,True,array_agg(a.weight ORDER BY a.load_id))) as load_id
+                    unnest(diffusion_shared.sample(array_agg(a.load_id ORDER BY a.load_id),%(n_bins)s,%(seed)s * a.county_id,True,array_agg(a.weight ORDER BY a.load_id))) as load_id
             FROM all_bins a
             GROUP BY a.county_id
         ), 
@@ -1346,7 +1346,7 @@ def find_rates(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, r
                 WITH a AS
                 (
                     SELECT a.county_id, a.bin_id,
-                            unnest(sample(array_agg(a.rate_id_alias ORDER BY a.rate_id_alias), 1, 
+                            unnest(diffusion_shared.sample(array_agg(a.rate_id_alias ORDER BY a.rate_id_alias), 1, 
                                           (%(seed)s * a.county_id * a.bin_id), False,
                                           array_agg(a.rate_type_weight ORDER BY a.rate_id_alias))) as rate_id_alias
                     FROM %(schema)s.pt_%(sector_abbr)s_sample_load_applicable_rates_%(i_place_holder)s a
@@ -1448,7 +1448,7 @@ def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string
                 selected_roof_options AS 
                 (
                     	select county_id, bin_id, 
-                    		 unnest(sample(array_agg(roof_char_uid ORDER BY roof_char_uid),
+                    		 unnest(diffusion_shared.sample(array_agg(roof_char_uid ORDER BY roof_char_uid),
                     			1, -- sample size
                     			%(seed)s * county_id * bin_id, -- random generator seed
                     			False, -- sample w/o replacement
@@ -1514,7 +1514,7 @@ def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string
                 WITH b as
                 (
                 	SELECT a.county_id, a.bin_id,
-                		unnest(sample(array_agg(b.pid ORDER BY b.pid), 1, 
+                		unnest(diffusion_shared.sample(array_agg(b.pid ORDER BY b.pid), 1, 
                 		%(seed)s * a.bin_id * a.county_id, FALSE, 
                         array_agg(b.count ORDER BY b.pid))) as pid
                 	FROM %(schema)s.pt_%(sector_abbr)s_sample_load_rooftop_cities_%(i_place_holder)s a

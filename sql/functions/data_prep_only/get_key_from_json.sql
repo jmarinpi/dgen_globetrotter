@@ -1,7 +1,7 @@
 ﻿
-DROP FUNCTION IF EXISTS public.get_key(j json, k text);
+DROP FUNCTION IF EXISTS diffusion_shared.get_key(j json, k text);
 SET ROLE 'server-superusers';
-CREATE OR REPLACE FUNCTION public.get_key(j json, k text)
+CREATE OR REPLACE FUNCTION diffusion_shared.get_key(j json, k text)
   RETURNS text AS
   $BODY$
 

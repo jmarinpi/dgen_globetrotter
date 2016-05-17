@@ -1,7 +1,7 @@
 ﻿
-DROP FUNCTION IF EXISTS public.extract_orig_ec_tier_values(j json);
--- SET ROLE 'server-superusers';
-CREATE OR REPLACE FUNCTION public.extract_orig_ec_tier_values(j json)
+DROP FUNCTION IF EXISTS diffusion_shared.extract_orig_ec_tier_values(j json);
+SET ROLE 'server-superusers';
+CREATE OR REPLACE FUNCTION diffusion_shared.extract_orig_ec_tier_values(j json)
   RETURNS json AS
   $BODY$
 

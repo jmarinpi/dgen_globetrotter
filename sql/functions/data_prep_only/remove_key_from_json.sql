@@ -1,7 +1,7 @@
 ﻿
-DROP FUNCTION IF EXISTS public.remove_key(j json, k text);
+DROP FUNCTION IF EXISTS diffusion_shared.remove_key(j json, k text);
 SET ROLE 'server-superusers';
-CREATE OR REPLACE FUNCTION public.remove_key(j json, k text)
+CREATE OR REPLACE FUNCTION diffusion_shared.remove_key(j json, k text)
   RETURNS json AS
   $BODY$
 

@@ -1,6 +1,6 @@
 ﻿-- DROP FUNCTION public.r_boxplot_stats(numeric[], character varying(2));
 set role 'server-superusers';
-CREATE OR REPLACE FUNCTION public.r_boxplot_stats(numarr numeric[], stat character varying(2))
+CREATE OR REPLACE FUNCTION diffusion_shared.r_boxplot_stats(numarr numeric[], stat character varying(2))
   RETURNS double precision AS
 $BODY$
 	

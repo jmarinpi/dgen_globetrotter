@@ -1,6 +1,6 @@
 ﻿
-DROP FUNCTION IF EXISTS public.get_dependencies(target_schema_name text, target_view_name text);
-CREATE OR REPLACE FUNCTION public.get_dependencies(target_schema_name text, target_view_name text) 
+DROP FUNCTION IF EXISTS diffusion_shared.get_dependencies(target_schema_name text, target_view_name text);
+CREATE OR REPLACE FUNCTION diffusion_shared.get_dependencies(target_schema_name text, target_view_name text) 
 RETURNS TABLE(dependency_tree text)
 AS $function$
 	with recursive view_tree(parent_schema, parent_obj, child_schema, child_obj) as 
@@ -27,7 +27,7 @@ $function$
 LANGUAGE sql VOLATILE;
 
 
-select get_dependencies('diffusion_template', 'input_main_nem_bau_scenario');
+select diffusion_shared.get_dependencies('diffusion_template', 'input_main_nem_bau_scenario');
 
 
 -- with a as

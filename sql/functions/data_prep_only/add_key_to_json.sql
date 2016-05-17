@@ -1,7 +1,7 @@
 ﻿
-DROP FUNCTION IF EXISTS public.add_key(j json, k text, v integer[]);
+DROP FUNCTION IF EXISTS diffusion_shared.add_key(j json, k text, v integer[]);
 SET ROLE 'server-superusers';
-CREATE OR REPLACE FUNCTION public.add_key(j json, k text, v integer[])
+CREATE OR REPLACE FUNCTION diffusion_shared.add_key(j json, k text, v integer[])
   RETURNS json AS
   $BODY$
 

@@ -50,10 +50,12 @@ GRANT CREATE ON database "dgen_db_base" to "diffusion-schema-writers" ;
 -- clone base schemas
 -- ssh to gispgdb, then:
 -- pg_dump -h localhost -U mgleason -O -n diffusion_blocks -n diffusion_load_profiles -n diffusion_points -n diffusion_resource_solar -n diffusion_resource_wind -v dav-gis  | psql -h dnpdb001.bigde.nrel.gov -p 5433 -U mgleason_su -e dgen_db_base
+-- note: this should take 6-8 hours
 
 -- to update or change a single schema (e.g., diffusion_blocks)
 -- archive the existing dgen_db_base
 CREATE DATABASE dgen_db_base_archive WITH TEMPLATE dgen_db_base;
+
 -- now on the main version, you can delete the old schema nad replace it from gispgdb
 set role 'diffusion-writers';
 DROP SCHEMA IF EXISTS diffusion_blocks cASCADE;
@@ -63,57 +65,69 @@ DROP SCHEMA IF EXISTS diffusion_blocks cASCADE;
 ------------------------------------------------------------------------------------------------
 -- Step 3:
 -- copy dgen_db_base to a new database on bigde that will be built out with the full datasets
+-- ssh to dnpdb001.bigde.nrel.gov
+-- start a screen session and connect to psotgres:
+	-- psql -d dgen_db_tag_1p4 -U mgleason_su -p 5433
 CREATE DATABASE dgen_db WITH TEMPLATE dgen_db_base;
+	-- note: this may take about 25 minutes
+	
 -- make sure diffusion-schema-writers have the right privileges to create schemas
-GRANT CREATE ON database "dgen_db_base" to "diffusion-schema-writers" ;
+GRANT CREATE ON database "dgen_db" to "diffusion-schema-writers" ;
 ------------------------------------------------------------------------------------------------
 -- Step 4:
--- copy over scaffold schemas from gispgdb
+-- copy over scaffold schemas from gispgdb to the newly created dgen_db
 -- ssh to gispgdb, then:
--- pg_dump -h localhost -U mgleason -O -n diffusion_config -n diffusion_geo -n diffusion_wind -n diffusion_solar -n diffusion_shared -n diffusion_template -v dav-gis  | psql -h dnpdb001.bigde.nrel.gov -p 5433 -U mgleason_su -e dgen_db_base
+-- pg_dump -h localhost -U mgleason -O -n diffusion_config -n diffusion_geo -n diffusion_wind -n diffusion_solar -n diffusion_shared -n diffusion_template -v dav-gis  | psql -h dnpdb001.bigde.nrel.gov -p 5433 -U mgleason_su -e dgen_db
+-- note: this should take < 5 mins
+
+------------------------------------------------------------------------------------------------
+-- Step 5:
+-- correct table and schema ownership (if necessary)
+
+-- fix schemas
+select 'ALTER SCHEMA ' || schema_name || ' OWNER TO "diffusion-writers";'
+from information_schema.schemata
+where schema_name like 'diffusion_%';
+
+-- fix tables
+with b as
+(
+	select schema_name
+	from information_schema.schemata
+	where schema_name like 'diffusion_%'
+
+)
+select 'ALTER TABLE ' || table_schema || '.' || table_name || ' OWNER TO "diffusion-writers";' 
+from information_schema.tables  a
+INNER JOIN b
+ON a.table_schema = b.schema_name;
+
+-- fix views
+with b as
+(
+	select schema_name
+	from information_schema.schemata
+	where schema_name like 'diffusion_%'
+
+)
+select 'ALTER TABLE ' || table_schema || '.' || table_name || ' OWNER TO "diffusion-writers";' 
+from information_schema.views  a
+INNER JOIN b
+ON a.table_schema = b.schema_name;
+
+-- fix sequences
+with b as
+(
+	select schema_name
+	from information_schema.schemata
+	where schema_name like 'diffusion_%'
+
+)
+select 'ALTER SEQUENCE ' || sequence_schema || '.' || sequence_name || ' OWNER TO "diffusion-writers";' 
+from information_schema.sequences  a
+INNER JOIN b
+ON a.sequence_schema = b.schema_name;
 
 ------------------------------------------------------------------------------------------------
 -- Step 6:
--- re-create all functions (if necessary?)
-
--- ** NOTE THIS IS AN OLD LIST AND NEEDS TO BE EDITED TO BE CURRENT **
--- run:
--- add_key_to_json.sql
--- clone_schema.sql
--- get_key_from_json.sql
--- r_array_multiply.sql
--- r_bin_equal_interval.sql
--- r_cut.sql
--- r_median.sql
--- r_quantile.sql
--- r_sample.sql
--- remove_key_from_json.sql
--- solar_system_sizing.sql
--- wind_scoe.sql
-
-------------------------------------------------------------------------------------------------
--- Step 7:
--- correct table and schema ownership (if necessary)
-
--- ** NOTE THIS IS OLD CODE AND NEEDS TO BE EDITED TO BE CURRENT **
-ALTER SCHEMA diffusion_shared owner to "diffusion-writers";
-ALTER SCHEMA diffusion_solar owner to "diffusion-writers";
-ALTER SCHEMA diffusion_config owner to "diffusion-writers";
-ALTER SCHEMA diffusion_wind owner to "diffusion-writers";
-ALTER SCHEMA diffusion_template owner to "diffusion-writers";
-ALTER SCHEMA urdb_rates owner to "diffusion-writers";
-
-select 'ALTER TABLE ' || table_schema || '.' || table_name || ' OWNER TO "diffusion-writers";' 
-from information_schema.tables 
-where table_schema in ('diffusion_shared','diffusion_solar','diffusion_config',
-			'diffusion_wind','diffusion_template','urdb_rates');
-
-select 'ALTER TABLE ' || table_schema || '.' || table_name || ' OWNER TO "diffusion-writers";' 
-from information_schema.views
-where table_schema in ('diffusion_shared','diffusion_solar','diffusion_config',
-			'diffusion_wind','diffusion_template','urdb_rates');
-
-select 'ALTER SEQUENCE ' || sequence_schema || '.' || sequence_name || ' OWNER TO "diffusion-writers";' 
-from information_schema.sequences
-where sequence_schema in ('diffusion_shared','diffusion_solar','diffusion_config',
-			'diffusion_wind','diffusion_template','urdb_rates');
+-- test the model and debug if necessary
