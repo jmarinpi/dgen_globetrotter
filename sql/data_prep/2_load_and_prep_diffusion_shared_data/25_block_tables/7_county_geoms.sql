@@ -97,6 +97,31 @@ ON diffusion_blocks.county_geoms
 USING GIST(the_geom_96703_20m);
 
 ------------------------------------------------------------------------------------------------
+-- add in a geography column (using the 500k version)
+ALTER TABLE diffusion_blocks.county_geoms
+ADD COLUMN the_geog_500k geography;
+
+UPDATE diffusion_blocks.county_geoms
+set the_geog_500k = ST_Transform(the_geom_96703_500k, 4326)::GEOGRAPHY;
+
+-- add an index
+create index county_geoms_gist_the_geog_500k
+ON diffusion_blocks.county_geoms
+USING GIST(the_geog_500k);
+
+-- also add for the POS
+ALTER TABLE diffusion_blocks.county_geoms
+ADD COLUMN the_geog_pos_500k geography;
+
+UPDATE diffusion_blocks.county_geoms
+set the_geog_pos_500k = ST_Transform(ST_PointOnSurface(the_geom_96703_500k),4326)::GEOGRAPHY
+
+-- add an index
+create index county_geoms_gist_the_geog_pos_500k
+ON diffusion_blocks.county_geoms
+USING GIST(the_geog_pos_500k);
+
+------------------------------------------------------------------------------------------------
 -- add reeds and pca regions
 ALTER TABLE diffusion_blocks.county_geoms
 ADD COLUMN pca_reg integer,
@@ -176,5 +201,24 @@ where old_county_id is null;
 -- 5 counties in Alaska -- okay to ignore for now but probably not forever..
 
 ------------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------------
+-- add in the reportable domains
+ALTER TABLE diffusion_blocks.county_geoms
+ADD COLUMN reportable_domain integer;
+
+UPDATE diffusion_blocks.county_geoms a
+set reportable_domain = b.reportable_domain
+FROM eia.recs_2009_state_to_reportable_domain_lkup b
+where a.state_abbr = b.state_abbr;
+-- 3143 rows
+
+-- check for nulls
+select count(*)
+FROM diffusion_blocks.county_geoms
+where reportable_domain is null;
+-- 0 -- all set
+
+
 -- vacuum
 VACUUM ANALYZE diffusion_blocks.county_geoms;

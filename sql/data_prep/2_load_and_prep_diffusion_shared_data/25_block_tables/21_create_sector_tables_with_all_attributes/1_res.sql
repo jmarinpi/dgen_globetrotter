@@ -1,12 +1,13 @@
 ﻿set role 'diffusion-writers';
 
-DROP TABLE IF EXISTS diffusion_blocks.block_microdata_res;
+DROP TABLE IF EXISTS diffusion_blocks.block_microdata_res CASCADE;
 CREATE TABLE diffusion_blocks.block_microdata_res AS
 select  a.pgid, 
 	m.county_id,
 	f.state_abbr,
 	f.state_fips,
 	f.county_fips,
+	m.old_county_id,
 	m.census_division_abbr,
 	m.census_region,
 	'p'::text || m.pca_reg::text AS pca_reg, 
@@ -85,6 +86,10 @@ USING BTREE(state_fips);
 CREATE INDEX block_microdata_res_btree_state_county_fips
 ON diffusion_blocks.block_microdata_res
 USING BTREE(county_fips);
+
+CREATE INDEX block_microdata_res_btree_state_county_id
+ON diffusion_blocks.block_microdata_res
+USING BTREE(county_id);
 
 -- update stats
 vACUUM ANALYZE diffusion_blocks.block_microdata_res;

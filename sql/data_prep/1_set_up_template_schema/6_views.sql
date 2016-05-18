@@ -13,147 +13,181 @@ ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)
 where a.state not in ('Hawaii','Alaska');
 
 ------------------------------------------------------------------------------------
--- joined point microdata
+-- -- joined point microdata
+-- 
+-- -- ind
+-- DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined;
+-- CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined AS
+-- SELECT  a.micro_id,
+-- 	a.county_id,
+-- 	a.hdf_load_index,
+-- 	a.pca_reg,
+-- 	a.reeds_reg,
+-- 	e.state_abbr,
+-- 	e.state_fips,
+-- 	e.census_division_abbr,
+-- 	e.census_region,
+-- 	e.climate_zone_cbecs_2003 as climate_zone,
+-- 	a.ranked_rate_array_id,
+-- 	b.total_customers_2011_industrial as county_total_customers_2011,
+-- 	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
+-- 	-- solar only
+-- 	a.ulocale,
+-- 	a.solar_re_9809_gid,
+-- 	a.solar_incentive_array_id as incentive_array_id_solar,
+-- 	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier_solar,
+-- 	-- wind only
+-- 	a.acres_per_bldg,
+-- 	a.canopy_ht_m,
+-- 	a.canopy_pct,
+-- 	a.i,
+-- 	a.j,
+-- 	a.cf_bin,
+-- 	a.wind_incentive_array_id as incentive_array_id_wind,
+-- 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier_wind
+-- FROM diffusion_points.point_microdata_ind_us a
+-- -- county_load_and_customers
+-- LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
+-- ON a.county_id = b.county_id
+-- -- capital_costs
+-- LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
+-- ON a.county_id = d.county_id
+-- -- census region and division
+-- LEFT JOIN diffusion_shared.county_geom e
+-- ON a.county_id = e.county_id
+-- -- subset to counties of interest
+-- INNER JOIN diffusion_template.counties_to_model h 
+-- ON a.county_id = h.county_id;
+-- 
+-- 
+-- -- res
+-- DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined;
+-- CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined AS
+-- SELECT 	a.micro_id,
+-- 	a.county_id,
+-- 	a.hdf_load_index,
+-- 	a.pca_reg,
+-- 	a.reeds_reg,
+-- 	e.state_abbr,
+-- 	e.state_fips,
+-- 	e.census_division_abbr,
+-- 	e.census_region,
+-- 	e.climate_zone_building_america as climate_zone,
+-- 	a.ranked_rate_array_id,
+-- 	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011,
+-- 	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
+-- 	-- solar only
+-- 	a.ulocale,
+-- 	a.solar_re_9809_gid,
+-- 	a.solar_incentive_array_id as incentive_array_id_solar,
+-- 	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier_solar,
+-- 	-- wind only
+-- 	a.acres_per_bldg,
+-- 	a.canopy_ht_m,
+-- 	a.canopy_pct,
+-- 	a.i,
+-- 	a.j,
+-- 	a.cf_bin,
+-- 	a.wind_incentive_array_id as incentive_array_id_wind,
+-- 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier_wind
+-- FROM diffusion_points.point_microdata_res_us a
+-- -- county_load_and_customers
+-- LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
+-- ON a.county_id = b.county_id
+-- -- county % owner occ housing
+-- LEFT JOIN diffusion_shared.county_housing_units k
+-- ON a.county_id = k.county_id
+-- -- capital_costs
+-- LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
+-- ON a.county_id = d.county_id
+-- -- census region and division
+-- LEFT JOIN diffusion_shared.county_geom e
+-- ON a.county_id = e.county_id
+-- -- subset to counties of interest
+-- INNER JOIN diffusion_template.counties_to_model h 
+-- ON a.county_id = h.county_id;
+-- 
+-- 
+-- -- comm
+-- DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined;
+-- CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined AS
+-- SELECT 	a.micro_id,
+-- 	a.county_id,
+-- 	a.hdf_load_index,
+-- 	a.pca_reg,
+-- 	a.reeds_reg,
+-- 	e.state_abbr,
+-- 	e.state_fips,
+-- 	e.census_division_abbr,
+-- 	e.census_region,
+-- 	e.climate_zone_cbecs_2003 as climate_zone,
+-- 	a.ranked_rate_array_id,
+-- 	b.total_customers_2011_commercial as county_total_customers_2011,
+-- 	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
+-- 	-- solar only
+-- 	a.ulocale,
+-- 	a.solar_re_9809_gid,
+-- 	a.solar_incentive_array_id as incentive_array_id_solar,
+-- 	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier_solar,
+-- 	-- wind only
+-- 	a.acres_per_bldg,
+-- 	a.canopy_ht_m,
+-- 	a.canopy_pct,
+-- 	a.i,
+-- 	a.j,
+-- 	a.cf_bin,
+-- 	a.wind_incentive_array_id as incentive_array_id_wind,
+-- 	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier_wind
+-- FROM diffusion_points.point_microdata_com_us a
+-- -- county_load_and_customers
+-- LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
+-- ON a.county_id = b.county_id
+-- -- capital_costs
+-- LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
+-- ON a.county_id = d.county_id
+-- -- census region and division
+-- LEFT JOIN diffusion_shared.county_geom e
+-- ON a.county_id = e.county_id
+-- -- subset to counties of interest
+-- INNER JOIN diffusion_template.counties_to_model h 
+-- ON a.county_id = h.county_id;
+-- ------------------------------------------------------------------------
 
--- ind
-DROP VIEW IF EXISTS diffusion_template.point_microdata_ind_us_joined;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_ind_us_joined AS
-SELECT  a.micro_id,
-	a.county_id,
-	a.hdf_load_index,
-	a.pca_reg,
-	a.reeds_reg,
-	e.state_abbr,
-	e.state_fips,
-	e.census_division_abbr,
-	e.census_region,
-	e.climate_zone_cbecs_2003 as climate_zone,
-	a.ranked_rate_array_id,
-	b.total_customers_2011_industrial as county_total_customers_2011,
-	b.total_load_mwh_2011_industrial as county_total_load_mwh_2011,
-	-- solar only
-	a.ulocale,
-	a.solar_re_9809_gid,
-	a.solar_incentive_array_id as incentive_array_id_solar,
-	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier_solar,
-	-- wind only
-	a.acres_per_bldg,
-	a.canopy_ht_m,
-	a.canopy_pct,
-	a.i,
-	a.j,
-	a.cf_bin,
-	a.wind_incentive_array_id as incentive_array_id_wind,
-	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier_wind
-FROM diffusion_points.point_microdata_ind_us a
--- county_load_and_customers
-LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
-ON a.county_id = b.county_id
--- capital_costs
-LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
-ON a.county_id = d.county_id
--- census region and division
-LEFT JOIN diffusion_shared.county_geom e
-ON a.county_id = e.county_id
--- subset to counties of interest
-INNER JOIN diffusion_template.counties_to_model h 
-ON a.county_id = h.county_id;
 
+-- create view of the valid states
+DROP VIEW IF EXISTS diffusion_template.states_to_model CASCADE;
+CREATE OR REPLACE VIEW diffusion_template.states_to_model AS
+SELECT distinct a.state_abbr
+FROM diffusion_blocks.county_geoms a
+INNER JOIN diffusion_template.input_main_scenario_options b
+ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)
+		else lower(b.region)
+		end
+where a.state not in ('Hawaii','Alaska');
 
--- res
-DROP VIEW IF EXISTS diffusion_template.point_microdata_res_us_joined;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_res_us_joined AS
-SELECT 	a.micro_id,
-	a.county_id,
-	a.hdf_load_index,
-	a.pca_reg,
-	a.reeds_reg,
-	e.state_abbr,
-	e.state_fips,
-	e.census_division_abbr,
-	e.census_region,
-	e.climate_zone_building_america as climate_zone,
-	a.ranked_rate_array_id,
-	b.total_customers_2011_residential * k.perc_own_occu_1str_housing as county_total_customers_2011,
-	b.total_load_mwh_2011_residential * k.perc_own_occu_1str_housing as county_total_load_mwh_2011,
-	-- solar only
-	a.ulocale,
-	a.solar_re_9809_gid,
-	a.solar_incentive_array_id as incentive_array_id_solar,
-	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier_solar,
-	-- wind only
-	a.acres_per_bldg,
-	a.canopy_ht_m,
-	a.canopy_pct,
-	a.i,
-	a.j,
-	a.cf_bin,
-	a.wind_incentive_array_id as incentive_array_id_wind,
-	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier_wind
-FROM diffusion_points.point_microdata_res_us a
--- county_load_and_customers
-LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
-ON a.county_id = b.county_id
--- county % owner occ housing
-LEFT JOIN diffusion_shared.county_housing_units k
-ON a.county_id = k.county_id
--- capital_costs
-LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
-ON a.county_id = d.county_id
--- census region and division
-LEFT JOIN diffusion_shared.county_geom e
-ON a.county_id = e.county_id
--- subset to counties of interest
-INNER JOIN diffusion_template.counties_to_model h 
-ON a.county_id = h.county_id;
+-- joined block microdata
+DROP VIEW IF EXISTS diffusion_template.block_microdata_res_joined;
+CREATE VIEW  diffusion_template.block_microdata_res_joined AS
+SELECT a.*, a.bldg_count_single_fam_res as sample_weight
+FROM diffusion_blocks.block_microdata_res a
+INNER JOIN diffusion_template.states_to_model b
+ON a.state_abbr = b.state_abbr;
 
+DROP VIEW  IF EXISTS diffusion_template.block_microdata_com_joined;
+CREATE VIEW  diffusion_template.block_microdata_com_joined AS
+SELECT a.*, a.bldg_count_com as sample_weight
+FROM diffusion_blocks.block_microdata_com a
+INNER JOIN diffusion_template.states_to_model b
+ON a.state_abbr = b.state_abbr;
 
--- comm
-DROP VIEW IF EXISTS diffusion_template.point_microdata_com_us_joined;
-CREATE OR REPLACE VIEW diffusion_template.point_microdata_com_us_joined AS
-SELECT 	a.micro_id,
-	a.county_id,
-	a.hdf_load_index,
-	a.pca_reg,
-	a.reeds_reg,
-	e.state_abbr,
-	e.state_fips,
-	e.census_division_abbr,
-	e.census_region,
-	e.climate_zone_cbecs_2003 as climate_zone,
-	a.ranked_rate_array_id,
-	b.total_customers_2011_commercial as county_total_customers_2011,
-	b.total_load_mwh_2011_commercial as county_total_load_mwh_2011,
-	-- solar only
-	a.ulocale,
-	a.solar_re_9809_gid,
-	a.solar_incentive_array_id as incentive_array_id_solar,
-	d.pv_20mw_cap_cost_multplier as cap_cost_multiplier_solar,
-	-- wind only
-	a.acres_per_bldg,
-	a.canopy_ht_m,
-	a.canopy_pct,
-	a.i,
-	a.j,
-	a.cf_bin,
-	a.wind_incentive_array_id as incentive_array_id_wind,
-	d.onshore_wind_cap_cost_multiplier as cap_cost_multiplier_wind
-FROM diffusion_points.point_microdata_com_us a
--- county_load_and_customers
-LEFT JOIN diffusion_shared.load_and_customers_by_county_us b
-ON a.county_id = b.county_id
--- capital_costs
-LEFT JOIN diffusion_shared.capital_cost_multipliers_us d
-ON a.county_id = d.county_id
--- census region and division
-LEFT JOIN diffusion_shared.county_geom e
-ON a.county_id = e.county_id
--- subset to counties of interest
-INNER JOIN diffusion_template.counties_to_model h 
-ON a.county_id = h.county_id;
-------------------------------------------------------------------------
+DROP VIEW  IF EXISTS diffusion_template.block_microdata_ind_joined;
+CREATE VIEW  diffusion_template.block_microdata_ind_joined AS
+SELECT a.*, a.bldg_count_ind as sample_weight
+FROM diffusion_blocks.block_microdata_ind a
+INNER JOIN diffusion_template.states_to_model b
+ON a.state_abbr = b.state_abbr;
 
-
+------------------------------------------------------------------------------------------------
 -- create view of sectors to model
 DROP VIEW IF EXIStS diffusion_template.sectors_to_model;
 CREATE OR REPLACE VIEW diffusion_template.sectors_to_model AS
