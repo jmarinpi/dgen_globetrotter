@@ -1,37 +1,77 @@
 library(shiny)
 library(shinyTable)
+library(dplyr)
 
-tabnames = c('cost', 'performance', 'finances')
 
-createTabs = function(tabnames){
-  tabset = tabsetPanel()
-  for (i in 1:length(tabnames)){
-    tabset$children[[i]] = tabPanel(tabnames[i])
-  }
+configuration = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny/config/elements.csv', stringsAsFactors = F)
+# set the ordering correctly
+configuration = configuration[with(configuration, order(tab, position)), ]
+
+
+# createTabs = function(tabnames){
+# 
+#   tabs = list()
+#   for (i in 1:length(tabnames)){
+#     tabs[[i]] = tabPanel(tabnames[i])
+#   }
+#   
+#   tabset = do.call(tabsetPanel, tabs)
+# 
+#   return(tabset)  
+# }
+
+createElement = function(name, type){
   
-  return(tabset)  
+  element = htable(name)
+  
+  return(element)
+  
 }
 
-createElements = function(tabset, tabname, position, name, type){
-  
-  tabset$children[[tabname]]$children[[position]] = htable(name)
-  
-  return(tabset)
-  
-}
+
 
 createMainPanel = function(){
-  m = mainPanel()
   
-  for (i in seq(1,3)){
-    tbl_id = sprintf('tbl%s', i)
-    #editable table
-    m$children[[i]] =  htable(tbl_id)
+  # get tabs
+  tabnames = unique(configuration$tab)
+  
+  # create elements on each tab
+  tab_list = list()
+  for (t in 1:length(tabnames)) {
+    tabname = tabnames[[t]]
+
+    tab_elements = dplyr::filter(as.data.frame(configuration), tab == tabname)
+    # set the ordering correctly
+    tab_elements = tab_elements[with(tab_elements, order(position)), ]
+    
+    # initialize empty list
+    element_list = list()
+    
+    for (row in 1:nrow(tab_elements)){
+      tabname = tab_elements[row, 'tab']
+      position = tab_elements[row, 'position']
+      name = tab_elements[row, 'name']
+      type = tab_elements[row, 'type']
+      nrow = tab_elements[row, 'nrow']
+      ncol = tab_elements[row, 'ncol']
+      src = tab_elements[row, 'src']
+      element =  createElement(name, type)
+      element_list[[row]] = element
+    }
+    
+    tp = tabPanel(tabname, element_list)
+    
+    tab_list[[t]] = tp
+    
   }
   
-  return(m)
-}
+  tabset = do.call(tabsetPanel, tab_list)
 
+  main_panel = mainPanel(tabset)
+  
+  return(main_panel)
+  
+}
 
 ui <- shinyUI(pageWithSidebar(
   
@@ -44,12 +84,7 @@ ui <- shinyUI(pageWithSidebar(
                   <p>Created using <a href = \"http://github.com/trestletech/shinyTable\">shinyTable</a>."))
   ),
   
-  createMainPanel()
-  # Show the simple table
-#   m = mainPanel(
-#     htable('tbl1'), 
-#     htable('tbl2'),
-#     htable('tbl3')
-#   )
+  m = createMainPanel()
+
 )
 )

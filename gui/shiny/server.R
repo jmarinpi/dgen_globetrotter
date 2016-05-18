@@ -1,13 +1,38 @@
 library(shiny)
 library(shinyTable)
 
+
+configuration = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny/config/elements.csv', stringsAsFactors = F)
+# set the ordering correctly
+configuration = configuration[with(configuration, order(tab, position)), ]
+
+createElements = function(output, configuration){
+  
+  # create elements on each tab
+  for (row in 1:nrow(configuration)){
+    
+    tabname = configuration[row, 'tab']
+    position = configuration[row, 'position']
+    name = configuration[row, 'name']
+    type = configuration[row, 'type']
+    nrow = configuration[row, 'nrow']
+    ncol = configuration[row, 'ncol']
+    src = configuration[row, 'src']
+    
+    tbl = matrix(0, nrow = nrow, ncol = ncol)
+    output[[name]] = renderHtable(tbl)
+    
+  }
+  
+  return(output)
+  
+}
+
+
+
 server = shinyServer(function(input, output) {
   
-  tbl <- matrix(0, nrow=3, ncol=3)
-  for (i in seq(1,3)){
-      tbl_id = sprintf('tbl%s', i)
-      output[[tbl_id]] = renderHtable(tbl)
-      }
+  output = createElements(output, configuration)
 #   output$tbl1 =  renderHtable(tbl)
 #   output$tbl2 =  renderHtable(tbl)
 #   output$tbl3 =  renderHtable(tbl)
