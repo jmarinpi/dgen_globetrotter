@@ -1,6 +1,6 @@
 library(shiny)
 library(shinyTable)
-
+library(shinysky)
 
 configuration = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny/config/elements.csv', stringsAsFactors = F)
 # set the ordering correctly
@@ -9,8 +9,11 @@ configuration = configuration[with(configuration, order(tab, position)), ]
 createElements = function(output, configuration){
   
   # create elements on each tab
+  x = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny/config/costs.csv', check.names = F, row.names = 1)
+  elements = list()
+
   for (row in 1:nrow(configuration)){
-    
+    local({ 
     tabname = configuration[row, 'tab']
     position = configuration[row, 'position']
     name = configuration[row, 'name']
@@ -18,11 +21,11 @@ createElements = function(output, configuration){
     nrow = configuration[row, 'nrow']
     ncol = configuration[row, 'ncol']
     src = configuration[row, 'src']
-    
-    tbl = matrix(0, nrow = nrow, ncol = ncol)
-    output[[name]] = renderHtable(tbl)
-    
+
+          output[[name]] = renderHtable(x)
+    }) 
   }
+ 
   
   return(output)
   

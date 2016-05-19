@@ -1,7 +1,7 @@
 library(shiny)
 library(shinyTable)
 library(dplyr)
-
+library(shinysky)
 
 configuration = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny/config/elements.csv', stringsAsFactors = F)
 # set the ordering correctly
@@ -22,12 +22,11 @@ configuration = configuration[with(configuration, order(tab, position)), ]
 
 createElement = function(name, type){
   
-  element = htable(name)
+  element = htable(name, rowNames = 'provided', colHeaders = 'provided')
   
   return(element)
   
 }
-
 
 
 createMainPanel = function(){
@@ -78,10 +77,7 @@ ui <- shinyUI(pageWithSidebar(
   headerPanel("shinyTable with actionButton to apply changes"),
   
   sidebarPanel(
-    helpText(HTML("A simple editable matrix with a functioning update button. 
-                   Using actionButton not submitButton. 
-                   Make changes to the upper table, press the button and they will appear in the lower. 
-                  <p>Created using <a href = \"http://github.com/trestletech/shinyTable\">shinyTable</a>."))
+    helpText(HTML("Test"))
   ),
   
   m = createMainPanel()
