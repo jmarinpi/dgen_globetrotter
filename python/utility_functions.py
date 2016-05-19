@@ -17,7 +17,8 @@ import select
 import psycopg2 as pg
 import psycopg2.extras as pgx
 import time
-
+import subprocess
+import os
 
 #==============================================================================
 #       Logging Functions
@@ -42,7 +43,16 @@ def get_logger(log_file_path = None):
 
     return logger
     
+def get_git_hash():
+    
 
+    fp = os.path.dirname(os.path.abspath(__file__))
+    cmd = "cd %s;"  % fp + "git log --pretty=format:'%h' -n 1"
+    git_hash = subprocess.check_output(cmd, shell = True)
+
+    return git_hash
+    
+    
 def shutdown_log(logger):
     logging.shutdown()
     for handler in logger.handlers:

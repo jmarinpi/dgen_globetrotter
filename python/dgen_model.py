@@ -117,6 +117,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         logger.info("Connected to Postgres with the following params:\n%s" % cfg.pg_params_log)
         pgx.register_hstore(con) # register access to hstore in postgres    
         
+        # get the git hash and also log to output file
+        git_hash = utilfunc.get_git_hash()
+        logger.info("Model version is git commit %s" % git_hash)
+        
         # find the input excel spreadsheets
         if cfg.init_model:    
             input_scenarios = [s for s in glob.glob("../input_scenarios/*.xls*") if not '~$' in s]
