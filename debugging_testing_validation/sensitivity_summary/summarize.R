@@ -7,10 +7,23 @@ summarize_outputs = function(output_files_list){
   for (i in 1:length(output_files_list)){
     output = output_files_list[[i]]
     df = read.csv(output)
+    tech = unique(df$tech)
     
-    sf = group_by(df, year) %>%
+    if (tech == 'solar'){
+      df$turbine_height_m = as.numeric(NA)
+    }
+    
+    sf = group_by(df, year, sector) %>%
       summarize(cap_gw = sum(installed_capacity)/1000/1000,
-                systems = sum(number_of_adopters)
+                systems = sum(number_of_adopters),
+                cf = mean(cf),
+                rate = mean(cost_of_elec_dols_per_kwh),
+                system_size_kw = mean(system_size_kw),
+                load = mean(load_kwh_per_customer_in_bin),
+                first_year_bill_without_system = mean(first_year_bill_without_system),
+                first_year_bill_with_system = mean(first_year_bill_with_system),
+                turbine_height_m = mean(turbine_height_m)
+                
       ) %>% 
       as.data.frame()
     sf$seed = i
@@ -41,10 +54,79 @@ sf_solar_points = summarize_outputs(outputs_solar_points)
 
 
 ggplot() +
-  geom_line(data = sf_wind_points, aes(x = year, y = cap_gw, fill = seed), colour = 'gray', stat = 'identity') +
-  geom_line(data = sf_wind_blocks, aes(x = year, y = cap_gw, fill = seed), colour = 'black', stat = 'identity')
+  geom_line(data = sf_wind_points, aes(x = year, y = cap_gw, fill = seed), size = 2, colour = 'gray', stat = 'identity') +
+  geom_line(data = sf_wind_blocks, aes(x = year, y = cap_gw, fill = seed), colour = 'black', stat = 'identity') +
+  facet_wrap(~sector, scales = 'free')
 
 
 ggplot() +
-  geom_line(data = sf_solar_points, aes(x = year, y = cap_gw, fill = seed), colour = 'gray', stat = 'identity') +
-  geom_line(data = sf_solar_blocks, aes(x = year, y = cap_gw, fill = seed), colour = 'black', stat = 'identity')
+  geom_line(data = sf_solar_points, aes(x = year, y = cap_gw, fill = seed), size = 2, colour = 'gray', stat = 'identity') +
+  geom_line(data = sf_solar_blocks, aes(x = year, y = cap_gw, fill = seed), colour = 'black', stat = 'identity') +
+  facet_wrap(~sector, scales = 'free')
+
+
+ggplot() +
+  geom_boxplot(data = sf_solar_points, aes(x = 1, y = cf)) +
+  geom_boxplot(data = sf_solar_blocks, aes(x = 2, y = cf)) +
+  facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_solar_points, aes(x = 1, y = rate)) +
+  geom_boxplot(data = sf_solar_blocks, aes(x = 2, y = rate)) +
+  facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_solar_points, aes(x = 1, y = system_size_kw)) +
+  geom_boxplot(data = sf_solar_blocks, aes(x = 2, y = system_size_kw)) +
+  facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_solar_points, aes(x = 1, y = load)) +
+  geom_boxplot(data = sf_solar_blocks, aes(x = 2, y = load)) +
+  facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_solar_points, aes(x = 1, y = first_year_bill_without_system)) +
+  geom_boxplot(data = sf_solar_blocks, aes(x = 2, y = first_year_bill_without_system)) +
+  facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_solar_points, aes(x = 1, y = first_year_bill_with_system)) +
+  geom_boxplot(data = sf_solar_blocks, aes(x = 2, y = first_year_bill_with_system)) +
+  facet_wrap(~sector, scales = 'free')
+
+
+
+
+
+ggplot() +
+  geom_boxplot(data = sf_wind_points, aes(x = 1, y = cf)) +
+  geom_boxplot(data = sf_wind_blocks, aes(x = 2, y = cf)) +
+  facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_wind_points, aes(x = 1, y = rate)) +
+  geom_boxplot(data = sf_wind_blocks, aes(x = 2, y = rate)) +
+  facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_wind_points, aes(x = 1, y = system_size_kw)) +
+  geom_boxplot(data = sf_wind_blocks, aes(x = 2, y = system_size_kw)) +
+  facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_wind_points, aes(x = 1, y = load)) +
+  geom_boxplot(data = sf_wind_blocks, aes(x = 2, y = load)) +
+  facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_wind_points, aes(x = 1, y = first_year_bill_without_system)) +
+  geom_boxplot(data = sf_wind_blocks, aes(x = 2, y = first_year_bill_without_system)) +
+  facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_wind_points, aes(x = 1, y = first_year_bill_with_system)) +
+  geom_boxplot(data = sf_wind_blocks, aes(x = 2, y = first_year_bill_with_system)) +
+  facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_wind_points, aes(x = 1, y = turbine_height_m)) +
+  geom_boxplot(data = sf_wind_blocks, aes(x = 2, y = turbine_height_m)) +
+  facet_wrap(~sector, scales = 'free')
+
+
+
+
+
+
+
+
