@@ -1,6 +1,7 @@
 library(shiny)
 library(shinyTable)
 library(shinysky)
+library(rhandsontable)
 
 configuration = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny/config/elements.csv', stringsAsFactors = F)
 # set the ordering correctly
@@ -22,7 +23,11 @@ createElements = function(output, configuration){
     ncol = configuration[row, 'ncol']
     src = configuration[row, 'src']
 
-          output[[name]] = renderHtable(x)
+          output[[name]] = renderRHandsontable({
+                              rhandsontable(x) %>%
+                                hot_col(col = '2014', type = 'dropdown', source = 1:10)
+                                                
+                                                })
     }) 
   }
  

@@ -2,6 +2,8 @@ library(shiny)
 library(shinyTable)
 library(dplyr)
 library(shinysky)
+library(rhandsontable)
+
 
 configuration = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny/config/elements.csv', stringsAsFactors = F)
 # set the ordering correctly
@@ -22,7 +24,7 @@ configuration = configuration[with(configuration, order(tab, position)), ]
 
 createElement = function(name, type){
   
-  element = htable(name, rowNames = 'provided', colHeaders = 'provided')
+  element = rHandsontableOutput(name)
   
   return(element)
   
