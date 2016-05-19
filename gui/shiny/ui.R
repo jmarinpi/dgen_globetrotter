@@ -3,30 +3,16 @@ library(shinyTable)
 library(dplyr)
 library(shinysky)
 library(rhandsontable)
+setwd('/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny')
+source('./utilities.R')
 
+content = get_inputs()
 
-configuration = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny/config/elements.csv', stringsAsFactors = F)
-# set the ordering correctly
-configuration = configuration[with(configuration, order(tab, position)), ]
-
-
-# createTabs = function(tabnames){
-# 
-#   tabs = list()
-#   for (i in 1:length(tabnames)){
-#     tabs[[i]] = tabPanel(tabnames[i])
-#   }
-#   
-#   tabset = do.call(tabsetPanel, tabs)
-# 
-#   return(tabset)  
-# }
-
-createElement = function(name, type){
+createElement = function(name, type, title){
   
   element = rHandsontableOutput(name)
-  
-  return(element)
+  element_with_header = tagList(h3(title), element)
+  return(element_with_header)
   
 }
 
@@ -34,29 +20,25 @@ createElement = function(name, type){
 createMainPanel = function(){
   
   # get tabs
-  tabnames = unique(configuration$tab)
+  tabnames = content$tabs
   
   # create elements on each tab
   tab_list = list()
   for (t in 1:length(tabnames)) {
     tabname = tabnames[[t]]
 
-    tab_elements = dplyr::filter(as.data.frame(configuration), tab == tabname)
-    # set the ordering correctly
-    tab_elements = tab_elements[with(tab_elements, order(position)), ]
+    tab_elements = dplyr::filter(as.data.frame(content$df), tab == tabname)
     
     # initialize empty list
     element_list = list()
     
     for (row in 1:nrow(tab_elements)){
-      tabname = tab_elements[row, 'tab']
-      position = tab_elements[row, 'position']
-      name = tab_elements[row, 'name']
-      type = tab_elements[row, 'type']
-      nrow = tab_elements[row, 'nrow']
-      ncol = tab_elements[row, 'ncol']
-      src = tab_elements[row, 'src']
-      element =  createElement(name, type)
+      id = tab_elements[row, 'elid']
+      name = sprintf('el_%s', id)
+      title = tab_elements[row, 'title']
+      
+      
+      element =  createElement(name, type, title)
       element_list[[row]] = element
     }
     
@@ -79,7 +61,8 @@ ui <- shinyUI(pageWithSidebar(
   headerPanel("shinyTable with actionButton to apply changes"),
   
   sidebarPanel(
-    helpText(HTML("Test"))
+    helpText(HTML("Test")),
+    actionButton("saveButton", "Save")
   ),
   
   m = createMainPanel()

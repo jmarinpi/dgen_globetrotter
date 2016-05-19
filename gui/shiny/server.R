@@ -2,32 +2,29 @@ library(shiny)
 library(shinyTable)
 library(shinysky)
 library(rhandsontable)
+setwd('/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny')
+source('./utilities.R')
 
-configuration = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny/config/elements.csv', stringsAsFactors = F)
-# set the ordering correctly
-configuration = configuration[with(configuration, order(tab, position)), ]
+content = get_inputs()
 
-createElements = function(output, configuration){
+createElements = function(input, output, configuration){
   
   # create elements on each tab
-  x = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny/config/costs.csv', check.names = F, row.names = 1)
   elements = list()
-
-  for (row in 1:nrow(configuration)){
+  
+  for (row in 1:nrow(content$df)){
     local({ 
-    tabname = configuration[row, 'tab']
-    position = configuration[row, 'position']
-    name = configuration[row, 'name']
-    type = configuration[row, 'type']
-    nrow = configuration[row, 'nrow']
-    ncol = configuration[row, 'ncol']
-    src = configuration[row, 'src']
+          fpath = content$df[row, 'fpath']
+          elid = content$df[row, 'elid']
+          name = sprintf('el_%s', elid)
+          temp_df = read.csv(fpath, check.names = F, stringsAsFactors = F, row.names = 1)
 
+          elements[[name]] = reactiveValues(data=temp_df)
           output[[name]] = renderRHandsontable({
-                              rhandsontable(x) %>%
-                                hot_col(col = '2014', type = 'dropdown', source = 1:10)
-                                                
-                                                })
+            rhandsontable(elements[[name]]$data)                                          
+          })
+
+
     }) 
   }
  
@@ -40,9 +37,20 @@ createElements = function(output, configuration){
 
 server = shinyServer(function(input, output) {
   
-  output = createElements(output, configuration)
-#   output$tbl1 =  renderHtable(tbl)
-#   output$tbl2 =  renderHtable(tbl)
-#   output$tbl3 =  renderHtable(tbl)
+  output = createElements(input, output, configuration)
+
+observe({
+  # Assuming your saveButton is an actionButton, from the shiny-incubator package
+  if (input$saveButton == 0)
+    return()
+  isolate({
+#     print(names(output))
+    df = hot_to_r(input$el_1)
+#     print(input$el_1)
+    print(df)
+#     write.csv(hot_to_r(input$el_1), '/Users/mgleason/NREL_Projects/github/diffusion/gui/shiny/config/outputs/test.csv')
+          })
+})
+
 }  
 )
