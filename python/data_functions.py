@@ -836,7 +836,7 @@ def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year,
     
     # break counties into subsets for parallel processing
     # ** NEW
-    county_chunks, npar = split_counties(cur, schema, npar)    
+    county_chunks, npar = split_counties_new(cur, schema, npar)    
     
     for sector_abbr, sector in sectors.iteritems():
         with utilfunc.Timer() as t:
@@ -846,14 +846,14 @@ def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year,
             #     sample customer locations and load. and link together    
             #==============================================================================
             # ** NEW
-            sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, npar, pg_conn_string)
+            sample_customers_and_load_new(schema, sector_abbr, county_chunks, n_bins, seed, npar, pg_conn_string)
             
             #==============================================================================
             #     get rate for each agent
             #==============================================================================
             rate_structure = rate_structures[sector_abbr]
             # ** NEW
-            find_rates(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, rate_structure, techs)
+            find_rates_new(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, rate_structure, techs)
             
             #==============================================================================
             #     run the portions that are technology specific
@@ -876,7 +876,7 @@ def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year,
             #==============================================================================
             #   clean up intermediate tables
             #==============================================================================
-#            cleanup_intermediate_tables(schema, sector_abbr, county_chunks, npar, pg_conn_string, cur, con, inputs['i_place_holder'])
+            cleanup_intermediate_tables(schema, sector_abbr, county_chunks, npar, pg_conn_string, cur, con, inputs['i_place_holder'])
             
             
         logger.info('\tTotal time to create agents for %s sector: %0.1fs' % (sector.lower(), t.interval)) 
@@ -1818,7 +1818,7 @@ def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string
                 (
                     	SELECT a.*, b.city_id, b.rank as city_rank
                     	FROM %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
-                    	LEFT JOIN diffusion_solar.rooftop_city_ranks_by_county_and_ulocale_%(sector_abbr)s b
+                    	LEFT JOIN diffusion_solar.rooftop_city_ranks_by_county_and_ulocale_%(sector_abbr)s_blocks b -- # ** NEW
                     		ON a.county_id = b.county_id
                     		and a.ulocale = b.ulocale
                     	INNER JOIN diffusion_solar.rooftop_city_ulocale_zone_size_class_lkup c

@@ -1,12 +1,14 @@
-﻿-- diffusion_shared.urdb_rates_by_state_res
--- diffusion_shared.urdb_rates_by_state_com
--- diffusion_shared.urdb_rates_by_state_ind
-
-
-set role 'diffusion-writers';
+﻿set role 'diffusion-writers';
 
 -----------------------------------------------------------------------------------------------------------
--- commercial 
+-- archive the old, simple distance version
+-- DROP TABLE IF EXISTS diffusion_blocks.block_urdb_rates_ind_simple_distance;
+-- CReATE TABLE diffusion_blocks.block_urdb_rates_ind_simple_distance AS
+-- SELECT *
+-- FROM diffusion_blocks.block_urdb_rates_ind; 
+-- -- 10535171 rows
+
+-- industrial 
 DROP TABLE IF EXISTS diffusion_blocks.block_urdb_rates_ind;
 CReATE TABLE diffusion_blocks.block_urdb_rates_ind 
 (
@@ -28,27 +30,37 @@ select parsel_2('dav-gis', 'mgleason', 'mgleason',
 		(
 			SELECT a.pgid, 
 				x.rate_id_alias, 
+				(d.utility_type_ind = x.utility_type) as utility_type_match,
 				ST_Distance(a.the_point_96703, x.the_geom_96703) as distance_m
 			FROM diffusion_blocks.block_geoms a
+			LEFT JOIN diffusion_blocks.block_primary_electric_utilities d
+				ON a.pgid = d.pgid
 			LEFT JOIN diffusion_shared.urdb_rates_by_state_ind b
-			ON a.state_abbr = b.state_abbr
+				ON a.state_abbr = b.state_abbr
 			LEFT JOIN x
-			ON b.rate_id_alias = x.rate_id_alias
+				ON b.rate_id_alias = x.rate_id_alias
 		),
 		b as -- grouping is necessary because rate geoms are exploded (same utility might have several geoms)
 		(
-			select pgid, rate_id_alias, min(distance_m) as distance_m
+			select pgid, rate_id_alias, utility_type_match, min(distance_m) as distance_m
 			FROM a
-			GROUP BY pgid, rate_id_alias
+			GROUP BY pgid, utility_type_match, rate_id_alias
 		),
 		c as
 		(
 			SELECT pgid,  rate_id_alias, 
-				rank() OVER (partition by pgid ORDER BY distance_m asC) as rank
+				(utility_type_match = true and distance_m <= 80467.2)::integer as near_utility_type_match,
+				distance_m
 			FROM b
+		),
+		d as
+		(
+			SELECT pgid, rate_id_alias,
+				rank() OVER (partition by pgid ORDER BY near_utility_type_match DESC, distance_m ASC) as rank
+				from c
 		)
 		select pgid, array_agg(rate_id_alias order by rank) as ranked_rate_ids
-		from c
+		from d
 		GROUP BY pgid;',
 			'diffusion_blocks.block_urdb_rates_ind', 'a', 16);
 -----------------------------------------------------------------------------------------------------------
@@ -65,7 +77,7 @@ FROM diffusion_blocks.block_urdb_rates_ind;
 select count(*)
 FROM diffusion_blocks.block_urdb_rates_ind
 where ranked_rate_ids = array[null]::INTEGER[];
--- 50641
+-- 10473266
 
 -- change to actual nulls
 UPDATE diffusion_blocks.block_urdb_rates_ind
