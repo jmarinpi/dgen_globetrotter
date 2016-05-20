@@ -13,7 +13,9 @@ DROP TABLE IF EXISTS diffusion_blocks.block_urdb_rates_com;
 CReATE TABLE diffusion_blocks.block_urdb_rates_com 
 (
 	pgid bigint,
-	ranked_rate_ids integer[]
+	rate_ids integer[],
+	rate_ranks integer[]
+	
 );
 
 select parsel_2('dav-gis', 'mgleason', 'mgleason',
@@ -52,7 +54,9 @@ select parsel_2('dav-gis', 'mgleason', 'mgleason',
 				rank() OVER (partition by pgid ORDER BY near_utility_type_match DESC, distance_m ASC) as rank
 				from c
 		)
-		select pgid, array_agg(rate_id_alias order by rank) as ranked_rate_ids
+		select pgid, 
+			array_agg(rate_id_alias order by rank, rate_id_alias) as rate_ids, 
+			array_agg(rank order by rank, rate_id_alias) as rate_ranks
 		from d
 		GROUP BY pgid;',
 			'diffusion_blocks.block_urdb_rates_com', 'a', 16);
@@ -69,18 +73,36 @@ FROM diffusion_blocks.block_urdb_rates_com;
 -- check for nulls
 select count(*)
 FROM diffusion_blocks.block_urdb_rates_com
-where ranked_rate_ids = array[null]::INTEGER[];
+where rate_ids = array[null]::INTEGER[];
 -- 50641
 
 -- change to actual nulls
 UPDATE diffusion_blocks.block_urdb_rates_com
-set ranked_rate_ids = NULL
-where ranked_rate_ids = array[null]::INTEGER[];
+set rate_ids = NULL
+where rate_ids = array[null]::INTEGER[];
 
 -- recheck
 select count(*)
-FROM diffusion_blocks.block_urdb_rates_ind
+FROM diffusion_blocks.block_urdb_rates_com
 where ranked_rate_ids is null;
+-- 50641
+
+
+-- check for nulls
+select count(*)
+FROM diffusion_blocks.block_urdb_rates_com
+where rate_ranks = array[null]::INTEGER[];
+-- 50641
+
+-- change to actual nulls
+UPDATE diffusion_blocks.block_urdb_rates_com
+set rate_ranks = NULL
+where rate_ranks = array[null]::INTEGER[];
+
+-- recheck
+select count(*)
+FROM diffusion_blocks.block_urdb_rates_com
+where rate_ranks is null;
 -- 50641
 
 -- where are they?
@@ -88,5 +110,6 @@ select distinct b.state_abbr
 FROM diffusion_blocks.block_urdb_rates_com a
 left join diffusion_blocks.block_geoms b
 on a.pgid = b.pgid
-where a.ranked_rate_ids is null;
+where a.rate_ranks is null
+OR a.rate_ids is null;
 -- AK and HI only -- all set

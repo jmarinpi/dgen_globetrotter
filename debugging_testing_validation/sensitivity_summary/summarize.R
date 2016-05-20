@@ -39,14 +39,14 @@ summarize_outputs = function(output_files_list){
   return(all_sf)
 }
 
-setwd('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_block_microdata_sensitivity_2')
+setwd('/Volumes/gispgdb.nrel.gov/github/diffusion/runs/results_block_microdata_co_flat_rates_fix')
 all_files = list.files(recursive = T)
 outputs_wind_blocks = all_files[grepl('*/outputs_wind.csv.gz',all_files)]
 outputs_solar_blocks = all_files[grepl('*/outputs_solar.csv.gz',all_files)]
 sf_wind_blocks = summarize_outputs(outputs_wind_blocks)
 sf_solar_blocks = summarize_outputs(outputs_solar_blocks)
 
-setwd('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_point_microdata_sensitivity')
+setwd('/Volumes/gispgdb.nrel.gov/github/diffusion/runs/results_point_microdata_co_flat_rates')
 all_files = list.files(recursive = T)
 outputs_wind_points = all_files[grepl('*/outputs_wind.csv.gz',all_files)]
 outputs_solar_points = all_files[grepl('*/outputs_solar.csv.gz',all_files)]
@@ -90,6 +90,12 @@ ggplot() +
   geom_boxplot(data = sf_solar_points, aes(x = 1, y = first_year_bill_with_system)) +
   geom_boxplot(data = sf_solar_blocks, aes(x = 2, y = first_year_bill_with_system)) +
   facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_solar_points, aes(x = 1, y = total_value_of_incentives)) +
+  geom_boxplot(data = sf_solar_blocks, aes(x = 2, y = total_value_of_incentives)) +
+  facet_wrap(~sector, scales = 'free')
+
+
 
 
 
@@ -123,37 +129,42 @@ ggplot() +
   geom_boxplot(data = sf_wind_points, aes(x = 1, y = turbine_height_m)) +
   geom_boxplot(data = sf_wind_blocks, aes(x = 2, y = turbine_height_m)) +
   facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_wind_points, aes(x = 1, y = total_value_of_incentives)) +
+  geom_boxplot(data = sf_wind_blocks, aes(x = 2, y = total_value_of_incentives)) +
+  facet_wrap(~sector, scales = 'free')
 
-# 
-# for (i in 1:10){
-#   output = outputs_solar_points[i]
-#   setwd('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_point_microdata_sensitivity')
-#   dfp = read.csv(output)
-#   
-#   output = outputs_solar_blocks[i]
-#   setwd('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_block_microdata_sensitivity_2')
-#   dfb = read.csv(output)
-#   
-#   summary(filter(dfp, sector == 'residential')$cost_of_elec_dols_per_kwh)
-#   summary(filter(dfb, sector == 'residential')$cost_of_elec_dols_per_kwh)
-#   
-#   # summary(dfp$cost_of_elec_dols_per_kwh)
-#   # summary(dfb$cost_of_elec_dols_per_kwh)
-#   
-#   
-#   dfp_hi = filter(dfp, sector == 'residential' & cost_of_elec_dols_per_kwh > .5)
-#   dfb_hi = filter(dfb, sector == 'residential' & cost_of_elec_dols_per_kwh > .5)
-#   
-#   # dfp_hi = filter(dfp, cost_of_elec_dols_per_kwh > 1)
-#   # dfb_hi = filter(dfb, cost_of_elec_dols_per_kwh > 1)
-#   
-#   print(i)
-#   print(unique(dfp_hi$rate_id_alias))
-#   print(unique(dfb_hi$rate_id_alias))
-#   print('\n')
-#   
-# }
-# 
+
+
+for (i in 1:10){
+  output = outputs_solar_points[i]
+  setwd('/Volumes/gispgdb.nrel.gov/github/diffusion/runs/results_block_microdata_co_flat_rates')
+  dfp = read.csv(output)
+  
+  output = outputs_solar_blocks[i]
+  setwd('/Volumes/gispgdb.nrel.gov/github/diffusion/runs/results_point_microdata_co_flat_rates')
+  dfb = read.csv(output)
+  
+  summary(filter(dfp, sector == 'residential')$cost_of_elec_dols_per_kwh)
+  summary(filter(dfb, sector == 'residential')$cost_of_elec_dols_per_kwh)
+  
+  # summary(dfp$cost_of_elec_dols_per_kwh)
+  # summary(dfb$cost_of_elec_dols_per_kwh)
+  
+  
+  dfp_hi = filter(dfp, sector == 'residential' & cost_of_elec_dols_per_kwh > .5)
+  dfb_hi = filter(dfb, sector == 'residential' & cost_of_elec_dols_per_kwh > .5)
+  
+  # dfp_hi = filter(dfp, cost_of_elec_dols_per_kwh > 1)
+  # dfb_hi = filter(dfb, cost_of_elec_dols_per_kwh > 1)
+  
+  print(i)
+  print(unique(dfp_hi$rate_id_alias))
+  print(unique(dfb_hi$rate_id_alias))
+  print('\n')
+  
+}
+
 
 
 
