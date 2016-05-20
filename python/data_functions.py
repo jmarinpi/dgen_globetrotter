@@ -1689,7 +1689,7 @@ def find_rates_new(schema, sector_abbr, county_chunks, seed, npar, pg_conn_strin
         sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s;
                 CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s AS
                 SELECT b.*, 
-                        b.county_id as rate_id_alias, 
+                        b.old_county_id as rate_id_alias, 
                       'aa%(sector_abbr)s'::CHARACTER VARYING(5) as rate_source
                 FROM %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s b;""" % inputs_dict
         p_run(pg_conn_string, sql, county_chunks, npar)
