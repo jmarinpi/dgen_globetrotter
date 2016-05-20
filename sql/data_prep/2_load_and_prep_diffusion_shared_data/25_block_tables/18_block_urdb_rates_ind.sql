@@ -94,23 +94,10 @@ FROM diffusion_blocks.block_urdb_rates_ind
 where ranked_rate_ids is null;
 -- 50641
 
-
--- check for nulls
-select count(*)
-FROM diffusion_blocks.block_urdb_rates_ind
-where rate_ranks = array[null]::INTEGER[];
--- 50641
-
--- change to actual nulls
+-- fix rate ranks too
 UPDATE diffusion_blocks.block_urdb_rates_ind
 set rate_ranks = NULL
-where rate_ranks = array[null]::INTEGER[];
-
--- recheck
-select count(*)
-FROM diffusion_blocks.block_urdb_rates_ind
-where rate_ranks is null;
--- 50641
+where rate_ids is null;
 
 -- where are they?
 select distinct b.state_abbr
