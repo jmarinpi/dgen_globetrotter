@@ -26,7 +26,8 @@ select  a.pgid,
 	n.j,
 	n.icf/10 as cf_bin,
 	k.ulocale,
-	l.ranked_rate_ids,
+	l.rate_ids,
+	l.rate_ranks,
 	g.hdf_load_index
 from diffusion_blocks.blocks_com a
 LEFT JOIN diffusion_blocks.block_canopy_height b

@@ -1626,7 +1626,8 @@ def find_rates_new(schema, sector_abbr, county_chunks, seed, npar, pg_conn_strin
                 WITH a AS
                 (
                     	SELECT a.*,
-                    		unnest(ranked_rate_ids) as rate_id_alias, generate_series(1, array_length(ranked_rate_ids, 1)) as rate_rank
+                    		unnest(rate_ids) as rate_id_alias, 
+                              unnest(rate_ranks) as rate_rank
                     	FROM %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s a
                 ),
                 b AS
