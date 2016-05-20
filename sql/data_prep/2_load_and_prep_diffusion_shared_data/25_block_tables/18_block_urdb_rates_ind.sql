@@ -77,7 +77,7 @@ FROM diffusion_blocks.block_urdb_rates_ind;
 select count(*)
 FROM diffusion_blocks.block_urdb_rates_ind
 where ranked_rate_ids = array[null]::INTEGER[];
--- 10473266
+-- 50641
 
 -- change to actual nulls
 UPDATE diffusion_blocks.block_urdb_rates_ind

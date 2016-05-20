@@ -58,7 +58,6 @@ select parsel_2('dav-gis', 'mgleason', 'mgleason',
 			'diffusion_blocks.block_urdb_rates_res', 'a', 16);
 -----------------------------------------------------------------------------------------------------------
 -- add primary key
--- ** START HERE
 ALTER TABLE diffusion_blocks.block_urdb_rates_res 
 ADD PRIMARY KEY (pgid);
 
