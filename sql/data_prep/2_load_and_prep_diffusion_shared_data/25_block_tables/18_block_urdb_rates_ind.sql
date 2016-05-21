@@ -91,7 +91,7 @@ where rate_ids = array[null]::INTEGER[];
 -- recheck
 select count(*)
 FROM diffusion_blocks.block_urdb_rates_ind
-where ranked_rate_ids is null;
+where rate_ids is null;
 -- 50641
 
 -- fix rate ranks too

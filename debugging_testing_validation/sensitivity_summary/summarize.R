@@ -23,7 +23,8 @@ summarize_outputs = function(output_files_list){
                 first_year_bill_without_system = mean(first_year_bill_without_system),
                 first_year_bill_with_system = mean(first_year_bill_with_system),
                 turbine_height_m = mean(turbine_height_m),
-                total_value_of_incentives = mean(total_value_of_incentives)
+                total_value_of_incentives = mean(total_value_of_incentives),
+                npv4 = mean(npv4)
                 
       ) %>% 
       as.data.frame()
@@ -39,14 +40,16 @@ summarize_outputs = function(output_files_list){
   return(all_sf)
 }
 
-setwd('/Volumes/gispgdb.nrel.gov/github/diffusion/runs/results_block_microdata_co_flat_rates_fix')
+setwd('/Volumes/gispgdb.nrel.gov/github/diffusion/runs/results_block_microdata_co_complex_rates_fix')
+# setwd('/Volumes/gispgdb.nrel.gov/github/diffusion/runs/results_block_microdata_co_flat_rates_fix')
 all_files = list.files(recursive = T)
 outputs_wind_blocks = all_files[grepl('*/outputs_wind.csv.gz',all_files)]
 outputs_solar_blocks = all_files[grepl('*/outputs_solar.csv.gz',all_files)]
 sf_wind_blocks = summarize_outputs(outputs_wind_blocks)
 sf_solar_blocks = summarize_outputs(outputs_solar_blocks)
 
-setwd('/Volumes/gispgdb.nrel.gov/github/diffusion/runs/results_point_microdata_co_flat_rates')
+setwd('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_point_microdata_sensitivity')
+# setwd('/Volumes/gispgdb.nrel.gov/github/diffusion/runs/results_point_microdata_co_flat_rates')
 all_files = list.files(recursive = T)
 outputs_wind_points = all_files[grepl('*/outputs_wind.csv.gz',all_files)]
 outputs_solar_points = all_files[grepl('*/outputs_solar.csv.gz',all_files)]
@@ -94,7 +97,10 @@ ggplot() +
   geom_boxplot(data = sf_solar_points, aes(x = 1, y = total_value_of_incentives)) +
   geom_boxplot(data = sf_solar_blocks, aes(x = 2, y = total_value_of_incentives)) +
   facet_wrap(~sector, scales = 'free')
-
+ggplot() +
+  geom_boxplot(data = sf_solar_points, aes(x = 1, y = npv4)) +
+  geom_boxplot(data = sf_solar_blocks, aes(x = 2, y = npv4)) +
+  facet_wrap(~sector, scales = 'free')
 
 
 
@@ -132,6 +138,10 @@ ggplot() +
 ggplot() +
   geom_boxplot(data = sf_wind_points, aes(x = 1, y = total_value_of_incentives)) +
   geom_boxplot(data = sf_wind_blocks, aes(x = 2, y = total_value_of_incentives)) +
+  facet_wrap(~sector, scales = 'free')
+ggplot() +
+  geom_boxplot(data = sf_wind_points, aes(x = 1, y = npv4)) +
+  geom_boxplot(data = sf_wind_blocks, aes(x = 2, y = npv4)) +
   facet_wrap(~sector, scales = 'free')
 
 
