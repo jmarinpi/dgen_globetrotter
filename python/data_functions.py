@@ -835,8 +835,7 @@ def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year,
     create_nem_scenario(cur, con, schema)                    
     
     # break counties into subsets for parallel processing
-    # ** NEW
-    county_chunks, npar = split_counties_new(cur, schema, npar)    
+    county_chunks, npar = split_counties(cur, schema, npar)    
     
     for sector_abbr, sector in sectors.iteritems():
         with utilfunc.Timer() as t:
@@ -845,15 +844,13 @@ def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year,
             #==============================================================================
             #     sample customer locations and load. and link together    
             #==============================================================================
-            # ** NEW
-            sample_customers_and_load_new(schema, sector_abbr, county_chunks, n_bins, seed, npar, pg_conn_string)
+            sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, npar, pg_conn_string)
             
             #==============================================================================
             #     get rate for each agent
             #==============================================================================
             rate_structure = rate_structures[sector_abbr]
-            # ** NEW
-            find_rates_new(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, rate_structure, techs)
+            find_rates(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, rate_structure, techs)
             
             #==============================================================================
             #     run the portions that are technology specific
@@ -1111,25 +1108,6 @@ def split_counties(cur, schema, npar):
     inputs = locals().copy()      
     
     # get list of counties
-    sql =   """SELECT county_id 
-               FROM %(schema)s.counties_to_model
-               ORDER BY county_id;""" % inputs
-    cur.execute(sql)
-    counties = [row['county_id'] for row in cur.fetchall()]
-    
-    if len(counties) > npar:
-        county_chunks = map(list,np.array_split(counties, npar))
-    else:
-        county_chunks = [counties]
-        npar = 1
-    
-    return county_chunks, npar
-
-def split_counties_new(cur, schema, npar):
-    # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()      
-    
-    # get list of counties
     sql =   """SELECT a.county_id 
                FROM diffusion_blocks.county_geoms a
                INNER JOIN %(schema)s.states_to_model b
@@ -1148,165 +1126,6 @@ def split_counties_new(cur, schema, npar):
 
 
 def sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, npar, pg_conn_string):
-
-
-    inputs_dict = locals().copy()
-    
-    inputs_dict['i_place_holder'] = '%(i)s'
-    inputs_dict['chunk_place_holder'] = '%(county_ids)s'
-    inputs_dict['load_where'] = " AND '%s' = b.sector_abbr" % sector_abbr
-
-    # lookup table for finding the normalized max demand
-    inputs_dict['load_demand_lkup'] = 'diffusion_load_profiles.energy_plus_max_normalized_demand'
-    if sector_abbr == 'res':
-        inputs_dict['load_region'] = 'reportable_domain'
-    else:
-        inputs_dict['load_region'] = 'census_division_abbr'
-        
-    #==============================================================================
-    #     randomly sample  N points from each county 
-    #==============================================================================    
-    # (note: some counties will have fewer than N points, in which case, all are returned) 
-    msg = '\tSampling from Point Microdata for Each County'
-    logger.info(msg)
-    t0 = time.time() 
-    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s;
-             CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s AS
-            WITH b as 
-            (
-                SELECT unnest(diffusion_shared.sample(array_agg(a.micro_id ORDER BY a.micro_id),%(n_bins)s,%(seed)s,True,array_agg(a.point_weight ORDER BY a.micro_id))) as micro_id
-                FROM diffusion_points.point_microdata_%(sector_abbr)s_us a
-                WHERE a.county_id IN (%(chunk_place_holder)s)
-                GROUP BY a.county_id
-            )
-                
-            SELECT a.*, ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.micro_id) as bin_id
-            FROM %(schema)s.point_microdata_%(sector_abbr)s_us_joined a
-            INNER JOIN b
-            ON a.micro_id = b.micro_id
-            WHERE a.county_id IN (%(chunk_place_holder)s);""" % inputs_dict
-
-    p_run(pg_conn_string, sql, county_chunks, npar)
-    logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
-
-    #==============================================================================
-    #    create lookup table with random values for each load bin 
-    #==============================================================================
-    msg = "\tSampling from Load Microdata"
-    logger.info(msg)
-    t0 = time.time()
-    
-    
-    sql =  """DROP TABLE IF EXISTS %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s;
-         CREATE UNLOGGED TABLE %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s AS
-         WITH all_bins AS
-         (
-             SELECT a.county_id, 
-                     b.load_id, b.weight, b.ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft, b.ownocc8
-             FROM %(schema)s.counties_to_model a
-             LEFT JOIN diffusion_shared.cbecs_recs_combined b
-                 ON a.%(load_region)s = b.%(load_region)s
-             WHERE a.county_id in  (%(chunk_place_holder)s)
-                   %(load_where)s
-        ),
-        sampled_bins AS 
-        (
-            SELECT a.county_id, 
-                    unnest(diffusion_shared.sample(array_agg(a.load_id ORDER BY a.load_id),%(n_bins)s,%(seed)s * a.county_id,True,array_agg(a.weight ORDER BY a.load_id))) as load_id
-            FROM all_bins a
-            GROUP BY a.county_id
-        ), 
-        numbered_samples AS
-        (
-            SELECT a.county_id, a.load_id,
-                   ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.load_id) as bin_id 
-            FROM sampled_bins a
-        )
-        SELECT  a.county_id, a.bin_id,
-                    b.load_id, b.weight, b.ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft, b.ownocc8
-        FROM numbered_samples a
-        LEFT JOIN diffusion_shared.cbecs_recs_combined b
-        ON a.load_id = b.load_id
-        %(load_where)s ;""" % inputs_dict
-    p_run(pg_conn_string, sql, county_chunks, npar)
-    
-    # add an index on county id and row_number
-    sql = """CREATE INDEX county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s_join_fields_btree 
-            ON %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s USING BTREE(county_id, bin_id);
-            CREATE INDEX county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s_crb_model_btree 
-            ON %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s USING BTREE(crb_model);""" % inputs_dict
-    p_run(pg_conn_string, sql, county_chunks, npar)
-    logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
-   
-    #==============================================================================
-    #     link each point to a load bin
-    #==============================================================================
-    # use random weighted sampling on the load bins to ensure that countyies with <N points
-    # have a representative sample of load bins 
-    msg = '\tJoining Point and Load Samples'    
-    logger.info(msg)
-    t0 = time.time()
-    sql =  """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s;
-            CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s AS
-            WITH binned as
-            (
-                SELECT a.*, b.crb_model, b.ann_cons_kwh, b.weight as eia_weight, 
-                       CASE WHEN b.roof_sqft < 5000 THEN 'small'::character varying(6)
-                            WHEN b.roof_sqft >= 5000 and b.roof_sqft < 25000 THEN 'medium'::character varying(6)
-                            WHEN b.roof_sqft >= 25000 THEN 'large'::character varying(6)
-                        END as bldg_size_class,
-                        b.roof_sqft, b.roof_style, b.ownocc8,
-                    	a.county_total_customers_2011 * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
-                    	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_%(i_place_holder)s a
-                LEFT JOIN %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s b
-                    ON a.county_id = b.county_id
-                    AND a.bin_id = b.bin_id
-                WHERE county_total_load_mwh_2011 > 0
-            )
-            SELECT a.*,
-            	CASE  WHEN a.customers_in_bin > 0 THEN ROUND(a.load_kwh_in_bin/a.customers_in_bin, 0)::BIGINT
-                	ELSE 0::BIGINT
-                  END AS load_kwh_per_customer_in_bin
-            FROM binned a;""" % inputs_dict
-    p_run(pg_conn_string, sql, county_chunks, npar)
-
-    # **** ADD INDICES ****
-    sql = """CREATE INDEX pt_%(sector_abbr)s_sample_load_%(i_place_holder)s_join_fields_btree 
-            ON %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s USING BTREE(hdf_load_index, crb_model);""" % inputs_dict
-    p_run(pg_conn_string, sql, county_chunks, npar)
-    
-    #==============================================================================
-    #     find the max demand for each bin based on the applicable energy plus building model
-    #==============================================================================
-    sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s;
-            CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s AS
-            SELECT a.*, ROUND(b.normalized_max_demand_kw_per_kw * a.load_kwh_per_customer_in_bin, 0)::INTEGER AS max_demand_kw
-            FROM %(schema)s.pt_%(sector_abbr)s_sample_load_%(i_place_holder)s a
-            LEFT JOIN %(load_demand_lkup)s b
-            ON a.crb_model = b.crb_model
-            AND a.hdf_load_index = b.hdf_index;""" % inputs_dict
-    p_run(pg_conn_string, sql, county_chunks, npar)
-           
-
-    # add indices on: max_demand_kw, state_abbr, ranked_rate_array_id
-    sql = """CREATE INDEX pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s_pkey_btree 
-            ON %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s USING BTREE(county_id, bin_id);
-            
-            CREATE INDEX pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s_max_demand_kw_btree 
-            ON %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s USING BTREE(max_demand_kw);
-            
-            CREATE INDEX pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s_state_abbr_btree 
-            ON %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s USING BTREE(state_abbr);
-            
-            CREATE INDEX pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s_ranked_rate_array_id_btree 
-            ON %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s USING BTREE(ranked_rate_array_id);
-            """ % inputs_dict
-    p_run(pg_conn_string, sql, county_chunks, npar)
-    logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
-
-
-def sample_customers_and_load_new(schema, sector_abbr, county_chunks, n_bins, seed, npar, pg_conn_string):
 
 
     inputs_dict = locals().copy()
@@ -1469,144 +1288,8 @@ def sample_customers_and_load_new(schema, sector_abbr, county_chunks, n_bins, se
     p_run(pg_conn_string, sql, county_chunks, npar)
     logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
 
+    
 def find_rates(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, rate_structure, techs):
-
-    inputs_dict = locals().copy()
-    inputs_dict['i_place_holder'] = '%(i)s'
-    inputs_dict['chunk_place_holder'] = '%(county_ids)s'
-    
-    logger.info("\tSelecting Rates for Each Agent")
-    t0 = time.time()
-    excluded_rates = pd.read_csv('./excluded_rates_ids.csv', header=None)
-    inputs_dict['excluded_rate_ids'] = '(' + ', '.join([str(i[0]) for i in excluded_rates.values]) + ')'
-
-    if rate_structure.lower() == 'complex rates':
-        # find the highest ranked applicable rate for each point (based on max demand kw and state)
-        # (note: this may return multiple rates for a single point)
-        sql =   """
-                DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_applicable_rates_%(i_place_holder)s;
-                CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_applicable_rates_%(i_place_holder)s AS
-                WITH a AS
-                (
-                    	SELECT a.county_id, a.bin_id, 
-                    		b.rate_id_alias,
-                              b.rate_type,
-                              b.pct_of_customers,
-                    		c.rank as rate_rank
-                    	FROM %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s a
-                    	LEFT JOIN diffusion_shared.urdb_rates_by_state_%(sector_abbr)s b
-                                	ON a.max_demand_kw <= b.urdb_demand_max
-                                	AND a.max_demand_kw >= b.urdb_demand_min
-                                	AND a.state_abbr = b.state_abbr
-                    	LEFT JOIN diffusion_shared.ranked_rate_array_lkup_%(sector_abbr)s c
-                    	ON a.ranked_rate_array_id = c.ranked_rate_array_id
-                    	AND b.rate_id_alias = c.rate_id_alias
-                        WHERE b.rate_id_alias NOT IN %(excluded_rate_ids)s
-                    ),
-                b as
-                (
-                    	SELECT *, rank() OVER (PARTITION BY county_id, bin_id ORDER BY rate_rank ASC) as rank
-                    	FROM a
-                )
-                SELECT b.*, COALESCE(b.pct_of_customers, c.%(sector_abbr)s_weight) as rate_type_weight
-                FROM b 
-                LEFT JOIN %(schema)s.input_main_market_rate_type_weights c
-                ON b.rate_type = c.rate_type
-                WHERE b.rank = 1;""" % inputs_dict
-        p_run(pg_conn_string, sql, county_chunks, npar)
-        
-        # add indices on county id, bin id
-        sql = """
-                CREATE INDEX pt_%(sector_abbr)s_sample_load_applicable_rates_%(i_place_holder)s_pkey_btree 
-                ON %(schema)s.pt_%(sector_abbr)s_sample_load_applicable_rates_%(i_place_holder)s USING BTREE(county_id, bin_id);
-              """ % inputs_dict
-        p_run(pg_conn_string, sql, county_chunks, npar)
-        
-        # deal with multiple equally ranked rates for a single point
-        # (randomly select for now -- in the future, we will randomly select with weights based on rate type)
-        sql =   """
-                DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s;
-                CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s AS
-                WITH a AS
-                (
-                    SELECT a.county_id, a.bin_id,
-                            unnest(diffusion_shared.sample(array_agg(a.rate_id_alias ORDER BY a.rate_id_alias), 1, 
-                                          (%(seed)s * a.county_id * a.bin_id), False,
-                                          array_agg(a.rate_type_weight ORDER BY a.rate_id_alias))) as rate_id_alias
-                    FROM %(schema)s.pt_%(sector_abbr)s_sample_load_applicable_rates_%(i_place_holder)s a
-                    GROUP BY a.county_id, a.bin_id
-                )
-                SELECT b.*, a.rate_id_alias, 'urdb3'::CHARACTER VARYING(5) as rate_source
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s b
-                LEFT JOIN a
-                ON a.county_id = b.county_id
-                AND a.bin_id = b.bin_id;""" % inputs_dict
-        p_run(pg_conn_string, sql, county_chunks, npar)
-
-    elif rate_structure.lower() == 'flat (annual average)':
-        # flat annual average rate ids are already stored in the demandmax table as county_id
-        # we simply need to duplicate and rename that field to rate_id_alias and specify the rate_source
-        sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s;
-                CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s AS
-                SELECT b.*, b.county_id as rate_id_alias, 'aa%(sector_abbr)s'::CHARACTER VARYING(5) as rate_source
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s b;""" % inputs_dict
-        p_run(pg_conn_string, sql, county_chunks, npar)
-                     
-    elif rate_structure.lower() == 'flat (user-defined)':
-        # user-defined rates are id'ed based on the state_fips, which is already stored in the demandmax table
-        # we simply need to duplicate and rename that field to rate_id_alias and specify the rate_source
-        sql = """DROP TABLE IF EXISTS %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s;
-                CREATE UNLOGGED TABLE %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s AS
-                SELECT b.*, b.state_fips as rate_id_alias, 'ud%(sector_abbr)s'::CHARACTER VARYING(5) as rate_source
-                FROM %(schema)s.pt_%(sector_abbr)s_sample_load_demandmax_%(i_place_holder)s b;""" % inputs_dict
-        p_run(pg_conn_string, sql, county_chunks, npar)
-
-    
-    ###############################################################################################
-    # regardless of the rate structure, the output table needs indices added for subsequent queries
-    if 'wind' in inputs_dict['techs']:    
-        # add index for exclusions (if they apply)
-        sql =  """  CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_acres_per_bldg_btree 
-                    ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
-                    USING btree(acres_per_bldg);
-                    
-                    CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_canopy_pct_btree 
-                    ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
-                    USING btree(canopy_pct);
-                    
-                    CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_canopy_ht_m_btree 
-                    ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s 
-                    USING btree(canopy_ht_m);""" % inputs_dict                                  
-        p_run(pg_conn_string, sql, county_chunks, npar)
-        
-    if 'solar' in inputs_dict['techs']:  
-        # add an index on county id and row_number
-        sql = """CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_join_fields_btree 
-                ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s USING BTREE(county_id, bin_id);
-                
-                CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_bldg_size_class_btree 
-                ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s USING BTREE(bldg_size_class);          
-                
-                CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_ulocale_btree 
-                ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s USING BTREE(ulocale);   
-                
-                CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_county_id_btree 
-                ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s USING BTREE(county_id);   
-                
-                CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_bin_id_btree 
-                ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s USING BTREE(bin_id);   
-                
-                CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_roof_style_btree 
-                ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s USING BTREE(roof_style); 
-                
-                CREATE INDEX pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s_state_abbr_btree 
-                ON %(schema)s.pt_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s USING BTREE(state_abbr);""" % inputs_dict
-        p_run(pg_conn_string, sql, county_chunks, npar)
-
-    logger.info('\t\tCompleted in: %0.1fs' %(time.time() - t0))  
-    
-    
-def find_rates_new(schema, sector_abbr, county_chunks, seed, npar, pg_conn_string, rate_structure, techs):
 
     inputs_dict = locals().copy()
     inputs_dict['i_place_holder'] = '%(i)s'
