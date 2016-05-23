@@ -57,6 +57,7 @@ install.packages('xtable', repos = 'http://cran.us.r-project.org')
 install.packages('jsonlite', repos = 'http://cran.us.r-project.org')
 install.packages('scales', repos = 'http://cran.us.r-project.org')
 install.packages('knitr', repos = 'http://cran.us.r-project.org')
+install.packages('gridExtra', repos = 'http://cran.us.r-project.org')
 install.packages("RPostgreSQL", repos = 'http://cran.us.r-project.org', type = 'source')
 
 
