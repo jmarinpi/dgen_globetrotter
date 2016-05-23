@@ -40,6 +40,7 @@ summarize_outputs = function(output_files_list){
   return(all_sf)
 }
 
+# setwd('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_ny_complex_rates_blocks')
 setwd('/Volumes/gispgdb.nrel.gov/github/diffusion/runs/results_block_microdata_co_complex_rates_fix')
 # setwd('/Volumes/gispgdb.nrel.gov/github/diffusion/runs/results_block_microdata_co_flat_rates_fix')
 all_files = list.files(recursive = T)
@@ -48,6 +49,7 @@ outputs_solar_blocks = all_files[grepl('*/outputs_solar.csv.gz',all_files)]
 sf_wind_blocks = summarize_outputs(outputs_wind_blocks)
 sf_solar_blocks = summarize_outputs(outputs_solar_blocks)
 
+# setwd('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_ny_complex_rates_pts')
 setwd('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_point_microdata_sensitivity')
 # setwd('/Volumes/gispgdb.nrel.gov/github/diffusion/runs/results_point_microdata_co_flat_rates')
 all_files = list.files(recursive = T)
