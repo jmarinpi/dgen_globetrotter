@@ -1502,7 +1502,7 @@ def assign_roof_characteristics(inputs_dict, county_chunks, npar, pg_conn_string
                 (
                     	SELECT a.*, b.city_id, b.rank as city_rank
                     	FROM %(schema)s.block_%(sector_abbr)s_sample_load_selected_rate_%(i_place_holder)s a
-                    	LEFT JOIN diffusion_solar.rooftop_city_ranks_by_county_and_ulocale_%(sector_abbr)s_blocks b -- # ** NEW
+                    	LEFT JOIN diffusion_solar.rooftop_city_ranks_by_county_and_ulocale_%(sector_abbr)s b -- # ** NEW
                     		ON a.county_id = b.county_id
                     		and a.ulocale = b.ulocale
                     	INNER JOIN diffusion_solar.rooftop_city_ulocale_zone_size_class_lkup c
