@@ -6,7 +6,17 @@ year_colors = c("2014" = '#fd8d3c', '2020' = '#fc4e2a', '2030' = '#e31a1c', '204
 turb_size_fil <- c('Small: < 50 kW' = "#a1dab4", 'Mid: 51 - 500 kW' = "#41b6c4", 'Large: 501 - 3,000 kW' = "#253494") 
 # ======================= DATA FUNCTIONS =================================================
 
-ggsave <- ggplot2::ggsave; body(ggsave) <- body(ggplot2::ggsave)[-2]
+# hack ggsave to skip checking of input plot type
+# (only necessary up to version 2.0.0)
+sI = sessionInfo()
+ggplot_major_version = as.integer((strsplit(sI$otherPkgs$ggplot2$Version, '.', fixed = T))[[1]][1])
+if (ggplot_major_version < 2){
+  ggsave_hack = function(){}
+  body(ggsave_hack) = body(ggplot2::ggsave)[-2]
+  environment(ggsave_hack) = asNamespace('ggplot2')
+} else{
+  ggsave_hack = ggplot2::ggsave
+}
 
 standard_formatting = theme_few() +
   theme(strip.text = element_text(size = 14, face = 'bold')) +
