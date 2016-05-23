@@ -1,7 +1,7 @@
 ﻿set role 'diffusion-writers';
 
-DROP TABLE IF EXISTS diffusion_blocks.county_bldg_counts_by_type;
-CREATE TABLE diffusion_blocks.county_bldg_counts_by_type AS
+DROP TABLE IF EXISTS diffusion_blocks.county_bldg_sqft_by_type;
+CREATE TABLE diffusion_blocks.county_bldg_sqft_by_type AS
 select substring(tract, 1, 2)  as state_fips,
 	substring(tract,3,3) as county_fips,
 	sum(res1f)*1000 as res1,
@@ -44,7 +44,7 @@ group by substring(tract, 1, 2), substring(tract,3,3);
 ------------------------------------------------------------------------------------------
 -- QAQC
 -- add primary key
-ALTER TABLE diffusion_blocks.county_bldg_counts_by_type
+ALTER TABLE diffusion_blocks.county_bldg_sqft_by_type
 ADD PRIMARY KEY (state_fips, county_fips);
 
 -- how does row count compare to county geoms?
@@ -56,7 +56,7 @@ FROM diffusion_blocks.county_geoms;
 -- are any counties from county geoms missing?
 select count(*)
 from diffusion_blocks.county_geoms a
-LEFT JOIN diffusion_blocks.county_bldg_counts_by_type b
+LEFT JOIN diffusion_blocks.county_bldg_sqft_by_type b
 ON a.county_fips = b.county_fips
 and a.state_fips = b.state_fips
 where b.state_fips is null;
@@ -69,7 +69,7 @@ with a as
 		res4 + res5 + res6 + com1 + com2 + com3 + com4 + com5 + com6 + 
 		com7 + com8 + com9 + com10 + ind1 + ind2 + ind3 + ind4 + ind5 + 
 		ind6 + agr1 + rel1 + gov1 + gov2 + edu1 + edu2 as tot_count
-	from diffusion_blocks.county_bldg_counts_by_type
+	from diffusion_blocks.county_bldg_sqft_by_type
 )
 select count(*)
 FROM a
@@ -84,7 +84,7 @@ with a as
 		res4 + res5 + res6 + com1 + com2 + com3 + com4 + com5 + com6 + 
 		com7 + com8 + com9 + com10 + ind1 + ind2 + ind3 + ind4 + ind5 + 
 		ind6 + agr1 + rel1 + gov1 + gov2 + edu1 + edu2 as tot_count
-	from diffusion_blocks.county_bldg_counts_by_type
+	from diffusion_blocks.county_bldg_sqft_by_type
 ),
 b as
 (

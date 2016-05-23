@@ -37,7 +37,7 @@ select a.state, a.state_fips, a.county, a.county_fips, a.county_id,
 	b.edu1,
 	b.edu2
 from diffusion_blocks.county_geoms a
-LEFT JOIN diffusion_blocks.county_bldg_counts_by_type b
+LEFT JOIN diffusion_blocks.county_bldg_sqft_by_type b
 ON a.county_fips = b.county_fips
 and a.state_fips = b.state_fips;
 
