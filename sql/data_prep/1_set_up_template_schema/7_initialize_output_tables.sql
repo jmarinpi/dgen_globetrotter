@@ -3,7 +3,7 @@
 DROP TABLE IF EXISTS diffusion_template.outputs_res;
 CREATE TABLE diffusion_template.outputs_res
 (
-  micro_id integer,
+  pgid integer,
   county_id integer,
   bin_id integer,
   year integer,
@@ -62,7 +62,7 @@ CREATE INDEX outputs_res_join_fields_btree ON diffusion_template.outputs_res USI
 DROP TABLE IF EXISTS diffusion_template.outputs_com;
 CREATE TABLE diffusion_template.outputs_com
 (
-  micro_id integer,
+  pgid  integer,
   county_id integer,
   bin_id integer,
   year integer,
@@ -121,7 +121,7 @@ CREATE INDEX outputs_com_join_fields_btree ON diffusion_template.outputs_com USI
 DROP TABLE IF EXISTS diffusion_template.outputs_ind;
 CREATE TABLE diffusion_template.outputs_ind
 (
-  micro_id integer,
+  pgid  integer,
   county_id integer,
   bin_id integer,
   year integer,
