@@ -11,7 +11,7 @@ turb_size_fil <- c('Small: < 50 kW' = "#a1dab4", 'Mid: 51 - 500 kW' = "#41b6c4",
 sI = sessionInfo()
 ggplot_major_version = as.integer((strsplit(sI$otherPkgs$ggplot2$Version, '.', fixed = T))[[1]][1])
 if (ggplot_major_version < 2){
-  ggsave_hack = function(){}
+  ggsave_hack = args(ggsave)
   body(ggsave_hack) = body(ggplot2::ggsave)[-2]
   environment(ggsave_hack) = asNamespace('ggplot2')
 } else{
