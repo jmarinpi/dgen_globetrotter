@@ -50,6 +50,7 @@ install.packages("data.table", repos = 'http://cran.us.r-project.org')
 install.packages("rjson", repos = 'http://cran.us.r-project.org')
 install.packages("dplyr", repos = 'http://cran.us.r-project.org')
 install.packages('maps', repos = 'http://cran.us.r-project.org')
+install.packages('ggplot2', repos = 'http://cran.us.r-project.org')
 install.packages('reshape2', repos = 'http://cran.us.r-project.org')
 install.packages('RColorBrewer', repos = 'http://cran.us.r-project.org')
 install.packages('lattice', repos = 'http://cran.us.r-project.org')
@@ -58,8 +59,8 @@ install.packages('jsonlite', repos = 'http://cran.us.r-project.org')
 install.packages('scales', repos = 'http://cran.us.r-project.org')
 install.packages('knitr', repos = 'http://cran.us.r-project.org')
 install.packages('gridExtra', repos = 'http://cran.us.r-project.org')
-install.packages("RPostgreSQL", repos = 'http://cran.us.r-project.org', type = 'source')
-
+install.packages('RPostgreSQL', repos = 'http://cran.us.r-project.org', type = 'source')
+install.packages('ggthemes', repos = 'http://cran.us.r-project.org')
 
 # SET UP GIT SSH KEY
 # create an ssh key
