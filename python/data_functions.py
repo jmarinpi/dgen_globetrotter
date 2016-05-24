@@ -1140,6 +1140,12 @@ def sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, 
         inputs_dict['load_region'] = 'reportable_domain'
     else:
         inputs_dict['load_region'] = 'census_division_abbr'
+      
+    # for commercial customers, due to multi-tenant occupancy, use buildings rather than customers as the unit for agents
+    if sector_abbr == 'com':
+        inputs_dict['county_customer_count'] = 'county_bldg_count_2012'
+    else:
+        inputs_dict['county_customer_count'] = 'county_total_customers_2011'
         
     #==============================================================================
     #     randomly sample  N points from each county 
@@ -1237,7 +1243,7 @@ def sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, 
                             WHEN b.roof_sqft >= 25000 THEN 'large'::character varying(6)
                         END as bldg_size_class,
                         b.roof_sqft, b.roof_style, b.ownocc8,
-                    	a.county_total_customers_2011 * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
+                    	a.%(county_customer_count)s * b.weight/sum(b.weight) OVER (PARTITION BY a.county_id) as customers_in_bin, 
                     	a.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh*b.weight)/sum(b.ann_cons_kwh*b.weight) OVER (PARTITION BY a.county_id) as load_kwh_in_bin
                 FROM %(schema)s.block_%(sector_abbr)s_sample_%(i_place_holder)s a
                 LEFT JOIN %(schema)s.county_load_bins_random_lookup_%(sector_abbr)s_%(i_place_holder)s b
