@@ -16,6 +16,7 @@ select  a.pgid,
 	e.bldg_count_com,
 	ROUND(h.acres_per_bldg, 2) as acres_per_bldg,
 	round(p.total_customers_2011_commercial, 2) as county_total_customers_2011,
+	round(q.bldg_count, 2) as county_bldg_count_2012,
 	round(p.total_load_mwh_2011_commercial, 2) as county_total_load_mwh_2011,
 	round(o.pv_20mw_cap_cost_multplier::NUMERIC, 2) as cap_cost_multiplier_solar,
 	round(o.onshore_wind_cap_cost_multiplier::NUMERIC, 2) as cap_cost_multiplier_wind,
@@ -60,7 +61,9 @@ LEFT JOIN aws_2014.iii_jjj_cfbin_raster_lookup n
 lEFT JOIN diffusion_shared.capital_cost_multipliers_us o
 	ON m.old_county_id = o.county_id
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us p
-	on m.old_county_id = p.county_id;
+	on m.old_county_id = p.county_id
+LEFT JOIN diffusion_shared.commercial_bldgs_count_by_county q
+	ON m.county_id = q.county_id
 -- 2,978,842 rows
 
 -- row count should be:
