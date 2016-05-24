@@ -27,5 +27,6 @@ ALTER GROUP "diffusion-writers" ADD user hlewis;
 ALTER GROUP "diffusion-writers" ADD user pgagnon;
 
 ALTER GROUP "diffusion-admins" ADD user jduckwor;
+ALTER GROUP "diffusion-admins" ADD user bsigrin;
 
 
