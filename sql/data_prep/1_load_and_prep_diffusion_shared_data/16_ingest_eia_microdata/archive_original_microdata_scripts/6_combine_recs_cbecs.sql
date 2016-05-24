@@ -10,6 +10,7 @@ SELECT
 	c.roof_style as roof_style,
 	c.roof_sqft as roof_sqft,
 	c.ownocc8 as ownocc8,
+	c.nocc8 as nocc8,
 	'diffusion_shared.eia_microdata_cbecs_2003' as source_table,
 	unnest(ARRAY['com', 'ind']) as sector_abbr,
 	c.census_division_abbr as census_division_abbr,
@@ -29,6 +30,7 @@ SELECT
 	r.roof_style as roof_style,
 	r.roof_sqft as roof_sqft,
 	1 as ownocc8,
+	1 as nocc8,
 	'diffusion_shared.eia_microdata_recs_2009' as source_table,
 	'res' as sector_abbr,
 	r.census_division_abbr as census_division_abbr,
@@ -49,7 +51,8 @@ COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.ann_cons_kwh IS 'recs.kwh
 COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.crb_model IS 'recs.crb_model or cbecs.crb_model';
 COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.roof_style IS 'recs.roof_style or cbecs.roof_style';
 COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.roof_sqft IS 'recs.roof_sqft or cbecs.roof_sqft';
-COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.ownocc8 IS 'recs.ownocc8 or 1 for cbecs';
+COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.ownocc8 IS 'cbecs.ownocc8 or 1 for recs';
+COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.nocc8 IS 'cbecs.nocc8 or 1 for recs';
 COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.source_table IS 'recs or cbecs source table';
 COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.climate_zone IS 'recs.climate_region_pub or cbecs.climate8';
 COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.sector_abbr IS 'Corresponds to sector_abbr in Python scripts';

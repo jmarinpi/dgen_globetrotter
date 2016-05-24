@@ -122,7 +122,7 @@ UPDATE diffusion_shared.eia_microdata_cbecs_2003 c
 set roof_sqft = b.roof_sqft
 from b
 where c.pubid8 = b.pubid8;
-
+-- 5019 rows
 
 
 -- make sure no nulls

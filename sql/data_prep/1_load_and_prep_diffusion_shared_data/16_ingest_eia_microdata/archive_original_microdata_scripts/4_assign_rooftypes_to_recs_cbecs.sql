@@ -55,8 +55,9 @@ ADD COLUMN roof_style text;
 
 UPDATE diffusion_shared.eia_microdata_cbecs_2003 a
 SET roof_style = b.roof_style
-from diffusion_solar.roof_material_to_roof_style_cbecs b
+from diffusion_data_solar.roof_material_to_roof_style_cbecs b
 where a.rfcns8 = b.rfcns8;
+-- 4712 rows
 
 -- strip malls are null
 select *
@@ -67,9 +68,12 @@ where roof_style is null;
 UPDATE diffusion_shared.eia_microdata_cbecs_2003
 set roof_style = 'flat'
 where crb_model = 'strip_mall';
+-- 395 rows
 
 select distinct(roof_style)
 FROM diffusion_shared.eia_microdata_cbecs_2003;
+-- pitched
+-- flat
 
 ------------------------------------------------------------------------------------------------
 --- add roof style to recs

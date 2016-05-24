@@ -5,6 +5,7 @@ select a.pubid8, a.region8, a.cendiv8, a.climate8,
 	a.pba8,
 	b.pbaplus8,
 	a.ownocc8,
+	a.nocc8,
 	a.sqft8,
 	a.nfloor8,
 	a.rfcns8,
@@ -15,10 +16,12 @@ left join eia.cbecs_2003_microdata_file_02 b
 on a.pubid8 = b.pubid8
 left join eia.cbecs_2003_microdata_file_15 c
 on a.pubid8 = c.pubid8;
+-- 5215 rows
 
 -- drop any records where elcns8 is null
 delete from diffusion_shared.eia_microdata_cbecs_2003
 where elcns8 is null;
+-- 108 rows deleted
 
 -- add primary key
 ALTER TABLE diffusion_shared.eia_microdata_cbecs_2003
@@ -31,11 +34,17 @@ COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.climate8 IS 'Climate
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.pba8 IS 'principal building activity';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.pbaplus8 IS 'More specific building activity';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.ownocc8 IS 'Owner occupies space';
+COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.nocc8 IS 'Number of businesses';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.sqft8 IS 'Square footage';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.nfloor8 IS 'Number of floors';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.rfcns8 IS 'Roof construction material';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.adjwt8 IS 'Final full sample building weight';
 COMMENT ON COLUMN diffusion_shared.eia_microdata_cbecs_2003.elcns8 IS 'Annual electricity consumption (kWh)';
+
+-- check for nocc8 values that are not meaningful
+select max(nocc8)
+FROM diffusion_shared.eia_microdata_cbecs_2003;
+-- 2100 -- all set -- no values above 99996
 
 -- add indices on ownocc8, pba, pbaplus, and climate8
 CREATE INDEX eia_microdata_cbecs_2003_ownocc8_btree
@@ -181,7 +190,7 @@ with a AS
 (
 	SELECT a.pubid8, a.sqft8, b.*
 	FROM diffusion_shared.eia_microdata_cbecs_2003 a
-	LEFT JOIN diffusion_shared_data.cbecs_2003_pba_to_eplus_crbs b
+	LEFT JOIN diffusion_data_shared.cbecs_2003_pba_to_eplus_crbs b
 	ON a.pba8 = b.pba8
 	and a.pbaplus8 = b.pbaplus8
 	where a.pba8 <> 1 -- ignore vacant buildings
