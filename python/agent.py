@@ -30,15 +30,13 @@ class Agent(object):
         # initialize attributes        
         self.from_series(self.data)
         
-        # TODO: add code to assert attributes
+        # TODO(?): add code to assert attribute names and dtypes ()
         self.__assert_attributes__()
         
     def from_series(self, series):
         
-        # TODO: Add check for input data type
         self.data = series
         
-        # TODO: change this from dynamic assignment of inidividual attirbutes to manual
         for k, v in self.data.iteritems():
             self.__setattr__(k, v)
         
@@ -49,7 +47,8 @@ class Agent(object):
         
     def __assert_attributes__(self):
         
-        # assert(isinstance(...))
+        # TODO(?): add code to assert attribute names and dtypes ()
+        # note: this is not essential at this point 
         pass
     
     def to_series(self):
@@ -68,20 +67,16 @@ class Agents(object):
         if isinstance(iterable, list):
             if np.all([str(i.__class__) == str(Agent) for i in iterable]):        
                 self.dataframe = pd.concat([i.data for i in iterable], axis = 1, ignore_index = True).T
-#                self.population = iterable
             elif np.all([isinstance(i, pd.Series) for i in iterable]):   
                 self.dataframe = pd.concat(iterable, axis = 1, ignore_index = True).T
-#                self.population = [Agent(i) for i in iterable]
             elif np.all([isinstance(i, pd.DataFrame) for i in iterable]):       
                 self.dataframe = pd.concat(iterable, axis = 0, ignore_index = True)
-#                self.population = list(np.ravel([[Agent(i) for i in x] for x in iterable]))
             else:
                 raise ValueError('iterable must be one of: pandas.DataFrame, list of Agents, list of pandas.Series, or list of pandas.DataFrame')
                 
         elif isinstance(iterable, pd.DataFrame):
             self.dataframe = iterable
         
-        # TODO: add code for loading agent settings???
         
     def as_dataframes(self, num_dataframes):
 
@@ -89,19 +84,23 @@ class Agents(object):
         
         return dataframes
     
+    
     def add_agent(self, agent):
 
         self.dataframe = pd.concat([self.dataframe, pd.DataFrame(agent.data).T], axis = 0, ignore_index = False)
         
         pass
 
-    def get_population(self):
+
+    def get_agents(self):
         
         return [Agent(i[1]) for i in self.dataframe.iterrows()]
+    
     
     def get_agent(self, i):
         
         return Agent(self.dataframe.ix[i])
+    
     
 class AgentSettings(object):
     
@@ -112,12 +111,14 @@ class AgentSettings(object):
     
 class AgentsAlgorithm(object):
     
-    def __init__(self, agents, in_schema = None, out_schema = None, debug_mode = False, debug_directory = None):
+    def __init__(self, agents, agent_settings = None, in_schema = None, out_schema = None, debug_mode = False, debug_directory = None):
         
         self.agents = agents
+        self.agent_settings = agent_settings
         self.debug_mode = debug_mode
         self.debug_directory = debug_directory
         self.in_rows= self.agents.dataframe.shape[0]
+        self.agent_settings = agent_settings
         
 
         if in_schema is None:
@@ -160,9 +161,6 @@ class AgentsAlgorithm(object):
         result_rows = result_agents.dataframe.shape[0]
         if result_rows <> self.in_rows:
             raise ValueError('postcheck failed due to change in number of agents')
-
-
-        
         
     def pickle(self, out_directory):
 
@@ -247,10 +245,10 @@ agents = Agents(df)
 agent = agents.get_agent(0)
 
 aa = AgentsAlgorithm(agents)
-aa.compute(1)
+#aa.compute(1)
 
 
-newagents = SystemSizeSelector(agents).compute()
+newagents = SystemSizeSelector(agents, debug_mode = True, debug_directory = '/Users/mgleason/Desktop').compute()
 
 
 
