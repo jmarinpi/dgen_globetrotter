@@ -65,9 +65,16 @@ DROP SCHEMA IF EXISTS diffusion_blocks cASCADE;
 ------------------------------------------------------------------------------------------------
 -- Step 3:
 -- copy dgen_db_base to a new database on bigde that will be built out with the full datasets
+
+-- archive the existing dgen_db if necessary
+-- ALTER DATABASE dgen_db RENAME TO dgen_db_tag_1p5p2;
+-- or drop it (if necessary)
+DROP DATABASE dgen_db;
+-- copy dgen_db_base to a new database on bigde that will be built out with the full datasets
 -- ssh to dnpdb001.bigde.nrel.gov
 -- start a screen session and connect to psotgres:
 	-- psql -d dgen_db_tag_1p4 -U mgleason_su -p 5433
+
 CREATE DATABASE dgen_db WITH TEMPLATE dgen_db_base;
 	-- note: this may take about 25 minutes
 	
