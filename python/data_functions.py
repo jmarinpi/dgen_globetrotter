@@ -2,7 +2,7 @@
 """
 Functions for pulling data
 Created on Mon Mar 24 08:59:44 2014
-@author: bsigrin
+@author: mgleason and bsigrin
 """
 import psycopg2 as pg
 import time   
@@ -315,33 +315,7 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
         # commit the additions and close the stringio file (clears memory)
         con.commit()    
         s.close()
-     
-def p_execute(pg_conn_string, sql):
-    try:
-        # create cursor and connection
-        con, cur = utilfunc.make_con(pg_conn_string)  
-        # execute query
-        cur.execute(sql)
-        # commit changes
-        con.commit()
-        # close cursor and connection
-        con.close()
-        cur.close()
-    except Exception, e:
-        print 'Error: %s' % e
 
-    
-def p_run(pg_conn_string, sql, county_chunks, npar):
-    
-    jobs = []
-    for i in range(npar):
-        place_holders = {'i': i, 'county_ids': utilfunc.pylist_2_pglist(county_chunks[i])}
-        isql = sql % place_holders
-        proc = Process(target = p_execute, args = (pg_conn_string, isql))
-        jobs.append(proc)
-        proc.start()
-    for job in jobs:
-        job.join()   
 
 def combine_outputs_wind(schema, sectors, cur, con):
     
@@ -814,6 +788,9 @@ def copy_deployment_summary_to_csv(schema, out_scen_path, cur, con):
     f.close()
 
 
+
+
+#%%
 def generate_customer_bins(cur, con, techs, schema, n_bins, sectors, start_year, end_year,
                            npar, pg_conn_string, scenario_opts):
                                
@@ -1103,26 +1080,7 @@ def calc_utility_bills(cur, con, schema, sectors, techs, npar, pg_conn_string, g
 ########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
-def split_counties(cur, schema, npar):
-    # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()      
-    
-    # get list of counties
-    sql =   """SELECT a.county_id 
-               FROM diffusion_blocks.county_geoms a
-               INNER JOIN %(schema)s.states_to_model b
-                   ON a.state_abbr = b.state_abbr
-               ORDER BY a.county_id;""" % inputs
-    cur.execute(sql)
-    counties = [row['county_id'] for row in cur.fetchall()]
-    
-    if len(counties) > npar:
-        county_chunks = map(list,np.array_split(counties, npar))
-    else:
-        county_chunks = [counties]
-        npar = 1
-    
-    return county_chunks, npar
+
 
 
 def sample_customers_and_load(schema, sector_abbr, county_chunks, n_bins, seed, npar, pg_conn_string):
