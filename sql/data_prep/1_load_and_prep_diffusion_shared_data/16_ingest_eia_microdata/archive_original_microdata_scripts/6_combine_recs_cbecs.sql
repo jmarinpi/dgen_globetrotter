@@ -3,7 +3,7 @@
 DROP VIEW IF EXISTS diffusion_shared.cbecs_recs_combined;
 CREATE OR REPLACE VIEW diffusion_shared.cbecs_recs_combined AS
 SELECT 
-	c.pubid8 as load_id,
+	c.pubid8 as bldg_id,
 	c.adjwt8 as weight,
 	c.elcns8 as ann_cons_kwh,
 	c.crb_model as crb_model,
@@ -23,7 +23,7 @@ WHERE c.pba8 <> 1
 UNION ALL
 
 SELECT 
-	r.doeid as load_id,
+	r.doeid as bldg_id,
 	r.nweight as weight,
 	r.kwh as ann_cons_kwh,
 	r.crb_model as crb_model,
@@ -45,7 +45,7 @@ Combined data from eia_microdata_cbecs_2003 and eia_microdata_recs_2009 with sta
 See column-level comments for relationship to original field names
 ''';
 
-COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.load_id IS 'recs.doeid or cbecs.pubid8';
+COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.bldg_id IS 'recs.doeid or cbecs.pubid8';
 COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.weight IS 'recs.nweight or cbecs.adjwt8';
 COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.ann_cons_kwh IS 'recs.kwh or cbecs.elcns8';
 COMMENT ON COLUMN diffusion_shared.cbecs_recs_combined.crb_model IS 'recs.crb_model or cbecs.crb_model';

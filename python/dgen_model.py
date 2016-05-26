@@ -21,8 +21,12 @@ import glob
 # ---------------------------------------------
 # order of the next 3 needs to be maintained
 # otherwise the logger may not work correctly
+# (I think the order needs to follow the order 
+# in which each module is used in __main__)
 import data_functions as datfunc
 reload(datfunc)
+import agent_preparation as agent_prep
+reload(agent_prep)
 import diffusion_functions as diffunc
 reload(diffunc)
 import financial_functions as finfunc
@@ -37,6 +41,7 @@ from excel import excel_functions
 import tech_choice
 import reeds_functions as reedsfunc
 import utility_functions as utilfunc
+
 
 #==============================================================================
 # raise  numpy and pandas warnings as exceptions
@@ -102,10 +107,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                             
         # check that number of customer bins is in the acceptable range
-        if type(cfg.customer_bins) <> int:
-            raise ValueError("""Error: customer_bins in config.py must be of type integer.""") 
-        if cfg.customer_bins <= 0:
-            raise ValueError("""Error: customer_bins in config.py must be a positive integer.""") 
+        if type(cfg.agents_per_region) <> int:
+            raise ValueError("""Error: agents_per_region in config.py must be of type integer.""") 
+        if cfg.agents_per_region <= 0:
+            raise ValueError("""Error: agents_per_region in config.py must be a positive integer.""") 
         
         
         # create the logger
@@ -238,9 +243,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # CREATE AGENTS
                     #==========================================================================================================
                     logger.info("--------------Creating Agents---------------")
-                    datfunc.generate_customer_bins(cur, con, techs, schema, cfg.customer_bins, sectors, cfg.start_year, 
-                                                   end_year, cfg.npar, cfg.pg_conn_string, scenario_opts)
-        
+                    agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.agents_per_region, sectors,
+                                            cfg.pg_procs, cfg.pg_conn_string, scenario_opts)
+                    crash
                     #==========================================================================================================
                     # CHECK TECH POTENTIAL
                     #==========================================================================================================           

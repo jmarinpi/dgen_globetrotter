@@ -37,7 +37,7 @@ pg_params_log = json.dumps(json.loads(pd.DataFrame([pg_params])[['host', 'port',
 #==============================================================================
 #   set the number of customer bins to model in each county
 #==============================================================================
-customer_bins = 5
+agents_per_region = 5
 
 #==============================================================================
 #   model start year
@@ -58,7 +58,7 @@ if Rscript_path == None:
 #==============================================================================
 #   set number of parallel processes to run postgres queries (this is ignored if parallelize = F)
 #==============================================================================
-npar = 8
+pg_procs = 8
 
 #==============================================================================
 #   local cores
