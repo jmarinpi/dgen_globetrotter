@@ -119,7 +119,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, agents_per_region, s
                 
                 # WIND
                 determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, schema, sector_abbr)
-                find_potential_turbine_sizes(county_chunks, pool, pg_conn_string, schema, sector_abbr)
+                find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, schema, sector_abbr)
     
                 #==============================================================================
                 #     combine all pieces into a single table
@@ -127,6 +127,11 @@ def generate_core_agent_attributes(cur, con, techs, schema, agents_per_region, s
                 combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr)
     
 
+        #==============================================================================
+        #    drop the intermediate tables
+        #==============================================================================
+        cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, cur, con, pool)
+        
     finally:
         # close the multiprocessing pool
         pool.close() 
@@ -476,7 +481,7 @@ def simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, sche
                 	GROUP BY a.county_id, a.bin_id
             )
             SELECT a.county_id, a.bin_id, 
-                    c.tilt, c.azimuth, e.pct_developable,
+                    c.tilt, c.azimuth, e.pct_developable as pct_of_bldgs_developable,
                     c.slopearea_m2_bin * 10.7639 * d.gcr as developable_roof_sqft,
                     d.gcr as ground_cover_ratio                 
             FROM %(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s a
@@ -543,7 +548,7 @@ def determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, sch
 
 #%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def find_potential_turbine_sizes(county_chunks, pool, pg_conn_string, schema, sector_abbr):
+def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, schema, sector_abbr):
 
     msg = "\tIdentifying Potential Turbine Sizes for Each Agent"
     logger.info(msg)
@@ -557,9 +562,20 @@ def find_potential_turbine_sizes(county_chunks, pool, pg_conn_string, schema, se
     #==============================================================================
     #     Create a lookup table of the allowable turbine heights and sizes for
     #     each agent
-    #==============================================================================   
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s;
-            CREATE TABLE %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s AS
+    #============================================================================== 
+    # create the output table
+    sql = """DROP TABLE IF EXISTS %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s;
+              CREATE TABLE %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
+              (
+                county_id integer,
+                bin_id integer,
+                turbine_height_m integer,
+                turbine_size_kw numeric
+              );""" % inputs                   
+    cur.execute(sql)
+    con.commit()
+                   
+    sql = """INSERT INTO %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
             WITH turbine_sizes as
             (
                 	SELECT a.turbine_size_kw, a.rotor_radius_m,
@@ -583,14 +599,17 @@ def find_potential_turbine_sizes(county_chunks, pool, pg_conn_string, schema, se
        
     
     # create indices        
-    sql =  """CREATE INDEX agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s_id_btree 
-              ON %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s
+    sql =  """CREATE INDEX agent_allowable_turbines_lkup_%(sector_abbr)s_id_btree 
+              ON %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
               USING BTREE(county_id, bin_id);
     
-              CREATE INDEX agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s_turbine_height_m_btree 
-              ON %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s
+              CREATE INDEX agent_allowable_turbines_lkup_%(sector_abbr)s_turbine_height_m_btree 
+              ON %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
               USING BTREE(turbine_height_m);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)              
+    cur.execute(sql)
+    con.commit()
+
+
 
 #%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
@@ -627,7 +646,7 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
                     -- solar siting constraints
                     d.tilt,
                     d.azimuth,
-                    d.pct_developable as pct_of_bldgs_developable,
+                    d.pct_of_bldgs_developable,
                     d.developable_roof_sqft,
                     d.ground_cover_ratio,    
 
@@ -676,16 +695,50 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
     # TODO: add indices that are neeeded in subsequent steps
 
     
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, cur, con, pool):
     
+    inputs = locals().copy()    
+    inputs['i_place_holder'] = '%(i)s'
+    
+    #==============================================================================
+    #   clean up intermediate tables
+    #==============================================================================
+    msg = "\tCleaning Up Intermediate Tables..."
+    logger.info(msg)
+    intermediate_tables = [ 
+                            '%(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.agent_bldgs_%(sector_abbr)s_%(i_place_holder)s',    
+                            '%(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.agent_max_demand_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.agent_rooftops_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s'         
+                            ]
+    
+    for sector_abbr, sector in sectors.iteritems():
+        inputs['sector_abbr'] = sector_abbr
+        sql = 'DROP TABLE IF EXISTS %s;'
+        for intermediate_table in intermediate_tables:
+            table_name = intermediate_table % inputs
+            isql = sql % table_name
+            if '%(i)s' in table_name:
+                p_run(pg_conn_string, isql, county_chunks, pool)
+            else:
+                cur.execute(isql)
+                con.commit()       
     
 
 #%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def select_rate_tariffs():
     
     # all in postgres
     pass
 
 #%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def assemble_resource_data():
     
     # all in postgres
@@ -696,12 +749,14 @@ def assemble_resource_data():
         # pct_developable --> pct_of_bldgs_developable
 
 #%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def apply_temporal_factors():
     
     # all in python??
     pass
 
 #%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def get_agents():
     
     pass
@@ -712,16 +767,13 @@ def get_agents():
 
 
 # UP NEXT
-# TODO: Look into why determine_allowable_turbine_heights is slow for residential and commercial
-    #  (may just be table size)
-# TODO: do a little more inspection of the agent_core_attributes to make sure outputs look good
-# TODO: add code to drop intermediate tables from core attributes generation
+# TODO: get logger working on both data_functions and agent_preparation
 # TODO: add indices to agent_core_attributes for subsequent steps
-# TODO: add in a check that agent_core_attributes_ table has the correct number of rows
 # TODO: continue with the rest of the functions outlined above, 
         # to reproduce the functionality of the old generate customer bins 
         # in a more modular form
 
 # LONG TERM
+# TODO: add in a check that agent_core_attributes_ table has the correct number of rows
 # TODO: strip cap cost multipliers from agent locations and move to somewhere downstream
 # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database
