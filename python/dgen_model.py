@@ -269,17 +269,24 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==========================================================================================================
             logger.info("---------Modeling Annual Deployment---------")      
             # get dsire incentives, srecs, and itc for the generated customer bins
-            dsire_opts = datfunc.get_dsire_settings(con, schema)
-            incentives_cap = datfunc.get_incentives_cap(con, schema)
-            dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, dsire_opts)
-            srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, dsire_opts)
-            state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, dsire_opts)            
-            itc_options = datfunc.get_itc_incentives(con, schema)
+#            dsire_opts = datfunc.get_dsire_settings(con, schema)
+#            incentives_cap = datfunc.get_incentives_cap(con, schema)
+#            dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, dsire_opts)
+#            srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, dsire_opts)
+#            state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, dsire_opts)            
+#            itc_options = datfunc.get_itc_incentives(con, schema)
             for year in model_years:
                 logger.info('\tWorking on %s' % year)
                     
-                # get input agent attributes from postgres
-                df = datfunc.get_main_dataframe(con, sectors, schema, year, techs)
+                # get core agent attributes from postgres
+                df = agent_prep.get_core_agent_attributes(con, schema)
+                print df.head()
+                # get temporal factors for the current year
+                pass
+                # apply temporal factors to core agents
+                pass
+                crash
+                
                 
                 # reeds stuff...
                 if mode == 'ReEDS':

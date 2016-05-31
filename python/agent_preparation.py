@@ -14,6 +14,7 @@ from config import show_times
 import utility_functions as utilfunc
 import multiprocessing
 import traceback
+import data_functions as datfunc
 
 #%% GLOBAL SETTINGS
 
@@ -124,15 +125,28 @@ def generate_core_agent_attributes(cur, con, techs, schema, agents_per_region, s
                 #==============================================================================
                 combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr)
     
+        #==============================================================================
+        #     create a view that combines all sectors and techs
+        #==============================================================================
+        merge_all_core_agents(cur, con, schema, sectors, techs)
 
         #==============================================================================
         #    drop the intermediate tables
         #==============================================================================
         cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, cur, con, pool)
         
+    except:
+        # roll back any transactions
+        con.rollback()
+        # drop the output schema
+        datfunc.drop_output_schema(pg_conn_string, schema, True)
+        # re-raise the exception
+        raise
+        
     finally:
         # close the multiprocessing pool
         pool.close() 
+
 
 
 
@@ -233,9 +247,7 @@ def sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_reg
          WITH all_bldgs AS
          (
              SELECT a.county_id, 
-                     b.bldg_id, b.weight, b.ann_cons_kwh, 
-                     b.crb_model, b.roof_style, b.roof_sqft, 
-                     b.ownocc8
+                     b.bldg_id, b.weight
              FROM diffusion_blocks.county_geoms a
              INNER JOIN %(schema)s.states_to_model c
                    ON a.state_abbr = c.state_abbr
@@ -263,7 +275,8 @@ def sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_reg
             FROM sampled_bldgs a
         )
         SELECT  a.county_id, a.bin_id, a.bldg_id,
-                    b.weight, b.ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft, b.ownocc8
+                    b.weight, b.ann_cons_kwh, b.crb_model, b.roof_style, b.roof_sqft,
+                    b.ownocc8 as owner_occupancy_status
         FROM numbered_samples a
         LEFT JOIN diffusion_shared.cbecs_recs_combined b
             ON a.bldg_id = b.bldg_id
@@ -310,7 +323,7 @@ def convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agen
                             WHEN b.roof_sqft >= 5000 and b.roof_sqft < 25000 THEN 'medium'::character varying(6)
                             WHEN b.roof_sqft >= 25000 THEN 'large'::character varying(6)
                         END as bldg_size_class,
-                        b.roof_sqft, b.roof_style, b.ownocc8,
+                        b.roof_sqft, b.roof_style, b.owner_occupancy_status,
                     	c.%(county_customer_count)s * b.weight/sum(b.weight) OVER (PARTITION BY b.county_id) as customers_in_bin, 
                     	c.county_total_load_mwh_2011 * 1000 * (b.ann_cons_kwh * b.weight)/sum(b.ann_cons_kwh * b.weight) 
                              OVER (PARTITION BY b.county_id) as load_kwh_in_bin,
@@ -622,7 +635,8 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
     inputs['chunk_place_holder'] = '%(county_ids)s'
 
     
-    sql_part = """SELECT -- block location dependent properties
+    sql_part = """SELECT 
+                    -- block location dependent properties
                     b.*,
                     
                     -- building microdata dependent properties 
@@ -633,7 +647,7 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
                     a.bldg_size_class,
                     a.roof_sqft as eia_roof_sqft,
                     a.roof_style,
-                    a.ownocc8,
+                    a.owner_occupancy_status,
                     a.customers_in_bin,
                     a.load_kwh_in_bin,
                     a.load_kwh_in_bin/customers_in_bin as load_kwh_per_customer_in_bin,
@@ -747,6 +761,59 @@ def get_rate_structures(con, schema):
     
     return rate_structures    
 
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def merge_all_core_agents(cur, con, schema, sectors, techs):
+    
+    inputs = locals().copy()    
+    
+    msg = "Merging All Agents into a Single Table View"
+    logger.info(msg)    
+    
+    sql_list = []
+    for sector_abbr, sector in sectors.iteritems():
+        for tech in techs:
+            inputs['sector_abbr'] = sector_abbr
+            inputs['tech'] = tech
+            sql = """SELECT a.pgid, 
+                            a.county_id, 
+                            a.bin_id, 
+                            a.state_abbr, 
+                            a.census_division_abbr, 
+                            a.pca_reg, 
+                            a.reeds_reg, 
+                            a.customers_in_bin, 
+                            a.load_kwh_per_customer_in_bin, 
+                            a.max_demand_kw,
+                            a.hdf_load_index,
+                            a.owner_occupancy_status,
+                            a.cap_cost_multiplier_solar,
+                            a.cap_cost_multiplier_wind,
+                            -- solar
+                            a.solar_re_9809_gid,
+                            a.tilt, 
+                            a.azimuth, 
+                            a.developable_roof_sqft, 
+                            a.pct_of_bldgs_developable,
+                            -- wind
+                            a.i,
+                            a.j,
+                            a.cf_bin,
+                            -- replicate for each sector and tech
+                            '%(sector_abbr)s'::CHARACTER VARYING(3) as sector_abbr,
+                            '%(tech)s'::varchar(5) as tech
+                    FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a """ % inputs
+            sql_list.append(sql)
+    
+    inputs['sql_body'] = ' UNION ALL '.join(sql_list)
+    sql = """DROP VIEW IF EXISTS %(schema)s.agent_core_attributes_all;
+             CREATE VIEW %(schema)s.agent_core_attributes_all AS
+             %(sql_body)s;""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
+    
 #%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def generate_electric_rate_tariff_lookup(cur, con, schema, sectors, seed, pg_conn_string):
@@ -877,9 +944,15 @@ def apply_temporal_factors():
 
 #%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def get_agents():
+def get_core_agent_attributes(con, schema):
     
-    pass
+    inputs = locals().copy()
+    sql = """SELECT *
+             FROM %(schema)s.agent_core_attributes_all;""" % inputs
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
 
 #%%
 def check_agent_count():
