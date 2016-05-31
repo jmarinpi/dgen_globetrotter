@@ -795,12 +795,12 @@ def merge_all_core_agents(cur, con, schema, sectors, techs):
     
     
 #%%
-def get_temporal_data_solar(con, schema, year):
+def get_temporal_data(con, schema, year, tech):
     
     inputs = locals().copy()
     
     sql = """SELECT *
-            FROM diffusion_results_2016_05_31_11h22m59s.temporal_factors_solar
+            FROM diffusion_results_2016_05_31_11h22m59s.temporal_factors_%(tech)s
             WHERE year = %(year)s;"""
             
     df = pd.read_sql(sql, con, coerce_float = False)
