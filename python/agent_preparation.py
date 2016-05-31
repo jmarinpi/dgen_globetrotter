@@ -15,6 +15,7 @@ import utility_functions as utilfunc
 import multiprocessing
 import traceback
 import data_functions as datfunc
+from agent import Agent, Agents, AgentsAlgorithm
 
 #%% GLOBAL SETTINGS
 
@@ -765,11 +766,12 @@ def merge_all_core_agents(cur, con, schema, sectors, techs):
                             a.reeds_reg, 
                             a.customers_in_bin, 
                             a.load_kwh_per_customer_in_bin, 
+                            a.load_kwh_in_bin,
                             a.max_demand_kw,
                             a.hdf_load_index,
                             a.owner_occupancy_status,
-                            a.cap_cost_multiplier_solar,
-                            a.cap_cost_multiplier_wind,
+                            -- capital cost regional multiplier
+                            a.cap_cost_multiplier_%(tech)s as cap_cost_multiplier,
                             -- solar
                             a.solar_re_9809_gid,
                             a.tilt, 
@@ -795,84 +797,124 @@ def merge_all_core_agents(cur, con, schema, sectors, techs):
     
     
 #%%
-def get_temporal_data(con, schema, year, tech):
+def get_load_growth(con, schema, year):
     
     inputs = locals().copy()
     
-    sql = """SELECT *
-            FROM diffusion_results_2016_05_31_11h22m59s.temporal_factors_%(tech)s
-            WHERE year = %(year)s;"""
+    sql = """SELECT sector_abbr, census_division_abbr, load_multiplier
+            FROM %(schema)s.load_growth_to_model
+            WHERE year = %(year)s;""" % inputs
             
     df = pd.read_sql(sql, con, coerce_float = False)
     
-    return df
+    return df    
+
+#%%
+def apply_load_growth(dataframe, load_growth_df):
+    
+        dataframe = pd.merge(dataframe, load_growth_df, how = 'left', on = ['sector_abbr', 'census_division_abbr'])
+        dataframe['customers_in_bin'] = dataframe['customers_in_bin'] * dataframe['load_multiplier']
+        dataframe['load_kwh_in_bin'] = dataframe['load_kwh_in_bin'] * dataframe['load_multiplier']
+        
+        return dataframe
+
+#%%
+def calculate_developable_customers_and_load(dataframe):
+
+    dataframe['developable_customers_in_bin'] = np.where(dataframe['tech'] == 'solar', dataframe['pct_of_bldgs_developable'] * dataframe['customers_in_bin'], 
+                                                            dataframe['customers_in_bin'])                                 
+    dataframe['developable_load_kwh_in_bin'] = np.where(dataframe['tech'] == 'solar', dataframe['pct_of_bldgs_developable'] * dataframe['load_kwh_in_bin'], 
+                                                            dataframe['load_kwh_in_bin'])     
+                                                            
+    return dataframe
+    
+
+#%%
+def get_rates(con, schema, year):
+    
+    
 
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
-def combine_temporal_data(cur, con, schema, techs, start_year, end_year, sector_abbrs):
 
-    logger.info("Combining Temporal Factors")
-
-    if 'wind' in techs:
-        combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs)
-    
-    if 'solar' in techs:
-        combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs)
-    
-
-def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs):
-    # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()       
-    
-    #==============================================================================
-    #     create table defining power curve partial transitions
-    #==============================================================================  
-    create_pc_transitions(cur, con, schema)        
-    
-    # combine the temporal data (this only needs to be done once for all sectors)
-    
-    # combined temporal data for technology specific factors
-    sql = """DROP TABLE IF EXISTS %(schema)s.temporal_factors_wind;
-            CREATE UNLOGGED TABLE %(schema)s.temporal_factors_wind as
-            SELECT      a.year, 
-                    	a.turbine_size_kw, 
-                         a.power_curve_1,
-                         a.power_curve_2,
-                    	a.interp_factor,
-                    	b.turbine_height_m,
-                    	d.derate_factor,
-                         'wind'::VARCHAR(5) as tech
-            FROM %(schema)s.input_wind_performance_power_curve_transitions a
-            LEFT JOIN %(schema)s.input_wind_performance_allowable_turbine_sizes b
-                	ON a.turbine_size_kw = b.turbine_size_kw
-            LEFT JOIN %(schema)s.input_wind_performance_gen_derate_factors d
-                	ON a.year = d.year
-                 AND  a.turbine_size_kw = d.turbine_size_kw
-            WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
-            
-            UNION ALL
-            
-            SELECT GENERATE_SERIES(%(start_year)s, %(end_year)s, 2) as year,
-                	0 as turbine_size_kw,
-                	0 as power_curve_1,
-                  0 as power_curve_2,
-                  0 as interp_factor,
-                	0 as turbine_height_m,
-                	0 as derate_factor;""" % inputs
-    cur.execute(sql)
-    con.commit()
-    
-    
-    # create indices for subsequent joins
-    sql =  """CREATE INDEX temporal_factors_technology_join_fields_btree 
-              ON %(schema)s.temporal_factors_wind
-              USING BTREE(turbine_height_m, turbine_size_kw, power_curve_1, power_curve_2);
-              
-              CREATE INDEX temporal_factors_technology_year_btree 
-              ON %(schema)s.temporal_factors_wind
-              USING BTREE(year);""" % inputs
-    cur.execute(sql)
-    con.commit()             
+#%%
+#def get_temporal_data(con, schema, year, tech):
+#    
+#    inputs = locals().copy()
+#    
+#    sql = """SELECT *
+#            FROM %(schema)s.temporal_factors_%(tech)s
+#            WHERE year = %(year)s;""" % inputs
+#            
+#    df = pd.read_sql(sql, con, coerce_float = False)
+#    
+#    return df
+#
+#
+#@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
+#def combine_temporal_data(cur, con, schema, techs, start_year, end_year, sector_abbrs):
+#
+#    logger.info("Combining Temporal Factors")
+#
+#    if 'wind' in techs:
+#        combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs)
+#    
+#    if 'solar' in techs:
+#        combine_temporal_data_solar(cur, con, schema, start_year, end_year, sector_abbrs)
+#    
+#
+#def combine_temporal_data_wind(cur, con, schema, start_year, end_year, sector_abbrs):
+#    # create a dictionary out of the input arguments -- this is used through sql queries    
+#    inputs = locals().copy()       
+#    
+#    #==============================================================================
+#    #     create table defining power curve partial transitions
+#    #==============================================================================  
+#    create_pc_transitions(cur, con, schema)        
+#    
+#    # combine the temporal data (this only needs to be done once for all sectors)
+#    
+#    # combined temporal data for technology specific factors
+#    sql = """DROP TABLE IF EXISTS %(schema)s.temporal_factors_wind;
+#            CREATE UNLOGGED TABLE %(schema)s.temporal_factors_wind as
+#            SELECT      a.year, 
+#                    	a.turbine_size_kw, 
+#                         a.power_curve_1,
+#                         a.power_curve_2,
+#                    	a.interp_factor,
+#                    	b.turbine_height_m,
+#                    	d.derate_factor,
+#                         'wind'::VARCHAR(5) as tech
+#            FROM %(schema)s.input_wind_performance_power_curve_transitions a
+#            LEFT JOIN %(schema)s.input_wind_performance_allowable_turbine_sizes b
+#                	ON a.turbine_size_kw = b.turbine_size_kw
+#            LEFT JOIN %(schema)s.input_wind_performance_gen_derate_factors d
+#                	ON a.year = d.year
+#                 AND  a.turbine_size_kw = d.turbine_size_kw
+#            WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
+#            
+#            UNION ALL
+#            
+#            SELECT GENERATE_SERIES(%(start_year)s, %(end_year)s, 2) as year,
+#                	0 as turbine_size_kw,
+#                	0 as power_curve_1,
+#                  0 as power_curve_2,
+#                  0 as interp_factor,
+#                	0 as turbine_height_m,
+#                	0 as derate_factor;""" % inputs
+#    cur.execute(sql)
+#    con.commit()
+#    
+#    
+#    # create indices for subsequent joins
+#    sql =  """CREATE INDEX temporal_factors_technology_join_fields_btree 
+#              ON %(schema)s.temporal_factors_wind
+#              USING BTREE(turbine_height_m, turbine_size_kw, power_curve_1, power_curve_2);
+#              
+#              CREATE INDEX temporal_factors_technology_year_btree 
+#              ON %(schema)s.temporal_factors_wind
+#              USING BTREE(year);""" % inputs
+#    cur.execute(sql)
+#    con.commit()             
 
 #%%
 #def get_rate_structures(con, schema):
@@ -1032,7 +1074,9 @@ def get_core_agent_attributes(con, schema):
     
     df = pd.read_sql(sql, con, coerce_float = False)
 
-    return df
+    agents = Agents(df)
+
+    return agents
 
 #%%
 def check_agent_count():
@@ -1043,6 +1087,12 @@ def check_agent_count():
 #%% TODO LIST
 
 # ~~~IMMEDIATE~~~
+# TODO: create get_rates() and select_rates() functions
+        # the first should get all rates from postgres
+        # the second should select rates for each agent using the AgentsAlgorithm approach
+# TODO: create get_cost_and_performance() functions
+        # should be postgres only, returning data frames
+# TODO: create size systems functions()
 
 
 # ~~~UP NEXT~~~

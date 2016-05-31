@@ -306,3 +306,15 @@ SELECT 0::numeric as ann_system_degradation, 'wind'::text as tech
 UNION ALL
 SELECT ann_system_degradation, 'solar'::text as tech
 FROM diffusion_template.input_solar_performance_annual_system_degradation;
+
+------------------------------------------------------------------------------------------------
+-- load growth to model
+DROP VIEW IF EXISTS diffusion_template.load_growth_to_model;
+CREATE VIEW diffusion_template.load_growth_to_model as
+select a.year, a.sector_abbr, a.census_division_abbr,
+	a.scenario as load_growth_scenario, 
+	a.load_multiplier
+from diffusion_shared.aeo_load_growth_projections a
+INNER JOIN diffusion_template.input_main_scenario_options b
+ON lower(a.scenario) = lower(b.load_growth_scenario);
+ 

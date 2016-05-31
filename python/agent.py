@@ -111,7 +111,7 @@ class AgentSettings(object):
     
 class AgentsAlgorithm(object):
     
-    def __init__(self, agents, agent_settings = None, in_schema = None, out_schema = None, debug_mode = False, debug_directory = None):
+    def __init__(self, agents, f = None, fargs = None, agent_settings = None, in_schema = None, out_schema = None, debug_mode = False, debug_directory = None):
         
         self.agents = agents
         self.agent_settings = agent_settings
@@ -119,6 +119,8 @@ class AgentsAlgorithm(object):
         self.debug_directory = debug_directory
         self.in_rows= self.agents.dataframe.shape[0]
         self.agent_settings = agent_settings
+        self.f = f
+        self.fargs = fargs
         
 
         if in_schema is None:
@@ -196,8 +198,14 @@ class AgentsAlgorithm(object):
 
     def __do__(self, dataframe):
         
-        # this is the default -- return the same data that was given        
-        return dataframe
+        # this is the default -- return the same data that was given     
+        if self.f is None:
+            return dataframe
+        else:
+            if self.fargs is None:
+                return self.f(dataframe)
+            else:
+                return self.f(dataframe, *self.fargs)
 
 
 
@@ -239,19 +247,28 @@ class SystemSizeSelector(AgentsAlgorithm):
         # OR DELETE ABOVE AND UNCOMMENT BELOW
         #pass
         
+def __test__():
+        
+    df = pd.read_csv('/Users/mgleason/NREL_Projects/github/diffusion/python/test_agents.csv')
+    agents = Agents(df)
+    agent = agents.get_agent(0)
     
-df = pd.read_csv('/Users/mgleason/NREL_Projects/github/diffusion/python/test_agents.csv')
-agents = Agents(df)
-agent = agents.get_agent(0)
+    aa = AgentsAlgorithm(agents)
+    #aa.compute(1)
+    
+    
+    newagents = SystemSizeSelector(agents, debug_mode = False, debug_directory = '/Users/mgleason/Desktop').compute()
+    
+    
+    def size_selector(dataframe, size):
+        
+        dataframe['system_size_kw'] = size
+        
+        return dataframe
+        
+    newagents2 = AgentsAlgorithm(agents, size_selector, (20,)).compute()
 
-aa = AgentsAlgorithm(agents)
-#aa.compute(1)
+    return newagents2
 
-
-newagents = SystemSizeSelector(agents, debug_mode = True, debug_directory = '/Users/mgleason/Desktop').compute()
-
-
-
-# add compute as default action upon init
 
 

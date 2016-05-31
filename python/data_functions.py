@@ -3347,7 +3347,7 @@ def write_first_year_costs(con, cur, schema, start_year):
     
     # solar
     sql = """INSERT INTO %(schema)s.yearly_technology_costs_solar
-             SELECT a.year, a.sector as sector_abbr, 
+             SELECT a.year, a.sector_abbr, 
                     a.installed_costs_dollars_per_kw,
                     a.inverter_cost_dollars_per_kw,
                     a.fixed_om_dollars_per_kw_per_yr,

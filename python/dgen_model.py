@@ -41,7 +41,7 @@ from excel import excel_functions
 import tech_choice
 import reeds_functions as reedsfunc
 import utility_functions as utilfunc
-
+from agent import Agent, Agents, AgentsAlgorithm
 
 #==============================================================================
 # raise  numpy and pandas warnings as exceptions
@@ -279,11 +279,31 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info('\tWorking on %s' % year)
                     
                 # get core agent attributes from postgres
-                df = agent_prep.get_core_agent_attributes(con, schema)
-                print df.head()
-                # get temporal factors for the current year
-                pass
-                # apply temporal factors to core agents
+                agents = agent_prep.get_core_agent_attributes(con, schema)
+                
+                # get load growth
+                load_growth_df = agent_prep.get_load_growth(con, schema, year)
+
+                # apply load growth
+                agents = AgentsAlgorithm(agents, agent_prep.apply_load_growth, (load_growth_df,)).compute()
+                
+                # determine "developable" population (applies to solar only)
+                agents = AgentsAlgorithm(agents, agent_prep.calculate_developable_customers_and_load).compute()
+                
+                # get rates
+                
+                
+                print agents.dataframe.head()                            
+                
+    
+
+                # get cost and performance
+                # get rates
+                # get resource
+                
+                # size system
+                # select rate
+                # calculate bill
                 pass
                 crash
                 
