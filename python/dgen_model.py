@@ -244,19 +244,24 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     logger.info("--------------Creating Agents---------------")
                     agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.agents_per_region, sectors,
-                                            cfg.pg_procs, cfg.pg_conn_string, scenario_opts)
-                    crash
+                                            cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'])
+
+                    #==============================================================================
+                    # COMPILE RATE LOOKUP TABLE FOR EACH SECTOR                                    
+                    #==============================================================================
+                    #agent_prep.generate_electric_rate_tariff_lookup(cur, con, schema, sectors, scenario_opts['random_generator_seed'], cfg.pg_conn_string)
+
                     #==========================================================================================================
                     # CHECK TECH POTENTIAL
                     #==========================================================================================================           
-                    datfunc.check_tech_potential_limits(cur, con, schema, techs, sectors, out_dir)              
+                    #datfunc.check_tech_potential_limits(cur, con, schema, techs, sectors, out_dir)              
                    
                    
                     #==========================================================================================================
                     # CALCULATE BILL SAVINGS
                     #==========================================================================================================
-                    datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar, 
-                                               cfg.pg_conn_string, cfg.gross_fit_mode, cfg.local_cores)
+                    #datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar, 
+                    #                           cfg.pg_conn_string, cfg.gross_fit_mode, cfg.local_cores)
 
     
             #==========================================================================================================

@@ -79,14 +79,12 @@ def p_run(pg_conn_string, sql, county_chunks, pool):
 
 
 #%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 0, prefix = '')
 def generate_core_agent_attributes(cur, con, techs, schema, agents_per_region, sectors,
-                                            pg_procs, pg_conn_string, scenario_opts):
+                                            pg_procs, pg_conn_string, seed):
 
     inputs = locals().copy()
     inputs['i_place_holder'] = '%(i)s'
-
-    seed = scenario_opts['random_generator_seed']
     
     # break counties into subsets for parallel processing
     county_chunks, pg_procs = split_counties(cur, schema, pg_procs)        
@@ -728,14 +726,136 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
             else:
                 cur.execute(isql)
                 con.commit()       
+
+#%%
+def get_rate_structures(con, schema):
     
+    inputs = locals().copy()
+    
+    sql = """
+            	SELECT 'res' as sector_abbr, res_rate_structure as rate_structure
+        	FROM %(schema)s.input_main_scenario_options
+        	UNION
+        	SELECT 'com' as sector_abbr, com_rate_structure as rate_structure
+        	FROM %(schema)s.input_main_scenario_options
+        	UNION
+        	SELECT 'ind' as sector_abbr, ind_rate_structure as rate_structure
+        	FROM %(schema)s.input_main_scenario_options;""" % inputs
+    
+    rate_structures_df = pd.read_sql(sql, con)
+    rate_structures = dict(zip(rate_structures_df['sector_abbr'], rate_structures_df['rate_structure']))
+    
+    return rate_structures    
 
 #%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def select_rate_tariffs():
+def generate_electric_rate_tariff_lookup(cur, con, schema, sectors, seed, pg_conn_string):
+
+    # NOTE: This function creates a lookup table for the agents in each sector, providing
+    #       the county_id and bin_id for each agent, along with the rate_id_alias and rate_source.
+    #       This information is used in "get_electric_rate_tariffs" to load in the actual rate tariff for each agent.
+
+    inputs = locals().copy()
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['chunk_place_holder'] = '%(county_ids)s'
+    excluded_rates = pd.read_csv('./excluded_rates_ids.csv', header=None)
+    inputs['excluded_rate_ids'] = '(' + ', '.join([str(i[0]) for i in excluded_rates.values]) + ')'
+
+
+    msg = "\tGenerating Electric Rate Tariff Lookup Table for Agents"
+    logger.info(msg)
     
-    # all in postgres
-    pass
+    # determine which type of rate to use for each sector
+    rate_structures = get_rate_structures(con, schema)
+    
+    for sector_abbr, sector in sectors.iteritems():
+        inputs['sector_abbr'] = sector_abbr
+        rate_structure = rate_structures[sector_abbr]
+
+        if rate_structure.lower() == 'complex rates':
+    
+            sql = """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
+                    CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS
+                    WITH a AS
+                    (
+                        	SELECT a.county_id, a.bin_id, a.state_abbr, a.max_demand_kw,
+                        		unnest(b.rate_ids) as rate_id_alias,
+                        		unnest(b.rate_ranks) as rate_rank
+                        	FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
+                        	LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
+                                	ON a.pgid = b.pgid
+                    ),
+                    b AS
+                    (
+                            SELECT a.*,
+                                    b.rate_type,
+                                    b.pct_of_customers
+                            FROM a 
+                            LEFT JOIN diffusion_shared.urdb_rates_by_state_%(sector_abbr)s b
+                                    ON a.rate_id_alias = b.rate_id_alias
+                                    AND a.state_abbr = b.state_abbr
+                            WHERE a.max_demand_kw <= b.urdb_demand_max
+                                  AND a.max_demand_kw >= b.urdb_demand_min
+                                  AND b.rate_id_alias NOT IN %(excluded_rate_ids)s
+                    ),
+                    c as
+                    (
+                        	SELECT *, rank() OVER (PARTITION BY county_id, bin_id ORDER BY rate_rank ASC) as rank
+                        	FROM b
+                    ), 
+                    d as
+                    (
+                        SELECT c.*, COALESCE(c.pct_of_customers, d.%(sector_abbr)s_weight) as rate_type_weight
+                        FROM c 
+                        LEFT JOIN %(schema)s.input_main_market_rate_type_weights d
+                        ON c.rate_type = d.rate_type
+                        WHERE c.rank = 1
+                    )
+                    SELECT d.county_id, d.bin_id,
+                            unnest(diffusion_shared.sample(
+                                            array_agg(d.rate_id_alias ORDER BY d.rate_id_alias), 
+                                            1, 
+                                          (%(seed)s * d.county_id * d.bin_id), 
+                                          False,
+                                          array_agg(d.rate_type_weight ORDER BY d.rate_id_alias))) as rate_id_alias,
+                            'urdb3'::CHARACTER VARYING(5) as rate_source
+                    FROM d
+                    GROUP BY d.county_id, d.bin_id;""" % inputs
+            cur.execute(sql)
+            con.commit()
+    
+        elif rate_structure.lower() == 'flat (annual average)':
+            # flat annual average rate ids are already stored in the demandmax table as county_id
+            # we simply need to duplicate and rename that field to rate_id_alias and specify the rate_source
+            sql = """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
+                     CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS
+                     SELECT a.county_id, a.bin_id 
+                            a.old_county_id as rate_id_alias, 
+                          'aa%(sector_abbr)s'::CHARACTER VARYING(5) as rate_source
+                    FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
+                    WHERE a.county_id in (%(chunk_place_holder)s);""" % inputs
+            cur.execute(sql)
+            con.commit()
+                         
+        elif rate_structure.lower() == 'flat (user-defined)':
+            # user-defined rates are id'ed based on the state_fips, which is already stored in the demandmax table
+            # we simply need to duplicate and rename that field to rate_id_alias and specify the rate_source
+            sql = """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
+                    CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS
+                    SELECT a.county_id, a.bin_id 
+                            a.state_fips::INTEGER as rate_id_alias, 
+                            'ud%(sector_abbr)s'::CHARACTER VARYING(5) as rate_source
+                    FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
+                    WHERE a.county_id in (%(chunk_place_holder)s);""" % inputs
+            cur.execute(sql)
+            con.commit()
+    
+        # add primary key to rates lkup table
+        sql = """ALTER TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s
+                 ADD PRIMARY KEY (county_id, bin_id);""" % inputs
+        cur.execute(sql)
+        con.commit()
+
 
 #%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
@@ -761,19 +881,27 @@ def get_agents():
     
     pass
 
+#%%
+def check_agent_count():
+  # TODO: add in a check that agent_core_attributes_ table has the correct number of rows
+        # this should be called every time get_agents() is run
+    pass
+
 #%% TODO LIST
 
-# IMMEDIATE
+# ~~~IMMEDIATE~~~
 
 
-# UP NEXT
-# TODO: get logger working on both data_functions and agent_preparation
+# ~~~UP NEXT~~~
 # TODO: add indices to agent_core_attributes for subsequent steps
+    # county_id
+    # pgid
 # TODO: continue with the rest of the functions outlined above, 
         # to reproduce the functionality of the old generate customer bins 
         # in a more modular form
 
-# LONG TERM
-# TODO: add in a check that agent_core_attributes_ table has the correct number of rows
+
+# ~~~LONG TERM~~~
+# TODO: get logger working on both data_functions and agent_preparation
 # TODO: strip cap cost multipliers from agent locations and move to somewhere downstream
 # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database
