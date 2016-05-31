@@ -74,21 +74,21 @@ WITH a as
 (
 	SELECT year, capital_cost_dollars_per_kw, inverter_cost_dollars_per_kw, 
 	       fixed_om_dollars_per_kw_per_yr, variable_om_dollars_per_kwh, 
-	       sector_abbr as sector, 'User Defined'::text as source
+	       sector_abbr, 'User Defined'::text as source
 	FROM diffusion_template.input_solar_cost_projections
 
 	UNION ALL
 
 	SELECT year, capital_cost_dollars_per_kw, inverter_cost_dollars_per_kw, 
 		fixed_om_dollars_per_kw_per_yr, variable_om_dollars_per_kwh, 
-		sector, scenario as source
+		sector as sector_abbr, scenario as source
 	FROM diffusion_solar.solar_program_target_cost_projections
 
 	UNION ALL
 
 	select year, capital_cost_dollars_per_kw, inverter_cost_dollars_per_kw, 
 		fixed_om_dollars_per_kw_per_yr, variable_om_dollars_per_kwh, 
-		sector, 'AEO 2014'::text as source
+		sector as sector_abbr, 'AEO 2014'::text as source
 	from diffusion_solar.solar_costs_aeo2014
 ),
 b as
@@ -104,12 +104,12 @@ SELECT b.year,
 	end as installed_costs_dollars_per_kw,
 	b.inverter_cost_dollars_per_kw, 
 	b.fixed_om_dollars_per_kw_per_yr, b.variable_om_dollars_per_kwh, 
-	b.sector, 
+	b.sector_abbr, 
 	b.source
 from b 
 LEFT JOIN diffusion_template.input_reeds_capital_costs_by_sector c
 	ON b.year = c.year
-	and b.sector = c.sector_abbr
+	and b.sector_abbr = c.sector_abbr
 LEFT JOIN diffusion_template.input_reeds_mode d
 ON true;
 
@@ -124,11 +124,11 @@ FROM diffusion_solar.cost_projections_to_model;
 DROP TABLE IF EXISTS diffusion_template.input_solar_cost_multipliers;
 CREATE TABLE diffusion_template.input_solar_cost_multipliers
 (
-	sector character varying(3) NOT NULL,
+	sector_abbr character varying(3) NOT NULL,
 	new_construction_multiplier numeric NOT NULL,
 	base_size_kw numeric NOT NULL,
 	size_adjustment_factor numeric NOT NULL,  
-	CONSTRAINT input_solar_cost_multipliers_sector_fkey FOREIGN KEY (sector)
+	CONSTRAINT input_solar_cost_multipliers_sector_fkey FOREIGN KEY (sector_abbr)
 		REFERENCES diffusion_config.sceninp_sector (sector_abbr) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
 );
