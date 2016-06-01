@@ -23,3 +23,14 @@ CREATE VIEW diffusion_template.input_wind_siting_settings_all AS
 select a.*, b.*
 from diffusion_template.input_wind_siting_property_setbacks a
 CROSS JOIN diffusion_template.input_wind_siting_canopy_clearance b;
+
+DROP VIEW IF EXISTS diffusion_template.input_wind_siting_turbine_sizes;
+CREATE VIEW diffusion_template.input_wind_siting_turbine_sizes as
+SELECT a.turbine_size_kw, a.rotor_radius_m,
+	b.turbine_height_m,
+	b.turbine_height_m - a.rotor_radius_m * c.canopy_clearance_rotor_factor as effective_min_blade_height_m,
+	b.turbine_height_m + a.rotor_radius_m as effective_max_blade_height_m
+FROM diffusion_wind.turbine_size_to_rotor_radius_lkup a
+LEFT JOIN diffusion_template.input_wind_performance_allowable_turbine_sizes b
+	ON a.turbine_size_kw = b.turbine_size_kw
+CROSS JOIN diffusion_template.input_wind_siting_settings_all c;

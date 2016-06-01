@@ -43,7 +43,7 @@ class fn_timer(object):
                 result = f(*args, **kwargs)
                 t1 = time.time()
                 if self.verbose:
-                    msg = '%s%sCompleted in: %.1f seconds' % (self.tabs, self.prefix, t1 - t0)
+                    msg = '%s%s%s completed in: %.1f seconds' % (self.tabs, self.prefix, f.__name__, t1 - t0)
                     if self.logger is not None:
                         self.logger.info(msg)
                     else:

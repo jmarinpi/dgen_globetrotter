@@ -588,22 +588,11 @@ def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, 
     con.commit()
                    
     sql = """INSERT INTO %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
-            WITH turbine_sizes as
-            (
-                	SELECT a.turbine_size_kw, a.rotor_radius_m,
-                		b.turbine_height_m,
-                		b.turbine_height_m - a.rotor_radius_m * c.canopy_clearance_rotor_factor as effective_min_blade_height_m,
-                		b.turbine_height_m + a.rotor_radius_m as effective_max_blade_height_m
-                	FROM diffusion_wind.turbine_size_to_rotor_radius_lkup a
-                	LEFT JOIN %(schema)s.input_wind_performance_allowable_turbine_sizes b
-                		ON a.turbine_size_kw = b.turbine_size_kw
-                	CROSS JOIN %(schema)s.input_wind_siting_settings_all c
-            )
             SELECT a.county_id, a.bin_id,
                 	COALESCE(b.turbine_height_m, 0) AS turbine_height_m,
                 	COALESCE(b.turbine_size_kw, 0) as turbine_size_kw 
             FROM %(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s a
-            LEFT JOIN turbine_sizes b
+            LEFT JOIN %(schema)s.input_wind_siting_turbine_sizes b
                 	ON b.effective_min_blade_height_m >= a.min_allowable_blade_height_m 
                 	AND b.effective_max_blade_height_m <= a.max_allowable_blade_height_m;
              """ % inputs
@@ -705,7 +694,17 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
     con.commit()
 
     # create indices
-    # TODO: add indices that are neeeded in subsequent steps
+    # TODO: add other indices that are neeeded in subsequent steps?
+    sql = """CREATE INDEX agent_core_attributes_%(sector_abbr)s_btree_wind_resource
+            ON  %(schema)s.agent_core_attributes_%(sector_abbr)s
+            USING BTREE(i, j, cf_bin);
+            
+            CREATE INDEX agent_core_attributes_%(sector_abbr)s_btree_solar_resource
+            ON  %(schema)s.agent_core_attributes_%(sector_abbr)s
+            USING BTREE(solar_re_9809_gid, azimuth, tilt);""" % inputs
+    cur.execute(sql)
+    con.commit()
+
 
     
 #%%
@@ -1118,13 +1117,13 @@ def get_core_agent_attributes(con, schema):
     return agents
 
 #%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def get_system_sizing_targets(con, schema):
     
     inputs = locals().copy()
     
     sql = """SELECT 'solar'::VARCHAR(5) as tech, 
                      sector_abbr,
-                     system_size_limit_kw,
                      sys_size_target_nem,
                      sys_size_target_no_nem,
                      NULL::NUMERIC AS sys_oversize_limit_nem,
@@ -1135,20 +1134,20 @@ def get_system_sizing_targets(con, schema):
              
              SELECT 'wind'::VARCHAR(5) as tech, 
                      sector_abbr,
-                     system_size_limit_kw,
                      sys_size_target_nem,
                      sys_size_target_no_nem,
                      sys_oversize_limit_nem,
                      sys_oversize_limit_no_nem
              FROM %(schema)s.input_wind_performance_system_sizing_factors;""" % inputs
 
-    df = pd.read_sql(sql, con, coerce_floats = False)
+    df = pd.read_sql(sql, con, coerce_float = False)
     
     return df
 
 
 #%%
-def get_technology_peformance_solar(con, schema, year):
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def get_technology_performance_solar(con, schema, year):
     
     inputs = locals().copy()
     
@@ -1159,51 +1158,122 @@ def get_technology_peformance_solar(con, schema, year):
              FROM %(schema)s.input_solar_performance_improvements
              WHERE year = %(year)s;""" % inputs
     
-    df = pd.read_sql(sql, con, coerce_floats = False)
+    df = pd.read_sql(sql, con, coerce_float = False)
     
     return df
 
-#%%
-def apply_technology_performance_solar(dataframe, tech_performance_solar_df):
-    
-    # THIS NEEdS TO BE DONE LATER.....
-    dataframe = pd.merge(dataframe, tech_performance_solar_df, how = 'left', on = ['tech'])
-    
-    return dataframe
-
 
 #%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def get_technology_performance_wind(con, schema, year):
     
     inputs = locals().copy()
     
-    sql = """SELECT      'wind'::VARCHAR(5) as tech
-                         a.turbine_size_kw, 
-                         a.power_curve_1,
-                         a.power_curve_2,
-                    	 a.interp_factor as power_curve_interp_factor,
-                    	 b.turbine_height_m,
-                    	 d.derate_factor as wind_derate_factor,
-            FROM %(schema)s.input_wind_performance_power_curve_transitions a
-            LEFT JOIN %(schema)s.input_wind_performance_allowable_turbine_sizes b
-                	ON a.turbine_size_kw = b.turbine_size_kw
-            LEFT JOIN %(schema)s.input_wind_performance_gen_derate_factors d
-                	ON a.year = d.year
-                 AND  a.turbine_size_kw = d.turbine_size_kw
+    sql = """SELECT 'wind'::VARCHAR(5) as tech,
+                    a.turbine_size_kw, 
+                    a.derate_factor as wind_derate_factor
+            FROM %(schema)s.input_wind_performance_gen_derate_factors a
             WHERE a.year = %(year)s
             
             UNION ALL
             
-            SELECT 0 as turbine_size_kw,
-                	0 as power_curve_1,
-                  0 as power_curve_2,
-                  0 as interp_factor,
-                	0 as turbine_height_m,
-                	0 as derate_factor;""" % inputs
+            SELECT 'wind'::VARCHAR(5) as tech,
+                    0::NUMERIC as turbine_size_kw,
+                    0::NUMERIC as wind_derate_factor;""" % inputs
 
-    df = pd.read_sql(sql, con, coerce_floats = False)
+    df = pd.read_sql(sql, con, coerce_float = False)
     
     return df
+
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def get_annual_resource_wind(con, schema, year, sectors):
+    
+    inputs = locals().copy()
+    
+    df_list = []
+    for sector_abbr, sector in sectors.iteritems():
+        inputs['sector_abbr'] = sector_abbr
+        sql = """SELECT 'wind'::VARCHAR(5) as tech,
+                        '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
+                        a.county_id, a.bin_id, 
+                    	COALESCE(b.turbine_height_m, 0) as turbine_height_m,
+                    	COALESCE(b.turbine_size_kw, 0) as turbine_size_kw,
+                    	coalesce(c.interp_factor, 0) as power_curve_interp_factor,
+                    	COALESCE(c.power_curve_1, -1) as power_curve_1,
+                    	COALESCE(c.power_curve_2, -1) as power_curve_2,
+                    	COALESCE(d.aep, 0) as naep_1,
+                    	COALESCE(e.aep, 0) as naep_2
+                FROM  %(schema)s.agent_core_attributes_%(sector_abbr)s a
+                LEFT JOIN %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s b
+                    	ON a.county_id = b.county_id
+                    	and a.bin_id = b.bin_id
+                LEFT JOIN %(schema)s.input_wind_performance_power_curve_transitions c
+                    	ON b.turbine_size_kw = c.turbine_size_kw
+                         AND c.year = %(year)s
+                LEFT JOIN diffusion_resource_wind.wind_resource_annual d
+                    	ON a.i = d.i
+                    	AND a.j = d.j
+                    	AND a.cf_bin = d.cf_bin
+                    	AND b.turbine_height_m = d.height
+                    	AND c.power_curve_1 = d.turbine_id
+                LEFT JOIN diffusion_resource_wind.wind_resource_annual e
+                    	ON a.i = e.i
+                    	AND a.j = e.j
+                    	AND a.cf_bin = e.cf_bin
+                    	AND b.turbine_height_m = e.height
+                    	AND c.power_curve_2 = e.turbine_id;""" % inputs
+        df_sector = pd.read_sql(sql, con, coerce_float = False)
+        df_list.append(df_sector)
+        
+    df = pd.concat(df_list, axis = 0, ignore_index = True)
+    
+    return df
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def get_annual_resource_solar(con, schema, sectors):
+    
+    inputs = locals().copy()
+    
+    df_list = []
+    for sector_abbr, sector in sectors.iteritems():
+        inputs['sector_abbr'] = sector_abbr
+        sql = """SELECT 'solar'::VARCHAR(5) as tech,
+                '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
+                a.county_id, a.bin_id,
+                b.naep 
+                FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
+                LEFT JOIN diffusion_resource_solar.solar_resource_annual b
+                    ON a.solar_re_9809_gid = b.solar_re_9809_gid
+                    AND a.tilt = b.tilt
+                    AND a.azimuth = b.azimuth;""" % inputs
+        df_sector = pd.read_sql(sql, con, coerce_float = False)
+        df_list.append(df_sector)
+        
+    df = pd.concat(df_list, axis = 0, ignore_index = True)
+        
+    return df
+    
+    
+#%%
+def apply_technology_performance_solar(resource_solar_df, tech_performance_solar_df):
+    
+    resource_solar_df = pd.merge(resource_solar_df, tech_performance_solar_df, how = 'left', on = ['tech'])
+    resource_solar_df['naep'] = resource_solar_df['naep'] * resource_solar_df['pv_efficiency_improvement_factor']
+    
+    return resource_solar_df
+
+#%%
+def apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df):
+    
+    resource_wind_df = pd.merge(resource_wind_df, tech_performance_wind_df, how = 'left', on = ['tech', 'turbine_size_kw'])
+    resource_wind_df['naep_1'] = resource_wind_df['naep_1'] * resource_wind_df['wind_derate_factor']
+    resource_wind_df['naep_2'] = resource_wind_df['naep_2'] * resource_wind_df['wind_derate_factor']
+    resource_wind_df['naep'] = resource_wind_df['power_curve_interp_factor'] * (resource_wind_df['naep_2'] - resource_wind_df['naep_1']) + resource_wind_df['naep_1']
+    
+    return resource_wind_df
 
 
 #%%
@@ -1211,9 +1281,11 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     
     in_cols = list(dataframe.columns)
     
+    print dataframe.shape[0]
+    
     # TODO: this will be inefficient during parallelization
     wind_df = dataframe[dataframe['tech'] == 'wind']
-    non_wind_df = dataframe[dataframe['tech'] == 'wind']
+    nonwind_df = dataframe[dataframe['tech'] <> 'wind']
     
     # join in system sizing targets df
     wind_df = pd.merge(wind_df, system_sizing_targets_df, how = 'left', on = ['sector_abbr', 'tech'])    
@@ -1221,53 +1293,59 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     # determine whether NEM is available in the state and sector
     wind_df['nem_available'] = wind_df['nem_system_size_limit_kw'] == 0
     
-    # set the target kwh accordingly
+    # set the target kwh according to NEM availability
     wind_df['target_kwh'] = np.where(wind_df['nem_available'] == True, 
                                        wind_df['load_kwh_per_customer_in_bin'] * wind_df['sys_size_target_no_nem'],
                                        wind_df['load_kwh_per_customer_in_bin'] * wind_df['sys_size_target_nem'])
-    # also set the oversize limit accordingly
+    # also set the oversize limit according to NEM availability
     wind_df['oversize_limit_kwh'] = np.where(wind_df['nem_available'] == True, 
                                        wind_df['load_kwh_per_customer_in_bin'] * wind_df['sys_oversize_limit_no_nem'],
                                        wind_df['load_kwh_per_customer_in_bin'] * wind_df['sys_oversize_limit_nem'])
 
+    # join in the resource data
+    wind_df = pd.merge(wind_df, resource_df, how = 'left', on = ['tech', 'sector_abbr', 'county_id', 'bin_id'])
+    # add in an arbitrary id
 
+    # calculate the system generation from naep and turbine_size_kw    
+    wind_df['aep_kwh'] = wind_df['turbine_size_kw'] * wind_df['naep']
 
-    # at the end:
-        # subset return columns to in_cols + desired return cols
-        # concat with the non_wind_df
-
-    # calculate the system generation from naep and turbine_size_kw
-    aep = turbine_size_kw * naep
-
-    # check whether the aep is equal to zero or whether the system is above the oversize limit
-    if aep == 0 or aep > oversize_limit_kwh:
-            # if so,  return very high cost
-            scoe = float('inf')
-            nturb = 0
-            nem_available = False
-            return scoe, nturb, nem_available     
+    # initialize values for score and nturb
+    wind_df['score'] = np.absolute(wind_df['aep_kwh'] - wind_df['target_kwh'])
+    wind_df['nturb'] = 1.
     
-    # if the turbine is the max turbine size (1.5 MW) and less than the target generation
-    # determine whether multiple turbines should be installed
-    if turbine_size_kw == 1500 and aep < target_kwh:
-        # This indicates we want a project larger than 1500 kW. Return -1 scoe
-        # and the optimal continuous number of turbines
-        scoe = 0
-        nturb  = target_kwh/aep
-        nturb = min(4, nturb) #Don't allow projects larger than 6 MW
-    else:
-        # for remaining conditions, 
-        # calculate the absolute difference of how far the aep is from the target generation
-        scoe = abs(aep-target_kwh)            
-        nturb = 1    
-        
-    # check that the system is within the net metering size limit
-    if turbine_size_kw > nem_system_size_limit_kw:
-        # if not, multiply the normal scoe by a factor of 2
-        scoe = scoe * 2
-        nem_available = False 
+    # Handle Special Cases
+    
+    # Buildings requiring more electricity than can be generated by the largest turbine (1.5 MW)
+    # Return very low rank score and the optimal continuous number of turbines
+    big_projects = (wind_df['turbine_size_kw'] == 1500) & (wind_df['aep_kwh'] < wind_df['target_kwh'])
+    wind_df.loc[big_projects, 'score'] = 0
+    wind_df.loc[big_projects, 'nturb'] = np.minimum(4, wind_df['target_kwh'] / wind_df['aep_kwh']) 
 
-    return scoe, nturb, nem_available
+
+    # identify oversized projects
+    oversized_turbines = wind_df['aep_kwh'] > wind_df['oversize_limit_kwh']
+    # also identify zero production turbines
+    no_kwh = wind_df['aep_kwh'] == 0
+    # where either condition is true, set a high score and zero turbines
+    wind_df.loc[oversized_turbines | no_kwh, 'score'] = np.array([1e8]) + wind_df['turbine_size_kw'] * 100 + wind_df['turbine_height_m']
+    wind_df.loc[oversized_turbines | no_kwh, 'nturb'] = 0.0
+    # also disable net metering
+    wind_df.loc[oversized_turbines | no_kwh, 'nem_available'] = False
+    
+    # check that the system is within the net metering size limit
+    over_nem_limit = wind_df['turbine_size_kw'] > wind_df['nem_system_size_limit_kw']
+    wind_df.loc[over_nem_limit, 'score'] = wind_df['score'] * 2
+    wind_df.loc[over_nem_limit, 'nem_available'] = False
+
+    # for each agent, find the optimal turbine
+    wind_df['rank'] = wind_df.groupby(['county_id', 'bin_id', 'sector_abbr'])['score'].rank(ascending = True, method = 'first')
+    wind_df_sized = wind_df[wind_df['rank'] == 1]
+    
+    out_cols = in_cols + ['score', 'nturb', 'nem_available']
+    
+    out_df = pd.concat([wind_df_sized[out_cols], nonwind_df], axis = 0, ignore_index = True)
+
+    return out_df
 
 
 #%%

@@ -282,7 +282,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 agents = agent_prep.get_core_agent_attributes(con, schema)
   
                 #==============================================================================
-                # LOAD GROWTH               
+                # LOAD/POPULATION GROWTH               
                 #==============================================================================
                 # get load growth
                 load_growth_df = agent_prep.get_load_growth(con, schema, year)
@@ -299,42 +299,36 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 # select rates
                 agents = AgentsAlgorithm(agents, agent_prep.select_electric_rates, (rates_df, net_metering_df)).compute(1)
-
-                print agents.dataframe.head()    
-                crash
                 
                 #==============================================================================
                 # TECHNOLOGY PERFORMANCE    
                 #==============================================================================
                 # get technology performance data
-                tech_performance_solar_df = agent_prep.get_technology_peformance_solar(con, schema, year)
-                tech_performance_wind_df = agent_prep.get_technology_peformance_wind(con, schema, year)
-
+                tech_performance_solar_df = agent_prep.get_technology_performance_solar(con, schema, year)
+                tech_performance_wind_df = agent_prep.get_technology_performance_wind(con, schema, year)
+                
                 #==============================================================================
                 # ANNUAL RESOURCE DATA
                 #==============================================================================       
                 # get annual resource
                 # TODO: start again here
-                resource_wind_df = agent_prep.get_annual_resource_wind(con, schema)
-                resource_solar_df = agent_prep.get_annual_resource_solar(con, schema)
-
-                #==============================================================================
-                # ANNUAL RESOURCE DATA
-                #==============================================================================   
+                resource_solar_df = agent_prep.get_annual_resource_solar(con, schema, sectors)
+                resource_wind_df = agent_prep.get_annual_resource_wind(con, schema, year, sectors)
+                
                 # apply technology performance
-                agents = AgentsAlgorithm(agents, agent_prep.apply_technology_performance_solar, (resource_solar_df, tech_performance_solar_df, )).compute()
-                agents = AgentsAlgorithm(agents, agent_prep.apply_technology_performance_wind, (resource_wind_df, tech_performance_wind_df, )).compute()
-            
+                resource_solar_df = agent_prep.apply_technology_performance_solar(resource_solar_df, tech_performance_solar_df)
+                resource_wind_df = agent_prep.apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df)                    
 
                 #==============================================================================
                 # SYSTEM SIZING
                 #==============================================================================
-                 # size system
+                # get system sizing targets
                 system_sizing_targets_df = agent_prep.get_system_sizing_targets(con, schema)
 
-
-                # TODO: for wind, finish sizing algorith (require additional pieces from above to do so)
-                agents = AgentsAlgorithm(agents, agent_prep.size_systems_wind, (system_sizing_targets_df, )).compute()     
+                # TODO: for wind, finish sizing algorithm
+                agents = AgentsAlgorithm(agents, agent_prep.size_systems_wind, (system_sizing_targets_df, resource_wind_df)).compute()     
+                print agents.dataframe.head()    
+                crash     
                 # TODO: for wind, update net metering fieldsas part of system sizing
                 #                agents = AgentsAlgorithm(agents, agent_prep.update_net_metering_fields).compute(1)
                 # TODO: for solar, write sizing algorithm (from scoe function in postgres)
