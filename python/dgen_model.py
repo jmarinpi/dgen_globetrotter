@@ -261,12 +261,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================           
                     #datfunc.check_tech_potential_limits(cur, con, schema, techs, sectors, out_dir)              
                    
-                   
-                    #==========================================================================================================
-                    # CALCULATE BILL SAVINGS
-                    #==========================================================================================================
-                    #datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar, 
-                    #                           cfg.pg_conn_string, cfg.gross_fit_mode, cfg.local_cores)
 
     
             #==========================================================================================================
@@ -336,37 +330,46 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # size solar systems
                 agents = AgentsAlgorithm(agents, agent_prep.size_systems_solar, (system_sizing_targets_df, resource_solar_df)).compute()  
                 
-
                 # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
                 agents = AgentsAlgorithm(agents, agent_prep.update_net_metering_fields).compute(1)  
                             
-               
                 #==============================================================================
                 # GET NORMALIZED LOAD PROFILES
                 #==============================================================================
                 # apply normalized load profiles
                 agents = AgentsAlgorithm(agents, agent_prep.scale_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
-                                
-                print agents.dataframe.head()    
-                crash                  
                
                 #==============================================================================
                 # HOURLY RESOURCE DATA
                 #==============================================================================
                 # get hourly resource
+                normalized_hourly_resource_solar_df = agent_prep.get_normalized_hourly_resource_solar(con, schema, sectors)
+                normalized_hourly_resource_wind_df = agent_prep.get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents)
+                
+                # TODO: investigate why there are turbine_heigh_m values of NA
+                    # add a coalesce to deal with power curves of -1
+                    # continue testing
+                print agents.dataframe.head()    
+                crash                
+                
                 # TODO:
+                # apply normalized hourly resource profiles
+                agents = AgentsAlgorithm(agents, agent_prep.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, )).compute()
+                agents = AgentsAlgorithm(agents, agent_prep.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, )).compute()
 
                 #==============================================================================
                 # TECHNOLOGY COSTS
                 #==============================================================================
                 # get technology costs
                 # apply technology costs     
-                crash
+
                 
-                #==============================================================================
-                # CALCULATE BILLS
-                #==============================================================================                
+                #==========================================================================================================
+                # CALCULATE BILL SAVINGS
+                #==========================================================================================================
                 # TODO:
+                #datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar, 
+                #                           cfg.pg_conn_string, cfg.gross_fit_mode, cfg.local_cores)
 
 
                 

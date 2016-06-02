@@ -16,6 +16,7 @@ import multiprocessing
 import traceback
 import data_functions as datfunc
 from agent import Agent, Agents, AgentsAlgorithm
+from cStringIO import StringIO
 
 #%% GLOBAL SETTINGS
 
@@ -1344,7 +1345,9 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     wind_df_sized['aep'] = wind_df_sized['system_size_kw'] * wind_df_sized['naep']
     
     # note: ur_enable_net_metering is automatically returned because it is an input column
-    out_cols = list(pd.unique(in_cols + ['ur_enable_net_metering', 'score', 'nturb', 'aep', 'system_size_kw']))
+    return_cols = ['ur_enable_net_metering', 'score', 'nturb', 'aep', 'system_size_kw', 'turbine_height_m', 
+                   'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']
+    out_cols = list(pd.unique(in_cols + return_cols))
     
     out_df = pd.concat([wind_df_sized[out_cols], nonwind_df], axis = 0, ignore_index = True)
 
@@ -1423,6 +1426,7 @@ def get_normalized_load_profiles(con, schema, sectors):
             
     return df
 
+
 #%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def scale_normalized_load_profiles(dataframe, load_df):
@@ -1442,6 +1446,137 @@ def scale_normalized_load_profiles(dataframe, load_df):
     dataframe = dataframe[out_cols]
     
     return dataframe
+    
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def get_normalized_hourly_resource_solar(con, schema, sectors):
+    
+    inputs = locals().copy()
+    
+    df_list = []
+    for sector_abbr, sector in sectors.iteritems():
+        inputs['sector_abbr'] = sector_abbr
+        sql = """SELECT 'solar'::VARCHAR(5) as tech,
+                        '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
+                        a.county_id, a.bin_id,
+                        b.cf,
+                        1e6 as scale_offset
+                FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
+                LEFT JOIN diffusion_resource_solar.solar_resource_hourly b
+                    ON a.solar_re_9809_gid = b.solar_re_9809_gid
+                    AND a.tilt = b.tilt
+                    AND a.azimuth = b.azimuth;""" % inputs
+        df_sector = pd.read_sql(sql, con, coerce_float = False)
+        df_list.append(df_sector)
+        
+    df = pd.concat(df_list, axis = 0, ignore_index = True)
+        
+    return df
+
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents):
+    
+    inputs = locals().copy()
+    
+    # isolate the information from agents regarding the power curves and hub heights for each agent
+    system_sizes_df = agents.dataframe[agents.dataframe['tech'] == 'wind'][['sector_abbr', 'county_id', 'bin_id', 'i', 'j', 'cf_bin', 'turbine_height_m', 'power_curve_1', 'power_curve_2']]
+    system_sizes_df['turbine_height_m'] = system_sizes_df['turbine_height_m'].astype(np.int64)   
+    system_sizes_df['power_curve_1'] = system_sizes_df['power_curve_1'].astype(np.int64)   
+    system_sizes_df['power_curve_2'] = system_sizes_df['power_curve_2'].astype(np.int64)   
+        
+    df_list = []
+    for sector_abbr, sector in sectors.iteritems():
+        inputs['sector_abbr'] = sector_abbr
+        # write the power curve(s) and turbine heights for each agent to postgres
+        sql = """DROP TABLE IF EXISTS %(schema)s.agent_selected_turbines_%(sector_abbr)s;
+                CREATE UNLOGGED TABLE %(schema)s.agent_selected_turbines_%(sector_abbr)s
+                (
+                    county_id integer,
+                    bin_id integer,
+                    i integer,
+                    j integer,
+                    cf_bin integer,
+                    turbine_height_m integer,
+                    power_curve_1 integer,
+                    power_curve_2 integer
+                );""" % inputs   
+        cur.execute(sql)
+        con.commit()
+        
+        system_sizes_sector_df = system_sizes_df[system_sizes_df['sector_abbr'] == sector_abbr][['county_id', 'bin_id', 'i', 'j', 'cf_bin', 'turbine_height_m', 'power_curve_1', 'power_curve_2']]
+        system_sizes_sector_df['turbine_height_m'] = system_sizes_sector_df['turbine_height_m'].astype(np.int64)
+        
+        s = StringIO()
+        # write the data to the stringIO
+        system_sizes_sector_df.to_csv(s, index = False, header = False)
+        # seek back to the beginning of the stringIO file
+        s.seek(0)
+        # copy the data from the stringio file to the postgres table
+        cur.copy_expert('COPY %(schema)s.agent_selected_turbines_%(sector_abbr)s FROM STDOUT WITH CSV' % inputs, s)
+        # commit the additions and close the stringio file (clears memory)
+        con.commit()    
+        s.close()
+        
+        # add primary key
+        sql = """ALTER TABLE %(schema)s.agent_selected_turbines_%(sector_abbr)s
+                 ADD PRIMARY KEY (county_id, bin_id);""" % inputs        
+        cur.execute(sql)
+        con.commit()
+        
+        # add indices
+        sql = """CREATE INDEX agent_selected_turbines_%(sector_abbr)s_btree_i
+                 ON %(schema)s.agent_selected_turbines_%(sector_abbr)s
+                 USING BTREE(i);
+                 
+                 CREATE INDEX agent_selected_turbines_%(sector_abbr)s_btree_j
+                 ON %(schema)s.agent_selected_turbines_%(sector_abbr)s
+                 USING BTREE(j);
+                 
+                 CREATE INDEX agent_selected_turbines_%(sector_abbr)s_btree_cf_bin
+                 ON %(schema)s.agent_selected_turbines_%(sector_abbr)s
+                 USING BTREE(cf_bin);
+                 
+                 CREATE INDEX agent_selected_turbines_%(sector_abbr)s_btree_turbine_height_m
+                 ON %(schema)s.agent_selected_turbines_%(sector_abbr)s
+                 USING BTREE(turbine_height_m);
+                 
+                 CREATE INDEX agent_selected_turbines_%(sector_abbr)s_btree_power_curve_1
+                 ON %(schema)s.agent_selected_turbines_%(sector_abbr)s
+                 USING BTREE(power_curve_1);
+                 
+                 CREATE INDEX agent_selected_turbines_%(sector_abbr)s_btree_power_curve_2
+                 ON %(schema)s.agent_selected_turbines_%(sector_abbr)s
+                 USING BTREE(power_curve_2);""" % inputs
+        cur.execute(sql)
+        con.commit()
+
+        sql = """SELECT 'wind'::VARCHAR(5) as tech,
+                        '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
+                        a.county_id, a.bin_id,
+                        COALESCE(b.cf, array_fill(1, array[8760])) as cf_1,
+                        COALESCE(c.cf, array_fill(1, array[8760])) as cf_2,
+                        1e3 as scale_offset
+                FROM %(schema)s.agent_selected_turbines_%(sector_abbr)s a
+                LEFT JOIN diffusion_resource_wind.wind_resource_hourly b
+                    ON a.i = b.i
+                    	AND a.j = b.j
+                    	AND a.cf_bin = b.cf_bin
+                    	AND a.turbine_height_m = b.height
+                    	AND a.power_curve_1 = b.turbine_id
+                LEFT JOIN diffusion_resource_wind.wind_resource_hourly c
+                    ON a.i = c.i
+                    	AND a.j = c.j
+                    	AND a.cf_bin = c.cf_bin
+                    	AND a.turbine_height_m = c.height
+                    	AND a.power_curve_1 = c.turbine_id;""" % inputs
+        df_sector = pd.read_sql(sql, con, coerce_float = False)
+        df_list.append(df_sector)
+        
+    df = pd.concat(df_list, axis = 0, ignore_index = True)
+        
+    return df    
     
     
 #%%
