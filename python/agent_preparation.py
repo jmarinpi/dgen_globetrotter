@@ -1459,7 +1459,7 @@ def get_normalized_hourly_resource_solar(con, schema, sectors):
         sql = """SELECT 'solar'::VARCHAR(5) as tech,
                         '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
                         a.county_id, a.bin_id,
-                        b.cf,
+                        b.cf as generation_hourly,
                         1e6 as scale_offset
                 FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
                 LEFT JOIN diffusion_resource_solar.solar_resource_hourly b
@@ -1555,8 +1555,8 @@ def get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents):
         sql = """SELECT 'wind'::VARCHAR(5) as tech,
                         '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
                         a.county_id, a.bin_id,
-                        COALESCE(b.cf, array_fill(1, array[8760])) as cf_1,
-                        COALESCE(c.cf, array_fill(1, array[8760])) as cf_2,
+                        COALESCE(b.cf, array_fill(1, array[8760])) as generation_hourly_1,
+                        COALESCE(c.cf, array_fill(1, array[8760])) as generation_hourly_2,
                         1e3 as scale_offset
                 FROM %(schema)s.agent_selected_turbines_%(sector_abbr)s a
                 LEFT JOIN diffusion_resource_wind.wind_resource_hourly b
@@ -1577,6 +1577,69 @@ def get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents):
     df = pd.concat(df_list, axis = 0, ignore_index = True)
         
     return df    
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def apply_normalized_hourly_resource_solar(dataframe, hourly_resource_df):
+    
+    # record the columns in the input dataframe
+    in_cols = list(dataframe.columns)     
+    
+    # subdivide wind and other techs
+    solar_df = dataframe[dataframe['tech'] == 'solar']
+    nonsolar_df = dataframe[dataframe['tech'] <> 'solar']
+    
+    # join resource data to dataframe
+    nonsolar_df = pd.merge(nonsolar_df, hourly_resource_df, how = 'left', on = ['sector_abbr', 'tech', 'county_id', 'bin_id'])
+    # apply the scale offset to convert values to float with correct precision
+    nonsolar_df = nonsolar_df.apply(datfunc.scale_array_precision, axis = 1, args = ('generation_hourly', 'scale_offset'))
+    # scale the normalized profile by the system size
+    nonsolar_df = nonsolar_df.apply(datfunc.scale_array_sum, axis = 1, args = ('generation_hourly', 'aep'))    
+    # subset to only the desired output columns
+    out_cols = in_cols + ['generation_hourly']
+    nonsolar_df = nonsolar_df[out_cols]    
+    
+    # concatenate with other techs
+    dataframe = pd.concat([solar_df, nonsolar_df], axis = 0, ignore_index = False)
+
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def apply_normalized_hourly_resource_wind(dataframe, hourly_resource_df):
+    
+    # record the columns in the input dataframe
+    in_cols = list(dataframe.columns)     
+    
+    # subdivide wind and other techs
+    wind_df = dataframe[dataframe['tech'] == 'wind']
+    nonwind_df = dataframe[dataframe['tech'] <> 'wind']
+    
+    # join resource data to dataframe
+    wind_df = pd.merge(wind_df, hourly_resource_df, how = 'left', on = ['sector_abbr', 'tech', 'county_id', 'bin_id'])
+    # apply the scale offset to convert values to float with correct precision
+    wind_df = wind_df.apply(datfunc.scale_array_precision, axis = 1, args = ('generation_hourly_1', 'scale_offset'))
+    wind_df = wind_df.apply(datfunc.scale_array_precision, axis = 1, args = ('generation_hourly_2', 'scale_offset'))    
+    # interpolate power curves
+    wind_df = wind_df.apply(datfunc.interpolate_array, axis = 1, args = ('generation_hourly_1', 'generation_hourly_2', 'power_curve_interp_factor', 'generation_hourly'))
+    # scale the normalized profile by the system size
+    wind_df = wind_df.apply(datfunc.scale_array_sum, axis = 1, args = ('generation_hourly', 'aep'))    
+    # subset to only the desired output columns
+    out_cols = in_cols + ['generation_hourly']
+    wind_df = wind_df[out_cols]  
+    
+    # make sure column order matches between two dataframes
+    nonwind_df = nonwind_df[out_cols]
+    
+    # concatenate with other techs
+    dataframe = pd.concat([wind_df, nonwind_df], axis = 0, ignore_index = False)
+
+    return dataframe
+    
+    
+#%%
+    
     
     
 #%%
@@ -1588,9 +1651,6 @@ def check_agent_count():
 #%% TODO LIST
 
 # ~~~IMMEDIATE~~~
-# TODO: create get_cost_and_performance() functions
-        # should be postgres only, returning data frames
-# TODO: create size systems functions()
 
 
 # ~~~UP NEXT~~~
@@ -1603,6 +1663,7 @@ def check_agent_count():
 
 
 # ~~~LONG TERM~~~
+# TODO: Figure out how to make collection of hourly array data (resource and consumption) more efficient
 # TODO: get logger working on both data_functions and agent_preparation
 # TODO: strip cap cost multipliers from agent locations and move to somewhere downstream
 # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database

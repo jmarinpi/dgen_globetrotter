@@ -346,23 +346,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 normalized_hourly_resource_solar_df = agent_prep.get_normalized_hourly_resource_solar(con, schema, sectors)
                 normalized_hourly_resource_wind_df = agent_prep.get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents)
                 
-                # TODO: investigate why there are turbine_heigh_m values of NA
-                    # add a coalesce to deal with power curves of -1
-                    # continue testing
-                print agents.dataframe.head()    
-                crash                
-                
-                # TODO:
                 # apply normalized hourly resource profiles
                 agents = AgentsAlgorithm(agents, agent_prep.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, )).compute()
                 agents = AgentsAlgorithm(agents, agent_prep.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, )).compute()
-
+  
                 #==============================================================================
                 # TECHNOLOGY COSTS
                 #==============================================================================
                 # get technology costs
                 # apply technology costs     
-
+                  
                 
                 #==========================================================================================================
                 # CALCULATE BILL SAVINGS
