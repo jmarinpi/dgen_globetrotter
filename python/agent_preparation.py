@@ -1718,22 +1718,5 @@ def check_agent_count():
         # this should be called every time get_agents() is run
     pass
 
-#%% TODO LIST
-
-# ~~~IMMEDIATE~~~
 
 
-# ~~~UP NEXT~~~
-# TODO: add indices to agent_core_attributes for subsequent steps
-    # county_id
-    # pgid
-# TODO: continue with the rest of the functions outlined above, 
-        # to reproduce the functionality of the old generate customer bins 
-        # in a more modular form
-
-
-# ~~~LONG TERM~~~
-# TODO: Figure out how to make collection of hourly array data (resource and consumption) more efficient
-# TODO: get logger working on both data_functions and agent_preparation
-# TODO: strip cap cost multipliers from agent locations and move to somewhere downstream
-# TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database

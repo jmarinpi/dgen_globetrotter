@@ -124,14 +124,7 @@ class Agents(object):
             self.dataframe = dataframe
         else:
             return Agents(dataframe)
-    
-class AgentSettings(object):
-    
-    def __init__(self):
-        # TODO: create this object
-    
-        pass
-    
+        
 
 class AgentsAlgorithm(object):
     
