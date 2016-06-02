@@ -325,20 +325,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # get system sizing targets
                 system_sizing_targets_df = agent_prep.get_system_sizing_targets(con, schema)
 
-                # TODO: for wind, finish sizing algorithm
-                agents = AgentsAlgorithm(agents, agent_prep.size_systems_wind, (system_sizing_targets_df, resource_wind_df)).compute()     
+                # size wind systems
+                agents = AgentsAlgorithm(agents, agent_prep.size_systems_wind, (system_sizing_targets_df, resource_wind_df)).compute()       
+
+                # size solar systems
+                agents = AgentsAlgorithm(agents, agent_prep.size_systems_solar, (system_sizing_targets_df, resource_solar_df)).compute()  
+                
+
+                # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
+                agents = AgentsAlgorithm(agents, agent_prep.update_net_metering_fields).compute(1)
                 print agents.dataframe.head()    
                 crash     
-                # TODO: for wind, update net metering fieldsas part of system sizing
-                #                agents = AgentsAlgorithm(agents, agent_prep.update_net_metering_fields).compute(1)
-                # TODO: for solar, write sizing algorithm (from scoe function in postgres)
-
-                #==============================================================================
-                # TECHNOLOGY COSTS
-                #==============================================================================
-                # get technology costs
-                # apply technology costs     
-            
+                            
                 #==============================================================================
                 # LOAD PROFILE
                 #==============================================================================
@@ -355,8 +353,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==============================================================================
                 # CALCULATE BILLS
                 #==============================================================================                
-                           
+                # TODO:
 
+                #==============================================================================
+                # TECHNOLOGY COSTS
+                #==============================================================================
+                # get technology costs
+                # apply technology costs     
                 crash
                 
                 

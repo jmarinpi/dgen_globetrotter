@@ -1277,12 +1277,11 @@ def apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df
 
 
 #%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     
     in_cols = list(dataframe.columns)
-    
-    print dataframe.shape[0]
-    
+       
     # TODO: this will be inefficient during parallelization
     wind_df = dataframe[dataframe['tech'] == 'wind']
     nonwind_df = dataframe[dataframe['tech'] <> 'wind']
@@ -1291,20 +1290,19 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     wind_df = pd.merge(wind_df, system_sizing_targets_df, how = 'left', on = ['sector_abbr', 'tech'])    
     
     # determine whether NEM is available in the state and sector
-    wind_df['nem_available'] = wind_df['nem_system_size_limit_kw'] == 0
+    wind_df['ur_enable_net_metering'] = wind_df['nem_system_size_limit_kw'] == 0
     
     # set the target kwh according to NEM availability
-    wind_df['target_kwh'] = np.where(wind_df['nem_available'] == True, 
+    wind_df['target_kwh'] = np.where(wind_df['ur_enable_net_metering'] == True, 
                                        wind_df['load_kwh_per_customer_in_bin'] * wind_df['sys_size_target_no_nem'],
                                        wind_df['load_kwh_per_customer_in_bin'] * wind_df['sys_size_target_nem'])
     # also set the oversize limit according to NEM availability
-    wind_df['oversize_limit_kwh'] = np.where(wind_df['nem_available'] == True, 
+    wind_df['oversize_limit_kwh'] = np.where(wind_df['ur_enable_net_metering'] == True, 
                                        wind_df['load_kwh_per_customer_in_bin'] * wind_df['sys_oversize_limit_no_nem'],
                                        wind_df['load_kwh_per_customer_in_bin'] * wind_df['sys_oversize_limit_nem'])
 
     # join in the resource data
     wind_df = pd.merge(wind_df, resource_df, how = 'left', on = ['tech', 'sector_abbr', 'county_id', 'bin_id'])
-    # add in an arbitrary id
 
     # calculate the system generation from naep and turbine_size_kw    
     wind_df['aep_kwh'] = wind_df['turbine_size_kw'] * wind_df['naep']
@@ -1330,23 +1328,75 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     wind_df.loc[oversized_turbines | no_kwh, 'score'] = np.array([1e8]) + wind_df['turbine_size_kw'] * 100 + wind_df['turbine_height_m']
     wind_df.loc[oversized_turbines | no_kwh, 'nturb'] = 0.0
     # also disable net metering
-    wind_df.loc[oversized_turbines | no_kwh, 'nem_available'] = False
+    wind_df.loc[oversized_turbines | no_kwh, 'ur_enable_net_metering'] = False
     
     # check that the system is within the net metering size limit
     over_nem_limit = wind_df['turbine_size_kw'] > wind_df['nem_system_size_limit_kw']
     wind_df.loc[over_nem_limit, 'score'] = wind_df['score'] * 2
-    wind_df.loc[over_nem_limit, 'nem_available'] = False
+    wind_df.loc[over_nem_limit, 'ur_enable_net_metering'] = False
 
     # for each agent, find the optimal turbine
     wind_df['rank'] = wind_df.groupby(['county_id', 'bin_id', 'sector_abbr'])['score'].rank(ascending = True, method = 'first')
     wind_df_sized = wind_df[wind_df['rank'] == 1]
+    # add in the system_size_kw field
+    wind_df_sized['system_size_kw'] = wind_df_sized['turbine_size_kw'] * wind_df_sized['nturb']
+    # recalculate the aep based on the system size (instead of plain turbine size)
+    wind_df_sized['aep'] = wind_df_sized['system_size_kw'] * wind_df_sized['naep']
     
-    out_cols = in_cols + ['score', 'nturb', 'nem_available']
+    # note: ur_enable_net_metering is automatically returned because it is an input column
+    out_cols = list(pd.unique(in_cols + ['ur_enable_net_metering', 'score', 'nturb', 'aep', 'system_size_kw']))
     
     out_df = pd.concat([wind_df_sized[out_cols], nonwind_df], axis = 0, ignore_index = True)
 
     return out_df
 
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def size_systems_solar(dataframe, system_sizing_targets_df, resource_df, default_panel_size_sqft = 17.5):
+    
+    in_cols = list(dataframe.columns)
+       
+    # TODO: this will be inefficient during parallelization
+    solar_df = dataframe[dataframe['tech'] == 'solar']
+    nonsolar_df = dataframe[dataframe['tech'] <> 'solar']    
+    
+    # join in system sizing targets df
+    solar_df = pd.merge(solar_df, system_sizing_targets_df, how = 'left', on = ['sector_abbr', 'tech'])     
+    
+    # join in the resource data
+    solar_df = pd.merge(solar_df, resource_df, how = 'left', on = ['tech', 'sector_abbr', 'county_id', 'bin_id'])
+ 
+    solar_df['max_buildable_system_kw'] =  0.001 * solar_df['developable_roof_sqft'] * solar_df['pv_density_w_per_sqft']
+
+    # initialize the system size targets
+    solar_df['ideal_system_size_kw_no_nem'] = solar_df['load_kwh_per_customer_in_bin'] * solar_df['sys_size_target_no_nem']/solar_df['naep']
+    solar_df['ideal_system_size_kw_nem'] = solar_df['load_kwh_per_customer_in_bin'] * solar_df['sys_size_target_nem']/solar_df['naep'] 
+    
+    # deal with special cases: no net metering, unlimited NEM, limited NEM
+    no_net_metering = solar_df['nem_system_size_limit_kw'] == 0
+    unlimited_net_metering = solar_df['nem_system_size_limit_kw'] == float('inf')
+    solar_df['ideal_system_size_kw'] = np.where(no_net_metering, 
+                                                solar_df['ideal_system_size_kw_no_nem'],
+                                                np.where(unlimited_net_metering, 
+                                                         solar_df['ideal_system_size_kw_nem'],
+                                                         np.minimum(solar_df['ideal_system_size_kw_nem'], solar_df['nem_system_size_limit_kw']) # if limited NEM, maximize size up to the NEM limit
+                                                         )
+                                                )
+    # change NEM enabled accordingly
+    solar_df['ur_enable_net_metering'] = np.where(no_net_metering, False, True)
+                                             
+    # calculate the system size based on the target size and the availabile roof space
+    solar_df['system_size_kw'] = np.round(np.minimum(solar_df['max_buildable_system_kw'], solar_df['ideal_system_size_kw']), 2)                      
+    # derive the number of panels
+    solar_df['npanels'] = solar_df['system_size_kw']/(0.001 * solar_df['pv_density_w_per_sqft'] * default_panel_size_sqft) # Denom is kW of a panel
+    # calculate aep
+    solar_df['aep'] = solar_df['system_size_kw'] * solar_df['naep']    
+
+    out_cols = list(pd.unique(in_cols + ['ur_enable_net_metering', 'npanels', 'aep', 'system_size_kw']))
+    
+    out_df = pd.concat([solar_df[out_cols], nonsolar_df], axis = 0, ignore_index = True)
+
+    return out_df   
 
 #%%
 def check_agent_count():
