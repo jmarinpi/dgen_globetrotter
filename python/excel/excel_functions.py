@@ -52,7 +52,7 @@ def load_scenario(xls_file, schema, conn = None):
         mappings = mappings[mappings.run == True]
             
         # open the workbook                
-        wb = xl.load_workbook(xls_file, data_only = True)
+        wb = xl.load_workbook(xls_file, data_only = True, read_only = True)
         
             
         for run, table, range_name, transpose, melt in mappings.itertuples(index = False):

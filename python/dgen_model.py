@@ -256,6 +256,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     normalized_load_profiles_df = agent_prep.get_normalized_load_profiles(con, schema, sectors)
 
+
+                    # get system sizing targets
+                    system_sizing_targets_df = agent_prep.get_system_sizing_targets(con, schema)  
+
                     #==========================================================================================================
                     # CHECK TECH POTENTIAL
                     #==========================================================================================================           
@@ -295,41 +299,32 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==============================================================================                
                 # get net metering settings
                 net_metering_df = agent_prep.get_net_metering_settings(con, schema, year)
-
-                # select rates
+                # select rates, combining with net metering settings
                 agents = AgentsAlgorithm(agents, agent_prep.select_electric_rates, (rates_df, net_metering_df)).compute(1)
                 
-                #==============================================================================
-                # TECHNOLOGY PERFORMANCE    
-                #==============================================================================
-                # get technology performance data
-                tech_performance_solar_df = agent_prep.get_technology_performance_solar(con, schema, year)
-                tech_performance_wind_df = agent_prep.get_technology_performance_wind(con, schema, year)
-                
+
                 #==============================================================================
                 # ANNUAL RESOURCE DATA
                 #==============================================================================       
-                # get annual resource
-                # TODO: start again here
+                # get annual resource data
                 resource_solar_df = agent_prep.get_annual_resource_solar(con, schema, sectors)
                 resource_wind_df = agent_prep.get_annual_resource_wind(con, schema, year, sectors)
-                
-                # apply technology performance
+                # get technology performance data
+                tech_performance_solar_df = agent_prep.get_technology_performance_solar(con, schema, year)
+                tech_performance_wind_df = agent_prep.get_technology_performance_wind(con, schema, year)
+                # apply technology performance to annual resource data
                 resource_solar_df = agent_prep.apply_technology_performance_solar(resource_solar_df, tech_performance_solar_df)
-                resource_wind_df = agent_prep.apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df)                    
-
+                resource_wind_df = agent_prep.apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df)     
+                                
                 #==============================================================================
                 # SYSTEM SIZING
                 #==============================================================================
-                # get system sizing targets
-                system_sizing_targets_df = agent_prep.get_system_sizing_targets(con, schema)
-
-                # size wind systems
-                agents = AgentsAlgorithm(agents, agent_prep.size_systems_wind, (system_sizing_targets_df, resource_wind_df)).compute()       
-
-                # size solar systems
-                agents = AgentsAlgorithm(agents, agent_prep.size_systems_solar, (system_sizing_targets_df, resource_solar_df)).compute()  
-                
+                # size systems
+                agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), agent_prep.size_systems_solar, (system_sizing_targets_df, resource_solar_df)).compute()  
+                agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), agent_prep.size_systems_wind, (system_sizing_targets_df, resource_wind_df)).compute()   
+                # re-combine technologies
+                agents = agents_solar.add_agents(agents_wind)
+                del agents_solar, agents_wind   
                 # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
                 agents = AgentsAlgorithm(agents, agent_prep.update_net_metering_fields).compute(1)  
                             
@@ -345,11 +340,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # get hourly resource
                 normalized_hourly_resource_solar_df = agent_prep.get_normalized_hourly_resource_solar(con, schema, sectors)
                 normalized_hourly_resource_wind_df = agent_prep.get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents)
-                
                 # apply normalized hourly resource profiles
-                agents = AgentsAlgorithm(agents, agent_prep.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, )).compute()
-                agents = AgentsAlgorithm(agents, agent_prep.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, )).compute()
-  
+                agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), agent_prep.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, )).compute()
+                agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), agent_prep.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, )).compute()        
+                # re-combine technologies
+                agents = agents_solar.add_agents(agents_wind)
+                del agents_solar, agents_wind               
+                
                 #==============================================================================
                 # TECHNOLOGY COSTS
                 #==============================================================================
@@ -359,12 +356,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # apply technology costs     
                 agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), agent_prep.apply_tech_costs_solar, (tech_costs_solar_df, )).compute()
                 agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), agent_prep.apply_tech_costs_wind, (tech_costs_wind_df, )).compute()
+                # re-combine technologies
                 agents = agents_solar.add_agents(agents_wind)
                 del agents_solar, agents_wind
                 
-                print agents.head()
-                crash
-                  
+               
                 
                 #==========================================================================================================
                 # CALCULATE BILL SAVINGS
@@ -373,7 +369,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #datfunc.calc_utility_bills(cur, con, schema, sectors, techs, cfg.npar, 
                 #                           cfg.pg_conn_string, cfg.gross_fit_mode, cfg.local_cores)
 
-
+                print agents.dataframe.head()  
+                crash
                 
                 
                 # reeds stuff...
