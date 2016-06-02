@@ -1639,9 +1639,96 @@ def apply_normalized_hourly_resource_wind(dataframe, hourly_resource_df):
     
     
 #%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def get_technology_costs_solar(con, schema, year):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT 'solar'::VARCHAR(5) as tech,
+                    a.sector_abbr, 
+                    a.installed_costs_dollars_per_kw,
+                    a.fixed_om_dollars_per_kw_per_yr,
+                    a.variable_om_dollars_per_kwh,
+                    a.inverter_cost_dollars_per_kw,
+                    b.size_adjustment_factor as pv_size_adjustment_factor,
+                    b.base_size_kw as pv_base_size_kw,
+                    b.new_construction_multiplier as pv_new_construction_multiplier
+            FROM %(schema)s.input_solar_cost_projections_to_model a
+            LEFT JOIN %(schema)s.input_solar_cost_multipliers b
+                ON a.sector_abbr = b.sector_abbr            
+            WHERE a.year = %(year)s;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
+    
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def get_technology_costs_wind(con, schema, year):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT 'wind'::VARCHAR(5) as tech,
+                    a.turbine_size_kw,
+                    a.turbine_height_m,
+                    a.installed_costs_dollars_per_kw,
+                    a.fixed_om_dollars_per_kw_per_yr,
+                    a.variable_om_dollars_per_kwh
+                FROM %(schema)s.turbine_costs_per_size_and_year a       
+            WHERE a.year = %(year)s;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
     
     
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def apply_tech_costs_solar(dataframe, tech_costs_df):    
     
+    # record the columns in the input dataframe
+    in_cols = list(dataframe.columns)
+    # join the data
+    dataframe = pd.merge(dataframe, tech_costs_df, how = 'left', on = ['tech', 'sector_abbr'])
+    # apply the capital cost multipliers and size adjustment factor
+    dataframe['inverter_cost_dollars_per_kw'] = (dataframe['inverter_cost_dollars_per_kw'] * dataframe['cap_cost_multiplier'] * 
+                                                    (1 - (dataframe['pv_size_adjustment_factor'] * dataframe['pv_base_size_kw'] - dataframe['system_size_kw'])))
+    dataframe['installed_costs_dollars_per_kw'] = (dataframe['installed_costs_dollars_per_kw'] * dataframe['cap_cost_multiplier'] * 
+                                                    (1 - (dataframe['pv_size_adjustment_factor'] * dataframe['pv_base_size_kw'] - dataframe['system_size_kw'])))                                                    
+    # identify the new columns to return
+    return_cols = ['inverter_cost_dollars_per_kw', 'installed_costs_dollars_per_kw', 'fixed_om_dollars_per_kw_per_yr', 'variable_om_dollars_per_kwh']    
+    out_cols = in_cols + return_cols
+
+    dataframe = dataframe[out_cols]
+
+    return dataframe                                                
+
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def apply_tech_costs_wind(dataframe, tech_costs_df):    
+
+    # record the columns in the input dataframe
+    in_cols = list(dataframe.columns)    
+    # join the data
+    dataframe = pd.merge(dataframe, tech_costs_df, how = 'left', on = ['tech', 'turbine_size_kw', 'turbine_height_m'])  
+    # fill nas (these occur where system size is zero)
+    dataframe['installed_costs_dollars_per_kw'] = dataframe['installed_costs_dollars_per_kw'].fillna(0)
+    dataframe['fixed_om_dollars_per_kw_per_yr'] = dataframe['fixed_om_dollars_per_kw_per_yr'].fillna(0)
+    dataframe['variable_om_dollars_per_kwh'] = dataframe['variable_om_dollars_per_kwh'].fillna(0)
+    # apply the capital cost multipliers to the installed costs
+    dataframe['installed_costs_dollars_per_kw'] = dataframe['installed_costs_dollars_per_kw'] * dataframe['cap_cost_multiplier']
+    
+    # add an empty column for the inteverter costs (for compatibility with solar)
+    dataframe['inverter_cost_dollars_per_kw'] = np.nan
+    
+    # identify the new columns to return
+    return_cols = ['inverter_cost_dollars_per_kw', 'installed_costs_dollars_per_kw', 'fixed_om_dollars_per_kw_per_yr', 'variable_om_dollars_per_kwh']    
+    out_cols = in_cols + return_cols
+
+    dataframe = dataframe[out_cols]
+
+    return dataframe
+        
 #%%
 def check_agent_count():
   # TODO: add in a check that agent_core_attributes_ table has the correct number of rows

@@ -354,7 +354,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # TECHNOLOGY COSTS
                 #==============================================================================
                 # get technology costs
+                tech_costs_solar_df = agent_prep.get_technology_costs_solar(con, schema, year)
+                tech_costs_wind_df = agent_prep.get_technology_costs_wind(con, schema, year)
                 # apply technology costs     
+                agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), agent_prep.apply_tech_costs_solar, (tech_costs_solar_df, )).compute()
+                agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), agent_prep.apply_tech_costs_wind, (tech_costs_wind_df, )).compute()
+                agents = agents_solar.add_agents(agents_wind)
+                del agents_solar, agents_wind
+                
+                print agents.head()
+                crash
                   
                 
                 #==========================================================================================================

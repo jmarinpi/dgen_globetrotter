@@ -66,11 +66,11 @@ class Agents(object):
             
         if isinstance(iterable, list):
             if np.all([str(i.__class__) == str(Agent) for i in iterable]):        
-                self.dataframe = pd.concat([i.data for i in iterable], axis = 1, ignore_index = True).T
+                self.dataframe = pd.concat([i.data for i in iterable], axis = 1, ignore_index = True).T.reset_index()
             elif np.all([isinstance(i, pd.Series) for i in iterable]):   
-                self.dataframe = pd.concat(iterable, axis = 1, ignore_index = True).T
+                self.dataframe = pd.concat(iterable, axis = 1, ignore_index = True).T.reset_index()
             elif np.all([isinstance(i, pd.DataFrame) for i in iterable]):       
-                self.dataframe = pd.concat(iterable, axis = 0, ignore_index = True)
+                self.dataframe = pd.concat(iterable, axis = 0, ignore_index = True).reset_index()
             else:
                 raise ValueError('iterable must be one of: pandas.DataFrame, list of Agents, list of pandas.Series, or list of pandas.DataFrame')
                 
@@ -87,10 +87,17 @@ class Agents(object):
     
     def add_agent(self, agent):
 
-        self.dataframe = pd.concat([self.dataframe, pd.DataFrame(agent.data).T], axis = 0, ignore_index = False)
-        
-        pass
+        self.dataframe = pd.concat([self.dataframe, pd.DataFrame(agent.data).T], axis = 0, ignore_index = False).reset_index()
 
+
+    def add_agents(self, new_agents, in_place = False):
+
+        required_cols = list(self.dataframe.columns)
+        dataframe = pd.concat([self.dataframe[required_cols], new_agents.dataframe[required_cols]], axis = 0, ignore_index = False).reset_index()
+        if in_place == True:
+            self.dataframe = dataframe
+        else:
+            return Agents(dataframe)        
 
     def get_agents(self):
         
@@ -100,7 +107,23 @@ class Agents(object):
     def get_agent(self, i):
         
         return Agent(self.dataframe.ix[i])
-    
+        
+    def filter(self, query_string, in_place = False):
+        
+        dataframe = self.dataframe.query(query_string).reset_index()
+        if in_place == True:
+            self.dataframe = dataframe
+        else:
+            return Agents(dataframe)
+        
+    def filter_tech(self, tech, in_place = False):
+        
+        query_string = "tech == '%s'" % tech
+        dataframe = self.dataframe.query(query_string).reset_index()
+        if in_place == True:
+            self.dataframe = dataframe
+        else:
+            return Agents(dataframe)
     
 class AgentSettings(object):
     
@@ -109,6 +132,7 @@ class AgentSettings(object):
     
         pass
     
+
 class AgentsAlgorithm(object):
     
     def __init__(self, agents, f = None, fargs = None, agent_settings = None, in_schema = None, out_schema = None, debug_mode = False, debug_directory = None):
