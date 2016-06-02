@@ -251,6 +251,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     rates_df = agent_prep.get_electric_rates(cur, con, schema, sectors, scenario_opts['random_generator_seed'], cfg.pg_conn_string)
 
+                    #==============================================================================
+                    # GET NORMALIZED LOAD PROFILES
+                    #==============================================================================
+                    normalized_load_profiles_df = agent_prep.get_normalized_load_profiles(con, schema, sectors)
+
                     #==========================================================================================================
                     # CHECK TECH POTENTIAL
                     #==========================================================================================================           
@@ -333,15 +338,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
 
                 # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
-                agents = AgentsAlgorithm(agents, agent_prep.update_net_metering_fields).compute(1)
-                print agents.dataframe.head()    
-                crash     
+                agents = AgentsAlgorithm(agents, agent_prep.update_net_metering_fields).compute(1)  
                             
+               
                 #==============================================================================
-                # LOAD PROFILE
+                # GET NORMALIZED LOAD PROFILES
                 #==============================================================================
-                # get load profile
-                # TODO:
+                # apply normalized load profiles
+                agents = AgentsAlgorithm(agents, agent_prep.scale_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
+                                
+                print agents.dataframe.head()    
+                crash                  
                
                 #==============================================================================
                 # HOURLY RESOURCE DATA

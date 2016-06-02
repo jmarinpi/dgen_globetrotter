@@ -1398,6 +1398,52 @@ def size_systems_solar(dataframe, system_sizing_targets_df, resource_df, default
 
     return out_df   
 
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def get_normalized_load_profiles(con, schema, sectors):
+    
+    inputs = locals().copy()
+    
+    df_list = []
+    for sector_abbr, sector in sectors.iteritems():
+        inputs['sector_abbr'] = sector_abbr
+        sql = """SELECT '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
+                        a.county_id, a.bin_id, 
+                        b.nkwh as consumption_hourly,
+                        1e8 as scale_offset
+                 FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
+                 LEFT JOIN diffusion_load_profiles.energy_plus_normalized_load_%(sector_abbr)s b
+                     ON a.crb_model = b.crb_model
+                     AND a.hdf_load_index = b.hdf_index;""" % inputs
+        df_sector = pd.read_sql(sql, con, coerce_float = False)
+        df_list.append(df_sector)
+        
+    df = pd.concat(df_list, axis = 0, ignore_index = True)
+            
+    return df
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def scale_normalized_load_profiles(dataframe, load_df):
+    
+    # record the columns in the input dataframe
+    in_cols = list(dataframe.columns)
+    # join the dataframe and load_df
+    dataframe = pd.merge(dataframe, load_df, how  = 'left', on = ['county_id', 'bin_id', 'sector_abbr'])
+    # apply the scale offset to convert values to float with correct precision
+    dataframe = dataframe.apply(datfunc.scale_array_precision, axis = 1, args = ('consumption_hourly', 'scale_offset'))
+    # scale the normalized profile to sum to the total load
+    dataframe = dataframe.apply(datfunc.scale_array_sum, axis = 1, args = ('consumption_hourly', 'load_kwh_per_customer_in_bin'))    
+    
+    # subset to only the desired output columns
+    out_cols = in_cols + ['consumption_hourly']
+    
+    dataframe = dataframe[out_cols]
+    
+    return dataframe
+    
+    
 #%%
 def check_agent_count():
   # TODO: add in a check that agent_core_attributes_ table has the correct number of rows

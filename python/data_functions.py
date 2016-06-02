@@ -2375,9 +2375,9 @@ def update_rate_json_w_nem_fields(row):
     return row
 
 
-def scale_array_precision(row, array_col, prec_offset_value):
+def scale_array_precision(row, array_col, prec_offset_col):
     
-    row[array_col] = np.array(row[array_col], dtype = 'float64') / prec_offset_value
+    row[array_col] = np.array(row[array_col], dtype = 'float64') / row[prec_offset_col]
     
     return row
     
