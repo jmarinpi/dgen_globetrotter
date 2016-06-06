@@ -139,26 +139,74 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
     inputs = locals().copy()    
     
     # set fields to write
-    fields = [  'pgid',
+    fields = [  'selected_option',
+                'tech',
+                'pgid',
                 'county_id',
-                'bin_id',          
+                'bin_id',
                 'year',
+                'sector_abbr',
+                'state_abbr',
+                'census_division_abbr',
+                'pca_reg',
+                'reeds_reg',
+                'customers_in_bin',
+                'load_kwh_per_customer_in_bin',
+                'load_kwh_in_bin',
+                'max_demand_kw',
+                'hdf_load_index',
+                'owner_occupancy_status',
+                'pct_of_bldgs_developable',
+                'developable_customers_in_bin',
+                'developable_load_kwh_in_bin',
+                'solar_re_9809_gid',
+                'tilt',
+                'azimuth',
+                'developable_roof_sqft',
+                'inverter_lifetime_yrs',
+                'ann_system_degradation',
+                'i',
+                'j',
+                'cf_bin',
+                'power_curve_1',
+                'power_curve_2',
+                'power_curve_interp_factor',
+                'wind_derate_factor',
+                'turbine_height_m',
+                'turbine_size_kw',
+                'aep',
+                'system_size_kw',
+                'n_units',
+                'rate_id_alias',
+                'rate_source',
+                'nem_system_size_limit_kw',
+                'ur_nm_yearend_sell_rate',
+                'ur_flat_sell_rate',
+                'ur_enable_net_metering',
+                'full_net_metering',
+                'excess_generation_percent',
+                'first_year_bill_with_system',
+                'first_year_bill_without_system',
+                'net_fit_credit_dollars',
+                'monthly_bill_savings',
+                'percent_monthly_bill_savings',
+                'carbon_price_cents_per_kwh',
+                'cap_cost_multiplier',
+                'inverter_cost_dollars_per_kw',
+                'installed_costs_dollars_per_kw',
+                'fixed_om_dollars_per_kw_per_yr',
+                'variable_om_dollars_per_kwh',
+                'flat_rate_excess_gen_kwh',
+                'curtailment_rate',
+                'reeds_elec_price_mult',
                 'business_model',
+                'leasing_allowed',
                 'loan_term_yrs',
                 'loan_rate',
                 'down_payment',
                 'discount_rate',
                 'tax_rate',
-                'carbon_price_cents_per_kwh', 
-                'fixed_om_dollars_per_kw_per_yr',
-                'variable_om_dollars_per_kwh', 
-                'installed_costs_dollars_per_kw',    
-                'inverter_cost_dollars_per_kw',
                 'length_of_irr_analysis_yrs',
-                'market_share_last_year',
-                'number_of_adopters_last_year',
-                'installed_capacity_last_year',
-                'market_value_last_year',
                 'value_of_increment',
                 'value_of_pbi_fit',
                 'value_of_ptc',
@@ -166,46 +214,37 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
                 'ptc_length',
                 'value_of_rebate',
                 'value_of_tax_credit_or_deduction',
-                'ic',
+                'value_of_itc',
+                'total_value_of_incentives',
+                'lcoe',
+                'npv4',
+                'npv_agent',
                 'metric',
                 'metric_value',
-                'lcoe',
                 'max_market_share',
-                'diffusion_market_share',
-                'new_market_share',
-                'new_adopters',
-                'new_capacity',
-                'new_market_value',
-                'market_share',
+                'number_of_adopters_last_year',
+                'installed_capacity_last_year',
+                'market_share_last_year',
+                'market_value_last_year',
                 'number_of_adopters',
                 'installed_capacity',
                 'market_value',
-                'first_year_bill_with_system',
-                'first_year_bill_without_system',
-                'npv4',
-                'npv_agent',
-                'excess_generation_percent',
-                'total_value_of_incentives',
-                'value_of_itc',
-                'tech',
-                'selected_option']    
+                'new_market_share']    
 
     # convert formatting of fields list
     inputs['fields_str'] = utilfunc.pylist_2_pglist(fields).replace("'","")       
-    
-    for sector_abbr, sector in sectors.iteritems():    
-        inputs['sector_abbr'] = sector_abbr
-        # open an in memory stringIO file (like an in memory csv)
-        s = StringIO()
-        # write the data to the stringIO
-        outputs_df.loc[outputs_df['sector_abbr'] == sector_abbr, fields].to_csv(s, index = False, header = False)
-        # seek back to the beginning of the stringIO file
-        s.seek(0)
-        # copy the data from the stringio file to the postgres table
-        cur.copy_expert('COPY %(schema)s.outputs_%(sector_abbr)s (%(fields_str)s) FROM STDOUT WITH CSV' % inputs, s)
-        # commit the additions and close the stringio file (clears memory)
-        con.commit()    
-        s.close()
+
+    # open an in memory stringIO file (like an in memory csv)
+    s = StringIO()
+    # write the data to the stringIO
+    outputs_df.loc[:, fields].to_csv(s, index = False, header = False)
+    # seek back to the beginning of the stringIO file
+    s.seek(0)
+    # copy the data from the stringio file to the postgres table
+    cur.copy_expert('COPY %(schema)s.agent_outputs (%(fields_str)s) FROM STDOUT WITH CSV' % inputs, s)
+    # commit the additions and close the stringio file (clears memory)
+    con.commit()    
+    s.close()
 
 
 def combine_outputs_wind(schema, sectors, cur, con):
@@ -1234,194 +1273,6 @@ def get_srecs(cur, con, schema, techs, pg_conn_string, dsire_opts):
     df = cleanup_incentives(df, dsire_opts)
     
     return df
-
-
-def get_initial_market_shares(cur, con, techs, sectors, schema, initial_market_calibrate_mode, econ_df):
-    
-    # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()     
-    # add the starting capacity table to the inputs dict
-    inputs['cap_table'] = 'starting_capacities_mw_2012_q4_us'
-    
-    sql_list = []
-    for sector_abbr, sector in sectors.iteritems():
-        inputs['sector_abbr'] = sector_abbr
-        inputs['sector'] = sector
-        for tech in techs:
-            inputs['tech'] = tech
-            if tech == 'wind':
-                inputs['cost_table_join'] = """LEFT JOIN %(schema)s.turbine_costs_per_size_and_year b
-                                             ON a.turbine_size_kw = b.turbine_size_kw
-                                             AND a.year = b.year
-                                             AND a.turbine_height_m = b.turbine_height_m""" % inputs
-            elif tech == 'solar':
-                inputs['cost_table_join'] = """LEFT JOIN %(schema)s.input_solar_cost_projections_to_model b
-                                             ON a.year = b.year
-                                             AND b.sector = '%(sector_abbr)s'""" % inputs
-            
-            
-            if initial_market_calibrate_mode == False:
-                sql = """DROP TABLE IF EXISTS %(schema)s.block_%(sector_abbr)s_initial_market_shares_%(tech)s;
-                         CREATE UNLOGGED TABLE %(schema)s.block_%(sector_abbr)s_initial_market_shares_%(tech)s AS
-                         WITH a as
-                         (
-                			SELECT a.county_id, a.bin_id, a.state_abbr,
-                				CASE  WHEN a.system_size_kw = 0 then 0
-                					ELSE a.customers_in_bin
-                				END AS customers_in_bin, 
-                                  COALESCE(b.installed_costs_dollars_per_kw * a.cap_cost_multiplier, 0) as installed_costs_dollars_per_kw
-                			FROM %(schema)s.block_%(sector_abbr)s_best_option_each_year_%(tech)s a
-                            %(cost_table_join)s
-                			WHERE a.year = 2014
-                        ),
-                        s as
-                        (
-                            SELECT a.state_abbr, sum(a.customers_in_bin) as state_total_customers, count(a.customers_in_bin)::NUMERIC as count_customer_bins
-                            FROM a
-                            GROUP BY a.state_abbr
-                        ),
-                         b as
-                         (
-                            	SELECT a.county_id, a.bin_id,
-                                     CASE WHEN s.state_total_customers > 0 THEN (a.customers_in_bin/s.state_total_customers) * b.systems_count_%(sector)s
-                                     ELSE 1/count_customer_bins * b.systems_count_%(sector)s
-                            		 END AS initial_number_of_adopters,
-                                    CASE WHEN s.state_total_customers > 0 THEN (a.customers_in_bin/s.state_total_customers) * b.capacity_mw_%(sector)s
-                                    ELSE 1/count_customer_bins * b.capacity_mw_%(sector)s
-                                    END AS initial_capacity_mw,
-                            		a.customers_in_bin,
-                                     a.installed_costs_dollars_per_kw
-                            	FROM a
-                            	LEFT JOIN diffusion_%(tech)s.starting_capacities_mw_2012_q4_us b
-                            		ON a.state_abbr = b.state_abbr
-                              LEFT JOIN s
-                                    ON a.state_abbr = s.state_abbr
-                        ) 
-                        SELECT b.county_id, b.bin_id,
-                             ROUND(COALESCE(b.initial_number_of_adopters, 0)::NUMERIC, 6) as initial_number_of_adopters,
-                             1000 * ROUND(COALESCE(b.initial_capacity_mw, 0)::NUMERIC, 6) as initial_capacity_kw,
-                    	     CASE  WHEN customers_in_bin = 0 then 0
-                                   ELSE ROUND(COALESCE(b.initial_number_of_adopters/b.customers_in_bin, 0)::NUMERIC, 6) 
-                             END AS initial_market_share,
-                             b.installed_costs_dollars_per_kw
-                        FROM b;""" % inputs
-                cur.execute(sql)
-                con.commit()    
-            else:
-                # write the econ df to postgres
-                sql = """DROP TABLE IF EXISTS %(schema)s.block_%(sector_abbr)s_first_year_economics_%(tech)s;
-                         CREATE TABLE %(schema)s.block_%(sector_abbr)s_first_year_economics_%(tech)s
-                         (
-                            county_id integer,
-                            bin_id    integer,
-                            state_abbr varchar(2),
-                            max_market_share numeric,
-                            npv4 numeric,
-                            customers_in_bin numeric,
-                            system_size_kw numeric,
-                            installed_costs_dollars_per_kw numeric
-                         );""" % inputs
-                cur.execute(sql)
-                con.commit()
-                
-                s = StringIO()
-                fields = ['county_id', 'bin_id', 'state_abbr', 'max_market_share', 'npv4', 'customers_in_bin', 'system_size_kw', 'installed_costs_dollars_per_kw']
-                out_df = econ_df.loc[(econ_df['tech'] == tech) & (econ_df['sector_abbr'] == sector_abbr), fields]                
-                out_df.to_csv(s, index = False, header = False)
-                # seek back to the beginning of the stringIO file
-                s.seek(0)
-                # copy the data from the stringio file to the postgres table
-                cur.copy_expert('COPY %(schema)s.block_%(sector_abbr)s_first_year_economics_%(tech)s FROM STDOUT WITH CSV' % inputs, s)
-                # commit the additions and close the stringio file (clears memory)
-                con.commit()    
-                s.close()   
-                
-                # add index on state_abbr
-                sql = """CREATE INDEX block_%(sector_abbr)s_first_year_economics_%(tech)s_state_abbr_btree
-                         ON %(schema)s.block_%(sector_abbr)s_first_year_economics_%(tech)s
-                         USING BTREE(state_abbr);
-                      """ % inputs
-                cur.execute(sql)
-                con.commit()
-                
-                # add primary key
-                sql = """ALTER TABLE %(schema)s.block_%(sector_abbr)s_first_year_economics_%(tech)s
-                         ADD PRIMARY KEY(county_id, bin_id);""" % inputs
-                cur.execute(sql)
-                con.commit()                         
-                
-                # now disaggregate the data to bins relative to one of the 2014 economic factors
-                weight_factor = 'max_market_share'
-                # or
-                # weight_factor = 'npv4'
-                inputs['weight_factor'] = weight_factor
-                
-                sql = """DROP TABLE IF EXISTS %(schema)s.block_%(sector_abbr)s_initial_market_shares_%(tech)s;
-                         CREATE UNLOGGED TABLE %(schema)s.block_%(sector_abbr)s_initial_market_shares_%(tech)s AS
-                         WITH b as
-                         (
-                            	SELECT a.county_id, a.bin_id,
-                            		((a.customers_in_bin * a.%(weight_factor)s)/sum(a.customers_in_bin * a.%(weight_factor)s) OVER (PARTITION BY a.state_abbr)) * b.systems_count_%(sector)s AS initial_number_of_adopters,
-                            		((a.customers_in_bin * a.%(weight_factor)s * a.system_size_kw)/sum(a.customers_in_bin * a.%(weight_factor)s * a.system_size_kw) OVER (PARTITION BY a.state_abbr)) * b.capacity_mw_%(sector)s AS initial_capacity_mw,
-                            		a.customers_in_bin,
-                                     a.installed_costs_dollars_per_kw
-                            	FROM %(schema)s.block_%(sector_abbr)s_first_year_economics_%(tech)s a
-                            	LEFT JOIN diffusion_%(tech)s.starting_capacities_mw_2012_q4_us b
-                            		ON a.state_abbr = b.state_abbr
-                              WHERE a.customers_in_bin > 0
-                                AND a.system_size_kw > 0
-                                AND a.%(weight_factor)s > 0
-                        ) 
-                        SELECT a.county_id, a.bin_id,
-                             ROUND(COALESCE(b.initial_number_of_adopters, 0)::NUMERIC, 6) AS initial_number_of_adopters,
-                             1000 * ROUND(COALESCE(b.initial_capacity_mw, 0)::NUMERIC, 6) AS initial_capacity_kw,
-                             ROUND(COALESCE(b.initial_number_of_adopters/a.customers_in_bin, 0)::NUMERIC, 6) AS initial_market_share,
-                             a.installed_costs_dollars_per_kw
-                        FROM %(schema)s.block_%(sector_abbr)s_first_year_economics_%(tech)s a
-                        LEFT JOIN b
-                        ON a.county_id = b.county_id
-                            AND a.bin_id = b.bin_id;""" % inputs               
-                cur.execute(sql)
-                con.commit()    
-        
-        
-            # regardless of creation method, add indices
-            sql = """CREATE INDEX block_%(sector_abbr)s_initial_market_shares_%(tech)s_join_fields_btree 
-                     ON %(schema)s.block_%(sector_abbr)s_initial_market_shares_%(tech)s 
-                     USING BTREE(county_id,bin_id);""" % inputs
-            cur.execute(sql)
-            con.commit()
-
-            # write sql to pull the data
-            sql = """SELECT county_id, bin_id, 
-                            initial_market_share AS market_share_last_year,
-                            initial_number_of_adopters AS number_of_adopters_last_year,
-                            initial_capacity_kw AS installed_capacity_last_year,
-                            installed_costs_dollars_per_kw * initial_capacity_kw as market_value_last_year,
-                            '%(tech)s'::TEXT as tech, '%(sector_abbr)s'::Character Varying(3) as sector_abbr
-                    FROM %(schema)s.block_%(sector_abbr)s_initial_market_shares_%(tech)s""" % inputs
-            sql_list.append(sql)
-        
-    sql = ' UNION ALL '.join(sql_list)
-    df = pd.read_sql(sql, con)
-    
-    
-    return df  
-
-
-def get_market_last_year(cur, con, is_first_year, techs, sectors, schema, initial_market_calibrate_mode, econ_df):
-
-    inputs = locals().copy()
-    
-    
-    if is_first_year == True:
-        last_year_df = get_initial_market_shares(cur, con, techs, sectors, schema, initial_market_calibrate_mode, econ_df)
-    else:
-        sql = """SELECT *
-                FROM %(schema)s.output_market_last_year;""" % inputs
-        last_year_df = pd.read_sql(sql, con, coerce_float = False)
-    
-    return last_year_df
     
 
 def write_last_year(con, cur, market_last_year, schema):

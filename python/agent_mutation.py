@@ -213,7 +213,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string):
         
         # get the rates
         sql = """SELECT a.county_id, a.bin_id, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
-                        b.sam_json as rate_json
+                        b.sam_json as rate_json, a.rate_id_alias, a.rate_source 
                FROM  %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s a
                LEFT JOIN %(schema)s.all_rate_jsons b 
                    ON a.rate_id_alias = b.rate_id_alias

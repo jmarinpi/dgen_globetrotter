@@ -265,7 +265,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     #==========================================================================================================
                     # CHECK TECH POTENTIAL
-                    #==========================================================================================================           
+                    #==========================================================================================================    
+                    # TODO: get tech potential check working again
                     #datfunc.check_tech_potential_limits(cur, con, schema, techs, sectors, out_dir)              
                     
 
@@ -405,26 +406,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # get leasing availability
                 leasing_availability_df = mutation.get_leasing_availability(con, schema, year)
                 agents = AgentsAlgorithm(agents, mutation.apply_leasing_availability, (leasing_availability_df, )).compute()                     
-
-
-                # NEXT STEPS
-                # TODO: see if I can get everything downstream working again....
-                # TODO: do some very thorough testing in comparison to dev
-                # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays                
-                
-                agents.dataframe.to_csv('/Users/mgleason/Desktop/agents.csv', index = False)           
-           
-                # ~~~LONG TERM~~~
-                # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
-                # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed
-                # TODO: get logger working on both data_functions and agent_preparation
-                # TODO: strip cap cost multipliers from agent locations and move to somewhere downstream
-                # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database
-                
-
-                
                 
                 # reeds stuff...
+                # TODO: fix this to get linked reeds mode working
 #                if mode == 'ReEDS':
 #                    # When in ReEDS mode add the values from ReEDS to df
 #                    df = pd.merge(df, distPVCurtailment, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
@@ -442,6 +426,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                            scenario_opts, max_market_share, cur, con, year,
                                            dsire_incentives, dsire_opts, state_dsire, srecs, mode, 
                                            curtailment_method, itc_options, inflation_rate, incentives_cap, 25)
+                
                 
                 # select from choices for business model and (optionally) technology
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
@@ -476,9 +461,27 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
                 datfunc.write_last_year(con, cur, market_last_year, schema)
-                datfunc.write_cumulative_deployment(con, cur, df, schema, techs, year, cfg.start_year)
-                datfunc.write_costs(con, cur, schema, learning_curves_mode, year, end_year)
-    
+
+                # TODO: get this working if we want to have learning curves
+#                datfunc.write_cumulative_deployment(con, cur, df, schema, techs, year, cfg.start_year)
+#                datfunc.write_costs(con, cur, schema, learning_curves_mode, year, end_year)
+                
+
+                # NEXT STEPS
+                # TODO: revise combine outputs, copy outputs to csv, and scenario report working with the new outputs
+                # TODO: perform very thorough testing in comparison to dev
+                # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays                
+       
+           
+                # ~~~LONG TERM~~~
+                # TODO: fix warnings in openpyxl
+                # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
+                # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed
+                # TODO: get logger working on both data_functions and agent_preparation
+                # TODO: strip cap cost multipliers from agent locations and move to somewhere downstream
+                # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database                
+                
+                
             #==============================================================================
             #    Outputs & Visualization
             #==============================================================================
