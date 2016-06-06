@@ -956,48 +956,6 @@ def cleanup_incentives(df, dsire_opts):
     return df[out_cols]
 
 
-def create_carbon_intensities_to_model(con, cur, schema):
-    
-    inputs = locals().copy()
-    sql = """DROP TABLE IF EXISTS %(schema)s.carbon_intensities_to_model;
-                CREATE TABLE %(schema)s.carbon_intensities_to_model AS
-                WITH a as
-                (
-                	SELECT state_abbr, year, t_co2_per_kwh, 'Price Based On State Carbon Intensity'::text as carbon_price
-                	FROM %(schema)s.input_main_market_carbon_intensities_grid
-                	UNION ALL
-                	SELECT state_abbr, year, t_co2_per_kwh, 'Price Based On NG Offset'::text as carbon_price
-                	FROM %(schema)s.input_main_market_carbon_intensities_ng
-                	UNION ALL
-                	SELECT state_abbr, year, 0::NUMERIC AS t_co2_per_kwh, 'No Carbon Price'::text as carbon_price
-                	FROM %(schema)s.input_main_market_carbon_intensities_ng
-                )
-                SELECT state_abbr, year, t_co2_per_kwh
-                FROM a
-                INNER JOIN %(schema)s.input_main_scenario_options b
-                ON a.carbon_price = b.carbon_price;""" % inputs
-                
-    cur.execute(sql)
-    con.commit()
-    
-    # add primary key on state_abbr and year
-    sql = """ALTER TABLE %(schema)s.carbon_intensities_to_model
-             ADD PRIMARY KEY (state_abbr, year);""" % inputs
-    cur.execute(sql)
-    con.commit()
-    
-    # ensure row count matches 49 * 19
-    row_count_expected = 49 * 19
-    inputs['row_count_expected'] = row_count_expected
-    sql = """SELECT COUNT(*) as row_count
-             FROM %(schema)s.carbon_intensities_to_model;""" % inputs
-    df = pd.read_sql(sql, con)
-    row_count_actual = df['row_count'][0]
-    inputs['row_count_actual'] = row_count_actual
-    
-    assert row_count_actual == row_count_expected, '%(schema)s.carbon_intensities_to_model has %(row_count_actual)s rows, but should have %(row_count_expected)s' % inputs
-            
-
 def get_dsire_settings(con, schema):
     
     inputs = locals().copy()

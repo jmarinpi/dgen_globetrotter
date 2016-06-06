@@ -74,3 +74,30 @@ CREATE TABLE diffusion_template.input_main_market_carbon_intensities_ng
   year integer,
   t_co2_per_kwh numeric
 );
+
+
+DROP VIEW IF EXISTS diffusion_template.carbon_intensities_to_model;
+CREATE VIEW diffusion_template.carbon_intensities_to_model AS
+WITH a as
+(
+	SELECT state_abbr, year, t_co2_per_kwh, 'Price Based On State Carbon Intensity'::text as carbon_price
+	FROM diffusion_template.input_main_market_carbon_intensities_grid
+
+	UNION ALL
+
+	SELECT state_abbr, year, t_co2_per_kwh, 'Price Based On NG Offset'::text as carbon_price
+	FROM diffusion_template.input_main_market_carbon_intensities_ng
+
+	UNION ALL
+	
+	SELECT state_abbr, year, 0::NUMERIC AS t_co2_per_kwh, 'No Carbon Price'::text as carbon_price
+	FROM diffusion_template.input_main_market_carbon_intensities_ng
+)
+SELECT a.state_abbr, a.year, a.t_co2_per_kwh, 
+	c.carbon_dollars_per_ton, 
+	a.t_co2_per_kwh * 100 * c.carbon_dollars_per_ton as carbon_price_cents_per_kwh
+FROM a
+INNER JOIN diffusion_template.input_main_scenario_options b
+	ON a.carbon_price = b.carbon_price
+LEFT JOIN  diffusion_template.input_main_market_projections c
+	ON a.year = c.year;

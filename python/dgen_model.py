@@ -220,8 +220,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 bass_params = datfunc.get_bass_params(con, schema)
                 learning_curves_mode = datfunc.get_learning_curves_mode(con, schema)
                 datfunc.write_first_year_costs(con, cur, schema, cfg.start_year)
-                # create carbon intensities to model
-                datfunc.create_carbon_intensities_to_model(con, cur, schema)
             logger.info('\tCompleted in: %0.1fs' % t.interval)
 
             # set model years depending on whether in reeds mode
@@ -385,8 +383,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 agents = AgentsAlgorithm(agents, mutation.apply_system_degradation, (system_degradation_df, )).compute()
                 
                 #==========================================================================================================
-                # PLACE HOLDER     
+                # CARBON INTENSITIES
                 #==========================================================================================================               
+                # get carbon intensities
+                carbon_intensities_df = mutation.get_carbon_intensities(con, schema, year)
+                # apply carbon intensities
+                agents = AgentsAlgorithm(agents, mutation.apply_carbon_intensities, (carbon_intensities_df, )).compute()                
+
                 # NEXT STEPS
                 # TODO: see if I can get everything downstream working again....
                 # TODO: do some very thorough testing in comparison to dev

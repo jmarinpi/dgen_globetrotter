@@ -1010,7 +1010,7 @@ def calculate_electric_bills_sam(dataframe, n_workers):
 
 
 #%%
-
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def get_depreciation_schedule(con, schema, year):
     ''' Pull depreciation schedule from dB
     
@@ -1053,6 +1053,7 @@ def get_system_degradation(con, schema):
     return system_degradation_df    
     
     
+
 #%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def apply_system_degradation(dataframe, system_degradation_df):
@@ -1061,6 +1062,33 @@ def apply_system_degradation(dataframe, system_degradation_df):
     
     return dataframe 
     
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def get_carbon_intensities(con, schema, year):
+    ''' Pull depreciation schedule from dB
+    
+        IN: type - string - [all, macrs, standard] 
+        OUT: df  - pd dataframe - year, depreciation schedule:
+
+    '''
+    inputs = locals().copy()    
+    
+    sql = '''SELECT state_abbr, carbon_price_cents_per_kwh
+            FROM %(schema)s.carbon_intensities_to_model
+            WHERE year = %(year)s;''' % inputs
+    df = pd.read_sql(sql, con)
+    
+    return df       
+
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def apply_carbon_intensities(dataframe, carbon_intensities_df):
+    
+    dataframe = pd.merge(dataframe, carbon_intensities_df, how = 'left', on = ['state_abbr'])
+    
+    return dataframe
 
 #%%
 def check_agent_count():
