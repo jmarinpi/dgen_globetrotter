@@ -326,3 +326,13 @@ FROM diffusion_template.input_solar_leasing_availability a
 UNION ALL
 SELECT 'wind'::VARCHAR(5) as tech, b.*
 FROM diffusion_template.input_wind_leasing_availability b;
+
+------------------------------------------------------------------------------------------------
+-- starting_capacities to model
+DROP VIEW IF EXISTS diffusion_template.state_starting_capacities_to_model;
+CREATE VIEW diffusion_template.state_starting_capacities_to_model AS
+SELECT 'solar'::VARCHAR(5) as tech, a.*
+FROM diffusion_solar.starting_capacities_mw_2012_q4_us a
+UNION ALL
+SELECT 'wind'::VARCHAR(5) as tech, b.*
+FROM diffusion_wind.starting_capacities_mw_2012_q4_us b

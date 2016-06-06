@@ -260,6 +260,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # get annual system degradation
                     system_degradation_df = mutation.get_system_degradation(con, schema) 
+                    
+                    # get state starting capacities
+                    state_starting_capacities_df = mutation.get_state_starting_capacities(con, schema)
                     #==========================================================================================================
                     # CHECK TECH POTENTIAL
                     #==========================================================================================================           

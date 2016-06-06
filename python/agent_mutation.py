@@ -1124,15 +1124,46 @@ def apply_leasing_availability(dataframe, leasing_availability_df):
 
 #%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def calculate_initial_market_shares(dataframe, calibrate_mode = False):
+def get_state_starting_capacities(con, schema):
+
+    inputs = locals().copy()    
+    
+    sql = '''SELECT *
+             FROM %(schema)s.state_starting_capacities_to_model;''' % inputs
+    df = pd.read_sql(sql, con)
+    
+    return df    
+    
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def calculate_initial_market_shares(dataframe, state_starting_capacities_df, calibrate_mode = False):
     
     # record input columns
     in_cols = list(dataframe.columns)
     
-    # 
-    pass
+    # find the total number of customers in each state (by technology and sector)
+    state_total_developable_customers = dataframe[['state_abbr', 'sector_abbr', 'tech','developable_customers_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
+    state_total_agents = dataframe[['state_abbr', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).count().reset_index()
+    # rename the final column
+    state_total_agents.columns = state_total_agents.columns.str.replace('developable_customers_in_bin','agent_count')
 
-
+    # merge back to the main dataframe
+    state_denominators = pd.merge(state_total_developable_customers, state_total_agents, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
+    # when developable_customers_in_bin = 0, replace with agent_count
+    state_denominators['denom'] = np.where(state_denominators['developable_customers_in_bin'] > 0, state_denominators['developable_customers_in_bin'], state_denominators['agent_count'])
+    # drop columns
+    state_denominators.drop('developable_customers_in_bin', axis = 1, inplace = True)
+    state_denominators.drop('agent_count', axis = 1, inplace = True)
+    
+    # merge back to the main dataframe
+    dataframe = pd.merge(dataframe, state_denominators, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
+    
+    # merge in the state starting capacities
+    dataframe = pd.merge(dataframe, state_starting_capacities_df, how = 'left', on = ['tech', 'state_abbr', 'sector_abbr'])
+    # TODO: make %(schema)s.state_starting_capacities_to_model TIDY by sector_abbr
+    # TODO: implement the rest of the logic from tmp.sql
+    
     # isolate the return columns
     return_cols = []
     out_cols = in_cols + return_cols
