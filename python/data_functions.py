@@ -2822,24 +2822,21 @@ def get_dsire_incentives(cur, con, schema, techs, sectors, pg_conn_string, dsire
     # create a dictionary out of the input arguments -- this is used through sql queries    
     inputs = locals().copy()
     
-    sql_list = []
-    for sector_abbr, sector in sectors.iteritems():
-        inputs['sector_abbr'] = sector_abbr
-        for tech in techs:
-            if tech == 'solar':
-                inputs['tech'] = tech
-                sql =   """SELECT c.*, '%(tech)s'::TEXT as tech
-                            FROM diffusion_%(tech)s.incentives c
-                        """ % inputs
-                sql_list.append(sql)
-    
-    sql = ' UNION ALL '.join(sql_list)
+    if 'solar' in techs:
+        sql = """SELECT c.*, 'solar'::TEXT as tech
+                    FROM diffusion_solar.incentives c;"""
+    else:
+        sql = """SELECT c.*, 'solar'::TEXT as tech
+                    FROM diffusion_solar.incentives c
+                    LIMIT 0;"""
+                    
     # get the data
     df = pd.read_sql(sql, con, coerce_float = True)
     # clean it up
     df = cleanup_incentives(df, dsire_opts)
 
     return df
+
 
 
 def get_state_dsire_incentives(cur, con, schema, techs, dsire_opts):
