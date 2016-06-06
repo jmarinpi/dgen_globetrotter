@@ -317,4 +317,12 @@ select a.year, a.sector_abbr, a.census_division_abbr,
 from diffusion_shared.aeo_load_growth_projections a
 INNER JOIN diffusion_template.input_main_scenario_options b
 ON lower(a.scenario) = lower(b.load_growth_scenario);
- 
+------------------------------------------------------------------------------------------------
+-- leasing availability to model
+DROP VIEW IF EXISTS diffusion_template.leasing_availability_to_model;
+CREATE VIEW diffusion_template.leasing_availability_to_model AS
+SELECT 'solar'::VARCHAR(5) as tech, a.*
+FROM diffusion_template.input_solar_leasing_availability a
+UNION ALL
+SELECT 'wind'::VARCHAR(5) as tech, b.*
+FROM diffusion_template.input_wind_leasing_availability b;

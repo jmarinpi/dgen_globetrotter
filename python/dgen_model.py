@@ -390,6 +390,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # apply carbon intensities
                 agents = AgentsAlgorithm(agents, mutation.apply_carbon_intensities, (carbon_intensities_df, )).compute()                
 
+                #==========================================================================================================
+                # LEASING AVAILABILITY
+                #==========================================================================================================               
+                # get leasing availability
+                leasing_availability_df = mutation.get_leasing_availability(con, schema, year)
+                agents = AgentsAlgorithm(agents, mutation.apply_leasing_availability, (leasing_availability_df, )).compute()                     
+
+
                 # NEXT STEPS
                 # TODO: see if I can get everything downstream working again....
                 # TODO: do some very thorough testing in comparison to dev

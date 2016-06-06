@@ -1090,6 +1090,32 @@ def apply_carbon_intensities(dataframe, carbon_intensities_df):
     
     return dataframe
 
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def get_leasing_availability(con, schema, year):
+    
+    
+    inputs = locals().copy()    
+    
+    sql = '''SELECT tech, state_abbr, leasing_allowed
+             FROM %(schema)s.leasing_availability_to_model
+             WHERE year = %(year)s;''' % inputs
+    df = pd.read_sql(sql, con)
+    
+    return df     
+    
+    
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def apply_leasing_availability(dataframe, leasing_availability_df):
+    
+    dataframe = pd.merge(dataframe, leasing_availability_df, how = 'left', on = ['state_abbr', 'tech'])
+    
+    return dataframe
+
+
+
 #%%
 def check_agent_count():
   # TODO: add in a check that agent_core_attributes_ table has the correct number of rows
