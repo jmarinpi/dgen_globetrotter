@@ -214,9 +214,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 market_projections = datfunc.get_market_projections(con, schema)
                 load_growth_scenario = scenario_opts['load_growth_scenario'].lower() # get financial variables
                 # these are technology specific, set up in tidy form with a "tech" field
-                financial_parameters = datfunc.get_financial_parameters(con, schema)
-                deprec_schedule = datfunc.get_depreciation_schedule(con, schema)
-                ann_system_degradation = datfunc.get_system_degradation(con, schema) 
+                financial_parameters = datfunc.get_financial_parameters(con, schema)                
                 inflation_rate = datfunc.get_annual_inflation(con,schema)
                 rate_growth_df = datfunc.get_rate_escalations(con, schema)
                 bass_params = datfunc.get_bass_params(con, schema)
@@ -262,6 +260,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get system sizing targets
                     system_sizing_targets_df = mutation.get_system_sizing_targets(con, schema)  
 
+                    # get annual system degradation
+                    system_degradation_df = mutation.get_system_degradation(con, schema) 
                     #==========================================================================================================
                     # CHECK TECH POTENTIAL
                     #==========================================================================================================           
@@ -273,13 +273,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # MODEL TECHNOLOGY DEPLOYMENT    
             #==========================================================================================================
             logger.info("---------Modeling Annual Deployment---------")      
-            # get dsire incentives, srecs, and itc for the generated customer bins
-#            dsire_opts = datfunc.get_dsire_settings(con, schema)
-#            incentives_cap = datfunc.get_incentives_cap(con, schema)
-#            dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, dsire_opts)
-#            srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, dsire_opts)
-#            state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, dsire_opts)            
-#            itc_options = datfunc.get_itc_incentives(con, schema)
+            # get dsire incentives, srecs, and itc inputs
+            dsire_opts = datfunc.get_dsire_settings(con, schema)
+            incentives_cap = datfunc.get_incentives_cap(con, schema)
+            dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, dsire_opts)
+            srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, dsire_opts)
+            state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, dsire_opts)            
+            itc_options = datfunc.get_itc_incentives(con, schema)
             for year in model_years:
                 logger.info('\tWorking on %s' % year)
                     
@@ -304,7 +304,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # select rates, combining with net metering settings
                 agents = AgentsAlgorithm(agents, mutation.select_electric_rates, (rates_df, net_metering_df)).compute(1)
                 
-
                 #==============================================================================
                 # ANNUAL RESOURCE DATA
                 #==============================================================================       
@@ -371,18 +370,33 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                  # (2) actual SAM calculations
                 agents = AgentsAlgorithm(agents, mutation.calculate_electric_bills_sam, (cfg.local_cores, )).compute(1)
                 
-                # NEXT STEPS
-                # TODO: start deleting deprecated functions from datfunc
-                # TODO: see if I can get everything downstream working again....
-                # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays
-                # TODO: do some very thorough testing in comparison to dev
+                #==========================================================================================================
+                # DEPRECIATION SCHEDULE       
+                #==========================================================================================================
+                # get depreciation schedule for current year
+                depreciation_df = mutation.get_depreciation_schedule(con, schema, year)
+                # apply depreciation schedule to agents
+                agents = AgentsAlgorithm(agents, mutation.apply_depreciation_schedule, (depreciation_df, )).compute()
                 
+                #==========================================================================================================
+                # SYSTEM DEGRADATION                
+                #==========================================================================================================
+                # apply system degradation to agents
+                agents = AgentsAlgorithm(agents, mutation.apply_system_degradation, (system_degradation_df, )).compute()
+                
+                #==========================================================================================================
+                # PLACE HOLDER     
+                #==========================================================================================================               
+                # NEXT STEPS
+                # TODO: see if I can get everything downstream working again....
+                # TODO: do some very thorough testing in comparison to dev
+                # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays                
                 
                 agents.dataframe.to_csv('/Users/mgleason/Desktop/agents.csv', index = False)           
-                print agents.dataframe.head()  
-                crash             
+           
                 # ~~~LONG TERM~~~
                 # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
+                # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed
                 # TODO: get logger working on both data_functions and agent_preparation
                 # TODO: strip cap cost multipliers from agent locations and move to somewhere downstream
                 # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database
@@ -391,31 +405,27 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 
                 # reeds stuff...
-                if mode == 'ReEDS':
-                    # When in ReEDS mode add the values from ReEDS to df
-                    df = pd.merge(df, distPVCurtailment, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
-                    df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
-                    df = pd.merge(df, change_elec_price, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
-                else:
-                    # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
-                    df['curtailment_rate'] = 0
-                    df['ReEDS_elec_price_mult'] = 1
-                    curtailment_method = 'net'           
-                
-
-                                    
+#                if mode == 'ReEDS':
+#                    # When in ReEDS mode add the values from ReEDS to df
+#                    df = pd.merge(df, distPVCurtailment, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
+#                    df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
+#                    df = pd.merge(df, change_elec_price, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
+#                else:
+                # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
+                agents.dataframe['curtailment_rate'] = 0
+                agents.dataframe['ReEDS_elec_price_mult'] = 1
+                curtailment_method = 'net'           
+                                        
                 # Calculate economics of adoption for different busines models
                 df = finfunc.calc_economics(agents.dataframe, schema, 
                                            market_projections, financial_parameters, rate_growth_df,
-                                           scenario_opts, max_market_share, 
-                                           cur, con, year, dsire_incentives, dsire_opts, state_dsire,
-                                           srecs, deprec_schedule, 
-                                           ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate,
-                                           incentives_cap, 25)         
+                                           scenario_opts, max_market_share, cur, con, year,
+                                           dsire_incentives, dsire_opts, state_dsire, srecs, mode, 
+                                           curtailment_method, itc_options, inflation_rate, incentives_cap, 25)
                 
                 # select from choices for business model and (optionally) technology
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
-
+                crash
                 # calculate diffusion based on economics and bass diffusion      
                 df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, year, 
                                                               cfg.start_year, cfg.initial_market_calibrate_mode, bass_params) 

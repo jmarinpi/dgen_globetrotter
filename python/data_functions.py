@@ -854,35 +854,6 @@ def get_technologies(con, schema):
     
     return techs
     
-
-def get_system_degradation(con, schema):
-    '''Return the annual system degradation rate as float.
-        '''    
-        
-
-    sql = '''SELECT ann_system_degradation, tech
-         FROM %s.input_performance_annual_system_degradation;''' % schema
-    ann_system_degradation = pd.read_sql(sql, con)
-
-    return ann_system_degradation    
-    
-        
-def get_depreciation_schedule(con, schema):
-    ''' Pull depreciation schedule from dB
-    
-        IN: type - string - [all, macrs, standard] 
-        OUT: df  - pd dataframe - year, depreciation schedule:
-
-    '''
-    inputs = locals().copy()    
-    
-    sql = '''SELECT tech, year, array_agg(deprec_rate ORDER BY ownership_year ASC)::DOUBLE PRECISION[] as deprec
-            FROM %(schema)s.input_finances_depreciation_schedule
-            GROUP BY tech, year
-            ORDER BY tech, year;''' % inputs
-    df = pd.read_sql(sql, con)
-    
-    return df
     
 def get_scenario_options(cur, schema):
     ''' Pull scenario options from dB

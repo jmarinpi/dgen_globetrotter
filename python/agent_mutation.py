@@ -330,7 +330,7 @@ def get_technology_performance_solar(con, schema, year):
     sql = """SELECT 'solar'::VARCHAR(5) as tech,
                     efficiency_improvement_factor as pv_efficiency_improvement_factor,
                     density_w_per_sqft as pv_density_w_per_sqft,
-                    inverter_lifetime_yrs as pv_inverter_lifetime_yrs
+                    inverter_lifetime_yrs
              FROM %(schema)s.input_solar_performance_improvements
              WHERE year = %(year)s;""" % inputs
     
@@ -517,8 +517,11 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     # recalculate the aep based on the system size (instead of plain turbine size)
     dataframe_sized['aep'] = dataframe_sized['system_size_kw'] * dataframe_sized['naep']
     
+    # add dummy column for inverter lifetime 
+    dataframe_sized['inverter_lifetime_yrs'] = np.nan
+    dataframe_sized['inverter_lifetime_yrs'] = dataframe_sized['inverter_lifetime_yrs'].astype(np.float64)
 
-    return_cols = ['ur_enable_net_metering', 'aep', 'system_size_kw', 'n_units', 
+    return_cols = ['ur_enable_net_metering', 'aep', 'system_size_kw', 'n_units', 'inverter_lifetime_yrs',
                    'turbine_height_m', 'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']
     out_cols = list(pd.unique(in_cols + return_cols))
     
@@ -570,7 +573,7 @@ def size_systems_solar(dataframe, system_sizing_targets_df, resource_df, default
         dataframe[col] = dataframe[col].astype(np.float64)
 
 
-    return_cols = ['ur_enable_net_metering', 'aep', 'system_size_kw', 'n_units', 
+    return_cols = ['ur_enable_net_metering', 'aep', 'system_size_kw', 'n_units', 'inverter_lifetime_yrs',
                    'turbine_height_m', 'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']
     out_cols = list(pd.unique(in_cols + return_cols))
     
@@ -994,23 +997,71 @@ def calculate_electric_bills_sam(dataframe, n_workers):
     sam_results_df = pssc_mp.pssc_mp(dataframe.loc[:, rate_cols], n_workers)                                    
     # append the results to the original dataframe
     dataframe = pd.merge(dataframe, sam_results_df, on = 'uid')
-    # adjust the elec_cost_with_system_year1 to account for the net_fit_credit_dollars
-    dataframe['elec_cost_with_system_year1'] = dataframe['elec_cost_with_system_year1'] - dataframe['net_fit_credit_dollars']              
+    # adjust the first_year_bill_with_system to account for the net_fit_credit_dollars
+    dataframe['first_year_bill_with_system'] = dataframe['elec_cost_with_system_year1'] - dataframe['net_fit_credit_dollars']      
+    # rename elec_cost_without_system_year1 to first_year_bill_without_system 
+    dataframe['first_year_bill_without_system'] = dataframe['elec_cost_without_system_year1']
     # isolate the return columns
-    out_cols = ['elec_cost_with_system_year1', 'elec_cost_without_system_year1']
+    out_cols = ['first_year_bill_with_system', 'first_year_bill_without_system']
     return_cols = in_cols + out_cols
     dataframe = dataframe[return_cols]
 
     return dataframe   
+
+
+#%%
+
+def get_depreciation_schedule(con, schema, year):
+    ''' Pull depreciation schedule from dB
+    
+        IN: type - string - [all, macrs, standard] 
+        OUT: df  - pd dataframe - year, depreciation schedule:
+
+    '''
+    inputs = locals().copy()    
+    
+    sql = '''SELECT tech, array_agg(deprec_rate ORDER BY ownership_year ASC)::DOUBLE PRECISION[] as deprec
+            FROM %(schema)s.input_finances_depreciation_schedule
+            WHERE year = %(year)s
+            GROUP BY tech, year
+            ORDER BY tech, year;''' % inputs
+    df = pd.read_sql(sql, con)
+    
+    return df       
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def apply_depreciation_schedule(dataframe, depreciation_df):
+    
+    dataframe = pd.merge(dataframe, depreciation_df, how = 'left', on = ['tech'])
+    
+    return dataframe    
+
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def get_system_degradation(con, schema):
+    '''Return the annual system degradation rate as float.
+        '''    
         
+    inputs = locals().copy()
 
+    sql = '''SELECT tech, ann_system_degradation
+             FROM %(schema)s.input_performance_annual_system_degradation;''' % inputs
+    system_degradation_df = pd.read_sql(sql, con)
 
-
-
-
+    return system_degradation_df    
+    
+    
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def apply_system_degradation(dataframe, system_degradation_df):
+    
+    dataframe = pd.merge(dataframe, system_degradation_df, how = 'left', on = ['tech'])
+    
+    return dataframe 
     
 
-        
 #%%
 def check_agent_count():
   # TODO: add in a check that agent_core_attributes_ table has the correct number of rows

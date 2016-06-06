@@ -26,8 +26,8 @@ logger = utilfunc.get_logger()
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
 def calc_economics(df, schema, market_projections, financial_parameters, rate_growth_df, 
                    scenario_opts, max_market_share, cur, con,
-                   year, dsire_incentives, dsire_opts, state_dsire, srecs, deprec_schedule, 
-                   ann_system_degradation, mode, curtailment_method, itc_options, inflation_rate, incentive_cap, tech_lifetime = 25):
+                   year, dsire_incentives, dsire_opts, state_dsire, srecs, 
+                   mode, curtailment_method, itc_options, inflation_rate, incentive_cap, tech_lifetime = 25):
     '''
     Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
 
@@ -42,9 +42,8 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     
     logger.info("\t\tCalculating System Economics")
 
-    # join in additional information
-    df = pd.merge(df, ann_system_degradation, how = 'left', on = ['tech'])
-    df = pd.merge(df, deprec_schedule, how = 'left', on = ['tech', 'year'])
+    # append year to the dataframe
+    df['year'] = year
 
     # duplicate the data frame for each business model
     df_tpo = df.copy()
