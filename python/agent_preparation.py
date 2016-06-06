@@ -17,6 +17,7 @@ import traceback
 import data_functions as datfunc
 from agent import Agent, Agents, AgentsAlgorithm
 from cStringIO import StringIO
+import pssc_mp
 
 #%% GLOBAL SETTINGS
 
@@ -1773,7 +1774,30 @@ def calculate_excess_generation_and_update_nem_settings(dataframe, gross_fit_mod
     return dataframe
 
         
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def calculate_electric_bills_sam(dataframe, n_workers):
 
+    # record the input columns
+    in_cols = list(dataframe.columns)
+    # add a new unique identifier field for each row (for backwards compatibility with the way pssc_mp was set up)
+    nrows = dataframe.shape[0]
+    dataframe['uid'] = np.arange(1, nrows + 1)
+    # isolat the rows that are required by SAM
+    rate_cols = ['uid', 'rate_json', 'consumption_hourly', 'generation_hourly']
+    # run SAM and get results ( in parallel )
+    sam_results_df = pssc_mp.pssc_mp(dataframe.loc[:, rate_cols], n_workers)                                    
+    # append the results to the original dataframe
+    dataframe = pd.merge(dataframe, sam_results_df, on = 'uid')
+    # adjust the elec_cost_with_system_year1 to account for the net_fit_credit_dollars
+    dataframe['elec_cost_with_system_year1'] = dataframe['elec_cost_with_system_year1'] - dataframe['net_fit_credit_dollars']              
+    # isolate the return columns
+    out_cols = ['elec_cost_with_system_year1', 'elec_cost_without_system_year1']
+    return_cols = in_cols + out_cols
+    dataframe = dataframe[return_cols]
+
+    return dataframe   
+        
         
 #%%
 def check_agent_count():

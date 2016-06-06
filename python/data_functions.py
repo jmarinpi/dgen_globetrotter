@@ -2366,6 +2366,8 @@ def get_utilityrate3_inputs(uids, cur, con, tech, schema, npar, pg_conn_string, 
     
     return results_df
 
+#%%
+# KEEP
 def update_rate_json_w_nem_fields(row):
     
     nem_fields = ['ur_enable_net_metering', 'ur_nm_yearend_sell_rate', 'ur_flat_sell_rate']
@@ -2398,6 +2400,7 @@ def interpolate_array(row, array_1_col, array_2_col, interp_factor_col, out_col)
     row[out_col] = interpolated
     
     return row
+#%%
 
 def p_get_utilityrate3_inputs(inputs_dict, pg_conn_string, sql, queue, gross_fit_mode = False):
     try:
@@ -3887,106 +3890,6 @@ def assign_business_model(df, prng, method = 'prob', alpha = 2):
     return df
 
 
-def excess_generation_calcs(row, gross_fit_mode = False):
-    ''' Function to calculate percent of excess generation given 8760-lists of 
-    consumption and generation. Currently function is configured to work only with
-    the rate_input_df to avoid pulling generation and consumption profiles
-    '''
-
-    con = 'consumption_hourly'
-    gen = 'generation_hourly'
-
-    annual_generation = sum(row[gen])
-    excess_gen_hourly = np.maximum(row[gen] - row[con],0)
-    excess_gen_annual = np.sum(excess_gen_hourly)
-    
-    # calculate the excess generation percent
-    if annual_generation == 0:
-        row['excess_generation_percent'] = 0
-    else:
-        # Determine the annual amount of generation (kWh) that exceeds consumption,
-        # and must be sold to the grid to receive value
-        row['excess_generation_percent'] = excess_gen_annual / annual_generation # unitless (kWh/kWh)
-
-    if gross_fit_mode == True:
-        # under gross fit, we will simply feed all inputs into SAM as-is and let the utilityrate3 module
-        # handle all calculations with no modifications
-    
-        # no excess generation will be credited at the flat sell rate (outside of SAM)
-        row['flat_rate_excess_gen_kwh'] = 0
-        
-        # set ur_enable_net_metering equal to apply_net_metering
-        row['ur_enable_net_metering'] = row['apply_net_metering']
-        
-    else: # otherwise, we will make some modifications so that we can apply net fit for non-nem cases
-        
-        if row['apply_net_metering'] == True: 
-            
-            # there will be zero excess generation credited at the flat sell rate (it will all be net metered)
-            row['flat_rate_excess_gen_kwh'] = 0
-
-            # set to run net metering in SAM
-            row['ur_enable_net_metering'] = True
-            
-        else: 
-            # set the data up to be able to run a net fit mode
-        
-            # all excess generation will be credited at the flat sell rate
-            row['flat_rate_excess_gen_kwh'] = excess_gen_annual
-            
-            # calculate the non-excess portion of hourly generation and re-assign it to the gen column
-            offset_generation = row[gen] - excess_gen_hourly
-            row[gen] = offset_generation
-            
-            # set to run net metering in SAM 
-            # (note: since we've modified gen to drop any excess generation, this will simply account for offset consumption)
-            row['ur_enable_net_metering'] = True
-
-    row['net_fit_credit_dollars'] = row['flat_rate_excess_gen_kwh'] * row['ur_flat_sell_rate']
-
-    return row
-
-
-
-def excess_generation_vectorized(df, gross_fit_mode = False):
-    ''' Function to calculate percent of excess generation given 8760-lists of 
-    consumption and generation. Currently function is configured to work only with
-    the rate_input_df to avoid pulling generation and consumption profiles
-    '''
-
-    con = 'consumption_hourly'
-    gen = 'generation_hourly'
-
-    gen_array = np.array(list(df[gen]))
-    excess_gen_hourly = np.maximum(gen_array - np.array(list(df[con])), 0)
-    annual_generation = np.sum(gen_array, 1)
-    excess_gen_annual = np.sum(excess_gen_hourly, 1)
-    offset_generation = (gen_array - excess_gen_hourly).tolist()
-
-    with np.errstate(invalid = 'ignore'):
-        df['excess_generation_percent'] = np.where(annual_generation == 0, 0, excess_gen_annual/annual_generation)
-    
-        
-    if gross_fit_mode == True:
-        # under gross fit, we will simply feed all inputs into SAM as-is and let the utilityrate3 module
-        # handle all calculations with no modifications
-    
-        # no excess generation will be credited at the flat sell rate (outside of SAM)
-        df['flat_rate_excess_gen_kwh'] = 0
-        
-        # set ur_enable_net_metering equal to apply_net_metering
-        df['ur_enable_net_metering'] = df['apply_net_metering']
-        
-    else: # otherwise, we will make some modifications so that we can apply net fit for non-nem cases
-        
-        
-        df['flat_rate_excess_gen_kwh'] = np.where(df['apply_net_metering'] == True, 0, excess_gen_annual)
-        df[gen] = np.where(df['apply_net_metering'] == True, df[gen], pd.Series(offset_generation)) 
-        df['ur_enable_net_metering'] = True
-
-    df['net_fit_credit_dollars'] = df['flat_rate_excess_gen_kwh'] * df['ur_flat_sell_rate']
-
-    return df
 
 def calc_value_of_itc(df, itc_options, year):
     

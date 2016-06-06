@@ -363,9 +363,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # CALCULATE BILL SAVINGS
                 #==========================================================================================================
-                # NEXT STEPS
+                # bill savings are a function of: 
+                 # (1) hacked NEM calculations
                 agents = AgentsAlgorithm(agents, agent_prep.calculate_excess_generation_and_update_nem_settings).compute()
-                # TODO: revise: datfunc.calc_utility_bills()
+                 # (2) actual SAM calculations
+                agents = AgentsAlgorithm(agents, agent_prep.calculate_electric_bills_sam, (cfg.local_cores, )).compute()
+                
+                # NEXT STEPS
                 # TODO: start deleting deprecated functions from datfunc
                 # TODO: see if I can get everything downstream working again....
                 # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays
@@ -484,10 +488,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             
 
     except Exception, e:
+        if con is not None:
+            con.close()
+        # drop the output schema
+        datfunc.drop_output_schema(cfg.pg_conn_string, schema, True)
+        # log or raise the exception
         if 'logger' in locals():
             logger.error(e.__str__(), exc_info = True)
         else:
-            print e
+            raise
+        
     
     finally:
         if 'logger' in locals():
