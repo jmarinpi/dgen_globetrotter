@@ -103,7 +103,6 @@ class Agents(object):
         
         return [Agent(i[1]) for i in self.dataframe.iterrows()]
     
-    
     def get_agent(self, i):
         
         return Agent(self.dataframe.ix[i])
@@ -125,6 +124,17 @@ class Agents(object):
         else:
             return Agents(dataframe)
         
+    def drop_attributes(self, column_list, in_place = False):
+        
+        dataframe = self.dataframe
+        for column in column_list:
+            dataframe.drop(column, axis = 1, inplace = True)
+            
+        if in_place == True:
+            self.dataframe = dataframe
+        else:
+            return Agents(dataframe)
+
 
 class AgentsAlgorithm(object):
     

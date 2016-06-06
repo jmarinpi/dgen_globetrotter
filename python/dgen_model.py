@@ -291,8 +291,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 load_growth_df = mutation.get_load_growth(con, schema, year)
                 # apply load growth
                 agents = AgentsAlgorithm(agents, mutation.apply_load_growth, (load_growth_df,)).compute(1)              
-                # determine "developable" population (applies to solar only)
-                agents = AgentsAlgorithm(agents, mutation.calculate_developable_customers_and_load).compute(1)
                 
                 #==============================================================================
                 # RATES         
@@ -326,6 +324,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 del agents_solar, agents_wind   
                 # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
                 agents = AgentsAlgorithm(agents, mutation.update_net_metering_fields).compute(1)  
+                            
+                #==============================================================================
+                # DEVELOPABLE CUSTOMERS/LOAD
+                #==============================================================================                            
+                # determine "developable" population
+                agents = AgentsAlgorithm(agents, mutation.calculate_developable_customers_and_load).compute(1)                            
                             
                 #==============================================================================
                 # GET NORMALIZED LOAD PROFILES
@@ -367,6 +371,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 agents = AgentsAlgorithm(agents, mutation.calculate_excess_generation_and_update_nem_settings).compute()
                  # (2) actual SAM calculations
                 agents = AgentsAlgorithm(agents, mutation.calculate_electric_bills_sam, (cfg.local_cores, )).compute(1)
+                # drop the hourly datasets
+                agents.drop_attributes(['generation_hourly', 'consumption_hourly'], in_place = True)
                 
                 #==========================================================================================================
                 # DEPRECIATION SCHEDULE       
@@ -436,11 +442,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 # select from choices for business model and (optionally) technology
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
-                crash
+
                 # calculate diffusion based on economics and bass diffusion      
                 df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, year, 
                                                               cfg.start_year, cfg.initial_market_calibrate_mode, bass_params) 
- 
+                crash
+                
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
                 datfunc.write_last_year(con, cur, market_last_year, schema)

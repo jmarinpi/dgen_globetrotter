@@ -64,10 +64,17 @@ def apply_load_growth(dataframe, load_growth_df):
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def calculate_developable_customers_and_load(dataframe):
 
-    dataframe['developable_customers_in_bin'] = np.where(dataframe['tech'] == 'solar', dataframe['pct_of_bldgs_developable'] * dataframe['customers_in_bin'], 
-                                                            dataframe['customers_in_bin'])                                 
-    dataframe['developable_load_kwh_in_bin'] = np.where(dataframe['tech'] == 'solar', dataframe['pct_of_bldgs_developable'] * dataframe['load_kwh_in_bin'], 
-                                                            dataframe['load_kwh_in_bin'])     
+    dataframe['developable_customers_in_bin'] = np.where(dataframe['tech'] == 'solar', 
+                                                         dataframe['pct_of_bldgs_developable'] * dataframe['customers_in_bin'],
+                                                         np.where(dataframe['system_size_kw'] == 0, 
+                                                                  0,
+                                                                  dataframe['customers_in_bin']))
+                                                        
+    dataframe['developable_load_kwh_in_bin'] = np.where(dataframe['tech'] == 'solar', 
+                                                        dataframe['pct_of_bldgs_developable'] * dataframe['load_kwh_in_bin'], 
+                                                        np.where(dataframe['system_size_kw'] == 0, 
+                                                                 0,
+                                                                 dataframe['load_kwh_in_bin']))    
                                                             
     return dataframe
              
@@ -1114,6 +1121,25 @@ def apply_leasing_availability(dataframe, leasing_availability_df):
     
     return dataframe
 
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def calculate_initial_market_shares(dataframe, calibrate_mode = False):
+    
+    # record input columns
+    in_cols = list(dataframe.columns)
+    
+    # 
+    pass
+
+
+    # isolate the return columns
+    return_cols = []
+    out_cols = in_cols + return_cols
+    
+    dataframe = dataframe[out_cols]
+    
+    return dataframe
 
 
 #%%
