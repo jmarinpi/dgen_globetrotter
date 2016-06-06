@@ -375,8 +375,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # TODO: start deleting deprecated functions from datfunc
                 # TODO: see if I can get everything downstream working again....
                 # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays
-                # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
-                # TODO: move appropriate functions from agent preparation to a new module (agent mutation?) 
                 # TODO: do some very thorough testing in comparison to dev
                 
                 
@@ -384,6 +382,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 print agents.dataframe.head()  
                 crash             
                 # ~~~LONG TERM~~~
+                # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
                 # TODO: get logger working on both data_functions and agent_preparation
                 # TODO: strip cap cost multipliers from agent locations and move to somewhere downstream
                 # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database
@@ -406,7 +405,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                                     
                 # Calculate economics of adoption for different busines models
-                df = finfunc.calc_economics(df, schema, 
+                df = finfunc.calc_economics(agents.dataframe, schema, 
                                            market_projections, financial_parameters, rate_growth_df,
                                            scenario_opts, max_market_share, 
                                            cur, con, year, dsire_incentives, dsire_opts, state_dsire,

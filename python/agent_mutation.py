@@ -250,10 +250,20 @@ def select_electric_rates(dataframe, rates_df, net_metering_df):
 
 
 #%%
+def update_rate_json_w_nem_fields(row):
+    
+    nem_fields = ['ur_enable_net_metering', 'ur_nm_yearend_sell_rate', 'ur_flat_sell_rate']
+    nem_dict = dict((k, row[k]) for k in nem_fields)
+    row['rate_json'].update(nem_dict)
+    
+    return row
+    
+
+#%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def update_net_metering_fields(dataframe):
     
-    dataframe = dataframe.apply(datfunc.update_rate_json_w_nem_fields, axis = 1)    
+    dataframe = dataframe.apply(update_rate_json_w_nem_fields, axis = 1)    
     
     return dataframe
 
@@ -595,6 +605,23 @@ def get_normalized_load_profiles(con, schema, sectors):
 
 
 #%%
+def scale_array_precision(row, array_col, prec_offset_col):
+    
+    row[array_col] = np.array(row[array_col], dtype = 'float64') / row[prec_offset_col]
+    
+    return row
+
+
+#%%    
+def scale_array_sum(row, array_col, scale_col):
+
+    hourly_array = np.array(row[array_col], dtype = 'float64')
+    row[array_col] = hourly_array/hourly_array.sum() * np.float64(row[scale_col])
+    
+    return row
+    
+
+#%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def scale_normalized_load_profiles(dataframe, load_df):
     
@@ -603,9 +630,9 @@ def scale_normalized_load_profiles(dataframe, load_df):
     # join the dataframe and load_df
     dataframe = pd.merge(dataframe, load_df, how  = 'left', on = ['county_id', 'bin_id', 'sector_abbr'])
     # apply the scale offset to convert values to float with correct precision
-    dataframe = dataframe.apply(datfunc.scale_array_precision, axis = 1, args = ('consumption_hourly', 'scale_offset'))
+    dataframe = dataframe.apply(scale_array_precision, axis = 1, args = ('consumption_hourly', 'scale_offset'))
     # scale the normalized profile to sum to the total load
-    dataframe = dataframe.apply(datfunc.scale_array_sum, axis = 1, args = ('consumption_hourly', 'load_kwh_per_customer_in_bin'))    
+    dataframe = dataframe.apply(scale_array_sum, axis = 1, args = ('consumption_hourly', 'load_kwh_per_customer_in_bin'))    
     
     # subset to only the desired output columns
     out_cols = in_cols + ['consumption_hourly']
@@ -755,15 +782,27 @@ def apply_normalized_hourly_resource_solar(dataframe, hourly_resource_df):
     # join resource data to dataframe
     dataframe = pd.merge(dataframe, hourly_resource_df, how = 'left', on = ['sector_abbr', 'tech', 'county_id', 'bin_id'])
     # apply the scale offset to convert values to float with correct precision
-    dataframe = dataframe.apply(datfunc.scale_array_precision, axis = 1, args = ('generation_hourly', 'scale_offset'))
+    dataframe = dataframe.apply(scale_array_precision, axis = 1, args = ('generation_hourly', 'scale_offset'))
     # scale the normalized profile by the system size
-    dataframe = dataframe.apply(datfunc.scale_array_sum, axis = 1, args = ('generation_hourly', 'aep'))    
+    dataframe = dataframe.apply(scale_array_sum, axis = 1, args = ('generation_hourly', 'aep'))    
     # subset to only the desired output columns
     out_cols = in_cols + ['generation_hourly']
     dataframe = dataframe[out_cols]    
     
     return dataframe
 
+
+#%%
+def interpolate_array(row, array_1_col, array_2_col, interp_factor_col, out_col):
+    
+    if row[interp_factor_col] <> 0:
+        interpolated = row[interp_factor_col] * (row[array_2_col] - row[array_1_col]) + row[array_1_col]
+    else:
+        interpolated = row[array_1_col]
+    row[out_col] = interpolated
+    
+    return row
+    
 
 #%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
@@ -775,12 +814,12 @@ def apply_normalized_hourly_resource_wind(dataframe, hourly_resource_df):
     # join resource data to dataframe
     dataframe = pd.merge(dataframe, hourly_resource_df, how = 'left', on = ['sector_abbr', 'tech', 'county_id', 'bin_id'])
     # apply the scale offset to convert values to float with correct precision
-    dataframe = dataframe.apply(datfunc.scale_array_precision, axis = 1, args = ('generation_hourly_1', 'scale_offset'))
-    dataframe = dataframe.apply(datfunc.scale_array_precision, axis = 1, args = ('generation_hourly_2', 'scale_offset'))    
+    dataframe = dataframe.apply(scale_array_precision, axis = 1, args = ('generation_hourly_1', 'scale_offset'))
+    dataframe = dataframe.apply(scale_array_precision, axis = 1, args = ('generation_hourly_2', 'scale_offset'))    
     # interpolate power curves
-    dataframe = dataframe.apply(datfunc.interpolate_array, axis = 1, args = ('generation_hourly_1', 'generation_hourly_2', 'power_curve_interp_factor', 'generation_hourly'))
+    dataframe = dataframe.apply(interpolate_array, axis = 1, args = ('generation_hourly_1', 'generation_hourly_2', 'power_curve_interp_factor', 'generation_hourly'))
     # scale the normalized profile by the system size
-    dataframe = dataframe.apply(datfunc.scale_array_sum, axis = 1, args = ('generation_hourly', 'aep'))    
+    dataframe = dataframe.apply(scale_array_sum, axis = 1, args = ('generation_hourly', 'aep'))    
     # subset to only the desired output columns
     out_cols = in_cols + ['generation_hourly']
     dataframe = dataframe[out_cols]
@@ -964,6 +1003,13 @@ def calculate_electric_bills_sam(dataframe, n_workers):
 
     return dataframe   
         
+
+
+
+
+
+    
+
         
 #%%
 def check_agent_count():
