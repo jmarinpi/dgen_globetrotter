@@ -1340,7 +1340,7 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     # recalculate the aep based on the system size (instead of plain turbine size)
     dataframe_sized['aep'] = dataframe_sized['system_size_kw'] * dataframe_sized['naep']
     
-    # note: ur_enable_net_metering is automatically returned because it is an input column
+
     return_cols = ['ur_enable_net_metering', 'aep', 'system_size_kw', 'n_units', 
                    'turbine_height_m', 'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']
     out_cols = list(pd.unique(in_cols + return_cols))
@@ -1711,6 +1711,69 @@ def apply_tech_costs_wind(dataframe, tech_costs_df):
     dataframe = dataframe[out_cols]
 
     return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def calculate_excess_generation_and_update_nem_settings(dataframe, gross_fit_mode = False):
+
+    ''' Function to calculate percent of excess generation given 8760-lists of 
+    consumption and generation. Currently function is configured to work only with
+    the rate_input_df to avoid pulling generation and consumption profiles
+    '''
+
+    con = 'consumption_hourly'
+    gen = 'generation_hourly'
+
+    gen_array = np.array(list(dataframe[gen]))
+    excess_gen_hourly = np.maximum(gen_array - np.array(list(dataframe[con])), 0)
+    annual_generation = np.sum(gen_array, 1)
+    excess_gen_annual = np.sum(excess_gen_hourly, 1)
+    offset_generation = (gen_array - excess_gen_hourly).tolist()
+
+    # add in a field called "apply_net_metering" and initialize to ur_enable_net_metering
+    # the difference between the two fields is that ur_enable_net_metering only tells SAM what to do,
+    # and becasue of the hacks we have to apply to overcome gross fit in SAM, it doesn't actually tell
+    # whether actual net metering is being applied. this is what apply_net_metering is for: it tells
+    # us whether an agent is actually having FULL net metering applied
+    dataframe['full_net_metering'] = dataframe['ur_enable_net_metering']
+
+    with np.errstate(invalid = 'ignore'):
+        # Determine the percent of annual generation (kWh) that exceeds consumption,
+        # and must be sold to the grid to receive value
+        dataframe['excess_generation_percent'] = np.where(annual_generation == 0, 0, excess_gen_annual/annual_generation)
+    
+        
+    if gross_fit_mode == True:
+        # under gross fit, we will simply feed all inputs into SAM as-is and let the utilityrate3 module
+        # handle all calculations with no modifications
+    
+        # no excess generation will be credited at the flat sell rate (outside of SAM)
+        dataframe['flat_rate_excess_gen_kwh'] = 0
+        
+        # do not change ur_enable_net_metering
+        
+    else: # otherwise, we will make some modifications so that we can apply net fit for non-nem cases
+        
+        # if full net metering is availabile, there will be zero excess generation credited at the flat sell rate (it will all be valued at full retail rate)
+        # otherwise, if full net metering is not availabl,e all excess generation will be credited at the flat sell rate
+        dataframe['flat_rate_excess_gen_kwh'] = np.where(dataframe['full_net_metering'] == True, 0, excess_gen_annual)
+        # if there is no net metering, calculate the non-excess portion of hourly generation and re-assign it to the gen column
+        # this allows us to credit the non-excess (i.e., offsetting) portion of generation at full retail rates
+        dataframe[gen] = np.where(dataframe['full_net_metering'] == True, dataframe[gen], pd.Series(offset_generation)) 
+        # set SAM to run net metering calcs
+        dataframe['ur_enable_net_metering'] = True
+
+    # calculate the value of the excess generation (only applies to NET FIT when full net metering is not available)
+    dataframe['net_fit_credit_dollars'] = dataframe['flat_rate_excess_gen_kwh'] * dataframe['ur_flat_sell_rate']
+
+    # update the net metering fields in the rate_json
+    dataframe = update_net_metering_fields(dataframe)
+
+    return dataframe
+
+        
+
         
 #%%
 def check_agent_count():

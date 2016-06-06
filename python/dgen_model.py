@@ -359,15 +359,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # re-combine technologies
                 agents = agents_solar.add_agents(agents_wind)
                 del agents_solar, agents_wind
-                agents.dataframe.to_csv('/Users/mgleason/Desktop/agents.csv', index = False)
-               
-                print agents.dataframe.head()  
-                crash              
+ 
                 #==========================================================================================================
                 # CALCULATE BILL SAVINGS
                 #==========================================================================================================
                 # NEXT STEPS
-                # TODO: create: calculate_excess_genration()
+                agents = AgentsAlgorithm(agents, agent_prep.calculate_excess_generation_and_update_nem_settings).compute()
                 # TODO: revise: datfunc.calc_utility_bills()
                 # TODO: start deleting deprecated functions from datfunc
                 # TODO: see if I can get everything downstream working again....
@@ -376,6 +373,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # TODO: move appropriate functions from agent preparation to a new module (agent mutation?) 
                 # TODO: do some very thorough testing in comparison to dev
                 
+                
+                agents.dataframe.to_csv('/Users/mgleason/Desktop/agents.csv', index = False)           
+                print agents.dataframe.head()  
+                crash             
                 # ~~~LONG TERM~~~
                 # TODO: get logger working on both data_functions and agent_preparation
                 # TODO: strip cap cost multipliers from agent locations and move to somewhere downstream
