@@ -1137,7 +1137,7 @@ def get_state_starting_capacities(con, schema):
 
 #%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def calculate_initial_market_shares(dataframe, state_starting_capacities_df, calibrate_mode = False):
+def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
     
     # record input columns
     in_cols = list(dataframe.columns)
@@ -1145,34 +1145,59 @@ def calculate_initial_market_shares(dataframe, state_starting_capacities_df, cal
     # find the total number of customers in each state (by technology and sector)
     state_total_developable_customers = dataframe[['state_abbr', 'sector_abbr', 'tech','developable_customers_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
     state_total_agents = dataframe[['state_abbr', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).count().reset_index()
-    # rename the final column
+    # rename the final columns
+    state_total_developable_customers.columns = state_total_developable_customers.columns.str.replace('developable_customers_in_bin', 'developable_customers_in_state')
     state_total_agents.columns = state_total_agents.columns.str.replace('developable_customers_in_bin','agent_count')
-
-    # merge back to the main dataframe
+    # merge together
     state_denominators = pd.merge(state_total_developable_customers, state_total_agents, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
-    # when developable_customers_in_bin = 0, replace with agent_count
-    state_denominators['denom'] = np.where(state_denominators['developable_customers_in_bin'] > 0, state_denominators['developable_customers_in_bin'], state_denominators['agent_count'])
-    # drop columns
-    state_denominators.drop('developable_customers_in_bin', axis = 1, inplace = True)
-    state_denominators.drop('agent_count', axis = 1, inplace = True)
     
     # merge back to the main dataframe
     dataframe = pd.merge(dataframe, state_denominators, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
     
     # merge in the state starting capacities
     dataframe = pd.merge(dataframe, state_starting_capacities_df, how = 'left', on = ['tech', 'state_abbr', 'sector_abbr'])
-    # TODO: make %(schema)s.state_starting_capacities_to_model TIDY by sector_abbr
-    # TODO: implement the rest of the logic from tmp.sql
-    
+
+    # determine the portion of initial load and systems that should be allocated to each agent
+    # (when there are no developable agnets in the state, simply apportion evenly to all agents)
+    dataframe['portion_of_state'] = np.where(dataframe['developable_customers_in_state'] > 0, 
+                                             dataframe['developable_customers_in_bin']/dataframe['developable_customers_in_state'], 
+                                             1./dataframe['agent_count'] * dataframe['systems_count'])
+    # apply the agent's portion to the total to calculate starting capacity and systems                                         
+    dataframe['number_of_adopters_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['systems_count'], 6)
+    dataframe['installed_capacity_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['capacity_mw'], 6) * 1000.
+    dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0, 
+                                                 0, 
+                                                 np.round(dataframe['portion_of_state'], 6))
+    dataframe['market_value_last_year'] = dataframe['installed_costs_dollars_per_kw'] * dataframe['installed_capacity_last_year']
+
     # isolate the return columns
-    return_cols = []
+    return_cols = ['number_of_adopters_last_year', 'installed_capacity_last_year', 'market_share_last_year', 'market_value_last_year']
     out_cols = in_cols + return_cols
-    
     dataframe = dataframe[out_cols]
     
     return dataframe
 
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def get_market_last_year(con, schema):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT *
+            FROM %(schema)s.output_market_last_year;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df
 
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def apply_market_last_year(dataframe, market_last_year_df):
+    
+    dataframe = pd.merge(dataframe, market_last_year_df, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])
+    
+    return dataframe
+    
 #%%
 def check_agent_count():
   # TODO: add in a check that agent_core_attributes_ table has the correct number of rows

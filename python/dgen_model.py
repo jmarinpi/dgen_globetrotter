@@ -254,7 +254,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     normalized_load_profiles_df = mutation.get_normalized_load_profiles(con, schema, sectors)
 
-
                     # get system sizing targets
                     system_sizing_targets_df = mutation.get_system_sizing_targets(con, schema)  
 
@@ -263,11 +262,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     # get state starting capacities
                     state_starting_capacities_df = mutation.get_state_starting_capacities(con, schema)
+                    
                     #==========================================================================================================
                     # CHECK TECH POTENTIAL
                     #==========================================================================================================           
                     #datfunc.check_tech_potential_limits(cur, con, schema, techs, sectors, out_dir)              
-                   
+                    
 
     
             #==========================================================================================================
@@ -446,11 +446,33 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # select from choices for business model and (optionally) technology
                 df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
 
-                # calculate diffusion based on economics and bass diffusion      
-                df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, year, 
-                                                              cfg.start_year, cfg.initial_market_calibrate_mode, bass_params) 
-                crash
+                #==========================================================================================================
+                # MARKET LAST YEAR
+                #==========================================================================================================                  
+                # convert back to agents
+                agents = Agents(df)
+                is_first_year = year == cfg.start_year      
+                if is_first_year == True:
+                    # calculate initial market shares
+                    agents = AgentsAlgorithm(agents, mutation.estimate_initial_market_shares, (state_starting_capacities_df, )).compute()
+                else:
+                    # get last year's results
+                    market_last_year_df = mutation.get_market_last_year(con, schema)
+                    # apply last year's results to the agents
+                    agents = AgentsAlgorithm(agents, mutation.apply_market_last_year, (market_last_year_df, )).compute()                
                 
+
+                #==========================================================================================================
+                # BASS DIFFUSION
+                #==========================================================================================================   
+                # convert back to dataframe
+                df = agents.dataframe
+                # calculate diffusion based on economics and bass diffusion                   
+                df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, is_first_year, bass_params) 
+                
+                #==========================================================================================================
+                # WRITE OUTPUTS
+                #==========================================================================================================   
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
                 datfunc.write_last_year(con, cur, market_last_year, schema)

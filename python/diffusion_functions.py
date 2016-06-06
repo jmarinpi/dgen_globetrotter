@@ -21,6 +21,8 @@ import utility_functions as utilfunc
 import data_functions as datfunc
 import decorators
 from config import show_times
+from agent import AgentsAlgorithm
+import agent_mutation as mutation
 
 #==============================================================================
 # Load logger
@@ -30,7 +32,7 @@ logger = utilfunc.get_logger()
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
-def calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, year, start_year, initial_market_calibrate_mode,
+def calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, is_first_year,
                    bass_params, override_p_value = None, override_q_value = None, override_teq_yr1_value = None):
 
     ''' Calculates the market share (ms) added in the solve year. Market share must be less
@@ -47,12 +49,6 @@ def calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, year,
     
     logger.info("\t\tCalculating Diffusion")
     
-    
-    # get market characteristics from previous year                    
-    is_first_year = year == cfg.start_year                
-    previous_year_results = datfunc.get_market_last_year(cur, con, is_first_year, techs, sectors, schema, initial_market_calibrate_mode, df) 
-    df = pd.merge(df, previous_year_results, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])    
-
     # set p/q/teq_yr1 params    
     df  = set_bass_param(df, cfg, con, bass_params, override_p_value, override_q_value, override_teq_yr1_value)
     
