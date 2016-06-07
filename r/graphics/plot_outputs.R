@@ -29,10 +29,10 @@ source("../r/maps/r2js/r2js.R")
 source("../r/graphics/output_funcs.R")
 
 
-# runpath<-'/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20151118_103352/BAU/wind'
+# runpath<-'/Users/mgleason/NREL_Projects/github/diffusion/runs/test'
 # scen_name<-'test'
 # tech = 'wind'
-# schema = 'diffusion_results_2015_11_18_11h29m24s'
+# schema = 'diffusion_results_2016_06_07_12h01m54s'
 # pg_params_file = 'pg_params_gis.json'
 # file_suffix = 'test'
 

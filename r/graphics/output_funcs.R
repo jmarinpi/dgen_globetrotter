@@ -786,7 +786,7 @@ national_installed_capacity_by_system_size_bar<-function(df,tech){
     collect()
   
   if(tech == 'solar'){
-    data$system_size_factors <- ordered( data$system_size_factors, levels = c("(0,2.5]", "(2.5,5]", "(5,10]", "(10,20]", "(20,50]", "(50,100]", "(100,250]", "(250,500]", "(500,750]", "(750,1e+03]", "(1e+03,1.5e+03]"))
+    data$system_size_factors <- ordered( data$system_size_factors, levels = c("(0, 2.5]", "(2.5, 5]", "(5, 10]", "(10, 20]", "(20, 50]", "(50, 100]", "(100, 250]", "(250, 500]", "(500, 750]", "(750, 1000]", "(1000, 1500]", "(1500, 3000]"))
   } else {
     # order the data correctly
     data$system_size_factors <- ordered(data$system_size_factors, levels = c('2.5','5.0','10.0','20.0','50.0','100.0','250.0','500.0','750.0','1000.0','1500.0','1500+'))

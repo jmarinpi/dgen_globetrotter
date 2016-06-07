@@ -176,6 +176,7 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
                 'turbine_height_m',
                 'turbine_size_kw',
                 'aep',
+                'naep',
                 'cf',
                 'system_size_kw',
                 'system_size_factors',
