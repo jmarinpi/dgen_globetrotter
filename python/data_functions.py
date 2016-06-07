@@ -146,6 +146,7 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
                 'bin_id',
                 'year',
                 'sector_abbr',
+                'sector',
                 'state_abbr',
                 'census_division_abbr',
                 'pca_reg',
@@ -234,10 +235,14 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
                 'installed_capacity_last_year',
                 'market_share_last_year',
                 'market_value_last_year',
+                'new_adopters',
+                'new_capacity',
+                'new_market_share',
+                'new_market_value',                
                 'number_of_adopters',
                 'installed_capacity',
-                'market_value',
-                'new_market_share'
+                'market_share',
+                'market_value'
             ]    
 
     # convert formatting of fields list
@@ -265,7 +270,7 @@ def index_output_table(con, cur, schema):
     # create indices that will be needed for various aggregations in R visualization script
     sql = '''CREATE INDEX agent_outputs_year_btree ON %(schema)s.agent_outputs USING BTREE(year);
              CREATE INDEX agent_outputs_state_abbr_btree ON %(schema)s.agent_outputs USING BTREE(state_abbr);
-             CREATE INDEX agent_outputs_sector_btree ON %(schema)s.agent_outputs USING BTREE(sector_abbr);
+             CREATE INDEX agent_outputs_sector_btree ON %(schema)s.agent_outputs USING BTREE(sector);
              CREATE INDEX agent_outputs_business_model_btree ON %(schema)s.agent_outputs USING BTREE(business_model);
              CREATE INDEX agent_outputs_system_size_factors_btree ON %(schema)s.agent_outputs USING BTREE(system_size_factors);                          
              CREATE INDEX agent_outputs_metric_btree ON %(schema)s.agent_outputs USING BTREE(metric);             
@@ -841,7 +846,8 @@ def get_itc_incentives(con, schema):
     
     inputs = locals().copy()
     
-    sql = """SELECT year, lower(sector) as sector, itc_fraction, tech, min_kw, max_kw
+    sql = """SELECT year, substring(lower(sector), 1, 3) as sector_abbr, 
+                    itc_fraction, tech, min_kw, max_kw
              FROM %(schema)s.input_main_itc_options;""" % inputs
     itc_options = pd.read_sql(sql, con) 
     
@@ -1614,11 +1620,7 @@ def assign_business_model(df, prng, method = 'prob', alpha = 2):
 
 
 def calc_value_of_itc(df, itc_options, year):
-    
-    # add the sector_abbr column
-    itc_options['sector_abbr'] = itc_options['sector'].str.lower()
-    itc_options['sector_abbr'] = itc_options['sector_abbr'].str[:3] 
-    
+        
     # create duplicates of the itc data for each business model
     # host-owend
     itc_ho = itc_options.copy() 

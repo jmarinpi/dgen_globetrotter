@@ -276,6 +276,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==========================================================================================================
             logger.info("---------Modeling Annual Deployment---------")      
             # get dsire incentives, srecs, and itc inputs
+            # TODO: move these to agent mutation
             dsire_opts = datfunc.get_dsire_settings(con, schema)
             incentives_cap = datfunc.get_incentives_cap(con, schema)
             dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, dsire_opts)
@@ -450,6 +451,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # BASS DIFFUSION
                 #==========================================================================================================   
+                # TODO: rewrite this section to use agents class
                 # convert back to dataframe
                 df = agents.dataframe
                 # calculate diffusion based on economics and bass diffusion                   
@@ -463,6 +465,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # WRITE OUTPUTS
                 #==========================================================================================================   
+                # TODO: rewrite this section to use agents class
                 # write the incremental results to the database
                 datfunc.write_outputs(con, cur, df, sectors, schema) 
                 datfunc.write_last_year(con, cur, market_last_year, schema)

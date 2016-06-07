@@ -757,6 +757,7 @@ def merge_all_core_agents(cur, con, schema, sectors, techs):
     for sector_abbr, sector in sectors.iteritems():
         for tech in techs:
             inputs['sector_abbr'] = sector_abbr
+            inputs['sector'] = sector
             inputs['tech'] = tech
             sql = """SELECT a.pgid, 
                             a.county_id, 
@@ -785,6 +786,7 @@ def merge_all_core_agents(cur, con, schema, sectors, techs):
                             a.cf_bin,
                             -- replicate for each sector and tech
                             '%(sector_abbr)s'::CHARACTER VARYING(3) as sector_abbr,
+                            '%(sector)s'::TEXT as sector,
                             '%(tech)s'::varchar(5) as tech
                     FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a """ % inputs
             sql_list.append(sql)

@@ -11,6 +11,7 @@ CREATE TABLE diffusion_template.agent_outputs
 	bin_id integer,
 	year integer,
 	sector_abbr varchar(3),
+	sector text,
 	-- geographic info
 	state_abbr varchar(2),
 	census_division_abbr varchar(3),
@@ -45,6 +46,7 @@ CREATE TABLE diffusion_template.agent_outputs
 	turbine_size_kw NUMERIC,
 	-- general system characteristics
 	aep NUMERIC,
+	naep numeric,
 	cf numeric,
 	system_size_kw NUMERIC,
 	system_size_factors text,
@@ -113,11 +115,16 @@ CREATE TABLE diffusion_template.agent_outputs
 	installed_capacity_last_year NUMERIC,
 	market_share_last_year NUMERIC,
 	market_value_last_year NUMERIC,
-	-- current year diffusion
+	-- incremental diffusion from current year
+	new_adopters NUMERIc,
+	new_capacity NUMERIc,
+	new_market_share NUMERIc,
+	new_market_value NUMERIc,
+	-- cumulative diffusion through current year
 	number_of_adopters NUMERIC,
 	installed_capacity NUMERIC,
-	market_value NUMERIC,
-	new_market_share NUMERIC
+	market_share numeric,
+	market_value NUMERIC
 );
 
 ------------------------------------------------------------------------------------------------------------

@@ -534,7 +534,7 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     dataframe_sized['inverter_lifetime_yrs'] = np.nan
     dataframe_sized['inverter_lifetime_yrs'] = dataframe_sized['inverter_lifetime_yrs'].astype(np.float64)
 
-    return_cols = ['ur_enable_net_metering', 'aep', 'cf', 'system_size_kw', 'system_size_factors', 'n_units', 'inverter_lifetime_yrs',
+    return_cols = ['ur_enable_net_metering', 'aep', 'naep', 'cf', 'system_size_kw', 'system_size_factors', 'n_units', 'inverter_lifetime_yrs',
                    'turbine_height_m', 'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']
     out_cols = list(pd.unique(in_cols + return_cols))
     
@@ -593,7 +593,7 @@ def size_systems_solar(dataframe, system_sizing_targets_df, resource_df, default
         dataframe[col] = dataframe[col].astype(np.float64)
 
 
-    return_cols = ['ur_enable_net_metering', 'aep', 'cf', 'system_size_kw', 'system_size_factors', 'n_units', 'inverter_lifetime_yrs',
+    return_cols = ['ur_enable_net_metering', 'aep', 'naep', 'cf', 'system_size_kw', 'system_size_factors', 'n_units', 'inverter_lifetime_yrs',
                    'turbine_height_m', 'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']
     out_cols = list(pd.unique(in_cols + return_cols))
     
