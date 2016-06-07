@@ -113,7 +113,7 @@ delete_output_schema = False
 # Refer to https://github.nrel.gov/dg-wind/diffusion/blob/dev_misc/docs/existing_schema_inputs.csv
 # to determine whether this is a safe setting  for your scenario analysis.
 #==============================================================================
-use_existing_schema = False
+use_existing_schema = True
 # change this to the schema with existing agents/bill savings that you want to use
 existing_schema_name = 'diffusion_results_2016_01_29_11h31m03s'
 
