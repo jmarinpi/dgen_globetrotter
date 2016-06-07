@@ -1196,7 +1196,7 @@ make_npv_supply_curve_by_sector = function(df, years = 2014){
 make_lcoe_supply_curve = function(df, years = c(2014,2020,2030,2040,2050), max_lcoe = .30){
   
   data = select(df, year, lcoe, load_kwh_in_bin, naep,sector) %>%
-    filter(year %in% years & naep > 0) %>%
+    filter(year %in% years & system_size_kw > 0) %>%
     group_by(year) %>%
     arrange(lcoe) %>%
     mutate(load_xmax = cumsum(load_kwh_in_bin/naep/1e6)) %>%
