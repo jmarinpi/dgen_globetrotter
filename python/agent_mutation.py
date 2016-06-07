@@ -523,12 +523,18 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     dataframe_sized['system_size_kw'] = dataframe_sized['turbine_size_kw'] * dataframe_sized['n_units']
     # recalculate the aep based on the system size (instead of plain turbine size)
     dataframe_sized['aep'] = dataframe_sized['system_size_kw'] * dataframe_sized['naep']
+
+    # add capacity factor
+    dataframe_sized['cf'] = dataframe_sized['naep']/8760.
     
+    # add system size class
+    dataframe_sized['system_size_factors'] = np.where(dataframe_sized['system_size_kw'] > 1500, '1500+', dataframe_sized['system_size_kw'].astype('str'))
+
     # add dummy column for inverter lifetime 
     dataframe_sized['inverter_lifetime_yrs'] = np.nan
     dataframe_sized['inverter_lifetime_yrs'] = dataframe_sized['inverter_lifetime_yrs'].astype(np.float64)
 
-    return_cols = ['ur_enable_net_metering', 'aep', 'system_size_kw', 'n_units', 'inverter_lifetime_yrs',
+    return_cols = ['ur_enable_net_metering', 'aep', 'cf', 'system_size_kw', 'system_size_factors', 'n_units', 'inverter_lifetime_yrs',
                    'turbine_height_m', 'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']
     out_cols = list(pd.unique(in_cols + return_cols))
     
@@ -574,13 +580,20 @@ def size_systems_solar(dataframe, system_sizing_targets_df, resource_df, default
     # calculate aep
     dataframe['aep'] = dataframe['system_size_kw'] * dataframe['naep']    
 
+    # add capacity factor
+    dataframe['cf'] = dataframe['naep']/8760.
+    
+    # add system size class
+    system_size_breaks = [0, 2.5, 5.0, 10.0, 20.0, 50.0, 100.0, 250.0, 500.0, 750.0, 1000.0, 1500.0, 3000.0]
+    dataframe['system_size_factors'] = np.where(dataframe['system_size_kw'] == 0, 0, pd.cut(dataframe['system_size_kw'], system_size_breaks))
+    
     # add in dummy columns for compatibility with wind
     for col in ['turbine_height_m', 'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']:
         dataframe[col] = np.nan
         dataframe[col] = dataframe[col].astype(np.float64)
 
 
-    return_cols = ['ur_enable_net_metering', 'aep', 'system_size_kw', 'n_units', 'inverter_lifetime_yrs',
+    return_cols = ['ur_enable_net_metering', 'aep', 'cf', 'system_size_kw', 'system_size_factors', 'n_units', 'inverter_lifetime_yrs',
                    'turbine_height_m', 'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']
     out_cols = list(pd.unique(in_cols + return_cols))
     
@@ -1008,8 +1021,12 @@ def calculate_electric_bills_sam(dataframe, n_workers):
     dataframe['first_year_bill_with_system'] = dataframe['elec_cost_with_system_year1'] - dataframe['net_fit_credit_dollars']      
     # rename elec_cost_without_system_year1 to first_year_bill_without_system 
     dataframe['first_year_bill_without_system'] = dataframe['elec_cost_without_system_year1']
+    # calculate the average cost of electricity based on the first year bill
+    dataframe['cost_of_elec_dols_per_kwh'] = np.where(dataframe['load_kwh_per_customer_in_bin'] == 0, 
+                                                      np.nan, 
+                                                      dataframe['first_year_bill_without_system']/dataframe['load_kwh_per_customer_in_bin']) 
     # isolate the return columns
-    out_cols = ['first_year_bill_with_system', 'first_year_bill_without_system']
+    out_cols = ['first_year_bill_with_system', 'first_year_bill_without_system', 'cost_of_elec_dols_per_kwh']
     return_cols = in_cols + out_cols
     dataframe = dataframe[return_cols]
 

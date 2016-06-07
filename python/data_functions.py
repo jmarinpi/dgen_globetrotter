@@ -175,13 +175,16 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
                 'turbine_height_m',
                 'turbine_size_kw',
                 'aep',
+                'cf',
                 'system_size_kw',
+                'system_size_factors',
                 'n_units',
                 'rate_id_alias',
                 'rate_source',
                 'nem_system_size_limit_kw',
                 'ur_nm_yearend_sell_rate',
                 'ur_flat_sell_rate',
+                'flat_rate_excess_gen_kwh',
                 'ur_enable_net_metering',
                 'full_net_metering',
                 'excess_generation_percent',
@@ -190,13 +193,13 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
                 'net_fit_credit_dollars',
                 'monthly_bill_savings',
                 'percent_monthly_bill_savings',
-                'carbon_price_cents_per_kwh',
+                'cost_of_elec_dols_per_kwh',
                 'cap_cost_multiplier',
                 'inverter_cost_dollars_per_kw',
                 'installed_costs_dollars_per_kw',
                 'fixed_om_dollars_per_kw_per_yr',
                 'variable_om_dollars_per_kwh',
-                'flat_rate_excess_gen_kwh',
+                'carbon_price_cents_per_kwh',
                 'curtailment_rate',
                 'reeds_elec_price_mult',
                 'business_model',
@@ -229,7 +232,8 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
                 'number_of_adopters',
                 'installed_capacity',
                 'market_value',
-                'new_market_share']    
+                'new_market_share'
+            ]    
 
     # convert formatting of fields list
     inputs['fields_str'] = utilfunc.pylist_2_pglist(fields).replace("'","")       

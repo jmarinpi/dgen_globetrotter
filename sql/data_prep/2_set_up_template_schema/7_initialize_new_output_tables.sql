@@ -45,7 +45,9 @@ CREATE TABLE diffusion_template.agent_outputs
 	turbine_size_kw NUMERIC,
 	-- general system characteristics
 	aep NUMERIC,
+	cf numeric,
 	system_size_kw NUMERIC,
+	system_size_factors text,
 	n_units NUMERIC,
 	-- rate inputs
 	rate_id_alias INTEGER,
@@ -53,6 +55,7 @@ CREATE TABLE diffusion_template.agent_outputs
 	nem_system_size_limit_kw DOUBLE PRECISION,
 	ur_nm_yearend_sell_rate NUMERIC,
 	ur_flat_sell_rate NUMERIC,
+	flat_rate_excess_gen_kwh NUMERIC,
 	ur_enable_net_metering BOOLEAN,
 	full_net_metering BOOLEAN,
 	-- rate outputs
@@ -62,14 +65,14 @@ CREATE TABLE diffusion_template.agent_outputs
 	net_fit_credit_dollars NUMERIC,
 	monthly_bill_savings NUMERIC,
 	percent_monthly_bill_savings NUMERIC,
-	carbon_price_cents_per_kwh NUMERIC,
+	cost_of_elec_dols_per_kwh NUMERIC,
 	-- costs
 	cap_cost_multiplier NUMERIC,
 	inverter_cost_dollars_per_kw NUMERIC,
 	installed_costs_dollars_per_kw NUMERIC,
 	fixed_om_dollars_per_kw_per_yr NUMERIC,
 	variable_om_dollars_per_kwh NUMERIC,
-	flat_rate_excess_gen_kwh NUMERIC,
+	carbon_price_cents_per_kwh NUMERIC,
 	-- reeds stuff
 	curtailment_rate NUMERIC,
 	ReEDS_elec_price_mult NUMERIC,
