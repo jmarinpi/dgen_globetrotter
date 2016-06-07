@@ -476,19 +476,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
 
                 # NEXT STEPS
-                # TODO: add ((a.number_of_adopters - c.initial_number_of_adopters) * b.aep * 1e-9) + (0.23 * 8760 * c.initial_capacity_kw * 1e-9) as total_gen_twh
-                # TODO: delete combine outputs, add indices to agents_outputs, revise copy outputs to csv, and scenario report working with the new outputs
                 # TODO: test against benchmark scenario and debug to get results aligned
-                # TODO: perform very thorough testing in comparison to dev (test various functionality and levers)
-                        # check reeds offline mode results
-                # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays                
-       
-           
-                # ~~~LONG TERM~~~
                 # TODO: fix warnings in openpyxl
-                # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
-                # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed
+                # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays       
+                # TODO: perform very thorough testing in comparison to dev (test various functionality and levers)
+                        # check reeds offline mode results         
+                # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
                 # TODO: get logger working on both data_functions and agent_preparation
+                # TODO: identify list of remaining sections of code that shoul be refactored
+       
+                # ~~~LONG TERM~~~
+                # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
                 # TODO: strip cap cost multipliers from agent locations and move to somewhere downstream
                 # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database                
                 
