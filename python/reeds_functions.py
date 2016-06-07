@@ -137,8 +137,9 @@ def write_reeds_offline_mode_data(schema, con, techs, out_scen_path, file_suffix
         sql = '''SELECT year, pca_reg, 
                          SUM(installed_capacity)/1000 as installed_capacity_mw, 
                          SUM(number_of_adopters * cost_of_elec_dols_per_kwh)/SUM(number_of_adopters) as cost_of_elec_dols_per_kwh
-                 FROM %(schema)s.outputs_all_solar
+                 FROM %(schema)s.agent_outputs
                  WHERE number_of_adopters > 0
+                 AND tech = 'solar'
                  GROUP BY year, pca_reg
                  ORDER BY year, pca_reg;''' % inputs
         # read to data frame 
@@ -151,17 +152,19 @@ def write_reeds_offline_mode_data(schema, con, techs, out_scen_path, file_suffix
         # (weighted by the percent of installed capacity with each orientation)
         sql = """WITH a AS
                 (
-                    	SELECT pca_reg, azimuth, tilt, year, sum(installed_capacity) as installed_capacity
-                    	FROM %(schema)s.outputs_all_solar a
-    			WHERE installed_capacity > 0
-                    	GROUP BY pca_reg, azimuth, tilt, year
+                    	 SELECT pca_reg, azimuth, tilt, year, sum(installed_capacity) as installed_capacity
+                    	 FROM %(schema)s.agent_outputs a
+                         WHERE installed_capacity > 0
+                         AND tech = 'solar'
+                    	 GROUP BY pca_reg, azimuth, tilt, year
                 ),
                 b AS
                 (
-                    	SELECT pca_reg, year, sum(installed_capacity) as installed_capacity
-                    	FROM %(schema)s.outputs_all_solar a
-    			WHERE installed_capacity > 0
-                    	GROUP BY pca_reg, year
+                         SELECT pca_reg, year, sum(installed_capacity) as installed_capacity
+                         FROM %(schema)s.agent_outputs a
+                         WHERE installed_capacity > 0
+                         AND tech = 'solar'                         
+                    	 GROUP BY pca_reg, year
                 ),
                 c AS
                 (

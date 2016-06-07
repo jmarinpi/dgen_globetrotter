@@ -477,6 +477,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # TODO: delete combine outputs, add indices to agents_outputs, revise copy outputs to csv, and scenario report working with the new outputs
                 # TODO: test against benchmark scenario and debug to get results aligned
                 # TODO: perform very thorough testing in comparison to dev (test various functionality and levers)
+                        # check reeds offline mode results
                 # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays                
        
            
