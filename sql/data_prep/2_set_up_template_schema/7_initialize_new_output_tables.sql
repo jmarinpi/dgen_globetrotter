@@ -49,6 +49,7 @@ CREATE TABLE diffusion_template.agent_outputs
 	system_size_kw NUMERIC,
 	system_size_factors text,
 	n_units NUMERIC,
+	total_gen_twh numeric,
 	-- rate inputs
 	rate_id_alias INTEGER,
 	rate_source VARCHAR(5),
@@ -102,6 +103,11 @@ CREATE TABLE diffusion_template.agent_outputs
 	metric TEXT,
 	metric_value NUMERIC,
 	max_market_share NUMERIC,
+	-- initial year diffusion
+	initial_number_of_adopters NUMERIC,
+	initial_capacity_mw NUMERIC,
+	initial_market_share NUMERIC,
+	initial_market_value NUMERIC,
 	-- previous year diffusion
 	number_of_adopters_last_year NUMERIC,
 	installed_capacity_last_year NUMERIC,
@@ -112,5 +118,26 @@ CREATE TABLE diffusion_template.agent_outputs
 	installed_capacity NUMERIC,
 	market_value NUMERIC,
 	new_market_share NUMERIC
+);
+
+------------------------------------------------------------------------------------------------------------
+-- tables to hold results from each previous model year 
+DROP TABLE IF EXISTS diffusion_template.output_market_last_year;
+CREATE TABLE diffusion_template.output_market_last_year
+(
+	county_id INTEGER,
+	bin_id INTEGER,
+	tech varchar(5),
+	sector_abbr varchar(3),
+	market_share_last_year NUMERIC,
+	max_market_share_last_year NUMERIC,
+	number_of_adopters_last_year NUMERIC,
+	installed_capacity_last_year NUMERIC,
+	market_value_last_year NUMERIC,
+	initial_number_of_adopters NUMERIC,
+	initial_capacity_mw NUMERIC,
+	initial_market_share NUMERIC,
+	initial_market_value NUMERIC
+
 );
 
