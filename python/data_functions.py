@@ -179,6 +179,7 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
                 'system_size_kw',
                 'system_size_factors',
                 'n_units',
+                'total_gen_twh',
                 'rate_id_alias',
                 'rate_source',
                 'nem_system_size_limit_kw',
@@ -225,6 +226,10 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
                 'metric',
                 'metric_value',
                 'max_market_share',
+                'initial_number_of_adopters',
+                'initial_capacity_mw',
+                'initial_market_share',
+                'initial_market_value',
                 'number_of_adopters_last_year',
                 'installed_capacity_last_year',
                 'market_share_last_year',
@@ -245,258 +250,52 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
     # seek back to the beginning of the stringIO file
     s.seek(0)
     # copy the data from the stringio file to the postgres table
-    cur.copy_expert('COPY %(schema)s.agent_outputs (%(fields_str)s) FROM STDOUT WITH CSV' % inputs, s)
+    sql = 'COPY %(schema)s.agent_outputs (%(fields_str)s) FROM STDOUT WITH CSV' % inputs
+    cur.copy_expert(sql, s)
     # commit the additions and close the stringio file (clears memory)
     con.commit()    
     s.close()
 
 
-def combine_outputs_wind(schema, sectors, cur, con):
-    
-    # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()   
-
-    sql = '''DROP TABLE IF EXISTS %(schema)s.outputs_all_wind CASCADE;
-            CREATE UNLOGGED TABLE %(schema)s.outputs_all_wind AS  ''' % inputs  
-    
-    for i, sector_abbr in enumerate(sectors.keys()):
-        inputs['sector'] = sectors[sector_abbr].lower()
-        inputs['sector_abbr'] = sector_abbr
-        if i > 0:
-            inputs['union'] = 'UNION ALL '
-        else:
-            inputs['union'] = ''
-        
-        sub_sql = '''%(union)s 
-                    SELECT a.tech, '%(sector)s'::text as sector, 
-
-                    a.pgid, a.county_id, a.bin_id, a.year, a.business_model, a.loan_term_yrs, 
-                    a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
-                    a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
-                    a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
-                    a.value_of_ptc, a.pbi_fit_length, a.ptc_length, a.value_of_rebate, a.value_of_tax_credit_or_deduction, 
-                    a.metric, a.metric_value, a.lcoe, a.max_market_share, 
-                    a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
-                    a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, 
-                    a.npv4, a.npv_agent, a.excess_generation_percent, a.value_of_itc, a.total_value_of_incentives, a.selected_option,
-                    a.carbon_price_cents_per_kwh, 
-                    a.fixed_om_dollars_per_kw_per_yr, 
-                    a.variable_om_dollars_per_kwh, a.installed_costs_dollars_per_kw, 
-                    a.inverter_cost_dollars_per_kw, 
-
-                    b.state_abbr, b.census_division_abbr, b.hdf_load_index,
-                    b.pca_reg, b.reeds_reg,
-                    b.ann_cons_kwh, 
-                    b.customers_in_bin, b.initial_customers_in_bin, 
-                    b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
-                    b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source, 
-                    b.ur_enable_net_metering, b.nem_system_size_limit_kw,
-                    b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,
-                    b.naep/8760 as cf, b.naep, b.aep, b.system_size_kw,
-                    CASE WHEN b.turbine_size_kw = 1500 AND b.nturb > 1 THEN '1500+'::TEXT 
-                    ELSE b.turbine_size_kw::TEXT 
-                    END as system_size_factors,
-                    b.power_curve_1, b.power_curve_2, b.interp_factor,
-                    b.i, b.j, b.cf_bin,
-                    b.nturb, b.turbine_size_kw, 
-                    b.turbine_height_m, b.scoe,
-                    
-                    a.first_year_bill_without_system/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
-                    
-                    c.initial_market_share, c.initial_number_of_adopters,
-                    c.initial_capacity_kw / 1000 as initial_capacity_mw,
-                    
-                    ((a.number_of_adopters - c.initial_number_of_adopters) * b.aep * 1e-9) + (0.23 * 8760 * c.initial_capacity_kw * 1e-9) as total_gen_twh
-                                        
-                    
-                    FROM %(schema)s.outputs_%(sector_abbr)s a
-                    
-                    LEFT JOIN %(schema)s.block_%(sector_abbr)s_best_option_each_year_wind b
-                    ON a.county_id = b.county_id
-                    AND a.bin_id = b.bin_id
-                    and a.year = b.year
-                    
-                    LEFT JOIN %(schema)s.block_%(sector_abbr)s_initial_market_shares_wind c
-                    ON a.county_id = c.county_id
-                    AND a.bin_id = c.bin_id
-                    
-                    WHERE a.tech = 'wind'
-                    ''' % inputs
-        sql += sub_sql
-    
-    sql += ';'
-    cur.execute(sql)
-    con.commit()
-
-    # create indices that will be needed for various aggregations in R visualization script
-    sql = '''CREATE INDEX outputs_all_wind_year_btree ON %(schema)s.outputs_all_wind USING BTREE(year);
-             CREATE INDEX outputs_all_wind_state_abbr_btree ON %(schema)s.outputs_all_wind USING BTREE(state_abbr);
-             CREATE INDEX outputs_all_wind_sector_btree ON %(schema)s.outputs_all_wind USING BTREE(sector);
-             CREATE INDEX outputs_all_wind_business_model_btree ON %(schema)s.outputs_all_wind USING BTREE(business_model);
-             CREATE INDEX outputs_all_wind_system_size_factors_btree ON %(schema)s.outputs_all_wind USING BTREE(system_size_factors);                          
-             CREATE INDEX outputs_all_wind_metric_btree ON %(schema)s.outputs_all_wind USING BTREE(metric);             
-             CREATE INDEX outputs_all_wind_turbine_height_m_btree ON %(schema)s.outputs_all_wind USING BTREE(turbine_height_m);
-             CREATE INDEX outputs_all_wind_tech_btree ON %(schema)s.outputs_all_wind USING BTREE(tech);
-             ''' % inputs
-    cur.execute(sql)
-    con.commit()
-
-
-def combine_outputs_solar(schema, sectors, cur, con):
-    
-    # create a dictionary out of the input arguments -- this is used through sql queries    
-    inputs = locals().copy()   
-
-    sql = '''DROP TABLE IF EXISTS %(schema)s.outputs_all_solar CASCADE;
-            CREATE UNLOGGED TABLE %(schema)s.outputs_all_solar AS  ''' % inputs  
-    
-    for i, sector_abbr in enumerate(sectors.keys()):
-        inputs['sector'] = sectors[sector_abbr].lower()
-        inputs['sector_abbr'] = sector_abbr
-        if i > 0:
-            inputs['union'] = 'UNION ALL '
-        else:
-            inputs['union'] = ''
-        
-        sub_sql = '''%(union)s 
-                    SELECT a.tech, '%(sector)s'::text as sector, 
-
-                    a.pgid, a.county_id, a.bin_id, a.year, 
-                    
-                    a.business_model, a.loan_term_yrs, 
-                    a.loan_rate, a.down_payment, a.discount_rate, a.tax_rate, a.length_of_irr_analysis_yrs, 
-                    a.market_share_last_year, a.number_of_adopters_last_year, a.installed_capacity_last_year, 
-                    a.market_value_last_year, a.value_of_increment, a.value_of_pbi_fit, 
-                    a.value_of_ptc, a.pbi_fit_length, a.ptc_length, a.value_of_rebate, a.value_of_tax_credit_or_deduction, 
-                    a.metric, a.metric_value, a.lcoe, a.max_market_share, 
-                    a.diffusion_market_share, a.new_market_share, a.new_adopters, a.new_capacity, 
-                    a.new_market_value, a.market_share, a.number_of_adopters, a.installed_capacity, 
-                    a.market_value, a.first_year_bill_with_system, a.first_year_bill_without_system, 
-                    a.npv4, a.npv_agent, a.excess_generation_percent, a.value_of_itc, a.total_value_of_incentives, a.selected_option,
-                    a.carbon_price_cents_per_kwh, 
-                    a.fixed_om_dollars_per_kw_per_yr, 
-                    a.variable_om_dollars_per_kwh, a.installed_costs_dollars_per_kw, 
-                    a.inverter_cost_dollars_per_kw, 
-                    
-                    b.state_abbr, b.census_division_abbr, b.hdf_load_index,
-                    b.pca_reg, b.reeds_reg,
-                    b.ann_cons_kwh, 
-                    b.customers_in_bin, b.initial_customers_in_bin, 
-                    b.load_kwh_in_bin, b.initial_load_kwh_in_bin, b.load_kwh_per_customer_in_bin, 
-                    b.crb_model, b.max_demand_kw, b.rate_id_alias, b.rate_source, 
-                    b.ur_enable_net_metering, b.nem_system_size_limit_kw,
-                    b.ur_nm_yearend_sell_rate, b.ur_flat_sell_rate,   
-                    b.naep/8760 as cf, b.naep, b.aep, b.system_size_kw, 
-                    diffusion_shared.r_cut(b.system_size_kw, ARRAY[0,2.5,5.0,10.0,20.0,50.0,100.0,250.0,500.0,750.0,1000.0,1500.0]) 
-                        as system_size_factors,
-                    b.npanels, 
-                    b.tilt, b.azimuth,
-                    b.pct_developable, b.solar_re_9809_gid, 
-                    b.density_w_per_sqft, b.inverter_lifetime_yrs, 
-                    b.available_roof_sqft, b.bldg_size_class, b.ground_cover_ratio,
-                    
-                    a.first_year_bill_without_system/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
-                    
-                    c.initial_market_share, c.initial_number_of_adopters,
-                     c.initial_capacity_kw / 1000 as initial_capacity_mw,
-
-                    ((a.number_of_adopters - c.initial_number_of_adopters) * b.aep * 1e-9) + (0.23 * 8760 * c.initial_capacity_kw * 1e-9) as total_gen_twh
-                    
-                    FROM %(schema)s.outputs_%(sector_abbr)s a
-                    
-                    LEFT JOIN %(schema)s.block_%(sector_abbr)s_best_option_each_year_solar b
-                    ON a.county_id = b.county_id
-                    AND a.bin_id = b.bin_id
-                    and a.year = b.year
-                    
-                    LEFT JOIN %(schema)s.block_%(sector_abbr)s_initial_market_shares_solar c
-                    ON a.county_id = c.county_id
-                    AND a.bin_id = c.bin_id
-                    
-                    WHERE a.tech = 'solar'
-                    ''' % inputs
-        sql += sub_sql
-    
-    sql += ';'
-    cur.execute(sql)
-    con.commit()
-
-    # create indices that will be needed for various aggregations in R visualization script
-    sql = '''CREATE INDEX outputs_all_solar_year_btree ON %(schema)s.outputs_all_solar USING BTREE(year);
-             CREATE INDEX outputs_all_solar_state_abbr_btree ON %(schema)s.outputs_all_solar USING BTREE(state_abbr);
-             CREATE INDEX outputs_all_solar_sector_btree ON %(schema)s.outputs_all_solar USING BTREE(sector);
-             CREATE INDEX outputs_all_solar_business_model_btree ON %(schema)s.outputs_all_solar USING BTREE(business_model);
-             CREATE INDEX outputs_all_solar_system_size_factors_btree ON %(schema)s.outputs_all_solar USING BTREE(system_size_factors);                          
-             CREATE INDEX outputs_all_solar_metric_btree ON %(schema)s.outputs_all_solar USING BTREE(metric);
-             CREATE INDEX outputs_all_solar_tech_btree ON %(schema)s.outputs_all_solar USING BTREE(tech);
-             ''' % inputs
-    cur.execute(sql)
-    con.commit()
-
-
-def combine_output_view(schema, cur, con, techs):
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def index_output_table(con, cur, schema):
     
     inputs = locals().copy()
     
-    sql_list = []
-    for tech in techs:
-        inputs['tech'] = tech
-        sql = """SELECT tech, sector, pgid, county_id, bin_id, year, business_model,
-                        loan_term_yrs, loan_rate, down_payment, discount_rate, tax_rate,
-                        length_of_irr_analysis_yrs, market_share_last_year, 
-                        number_of_adopters_last_year, installed_capacity_last_year, 
-                        market_value_last_year, value_of_increment, value_of_pbi_fit, 
-                        value_of_ptc, pbi_fit_length, ptc_length, value_of_rebate, 
-                        value_of_tax_credit_or_deduction, metric, metric_value, 
-                        lcoe, max_market_share, diffusion_market_share, new_market_share,
-                        new_adopters, new_capacity, new_market_value, market_share, 
-                        number_of_adopters, installed_capacity, market_value, 
-                        first_year_bill_with_system, first_year_bill_without_system, 
-                        npv4, npv_agent, excess_generation_percent, value_of_itc, total_value_of_incentives, 
-                        state_abbr, census_division_abbr, hdf_load_index, 
-                        pca_reg, reeds_reg,
-                        carbon_price_cents_per_kwh, fixed_om_dollars_per_kw_per_yr, 
-                        variable_om_dollars_per_kwh, installed_costs_dollars_per_kw, 
-                        customers_in_bin, initial_customers_in_bin, load_kwh_in_bin, 
-                        initial_load_kwh_in_bin, load_kwh_per_customer_in_bin, crb_model, 
-                        max_demand_kw, rate_id_alias, rate_source, ur_enable_net_metering, 
-                        nem_system_size_limit_kw, ur_nm_yearend_sell_rate, ur_flat_sell_rate, 
-                        cf, naep, aep, system_size_kw, system_size_factors, 
-                        cost_of_elec_dols_per_kwh, 
-                        initial_market_share, initial_number_of_adopters, 
-                        initial_capacity_mw, total_gen_twh, selected_option
-                 FROM %(schema)s.outputs_all_%(tech)s""" % inputs
-        sql_list.append(sql)
-    
-    inputs['sql_combined'] = ' UNION ALL '.join(sql_list)
-    sql = """DROP VIEW IF EXISTS %(schema)s.outputs_all;
-              CREATE VIEW %(schema)s.outputs_all AS
-              %(sql_combined)s;""" % inputs
+    # create indices that will be needed for various aggregations in R visualization script
+    sql = '''CREATE INDEX agent_outputs_year_btree ON %(schema)s.agent_outputs USING BTREE(year);
+             CREATE INDEX agent_outputs_state_abbr_btree ON %(schema)s.agent_outputs USING BTREE(state_abbr);
+             CREATE INDEX agent_outputs_sector_btree ON %(schema)s.agent_outputs USING BTREE(sector_abbr);
+             CREATE INDEX agent_outputs_business_model_btree ON %(schema)s.agent_outputs USING BTREE(business_model);
+             CREATE INDEX agent_outputs_system_size_factors_btree ON %(schema)s.agent_outputs USING BTREE(system_size_factors);                          
+             CREATE INDEX agent_outputs_metric_btree ON %(schema)s.agent_outputs USING BTREE(metric);             
+             CREATE INDEX agent_outputs_turbine_height_m_btree ON %(schema)s.agent_outputs USING BTREE(turbine_height_m);
+             CREATE INDEX agent_outputs_tech_btree ON %(schema)s.agent_outputs USING BTREE(tech);
+             ''' % inputs
     cur.execute(sql)
     con.commit()
 
-
-def combine_outputs(techs, schema, sectors, cur, con):
-        
-    if 'wind' in techs:
-        combine_outputs_wind(schema, sectors, cur, con)
-
-    if 'solar' in techs:
-        combine_outputs_solar(schema, sectors, cur, con)        
-
-    combine_output_view(schema, cur, con, techs)
 
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def copy_outputs_to_csv(techs, schema, out_scen_path, cur, con, file_suffix = ''):
     
     logger.info('\tExporting Results from Database')
 
+    inputs = locals().copy()
+
     # copy data to csv
     for tech in techs:
+        inputs['tech'] = tech
         out_file = os.path.join(out_scen_path, tech, 'outputs_%s%s.csv.gz' % (tech, file_suffix))
         f = gzip.open(out_file,'w',1)
-        cur.copy_expert('COPY %s.outputs_all_%s TO STDOUT WITH CSV HEADER;' % (schema, tech), f)
+        sql = """COPY 
+                    (
+                        SELECT * 
+                        FROM %(schema)s.agent_outputs 
+                        WHERE tech = '%(tech)s'
+                    ) 
+                TO STDOUT WITH CSV HEADER;""" % inputs
+        cur.copy_expert(sql, f)
         f.close()
     
     # write the scenario optoins to csv as well
@@ -1292,7 +1091,10 @@ def write_last_year(con, cur, market_last_year, schema):
     # open an in memory stringIO file (like an in memory csv)
     s = StringIO()
     # write the data to the stringIO
-    out_cols = ['county_id', 'bin_id', 'market_share_last_year', 'max_market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year', 'tech', 'sector_abbr']
+    out_cols = ['county_id', 'bin_id', 'tech', 'sector_abbr',
+                'market_share_last_year', 'max_market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year', 
+                'initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value'
+                ]
     market_last_year[out_cols].to_csv(s, index = False, header = False)
     # seek back to the beginning of the stringIO file
     s.seek(0)

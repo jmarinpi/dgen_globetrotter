@@ -1187,8 +1187,15 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
                                                  np.round(dataframe['portion_of_state'], 6))
     dataframe['market_value_last_year'] = dataframe['installed_costs_dollars_per_kw'] * dataframe['installed_capacity_last_year']
 
+    # reproduce these columns as "initial" columns too
+    dataframe['initial_number_of_adopters'] = dataframe['number_of_adopters_last_year']
+    dataframe['initial_capacity_mw'] = dataframe['installed_capacity_last_year']  /1000.  
+    dataframe['initial_market_share'] = dataframe['market_share_last_year']
+    dataframe['initial_market_value'] = dataframe['market_value_last_year']
+    
     # isolate the return columns
-    return_cols = ['number_of_adopters_last_year', 'installed_capacity_last_year', 'market_share_last_year', 'market_value_last_year']
+    return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value', 
+                   'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_share_last_year', 'market_value_last_year']
     out_cols = in_cols + return_cols
     dataframe = dataframe[out_cols]
     
@@ -1214,7 +1221,17 @@ def apply_market_last_year(dataframe, market_last_year_df):
     dataframe = pd.merge(dataframe, market_last_year_df, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])
     
     return dataframe
-    
+
+
+#%%
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+def estimate_total_generation(dataframe):    
+
+    dataframe['total_gen_twh'] = ((dataframe['number_of_adopters'] - dataframe['initial_number_of_adopters']) * dataframe['aep'] * 1e-9) + (dataframe['cf'] * 8760 * dataframe['initial_capacity_mw'] * 1e-6)                
+     
+    return dataframe
+
+
 #%%
 def check_agent_count():
   # TODO: add in a check that agent_core_attributes_ table has the correct number of rows

@@ -456,6 +456,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, is_first_year, bass_params) 
                 
                 #==========================================================================================================
+                # ESTIMATE TOTAL GENERATION
+                #==========================================================================================================      
+                df = AgentsAlgorithm(Agents(df), mutation.estimate_total_generation).compute().dataframe
+            
+                #==========================================================================================================
                 # WRITE OUTPUTS
                 #==========================================================================================================   
                 # write the incremental results to the database
@@ -468,8 +473,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
 
                 # NEXT STEPS
-                # TODO: revise combine outputs, copy outputs to csv, and scenario report working with the new outputs
-                # TODO: perform very thorough testing in comparison to dev
+                # TODO: add ((a.number_of_adopters - c.initial_number_of_adopters) * b.aep * 1e-9) + (0.23 * 8760 * c.initial_capacity_kw * 1e-9) as total_gen_twh
+                # TODO: delete combine outputs, add indices to agents_outputs, revise copy outputs to csv, and scenario report working with the new outputs
+                # TODO: test against benchmark scenario and debug to get results aligned
+                # TODO: perform very thorough testing in comparison to dev (test various functionality and levers)
                 # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays                
        
            
@@ -490,8 +497,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 out_subfolders = datfunc.create_tech_subfolders(out_scen_path, techs, out_subfolders, choose_tech)
                 
                 # copy outputs to csv     
-                datfunc.combine_outputs(techs, schema, sectors, cur, con)
                 datfunc.copy_outputs_to_csv(techs, schema, out_scen_path, cur, con)
+
+                # add indices to postgres output table
+                datfunc.index_output_table(con, cur, schema)
                 
                 # write reeds mode outputs to csvs in case they're needed
                 reedsfunc.write_reeds_offline_mode_data(schema, con, techs, out_scen_path)

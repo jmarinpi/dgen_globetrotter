@@ -81,15 +81,15 @@ def calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, is_fi
     # cap the new_market_share where the market share exceeds the max market share
     df['new_market_share'] = np.where(df['market_share'] > df['max_market_share'], 0, df['new_market_share'])
     # calculate new adopters, capacity and market value            
-    df['new_adopters'] = df['new_market_share'] * df['customers_in_bin']
+    df['new_adopters'] = df['new_market_share'] * df['developable_customers_in_bin']
     df['new_capacity'] = df['new_adopters'] * df['system_size_kw']
     df['new_market_value'] = df['new_adopters'] * df['system_size_kw'] * df['installed_costs_dollars_per_kw']
     # then add these values to values from last year to get cumulative values:
     df['number_of_adopters'] = df['number_of_adopters_last_year'] + df['new_adopters']
     df['installed_capacity'] = df['installed_capacity_last_year'] + df['new_capacity'] # All capacity in kW in the model
     df['market_value'] = df['market_value_last_year'] + df['new_market_value']
-    market_last_year = df[['county_id','bin_id', 'sector_abbr', 'tech', 'market_share', 'max_market_share','number_of_adopters', 'installed_capacity', 'market_value']] # Update dataframe for next solve year
-    market_last_year.columns = ['county_id', 'bin_id', 'sector_abbr', 'tech', 'market_share_last_year', 'max_market_share_last_year','number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year' ]
+    market_last_year = df[['county_id','bin_id', 'sector_abbr', 'tech', 'market_share', 'max_market_share','number_of_adopters', 'installed_capacity', 'market_value', 'initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value']] # Update dataframe for next solve year
+    market_last_year.columns = ['county_id', 'bin_id', 'sector_abbr', 'tech', 'market_share_last_year', 'max_market_share_last_year','number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year', 'initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value']
 
     return df, market_last_year
 
