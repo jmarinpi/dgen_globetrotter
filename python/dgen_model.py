@@ -408,6 +408,27 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 leasing_availability_df = mutation.get_leasing_availability(con, schema, year)
                 agents = AgentsAlgorithm(agents, mutation.apply_leasing_availability, (leasing_availability_df, )).compute()                     
                 
+                
+                
+                
+                
+                #%%
+                #==========================================================================================================
+                # NEW CODE FOR STORAGE/SIZING ANALYSIS
+                #==========================================================================================================                   
+                
+                
+                
+                
+                
+                
+                
+                
+                pass
+#%%                
+                
+                
+                
                 # reeds stuff...
                 # TODO: fix this to get linked reeds mode working
 #                if mode == 'ReEDS':
