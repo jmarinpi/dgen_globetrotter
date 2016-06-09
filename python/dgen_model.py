@@ -44,6 +44,8 @@ import tech_choice
 import reeds_functions as reedsfunc
 import utility_functions as utilfunc
 from agent import Agent, Agents, AgentsAlgorithm
+import storage_functions_mike as storage_funcs_m
+import storage_functions_pieter as storage_funcs_p
 
 #==============================================================================
 # raise  numpy and pandas warnings as exceptions
