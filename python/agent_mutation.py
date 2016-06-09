@@ -8,8 +8,6 @@ Created on Mon Jun  6 11:35:14 2016
 import psycopg2 as pg
 import numpy as np
 import pandas as pd
-import logging
-reload(logging)
 import decorators
 from config import show_times
 import utility_functions as utilfunc

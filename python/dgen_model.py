@@ -33,6 +33,10 @@ import diffusion_functions as diffunc
 reload(diffunc)
 import financial_functions as finfunc
 reload(finfunc)
+import storage_functions_mike as storage_funcs_m
+reload(storage_funcs_m)
+#import storage_functions_pieter as storage_funcs_p
+#reload(storage_funcs_p)
 # ---------------------------------------------
 from data_objects import FancyDataFrame
 import subprocess
@@ -44,8 +48,7 @@ import tech_choice
 import reeds_functions as reedsfunc
 import utility_functions as utilfunc
 from agent import Agent, Agents, AgentsAlgorithm
-import storage_functions_mike as storage_funcs_m
-import storage_functions_pieter as storage_funcs_p
+
 
 #==============================================================================
 # raise  numpy and pandas warnings as exceptions
@@ -427,6 +430,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 
                 pass
+                crash
 #%%                
                 
                 
@@ -583,8 +587,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
     except Exception, e:
         if con is not None:
             con.close()
-        # drop the output schema
-        datfunc.drop_output_schema(cfg.pg_conn_string, schema, True)
+        if 'schema' in locals():
+            # drop the output schema
+            datfunc.drop_output_schema(cfg.pg_conn_string, schema, True)
         # log or raise the exception
         if 'logger' in locals():
             logger.error(e.__str__(), exc_info = True)

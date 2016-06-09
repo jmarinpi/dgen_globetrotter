@@ -45,11 +45,14 @@ def get_logger(log_file_path = None):
     
 def get_git_hash():
     
-
-    fp = os.path.dirname(os.path.abspath(__file__))
-    cmd = "cd %s;"  % fp + "git log --pretty=format:'%h' -n 1"
-    git_hash = subprocess.check_output(cmd, shell = True)
-
+    try:
+        fp = os.path.dirname(os.path.abspath(__file__))
+        cmd = "cd %s;"  % fp + "git log --pretty=format:'%h' -n 1"
+        git_hash = subprocess.check_output(cmd, shell = True)
+    except Exception, e:
+        print e
+        git_hash = 'unknown'
+        
     return git_hash
     
     
