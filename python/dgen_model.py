@@ -503,6 +503,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
 
                 # NEXT STEPS
+                # TODO: fix bug in estimate_initial_market_shares -- should be done per county not agent
                 # TODO: test against benchmark scenario and debug to get results aligned
                 # TODO: there seems to be a bug in how installed costs are calculated (at least for solar)
                 # TODO: fix warnings in openpyxl
