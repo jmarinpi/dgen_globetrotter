@@ -430,7 +430,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 
                 pass
-                crash
+                
 #%%                
                 
                 

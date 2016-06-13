@@ -901,9 +901,9 @@ def apply_tech_costs_solar(dataframe, tech_costs_df):
     dataframe = pd.merge(dataframe, tech_costs_df, how = 'left', on = ['tech', 'sector_abbr'])
     # apply the capital cost multipliers and size adjustment factor
     dataframe['inverter_cost_dollars_per_kw'] = (dataframe['inverter_cost_dollars_per_kw'] * dataframe['cap_cost_multiplier'] * 
-                                                    (1 - (dataframe['pv_size_adjustment_factor'] * dataframe['pv_base_size_kw'] - dataframe['system_size_kw'])))
+                                                    (1 - (dataframe['pv_size_adjustment_factor'] * (dataframe['pv_base_size_kw'] - dataframe['system_size_kw']))))
     dataframe['installed_costs_dollars_per_kw'] = (dataframe['installed_costs_dollars_per_kw'] * dataframe['cap_cost_multiplier'] * 
-                                                    (1 - (dataframe['pv_size_adjustment_factor'] * dataframe['pv_base_size_kw'] - dataframe['system_size_kw'])))                                                    
+                                                    (1 - (dataframe['pv_size_adjustment_factor'] * (dataframe['pv_base_size_kw'] - dataframe['system_size_kw']))))                                                    
     # identify the new columns to return
     return_cols = ['inverter_cost_dollars_per_kw', 'installed_costs_dollars_per_kw', 'fixed_om_dollars_per_kw_per_yr', 'variable_om_dollars_per_kwh']    
     out_cols = in_cols + return_cols
@@ -1176,7 +1176,7 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
     # (when there are no developable agnets in the state, simply apportion evenly to all agents)
     dataframe['portion_of_state'] = np.where(dataframe['developable_customers_in_state'] > 0, 
                                              dataframe['developable_customers_in_bin']/dataframe['developable_customers_in_state'], 
-                                             1./dataframe['agent_count'] * dataframe['systems_count'])
+                                             1./dataframe['agent_count'])
     # apply the agent's portion to the total to calculate starting capacity and systems                                         
     dataframe['number_of_adopters_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['systems_count'], 6)
     dataframe['installed_capacity_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['capacity_mw'], 6) * 1000.
