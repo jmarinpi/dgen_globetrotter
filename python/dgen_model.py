@@ -504,6 +504,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 # NEXT STEPS
                 # TODO: test against benchmark scenario and debug to get results aligned
+                # TODO: there seems to be a bug in how installed costs are calculated (at least for solar)
                 # TODO: fix warnings in openpyxl
                 # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays    
                         # clustering of time series into prototypes? (e.g., vector quantization)
