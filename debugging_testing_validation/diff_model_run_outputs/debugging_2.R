@@ -1,6 +1,6 @@
 library(dplyr)
 
-tech = 'solar'
+tech = 'wind'
 oops_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160614_112400'
 
 benchmark_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_benchmark_2016_06_13'
@@ -10,7 +10,7 @@ one  = read.csv(benchmark_file)
 two = read.csv(oops_file)
 
 column_mapping_file = sprintf('/Users/mgleason/NREL_Projects/github/diffusion/debugging_testing_validation/diff_model_run_outputs/column_mapping_%s.csv', tech)
-column_mapping = read.csv(column_mapping_file, stringsAsFactors =F)
+column_mapping = read.csv(column_mapping_file, stringsAsFactors = F)
 
 # check sizes
 nrow(one) 
@@ -38,6 +38,7 @@ for (row in 1:nrow(column_mapping)){
 
 mismatched = c()
 for (col in column_mapping$oops){
+    print(col) 
     match = all.equal(one[, col], two[, col], na.rm = T)
     if (match != T){
       print(n)
