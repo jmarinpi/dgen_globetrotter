@@ -526,6 +526,16 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     # add system size class
     dataframe_sized['system_size_factors'] = np.where(dataframe_sized['system_size_kw'] > 1500, '1500+', dataframe_sized['system_size_kw'].astype('str'))
 
+    # where system size is zero, adjust other dependent columns:
+    no_system = dataframe_sized['system_size_kw'] == 0
+    dataframe_sized['power_curve_1'] = np.where(no_system, -1, dataframe_sized['power_curve_1'])
+    dataframe_sized['power_curve_2'] = np.where(no_system, -1, dataframe_sized['power_curve_2'])
+    dataframe_sized['turbine_size_kw'] = np.where(no_system, 0, dataframe_sized['turbine_size_kw'])
+    dataframe_sized['turbine_height_m'] = np.where(no_system, 0, dataframe_sized['turbine_height_m'])
+    dataframe_sized['n_units'] = np.where(no_system, 0, dataframe_sized['n_units'])   
+    dataframe_sized['naep'] = np.where(no_system, 0, dataframe_sized['naep'])     
+    dataframe_sized['cf'] = np.where(no_system, 0, dataframe_sized['cf'])    
+
     # add dummy column for inverter lifetime 
     dataframe_sized['inverter_lifetime_yrs'] = np.nan
     dataframe_sized['inverter_lifetime_yrs'] = dataframe_sized['inverter_lifetime_yrs'].astype(np.float64)
