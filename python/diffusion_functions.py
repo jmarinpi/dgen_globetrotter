@@ -85,7 +85,7 @@ def calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, year,
     # cap the new_market_share where the market share exceeds the max market share
     df['new_market_share'] = np.where(df['market_share'] > df['max_market_share'], 0, df['new_market_share'])
     # calculate new adopters, capacity and market value            
-    df['new_adopters'] = df['new_market_share'] * df['customers_in_bin']
+    df['new_adopters'] = np.where(df['system_size_kw'] == 0, 0, df['new_market_share'] * df['customers_in_bin'])
     df['new_capacity'] = df['new_adopters'] * df['system_size_kw']
     df['new_market_value'] = df['new_adopters'] * df['system_size_kw'] * df['installed_costs_dollars_per_kw']
     # then add these values to values from last year to get cumulative values:
