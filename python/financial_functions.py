@@ -474,6 +474,11 @@ def calc_ttd(cfs):
     ttd = np.log(2) / np.log(1 + irrs)
     ttd[ttd <= 0] = 0
     ttd[ttd > 30] = 30
+    # also deal with ttd of nan by setting to max payback period (this should only occur when cashflows = 0)
+    if not np.all(np.isnan(ttd) == np.all(cfs == 0, axis = 1)):
+        raise Exception("np.nan found in ttd for non-zero cashflows")
+    ttd[np.isnan(ttd)] = 30
+    
     return ttd.round(decimals = 1) # must be rounded to nearest 0.1 to join with max_market_share
 
 #==============================================================================
@@ -669,7 +674,12 @@ def virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5):
     # deal with negative irrs
     negative_irrs = cfs.sum(1) < 0
     r = np.where(negative_irrs,-1,irr)
+    
+    # where the implied irr exceeds 0.5, simply cap it at 0.5
     r = np.where(irr.mask * (negative_irrs == False), 0.5, r)
+
+    # where cashflows are all zero, set irr to nan
+    r = np.where(np.all(cfs == 0, axis = 1), np.nan, r)
         
     return r
     
