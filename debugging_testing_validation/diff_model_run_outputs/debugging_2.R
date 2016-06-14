@@ -48,7 +48,17 @@ for (col in column_mapping$oops){
 
 cat(mismatched, sep = '\n')
 
+# additional columns to include
+add_cols = c('system_size_kw',
+             'first_year_bill_without_system',
+             'metric',
+             'metric_value',
+             'county_id',
+             'bin_id',
+             'sector'
+  )
+
 # save to csv
-write.csv(one[, mismatched], '/Users/mgleason/NREL_Projects/github/diffusion/runs/debug/benchmark.csv', row.names = F)
-write.csv(two[, mismatched], '/Users/mgleason/NREL_Projects/github/diffusion/runs/debug/oops.csv', row.names = F)
+write.csv(one[, c(mismatched, add_cols)], '/Users/mgleason/NREL_Projects/github/diffusion/runs/debug/benchmark.csv', row.names = F)
+write.csv(two[, c(mismatched, add_cols)], '/Users/mgleason/NREL_Projects/github/diffusion/runs/debug/oops.csv', row.names = F)
 
