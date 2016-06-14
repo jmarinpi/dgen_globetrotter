@@ -1228,7 +1228,7 @@ def apply_market_last_year(dataframe, market_last_year_df):
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
 def estimate_total_generation(dataframe):    
 
-    dataframe['total_gen_twh'] = ((dataframe['number_of_adopters'] - dataframe['initial_number_of_adopters']) * dataframe['aep'] * 1e-9) + (dataframe['cf'] * 8760 * dataframe['initial_capacity_mw'] * 1e-6)                
+    dataframe['total_gen_twh'] = ((dataframe['number_of_adopters'] - dataframe['initial_number_of_adopters']) * dataframe['aep'] * 1e-9) + (0.23 * 8760 * dataframe['initial_capacity_mw'] * 1e-6)                
      
     return dataframe
 

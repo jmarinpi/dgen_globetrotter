@@ -503,9 +503,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
 
                 # NEXT STEPS
-                # TODO: fix bug in estimate_initial_market_shares -- should be done per county not agent
                 # TODO: test against benchmark scenario and debug to get results aligned
-                # TODO: there seems to be a bug in how installed costs are calculated (at least for solar)
                 # TODO: fix warnings in openpyxl
                 # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays    
                         # clustering of time series into prototypes? (e.g., vector quantization)
@@ -518,7 +516,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
        
                 # ~~~LONG TERM~~~
                 # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
-                # TODO: strip cap cost multipliers from agent locations and move to somewhere downstream
                 # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database                
                 
                 

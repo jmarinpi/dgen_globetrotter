@@ -1,9 +1,16 @@
 library(dplyr)
 
-one  = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_benchmark_2016_06_13/BAU/solar/outputs_solar.csv.gz')
-two = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160614_111407/BAU/solar/outputs_solar.csv.gz')
+tech = 'solar'
+oops_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160614_112400'
 
-column_mapping = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/debugging_testing_validation/diff_model_run_outputs/column_mapping.csv', stringsAsFactors =F)
+benchmark_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_benchmark_2016_06_13'
+benchmark_file = sprintf('%s/BAU/%s/outputs_%s.csv.gz', benchmark_dir, tech, tech)
+oops_file = sprintf('%s/BAU/%s/outputs_%s.csv.gz', oops_dir, tech, tech)
+one  = read.csv(benchmark_file)
+two = read.csv(oops_file)
+
+column_mapping_file = sprintf('/Users/mgleason/NREL_Projects/github/diffusion/debugging_testing_validation/diff_model_run_outputs/column_mapping_%s.csv', tech)
+column_mapping = read.csv(column_mapping_file, stringsAsFactors =F)
 
 # check sizes
 nrow(one) 
