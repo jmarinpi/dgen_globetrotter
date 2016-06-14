@@ -452,9 +452,7 @@ def apply_technology_performance_solar(resource_solar_df, tech_performance_solar
 def apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df):
     
     resource_wind_df = pd.merge(resource_wind_df, tech_performance_wind_df, how = 'left', on = ['tech', 'turbine_size_kw'])
-    resource_wind_df['naep_1'] = resource_wind_df['naep_1'] * resource_wind_df['wind_derate_factor']
-    resource_wind_df['naep_2'] = resource_wind_df['naep_2'] * resource_wind_df['wind_derate_factor']
-    resource_wind_df['naep'] = resource_wind_df['power_curve_interp_factor'] * (resource_wind_df['naep_2'] - resource_wind_df['naep_1']) + resource_wind_df['naep_1']
+    resource_wind_df['naep'] = (resource_wind_df['power_curve_interp_factor'] * (resource_wind_df['naep_2'] - resource_wind_df['naep_1']) + resource_wind_df['naep_1']) * resource_wind_df['wind_derate_factor']
     
     return resource_wind_df
 
@@ -785,7 +783,7 @@ def get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents):
                     	AND a.j = c.j
                     	AND a.cf_bin = c.cf_bin
                     	AND a.turbine_height_m = c.height
-                    	AND a.power_curve_1 = c.turbine_id;""" % inputs
+                    	AND a.power_curve_2 = c.turbine_id;""" % inputs
         df_sector = pd.read_sql(sql, con, coerce_float = False)
         df_list.append(df_sector)
         
