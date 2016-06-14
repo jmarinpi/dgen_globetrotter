@@ -642,7 +642,7 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
                     a.owner_occupancy_status,
                     a.customers_in_bin,
                     a.load_kwh_in_bin,
-                    a.load_kwh_in_bin/customers_in_bin as load_kwh_per_customer_in_bin,
+                    a.load_kwh_per_customer_in_bin,
                     
                     -- load profile
                     c.max_demand_kw,

@@ -1,8 +1,9 @@
 library(dplyr)
 
 one  = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_benchmark_2016_06_13/BAU/solar/outputs_solar.csv.gz')
-two = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160614_100626/BAU/solar/outputs_solar.csv.gz')
+two = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160614_111407/BAU/solar/outputs_solar.csv.gz')
 
+column_mapping = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/debugging_testing_validation/diff_model_run_outputs/column_mapping.csv', stringsAsFactors =F)
 
 # check sizes
 nrow(one) 
@@ -20,16 +21,26 @@ two = filter(two, county_id == 117)
 one = one[with(one, order(sector, county_id, bin_id, tech)), ]
 two = two[with(two, order(sector, county_id, bin_id, tech)), ]
 
-# reorder columns
-all_cols = sort(unique(c(names(one), names(two))))
+# align the columns
+for (row in 1:nrow(column_mapping)){
+  b_col = column_mapping$benchmark[row]
+  o_col = column_mapping$oops[row]
+  names(one)[which(names(one) == b_col)] = o_col
+  
+}
 
-one_cols = intersect(all_cols, names(one))  
-two_cols = intersect(all_cols, names(two))
+mismatched = c()
+for (col in column_mapping$oops){
+    match = all.equal(one[, col], two[, col], na.rm = T)
+    if (match != T){
+      print(n)
+      mismatched = c(mismatched, col)
+    }
+}
 
-one = one[, one_cols]
-two = two[, two_cols]
+cat(mismatched, sep = '\n')
 
 # save to csv
-write.csv(one, '/Users/mgleason/NREL_Projects/github/diffusion/runs/debug/benchmark.csv', row.names = F)
-write.csv(two, '/Users/mgleason/NREL_Projects/github/diffusion/runs/debug/oops.csv', row.names = F)
+write.csv(one[, mismatched], '/Users/mgleason/NREL_Projects/github/diffusion/runs/debug/benchmark.csv', row.names = F)
+write.csv(two[, mismatched], '/Users/mgleason/NREL_Projects/github/diffusion/runs/debug/oops.csv', row.names = F)
 
