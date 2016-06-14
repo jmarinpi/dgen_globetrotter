@@ -14,13 +14,19 @@ library(tidyr)
 peak_demand = read.csv("peak_demand_111115.csv",header = T,stringsAsFactors = F) %>%
   gather(., year, peak_demand_mw, - state) %>%
   mutate(year = substr(year,2,5))
-ftg = read.csv("ftg_111115.csv",header = T,stringsAsFactors = F) %>%
+
+current_nem_policies = read.csv("current_nem_policies_060616.csv",header = T,stringsAsFactors = F) %>%
   select(state, max_fraction_demand, cap_based_on_energy)
+
 lmn = read.csv('lmn.csv',header = T,stringsAsFactors = F)
+
 ts_lkup = read.csv('ts_lkup.csv', header = T,stringsAsFactors = F)
+
 region_lkup = unique(read.csv('region_lkup.csv', header = T,stringsAsFactors = F))
+
 cf_data = read.csv('cf_by_time_slice_pca_and_year.csv', header = T, stringsAsFactors = F)
-installed_capacity_mw_by_state = read.csv("a_100_installed_cap_111115.csv",header = T, stringsAsFactors = F)
+
+installed_capacity_mw_by_state = read.csv("installed_cap_060616.csv",header = T, stringsAsFactors = F)
 
 ## Supporting calculations
 # Calculate total retail energy consumed (MWh) by state and year
@@ -48,8 +54,8 @@ installed_capacity_mw_by_state %>%
   merge(.,total_state_energy)
 
 ## Calulate whether the cap was reached in any given year
-# Merge the peak demand and ftg to determine the amount of DER capacity required to breach cap in any given year, then convert to peak generation with cf_data
-df = ftg %>%
+# Merge the peak demand and current nem policies file to determine the amount of DER capacity required to breach cap in any given year, then convert to peak generation with cf_data
+df = current_nem_policies %>%
   merge(., peak_demand) %>%
   mutate(mw_needed_to_breach_cap = peak_demand_mw * max_fraction_demand)
 
@@ -72,7 +78,7 @@ for(stat in unique(df$state)){
 out[is.na(out$year),'year'] = 2050 # If it's never breached, use 2050
 
 # Some misc edits based an analyst judgement
-out[out$state == 'CA','year'] = 2016
+out[out$state == 'NV','year'] = 2015
 
 ## Write results
 write.csv(out,'projected_nem_expiration_dates.csv')
