@@ -1166,6 +1166,9 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
     # merge together
     state_denominators = pd.merge(state_total_developable_customers, state_total_agents, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
     
+
+        
+    
     # merge back to the main dataframe
     dataframe = pd.merge(dataframe, state_denominators, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
     
@@ -1182,7 +1185,7 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
     dataframe['installed_capacity_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['capacity_mw'], 6) * 1000.
     dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0, 
                                                  0, 
-                                                 np.round(dataframe['portion_of_state'], 6))
+                                                 np.round(dataframe['number_of_adopters_last_year']/dataframe['developable_customers_in_bin'], 6))
     dataframe['market_value_last_year'] = dataframe['installed_costs_dollars_per_kw'] * dataframe['installed_capacity_last_year']
 
     # reproduce these columns as "initial" columns too

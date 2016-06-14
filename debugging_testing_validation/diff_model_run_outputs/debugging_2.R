@@ -1,7 +1,7 @@
 library(dplyr)
 
 one  = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_benchmark_2016_06_13/BAU/solar/outputs_solar.csv.gz')
-two = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160613_162058/BAU/solar/outputs_solar.csv.gz')
+two = read.csv('/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160614_100626/BAU/solar/outputs_solar.csv.gz')
 
 
 # check sizes
