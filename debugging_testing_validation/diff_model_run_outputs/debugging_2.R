@@ -1,9 +1,9 @@
 library(dplyr)
 
 tech = 'wind'
-oops_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160614_112400'
+oops_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160614_190146'
 
-benchmark_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_benchmark_2016_06_13'
+benchmark_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_benchmark_20160614_154026'
 benchmark_file = sprintf('%s/BAU/%s/outputs_%s.csv.gz', benchmark_dir, tech, tech)
 oops_file = sprintf('%s/BAU/%s/outputs_%s.csv.gz', oops_dir, tech, tech)
 one  = read.csv(benchmark_file)
@@ -21,12 +21,12 @@ one = filter(one, year == 2014)
 two = filter(two, year == 2014)
 
 # filter to specific county
-one = filter(one, county_id == 117)
-two = filter(two, county_id == 117)
+one = filter(one, county_id == 955) #
+two = filter(two, county_id == 955) # 117
 
 # sort
-one = one[with(one, order(sector, county_id, bin_id, tech)), ]
-two = two[with(two, order(sector, county_id, bin_id, tech)), ]
+one = one[with(one, order(sector, county_id, bin_id, tech, year)), ]
+two = two[with(two, order(sector, county_id, bin_id, tech, year)), ]
 
 # align the columns
 for (row in 1:nrow(column_mapping)){

@@ -467,14 +467,14 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     dataframe = pd.merge(dataframe, system_sizing_targets_df, how = 'left', on = ['sector_abbr', 'tech'])    
     
     # determine whether NEM is available in the state and sector
-    dataframe['ur_enable_net_metering'] = dataframe['nem_system_size_limit_kw'] == 0
+    dataframe['ur_enable_net_metering'] = dataframe['nem_system_size_limit_kw'] > 0
     
     # set the target kwh according to NEM availability
-    dataframe['target_kwh'] = np.where(dataframe['ur_enable_net_metering'] == True, 
+    dataframe['target_kwh'] = np.where(dataframe['ur_enable_net_metering'] == False, 
                                        dataframe['load_kwh_per_customer_in_bin'] * dataframe['sys_size_target_no_nem'],
                                        dataframe['load_kwh_per_customer_in_bin'] * dataframe['sys_size_target_nem'])
     # also set the oversize limit according to NEM availability
-    dataframe['oversize_limit_kwh'] = np.where(dataframe['ur_enable_net_metering'] == True, 
+    dataframe['oversize_limit_kwh'] = np.where(dataframe['ur_enable_net_metering'] == False, 
                                        dataframe['load_kwh_per_customer_in_bin'] * dataframe['sys_oversize_limit_no_nem'],
                                        dataframe['load_kwh_per_customer_in_bin'] * dataframe['sys_oversize_limit_nem'])
 
