@@ -1,13 +1,13 @@
 library(dplyr)
 
-tech = 'wind'
+tech = 'solar'
 oops_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160614_190146'
 
 benchmark_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_benchmark_20160614_154026'
 benchmark_file = sprintf('%s/BAU/%s/outputs_%s.csv.gz', benchmark_dir, tech, tech)
 oops_file = sprintf('%s/BAU/%s/outputs_%s.csv.gz', oops_dir, tech, tech)
-one  = read.csv(benchmark_file)
-two = read.csv(oops_file)
+one  = read.csv(benchmark_file, stringsAsFactors = F)
+two = read.csv(oops_file, stringsAsFactors = F)
 
 column_mapping_file = sprintf('/Users/mgleason/NREL_Projects/github/diffusion/debugging_testing_validation/diff_model_run_outputs/column_mapping_%s.csv', tech)
 column_mapping = read.csv(column_mapping_file, stringsAsFactors = F)
@@ -38,10 +38,17 @@ for (row in 1:nrow(column_mapping)){
 
 mismatched = c()
 for (col in column_mapping$oops){
-    print(col) 
-    match = all.equal(one[, col], two[, col], na.rm = T)
-    if (match != T){
-      print(n)
+    tol = 0.00001
+    if (any(is.infinite(one[, col])) | any(is.infinite(two[, col]))){
+      mismatch = !all.equal(one[, col], two[, col], na.rm = T)
+    } else if (is.numeric(one[, col])){
+      mismatch = any(abs(one[, col] - two[, col]) > 0.0001)      
+    } else if (is.character(one[, col])){
+      mismatch = all.equal.character(one[, col], two[, col], na.rm = T) != T
+    } else {
+      mismatch = !all.equal(one[, col], two[, col], na.rm = T)
+    }
+    if (mismatch == T){
       mismatched = c(mismatched, col)
     }
 }
