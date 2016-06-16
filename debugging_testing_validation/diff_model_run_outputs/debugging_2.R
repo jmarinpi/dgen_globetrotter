@@ -1,9 +1,9 @@
 library(dplyr)
 
-tech = 'wind'
-oops_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160616_100850'
+tech = 'solar'
+oops_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/new_test_oops_results_20160616_124150'
 
-benchmark_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_benchmark_20160614_154026'
+benchmark_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/new_test_dev_results_20160616_125156'
 benchmark_file = sprintf('%s/BAU/%s/outputs_%s.csv.gz', benchmark_dir, tech, tech)
 oops_file = sprintf('%s/BAU/%s/outputs_%s.csv.gz', oops_dir, tech, tech)
 one  = read.csv(benchmark_file, stringsAsFactors = F)
@@ -17,12 +17,12 @@ nrow(one)
 nrow(two)
 
 # filter to first year
-one = filter(one, year == 2014)
-two = filter(two, year == 2014)
+# one = filter(one, year == 2024)
+# two = filter(two, year == 2024)
 
 # filter to specific county
-one = filter(one, county_id == 955) #
-two = filter(two, county_id == 955) # 117
+# one = filter(one, county_id == 2117) #
+# two = filter(two, county_id == 2117) # 2117
 
 # sort
 one = one[with(one, order(sector, county_id, bin_id, tech, year)), ]
