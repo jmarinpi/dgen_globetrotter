@@ -224,7 +224,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 rate_growth_df = datfunc.get_rate_escalations(con, schema)
                 bass_params = datfunc.get_bass_params(con, schema)
                 learning_curves_mode = datfunc.get_learning_curves_mode(con, schema)
-                datfunc.write_first_year_costs(con, cur, schema, cfg.start_year)
+                # Only need this for learning curves (which are currently not functioning)
+                #datfunc.write_first_year_costs(con, cur, schema, cfg.start_year)
             logger.info('\tCompleted in: %0.1fs' % t.interval)
 
             # set model years depending on whether in reeds mode
@@ -504,13 +505,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 # NEXT STEPS
                 # TODO: fix pandas copy vs view warnings
-                # TODO: identify list of remaining sections of code that shoul be refactored
+                # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
                 # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays    
                         # clustering of time series into prototypes? (e.g., vector quantization)
                         # compression/lazy load of arrays ? https://www.wakari.io/sharing/bundle/pjimenezmateo/Numba_and_blz?has_login=False   
                 # TODO: perform very thorough testing in comparison to dev (test various functionality and levers)
                         # check reeds offline mode results         
-                # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
                 # TODO: may need to refactor agents algorithm to avoid pickling all agents to all cores
        
                 # ~~~LONG TERM~~~

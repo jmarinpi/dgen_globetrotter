@@ -516,29 +516,29 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     dataframe['rank'] = dataframe.groupby(['county_id', 'bin_id', 'sector_abbr'])['score'].rank(ascending = True, method = 'first')
     dataframe_sized = dataframe[dataframe['rank'] == 1]
     # add in the system_size_kw field
-    dataframe_sized['system_size_kw'] = dataframe_sized['turbine_size_kw'] * dataframe_sized['n_units']
+    dataframe_sized.loc[:, 'system_size_kw'] = dataframe_sized['turbine_size_kw'] * dataframe_sized['n_units']
     # recalculate the aep based on the system size (instead of plain turbine size)
-    dataframe_sized['aep'] = dataframe_sized['system_size_kw'] * dataframe_sized['naep']
+    dataframe_sized.loc[:, 'aep'] = dataframe_sized['system_size_kw'] * dataframe_sized['naep']
 
     # add capacity factor
-    dataframe_sized['cf'] = dataframe_sized['naep']/8760.
+    dataframe_sized.loc[:, 'cf'] = dataframe_sized['naep']/8760.
     
     # add system size class
-    dataframe_sized['system_size_factors'] = np.where(dataframe_sized['system_size_kw'] > 1500, '1500+', dataframe_sized['system_size_kw'].astype('str'))
+    dataframe_sized.loc[:, 'system_size_factors'] = np.where(dataframe_sized['system_size_kw'] > 1500, '1500+', dataframe_sized['system_size_kw'].astype('str'))
 
     # where system size is zero, adjust other dependent columns:
     no_system = dataframe_sized['system_size_kw'] == 0
-    dataframe_sized['power_curve_1'] = np.where(no_system, -1, dataframe_sized['power_curve_1'])
-    dataframe_sized['power_curve_2'] = np.where(no_system, -1, dataframe_sized['power_curve_2'])
-    dataframe_sized['turbine_size_kw'] = np.where(no_system, 0, dataframe_sized['turbine_size_kw'])
-    dataframe_sized['turbine_height_m'] = np.where(no_system, 0, dataframe_sized['turbine_height_m'])
-    dataframe_sized['n_units'] = np.where(no_system, 0, dataframe_sized['n_units'])   
-    dataframe_sized['naep'] = np.where(no_system, 0, dataframe_sized['naep'])     
-    dataframe_sized['cf'] = np.where(no_system, 0, dataframe_sized['cf'])    
+    dataframe_sized.loc[:, 'power_curve_1'] = np.where(no_system, -1, dataframe_sized['power_curve_1'])
+    dataframe_sized.loc[:, 'power_curve_2'] = np.where(no_system, -1, dataframe_sized['power_curve_2'])
+    dataframe_sized.loc[:, 'turbine_size_kw'] = np.where(no_system, 0, dataframe_sized['turbine_size_kw'])
+    dataframe_sized.loc[:, 'turbine_height_m'] = np.where(no_system, 0, dataframe_sized['turbine_height_m'])
+    dataframe_sized.loc[:, 'n_units'] = np.where(no_system, 0, dataframe_sized['n_units'])   
+    dataframe_sized.loc[:, 'naep'] = np.where(no_system, 0, dataframe_sized['naep'])     
+    dataframe_sized.loc[:, 'cf'] = np.where(no_system, 0, dataframe_sized['cf'])    
 
     # add dummy column for inverter lifetime 
-    dataframe_sized['inverter_lifetime_yrs'] = np.nan
-    dataframe_sized['inverter_lifetime_yrs'] = dataframe_sized['inverter_lifetime_yrs'].astype(np.float64)
+    dataframe_sized.loc[:, 'inverter_lifetime_yrs'] = np.nan
+    dataframe_sized.loc[:, 'inverter_lifetime_yrs'] = dataframe_sized['inverter_lifetime_yrs'].astype(np.float64)
 
     return_cols = ['ur_enable_net_metering', 'aep', 'naep', 'cf', 'system_size_kw', 'system_size_factors', 'n_units', 'inverter_lifetime_yrs',
                    'turbine_height_m', 'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']
@@ -580,23 +580,23 @@ def size_systems_solar(dataframe, system_sizing_targets_df, resource_df, default
     dataframe['ur_enable_net_metering'] = np.where(no_net_metering, False, True)
                                              
     # calculate the system size based on the target size and the availabile roof space
-    dataframe['system_size_kw'] = np.round(np.minimum(dataframe['max_buildable_system_kw'], dataframe['ideal_system_size_kw']), 2)                      
+    dataframe.loc[:, 'system_size_kw'] = np.round(np.minimum(dataframe['max_buildable_system_kw'], dataframe['ideal_system_size_kw']), 2)                      
     # derive the number of panels
-    dataframe['n_units'] = dataframe['system_size_kw']/(0.001 * dataframe['pv_density_w_per_sqft'] * default_panel_size_sqft) # Denom is kW of a panel
+    dataframe.loc[:, 'n_units'] = dataframe['system_size_kw']/(0.001 * dataframe['pv_density_w_per_sqft'] * default_panel_size_sqft) # Denom is kW of a panel
     # calculate aep
-    dataframe['aep'] = dataframe['system_size_kw'] * dataframe['naep']    
+    dataframe.loc[:, 'aep'] = dataframe['system_size_kw'] * dataframe['naep']    
 
     # add capacity factor
-    dataframe['cf'] = dataframe['naep']/8760.
+    dataframe.loc[:, 'cf'] = dataframe['naep']/8760.
     
     # add system size class
     system_size_breaks = [0, 2.5, 5.0, 10.0, 20.0, 50.0, 100.0, 250.0, 500.0, 750.0, 1000.0, 1500.0, 3000.0]
-    dataframe['system_size_factors'] = np.where(dataframe['system_size_kw'] == 0, 0, pd.cut(dataframe['system_size_kw'], system_size_breaks))
+    dataframe.loc[:, 'system_size_factors'] = np.where(dataframe['system_size_kw'] == 0, 0, pd.cut(dataframe['system_size_kw'], system_size_breaks))
     
     # add in dummy columns for compatibility with wind
     for col in ['turbine_height_m', 'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']:
-        dataframe[col] = np.nan
-        dataframe[col] = dataframe[col].astype(np.float64)
+        dataframe.loc[:, col] = np.nan
+        dataframe.loc[:, col] = dataframe[col].astype(np.float64)
 
 
     return_cols = ['ur_enable_net_metering', 'aep', 'naep', 'cf', 'system_size_kw', 'system_size_factors', 'n_units', 'inverter_lifetime_yrs',
