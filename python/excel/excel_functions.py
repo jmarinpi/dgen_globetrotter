@@ -12,6 +12,7 @@ import os
 from excel_objects import FancyNamedRange, ExcelError
 import pandas as pd
 import decorators
+import warnings
 
 
 path = os.path.dirname(os.path.abspath(__file__))
@@ -50,11 +51,13 @@ def load_scenario(xls_file, schema, conn = None):
         mappings = pd.read_csv(mapping_file)
         # only run the mappings that are marked to run
         mappings = mappings[mappings.run == True]
-            
-        # open the workbook                
-        wb = xl.load_workbook(xls_file, data_only = True, read_only = True)
         
-            
+        # open the workbook
+        with warnings.catch_warnings():         
+            # ignore meaningless warning
+            warnings.filterwarnings("ignore", message = "Discarded range with reserved name")
+            wb = xl.load_workbook(xls_file, data_only = True, read_only = True)
+        
         for run, table, range_name, transpose, melt in mappings.itertuples(index = False):
             fnr = FancyNamedRange(wb, range_name)
             if transpose == True:
@@ -68,11 +71,13 @@ def load_scenario(xls_file, schema, conn = None):
 
 
     except ExcelError, e:
-        raise ExcelError(e)            
+        raise ExcelError(e)          
+        
+    
     
 
 
 if __name__ == '__main__':
     input_xls = '../../excel/scenario_inputs.xlsm'
-    load_scenario(input_xls, schema = 'diffusion_results_2016_05_11_12h13m35s')
+    load_scenario(input_xls, schema = 'diffusion_results_2016_06_16_10h24m02s')
     
