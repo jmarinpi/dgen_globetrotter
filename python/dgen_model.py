@@ -504,15 +504,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
 
                 # NEXT STEPS
-                # TODO: fix pandas copy vs view warnings
-                # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays    
-                        # clustering of time series into prototypes? (e.g., vector quantization)
-                        # compression/lazy load of arrays ? https://www.wakari.io/sharing/bundle/pjimenezmateo/Numba_and_blz?has_login=False   
                 # TODO: perform very thorough testing in comparison to dev (test various functionality and levers)
-                        # check reeds offline mode results         
-                # TODO: may need to refactor agents algorithm to avoid pickling all agents to all cores
-       
+                        # check reeds offline mode results       
+                # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays    
+                        # clustering of time series into prototypes? (e.g., vector quantization) partioning around medoids
+                        # compression/lazy load of arrays ? https://www.wakari.io/sharing/bundle/pjimenezmateo/Numba_and_blz?has_login=False   
+
                 # ~~~LONG TERM~~~
+                # TODO: may need to refactor agents algorithm to avoid pickling all agents to all cores
                 # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
                 # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database                
                 # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
