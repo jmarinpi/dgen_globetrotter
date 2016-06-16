@@ -1,7 +1,7 @@
 library(dplyr)
 
 tech = 'solar'
-oops_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160614_190146'
+oops_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160616_100850'
 
 benchmark_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_benchmark_20160614_154026'
 benchmark_file = sprintf('%s/BAU/%s/outputs_%s.csv.gz', benchmark_dir, tech, tech)
@@ -17,8 +17,8 @@ nrow(one)
 nrow(two)
 
 # filter to first year
-one = filter(one, year == 2014)
-two = filter(two, year == 2014)
+one = filter(one, year == 2024)
+two = filter(two, year == 2024)
 
 # filter to specific county
 one = filter(one, county_id == 955) #

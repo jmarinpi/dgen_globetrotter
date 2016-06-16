@@ -351,6 +351,10 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
     # to account for the first year rate escalation (the original values are always based on year = 2014)
     df.loc[:, 'first_year_bill_without_system'] = yearly_bills_without_system[:, 0] 
     df.loc[:, 'first_year_bill_with_system'] = df.first_year_bill_with_system * np.array(list(df['rate_escalations']), dtype = 'float64')[:, 0]
+    # also adjust the avg cost of elec
+    df.loc[:, 'cost_of_elec_dols_per_kwh'] = np.where(df['load_kwh_per_customer_in_bin'] == 0, 
+                                                      np.nan, 
+                                                      df['first_year_bill_without_system']/df['load_kwh_per_customer_in_bin']) 
     
     new_cols = ['total_value_of_incentives', 'monthly_bill_savings', 'percent_monthly_bill_savings']
     out_cols = in_cols + new_cols

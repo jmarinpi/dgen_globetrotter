@@ -513,6 +513,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
                 # TODO: get logger working on both data_functions and agent_preparation
                 # TODO: identify list of remaining sections of code that shoul be refactored
+                # TODO: may need to refactor agents algorithm to avoid pickling all agents to all cores
        
                 # ~~~LONG TERM~~~
                 # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
