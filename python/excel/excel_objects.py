@@ -124,7 +124,7 @@ class FancyNamedRange(object):
         
     def __cells__(self):
         
-        cells = self.worksheet.range(self.cell_range)
+        cells = [cell for cell in self.worksheet[self.topleft : self.bottomright]]
         
         return cells
     
