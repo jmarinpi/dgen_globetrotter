@@ -54,7 +54,7 @@ from agent import Agent, Agents, AgentsAlgorithm
 # raise  numpy and pandas warnings as exceptions
 #==============================================================================
 #np.seterr(all='raise')
-#pd.set_option('mode.chained_assignment', 'raise')
+pd.set_option('mode.chained_assignment', None)
 #==============================================================================
     
 
@@ -505,7 +505,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 # NEXT STEPS
                 # TODO: fix pandas copy vs view warnings
-                # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
                 # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays    
                         # clustering of time series into prototypes? (e.g., vector quantization)
                         # compression/lazy load of arrays ? https://www.wakari.io/sharing/bundle/pjimenezmateo/Numba_and_blz?has_login=False   
@@ -516,7 +515,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # ~~~LONG TERM~~~
                 # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
                 # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database                
-                
+                # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
                 
             #==============================================================================
             #    Outputs & Visualization

@@ -494,7 +494,10 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df):
     # Return very low rank score and the optimal continuous number of turbines
     big_projects = (dataframe['turbine_size_kw'] == 1500) & (dataframe['aep_kwh'] < dataframe['target_kwh'])
     dataframe.loc[big_projects, 'score'] = 0
-    dataframe.loc[big_projects, 'n_units'] = np.minimum(4, dataframe['target_kwh'] / dataframe['aep_kwh']) 
+    # suppress warninings from dividing by zero
+    # (only occurs where system size is zero, which is a different slice than big_projects)
+    with np.errstate(divide = 'ignore'):    
+        dataframe.loc[big_projects, 'n_units'] = np.minimum(4, dataframe['target_kwh'] / dataframe['aep_kwh']) 
 
 
     # identify oversized projects

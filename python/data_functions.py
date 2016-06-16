@@ -1404,8 +1404,10 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, dsire_opts, ass
      
     # 2. # Calculate lifetime value of PBI & FIT
     inc['pbi_fit_still_exists'] = cur_date <= inc.pbi_fit_end_date # Is the incentive still valid
-    inc['pbi_fit_cap'] = np.where(inc['system_size_kw'] < inc.pbi_fit_min_size_kw, 0, inc['system_size_kw'])
-    inc.loc[:, 'pbi_fit_cap'] = np.where(inc['pbi_fit_cap'] > inc.pbi_fit_max_size_kw, inc.pbi_fit_max_size_kw, inc['pbi_fit_cap'])
+    # suppress errors where pbi_fit_min or max _size_kw is nan -- this will only occur for rows with no incentives
+    with np.errstate(invalid = 'ignore'):   
+        inc['pbi_fit_cap'] = np.where(inc['system_size_kw'] < inc.pbi_fit_min_size_kw, 0, inc['system_size_kw'])
+        inc.loc[:, 'pbi_fit_cap'] = np.where(inc['pbi_fit_cap'] > inc.pbi_fit_max_size_kw, inc.pbi_fit_max_size_kw, inc['pbi_fit_cap'])
     inc['pbi_fit_aep'] = np.where(inc['aep'] < inc.pbi_fit_min_output_kwh_yr, 0, inc['aep'])
     
     # If exists pbi_fit_kwh > 0 but no duration, assume duration
