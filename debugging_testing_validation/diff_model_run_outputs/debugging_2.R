@@ -1,6 +1,6 @@
 library(dplyr)
 
-tech = 'solar'
+tech = 'wind'
 oops_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160616_100850'
 
 benchmark_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_benchmark_20160614_154026'
@@ -17,8 +17,8 @@ nrow(one)
 nrow(two)
 
 # filter to first year
-one = filter(one, year == 2024)
-two = filter(two, year == 2024)
+one = filter(one, year == 2014)
+two = filter(two, year == 2014)
 
 # filter to specific county
 one = filter(one, county_id == 955) #
@@ -42,7 +42,7 @@ for (col in column_mapping$oops){
     if (any(is.infinite(one[, col])) | any(is.infinite(two[, col]))){
       mismatch = !all.equal(one[, col], two[, col], na.rm = T)
     } else if (is.numeric(one[, col])){
-      mismatch = any(abs(one[, col] - two[, col]) > 0.0001)      
+      mismatch = any(abs(one[, col] - two[, col]) > 0.0001, na.rm = T)      
     } else if (is.character(one[, col])){
       mismatch = all.equal.character(one[, col], two[, col], na.rm = T) != T
     } else {
