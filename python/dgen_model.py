@@ -503,15 +503,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
 
                 # NEXT STEPS
-                # TODO: fix warnings in openpyxl
+                # TODO: fix pandas copy vs view warnings
+                # TODO: identify list of remaining sections of code that shoul be refactored
                 # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays    
                         # clustering of time series into prototypes? (e.g., vector quantization)
                         # compression/lazy load of arrays ? https://www.wakari.io/sharing/bundle/pjimenezmateo/Numba_and_blz?has_login=False   
                 # TODO: perform very thorough testing in comparison to dev (test various functionality and levers)
                         # check reeds offline mode results         
                 # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
-                # TODO: get logger working on both data_functions and agent_preparation
-                # TODO: identify list of remaining sections of code that shoul be refactored
                 # TODO: may need to refactor agents algorithm to avoid pickling all agents to all cores
        
                 # ~~~LONG TERM~~~

@@ -18,7 +18,6 @@ def check_dependencies():
     f = open('requirements.txt', 'r')
     requirements = [l.replace('\n', '') for l in f.readlines()]
     f.close()
-    error = False
     for requirement in requirements:
         if '=' in requirement:
             package, version = requirement.split('=')

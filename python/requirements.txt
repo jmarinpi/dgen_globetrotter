@@ -13,12 +13,13 @@ logging
 matplotlib
 multiprocessing
 numpy=1.10.1
-openpyxl
+openpyxl=2.3.2
 os
 pandas=0.16.2
 pickle
 psutil
 psycopg2
+scoop=0.7
 shutil
 subprocess
 sys
