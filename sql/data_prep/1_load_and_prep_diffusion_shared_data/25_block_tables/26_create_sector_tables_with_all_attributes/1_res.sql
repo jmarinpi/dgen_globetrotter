@@ -96,5 +96,10 @@ CREATE INDEX block_microdata_res_btree_state_county_id
 ON diffusion_blocks.block_microdata_res
 USING BTREE(county_id);
 
+CREATE INDEX block_microdata_res_btree_state_tract_id_alias
+ON diffusion_blocks.block_microdata_res
+USING BTREE(tract_id_alias);
+
+
 -- update stats
 vACUUM ANALYZE diffusion_blocks.block_microdata_res;
