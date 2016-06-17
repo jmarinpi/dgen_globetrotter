@@ -7,6 +7,8 @@ select  a.pgid,
 	f.state_abbr,
 	f.state_fips,
 	f.county_fips,
+	f.tract_fips,
+	r.tract_id_alias,
 	m.old_county_id,
 	m.census_division_abbr,
 	m.census_region,
@@ -60,7 +62,9 @@ LEFT JOIN aws_2014.iii_jjj_cfbin_raster_lookup n
 lEFT JOIN diffusion_shared.capital_cost_multipliers_us o
 	ON m.old_county_id = o.county_id
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us p
-	on m.old_county_id = p.county_id;
+	on m.old_county_id = p.county_id
+LEFT JOIN diffusion_blocks.block_tract_id_alias r
+	ON a.pgid = r.pgid;
 -- 945,057 rows
 
 -- row count should be:
@@ -90,4 +94,4 @@ ON diffusion_blocks.block_microdata_ind
 USING BTREE(county_id);
 
 -- update stats
-VACUUM ANALYZE diffusion_blocks.block_microdata_com;
+VACUUM ANALYZE diffusion_blocks.block_microdata_ind;

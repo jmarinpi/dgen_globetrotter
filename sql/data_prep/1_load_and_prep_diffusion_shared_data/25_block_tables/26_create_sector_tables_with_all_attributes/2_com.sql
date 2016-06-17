@@ -7,6 +7,8 @@ select  a.pgid,
 	f.state_abbr,
 	f.state_fips,
 	f.county_fips,
+	f.tract_fips,
+	r.tract_id_alias,
 	m.old_county_id,
 	m.census_division_abbr,
 	m.census_region,
@@ -64,6 +66,8 @@ LEFT JOIN diffusion_shared.load_and_customers_by_county_us p
 	on m.old_county_id = p.county_id
 LEFT JOIN diffusion_shared.commercial_bldgs_count_by_county q
 	ON m.county_id = q.county_id
+LEFT JOIN diffusion_blocks.block_tract_id_alias r
+	ON a.pgid = r.pgid;
 -- 2,978,842 rows
 
 -- row count should be:
