@@ -507,6 +507,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays    
                         # clustering of time series into prototypes? (e.g., vector quantization) partioning around medoids
                         # compression/lazy load of arrays ? https://www.wakari.io/sharing/bundle/pjimenezmateo/Numba_and_blz?has_login=False   
+                        # out of memory dataframe -- dask? blz?
 
                 # ~~~LONG TERM~~~
                 # TODO: may need to refactor agents algorithm to avoid pickling all agents to all cores
