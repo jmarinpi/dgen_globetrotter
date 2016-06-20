@@ -1,4 +1,25 @@
 ﻿-- assume sampling at 5% of all buildings
+DROP TABLE IF EXISTS mgleason.temp_tract;
+CREATE TABLE mgleason.temp_tract AS
+with microdata_joined as
+(
+	select bldg_count_com as sample_weight, *
+	FROM diffusion_blocks.block_microdata_com a
+  	where tract_id_alias = 1
+),
+b as
+(
+	select a.*, unnest(diffusion_shared.r_array_extract(a.bldg_probs_com, b.bldg_types)) as hazus_bldg_type,
+		    unnest(diffusion_shared.r_array_extract(a.bldg_probs_com, a.bldg_probs_com)) as hazus_bldg_count
+	from microdata_joined a
+	LEFT join diffusion_blocks.bldg_type_arrays b
+	ON b.sector_abbr = 'com'
+)
+select *
+FROM b
+
+
+
 
 with microdata_joined as
 (
