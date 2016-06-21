@@ -139,7 +139,10 @@ class FancyNamedRange(object):
     def __cell_value__(self, cell, floats = True):
         
         if floats == True and cell.data_type == 'n' and type(cell.value) <> datetime.datetime:
-            cell_value = float(cell.value)
+            if cell.value is None:
+                cell_value = 0.0
+            else:
+                cell_value = float(cell.value)
         else:
             cell_value = cell.value
         
