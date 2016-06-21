@@ -7,6 +7,8 @@ CREATE TABLE diffusion_template.input_main_scenario_options
 	tech_choice boolean not null,
 	run_wind boolean not null,
 	run_solar boolean not null,
+	run_geo_du boolean not null,
+	run_geo_ghp boolean not null,
 	region text NOT NULL,
 	end_year integer NOT NULL,
 	markets text NOT NULL,
@@ -21,6 +23,9 @@ CREATE TABLE diffusion_template.input_main_scenario_options
 	com_max_market_curve text NOT NULL,
 	ind_max_market_curve text NOT NULL,
 	carbon_price text NOT NULL,
+	com_building_growth_scenario text not null,
+	res_building_growth_scenario text not null,
+	reg_heating_guel_cost_trajectories text not null,
 	random_generator_seed integer NOT NULL, -- doesn't need a constraint -- just needs to be integer
 	-- add check/fkey constraints to ensure only valid values are entered in each column
 	-- carbon price
