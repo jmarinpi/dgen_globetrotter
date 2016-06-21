@@ -25,8 +25,8 @@ import glob
 # in which each module is used in __main__)
 import data_functions as datfunc
 reload(datfunc)
-import agent_preparation as agent_prep
-reload(agent_prep)
+import agent_preparation_geo as agent_prep_geo
+reload(agent_prep_geo)
 import agent_mutation as mutation
 reload(mutation)
 import diffusion_functions as diffunc
@@ -186,6 +186,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             end_year = scenario_opts['end_year']
             choose_tech = scenario_opts['tech_choice']
             
+            # TODO: add capability to model industrial sector
+            # for now, just remove it
+            if 'industrial' in sectors.keys():
+                sectors.pop('industrial')
+                msg = 'Industrial sector cannot be modeled at this time.'
+                logger.warning(msg)
+            
             # if in tech choice mode, check that multiple techs are available
             if choose_tech == True and len(techs) == 1:
                 logger.error("Cannot run Tech Choice Mode with only one technology")
@@ -246,10 +253,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # CREATE AGENTS
                     #==========================================================================================================
-                    logger.info("--------------Creating Agents---------------")
-                    agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.agents_per_region, sectors,
+                    logger.info("--------------Creating Agents---------------")                        
+                    agent_prep_geo.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, sectors,
                                             cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'])
-
+                    crash
+                    
                     #==============================================================================
                     # GET RATE TARIFF LOOKUP TABLE FOR EACH SECTOR                                    
                     #==============================================================================
