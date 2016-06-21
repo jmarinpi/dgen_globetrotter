@@ -3,7 +3,7 @@
 -- create view of the valid states
 DROP VIEW IF EXISTS diffusion_template.states_to_model CASCADE;
 CREATE OR REPLACE VIEW diffusion_template.states_to_model AS
-SELECT distinct a.state_abbr
+SELECT distinct a.state_abbr, a.state_fips
 FROM diffusion_blocks.county_geoms a
 INNER JOIN diffusion_template.input_main_scenario_options b
 ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)

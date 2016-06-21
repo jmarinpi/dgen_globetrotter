@@ -22,6 +22,10 @@ ON diffusion_shared.eia_microdata_recs_2009_expanded_bldgs
 using btree(single_family_res)
 where single_family_res = True;
 
+CREATE INDEX eia_microdata_recs_2009_expanded_bldgs_num_tenants_btree
+ON diffusion_shared.eia_microdata_recs_2009_expanded_bldgs
+using btree(num_tenants);
+
 CREATE INDEX eia_microdata_recs_2009_expanded_bldgs_kownrent_btree
 ON diffusion_shared.eia_microdata_recs_2009_expanded_bldgs
 using btree(owner_occupied)

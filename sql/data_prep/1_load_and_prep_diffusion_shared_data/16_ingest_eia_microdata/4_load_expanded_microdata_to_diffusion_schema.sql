@@ -29,6 +29,7 @@ select
 	climate_region_pub AS climate_zone,
 	NULL::INTEGER as pba,
 	NULL::INTEGER as pbaplus,
+	typehuq,
 	CASE WHEN rooftype = -2 THEN 8
 	ELSE rooftype
 	END as roof_material,
@@ -233,6 +234,7 @@ select
 	a.climate8 AS climate_zone,
 	a.pba8 AS pba,
 	b.pbaplus8 AS pbaplus,
+	NULL::INTEGER as typehuq,
 	CASE WHEN a.rfcns8 is null THEN 9
 	ELSE a.rfcns8
 	END AS roof_material,

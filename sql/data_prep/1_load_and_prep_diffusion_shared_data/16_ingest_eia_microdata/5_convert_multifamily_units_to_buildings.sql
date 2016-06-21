@@ -26,7 +26,7 @@ DROP TABLE IF EXISTS diffusion_shared.eia_microdata_recs_2009_expanded_multifami
 CREATE TABLE diffusion_shared.eia_microdata_recs_2009_expanded_multifamily_bldgs AS
 select building_id, 
 	sample_wt / num_tenants::NUMERIC as sample_wt, 
-	census_region, census_division_abbr, reportable_domain, climate_zone, pba, pbaplus, roof_material, 
+	census_region, census_division_abbr, reportable_domain, climate_zone, pba, pbaplus, typehuq, roof_material, 
 	False as owner_occupied, 
 	kwh * num_tenants as kwh, 
 	year_built, single_family_res, 
