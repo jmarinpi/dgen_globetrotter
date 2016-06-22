@@ -106,7 +106,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 #==============================================================================
                 # NOTE: each of these functions is dependent on the last, so changes from one must be cascaded to the others
                 calculate_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, min_agents, seed, pool, pg_conn_string)                    
-                sample_blocks(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
+                sample_blocks(schema, sector_abbr, chunks, seed, pool, pg_conn_string, con, cur)
                 sample_building_type(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
                 # TODO: add in selection of heating fuel type for res sector
                 sample_building_microdata(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
@@ -209,7 +209,7 @@ def calculate_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct,
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def sample_blocks(schema, sector_abbr, chunks, seed, pool, pg_conn_string):
+def sample_blocks(schema, sector_abbr, chunks, seed, pool, pg_conn_string, con, cur):
 
     msg = '\tSampling from Blocks for Each Tract'
     logger.info(msg)
@@ -222,6 +222,15 @@ def sample_blocks(schema, sector_abbr, chunks, seed, pool, pg_conn_string):
     #==============================================================================
     #     randomly sample  N blocks from each county 
     #==============================================================================    
+    # create a sequence that will be used to populate a new primary key across all table partitions
+    # using a sequence ensure ids will be unique across all partitioned tables
+    sql = """DROP SEQUENCE IF EXISTS %(schema)s.agent_id_%(sector_abbr)s_sequence;
+            CREATE SEQUENCE %(schema)s.agent_id_%(sector_abbr)s_sequence
+            INCREMENT 1
+            START 1;""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
     # (note: [this may not be true any longer...] some counties will have fewer than N points, in which case, all are returned) 
     sql = """DROP TABLE IF EXISTS %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s;
              CREATE UNLOGGED TABLE %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s AS
@@ -235,7 +244,8 @@ def sample_blocks(schema, sector_abbr, chunks, seed, pool, pg_conn_string):
                  GROUP BY a.tract_id_alias
 
              )
-             SELECT a.tract_id_alias, 
+             SELECT nextval('%(schema)s.agent_id_%(sector_abbr)s_sequence') as agent_id, 
+                     a.tract_id_alias, 
                         unnest(diffusion_shared.sample(a.pgids, 
                                                        b.n_agents, 
                                                        %(seed)s, 
@@ -247,9 +257,9 @@ def sample_blocks(schema, sector_abbr, chunks, seed, pool, pg_conn_string):
                 ON a.tract_id_alias = b.tract_id_alias;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
 
-    # add new serial primary key
+    # add primary key
     sql = """ALTER TABLE %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s
-             ADD COLUMN agent_id SERIAL PRIMARY KEY;""" % inputs
+             ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     
     # add indices
@@ -338,12 +348,12 @@ def sample_building_microdata(schema, sector_abbr, chunks, seed, pool, pg_conn_s
                                     AND b.min_tenants <= c.num_tenants
                                     AND b.max_tenants >= c.num_tenants 
                                     AND a.reportable_domain = c.reportable_domain
-                                    AND c.sector_abbr = '%(sector_abbr)s """
+                                    AND c.sector_abbr = '%(sector_abbr)s' """ % inputs
 
     else:
         inputs['eia_join_clause'] = """ b.eia_type = c.pbaplus
                                     AND a.census_division_abbr = c.census_division_abbr 
-                                    AND c.sector_abbr = '%(sector_abbr)s """
+                                    AND c.sector_abbr = '%(sector_abbr)s' """  % inputs
 
 
     sql =  """DROP TABLE IF EXISTS %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s;
@@ -402,6 +412,8 @@ def estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_stri
     inputs['i_place_holder'] = '%(i)s'
     inputs['sector_abbr'] = sector_abbr  
 
+
+
     sql = """DROP TABLE IF EXISTS %(schema)s.agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s;
              CREATE UNLOGGED TABLE %(schema)s.agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s AS
             WITH b as
@@ -422,7 +434,8 @@ def estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_stri
                            (b.buildings_in_bin * a.kbtu_space_cool)/sum(b.buildings_in_bin * a.kbtu_space_cool) OVER (PARTITION BY d.old_county_id) 
                                * e.space_cooling_thermal_load_mmbtu * 1000. as space_cool_kbtu_in_bin,
                            (b.buildings_in_bin * a.kbtu_water_heat)/sum(b.buildings_in_bin * a.kbtu_water_heat) OVER (PARTITION BY d.old_county_id) 
-                               * e.water_heating_thermal_load_mmbtu* 1000. as water_heat_kbtu_in_bin
+                               * e.water_heating_thermal_load_mmbtu * 1000. as water_heat_kbtu_in_bin,
+                            a.totsqft
 
                  FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
                  LEFT JOIN b
@@ -434,7 +447,7 @@ def estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_stri
                  LEFT JOIN diffusion_shared.county_thermal_demand_%(sector_abbr)s e
                      ON d.old_county_id = e.county_id
             )
-            SELECT agent_id, buildings_in_bin,
+            SELECT agent_id, buildings_in_bin, totsqft,
                    space_heat_kbtu_in_bin, space_cool_kbtu_in_bin, water_heat_kbtu_in_bin,
                    space_heat_kbtu_in_bin/buildings_in_bin as space_heat_kbtu_per_building_in_bin,
                    space_cool_kbtu_in_bin/buildings_in_bin as space_cool_kbtu_per_building_in_bin,
