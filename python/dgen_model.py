@@ -260,9 +260,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # CREATE AGENTS
                     #==========================================================================================================
                     logger.info("--------------Creating Agents---------------")                        
-                    agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, sectors,
-                                            cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'])
-                    crash
+                    agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, cfg.agents_per_region,
+                                                              sectors, cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'])
                     
                     #==============================================================================
                     # GET RATE TARIFF LOOKUP TABLE FOR EACH SECTOR                                    
@@ -594,13 +593,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             
 
     except Exception, e:
+        # close the connection (need to do this before dropping schema or query will hang)      
+        if con is not None:
+            con.close()
         if 'logger' in locals():
             logger.error(e.__str__(), exc_info = True)
         if 'schema' in locals():
             # drop the output schema
             datfunc.drop_output_schema(cfg.pg_conn_string, schema, True)
-        if con is not None:
-            con.close()
+
         if 'logger' not in locals():
             raise
         

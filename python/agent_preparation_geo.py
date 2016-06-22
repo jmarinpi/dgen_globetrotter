@@ -81,7 +81,7 @@ def p_run(pg_conn_string, sql, chunks, pool):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 0, prefix = '')
-def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agents, sectors,
+def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agents, agents_per_region, sectors,
                                             pg_procs, pg_conn_string, seed):
 
     inputs = locals().copy()
@@ -135,7 +135,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
         #==============================================================================
         #     create a view that combines all sectors and techs
         #==============================================================================
-        merge_all_core_agents(cur, con, schema, sectors, techs)
+        #merge_all_core_agents(cur, con, schema, sectors, techs)
 
         #==============================================================================
         #    drop the intermediate tables
