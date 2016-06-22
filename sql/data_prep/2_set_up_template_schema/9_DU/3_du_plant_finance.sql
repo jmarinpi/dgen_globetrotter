@@ -34,7 +34,7 @@ DROP TABLE IF EXISTS diffusion_template.input_du_plant_depreciation_factor;
 CREATE TABLE diffusion_template.input_du_plant_depreciation_factor
 (
 	year integer not null,
-	year_of_construction integer not null,
+	year_of_operation integer not null,
 	depreciation_fraction numeric not null,
 	CONSTRAINT input_du_plant_depreciation_factor_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
