@@ -7,8 +7,6 @@ Created on Thu May 26 11:29:02 2016
 import psycopg2 as pg
 import numpy as np
 import pandas as pd
-import logging
-reload(logging)
 import decorators
 from config import show_times
 import utility_functions as utilfunc
@@ -141,8 +139,6 @@ def generate_core_agent_attributes(cur, con, techs, schema, agents_per_region, s
     except:
         # roll back any transactions
         con.rollback()
-        # drop the output schema
-        datfunc.drop_output_schema(pg_conn_string, schema, True)
         # re-raise the exception
         raise
         
