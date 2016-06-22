@@ -7,8 +7,6 @@ Created on Thu May 26 11:29:02 2016
 import psycopg2 as pg
 import numpy as np
 import pandas as pd
-import logging
-reload(logging)
 import decorators
 from config import show_times
 import utility_functions as utilfunc
@@ -113,7 +111,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 sample_building_type(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
                 # TODO: add in selection of heating fuel type for res sector
                 sample_building_microdata(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
-                crash                
+                               
                 # NEXT:
                 # TODO: create adjust_and_append_building_attributes() that does the following
                     #convolve_block_and_building_samples(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
@@ -133,7 +131,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 #==============================================================================
                 #     combine all pieces into a single table
                 #==============================================================================
-                combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr)
+#                combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr)
     
         #==============================================================================
         #     create a view that combines all sectors and techs
@@ -149,8 +147,6 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
     except:
         # roll back any transactions
         con.rollback()
-        # drop the output schema
-        datfunc.drop_output_schema(pg_conn_string, schema, True)
         # re-raise the exception
         raise
         
@@ -334,15 +330,15 @@ def sample_building_microdata(schema, sector_abbr, chunks, seed, pool, pg_conn_s
     
     inputs = locals().copy()    
     inputs['i_place_holder'] = '%(i)s'
-    inputs['chunk_place_holder'] = '%(county_ids)s'
-    inputs['load_where'] = " AND '%s' = b.sector_abbr" % sector_abbr
+    inputs['sector_abbr'] = sector_abbr
     if sector_abbr == 'res':
-        inputs['join_clause'] = """ b.eia_type = c.typehuq
+        inputs['eia_join_clause'] = """ b.eia_type = c.typehuq
                                     AND b.min_tenants <= c.num_tenants
                                     AND b.max_tenants >= c.num_tenants 
                                     AND a.reportable_domain = c.reportable_domain """
+
     else:
-        inputs['join_clause'] = """ b.eia_type = c.pbaplus
+        inputs['eia_join_clause'] = """ b.eia_type = c.pbaplus
                                     AND a.census_division_abbr = c.census_division_abbr """
 
 
@@ -355,8 +351,8 @@ def sample_building_microdata(schema, sector_abbr, chunks, seed, pool, pg_conn_s
              FROM %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s a
              LEFT JOIN diffusion_shared.cdms_to_eia_lkup b
                  ON a.bldg_type = b.cdms
-             lEFT JOIN diffusion_shared.eia_microdata_cbecs_2003_expanded c
-                	ON %(join_clause)s
+             lEFT JOIN diffusion_shared.cbecs_recs_expanded_combined c
+                	ON %(eia_join_clause)s
         ),
         sampled_bldgs AS 
         (
@@ -379,7 +375,8 @@ def sample_building_microdata(schema, sector_abbr, chunks, seed, pool, pg_conn_s
                 b.kbtu_space_cool, b.kbtu_water_heat, b.crb_model, b.roof_style, b.roof_sqft
         FROM sampled_bldgs a
         LEFT JOIN diffusion_shared.cbecs_recs_expanded_combined b
-            ON a.eia_bldg_id = b.building_id;""" % inputs
+            ON a.eia_bldg_id = b.building_id
+            AND b.sector_abbr = '%(sector_abbr)s';""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     
 
@@ -388,7 +385,9 @@ def sample_building_microdata(schema, sector_abbr, chunks, seed, pool, pg_conn_s
              ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     
-    
+
+#%%
+#****** GOOD TO HERE *********    
 
 #%%
 @decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
@@ -460,254 +459,6 @@ def convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agen
             """ % inputs
     p_run(pg_conn_string, sql, county_chunks, pool)
     
-    
-#%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
-
-    msg = '\tCalculating Maximum Electricity Demand for Each Agent'    
-    logger.info(msg)
-    
-    
-    inputs = locals().copy()    
-    inputs['i_place_holder'] = '%(i)s'
-    inputs['chunk_place_holder'] = '%(county_ids)s'
-
-          
-    #==============================================================================
-    #     find the max demand for each agent based on the applicable energy plus building model
-    #==============================================================================
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_max_demand_%(sector_abbr)s_%(i_place_holder)s;
-            CREATE UNLOGGED TABLE %(schema)s.agent_max_demand_%(sector_abbr)s_%(i_place_holder)s AS
-            SELECT a.county_id, a.bin_id, 
-                    ROUND(b.normalized_max_demand_kw_per_kw * a.load_kwh_per_customer_in_bin, 0)::INTEGER AS max_demand_kw
-            FROM %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s a
-            LEFT JOIN diffusion_load_profiles.energy_plus_max_normalized_demand b
-                ON a.crb_model = b.crb_model
-                AND a.hdf_index = b.hdf_index;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
-           
-    # add primary key
-    sql = """ALTER TABLE %(schema)s.agent_max_demand_%(sector_abbr)s_%(i_place_holder)s
-             ADD PRIMARY KEY (county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
-
-
-#%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, schema, sector_abbr, seed):
-     
-    msg = "\tSimulating Rooftop Characteristics For Each Agent"
-    logger.info(msg)
-
-    
-    inputs = locals().copy()
-    inputs['i_place_holder'] = '%(i)s'
-    inputs['chunk_place_holder'] = '%(county_ids)s'
-    if inputs['sector_abbr'] == 'res':
-        inputs['zone'] = 'residential'
-    else:
-        inputs['zone'] = 'com_ind'
-    # get the rooftop source
-    sql = """SELECT * 
-             FROM %(schema)s.input_solar_rooftop_source;""" % inputs
-    rooftop_source_df = pd.read_sql(sql, con)
-    rooftop_source = rooftop_source_df['rooftop_source'].iloc[0]
-    inputs['rooftop_source'] = rooftop_source
-
-        
-    # find the most appropriate city to sample from for each agent
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s;
-            CREATE UNLOGGED TABLE %(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s AS
-            with a as
-            (
-                	SELECT a.county_id, a.bin_id, a.bldg_size_class,
-                         b.ulocale, b.state_abbr,
-                         c.city_id, c.rank as city_rank
-                	FROM %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s a
-                  LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
-                        ON a.pgid = b.pgid
-                	LEFT JOIN diffusion_solar.rooftop_city_ranks_by_county_and_ulocale_%(sector_abbr)s c
-                		ON a.county_id = c.county_id
-                		AND b.ulocale = c.ulocale
-                	INNER JOIN diffusion_solar.rooftop_city_ulocale_zone_size_class_lkup d
-                		ON b.ulocale = d.ulocale
-                		AND d.zone = '%(zone)s' 
-                		AND a.bldg_size_class = d.size_class
-                		AND c.city_id = d.city_id
-            ), 
-            b as
-            (
-                	SELECT  a.*, row_number() OVER (PARTITION BY county_id, bin_id ORDER BY city_rank asc) as rank
-                	FROM a
-            )
-            SELECT *
-            FROM b
-            WHERE rank = 1;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
-    
-    # add indices on join keys
-    sql =  """CREATE INDEX agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s_city_id_btree 
-              ON %(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s 
-              USING BTREE(city_id);
-              
-              CREATE INDEX agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s_bldg_size_class_btree 
-              ON %(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s 
-              USING BTREE(bldg_size_class);
-              
-              CREATE INDEX agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s_ulocale_btree 
-              ON %(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s 
-              USING BTREE(ulocale);
-              
-              CREATE INDEX agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s_state_abbr_btree 
-              ON %(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s 
-              USING BTREE(state_abbr);
-              
-              
-              
-              CREATE INDEX agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s_id_btree 
-              ON %(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s 
-              USING BTREE(county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
-    
-    
-    # sample from the lidar bins for that city
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_rooftops_%(sector_abbr)s_%(i_place_holder)s;
-            CREATE UNLOGGED TABLE %(schema)s.agent_rooftops_%(sector_abbr)s_%(i_place_holder)s AS
-            WITH b as
-            (
-                	SELECT a.county_id, a.bin_id,
-                		unnest(diffusion_shared.sample(array_agg(b.pid ORDER BY b.pid), 1, 
-                                                     %(seed)s * a.bin_id * a.county_id, 
-                                                     FALSE, 
-                                                     array_agg(b.count ORDER BY b.pid))
-                                                     ) as pid
-                	FROM %(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s a
-                	LEFT JOIN diffusion_solar.rooftop_orientation_frequencies_%(rooftop_source)s b
-                		ON a.city_id = b.city_id
-                		AND  b.zone = '%(zone)s'
-                		AND a.ulocale = b.ulocale
-                		AND a.bldg_size_class = b.size_class
-                	GROUP BY a.county_id, a.bin_id
-            )
-            SELECT a.county_id, a.bin_id, 
-                    c.tilt, c.azimuth, e.pct_developable as pct_of_bldgs_developable,
-                    c.slopearea_m2_bin * 10.7639 * d.gcr as developable_roof_sqft,
-                    d.gcr as ground_cover_ratio                 
-            FROM %(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s a
-            INNER JOIN b
-                	ON a.county_id = b.county_id
-                	AND a.bin_id = b.bin_id
-            INNER JOIN diffusion_solar.rooftop_orientation_frequencies_%(rooftop_source)s c
-                	ON b.pid = c.pid
-            INNER JOIN diffusion_solar.rooftop_ground_cover_ratios d
-                	on c.flat_roof = d.flat_roof
-            INNER JOIN diffusion_solar.rooftop_percent_developable_buildings_by_state e
-                	ON a.state_abbr = e.state_abbr
-                  AND a.bldg_size_class = e.size_class;""" % inputs   
-    p_run(pg_conn_string, sql, county_chunks, pool)
-    
-    
-    # add primary key 
-    sql =  """ALTER TABLE %(schema)s.agent_rooftops_%(sector_abbr)s_%(i_place_holder)s
-              ADD PRIMARY KEY (county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
-
-
-#%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, schema, sector_abbr):
-    
-    
-    msg = "\tDetermining Allowable Turbine Heights for Each Agent"
-    logger.info(msg)
-
-    
-    inputs = locals().copy()
-    inputs['i_place_holder'] = '%(i)s'
-    inputs['chunk_place_holder'] = '%(county_ids)s'
-    
-    #==============================================================================
-    #     Find the allowable range of turbine heights for each agent
-    #==============================================================================      
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s;
-             CREATE UNLOGGED TABLE %(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s AS
-             SELECT a.county_id, a.bin_id,
-                     
-                     CASE WHEN b.canopy_pct >= c.canopy_pct_requiring_clearance * 100 THEN 
-                               b.canopy_ht_m + c.canopy_clearance_static_adder_m
-                         ELSE 0
-                     END as min_allowable_blade_height_m,
-
-                     CASE WHEN b.acres_per_bldg <= c.required_parcel_size_cap_acres THEN 
-                               sqrt(b.acres_per_bldg * 4046.86)/(2 * c.blade_height_setback_factor)
-                         ELSE 'Infinity'::double precision
-                     END as max_allowable_blade_height_m
-
-                	FROM %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s a
-                  LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
-                        ON a.pgid = b.pgid
-                	CROSS JOIN %(schema)s.input_wind_siting_settings_all c;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
-    
-    # add primary key 
-    sql =  """ALTER TABLE %(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s
-              ADD PRIMARY KEY (county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
-
-
-#%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
-def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, schema, sector_abbr):
-
-    msg = "\tIdentifying Potential Turbine Sizes for Each Agent"
-    logger.info(msg)
-
-
-    inputs = locals().copy()
-    inputs['i_place_holder'] = '%(i)s'
-    inputs['chunk_place_holder'] = '%(county_ids)s'
-    
-                   
-    #==============================================================================
-    #     Create a lookup table of the allowable turbine heights and sizes for
-    #     each agent
-    #============================================================================== 
-    # create the output table
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s;
-              CREATE TABLE %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
-              (
-                county_id integer,
-                bin_id integer,
-                turbine_height_m integer,
-                turbine_size_kw numeric
-              );""" % inputs                   
-    cur.execute(sql)
-    con.commit()
-                   
-    sql = """INSERT INTO %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
-            SELECT a.county_id, a.bin_id,
-                	COALESCE(b.turbine_height_m, 0) AS turbine_height_m,
-                	COALESCE(b.turbine_size_kw, 0) as turbine_size_kw 
-            FROM %(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s a
-            LEFT JOIN %(schema)s.input_wind_siting_turbine_sizes b
-                	ON b.effective_min_blade_height_m >= a.min_allowable_blade_height_m 
-                	AND b.effective_max_blade_height_m <= a.max_allowable_blade_height_m;
-             """ % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
-       
-    
-    # create indices        
-    sql =  """CREATE INDEX agent_allowable_turbines_lkup_%(sector_abbr)s_id_btree 
-              ON %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
-              USING BTREE(county_id, bin_id);
-    
-              CREATE INDEX agent_allowable_turbines_lkup_%(sector_abbr)s_turbine_height_m_btree 
-              ON %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
-              USING BTREE(turbine_height_m);""" % inputs
-    cur.execute(sql)
-    con.commit()
-
 
 
 #%%
@@ -818,14 +569,11 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
     msg = "\tCleaning Up Intermediate Tables..."
     logger.info(msg)
     intermediate_tables = [ 
+                            '%(schema)s.agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s',
                             '%(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_bldgs_%(sector_abbr)s_%(i_place_holder)s',    
-                            '%(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_max_demand_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_rooftops_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s'         
-                            ]
+                            '%(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s'
+                           ]
     
     for sector_abbr, sector in sectors.iteritems():
         inputs['sector_abbr'] = sector_abbr
