@@ -9,7 +9,6 @@ import pandas as pd
 import numpy as np
 import sys
 import decorators
-from config import show_times
 import utility_functions as utilfunc
 
 #==============================================================================
@@ -35,7 +34,7 @@ def which_max_npv4(group):
     
     return uid
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def select_financing_and_tech(df, prng, alpha_lkup, sectors, choose_tech = False, techs = ['solar', 'wind']):
         
     if choose_tech == True:

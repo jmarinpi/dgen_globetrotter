@@ -8,7 +8,6 @@ import psycopg2 as pg
 import numpy as np
 import pandas as pd
 import decorators
-from config import show_times
 import utility_functions as utilfunc
 import multiprocessing
 import traceback
@@ -81,7 +80,7 @@ def p_run(pg_conn_string, sql, county_chunks, pool):
 
 
 #%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 0, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 0, prefix = '')
 def generate_core_agent_attributes(cur, con, techs, schema, agents_per_region, sectors,
                                             pg_procs, pg_conn_string, seed):
 
@@ -173,7 +172,7 @@ def split_counties(cur, schema, pg_procs):
 
     
 #%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
 
     msg = '\tSampling from Blocks for Each County'
@@ -221,7 +220,7 @@ def sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, p
 
 
 #%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
 
     msg = "\tSampling from Building Microdata"
@@ -291,7 +290,7 @@ def sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_reg
     
 
 #%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string, step = 3):
 
     msg = '\tConvolving Block and Building Samples'    
@@ -362,7 +361,7 @@ def convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agen
     
     
 #%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
 
     msg = '\tCalculating Maximum Electricity Demand for Each Agent'    
@@ -394,7 +393,7 @@ def calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, 
 
 
 #%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, schema, sector_abbr, seed):
      
     msg = "\tSimulating Rooftop Characteristics For Each Agent"
@@ -515,7 +514,7 @@ def simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, sche
 
 
 #%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, schema, sector_abbr):
     
     
@@ -557,7 +556,7 @@ def determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, sch
 
 
 #%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, schema, sector_abbr):
 
     msg = "\tIdentifying Potential Turbine Sizes for Each Agent"
@@ -611,7 +610,7 @@ def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, 
 
 
 #%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr):
 
     msg = "\tCombining All Core Agent Attributes"
@@ -706,7 +705,7 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
 
     
 #%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, cur, con, pool):
     
     inputs = locals().copy()    
@@ -741,7 +740,7 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
 
 
 #%%
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def merge_all_core_agents(cur, con, schema, sectors, techs):
     
     inputs = locals().copy()    

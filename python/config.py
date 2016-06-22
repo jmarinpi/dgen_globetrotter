@@ -14,11 +14,16 @@ import multiprocessing
 import pandas as pd
 import utility_functions as utilfunc
 import json
+import agent_preparation_geo
+import agent_preparation_elec
+import agent_mutation_geo
+import agent_mutation_elec
+import financial_functions_geo
+import financial_functions_elec
+import diffusion_functions_geo
+import diffusion_functions_elec
+import data_functions
 
-#==============================================================================
-#  Show timing statements for functions
-#==============================================================================
-show_times = True
 
 #==============================================================================
 #   get postgres connection parameters
@@ -45,6 +50,33 @@ min_agents = 5
 #   model start year
 #==============================================================================
 start_year = 2014
+
+#==============================================================================
+#   module lookup based on tech mode
+#==============================================================================
+module_lkup = {
+                'agent_preparation' : 
+                    { 
+                        'geo' : agent_preparation_geo,
+                        'elec': agent_preparation_elec,
+                    },
+                'agent_mutation' :
+                    { 
+                        'geo' : agent_mutation_geo,
+                        'elec': agent_mutation_elec,
+                    },
+                'financial_functions' :
+                    { 
+                        'geo' : financial_functions_geo,
+                        'elec': financial_functions_elec,
+                    },
+                'diffusion_functions' :                                
+                    { 
+                        'geo' : diffusion_functions_geo,
+                        'elec': diffusion_functions_elec,
+                    },
+}
+
 
 #==============================================================================
 #   Path to R will vary by user (until we move the script over to run on gispgdb server)

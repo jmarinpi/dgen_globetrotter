@@ -6,7 +6,6 @@ Created on Thu Jul  9 10:34:55 2015
 """
 
 import openpyxl as xl
-import psycopg2 as pg
 import sys
 import os
 from excel_objects import FancyNamedRange, ExcelError
@@ -18,7 +17,7 @@ import warnings
 path = os.path.dirname(os.path.abspath(__file__))
 par_path = os.path.dirname(path)
 sys.path.append(par_path)
-from config import pg_conn_string, show_times
+from config import pg_conn_string
 import utility_functions as utilfunc
 
 #==============================================================================
@@ -26,7 +25,7 @@ import utility_functions as utilfunc
 logger = utilfunc.get_logger()
 #==============================================================================
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 1, prefix = '')
 def load_scenario(xls_file, schema, conn = None):
     
     logger.info('Loading Input Scenario Worksheet')    

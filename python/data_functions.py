@@ -18,7 +18,6 @@ import subprocess
 import os
 import psutil
 import decorators
-from config import show_times
 import utility_functions as utilfunc
 import shutil
 import pssc_mp
@@ -69,7 +68,7 @@ def create_scenario_results_folder(input_scenario, scen_name, scenario_names, ou
     return out_scen_path, scenario_names, dup_n
 
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 1, prefix = '')
 def create_output_schema(pg_conn_string, source_schema = 'diffusion_template', include_data = False):
     
     inputs = locals().copy()
@@ -99,7 +98,7 @@ def create_output_schema(pg_conn_string, source_schema = 'diffusion_template', i
    
     return dest_schema
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 1, prefix = '')
 def drop_output_schema(pg_conn_string, schema, delete_output_schema):
     
     inputs = locals().copy()    
@@ -263,7 +262,7 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
     s.close()
 
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def index_output_table(con, cur, schema):
     
     inputs = locals().copy()
@@ -282,7 +281,7 @@ def index_output_table(con, cur, schema):
     con.commit()
 
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def copy_outputs_to_csv(techs, schema, out_scen_path, cur, con, file_suffix = ''):
     
     logger.info('\tExporting Results from Database')
@@ -310,7 +309,7 @@ def copy_outputs_to_csv(techs, schema, out_scen_path, cur, con, file_suffix = ''
     f2.close()
     
     
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rscriblock_path, pg_params_file, file_suffix = ''):
     
     if len(techs) > 1:
@@ -334,7 +333,7 @@ def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rs
         if 'warning' in messages[1].lower():
             logger.warning(messages[1])
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def create_tech_choice_report(choose_tech, schema, scen_name, out_scen_path, cur, con, Rscriblock_path, pg_params_file, file_suffix = ''):
     
     if choose_tech == True:
@@ -356,7 +355,7 @@ def create_tech_choice_report(choose_tech, schema, scen_name, out_scen_path, cur
     else:
         logger.info("\tSkipping Creation of Technology Choice Report (Not Applicable)")
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 1, prefix = '')
 def create_deployment_summary_table(cur, con, schema):
     
     inputs = locals().copy()
@@ -460,7 +459,7 @@ def create_economics_results_table(cur, con, schema):
     cur.execute(sql)
     con.commit()
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def write_economics_df_to_csv(cur, con, schema, df):
     
     inputs = locals().copy()
@@ -480,7 +479,7 @@ def write_economics_df_to_csv(cur, con, schema, df):
     s.close()
 
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def get_economics_df(con, schema, year):
 
     inputs = locals().copy()
@@ -495,7 +494,7 @@ def get_economics_df(con, schema, year):
     
     return df
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def summarize_deployment(cur, con, schema, p, q, teq_yr1):
     
     inputs = locals().copy()
@@ -515,7 +514,7 @@ def summarize_deployment(cur, con, schema, p, q, teq_yr1):
     con.commit()
 
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 1, prefix = '')
 def copy_deployment_summary_to_csv(schema, out_scen_path, cur, con):
     
     logger.info('Exporting Deployment Summary from Database')

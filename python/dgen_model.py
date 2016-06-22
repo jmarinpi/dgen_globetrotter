@@ -24,15 +24,6 @@ import glob
 # (I think the order needs to follow the order 
 # in which each module is used in __main__)
 import data_functions as datfunc
-reload(datfunc)
-import agent_preparation_geo as agent_prep_geo
-reload(agent_prep_geo)
-import agent_mutation as mutation
-reload(mutation)
-import diffusion_functions as diffunc
-reload(diffunc)
-import financial_functions as finfunc
-reload(finfunc)
 import storage_functions_mike as storage_funcs_m
 reload(storage_funcs_m)
 #import storage_functions_pieter as storage_funcs_p
@@ -195,7 +186,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     tech_mode = 'geo'
                 else:
                     raise Exception("No technologies selected to be analyzed")
-                    
+            
+            # set modules based on the tech mode
+            agent_prep = cfg.module_lkup['agent_preparation'][tech_mode]
+            mutation = cfg.module_lkup['agent_mutation'][tech_mode]
+            finfunc = cfg.module_lkup['financial_functions'][tech_mode]
+            diffunc = cfg.module_lkup['diffusion_functions'][tech_mode]
+        
+            
             # skip industrial sector if modeling geothermal technologies
             if 'ind' in sectors.keys() and tech_mode == 'geo':
                 sectors.pop('ind')
@@ -262,7 +260,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # CREATE AGENTS
                     #==========================================================================================================
                     logger.info("--------------Creating Agents---------------")                        
-                    agent_prep_geo.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, sectors,
+                    agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, sectors,
                                             cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'])
                     crash
                     
@@ -596,15 +594,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             
 
     except Exception, e:
-        if con is not None:
-            con.close()
+        if 'logger' in locals():
+            logger.error(e.__str__(), exc_info = True)
         if 'schema' in locals():
             # drop the output schema
             datfunc.drop_output_schema(cfg.pg_conn_string, schema, True)
-        # log or raise the exception
-        if 'logger' in locals():
-            logger.error(e.__str__(), exc_info = True)
-        else:
+        if con is not None:
+            con.close()
+        if 'logger' not in locals():
             raise
         
     

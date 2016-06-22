@@ -9,7 +9,6 @@ import psycopg2 as pg
 import numpy as np
 import pandas as pd
 import decorators
-from config import show_times
 import utility_functions as utilfunc
 import multiprocessing
 import traceback
