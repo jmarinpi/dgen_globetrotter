@@ -169,12 +169,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 ReEDS_PV_CC.to_postgres(con, cur, schema, 'input_reeds_capital_costs')  
                 
                 try:
-                    excel_functions.load_scenario(input_scenario, schema, con) # TODO: Comment
-#                    pass
+                    excel_functions.load_scenario(input_scenario, schema, con)
                 except Exception, e:
-                    logger.error('\tLoading failed with the following error: %s\nModel Aborted' % e      )
-                    logger.error('Model aborted')
-                    sys.exit(-1)
+                    raise Exception('\tLoading failed with the following error: %s\nModel Aborted' % e      )
+
             else:
                 logger.warning("Warning: Skipping Import of Input Scenario Worksheet. This should only be done in resume mode.")
 
@@ -186,18 +184,20 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             end_year = scenario_opts['end_year']
             choose_tech = scenario_opts['tech_choice']
             
-            # TODO: add capability to model industrial sector
-            # for now, just remove it
-            if 'industrial' in sectors.keys():
-                sectors.pop('industrial')
-                msg = 'Industrial sector cannot be modeled at this time.'
+            # skip industrial sector if modeling geothermal technologies
+            if 'ind' in sectors.keys() and set(['wind','solar']).isdisjoint(set(techs)):
+                sectors.pop('ind')
+                msg = 'Industrial sector cannot be modeled for geothermal technologies at this time.'
                 logger.warning(msg)
-            
+
+            # raise error if trying to run geo technologies with either wind or solar
+            if set(['wind','solar']).isdisjoint(set(techs)) == False and set(['du','ghp']).isdisjoint(set(techs)) == False:
+                raise Exception("Cannot run model with geothermal technologies and other technologies at this time.")
+
+
             # if in tech choice mode, check that multiple techs are available
             if choose_tech == True and len(techs) == 1:
-                logger.error("Cannot run Tech Choice Mode with only one technology")
-                logger.error("Model aborted")
-                sys.exit(-1)
+                raise Exception("Cannot run Tech Choice Mode with only one technology")
             
             # summarize high level secenario settings 
             logger.info('Scenario Settings:')
@@ -210,14 +210,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             
             # reeds stuff.. #TODO: Refactor
             if mode == 'ReEDS' and scenario_opts['region'] != 'United States':
-                logger.error('Linked model can only run nationally. Select United States in input sheet'      )
-                logger.error('Model aborted')
-                sys.exit(-1)
+                raise Exception('Linked model can only run nationally. Select United States in input sheet')
             
             if mode == 'ReEDS' and techs != ['solar']:
-                logger.error('Linked model can only run for solar only. Set Run Model for Wind = False in input sheet'      )
-                logger.error('Model aborted')
-                sys.exit(-1)
+                raise Exception('Linked model can only run for solar only. Set Run Model for Wind = False in input sheet'      )
+
                                   
             # get other scenario inputs
             logger.info('Getting various scenario parameters')
