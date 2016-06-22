@@ -111,20 +111,21 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 # TODO: add in selection of heating fuel type for res sector
                 sample_building_microdata(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
                 estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_string)
+                estimate_system_ages(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
+                estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
+                map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_string)
                 # NEXT:
-                # TODO: create adjust_and_append_building_attributes() that does the following
-                    #simulate_system_age()
-                    #simulate_system_lifetime()
-                    #map_to_generic_baseline_system()
+                    # in agent_mutation: 
+                        # join costs per year
+                        # join electric rates
+                        # 
+                        
                 
                 #==============================================================================
                 #     impose agent level siting  attributes (i.e., "tech potential")
                 #==============================================================================
                 # TODO: add this for ghp, similar to wind
 
-                # WIND
-                #determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, schema, sector_abbr)
-                #find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, schema, sector_abbr)
     
                 #==============================================================================
                 #     combine all pieces into a single table
@@ -463,6 +464,112 @@ def estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_stri
 
 
 #%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def estimate_system_ages(schema, sector_abbr, chunks, seed, pool, pg_conn_string):
+
+    msg = '\tEstimating Agent HVAC System Agents'    
+    logger.info(msg)
+    
+    
+    inputs = locals().copy()    
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['sector_abbr'] = sector_abbr  
+
+    sql = """DROP TABLE IF EXISTS %(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s;
+            CREATE UNLOGGED TABLE %(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s AS
+            SELECT agent_id,             
+                CASE WHEN a.space_heat_age_min IS NULL OR a.space_heat_age_max IS NULL THEN NULL::NUMERIC
+                ELSE diffusion_shared.r_runif(a.space_heat_age_min, a.space_heat_age_max, 1, %(seed)s * agent_id)
+                END as space_heat_system_age, 
+
+                CASE WHEN a.space_cool_age_min IS NULL OR a.space_cool_age_max IS NULL THEN NULL::NUMERIC
+                ELSE diffusion_shared.r_runif(a.space_cool_age_min, a.space_cool_age_max, 1, %(seed)s * agent_id)
+                END as space_cool_system_age, 
+                
+                CASE WHEN a.water_heat_age_min IS NULL OR a.water_heat_age_max IS NULL THEN NULL::NUMERIC
+                ELSE diffusion_shared.r_runif(a.water_heat_age_min, a.water_heat_age_max, 1, %(seed)s * agent_id)
+                END as water_heat_system_age           
+        
+            FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a;""" % inputs
+    p_run(pg_conn_string, sql, chunks, pool)    
+
+    # add primary key
+    sql = """ALTER TABLE %(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s
+             ADD PRIMARY KEY (agent_id);""" % inputs
+    p_run(pg_conn_string, sql, chunks, pool)    
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_string):
+
+    msg = '\tEstimating Agent HVAC System Expected Lifetimes'    
+    logger.info(msg)
+    
+    
+    inputs = locals().copy()    
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['sector_abbr'] = sector_abbr  
+
+    sql = """DROP TABLE IF EXISTS %(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s;
+            CREATE UNLOGGED TABLE %(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s AS
+            WITH distributions as
+            (
+                SELECT mean, std, dist_type
+                FROM diffusion_geo.hvac_life_expectancy
+                WHERE space_equip = 'central warm-air furnace'
+                AND space_fuel = 'natural gas'
+                AND sector_abbr = 'res'
+                LIMIT 1
+            )
+            SELECT a.agent_id,     
+                CASE WHEN space_heat_equip = 'none' THEN NULL::NUMERIC
+                ELSE diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id)
+                END as space_heat_system_expected_lifetime,
+
+                CASE WHEN space_cool_equip = 'none' THEN NULL::NUMERIC
+                ELSE diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id)
+                END as space_cool_system_expected_lifetime,
+
+                CASE WHEN water_heat_equip = 'none' THEN NULL::NUMERIC
+                ELSE diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id)
+                END as water_heat_system_expected_lifetime
+                
+            FROM  %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
+            CROSS JOIN distributions b;""" % inputs
+    p_run(pg_conn_string, sql, chunks, pool)    
+
+    # add primary key
+    sql = """ALTER TABLE %(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s
+             ADD PRIMARY KEY (agent_id);""" % inputs
+    p_run(pg_conn_string, sql, chunks, pool)    
+    
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_string):
+    
+    msg = '\tMapping HVAC Systems to Generic Baseline Types'    
+    logger.info(msg)
+    
+    
+    inputs = locals().copy()    
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['sector_abbr'] = sector_abbr  
+    
+    sql = """DROP TABLE IF EXISTS %(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s;
+            CREATE UNLOGGED TABLE %(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s AS
+            SELECT a.agent_id, 'type 1'::VARCHAR(6) as baseline_system_type
+            FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a;""" % inputs
+    p_run(pg_conn_string, sql, chunks, pool)
+    
+    # add primary key
+    sql = """ALTER TABLE %(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s
+             ADD PRIMARY KEY (agent_id);""" % inputs
+    p_run(pg_conn_string, sql, chunks, pool)    
+    
+
+
+#%%
 #sql = """SELECT d.*, -- block attributes
 #                c.*, -- building attributes
 #                b.bldg_type as hazus_building_type,
@@ -537,7 +644,7 @@ def estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_stri
 #    template_inputs['i'] = 0
 #    template_inputs['sql_body'] = sql_part % template_inputs
 #    sql_template = """DROP TABLE IF EXISTS %(schema)s.agent_core_attributes_%(sector_abbr)s;
-#                      CREATE TABLE %(schema)s.agent_core_attributes_%(sector_abbr)s AS
+#                      CREATE UNLOGGED TABLE %(schema)s.agent_core_attributes_%(sector_abbr)s AS
 #                      %(sql_body)s
 #                      LIMIT 0;""" % template_inputs
 #    cur.execute(sql_template)
@@ -601,7 +708,7 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
             else:
                 cur.execute(isql)
                 con.commit()       
-
+                
 
 #%%
 #@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
