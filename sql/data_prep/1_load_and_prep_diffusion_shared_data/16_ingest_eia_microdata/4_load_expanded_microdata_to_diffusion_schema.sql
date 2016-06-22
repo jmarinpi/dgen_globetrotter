@@ -370,9 +370,9 @@ select
 	  WHEN c.coolp8 < 997 AND a.sqft8 < 9999999997 AND q.mfclbtu8 > 0 THEN c.coolp8/100. * a.sqft8
 	  ELSE 0
 	END AS totsqft_cool,
-	COALESCE(q.mfhtbtu8/1000., 0) AS kbtu_space_heat,
-	COALESCE(q.mfclbtu8/1000., 0) AS kbtu_space_cool,
-	COALESCE(q.mfwtbtu8/1000., 0) AS kbtu_water_heat
+	COALESCE(q.mfhtbtu8, 0) AS kbtu_space_heat,
+	COALESCE(q.mfclbtu8, 0) AS kbtu_space_cool,
+	COALESCE(q.mfwtbtu8, 0) AS kbtu_water_heat
 FROM eia.cbecs_2003_microdata_file_01 a
 LEFT JOIN eia.cbecs_2003_microdata_file_02 b
 	ON a.pubid8 = b.pubid8

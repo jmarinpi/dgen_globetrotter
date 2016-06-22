@@ -1,6 +1,6 @@
 ﻿set role 'diffusion-writers';
 
-DROP TABLE IF EXISTS diffusion_shared.cdms_bldg_types_to_typehuq_lkup;
+DROP TABLE IF EXISTS diffusion_shared.cdms_bldg_types_to_typehuq_lkup CASCADE;
 CREATE TABLE diffusion_shared.cdms_bldg_types_to_typehuq_lkup
 (
 	cdms varchar(5),
@@ -11,7 +11,7 @@ CREATE TABLE diffusion_shared.cdms_bldg_types_to_typehuq_lkup
 	max_tenants integer
 );
 
-\COPY diffusion_shared.cdms_bldg_types_to_typehuq_lkup FROM '/Users/mgleason/Desktop/cdms_to_typehuq.csv' with csv header;
+\COPY diffusion_shared.cdms_bldg_types_to_typehuq_lkup FROM '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/Thermal_Demand_kmccabe/simplified/cdms_to_typehuq.csv' with csv header;
 
 -- check data
 select *
