@@ -11,7 +11,7 @@ import sys
 import os
 from excel_objects import FancyNamedRange, ExcelError
 import pandas as pd
-#import decorators
+import decorators
 import warnings
 
 
@@ -26,7 +26,7 @@ import utility_functions as utilfunc
 logger = utilfunc.get_logger()
 #==============================================================================
 
-#@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
+@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 1, prefix = '')
 def load_scenario(xls_file, schema, conn = None):
     
     logger.info('Loading Input Scenario Worksheet')    
@@ -78,6 +78,6 @@ def load_scenario(xls_file, schema, conn = None):
 
 
 if __name__ == '__main__':
-    input_xls = '/Users/mmooney/Dropbox/Projects/2016_01_27_dGeo/Git/excel/scenario_inputs.xlsm'
-    load_scenario(input_xls, schema = 'diffusion_test')
+    input_xls = '../../excel/scenario_inputs.xlsm'
+    load_scenario(input_xls, schema = 'diffusion_results_2016_06_22_10h16m46s')
     

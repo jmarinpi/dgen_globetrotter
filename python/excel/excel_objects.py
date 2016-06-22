@@ -57,7 +57,11 @@ class FancyNamedRange(object):
     
     def __melt__(self):
         self.__colnames_included__()
+        # find the data type for the column names
+        dtype = self.data_frame.columns.dtype
         self.data_frame = pd.melt(self.data_frame, self.data_frame.columns[0])
+        # set the data type for the variable column
+        self.data_frame.loc[:, 'variable'] = self.data_frame['variable'].astype(dtype)
 
     def __transpose_values__(self):
         

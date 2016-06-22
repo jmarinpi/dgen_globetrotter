@@ -684,8 +684,8 @@ def get_technologies(con, schema):
     
     sql = '''with a as
             (
-                	select unnest(array['wind', 'solar']) as tech, 
-                         unnest(array[run_wind, run_solar]) as enabled
+                	select unnest(array['wind', 'solar', 'du', 'ghp']) as tech, 
+                         unnest(array[run_wind, run_solar, run_du, run_ghp]) as enabled
                   FROM %s.input_main_scenario_options
             )
             SELECT tech
