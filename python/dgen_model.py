@@ -183,21 +183,32 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             techs = datfunc.get_technologies(con, schema)
             end_year = scenario_opts['end_year']
             choose_tech = scenario_opts['tech_choice']
-            
+
+            # raise error if trying to run geo technologies with either wind or solar
+            if set(['wind','solar', 'storage']).isdisjoint(set(techs)) == False and set(['du','ghp']).isdisjoint(set(techs)) == False:
+                raise Exception("Cannot run model with geothermal technologies and other technologies at this time.")
+            else:
+                # determine technology mode (electricity or geo)
+                if set(['wind','solar', 'storage']).isdisjoint(set(techs)) == False:
+                    tech_mode = 'elec'
+                elif set(['du','ghp']).isdisjoint(set(techs)) == False:
+                    tech_mode = 'geo'
+                else:
+                    raise Exception("No technologies selected to be analyzed")
+                    
             # skip industrial sector if modeling geothermal technologies
-            if 'ind' in sectors.keys() and set(['wind','solar']).isdisjoint(set(techs)):
+            if 'ind' in sectors.keys() and tech_mode == 'geo':
                 sectors.pop('ind')
                 msg = 'Industrial sector cannot be modeled for geothermal technologies at this time.'
                 logger.warning(msg)
 
-            # raise error if trying to run geo technologies with either wind or solar
-            if set(['wind','solar']).isdisjoint(set(techs)) == False and set(['du','ghp']).isdisjoint(set(techs)) == False:
-                raise Exception("Cannot run model with geothermal technologies and other technologies at this time.")
-
-
             # if in tech choice mode, check that multiple techs are available
             if choose_tech == True and len(techs) == 1:
                 raise Exception("Cannot run Tech Choice Mode with only one technology")
+            
+            # if tech_mode is geo, cannot run choose tech
+            if choose_tech == True and tech_mode == 'geo':
+                raise Exception("Cannot run Tech Choice Mode with geothermal technologies at this time")
             
             # summarize high level secenario settings 
             logger.info('Scenario Settings:')
