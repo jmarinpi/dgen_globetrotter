@@ -114,13 +114,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 estimate_system_ages(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
                 estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
                 map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_string)
-                # NEXT:
-                    # in agent_mutation: 
-                        # join costs per year
-                        # join electric rates
-                        # 
-                        
-                
+                                        
                 #==============================================================================
                 #     impose agent level siting  attributes (i.e., "tech potential")
                 #==============================================================================
@@ -130,12 +124,12 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 #==============================================================================
                 #     combine all pieces into a single table
                 #==============================================================================
-#                combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr)
+                combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, sector_abbr)
     
         #==============================================================================
         #     create a view that combines all sectors and techs
         #==============================================================================
-        #merge_all_core_agents(cur, con, schema, sectors, techs)
+        merge_all_core_agents(cur, con, schema, sectors, techs)
 
         #==============================================================================
         #    drop the intermediate tables
@@ -478,16 +472,16 @@ def estimate_system_ages(schema, sector_abbr, chunks, seed, pool, pg_conn_string
     sql = """DROP TABLE IF EXISTS %(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s;
             CREATE UNLOGGED TABLE %(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s AS
             SELECT agent_id,             
-                CASE WHEN a.space_heat_age_min IS NULL OR a.space_heat_age_max IS NULL THEN NULL::NUMERIC
-                ELSE diffusion_shared.r_runif(a.space_heat_age_min, a.space_heat_age_max, 1, %(seed)s * agent_id)
+                CASE WHEN a.space_heat_age_min IS NULL OR a.space_heat_age_max IS NULL THEN NULL::INTEGER
+                ELSE ROUND(diffusion_shared.r_runif(a.space_heat_age_min, a.space_heat_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
                 END as space_heat_system_age, 
 
-                CASE WHEN a.space_cool_age_min IS NULL OR a.space_cool_age_max IS NULL THEN NULL::NUMERIC
-                ELSE diffusion_shared.r_runif(a.space_cool_age_min, a.space_cool_age_max, 1, %(seed)s * agent_id)
+                CASE WHEN a.space_cool_age_min IS NULL OR a.space_cool_age_max IS NULL THEN NULL::INTEGER
+                ELSE ROUND(diffusion_shared.r_runif(a.space_cool_age_min, a.space_cool_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
                 END as space_cool_system_age, 
                 
-                CASE WHEN a.water_heat_age_min IS NULL OR a.water_heat_age_max IS NULL THEN NULL::NUMERIC
-                ELSE diffusion_shared.r_runif(a.water_heat_age_min, a.water_heat_age_max, 1, %(seed)s * agent_id)
+                CASE WHEN a.water_heat_age_min IS NULL OR a.water_heat_age_max IS NULL THEN NULL::INTEGER
+                ELSE ROUND(diffusion_shared.r_runif(a.water_heat_age_min, a.water_heat_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
                 END as water_heat_system_age           
         
             FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a;""" % inputs
@@ -522,16 +516,16 @@ def estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_s
                 LIMIT 1
             )
             SELECT a.agent_id,     
-                CASE WHEN space_heat_equip = 'none' THEN NULL::NUMERIC
-                ELSE diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id)
+                CASE WHEN space_heat_equip = 'none' THEN NULL::INTEGER
+                ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id), 0)::INTEGER
                 END as space_heat_system_expected_lifetime,
 
-                CASE WHEN space_cool_equip = 'none' THEN NULL::NUMERIC
-                ELSE diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id)
+                CASE WHEN space_cool_equip = 'none' THEN NULL::INTEGER
+                ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id), 0)::INTEGER
                 END as space_cool_system_expected_lifetime,
 
-                CASE WHEN water_heat_equip = 'none' THEN NULL::NUMERIC
-                ELSE diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id)
+                CASE WHEN water_heat_equip = 'none' THEN NULL::INTEGER
+                ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id), 0)::INTEGER
                 END as water_heat_system_expected_lifetime
                 
             FROM  %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
@@ -570,110 +564,121 @@ def map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_st
 
 
 #%%
-#sql = """SELECT d.*, -- block attributes
-#                c.*, -- building attributes
-#                b.bldg_type as hazus_building_type,
-#                b.block_bldgs_weight        
-#         FROM %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s a
-#         LEFT JOIN %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s b
-#             ON a.agent_id = b.agent_id
-#         LEFT JOIN %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s c
-#             ON a.agent_id = c.agent_id
-#         LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined d
-#             ON a.pgid = d.pgid
-#""" 
-#
-#@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-#def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr):
-#
-#    msg = "\tCombining All Core Agent Attributes"
-#    logger.info(msg)
-#    
-#    
-#    inputs = locals().copy()    
-#    inputs['i_place_holder'] = '%(i)s'
-#    inputs['chunk_place_holder'] = '%(county_ids)s'
-#
-#    
-#    sql_part = """SELECT 
-#                    -- block location dependent properties
-#                    b.*,
-#                    
-#                    -- building microdata dependent properties 
-#                    a.bin_id,
-#                    a.crb_model,
-#                    a.ann_cons_kwh,
-#                    a.eia_weight,
-#                    a.bldg_size_class,
-#                    a.roof_sqft as eia_roof_sqft,
-#                    a.roof_style,
-#                    a.owner_occupancy_status,
-#                    a.customers_in_bin,
-#                    a.load_kwh_in_bin,
-#                    a.load_kwh_per_customer_in_bin,
-#                    
-#                    -- load profile
-#                    c.max_demand_kw,
-#    
-#                    -- solar siting constraints
-#                    d.tilt,
-#                    d.azimuth,
-#                    d.pct_of_bldgs_developable,
-#                    d.developable_roof_sqft,
-#                    d.ground_cover_ratio,    
-#
-#                    -- wind siting constraints                    
-#                    e.min_allowable_blade_height_m,
-#                    e.max_allowable_blade_height_m
-#    
-#             FROM %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s a
-#             LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
-#                 ON a.pgid = b.pgid
-#             LEFT JOIN %(schema)s.agent_max_demand_%(sector_abbr)s_%(i_place_holder)s c
-#                 ON a.county_id = c.county_id
-#                 AND a.bin_id = c.bin_id
-#             LEFT JOIN %(schema)s.agent_rooftops_%(sector_abbr)s_%(i_place_holder)s d
-#                 ON a.county_id = d.county_id
-#                 AND a.bin_id = d.bin_id
-#            LEFT JOIN %(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s e
-#                 ON a.county_id = e.county_id
-#                 AND a.bin_id = e.bin_id""" % inputs
-#    
-#    # create the template table
-#    template_inputs = inputs.copy()
-#    template_inputs['i'] = 0
-#    template_inputs['sql_body'] = sql_part % template_inputs
-#    sql_template = """DROP TABLE IF EXISTS %(schema)s.agent_core_attributes_%(sector_abbr)s;
-#                      CREATE UNLOGGED TABLE %(schema)s.agent_core_attributes_%(sector_abbr)s AS
-#                      %(sql_body)s
-#                      LIMIT 0;""" % template_inputs
-#    cur.execute(sql_template)
-#    con.commit()
-#    
-#    # reconfigure sql into an insert statement
-#    inputs['sql_body'] = sql_part
-#    sql = """INSERT INTO %(schema)s.agent_core_attributes_%(sector_abbr)s
-#            %(sql_body)s;""" % inputs
-#    # run the insert statement
-#    p_run(pg_conn_string, sql, county_chunks, pool)
-#    
-#    # add primary key 
-#    sql =  """ALTER TABLE %(schema)s.agent_core_attributes_%(sector_abbr)s
-#              ADD PRIMARY KEY (county_id, bin_id);""" % inputs
-#    cur.execute(sql)
-#    con.commit()
-#
-#    # create indices
-#    # TODO: add other indices that are neeeded in subsequent steps?
-#    sql = """CREATE INDEX agent_core_attributes_%(sector_abbr)s_btree_wind_resource
-#            ON  %(schema)s.agent_core_attributes_%(sector_abbr)s
-#            USING BTREE(i, j, cf_bin);
-#            
-#            CREATE INDEX agent_core_attributes_%(sector_abbr)s_btree_solar_resource
-#            ON  %(schema)s.agent_core_attributes_%(sector_abbr)s
-#            USING BTREE(solar_re_9809_gid, azimuth, tilt);""" % inputs
-#    cur.execute(sql)
-#    con.commit()
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, sector_abbr):
+
+    msg = "\tCombining All Core Agent Attributes"
+    logger.info(msg)
+    
+    
+    inputs = locals().copy()    
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['chunk_place_holder'] = '%(ids)s'
+
+    
+    sql_part = """SELECT a.agent_id,
+                        -- block attributes
+                    	b.pgid,
+                    	b.county_id,
+                    	b.state_abbr,
+                    	b.state_fips,
+                    	b.county_fips,
+                    	b.tract_fips,
+                    	b.tract_id_alias,
+                    	b.old_county_id,
+                    	b.census_division_abbr,
+                    	b.census_region,
+                    	b.reportable_domain,
+                    	b.pca_reg,
+                    	b.reeds_reg,
+                    	b.acres_per_bldg,
+                    	c.bldg_type as hazus_bldg_type,
+                     
+                         -- thermal load
+                    	d.buildings_in_bin,
+                    	ROUND(d.space_heat_kbtu_in_bin::NUMERIC, 0) as space_heat_kbtu_in_bin,
+                    	ROUND(d.space_cool_kbtu_in_bin::NUMERIC, 0) as space_cool_kbtu_in_bin,
+                    	ROUND(d.water_heat_kbtu_in_bin::NUMERIC, 0) as water_heat_kbtu_in_bin,
+                    	ROUND(d.space_heat_kbtu_per_building_in_bin::NUMERIC, 0) as space_heat_kbtu_per_building_in_bin,
+                    	ROUND(d.space_cool_kbtu_per_building_in_bin::NUMERIC, 0) as space_cool_kbtu_per_building_in_bin,
+                    	ROUND(d.water_heat_kbtu_per_building_in_bin::NUMERIC, 0) as water_heat_kbtu_per_building_in_bin,
+                     
+                         -- system ages
+                    	e.space_heat_system_age,
+                    	e.space_cool_system_age,
+                    	e.water_heat_system_age,
+                     
+                         -- system lifetimes
+                    	f.space_heat_system_expected_lifetime,
+                    	f.space_cool_system_expected_lifetime,
+                    	f.water_heat_system_expected_lifetime,
+                     
+                         -- baseline system type
+                    	g.baseline_system_type,
+                     
+                         -- eia microdata attributes
+                    	h.eia_bldg_id,
+                    	h.eia_bldg_weight,
+                    	h.climate_zone,
+                    	h.pba,
+                    	h.pbaplus,
+                    	h.typehuq,
+                    	h.owner_occupied,
+                    	h.year_built,
+                    	h.single_family_res,
+                    	h.num_tenants,
+                    	h.num_floors,
+                    	h.space_heat_equip,
+                    	h.space_heat_fuel,
+                    	h.water_heat_equip,
+                    	h.water_heat_fuel,
+                    	h.space_cool_equip,
+                    	h.space_cool_fuel,
+                    	h.totsqft,
+                    	h.totsqft_heat,
+                    	h.totsqft_cool
+                    FROM %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s a
+                    LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
+                    ON a.pgid = b.pgid
+                    LEFT JOIN %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s c
+                    ON a.agent_id = c.agent_id
+                    LEFT JOIN %(schema)s.agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s d
+                    ON a.agent_id = d.agent_id
+                    LEFT JOIN %(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s e
+                    ON a.agent_id = e.agent_id
+                    LEFT JOIN %(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s f
+                    ON a.agent_id = f.agent_id
+                    LEFT JOIN %(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s g
+                    ON a.agent_id = g.agent_id 
+                    LEFT JOIN %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s h
+                    ON a.agent_id = h.agent_id """ % inputs
+    
+    # create the template table
+    template_inputs = inputs.copy()
+    template_inputs['i'] = 0
+    template_inputs['sql_body'] = sql_part % template_inputs
+    sql_template = """DROP TABLE IF EXISTS %(schema)s.agent_core_attributes_%(sector_abbr)s;
+                      CREATE UNLOGGED TABLE %(schema)s.agent_core_attributes_%(sector_abbr)s AS
+                      %(sql_body)s
+                      LIMIT 0;""" % template_inputs
+    cur.execute(sql_template)
+    con.commit()
+    
+    # reconfigure sql into an insert statement
+    inputs['sql_body'] = sql_part
+    sql = """INSERT INTO %(schema)s.agent_core_attributes_%(sector_abbr)s
+            %(sql_body)s;""" % inputs
+    # run the insert statement
+    p_run(pg_conn_string, sql, chunks, pool)
+    
+    # add primary key 
+    sql =  """ALTER TABLE %(schema)s.agent_core_attributes_%(sector_abbr)s
+              ADD PRIMARY KEY (agent_id);""" % inputs
+    cur.execute(sql)
+    con.commit()
+
+    # create indices
+    # TODO: add indices that are neeeded in subsequent steps?
 
 
     
@@ -694,7 +699,10 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
                             '%(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s',
                             '%(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s',
                             '%(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s'
+                            '%(schema)s.agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s'
                            ]
     
     for sector_abbr, sector in sectors.iteritems():
@@ -711,58 +719,34 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
                 
 
 #%%
-#@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-#def merge_all_core_agents(cur, con, schema, sectors, techs):
-#    
-#    inputs = locals().copy()    
-#    
-#    msg = "Merging All Agents into a Single Table View"
-#    logger.info(msg)    
-#    
-#    sql_list = []
-#    for sector_abbr, sector in sectors.iteritems():
-#        for tech in techs:
-#            inputs['sector_abbr'] = sector_abbr
-#            inputs['sector'] = sector
-#            inputs['tech'] = tech
-#            sql = """SELECT a.pgid, 
-#                            a.county_id, 
-#                            a.bin_id, 
-#                            a.state_abbr, 
-#                            a.census_division_abbr, 
-#                            a.pca_reg, 
-#                            a.reeds_reg, 
-#                            a.customers_in_bin, 
-#                            a.load_kwh_per_customer_in_bin, 
-#                            a.load_kwh_in_bin,
-#                            a.max_demand_kw,
-#                            a.hdf_load_index,
-#                            a.owner_occupancy_status,
-#                            -- capital cost regional multiplier
-#                            a.cap_cost_multiplier_%(tech)s as cap_cost_multiplier,
-#                            -- solar
-#                            a.solar_re_9809_gid,
-#                            a.tilt, 
-#                            a.azimuth, 
-#                            a.developable_roof_sqft, 
-#                            a.pct_of_bldgs_developable,
-#                            -- wind
-#                            a.i,
-#                            a.j,
-#                            a.cf_bin,
-#                            -- replicate for each sector and tech
-#                            '%(sector_abbr)s'::CHARACTER VARYING(3) as sector_abbr,
-#                            '%(sector)s'::TEXT as sector,
-#                            '%(tech)s'::varchar(5) as tech
-#                    FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a """ % inputs
-#            sql_list.append(sql)
-#    
-#    inputs['sql_body'] = ' UNION ALL '.join(sql_list)
-#    sql = """DROP VIEW IF EXISTS %(schema)s.agent_core_attributes_all;
-#             CREATE VIEW %(schema)s.agent_core_attributes_all AS
-#             %(sql_body)s;""" % inputs
-#    cur.execute(sql)
-#    con.commit()
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def merge_all_core_agents(cur, con, schema, sectors, techs):
+    
+    inputs = locals().copy()    
+    
+    msg = "Merging All Agents into a Single Table View"
+    logger.info(msg)    
+    
+    sql_list = []
+    for sector_abbr, sector in sectors.iteritems():
+        for tech in techs:
+            inputs['sector_abbr'] = sector_abbr
+            inputs['sector'] = sector
+            inputs['tech'] = tech
+            sql = """SELECT a.*,
+                            -- replicate for each sector and tech
+                            '%(sector_abbr)s'::CHARACTER VARYING(3) as sector_abbr,
+                            '%(sector)s'::TEXT as sector,
+                            '%(tech)s'::varchar(5) as tech
+                    FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a """ % inputs
+            sql_list.append(sql)
+    
+    inputs['sql_body'] = ' UNION ALL '.join(sql_list)
+    sql = """DROP VIEW IF EXISTS %(schema)s.agent_core_attributes_all;
+             CREATE VIEW %(schema)s.agent_core_attributes_all AS
+             %(sql_body)s;""" % inputs
+    cur.execute(sql)
+    con.commit()
     
     
 
