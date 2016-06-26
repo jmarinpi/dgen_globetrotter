@@ -74,3 +74,27 @@ CREATE TABLE diffusion_template.input_du_cost_user_ind
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
 );
+
+
+
+
+-- create view for end user costs 
+DROP VIEW IF EXISTs diffusion_template.input_du_cost_user;
+CREATE VIEW diffusion_template.input_du_cost_user AS
+(
+	--res
+	SELECT *, 'res'::character varying(3) as sector_abbr
+	FROM diffusion_template.input_du_cost_user_res
+
+	UNION ALL
+	--com
+	SELECT *, 'com'::character varying(3) as sector_abbr
+	FROM diffusion_template.input_du_cost_user_com
+
+	UNION ALL
+	--ind
+	SELECT *, 'ind'::character varying(3) as sector_abbr
+	FROM diffusion_template.input_du_cost_user_ind
+);
+
+

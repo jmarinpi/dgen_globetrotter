@@ -128,7 +128,7 @@ SELECT year, 'ind'::text as sector_abbr, 'tpo'::text as business_model,
 FROM diffusion_template.input_ghp_finances_ind;
 
 
-DROP TABLE IF EXIStS diffusion_template.input_ghp_finances_depreciation_schedule CASCADE;
+DROP TABLE IF EXISTS diffusion_template.input_ghp_finances_depreciation_schedule CASCADE;
 CREATE TABLE diffusion_template.input_ghp_finances_depreciation_schedule
 (
 	ownership_year integer NOT NULL,
