@@ -1,12 +1,7 @@
 set role 'diffusion-writers';
 
-
--- delete this **
-DROP TABLE IF EXISTs diffusion_template.input_ghp_siting_res_parcel_size CASCADE;
-
-
 DROP TABLE IF EXISTs diffusion_template.input_ghp_siting_parcel_size CASCADE;
-CREATE TABLE diffusion_template.input_ghp_siting_res_parcel_size
+CREATE TABLE diffusion_template.input_ghp_siting_parcel_size
 (
 	sys_config TEXT not null,
 	min_parcel_size_acres numeric not null

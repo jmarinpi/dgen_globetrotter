@@ -98,34 +98,34 @@ DROP VIEW IF EXISTS diffusion_template.input_ghp_cost;
 CREATE VIEW diffusion_template.input_ghp_cost as 
 (
 	--res
-	SELECT year, 'res'::char varying(3) as sector, 'closed horizontal'::text as sys_config,
+	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config,
 	new_heat_exchanger_cost_dollars_per_ton, new_heat_pump_cost_dollars_per_ton, new_rest_of_system_costs_dollars_per_sf 
 	fixed_om_dollars_per_sf_per_year, retrofit_rest_of_system_multiplier
 	FROM diffusion_template.input_ghp_cost_horizontal_res
 	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector, 'closed vertical'::text as sys_config,
+	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config,
 	new_heat_exchanger_cost_dollars_per_ton, new_heat_pump_cost_dollars_per_ton, new_rest_of_system_costs_dollars_per_sf 
 	fixed_om_dollars_per_sf_per_year, retrofit_rest_of_system_multiplier
 	FROM diffusion_template.input_ghp_cost_vertical_res
 	UNION ALL
 	--com
-	SELECT year, 'com'::char varying(3) as sector, 'closed horizontal'::text as sys_config,
+	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config,
 	new_heat_exchanger_cost_dollars_per_ton, new_heat_pump_cost_dollars_per_ton, new_rest_of_system_costs_dollars_per_sf 
 	fixed_om_dollars_per_sf_per_year, retrofit_rest_of_system_multiplier
 	FROM diffusion_template.input_ghp_cost_horizontal_com
 	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector, 'closed vertical'::text as sys_config,
+	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config,
 	new_heat_exchanger_cost_dollars_per_ton, new_heat_pump_cost_dollars_per_ton, new_rest_of_system_costs_dollars_per_sf 
 	fixed_om_dollars_per_sf_per_year, retrofit_rest_of_system_multiplier
 	FROM diffusion_template.input_ghp_cost_vertical_com
 	UNION ALL
 	--ind
-	SELECT year, 'ind'::char varying(3) as sector, 'closed horizontal'::text as sys_config,
+	SELECT year, 'ind'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config,
 	new_heat_exchanger_cost_dollars_per_ton, new_heat_pump_cost_dollars_per_ton, new_rest_of_system_costs_dollars_per_sf 
 	fixed_om_dollars_per_sf_per_year, retrofit_rest_of_system_multiplier
 	FROM diffusion_template.input_ghp_cost_horizontal_ind
 	UNION ALL
-	SELECT year, 'ind'::char varying(3) as sector, 'closed vertical'::text as sys_config,
+	SELECT year, 'ind'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config,
 	new_heat_exchanger_cost_dollars_per_ton, new_heat_pump_cost_dollars_per_ton, new_rest_of_system_costs_dollars_per_sf 
 	fixed_om_dollars_per_sf_per_year, retrofit_rest_of_system_multiplier
 	FROM diffusion_template.input_ghp_cost_vertical_ind
