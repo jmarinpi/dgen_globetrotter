@@ -119,7 +119,7 @@ from diffusion_geo.resources_hydrothermal
 -- check #s with 'US Low T Hydrothermal Resource Data.xlsx'
 
 -- export CSV
-/COPY select * from diffusion_geo.resources_hydrothermal TO '/Users/mmooney/Dropbox/Projects/2016_01_27_dGeo/Documents/resources/Data/Output/Data_Share/US_Low_Temp_Data_Export/062816/us_low_temp_hydro_062816.csv' with csv header;
+\COPY (SELECT * FROM diffusion_geo.resources_hydrothermal) TO '/Users/mmooney/Dropbox/Projects/2016_01_27_dGeo/Documents/resources/Data/Output/Data_Share/US_Low_Temp_Data_Export/062816/us_low_temp_hydro_062816.csv' with csv header;
 
 -- export SHP
 pgsql2shp -g the_geom_4326 -f /Users/mmooney/Dropbox/Projects/2016_01_27_dGeo/Documents/resources/Data/Output/Data_Share/US_Low_Temp_Data_Export/062816/us_low_temp_hydro_poly_062816.shp -h gispgdb -u mmooney -P mmooney dav-gis "select * from diffusion_geo.resources_hydrothermal_shp where sys_type != 'isolated system'";

@@ -7,7 +7,7 @@ CREATE TABLE diffusion_template.input_baseline_performance_hvac_res_type_1
 	efficiency_improvement_factor_heating numeric not null,
 	efficiency_improvement_factor_cooling numeric not null,
 	sys_lifetime_yrs numeric not null,
-	perc_annual_sys_degradation numeric not null,
+	pct_annual_sys_degradation numeric not null,
 	CONSTRAINT input_baseline_performance_hvac_res_type_1_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -20,7 +20,7 @@ CREATE TABLE diffusion_template.input_baseline_performance_hvac_res_type_2
 	efficiency_improvement_factor_heating numeric not null,
 	efficiency_improvement_factor_cooling numeric not null,
 	sys_lifetime_yrs numeric not null,
-	perc_annual_sys_degradation numeric not null,
+	pct_annual_sys_degradation numeric not null,
 	CONSTRAINT input_baseline_performance_hvac_res_type_2_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -33,7 +33,7 @@ CREATE TABLE diffusion_template.input_baseline_performance_hvac_res_type_3
 	efficiency_improvement_factor_heating numeric not null,
 	efficiency_improvement_factor_cooling numeric not null,
 	sys_lifetime_yrs numeric not null,
-	perc_annual_sys_degradation numeric not null,
+	pct_annual_sys_degradation numeric not null,
 	CONSTRAINT input_baseline_performance_hvac_res_type_3_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -46,7 +46,7 @@ CREATE TABLE diffusion_template.input_baseline_performance_hvac_res_type_4
 	efficiency_improvement_factor_heating numeric not null,
 	efficiency_improvement_factor_cooling numeric not null,
 	sys_lifetime_yrs numeric not null,
-	perc_annual_sys_degradation numeric not null,
+	pct_annual_sys_degradation numeric not null,
 	CONSTRAINT input_baseline_performance_hvac_res_type_4_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -63,7 +63,7 @@ CREATE TABLE diffusion_template.input_baseline_performance_hvac_com_type_1
 	efficiency_improvement_factor_heating numeric not null,
 	efficiency_improvement_factor_cooling numeric not null,
 	sys_lifetime_yrs numeric not null,
-	perc_annual_sys_degradation numeric not null,
+	pct_annual_sys_degradation numeric not null,
 	CONSTRAINT input_baseline_performance_hvac_com_type_1_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -76,7 +76,7 @@ CREATE TABLE diffusion_template.input_baseline_performance_hvac_com_type_2
 	efficiency_improvement_factor_heating numeric not null,
 	efficiency_improvement_factor_cooling numeric not null,
 	sys_lifetime_yrs numeric not null,
-	perc_annual_sys_degradation numeric not null,
+	pct_annual_sys_degradation numeric not null,
 	CONSTRAINT input_baseline_performance_hvac_com_type_2_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -89,7 +89,7 @@ CREATE TABLE diffusion_template.input_baseline_performance_hvac_com_type_3
 	efficiency_improvement_factor_heating numeric not null,
 	efficiency_improvement_factor_cooling numeric not null,
 	sys_lifetime_yrs numeric not null,
-	perc_annual_sys_degradation numeric not null,
+	pct_annual_sys_degradation numeric not null,
 	CONSTRAINT input_baseline_performance_hvac_com_type_3_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -102,7 +102,7 @@ CREATE TABLE diffusion_template.input_baseline_performance_hvac_com_type_4
 	efficiency_improvement_factor_heating numeric not null,
 	efficiency_improvement_factor_cooling numeric not null,
 	sys_lifetime_yrs numeric not null,
-	perc_annual_sys_degradation numeric not null,
+	pct_annual_sys_degradation numeric not null,
 	CONSTRAINT input_baseline_performance_hvac_com_type_4_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -136,43 +136,43 @@ CREATE VIEW diffusion_template.input_baseline_performance_hvac AS
 	--res
 	SELECT year, 'res'::char varying(3) as sector_abbr, 'baseline 1' as baseline_type,
 	efficiency_improvement_factor_heating, efficiency_improvement_factor_cooling, 
-	sys_lifetime_yrs, perc_annual_sys_degradation 
+	sys_lifetime_yrs, pct_annual_sys_degradation 
 	FROM diffusion_template.input_baseline_performance_hvac_res_type_1
 	UNION ALL
 	SELECT year, 'res'::char varying(3) as sector_abbr, 'baseline 2' as baseline_type,
 	efficiency_improvement_factor_heating, efficiency_improvement_factor_cooling, 
-	sys_lifetime_yrs, perc_annual_sys_degradation 
+	sys_lifetime_yrs, pct_annual_sys_degradation 
 	FROM diffusion_template.input_baseline_performance_hvac_res_type_2
 	UNION ALL
 	SELECT year, 'res'::char varying(3) as sector_abbr, 'baseline 3' as baseline_type,
 	efficiency_improvement_factor_heating, efficiency_improvement_factor_cooling, 
-	sys_lifetime_yrs, perc_annual_sys_degradation 
+	sys_lifetime_yrs, pct_annual_sys_degradation 
 	FROM diffusion_template.input_baseline_performance_hvac_res_type_3
 	UNION ALL
 	SELECT year, 'res'::char varying(3) as sector_abbr, 'baseline 4' as baseline_type,
 	efficiency_improvement_factor_heating, efficiency_improvement_factor_cooling, 
-	sys_lifetime_yrs, perc_annual_sys_degradation 
+	sys_lifetime_yrs, pct_annual_sys_degradation 
 	FROM diffusion_template.input_baseline_performance_hvac_res_type_4
 	UNION ALL
 	--com
 	SELECT year, 'com'::char varying(3) as sector_abbr, 'baseline 1' as baseline_type,
 	efficiency_improvement_factor_heating, efficiency_improvement_factor_cooling, 
-	sys_lifetime_yrs, perc_annual_sys_degradation 
+	sys_lifetime_yrs, pct_annual_sys_degradation 
 	FROM diffusion_template.input_baseline_performance_hvac_com_type_1
 	UNION ALL
 	SELECT year, 'com'::char varying(3) as sector_abbr, 'baseline 2' as baseline_type,
 	efficiency_improvement_factor_heating, efficiency_improvement_factor_cooling, 
-	sys_lifetime_yrs, perc_annual_sys_degradation 
+	sys_lifetime_yrs, pct_annual_sys_degradation 
 	FROM diffusion_template.input_baseline_performance_hvac_com_type_2
 	UNION ALL
 	SELECT year, 'com'::char varying(3) as sector_abbr, 'baseline 3' as baseline_type,
 	efficiency_improvement_factor_heating, efficiency_improvement_factor_cooling, 
-	sys_lifetime_yrs, perc_annual_sys_degradation 
+	sys_lifetime_yrs, pct_annual_sys_degradation 
 	FROM diffusion_template.input_baseline_performance_hvac_com_type_3
 	UNION ALL
 	SELECT year, 'com'::char varying(3) as sector_abbr, 'baseline 4' as baseline_type,
 	efficiency_improvement_factor_heating, efficiency_improvement_factor_cooling, 
-	sys_lifetime_yrs, perc_annual_sys_degradation 
+	sys_lifetime_yrs, pct_annual_sys_degradation 
 	FROM diffusion_template.input_baseline_performance_hvac_com_type_4
 );
 

@@ -5,11 +5,11 @@ DROP TABLE IF EXISTs diffusion_template.input_du_performance_projections CASCADE
 CREATE TABLE diffusion_template.input_du_performance_projections
 (
 	year integer not null,
-	peaking_boilers_perc_of_peak_demand numeric not null,
-	max_acceptable_drawdown_perc_of_initial_capacity numeric not null,
+	peaking_boilers_pct_of_peak_demand numeric not null,
+	max_acceptable_drawdown_pct_of_initial_capacity numeric not null,
 	plant_lifetime_yrs numeric not null,
-	hydro_expected_drawdown_perc_per_yr numeric not null,
-	EGS_expected_drawdown_perc_per_yr numeric not null,
+	hydro_expected_drawdown_pct_per_yr numeric not null,
+	EGS_expected_drawdown_pct_per_yr numeric not null,
 	res_enduse_efficiency_factor numeric not null,
 	com_enduse_efficiency_factor numeric not null,
 	ind_enduse_efficiency_factor numeric not null,
