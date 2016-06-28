@@ -1,4 +1,4 @@
-set role 'diffusion-writers';
+﻿set role 'diffusion-writers';
 
 -- plant costs --
 -- subsurface
@@ -8,7 +8,6 @@ CREATE TABLE diffusion_template.input_du_cost_plant_subsurface
 	year integer NOT NULL,
 	future_drilling_cost_improvements_perc_current_costs numeric NOT NULL,
 	reservoir_stimulation_costs_dollars_per_well_set numeric NOT NULL,
-	reservoir_stimulation_well_set_size_nwells numeric NOT NULL,
 	exploration_and_discovery_costs_perc_cap_costs numeric NOT NULL,
 	CONSTRAINT input_du_cost_plant_subsurface_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE

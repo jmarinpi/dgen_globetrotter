@@ -1,4 +1,4 @@
-set role 'diffusion-writers';
+﻿set role 'diffusion-writers';
 
 
 DROP TABLE IF EXISTs diffusion_template.input_du_performance_projections CASCADE;
@@ -18,3 +18,16 @@ CREATE TABLE diffusion_template.input_du_performance_projections
 		ON UPDATE NO ACTION ON DELETE RESTRICT
 );
 
+
+
+DROP TABLE IF EXISTs diffusion_template.input_du_egs_reservoir_factors;
+CREATE TABLE diffusion_template.input_du_egs_reservoir_factors
+(
+	year integer not null,
+	resource_recovery_factor numeric not null,
+	area_per_wellset_sqkm numeric not null,
+	wells_per_wellset integer not null,
+	CONSTRAINT input_du_egs_reservoir_factors_year_fkey FOREIGN KEY (year)
+		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
+		ON UPDATE NO ACTION ON DELETE RESTRICT
+);
