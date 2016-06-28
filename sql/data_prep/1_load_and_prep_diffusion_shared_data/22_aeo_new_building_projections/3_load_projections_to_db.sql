@@ -33,19 +33,16 @@ FROM  diffusion_shared.aeo_new_building_projections_2015;
 
 ------------------------------------------------------------------------------------------------------------
 -- spot check some national total values against the AEO site
-select year, sum(commercial_sq_ft_billions) * 1000/1e9
+select sum(commercial_sq_ft_billions) --* 1000/1e9
 from diffusion_shared.aeo_new_building_projections_2015
-where scenario = 'Reference'
-GROUP BY year
-order by year;
+where year = 2021
+and scenario = 'Reference';
+-- 90.1 + 90.1--  good to go
 
--- 2021 = 84.6, should be 90.1
-
-select year, sum(housing_starts_single_family_millions + housing_starts_multi_family_millions)
+select sum(housing_starts_single_family_millions + housing_starts_multi_family_millions)
 from diffusion_shared.aeo_new_building_projections_2015
-where scenario = 'Reference'
-GROUP BY year
-order by year;
+where year = 2021
+and scenario = 'Reference';
 -- 1.68, should be 1.64
 
 ------------------------------------------------------------------------------------------------------------
@@ -98,7 +95,6 @@ from diffusion_shared.aeo_new_building_projections_2015;
 -- 9 rows, no nulls, all look good
 
 ------------------------------------------------------------------------------------------------------------
-
 -- chec kfor nulls in numeric projection fields?
 select count(*)
 FROM diffusion_shared.aeo_new_building_projections_2015
@@ -106,3 +102,9 @@ where housing_starts_single_family_millions is null
 or housing_starts_multi_family_millions is null
 or commercial_sq_ft_billions is null;
 -- 0 -- all set!
+
+
+--Load TS Data (projected out to 2050) into Table (after running 4_timeseries_project_to_2050.R)
+\COPY  diffusion_shared.aeo_new_building_projections_2015 FROM '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/EIA_NewBuilds_HousingStarts_ComFloospace/ts_project_to_2050.csv' with csv header;
+
+

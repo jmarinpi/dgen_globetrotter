@@ -19,7 +19,6 @@ def __create_plots(df, region_list, scenerio_list):
 				state= pd.pivot_table(state, values= ['hss_proj'],index=['year'], columns='State')
 				#--Setup regional Data for Plotting
 				regional = group[['year','hss']]#.drop_duplicates([['year','hss']])
-				print regional
 				# Assign Titles
 				regional_title = '{0} Regional Projections of Single-Family Housing Starts (millions), {1} Scenerio'.format(region, name)
 				state_title = 'State Projection Disaggregates of {0} Regional Single Family Housing Starts (millions), {1} Scenerio'.format(region, name)

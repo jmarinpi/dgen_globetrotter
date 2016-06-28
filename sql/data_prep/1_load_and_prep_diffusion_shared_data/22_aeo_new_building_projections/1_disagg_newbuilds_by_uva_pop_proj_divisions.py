@@ -7,7 +7,7 @@ matplotlib.style.use('ggplot')
 # Setup Paths
 eia_csv = '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/EIA_NewBuilds_HousingStarts_ComFloospace/input_data/eia_new_growth_regional.csv'
 uva_csv = '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/EIA_NewBuilds_HousingStarts_ComFloospace/input_data/uva_state_pop_projections.csv'
-out_csv = '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/EIA_NewBuilds_HousingStarts_ComFloospace/dissag_newbuilds_from_region_to_state_popprojection2s.csv'
+out_csv = '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/EIA_NewBuilds_HousingStarts_ComFloospace/dissag_newbuilds_from_region_to_state_popprojections.csv'
 plot_csv = '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/EIA_NewBuilds_HousingStarts_ComFloospace/plots/dissag_newbuilds_from_region_to_state_popprojections_all_fields_to_plot.csv'
 out_image_path = '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/EIA_NewBuilds_HousingStarts_ComFloospace/plots'
 
@@ -15,11 +15,13 @@ out_image_path = '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/EIA_NewBuilds_Ho
 newbuilds = pd.read_csv(eia_csv, sep=',',header=0)
 pproject = pd.read_csv(uva_csv, sep=',',header=0)
 
+
 # Get lists for years, scenerios, and regions
 years_list = np.arange(2010,2041).astype(str).tolist()
 years = np.arange(2012, 2041).astype(str)
 scenerio_list = np.unique(newbuilds['Scenerio'])
 region_list = np.unique(pproject['Region'])
+print scenerio_list
 
 # Reshape New Builds CSV
 newbuilds = pd.melt(newbuilds, id_vars = ['Region','Scenerio', 'Val'], value_vars=years_list, var_name='Year', value_name='Val2')
@@ -40,9 +42,6 @@ cols = ['hss','hsm', 'cf', 'hss_proj', 'hsm_proj', 'cf_proj']
 for c in cols:
 	pproject[c] = np.zeros(len(pproject.index)).astype(float)
 pproject['scenerio'] = np.zeros(len(pproject.index)).astype(float)
-
-# Remove Year 2010 & 11
-pproject = pproject.ix[(pproject['year']>='2012'),:].reset_index()
 
 
 # Create Copies for Each Scenerio
