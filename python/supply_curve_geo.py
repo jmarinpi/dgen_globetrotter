@@ -33,16 +33,14 @@ pg.extensions.register_type(DEC2FLOAT)
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def generate_resource_data(cur, con, schema, seed):
     
-    setup_resource_data_egs(cur, con, schema, seed)
+    setup_resource_data_egs_hdr(cur, con, schema, seed)
     setup_resource_data_hydrothermal(cur, con, schema, seed)
-    combine_resource_data()
     
-    return
     
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def setup_resource_data_egs(cur, con, schema, seed):
+def setup_resource_data_egs_hdr(cur, con, schema, seed):
     
     inputs = locals().copy()
     
@@ -103,7 +101,6 @@ def setup_resource_data_egs(cur, con, schema, seed):
     # TODO: add some mechanism for only compiling data for tracts in states to model
     # TODO: set this up to use p_run?
     
-    return
 
 
 #%%
@@ -126,22 +123,11 @@ def setup_resource_data_hydrothermal(cur, con, schema, seed):
                 		0)::INTEGER as depth_m,
                    n_wells_in_tract,
                    extractable_resource_per_well_in_tract_mwh
-             FROM diffusion_geo.hydrothermal_resource_data_dummy a -- TODO: replace with actual resource data from meghan;""" % inputs
+             FROM diffusion_geo.hydrothermal_resource_data_dummy a -- TODO: replace with actual resource data from meghan -- may need to merge pts and polys;""" % inputs
     cur.execute(sql)
     con.commit()
     # TODO: add some mechanism for only compiling data for tracts in states to model
     # TODO: set this up to use p_run?
-    
-    return
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def combine_resource_data():
-    
-    #TODO: write this function
-    pass
-
-    return
 
 
 #%%
@@ -150,8 +136,26 @@ def get_resource_data(con, schema, year):
     
     inputs = locals().copy()
         
-    sql = """SELECT *
-             FROM diffusion_geo.resource_data_dummy;""" % inputs
+    sql = """SELECT a.tract_id_alias,
+                    a.resource_id,
+                    a.resource_type,
+                    a.system_type,
+                    a.depth_m,
+                    a.n_wells_in_tract,
+                    a.extractable_resource_per_well_in_tract_mwh as resource_per_well_mwh
+             FROM %(schema)s.resources_hydrothermal a
+             
+             UNION ALL
+             
+             SELECT b.tract_id_alias,
+                    b.resource_id,
+                    b.resource_type,
+                    b.system_type,
+                    b.depth_m,
+                    b.n_wells_in_tract,
+                    b.extractable_resource_per_well_in_tract_mwh as resource_per_well_mwh
+             FROM %(schema)s.resources_egs_hdr b
+             WHERE b.year = %(year)s;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
     
     return df
