@@ -161,3 +161,48 @@ def get_resource_data(con, schema, year):
     return df
     
 #%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_plant_cost_data(con, schema, year):
+    
+    inputs = locals().copy()
+    sql = """SELECT a.year, 
+                    a.wells_per_wellset,
+                	  b.peaking_boilers_pct_of_peak_demand,
+                	  b.max_acceptable_drawdown_pct_of_initial_capacity,
+                	  b.plant_lifetime_yrs,
+                	  b.hydro_expected_drawdown_pct_per_yr,
+                	  b.egs_expected_drawdown_pct_per_yr,
+                	  b.res_enduse_efficiency_factor,
+                	  b.com_enduse_efficiency_factor,
+                	  b.ind_enduse_efficiency_factor,
+                	  c.plant_installation_costs_dollars_per_kw, 
+                	  c.fixed_om_costs_pct_cap_costs, 
+                	  c.distribution_network_construction_costs_dollars_per_m, 
+                	  c.operating_costs_reservoir_pumping_costs_dollars_per_gal, 
+                	  c.operating_costs_pumping_costs_dollars_per_gal_mile, 
+                	  c.natural_gas_peaking_boilers_dollars_per_kw, 
+                	  c.construction_period_yrs, 
+                	  d.future_drilling_cost_improvements_pct_current_costs, 
+                	  d.reservoir_stimulation_costs_dollars_per_well_set, 
+                	  d.exploration_and_discovery_costs_pct_cap_costs
+             FROM %(schema)s.input_du_egs_reservoir_factors a
+             LEFT JOIN %(schema)s.input_du_performance_projections b
+                 ON a.year = b.year
+             LEFT JOIN %(schema)s.input_du_cost_plant_surface c
+                 ON a.year = c.year
+             LEFT JOIN %(schema)s.input_du_cost_plant_subsurface d
+                 ON a.year = d.year
+             WHERE a.year = %(year)s;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_plant_cost_data(resource_df, costs_df):
+    
+    inputs = locals().copy()
+
+    
+    return 
