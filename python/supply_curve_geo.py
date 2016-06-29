@@ -165,8 +165,7 @@ def get_resource_data(con, schema, year):
 def get_plant_cost_data(con, schema, year):
     
     inputs = locals().copy()
-    sql = """SELECT a.year, 
-                    a.wells_per_wellset,
+    sql = """SELECT a.wells_per_wellset,
                 	  b.peaking_boilers_pct_of_peak_demand,
                 	  b.max_acceptable_drawdown_pct_of_initial_capacity,
                 	  b.plant_lifetime_yrs,
@@ -206,3 +205,51 @@ def apply_plant_cost_data(resource_df, costs_df):
 
     
     return 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_plant_finance_data(con, schema, year):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT inflation_rate,
+                    interest_rate_nominal,
+                    interest_rate_during_construction_nominal,
+                    rate_of_return_on_equity,
+                    debt_fraction,
+                    tax_rate,
+                    depreciation_period
+            FROM %(schema)s.input_du_plant_finances
+            where year = %(year)s;""" % inputs
+            
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df        
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_plant_construction_factor_data(con, schema, year):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT year_of_construction, capital_fraction
+            FROM %(schema)s.input_du_plant_construction_finance_factor
+            where year = %(year)s;""" % inputs
+            
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df       
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_plant_depreciation_data(con, schema, year):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT year_of_operation, depreciation_fraction
+            FROM %(schema)s.input_du_plant_depreciation_factor
+            where year = %(year)s;""" % inputs
+            
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df       

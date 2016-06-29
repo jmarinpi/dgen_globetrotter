@@ -34,8 +34,31 @@ def get_plant_cost_data(con, schema, year):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_plant_cost_data(resource_df, costs_df):
     
-        # DO NOTHING -- NOT USED IN ELEC
+    # DO NOTHING -- NOT USED IN ELEC
     return
     
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_plant_finance_data(con, schema, year):
+
+    # DO NOTHING -- NOT USED IN ELEC
+    return
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_plant_construction_factor_data(con, schema, year):
+    
+    # DO NOTHING -- NOT USED IN ELEC
+    return
+    
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_plant_depreciation_data(con, schema, year):
+
+    # DO NOTHING -- NOT USED IN ELEC
+    return
+
+    
 #%%

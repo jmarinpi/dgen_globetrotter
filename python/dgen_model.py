@@ -269,7 +269,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     supply.setup_resource_data(cur, con, schema, scenario_opts['random_generator_seed'])
                     
-                    # TODO: move this to the yearly loop                    
+                    # TODO: move this block to the yearly loop                    
                     # get resource data (for testing only)
                     hack_year = 2014
                     resource_df = supply.get_resource_data(con, schema, hack_year)
@@ -277,6 +277,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     costs_df = supply.get_plant_cost_data(con, schema, hack_year)
                     # apply the plant cost data
                     resources_with_costs_df = supply.apply_plant_cost_data(resource_df, costs_df)
+                    # get the plant finance data
+                    plant_finances_df = supply.get_plant_finance_data(con, schema, hack_year)
+                    plant_construction_factor_df = supply.get_plant_construction_factor_data(con, schema, hack_year)
+                    plant_depreciation_df = supply.get_plant_depreciation_data(con, schema, hack_year)                    
                     
                     #==============================================================================
                     # GET RATE TARIFF LOOKUP TABLE FOR EACH SECTOR                                    
