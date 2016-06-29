@@ -30,21 +30,25 @@ pg.extensions.register_type(DEC2FLOAT)
 
 
 #%%
-
-def generate_resource_data(con, schema):
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def generate_resource_data(cur, con, schema, seed):
     
-    setup_resource_data_egs()
-    setup_resource_data_hydrothermal()
+    setup_resource_data_egs(cur, con, schema, seed)
+    setup_resource_data_hydrothermal(cur, con, schema, seed)
     combine_resource_data()
     
     return
+    
+    
 #%%
-
-def setup_resource_data_egs(cur, con, schema):
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def setup_resource_data_egs(cur, con, schema, seed):
     
     inputs = locals().copy()
     
-    sql = """WITH a AS
+    sql = """DROP TABLE IF EXISTS %(schema)s.resources_egs_hdr;
+             CREATE UNLOGGED TABLE %(schema)s.resources_egs_hdr AS
+             WITH a AS
             (
                 	SELECT unnest(array[1,2]) as tract_id_alias, -- todo: this should come from the lkup table
                          a.gid, 
@@ -54,7 +58,7 @@ def setup_resource_data_egs(cur, con, schema):
                 		diffusion_shared.r_rnorm_rlnorm(b.t_deg_c_mean, 
                                                         b.t_deg_c_sd, 
                                                         'normal'::TEXT, 
-                                                        1) as t_deg_c_est -- todo: replace 1 with tract_id_alias * seed
+                                                        1 * %(seed)s) as t_deg_c_est -- todo: replace 1 with tract_id_alias * seed
                 	FROM dgeo.smu_t35km_2016 a -- todo: change this to the intersected lkup table from Meghan
                 	LEFT JOIN diffusion_geo.egs_hdr_temperature_at_depth b
                 	ON a.gid = b.gid
@@ -96,17 +100,42 @@ def setup_resource_data_egs(cur, con, schema):
             FROM c;""" % inputs
     cur.execute(sql)
     con.commit()
+    # TODO: add some mechanism for only compiling data for tracts in states to model
     # TODO: set this up to use p_run?
     
     return
 
-def setup_resource_data_hydrothermal():
-    
-    #TODO: write this function
-    pass
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def setup_resource_data_hydrothermal(cur, con, schema, seed):
+    
+    inputs = locals().copy()
+
+    sql = """DROP TABLE IF EXISTS %(schema)s.resources_hydrothermal;
+             CREATE UNLOGGED TABLE %(schema)s.resources_hydrothermal AS
+             SELECT a.tract_id_alias,
+                    a.resource_id,
+                    a.resource_type,
+                    a.system_type,
+                	  round(
+                		diffusion_shared.r_runif(a.min_depth_m, 
+                				  a.max_depth_m, 
+                				 1, 
+                				 %(seed)s * a.tract_id_alias),
+                		0)::INTEGER as depth_m,
+                   n_wells_in_tract,
+                   extractable_resource_per_well_in_tract_mwh
+             FROM diffusion_geo.hydrothermal_resource_data_dummy a -- TODO: replace with actual resource data from meghan;""" % inputs
+    cur.execute(sql)
+    con.commit()
+    # TODO: add some mechanism for only compiling data for tracts in states to model
+    # TODO: set this up to use p_run?
+    
     return
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def combine_resource_data():
     
     #TODO: write this function
@@ -127,7 +156,4 @@ def get_resource_data(con, schema, year):
     
     return df
     
-    
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_resource_data(con, schema, year):
