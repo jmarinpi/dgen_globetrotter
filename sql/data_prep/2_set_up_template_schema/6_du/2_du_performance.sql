@@ -29,5 +29,11 @@ CREATE TABLE diffusion_template.input_du_egs_reservoir_factors
 	wells_per_wellset integer not null,
 	CONSTRAINT input_du_egs_reservoir_factors_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
-		ON UPDATE NO ACTION ON DELETE RESTRICT
+		ON UPDATE NO ACTION ON DELETE RESTRICT,
+	CONSTRAINT input_du_egs_resource_recovery_factor_check 
+		CHECK (resource_recovery_factor > 0 and resource_recovery_factor <= 1),
+	CONSTRAINT input_du_egs_area_per_wellset_sqkm_check 
+		CHECK (area_per_wellset_sqkm > 0),
+	CONSTRAINT input_du_egs_wells_per_wellset_check 
+		CHECK (wells_per_wellset > 0)
 );

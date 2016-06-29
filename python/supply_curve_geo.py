@@ -40,11 +40,64 @@ def generate_resource_data(con, schema):
     return
 #%%
 
-def setup_resource_data_egs():
+def setup_resource_data_egs(cur, con, schema):
     
-    #TODO: write this function
-    pass
-
+    inputs = locals().copy()
+    
+    sql = """WITH a AS
+            (
+                	SELECT unnest(array[1,2]) as tract_id_alias, -- todo: this should come from the lkup table
+                         a.gid, 
+                         a.area_sqkm, -- todo: replace with correct area_sqkm from lkup table
+                         b.depth_km, 
+                         b.thickness_km,
+                		diffusion_shared.r_rnorm_rlnorm(b.t_deg_c_mean, 
+                                                        b.t_deg_c_sd, 
+                                                        'normal'::TEXT, 
+                                                        1) as t_deg_c_est -- todo: replace 1 with tract_id_alias * seed
+                	FROM dgeo.smu_t35km_2016 a -- todo: change this to the intersected lkup table from Meghan
+                	LEFT JOIN diffusion_geo.egs_hdr_temperature_at_depth b
+                	ON a.gid = b.gid
+                  WHERE a.gid = 1 -- todo: remove this -- but, we should have some sort of other filter that defines the tracts to consider
+            ),
+            b as
+            (
+                	SELECT tract_id_alias, gid, area_sqkm,
+                		depth_km, thickness_km,
+                		case when t_deg_c_est > 150 or t_deg_c_est < 30 then 0 -- bound temps between 30 and 150
+                		     else t_deg_c_est
+                		end as res_temp_deg_c,
+                		area_sqkm * thickness_km as volume_km3
+                	FROM a
+            ),
+            c as
+            (
+                	SELECT c.year,
+                         b.tract_id_alias,
+                         b.gid,
+                         b.depth_km,
+                         ROUND(b.area_sqkm/c.area_per_wellset_sqkm,0)::INTEGER as n_wells_in_tract,
+                	 	diffusion_geo.extractable_resource_joules_recovery_factor(b.volume_km3, 
+            									    b.res_temp_deg_c, 
+            									    c.resource_recovery_factor)/3.6e+9 as extractable_resource_mwh
+                 FROM b
+                 CROSS JOIN %(schema)s.input_du_egs_reservoir_factors c
+            )
+            SELECT c.year,
+                	c.tract_id_alias,
+                 c.gid as resource_id,
+                 'egs'::TEXT as resource_type,
+                 'hdr'::TEXT as system_type,
+                 c.depth_km * 1000 as depth_m,
+                 c.n_wells_in_tract,
+                	CASE WHEN extractable_resource_mwh < 0 THEN 0 -- prevent negative values
+                	ELSE c.extractable_resource_mwh/c.n_wells_in_tract
+                	END as extractable_resource_per_well_in_tract_mwh
+            FROM c;""" % inputs
+    cur.execute(sql)
+    con.commit()
+    # TODO: set this up to use p_run?
+    
     return
 
 def setup_resource_data_hydrothermal():

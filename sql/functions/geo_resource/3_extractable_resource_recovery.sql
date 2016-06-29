@@ -22,3 +22,17 @@ select diffusion_geo.extractable_resource_joules_recovery_factor(1, 53, .25)/1e1
 -- should return .040 (Craig Hot Springs)
 -- returns 0.04030000000000000000
 -- all set
+
+
+SET ROLE 'server-superusers';
+DROP FUNCTION IF EXISTS diffusion_geo.extractable_resource_joules_recovery_factor(numeric, numeric);
+CREATE OR REPLACE FUNCTION diffusion_geo.extractable_resource_joules_recovery_factor(
+				acc_resource numeric, 
+				recovery_factor numeric default 0.125)
+RETURNS numeric AS 
+$BODY$
+	extractable_resource = acc_resource * recovery_factor
+	return (extractable_resource) ;
+$BODY$
+LANGUAGE 'plr'
+COST 100;
