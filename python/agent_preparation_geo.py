@@ -10,11 +10,7 @@ import pandas as pd
 import decorators
 import utility_functions as utilfunc
 import multiprocessing
-import traceback
-import data_functions as datfunc
-from agent import Agent, Agents, AgentsAlgorithm
-from cStringIO import StringIO
-import pssc_mp
+
 
 #%% GLOBAL SETTINGS
 
@@ -136,7 +132,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
         #==============================================================================
         # TODO: update the list of tables to delete
         cleanup_intermediate_tables(schema, sectors, chunks, pg_conn_string, cur, con, pool)
-        crash
+
     except:
         # roll back any transactions
         con.rollback()

@@ -192,7 +192,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             mutation = cfg.module_lkup['agent_mutation'][tech_mode]
             finfunc = cfg.module_lkup['financial_functions'][tech_mode]
             diffunc = cfg.module_lkup['diffusion_functions'][tech_mode]
-        
+            supply = cfg.module_lkup['supply_curve'][tech_mode]
             
             # skip industrial sector if modeling geothermal technologies
             if 'ind' in sectors.keys() and tech_mode == 'geo':
@@ -262,6 +262,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     logger.info("--------------Creating Agents---------------")                        
                     agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, cfg.agents_per_region,
                                                               sectors, cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'])
+                    
+                    
+                    #==========================================================================================================
+                    # SETUP RESOURCE DATA
+                    #==========================================================================================================
+                    supply.setup_resource_data(cur, con, schema, scenario_opts['random_generator_seed'])
+                    # get resource data (for testing only)
+                    resource_df = supply.get_resource_data(con, schema, 2014)
                     
                     #==============================================================================
                     # GET RATE TARIFF LOOKUP TABLE FOR EACH SECTOR                                    

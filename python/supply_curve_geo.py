@@ -31,7 +31,7 @@ pg.extensions.register_type(DEC2FLOAT)
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def generate_resource_data(cur, con, schema, seed):
+def setup_resource_data(cur, con, schema, seed):
     
     setup_resource_data_egs_hdr(cur, con, schema, seed)
     setup_resource_data_hydrothermal(cur, con, schema, seed)
@@ -148,7 +148,7 @@ def get_resource_data(con, schema, year):
              UNION ALL
              
              SELECT b.tract_id_alias,
-                    b.resource_id,
+                    b.resource_id::TEXT as resource_id,
                     b.resource_type,
                     b.system_type,
                     b.depth_m,

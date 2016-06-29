@@ -22,7 +22,8 @@ import financial_functions_geo
 import financial_functions_elec
 import diffusion_functions_geo
 import diffusion_functions_elec
-import data_functions
+import supply_curve_geo
+import supply_curve_elec
 
 
 #==============================================================================
@@ -75,6 +76,11 @@ module_lkup = {
                         'geo' : diffusion_functions_geo,
                         'elec': diffusion_functions_elec,
                     },
+                'supply_curve'  :
+                    {
+                        'geo' : supply_curve_geo,
+                        'elec': supply_curve_elec
+                    }
 }
 
 
