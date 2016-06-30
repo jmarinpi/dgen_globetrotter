@@ -78,7 +78,7 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed):
                          b.tract_id_alias,
                          b.gid,
                          b.depth_km,
-                         ROUND(b.area_sqkm/c.area_per_wellset_sqkm,0)::INTEGER as n_wells_in_tract,
+                         ROUND(b.area_sqkm/c.area_per_wellset_sqkm,0)::INTEGER as n_wellsets_in_tract,
                 	 	diffusion_geo.extractable_resource_joules_recovery_factor(b.volume_km3, 
             									    b.res_temp_deg_c, 
             									    c.resource_recovery_factor)/3.6e+9 as extractable_resource_mwh
@@ -91,10 +91,10 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed):
                  'egs'::TEXT as resource_type,
                  'hdr'::TEXT as system_type,
                  c.depth_km * 1000 as depth_m,
-                 c.n_wells_in_tract,
+                 c.n_wellsets_in_tract,
                 	CASE WHEN extractable_resource_mwh < 0 THEN 0 -- prevent negative values
-                	ELSE c.extractable_resource_mwh/c.n_wells_in_tract
-                	END as extractable_resource_per_well_in_tract_mwh
+                	ELSE c.extractable_resource_mwh/c.n_wellsets_in_tract
+                	END as extractable_resource_per_wellset_in_tract_mwh
             FROM c;""" % inputs
     cur.execute(sql)
     con.commit()
@@ -121,8 +121,8 @@ def setup_resource_data_hydrothermal(cur, con, schema, seed):
                 				 1, 
                 				 %(seed)s * a.tract_id_alias),
                 		0)::INTEGER as depth_m,
-                   n_wells_in_tract,
-                   extractable_resource_per_well_in_tract_mwh
+                   n_wells_in_tract as n_wellsets_in_tract,
+                   extractable_resource_per_well_in_tract_mwh as extractable_resource_per_wellset_in_tract_mwh -- todo: just rename this in the source table
              FROM diffusion_geo.hydrothermal_resource_data_dummy a -- TODO: replace with actual resource data from meghan -- may need to merge pts and polys;""" % inputs
     cur.execute(sql)
     con.commit()
@@ -141,8 +141,8 @@ def get_resource_data(con, schema, year):
                     a.resource_type,
                     a.system_type,
                     a.depth_m,
-                    a.n_wells_in_tract,
-                    a.extractable_resource_per_well_in_tract_mwh as resource_per_well_mwh
+                    a.n_wellsets_in_tract,
+                    a.extractable_resource_per_wellset_in_tract_mwh as resource_per_wellset_mwh
              FROM %(schema)s.resources_hydrothermal a
              
              UNION ALL
@@ -152,8 +152,8 @@ def get_resource_data(con, schema, year):
                     b.resource_type,
                     b.system_type,
                     b.depth_m,
-                    b.n_wells_in_tract,
-                    b.extractable_resource_per_well_in_tract_mwh as resource_per_well_mwh
+                    b.n_wellsets_in_tract,
+                    b.extractable_resource_per_wellset_in_tract_mwh as resource_per_wellset_mwh
              FROM %(schema)s.resources_egs_hdr b
              WHERE b.year = %(year)s;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
@@ -162,44 +162,65 @@ def get_resource_data(con, schema, year):
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_plant_cost_data(con, schema, year):
+def get_plant_cost_and_performance_data(con, schema, year):
     
     inputs = locals().copy()
-    sql = """SELECT a.wells_per_wellset,
-                	  b.peaking_boilers_pct_of_peak_demand,
-                	  b.max_acceptable_drawdown_pct_of_initial_capacity,
-                	  b.plant_lifetime_yrs,
-                	  b.hydro_expected_drawdown_pct_per_yr,
-                	  b.egs_expected_drawdown_pct_per_yr,
-                	  b.res_enduse_efficiency_factor,
-                	  b.com_enduse_efficiency_factor,
-                	  b.ind_enduse_efficiency_factor,
-                	  c.plant_installation_costs_dollars_per_kw, 
-                	  c.fixed_om_costs_pct_cap_costs, 
-                	  c.distribution_network_construction_costs_dollars_per_m, 
-                	  c.operating_costs_reservoir_pumping_costs_dollars_per_gal, 
-                	  c.operating_costs_pumping_costs_dollars_per_gal_mile, 
-                	  c.natural_gas_peaking_boilers_dollars_per_kw, 
-                	  c.construction_period_yrs, 
-                	  d.future_drilling_cost_improvements_pct_current_costs, 
-                	  d.reservoir_stimulation_costs_dollars_per_well_set, 
-                	  d.exploration_and_discovery_costs_pct_cap_costs
-             FROM %(schema)s.input_du_egs_reservoir_factors a
-             LEFT JOIN %(schema)s.input_du_performance_projections b
-                 ON a.year = b.year
-             LEFT JOIN %(schema)s.input_du_cost_plant_surface c
-                 ON a.year = c.year
-             LEFT JOIN %(schema)s.input_du_cost_plant_subsurface d
-                 ON a.year = d.year
-             WHERE a.year = %(year)s;""" % inputs
+    sql = """SELECT a.future_drilling_cost_improvements_pct, 
+                	a.exploration_slim_well_cost_pct_of_normal_well, 
+                	a.exploration_fixed_costs_dollars, 
+                	b.plant_installation_costs_dollars_per_kw,
+                	b.om_labor_costs_dlrs_per_kw_per_year,
+                	b.om_plant_costs_pct_plant_cap_costs_per_year,
+                	b.om_well_costs_pct_plant_cap_costs_per_year,
+                	b.distribution_network_construction_costs_dollars_per_m,
+                	b.operating_costs_reservoir_pumping_costs_dollars_per_gal,
+                	b.operating_costs_pumping_costs_dollars_per_gal_mile,
+                	b.natural_gas_peaking_boilers_dollars_per_kw,
+                	c.peaking_boilers_pct_of_peak_demand,
+                	c.max_acceptable_drawdown_pct_of_initial_capacity
+            FROM %(schema)s.input_du_cost_plant_subsurface a
+            LEFT JOIN %(schema)s.input_du_cost_plant_surface b
+                         ON a.year = b.year
+            LEFT JOIN %(schema)s.input_du_performance_projections c
+                         ON a.year = c.year
+            where a.year = %(year)s;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
     
     return df
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_reservoir_factors(con, schema, year):
+    
+    inputs = locals().copy()
+
+    sql = """SELECT 'egs'::text as resource_type, 
+                	a.wells_per_wellset, 
+                	a.expected_drawdown_pct_per_year,
+                	b.reservoir_stimulation_costs_dollars_per_well_set
+            FROM %(schema)s.input_du_egs_reservoir_factors a
+            LEFT JOIN  %(schema)s.input_du_cost_plant_subsurface b
+                	ON a.year = b.year
+            WHERE a.year = %(year)s
+            
+            UNION ALL
+            
+            SELECT 'hydrothermal'::text as resource_type, 
+                	c.wells_per_wellset, 
+                 c.expected_drawdown_pct_per_year,
+                 0::NUMERIC as reservoir_stimulation_costs_dollars_per_well_set
+            FROM %(schema)s.input_du_hydrothermal_reservoir_factors c
+            WHERE c.year = %(year)s;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df    
+    
+    
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_plant_cost_data(resource_df, costs_df):
+def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df, plant_finances_df,
+                                    plant_construction_factor_df, plant_depreciation_df):
     
     inputs = locals().copy()
 
@@ -217,6 +238,8 @@ def get_plant_finance_data(con, schema, year):
                     rate_of_return_on_equity,
                     debt_fraction,
                     tax_rate,
+                    construction_period_yrs,
+                    plant_lifetime_yrs,
                     depreciation_period
             FROM %(schema)s.input_du_plant_finances
             where year = %(year)s;""" % inputs

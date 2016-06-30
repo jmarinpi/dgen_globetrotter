@@ -274,13 +274,21 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     hack_year = 2014
                     resource_df = supply.get_resource_data(con, schema, hack_year)
                     # get the du cost data
-                    costs_df = supply.get_plant_cost_data(con, schema, hack_year)
-                    # apply the plant cost data
-                    resources_with_costs_df = supply.apply_plant_cost_data(resource_df, costs_df)
+                    costs_and_performance_df = supply.get_plant_cost_and_performance_data(con, schema, hack_year)
+                    reservoir_factors_df = supply.get_reservoir_factors(con, schema, hack_year)
                     # get the plant finance data
                     plant_finances_df = supply.get_plant_finance_data(con, schema, hack_year)
                     plant_construction_factor_df = supply.get_plant_construction_factor_data(con, schema, hack_year)
                     plant_depreciation_df = supply.get_plant_depreciation_data(con, schema, hack_year)                    
+                    # apply the plant cost data
+                    resources_with_costs_df = supply.apply_cost_and_performance_data(resource_df, 
+                                                                                     costs_and_performance_df, 
+                                                                                     reservoir_factors_df,
+                                                                                     plant_finances_df,
+                                                                                     plant_construction_factor_df,
+                                                                                     plant_depreciation_df
+                                                                                     )
+
                     
                     #==============================================================================
                     # GET RATE TARIFF LOOKUP TABLE FOR EACH SECTOR                                    
