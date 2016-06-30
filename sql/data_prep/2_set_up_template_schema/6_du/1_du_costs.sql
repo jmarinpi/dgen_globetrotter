@@ -6,9 +6,10 @@ DROP TABLE IF EXISTs diffusion_template.input_du_cost_plant_subsurface CASCADE;
 CREATE TABLE diffusion_template.input_du_cost_plant_subsurface
 (
 	year integer NOT NULL,
-	future_drilling_cost_improvements_pct_current_costs numeric NOT NULL,
+	future_drilling_cost_improvements_pct numeric NOT NULL,
 	reservoir_stimulation_costs_dollars_per_well_set numeric NOT NULL,
-	exploration_and_discovery_costs_pct_cap_costs numeric NOT NULL,
+	exploration_slim_well_cost_pct_of_normal_well numeric not null,
+	exploration_fixed_costs_dollars numeric not null,
 	CONSTRAINT input_du_cost_plant_subsurface_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -19,12 +20,13 @@ CREATE TABLE diffusion_template.input_du_cost_plant_surface
 (
 	year integer not null,
 	plant_installation_costs_dollars_per_kw numeric not null,
-	fixed_om_costs_pct_cap_costs numeric not null,
+	om_labor_costs_dlrs_per_kw_per_year numeric not null,
+	om_plant_costs_pct_plant_cap_costs_per_year numeric not null,
+	om_well_costs_pct_plant_cap_costs_per_year numeric not null,
 	distribution_network_construction_costs_dollars_per_m numeric not null,
 	operating_costs_reservoir_pumping_costs_dollars_per_gal numeric not null,
 	operating_costs_pumping_costs_dollars_per_gal_mile numeric not null,
 	natural_gas_peaking_boilers_dollars_per_kw numeric not null,
-	construction_period_yrs numeric not null,
 	CONSTRAINT input_du_cost_plant_surface_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT

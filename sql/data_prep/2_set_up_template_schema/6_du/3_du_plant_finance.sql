@@ -10,6 +10,8 @@ CREATE TABLE diffusion_template.input_du_plant_finances
 	rate_of_return_on_equity numeric not null,
 	debt_fraction numeric not null,
 	tax_rate numeric not null,
+	construction_period_yrs integer not null,
+	plant_lifetime_yrs integer not null,
 	depreciation_period integer not null,
 	CONSTRAINT input_du_plant_finances_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
