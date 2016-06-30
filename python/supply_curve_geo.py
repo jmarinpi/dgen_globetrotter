@@ -218,7 +218,25 @@ def get_reservoir_factors(con, schema, year):
     
     return df    
     
+
+#%%
+def drilling_costs_per_depth_m_deep(depth_m, future_drilling_cost_improvements_pct):
     
+    # applies to wells > 500 m deep
+    costs_dlrs_base = (1.72 * 10**-7 * depth_m**2 + 2.3 * 10**-3 * depth_m - 0.62) * 1e6
+    costs_dlrs = costs_dlrs_base * (1 - future_drilling_cost_improvements_pct)
+    
+    return costs_dlrs
+
+
+#%%
+def drilling_costs_per_depth_m_shallow(depth_m, future_drilling_cost_improvements_pct):
+    
+    # applies to wells < 500 m deep
+    costs_dlrs_base = 1146 * depth_m
+    costs_dlrs = costs_dlrs_base * (1 - future_drilling_cost_improvements_pct)
+    
+    return costs_dlrs    
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -236,17 +254,55 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # merge the finances (effecively a cross join)
     dataframe = pd.merge(dataframe, plant_finances_df, how = 'left', on = ['year'])
  
+    # for testing:
+    #dataframe = pd.read_csv('/Users/mgleason/Desktop/plant_dfs/dataframe.csv')
 
     # get count of rows
     nrows = dataframe.shape[0]
     # get number of years of plant lifetime (should be the same for all resources)
     plant_lifetime = dataframe['plant_lifetime_yrs'].unique()[0]
+    # build some helper arrays (used later)
+    constant_lifetime_array = np.ones((nrows, plant_lifetime))
+    years_array = np.array([np.arange(1, 31)] * nrows)
     
    
     # determine the capacity per well (based on energy and plant lifetime in years)
+    # ***
     dataframe['capacity_per_wellset_mw'] = dataframe['resource_per_wellset_mwh']/(dataframe['plant_lifetime_yrs'] * 8760)
+    # ***
     
+    # Drilling Costs
+    dataframe['drilling_cost_per_well_dlrs'] = np.where(dataframe['depth_m'] >= 500, 
+                                                   drilling_costs_per_depth_m_deep(dataframe['depth_m'], dataframe['future_drilling_cost_improvements_pct']), 
+                                                   drilling_costs_per_depth_m_shallow(dataframe['depth_m'], dataframe['future_drilling_cost_improvements_pct'])
+                                                   )
+    # ***
+    dataframe['drilling_cost_per_wellset_dlrs'] = dataframe['drilling_cost_per_well_dlrs'] * dataframe['wells_per_wellset']
+    # ***
+
+    # Exploration Costs
+    dataframe['exploration_well_costs_per_wellset_dlrs'] = dataframe['drilling_cost_per_well_dlrs'] * dataframe['exploration_slim_well_cost_pct_of_normal_well']
+    # ***    
+    dataframe['exploration_total_costs_per_wellset_dlrs'] = dataframe['exploration_well_costs_per_wellset_dlrs'] + dataframe['exploration_fixed_costs_dollars']
+    # ***
+
+    # Surface Plant Capital Costs
+    # ***
+    dataframe['plant_installation_costs_per_wellset_dlrs'] = dataframe['capacity_per_wellset_mw'] * dataframe['plant_installation_costs_dollars_per_kw']
+    # ***
     
+    # O&M Costs
+    dataframe['om_labor_costs_per_wellset_per_year_dlrs'] = dataframe['om_labor_costs_dlrs_per_kw_per_year'] * dataframe['capacity_per_wellset_mw']
+    dataframe['om_plant_costs_per_wellset_per_year_dlrs'] = dataframe['om_plant_costs_pct_plant_cap_costs_per_year'] * dataframe['plant_installation_costs_per_wellset_dlrs']
+    dataframe['om_well_costs_per_wellset_per_year_dlrs'] = dataframe['om_well_costs_pct_well_cap_costs_per_year'] * dataframe['drilling_cost_per_wellset_dlrs']
+    dataframe['om_total_costs_per_wellset_per_year_dlrs'] = dataframe['om_labor_costs_per_wellset_per_year_dlrs'] + dataframe['om_plant_costs_per_wellset_per_year_dlrs'] + dataframe['om_well_costs_per_wellset_per_year_dlrs']
+    # ***  
+    # convert to a time series
+    dataframe['om_total_costs_per_wellset_dlrs'] = (dataframe['om_total_costs_per_wellset_per_year_dlrs'].values[:,None] * constant_lifetime_array).tolist()
+    # ***
+
+    
+    reservoir_stimulation_costs_dollars_per_well_set
     
     # determine which years, if any, will require purchase of additional boilers due to drawdown
     dataframe['years_to_drawdown'] = np.floor(np.log(dataframe['max_acceptable_drawdown_pct_of_initial_capacity'])/np.log(1-dataframe['expected_drawdown_pct_per_year'])).astype(np.int64)
@@ -257,7 +313,6 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
 
     
     years_exceeding_drawdown_during_lifetime = np.where(years_exceeding_drawdown < plant_lifetime, years_exceeding_drawdown, -100)
-    years_array = np.array([np.arange(1, 31)] * nrows)
     bool_years_exceeding_drawdown = np.sum((years_array[:,:,None] - years_exceeding_drawdown_during_lifetime[:,None,:] == 0), 2)
     dataframe['boiler_purchase_years'] = bool_years_exceeding_drawdown.tolist()
 

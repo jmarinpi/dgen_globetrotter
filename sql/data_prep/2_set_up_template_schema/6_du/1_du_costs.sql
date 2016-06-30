@@ -22,7 +22,7 @@ CREATE TABLE diffusion_template.input_du_cost_plant_surface
 	plant_installation_costs_dollars_per_kw numeric not null,
 	om_labor_costs_dlrs_per_kw_per_year numeric not null,
 	om_plant_costs_pct_plant_cap_costs_per_year numeric not null,
-	om_well_costs_pct_plant_cap_costs_per_year numeric not null,
+	om_well_costs_pct_well_cap_costs_per_year numeric not null,
 	distribution_network_construction_costs_dollars_per_m numeric not null,
 	operating_costs_reservoir_pumping_costs_dollars_per_gal numeric not null,
 	operating_costs_pumping_costs_dollars_per_gal_mile numeric not null,
