@@ -25,7 +25,7 @@ CREATE TABLE diffusion_template.input_du_cost_plant_surface
 	om_well_costs_pct_well_cap_costs_per_year numeric not null,
 	distribution_network_construction_costs_dollars_per_m numeric not null,
 	operating_costs_reservoir_pumping_costs_dollars_per_gal numeric not null,
-	operating_costs_pumping_costs_dollars_per_gal_mile numeric not null,
+	operating_costs_distribution_pumping_costs_dollars_per_gal_m numeric not null,
 	natural_gas_peaking_boilers_dollars_per_kw numeric not null,
 	CONSTRAINT input_du_cost_plant_surface_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE

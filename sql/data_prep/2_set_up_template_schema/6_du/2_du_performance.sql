@@ -24,6 +24,7 @@ CREATE TABLE diffusion_template.input_du_egs_reservoir_factors
 	resource_recovery_factor numeric not null,
 	area_per_wellset_sqkm numeric not null,
 	wells_per_wellset integer not null,
+	production_liters_per_second numeric not null,
 	expected_drawdown_pct_per_year numeric not null,
 	CONSTRAINT input_du_egs_reservoir_factors_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE

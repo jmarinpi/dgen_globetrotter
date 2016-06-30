@@ -174,10 +174,10 @@ def get_plant_cost_and_performance_data(con, schema, year):
                 	b.plant_installation_costs_dollars_per_kw,
                 	b.om_labor_costs_dlrs_per_kw_per_year,
                 	b.om_plant_costs_pct_plant_cap_costs_per_year,
-                	b.om_well_costs_pct_plant_cap_costs_per_year,
+                	b.om_well_costs_pct_well_cap_costs_per_year,
                 	b.distribution_network_construction_costs_dollars_per_m,
                 	b.operating_costs_reservoir_pumping_costs_dollars_per_gal,
-                	b.operating_costs_pumping_costs_dollars_per_gal_mile,
+                	b.operating_costs_pumping_costs_dollars_per_gal_m,
                 	b.natural_gas_peaking_boilers_dollars_per_kw,
                 	c.peaking_boilers_pct_of_peak_demand,
                 	c.max_acceptable_drawdown_pct_of_initial_capacity
@@ -200,6 +200,7 @@ def get_reservoir_factors(con, schema, year):
     sql = """SELECT 'egs'::text as resource_type, 
                 	a.wells_per_wellset, 
                 	a.expected_drawdown_pct_per_year,
+                  a.production_liters_per_second * .264172 * 3.154e7 as production_gallons_per_year,
                 	b.reservoir_stimulation_costs_dollars_per_well_set
             FROM %(schema)s.input_du_egs_reservoir_factors a
             LEFT JOIN  %(schema)s.input_du_cost_plant_subsurface b
@@ -211,6 +212,7 @@ def get_reservoir_factors(con, schema, year):
             SELECT 'hydrothermal'::text as resource_type, 
                 	c.wells_per_wellset, 
                  c.expected_drawdown_pct_per_year,
+                 31.5 * .264172 * 3.154e7::NUMERIC as production_gallons_per_year,
                  0::NUMERIC as reservoir_stimulation_costs_dollars_per_well_set
             FROM %(schema)s.input_du_hydrothermal_reservoir_factors c
             WHERE c.year = %(year)s;""" % inputs
@@ -240,8 +242,21 @@ def drilling_costs_per_depth_m_shallow(depth_m, future_drilling_cost_improvement
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_distribution_network_data():
+    
+    # TODO: create this table in postgres and pull from it here
+    df = pd.DataFrame()
+    df['tract_id_alias'] = [1, 2]
+    df['distribution_m_per_mw'] = 5000.
+    df['distribution_total_m'] = 10000.
+    
+    return df
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df, plant_finances_df,
-                                    plant_construction_factor_df, plant_depreciation_df):
+                                    plant_construction_factor_df, plant_depreciation_df, distribution_df):
     
     inputs = locals().copy()
 
@@ -253,6 +268,9 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     dataframe = pd.merge(dataframe, costs_and_performance_df, how = 'left', on = ['year'])
     # merge the finances (effecively a cross join)
     dataframe = pd.merge(dataframe, plant_finances_df, how = 'left', on = ['year'])
+    # merge the distribution demand density info (left join on tract id alias)
+    dataframe = pd.merge(dataframe, distribution_df, how = 'left', on = ['tract_id_alias'])
+    
  
     # for testing:
     #dataframe = pd.read_csv('/Users/mgleason/Desktop/plant_dfs/dataframe.csv')
@@ -301,8 +319,27 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     dataframe['om_total_costs_per_wellset_dlrs'] = (dataframe['om_total_costs_per_wellset_per_year_dlrs'].values[:,None] * constant_lifetime_array).tolist()
     # ***
 
-    
-    reservoir_stimulation_costs_dollars_per_well_set
+    # ***
+    # Reservoir Stimulation Costs
+    # need this as is
+    #dataframe['reservoir_stimulation_costs_per_wellset_dlrs']
+    # ***
+
+    # Distribution Network Construction Costs
+    # TODO: double-check this logic makes sense
+    # ***
+    dataframe['distribution_network_construction_costs_per_wellset_dlrs'] = dataframe['distribution_network_construction_costs_dollars_per_m'] * dataframe['distribution_m_per_mw'] * dataframe['capacity_per_wellset_mw']
+    # ***
+
+    # Operating Costs
+    dataframe['operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_reservoir_pumping_costs_dollars_per_gal'] * dataframe['production_gallons_per_year']
+    dataframe['operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_distribution_pumping_costs_dollars_per_gal_m'] * dataframe['production_gallons_per_year'] *  dataframe['distribution_m_per_mw'] * dataframe['capacity_per_wellset_mw']
+    dataframe['total_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs'] + dataframe['operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs']
+    # convert to a time series
+    # ***
+    dataframe['total_pumping_costs_per_wellset_dlrs'] = (dataframe['total_pumping_costs_per_wellset_per_year_dlrs'].values[:,None] * constant_lifetime_array).tolist()
+    # ***
+
     
     # determine which years, if any, will require purchase of additional boilers due to drawdown
     dataframe['years_to_drawdown'] = np.floor(np.log(dataframe['max_acceptable_drawdown_pct_of_initial_capacity'])/np.log(1-dataframe['expected_drawdown_pct_per_year'])).astype(np.int64)

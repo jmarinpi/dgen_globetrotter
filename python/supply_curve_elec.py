@@ -68,5 +68,10 @@ def get_plant_depreciation_data(con, schema, year):
     # DO NOTHING -- NOT USED IN ELEC
     return
 
-    
+
 #%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_distribution_network_data():
+    
+    # DO NOTHING -- NOT USED IN ELEC
+    return
