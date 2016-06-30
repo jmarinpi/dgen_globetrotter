@@ -177,7 +177,7 @@ def get_plant_cost_and_performance_data(con, schema, year):
                 	b.om_well_costs_pct_well_cap_costs_per_year,
                 	b.distribution_network_construction_costs_dollars_per_m,
                 	b.operating_costs_reservoir_pumping_costs_dollars_per_gal,
-                	b.operating_costs_pumping_costs_dollars_per_gal_m,
+                	b.operating_costs_distribution_pumping_costs_dollars_per_gal_m,
                 	b.natural_gas_peaking_boilers_dollars_per_kw,
                 	c.peaking_boilers_pct_of_peak_demand,
                 	c.max_acceptable_drawdown_pct_of_initial_capacity
@@ -332,6 +332,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # ***
 
     # Operating Costs
+    # TODO: make sure thesee make sense given plant capacity factor (won't be pumping all the time)
     dataframe['operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_reservoir_pumping_costs_dollars_per_gal'] * dataframe['production_gallons_per_year']
     dataframe['operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_distribution_pumping_costs_dollars_per_gal_m'] * dataframe['production_gallons_per_year'] *  dataframe['distribution_m_per_mw'] * dataframe['capacity_per_wellset_mw']
     dataframe['total_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs'] + dataframe['operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs']
@@ -340,21 +341,70 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     dataframe['total_pumping_costs_per_wellset_dlrs'] = (dataframe['total_pumping_costs_per_wellset_per_year_dlrs'].values[:,None] * constant_lifetime_array).tolist()
     # ***
 
-    
+    # Peaking Boiler Costs
+    # TODO: check this logic makes sense - is peak demand simply the wellset capacity?
+    dataframe['peaking_boilers_capacity_kw_per_wellset'] = dataframe['capacity_per_wellset_mw'] * 1000. * dataframe['peaking_boilers_pct_of_peak_demand']
+    # ***    
+    dataframe['peaking_boilers_cost_per_wellset_dlrs'] = dataframe['peaking_boilers_capacity_kw_per_wellset'] * dataframe['natural_gas_peaking_boilers_dollars_per_kw'] 
+    # ***
+
+    # Additional Boiler Costs due to Reservoir Drawdown
     # determine which years, if any, will require purchase of additional boilers due to drawdown
-    dataframe['years_to_drawdown'] = np.floor(np.log(dataframe['max_acceptable_drawdown_pct_of_initial_capacity'])/np.log(1-dataframe['expected_drawdown_pct_per_year'])).astype(np.int64)
+    dataframe['years_to_drawdown'] = np.floor(np.log(1-dataframe['max_acceptable_drawdown_pct_of_initial_capacity'])/np.log(1-dataframe['expected_drawdown_pct_per_year'])).astype(np.int64)
     min_years_to_drawdown = dataframe['years_to_drawdown'].min()   
     max_multiples = plant_lifetime/min_years_to_drawdown
     multiples = np.arange(1, max_multiples+1)
     years_exceeding_drawdown = dataframe['years_to_drawdown'].values.reshape(nrows, 1) * multiples
-
-    
     years_exceeding_drawdown_during_lifetime = np.where(years_exceeding_drawdown < plant_lifetime, years_exceeding_drawdown, -100)
     bool_years_exceeding_drawdown = np.sum((years_array[:,:,None] - years_exceeding_drawdown_during_lifetime[:,None,:] == 0), 2)
     dataframe['boiler_purchase_years'] = bool_years_exceeding_drawdown.tolist()
 
+    # determine the cost of boilers in each of these years
+    dataframe['drawdown_boilers_capacity_kw_per_wellset'] = dataframe['capacity_per_wellset_mw'] * dataframe['max_acceptable_drawdown_pct_of_initial_capacity'] * 1000.
+    dataframe['drawdown_boilers_cost_per_wellset_per_purchase_dlrs'] = dataframe['drawdown_boilers_capacity_kw_per_wellset'] * dataframe['natural_gas_peaking_boilers_dollars_per_kw'] 
+    # convert to a time series (using the purchase years from above)
+    # ***
+    dataframe['drawdown_boilers_cost_per_wellset_dlrs'] = (np.array(dataframe['boiler_purchase_years'].tolist(), dtype = np.float64) * dataframe['drawdown_boilers_cost_per_wellset_per_purchase_dlrs'].values[:, None]).tolist()
+    # ***
+
+    # combine all upfront costs
+    dataframe['upfront_costs_per_wellset_dlrs'] = ( dataframe['peaking_boilers_cost_per_wellset_dlrs'] +
+                                                    dataframe['distribution_network_construction_costs_per_wellset_dlrs'] +
+                                                    dataframe['plant_installation_costs_per_wellset_dlrs'] +
+                                                    dataframe['exploration_total_costs_per_wellset_dlrs'] +
+                                                    dataframe['drilling_cost_per_wellset_dlrs']
+                                                    )
+    # combine all annual costs
+    dataframe['annual_costs_per_wellset_dlrs'] = (  np.array(dataframe['drawdown_boilers_cost_per_wellset_dlrs'].tolist(), dtype = np.float64) +
+                                                    np.array(dataframe['total_pumping_costs_per_wellset_dlrs'].tolist(), dtype = np.float64) +
+                                                    np.array(dataframe['om_total_costs_per_wellset_dlrs'].tolist(), dtype = np.float64)
+                                                    ).tolist()
+
+    out_cols = ['tract_id_alias',
+                   'resource_id',
+                   'resource_type',
+                   'depth_m',
+                   'system_type',
+                   'n_wellsets_in_tract',
+                   'resource_per_wellset_mwh',
+                   'capacity_per_wellset_mw',
+                   'upfront_costs_per_wellset_dlrs', 
+                   'annual_costs_per_wellset_dlrs', 
+                   'inflation_rate',
+                   'interest_rate_nominal',
+                   'interest_rate_during_construction_nominal',
+                   'rate_of_return_on_equity',
+                   'debt_fraction',
+                   'tax_rate',
+                   'construction_period_yrs',
+                   'plant_lifetime_yrs',
+                   'depreciation_period']
+    dataframe = dataframe[out_cols]                                                    
+    #dataframe.to_csv('/Users/mgleason/Desktop/plant_dfs/dataframe_costs_and_finances.csv')
     
-    return 
+    return dataframe
+    
+    
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_plant_finance_data(con, schema, year):
