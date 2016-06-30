@@ -136,7 +136,8 @@ def get_resource_data(con, schema, year):
     
     inputs = locals().copy()
         
-    sql = """SELECT a.tract_id_alias,
+    sql = """SELECT %(year)s as year,
+                    a.tract_id_alias,
                     a.resource_id,
                     a.resource_type,
                     a.system_type,
@@ -147,7 +148,8 @@ def get_resource_data(con, schema, year):
              
              UNION ALL
              
-             SELECT b.tract_id_alias,
+             SELECT b.year,
+                     b.tract_id_alias,
                     b.resource_id::TEXT as resource_id,
                     b.resource_type,
                     b.system_type,
@@ -165,7 +167,8 @@ def get_resource_data(con, schema, year):
 def get_plant_cost_and_performance_data(con, schema, year):
     
     inputs = locals().copy()
-    sql = """SELECT a.future_drilling_cost_improvements_pct, 
+    sql = """SELECT a.year, 
+                  a.future_drilling_cost_improvements_pct, 
                 	a.exploration_slim_well_cost_pct_of_normal_well, 
                 	a.exploration_fixed_costs_dollars, 
                 	b.plant_installation_costs_dollars_per_kw,
@@ -224,6 +227,40 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     
     inputs = locals().copy()
 
+
+    
+    # merge resources with reservoir factors (left join on resource_type (egs or hydrothermal))
+    dataframe = pd.merge(resource_df, reservoir_factors_df, how = 'left', on = ['resource_type'])
+    # merge the costs and performance (effecively a cross join)
+    dataframe = pd.merge(dataframe, costs_and_performance_df, how = 'left', on = ['year'])
+    # merge the finances (effecively a cross join)
+    dataframe = pd.merge(dataframe, plant_finances_df, how = 'left', on = ['year'])
+ 
+
+    # get count of rows
+    nrows = dataframe.shape[0]
+    # get number of years of plant lifetime (should be the same for all resources)
+    plant_lifetime = dataframe['plant_lifetime_yrs'].unique()[0]
+    
+   
+    # determine the capacity per well (based on energy and plant lifetime in years)
+    dataframe['capacity_per_wellset_mw'] = dataframe['resource_per_wellset_mwh']/(dataframe['plant_lifetime_yrs'] * 8760)
+    
+    
+    
+    # determine which years, if any, will require purchase of additional boilers due to drawdown
+    dataframe['years_to_drawdown'] = np.floor(np.log(dataframe['max_acceptable_drawdown_pct_of_initial_capacity'])/np.log(1-dataframe['expected_drawdown_pct_per_year'])).astype(np.int64)
+    min_years_to_drawdown = dataframe['years_to_drawdown'].min()   
+    max_multiples = plant_lifetime/min_years_to_drawdown
+    multiples = np.arange(1, max_multiples+1)
+    years_exceeding_drawdown = dataframe['years_to_drawdown'].values.reshape(nrows, 1) * multiples
+
+    
+    years_exceeding_drawdown_during_lifetime = np.where(years_exceeding_drawdown < plant_lifetime, years_exceeding_drawdown, -100)
+    years_array = np.array([np.arange(1, 31)] * nrows)
+    bool_years_exceeding_drawdown = np.sum((years_array[:,:,None] - years_exceeding_drawdown_during_lifetime[:,None,:] == 0), 2)
+    dataframe['boiler_purchase_years'] = bool_years_exceeding_drawdown.tolist()
+
     
     return 
 #%%
@@ -232,7 +269,8 @@ def get_plant_finance_data(con, schema, year):
     
     inputs = locals().copy()
     
-    sql = """SELECT inflation_rate,
+    sql = """SELECT year,
+                    inflation_rate,
                     interest_rate_nominal,
                     interest_rate_during_construction_nominal,
                     rate_of_return_on_equity,
@@ -254,7 +292,9 @@ def get_plant_construction_factor_data(con, schema, year):
     
     inputs = locals().copy()
     
-    sql = """SELECT year_of_construction, capital_fraction
+    sql = """SELECT year, 
+                    year_of_construction, 
+                    capital_fraction
             FROM %(schema)s.input_du_plant_construction_finance_factor
             where year = %(year)s;""" % inputs
             
@@ -269,7 +309,9 @@ def get_plant_depreciation_data(con, schema, year):
     
     inputs = locals().copy()
     
-    sql = """SELECT year_of_operation, depreciation_fraction
+    sql = """SELECT year,
+                    year_of_operation,
+                    depreciation_fraction
             FROM %(schema)s.input_du_plant_depreciation_factor
             where year = %(year)s;""" % inputs
             
