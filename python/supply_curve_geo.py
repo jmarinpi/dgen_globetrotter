@@ -256,7 +256,7 @@ def get_distribution_network_data():
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df, plant_finances_df,
-                                    plant_construction_factor_df, plant_depreciation_df, distribution_df):
+                                    distribution_df):
     
     inputs = locals().copy()
 
@@ -400,7 +400,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
                    'plant_lifetime_yrs',
                    'depreciation_period']
     dataframe = dataframe[out_cols]                                                    
-    #dataframe.to_csv('/Users/mgleason/Desktop/plant_dfs/dataframe_costs_and_finances.csv')
+    #dataframe.to_csv('/Users/mgleason/Desktop/plant_dfs/dataframe_costs_and_finances.csv', index = False)
     
     return dataframe
     

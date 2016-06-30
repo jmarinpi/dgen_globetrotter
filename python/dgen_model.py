@@ -287,8 +287,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                                                      costs_and_performance_df, 
                                                                                      reservoir_factors_df,
                                                                                      plant_finances_df,
-                                                                                     plant_construction_factor_df,
-                                                                                     plant_depreciation_df,
                                                                                      distribution_df
                                                                                      )
 
