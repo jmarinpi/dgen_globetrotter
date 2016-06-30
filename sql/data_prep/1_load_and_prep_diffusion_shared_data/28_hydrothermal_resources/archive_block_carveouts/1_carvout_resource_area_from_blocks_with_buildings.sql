@@ -61,7 +61,7 @@ where st_intersects(d.the_geom_96703, e.the_poly_96703));
 -- Identify Intersecting Blocks & Append to Array
 -----------------------------------------------------
 
-drop table if exists diffusion_geo.blocks_with_blgs_intersecting_hydro_fishnets;
+
 set role 'diffusion-writers';
 create table diffusion_geo.blocks_with_blgs_intersecting_hydro_fishnet as  (select gid, uid_cell_id, b.pgid as block_pgids FROM diffusion_data_geo.hydro_resource_poly_fishnets_aw_with_bldgs a INNER JOIN diffusion_data_geo.blocks_with_buildings_geoms b ON st_intersects(a.the_geom_96703, b.the_poly_96703));
 
@@ -99,6 +99,19 @@ update diffusion_geo.hydrothermal_resource_poly_carveouts_by_block
 	cell_pct_beneficial_heat_mwh_30yrs = res_beneficial_heat_mwh_30yrs / (pct_cell_area * 100);
 
 
+-- Clean Up schemas
+-- DROP TABLE diffusion_data_geo.hydro_resource_poly_fishnets_aw;
+-- DROP TABLE diffusion_data_geo.hydro_resource_poly_fishnets_aw_all;
+-- DROP TABLE diffusion_data_geo.hydro_resource_poly_fishnets_aw_temp;
+-- DROP TABLE diffusion_data_geo.hydro_resource_poly_fishnets_aw_temp2;
+-- DROP TABLE diffusion_data_geo.hydro_resource_poly_fishnets_aw_with_bldgs;
+-- DROP TABLE diffusion_data_geo.carveouts_hydropoly_fishnets_spaced_by_aw_with_blocks;
+-- drop table if exists diffusion_geo.blocks_with_blgs_intersecting_hydro_fishnets;
+-- 
+-- set role 'diffusion-writers';
+-- create table diffusion_data_geo.resources_hydrothermal_poly_carveouts_by_block as (
+-- select * from diffusion_geo.resources_hydrothermal_poly_carveouts_by_block);
+-- DROP TABLE diffusion_geo.resources_hydrothermal_poly_carveouts_by_block;
 
 
 
