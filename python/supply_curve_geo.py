@@ -48,19 +48,20 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed):
              CREATE UNLOGGED TABLE %(schema)s.resources_egs_hdr AS
              WITH a AS
             (
-                	SELECT unnest(array[1,2]) as tract_id_alias, -- todo: this should come from the lkup table
-                         a.gid, 
-                         a.area_sqkm, -- todo: replace with correct area_sqkm from lkup table
+                	SELECT a.tract_id_alias, 
+                         a.cell_gid as gid, 
+                         a.area_of_intersection_sqkm as area_sqkm,
                          b.depth_km, 
                          b.thickness_km,
                 		diffusion_shared.r_rnorm_rlnorm(b.t_deg_c_mean, 
                                                         b.t_deg_c_sd, 
                                                         'normal'::TEXT, 
-                                                        1 * %(seed)s) as t_deg_c_est -- todo: replace 1 with tract_id_alias * seed
-                	FROM dgeo.smu_t35km_2016 a -- todo: change this to the intersected lkup table from Meghan
+                                                        a.tract_id_alias * %(seed)s) as t_deg_c_est
+                	FROM diffusion_geo.egs_tract_id_alias_lkup a
                 	LEFT JOIN diffusion_geo.egs_hdr_temperature_at_depth b
-                	ON a.gid = b.gid
-                  WHERE a.gid = 1 -- todo: remove this -- but, we should have some sort of other filter that defines the tracts to consider
+                    	ON a.cell_gid = b.gid
+                  INNER JOIN %(schema)s.tracts_to_model c
+                      ON a.tract_id_alias = c.tract_id_alias
             ),
             b as
             (
@@ -95,10 +96,10 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed):
                 	CASE WHEN extractable_resource_mwh < 0 THEN 0 -- prevent negative values
                 	ELSE c.extractable_resource_mwh/c.n_wellsets_in_tract
                 	END as extractable_resource_per_wellset_in_tract_mwh
-            FROM c;""" % inputs
+            FROM c
+            WHERE c.n_wellsets_in_tract > 0;""" % inputs
     cur.execute(sql)
     con.commit()
-    # TODO: add some mechanism for only compiling data for tracts in states to model
     # TODO: set this up to use p_run?
     
 
