@@ -244,19 +244,26 @@ def drilling_costs_per_depth_m_shallow(depth_m, future_drilling_cost_improvement
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_distribution_network_data(con, schema): # todo: add con, schema
-    
-    # TODO: create this table in postgres and pull from it here
-    df = pd.DataFrame()
-    df['tract_id_alias'] = [1, 2]
-    df['distribution_m_per_mw'] = 5000.
-    df['distribution_total_m'] = 10000.
-    
-    # Todo: run the query to derive a postgres result mimiccking the format of the table above
-    # todo: pull that query into a pandas data frame using pd.read_sql() _- see examples above
-    # return that dataframe     
-    
-    return df
 
+    inputs = locals().copy()
+
+    # TODo:-- convert the mwh to mw using demand curves/load profiles (not 8760 constant assumption)
+    sql = """with a as (select tract_id_alias,
+	((sum(space_heat_kbtu_in_bin + water_heat_kbtu_in_bin)) * 0.0002930711)/8760 as heat_demand_mw
+	FROM %(schema)s.agent_core_attributes_all
+	where tech = 'du'
+	GROUP BY tract_id_alias)
+    select a.tract_id_alias,
+    (a.heat_demand_mw / b.road_meters) as distribution_m_per_mw,
+    b.road_meters as distribution_total_m
+    from a
+    left join
+    diffusion_geo.tract_road_length b
+    on a.tract_id_alias = b.tract_id_alias;""" % inputs
+
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
