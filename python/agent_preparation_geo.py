@@ -467,20 +467,22 @@ def estimate_system_ages(schema, sector_abbr, chunks, seed, pool, pg_conn_string
 
     sql = """DROP TABLE IF EXISTS %(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s;
             CREATE UNLOGGED TABLE %(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s AS
-            SELECT agent_id,             
-                CASE WHEN a.space_heat_age_min IS NULL OR a.space_heat_age_max IS NULL THEN NULL::INTEGER
-                ELSE ROUND(diffusion_shared.r_runif(a.space_heat_age_min, a.space_heat_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
-                END as space_heat_system_age, 
-
-                CASE WHEN a.space_cool_age_min IS NULL OR a.space_cool_age_max IS NULL THEN NULL::INTEGER
-                ELSE ROUND(diffusion_shared.r_runif(a.space_cool_age_min, a.space_cool_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
-                END as space_cool_system_age, 
-                
-                CASE WHEN a.water_heat_age_min IS NULL OR a.water_heat_age_max IS NULL THEN NULL::INTEGER
-                ELSE ROUND(diffusion_shared.r_runif(a.water_heat_age_min, a.water_heat_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
-                END as water_heat_system_age           
-        
-            FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a;""" % inputs
+            WITH a as
+            (
+                SELECT agent_id,             
+                    CASE WHEN a.space_heat_age_min IS NULL OR a.space_heat_age_max IS NULL THEN NULL::INTEGER
+                    ELSE ROUND(diffusion_shared.r_runif(a.space_heat_age_min, a.space_heat_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
+                    END as space_heat_system_age, 
+    
+                    CASE WHEN a.space_cool_age_min IS NULL OR a.space_cool_age_max IS NULL THEN NULL::INTEGER
+                    ELSE ROUND(diffusion_shared.r_runif(a.space_cool_age_min, a.space_cool_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
+                    END as space_cool_system_age
+            
+                FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
+            )
+            SELECT agent_id, space_heat_system_age, space_cool_system_age,
+                    r_median(ARRAY[space_heat_system_age, space_cool_system_age]) as average_system_age
+            FROM a;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
 
     # add primary key
@@ -510,7 +512,9 @@ def estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_s
                 AND space_fuel = 'natural gas'
                 AND sector_abbr = 'res'
                 LIMIT 1
-            )
+            ),
+            b as
+            (
             SELECT a.agent_id,     
                 CASE WHEN space_heat_equip = 'none' THEN NULL::INTEGER
                 ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id), 0)::INTEGER
@@ -518,14 +522,15 @@ def estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_s
 
                 CASE WHEN space_cool_equip = 'none' THEN NULL::INTEGER
                 ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id), 0)::INTEGER
-                END as space_cool_system_expected_lifetime,
-
-                CASE WHEN water_heat_equip = 'none' THEN NULL::INTEGER
-                ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id), 0)::INTEGER
-                END as water_heat_system_expected_lifetime
+                END as space_cool_system_expected_lifetime
                 
             FROM  %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
-            CROSS JOIN distributions b;""" % inputs
+            CROSS JOIN distributions b
+            )
+            SELECT agent_id, space_heat_system_expected_lifetime,
+                    space_cool_system_expected_lifetime,
+                    r_median(ARRAY[space_heat_system_expected_lifetime, space_cool_system_expected_lifetime]) as average_system_expected_lifetime
+            FROM b;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
 
     # add primary key
@@ -602,12 +607,12 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                          -- system ages
                     	e.space_heat_system_age,
                     	e.space_cool_system_age,
-                    	e.water_heat_system_age,
+                    	e.average_system_age,
                      
                          -- system lifetimes
                     	f.space_heat_system_expected_lifetime,
                     	f.space_cool_system_expected_lifetime,
-                    	f.water_heat_system_expected_lifetime,
+                    	f.average_system_expected_lifetime,
                      
                          -- baseline system type
                     	g.baseline_system_type,
