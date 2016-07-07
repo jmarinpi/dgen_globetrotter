@@ -13,4 +13,4 @@ CREATE TABLE diffusion_geo.hvac_life_expectancy
 	dist_type text
 );
 
-\COPY  diffusion_geo.hvac_life_expectancy FROM '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/HVAC_Life_Expectancy/hvac_life_expectancy.csv' with csv header;
+\COPY  diffusion_geo.hvac_life_expectancy FROM '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/HVAC_Life_Expectancy/hvac_life_expectancy_mg.csv' with csv header;
