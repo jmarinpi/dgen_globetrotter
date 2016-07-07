@@ -457,7 +457,7 @@ def estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_stri
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def estimate_system_ages(schema, sector_abbr, chunks, seed, pool, pg_conn_string):
 
-    msg = '\tEstimating Agent HVAC System Agents'    
+    msg = '\tEstimating Agent HVAC System Ages'    
     logger.info(msg)
     
     
@@ -506,49 +506,29 @@ def estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_s
             CREATE UNLOGGED TABLE %(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s AS
             WITH a as
             (
-            SELECT a.agent_id,     
-                CASE WHEN space_heat_equip = 'none' THEN NULL::INTEGER
-                ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id), 0)::INTEGER
-                END as space_heat_system_expected_lifetime,
-
-                CASE WHEN space_cool_equip = 'none' THEN NULL::INTEGER
-                ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * agent_id), 0)::INTEGER
-                END as space_cool_system_expected_lifetime
-                
-            FROM  %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
-            CROSS JOIN distributions b
-            ),
-            heat_join as
-            (
-                SELECT a.agent_id, a.space_heat_equip, a.space_heat_fuel, a.space_heat_system_age,
-                        b.mean as space_heat_system_age_mean, b.std as space_heat_system_age_std,
-                        b.dist_type as space_heat_system_age_dist_type,
-                        r_median(ARRAY[a.space_heat_system_age, a.space_cool_system_age]) as average_system_age
-                FROM a
+                SELECT a.agent_id,     
+                        CASE WHEN a.space_heat_equip = 'none' THEN NULL::INTEGER
+                        ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * a.agent_id), 0)::INTEGER
+                        END as space_heat_system_expected_lifetime,
+        
+                        CASE WHEN a.space_cool_equip = 'none' THEN NULL::INTEGER
+                        ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(c.mean, c.std, c.dist_type, %(seed)s * a.agent_id), 0)::INTEGER
+                        END as space_cool_system_expected_lifetime
+                FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
                 LEFT JOIN diffusion_geo.hvac_life_expectancy b
-                ON a.space_heat_equip = b.space_equip and a.space_heat_fuel = b.space_fuel
-                WHERE b.sector_abbr = %(sector)s
-            ),
-            cool_join as
-            (
-                SELECT a.agent_id, a.space_cool_equip, a.space_cool_system_age, a.space_cool_fuel,
-                        b.mean as space_cool_system_age_mean, b.std as space_cool_system_age_std,
-                        b.dist_type as space_cool_system_age_dist_type
-                FROM a
-                LEFT JOIN diffusion_geo.hvac_life_expectancy b
-                ON a.space_cool_equip = b.space_equip and a.space_cool_fuel = b.space_fuel
-                WHERE b.sector_abbr = %(sector)s
-            ),
-            SELECT a.agent_id, a.space_heat_equip, a.space_heat_fuel, a.space_heat_system_age,
-                   a.space_heat_system_age_mean, a.space_heat_system_age_std,
-                   a.dist_type as space_heat_system_age_dist_type,
-                   b.space_cool_equip, b.space_cool_system_age, b.space_cool_fuel,
-                   b.space_cool_system_age_mean, b.space_cool_system_age_std,
-                   b.space_cool_system_age_dist_type,
-                   a.average_system_age
-            FROM heat_join a
-            LEFT JOIN cool_join b
-            ON a.agent_id = b.agent_id);""" % inputs
+                    ON a.space_heat_equip = b.space_equip 
+                    AND a.space_heat_fuel = b.space_fuel
+                    AND b.space_type = 'heat'
+                    AND b.sector_abbr = '%(sector_abbr)s'
+                LEFT JOIN diffusion_geo.hvac_life_expectancy c
+                    ON a.space_cool_equip = c.space_equip 
+                    AND a.space_cool_fuel = c.space_fuel     
+                    AND c.space_type = 'cool'                    
+                    AND c.sector_abbr = '%(sector_abbr)s'
+            )            
+            SELECT agent_id, space_heat_system_expected_lifetime, space_cool_system_expected_lifetime,
+                    r_median(ARRAY[space_heat_system_expected_lifetime, space_cool_system_expected_lifetime]) as average_system_expected_lifetime
+            FROM a;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
 
     # add primary key
@@ -578,7 +558,7 @@ def map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_st
                 AND a.space_heat_fuel = b.space_heat_fuel
                 AND a.space_cool_equip = b.space_cool_equip
                 AND a.space_cool_fuel = b.space_cool_fuel
-            WHERE b.sector_abbr = '%(sector)s';""" % inputs
+            WHERE b.sector_abbr = '%(sector_abbr)s';""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     
     # add primary key
