@@ -247,15 +247,17 @@ def get_distribution_network_data(con, schema): # todo: add con, schema
 
     inputs = locals().copy()
 
-    # TODo:-- convert the mwh to mw using demand curves/load profiles (not 8760 constant assumption)
-    sql = """WITH a as (
+    # TODO:-- convert the mwh to mw using demand curves/load profiles (not 8760 constant assumption)
+    sql = """WITH a as 
+            (
                 SELECT tract_id_alias,
-	                ((sum(space_heat_kbtu_in_bin + water_heat_kbtu_in_bin)) * 0.0002930711)/8760 as heat_demand_mw
+	                (sum(space_heat_kbtu_in_bin + water_heat_kbtu_in_bin)) * 0.0002930711/8760 as heat_demand_mw
 	            FROM %(schema)s.agent_core_attributes_all
 	            WHERE tech = 'du'
-	            GROUP BY tract_id_alias)
+	            GROUP BY tract_id_alias
+             )
             SELECT a.tract_id_alias,
-                (b.road_meters / a.heat_demand_mw) as distribution_m_per_mw,
+                b.road_meters / a.heat_demand_mw as distribution_m_per_mw,
                 b.road_meters as distribution_total_m
             FROM a
             LEFT JOIN diffusion_geo.tract_road_length b
