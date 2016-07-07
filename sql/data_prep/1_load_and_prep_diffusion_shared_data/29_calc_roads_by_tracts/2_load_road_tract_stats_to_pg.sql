@@ -89,7 +89,7 @@ where a.tract_fips is null);
 set role 'diffusion-writers';
 drop table if exists diffusion_geo.tract_road_length cascade;
 create table diffusion_geo.tract_road_length as (
-select b.tract_id_alias, a.length_m
+select b.tract_id_alias, a.length_m as road_meters
 from diffusion_geo.tract_road_length_temp a
 full join diffusion_blocks.tract_geoms b
 on a.tract_fips = b.tract_fips and a.state_fips = b.state_fips);
