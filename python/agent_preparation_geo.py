@@ -571,8 +571,14 @@ def map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_st
     
     sql = """DROP TABLE IF EXISTS %(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s;
             CREATE UNLOGGED TABLE %(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s AS
-            SELECT a.agent_id, 'type 1'::VARCHAR(6) as baseline_system_type
-            FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a;""" % inputs
+            SELECT a.agent_id, b.baseline_type as baseline_system_type
+            FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
+            LEFT JOIN diffusion_geo. b
+            ON a.space_heat_equip = b.space_heat_equip
+                and a.space_heat_fuel = b.space_heat_fuel
+                and a.space_cool_equip = b.space_cool_equip
+                and a.space_cool_fuel = space_cool_fuel
+            WHERE b.sector_abbr = %(sector)s;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     
     # add primary key
