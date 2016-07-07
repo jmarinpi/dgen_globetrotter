@@ -255,7 +255,7 @@ def get_distribution_network_data(con, schema): # todo: add con, schema
 	            WHERE tech = 'du'
 	            GROUP BY tract_id_alias)
             SELECT a.tract_id_alias,
-                (a.heat_demand_mw / b.road_meters) as distribution_m_per_mw,
+                (b.road_meters / a.heat_demand_mw) as distribution_m_per_mw,
                 b.road_meters as distribution_total_m
             FROM a
             LEFT JOIN diffusion_geo.tract_road_length b
