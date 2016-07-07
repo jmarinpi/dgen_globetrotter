@@ -318,11 +318,11 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
 
     # Surface Plant Capital Costs
     # ***
-    dataframe['plant_installation_costs_per_wellset_dlrs'] = dataframe['capacity_per_wellset_mw'] * dataframe['plant_installation_costs_dollars_per_kw']
+    dataframe['plant_installation_costs_per_wellset_dlrs'] = dataframe['capacity_per_wellset_mw'] * 1000 * dataframe['plant_installation_costs_dollars_per_kw']
     # ***
     
     # O&M Costs
-    dataframe['om_labor_costs_per_wellset_per_year_dlrs'] = dataframe['om_labor_costs_dlrs_per_kw_per_year'] * dataframe['capacity_per_wellset_mw']
+    dataframe['om_labor_costs_per_wellset_per_year_dlrs'] = dataframe['om_labor_costs_dlrs_per_kw_per_year'] * 1000 * dataframe['capacity_per_wellset_mw']
     dataframe['om_plant_costs_per_wellset_per_year_dlrs'] = dataframe['om_plant_costs_pct_plant_cap_costs_per_year'] * dataframe['plant_installation_costs_per_wellset_dlrs']
     dataframe['om_well_costs_per_wellset_per_year_dlrs'] = dataframe['om_well_costs_pct_well_cap_costs_per_year'] * dataframe['drilling_cost_per_wellset_dlrs']
     dataframe['om_total_costs_per_wellset_per_year_dlrs'] = dataframe['om_labor_costs_per_wellset_per_year_dlrs'] + dataframe['om_plant_costs_per_wellset_per_year_dlrs'] + dataframe['om_well_costs_per_wellset_per_year_dlrs']
@@ -353,12 +353,15 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     dataframe['total_pumping_costs_per_wellset_dlrs'] = (dataframe['total_pumping_costs_per_wellset_per_year_dlrs'].values[:,None] * constant_lifetime_array).tolist()
     # ***
 
-    # Peaking Boiler Costs
+    # Peaking Boiler Capital Construction Costs
     # TODO: check this logic makes sense - is peak demand simply the wellset capacity?
-    dataframe['peaking_boilers_capacity_kw_per_wellset'] = dataframe['capacity_per_wellset_mw'] * 1000. * dataframe['peaking_boilers_pct_of_peak_demand']
+    dataframe['peaking_boilers_capacity_kw_per_wellset'] = dataframe['capacity_per_wellset_mw']/(1 - dataframe['peaking_boilers_pct_of_peak_demand']) * dataframe['peaking_boilers_pct_of_peak_demand'] * 1000
     # ***    
     dataframe['peaking_boilers_cost_per_wellset_dlrs'] = dataframe['peaking_boilers_capacity_kw_per_wellset'] * dataframe['natural_gas_peaking_boilers_dollars_per_kw'] 
     # ***
+
+    # Peaking Boiler Operating Costs
+    
 
     # Additional Boiler Costs due to Reservoir Drawdown
     # determine which years, if any, will require purchase of additional boilers due to drawdown
