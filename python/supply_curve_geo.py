@@ -243,13 +243,17 @@ def drilling_costs_per_depth_m_shallow(depth_m, future_drilling_cost_improvement
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_distribution_network_data():
+def get_distribution_network_data(con, schema): # todo: add con, schema
     
     # TODO: create this table in postgres and pull from it here
     df = pd.DataFrame()
     df['tract_id_alias'] = [1, 2]
     df['distribution_m_per_mw'] = 5000.
     df['distribution_total_m'] = 10000.
+    
+    # Todo: run the query to derive a postgres result mimiccking the format of the table above
+    # todo: pull that query into a pandas data frame using pd.read_sql() _- see examples above
+    # return that dataframe     
     
     return df
 
