@@ -11,6 +11,14 @@ ON lower(a.state) = CASE WHEN b.region = 'United States' then lower(a.state)
 		end
 where a.state not in ('Hawaii','Alaska');
 
+-- create view of the valid tracts
+DROP VIEW IF EXISTS diffusion_template.tracts_to_model CASCADE;
+CREATE OR REPLACE VIEW diffusion_template.tracts_to_model AS
+SELECT distinct tract_id_alias
+FROM diffusion_blocks.tract_ids a
+INNER JOIN diffusion_template.states_to_model b
+ON a.state_fips = b.state_fips;
+
 -- joined block microdata
 DROP VIEW IF EXISTS diffusion_template.block_microdata_res_joined;
 CREATE VIEW  diffusion_template.block_microdata_res_joined AS
