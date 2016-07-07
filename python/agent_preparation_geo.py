@@ -573,7 +573,7 @@ def map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_st
             CREATE UNLOGGED TABLE %(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s AS
             SELECT a.agent_id, b.baseline_type as baseline_system_type
             FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
-            LEFT JOIN diffusion_geo. b
+            LEFT JOIN diffusion_geo.diffusion_geo.eia_microdata_to_baseline_system_types_lkup b
             ON a.space_heat_equip = b.space_heat_equip
                 and a.space_heat_fuel = b.space_heat_fuel
                 and a.space_cool_equip = b.space_cool_equip
