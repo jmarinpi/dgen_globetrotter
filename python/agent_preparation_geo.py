@@ -532,16 +532,7 @@ def estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_s
 
     sql = """DROP TABLE IF EXISTS %(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s;
             CREATE UNLOGGED TABLE %(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s AS
-            WITH distributions as
-            (
-                SELECT mean, std, dist_type
-                FROM diffusion_geo.hvac_life_expectancy
-                WHERE space_equip = 'central warm-air furnace'
-                AND space_fuel = 'natural gas'
-                AND sector_abbr = 'res'
-                LIMIT 1
-            ),
-            b as
+            WITH a as
             (
             SELECT a.agent_id,     
                 CASE WHEN space_heat_equip = 'none' THEN NULL::INTEGER
@@ -554,11 +545,38 @@ def estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_s
                 
             FROM  %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
             CROSS JOIN distributions b
-            )
-            SELECT agent_id, space_heat_system_expected_lifetime,
-                    space_cool_system_expected_lifetime,
-                    r_median(ARRAY[space_heat_system_expected_lifetime, space_cool_system_expected_lifetime]) as average_system_expected_lifetime
-            FROM b;""" % inputs
+            ),
+            heat_join as
+            (
+                SELECT a.agent_id, a.space_heat_equip, a.space_heat_fuel, a.space_heat_system_age,
+                        b.mean as space_heat_system_age_mean, b.std as space_heat_system_age_std,
+                        b.dist_type as space_heat_system_age_dist_type,
+                        r_median(ARRAY[a.space_heat_system_age, a.space_cool_system_age]) as average_system_age
+                FROM a
+                LEFT JOIN diffusion_geo.hvac_life_expectancy b
+                ON a.space_heat_equip = b.space_equip and a.space_heat_fuel = b.space_fuel
+                WHERE b.sector_abbr = %(sector)s
+            ),
+            cool_join as
+            (
+                SELECT a.agent_id, a.space_cool_equip, a.space_cool_system_age, a.space_cool_fuel,
+                        b.mean as space_cool_system_age_mean, b.std as space_cool_system_age_std,
+                        b.dist_type as space_cool_system_age_dist_type
+                FROM a
+                LEFT JOIN diffusion_geo.hvac_life_expectancy b
+                ON a.space_cool_equip = b.space_equip and a.space_cool_fuel = b.space_fuel
+                WHERE b.sector_abbr = %(sector)s
+            ),
+            SELECT a.agent_id, a.space_heat_equip, a.space_heat_fuel, a.space_heat_system_age,
+                   a.space_heat_system_age_mean, a.space_heat_system_age_std,
+                   a.dist_type as space_heat_system_age_dist_type,
+                   b.space_cool_equip, b.space_cool_system_age, b.space_cool_fuel,
+                   b.space_cool_system_age_mean, b.space_cool_system_age_std,
+                   b.space_cool_system_age_dist_type,
+                   a.average_system_age
+            FROM heat_join a
+            LEFT JOIN cool_join b
+            ON a.agent_id = b.agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
 
     # add primary key
