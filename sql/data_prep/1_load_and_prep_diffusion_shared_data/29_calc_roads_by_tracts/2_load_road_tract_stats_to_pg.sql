@@ -1,5 +1,6 @@
 
 -- create temp table to store data
+set role 'diffusion-writers';
 drop table if exists diffusion_geo.tract_road_length_temp;
 create table diffusion_geo.tract_road_length_temp
 (
@@ -71,8 +72,8 @@ left join diffusion_blocks.tract_geoms b
 on a.tract_fips = b.tract_fips and a.state_fips = b.state_fips);
 
 -- Run checks
-select count(*) from diffusion_geo.tract_road_length -- 72,732
-select count(*) from diffusion_blocks.tract_geoms -- 72,739
+select count(*) from diffusion_geo.tract_road_length; -- 72,732
+select count(*) from diffusion_blocks.tract_geoms; -- 72,739
 	-- difference =  7 tracts
 
 -- Create view with 7 tracts that are missing roads to see where they are and if they really are missing roads
@@ -80,17 +81,24 @@ drop view if exists diffusion_geo.tracts_without_roads;
 create view diffusion_geo.tracts_without_roads as (select a.*, b.the_geom_96703 from diffusion_geo.tract_road_length a
 left join diffusion_blocks.tract_geoms b
 on a.tract_id_alias = b.tract_id_alias
-where a.tract_fips is null)
+where a.tract_fips is null);
 	-- Good to go; tracts are super small or very remote, seems reasonable
 
 
 -- Create final table to store tracts and road meters
+set role 'diffusion-writers';
 drop table if exists diffusion_geo.tract_road_length cascade;
 create table diffusion_geo.tract_road_length as (
 select b.tract_id_alias, a.length_m
 from diffusion_geo.tract_road_length_temp a
 full join diffusion_blocks.tract_geoms b
 on a.tract_fips = b.tract_fips and a.state_fips = b.state_fips);
+
+-- Add primary key for tract_id_alias
+alter table diffusion_geo.tract_road_length
+add constraint tract_road_length_tract_id_pkey
+primary key (tract_id_alias);
+
 
 -- Set road length to 0 in the 7 tracts that are missing roads
 update diffusion_geo.tract_road_length
@@ -103,4 +111,5 @@ drop view if exists diffusion_geo.tracts_without_roads;
 
 -- detete the temp tables
 drop table if exists diffusion_geo.tract_road_length_temp;
+
 
