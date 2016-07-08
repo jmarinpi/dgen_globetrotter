@@ -33,8 +33,7 @@ pg_params = {'host'     : 'gispgdb',
              'password' : 'mgleason',
              'role'     : 'diffusion-writers'
              }
-hf_dir = '/home/shared/data/building_load/'
-#hf_dir = '/Users/mgleason/gispgdb_home/shared/data/building_load/'   
+hf_dir = '/home/shared/data/building_load/all_attributes/'
     
              
              
