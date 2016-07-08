@@ -108,6 +108,10 @@ for hf_file in hf_files:
             sum_year = np.ma.sum(combined_kwh_masked, 0)
             # normalize the max hours to the sums
             nkwh_masked = combined_kwh_masked/sum_year
+            # where sum_year = 0, values will be nan -- so repalce with zeros
+            nkwh_masked[:, sum_year == 0] = 0
+            # also fix the mask
+            nkwh_masked.mask = combined_mask
             # build a reverse mask to use in extracting the data
             unmasked = np.invert(nkwh_masked.mask[0,:])
             # extract the data that is unmasked

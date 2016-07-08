@@ -87,24 +87,27 @@ for hf_file in hf_files:
             print '\t\t%s' % bldg_type
             fill_values = []
             arrays = []
+            masks = []
             for attribute in output_attributes:
                 # point to the correct dataset based on the bldg type and attributes
                 dataset_path = os.path.join(bldg_type, attribute)
                 dataset = hf[dataset_path]
                 # get the datasets
                 fillvalue = dataset.fillvalue
-                fill_values.append(fillvalue)
                 # extract the masked data
                 kwh = np.ma.masked_equal(dataset, fillvalue)
                 arrays.append(kwh)
+                masks.append(kwh.mask)
             # sum the data across all arrays
-            combined_kwh = np.stack(arrays).sum(axis = 0)
+            combined_mask = np.stack(masks).sum(axis = 0) > 0
+            combined_kwh = np.stack(arrays).data.sum(axis = 0)
+            combined_kwh_masked = np.ma.masked_array(combined_kwh, combined_mask)
             # find the annual sum in each column
-            sum_year = np.ma.sum(combined_kwh, 0)
+            sum_year = np.ma.sum(combined_kwh_masked, 0)
             # find the max in each column
-            max_hours = np.ma.max(combined_kwh, 0)
+            max_hours = np.ma.max(combined_kwh_masked, 0)
             # normalize the max hours to the sums
-            normalized_max_hours_masked = max_hours/sum_year
+            normalized_max_hours_masked = np.where(sum_year == 0, 0, max_hours/sum_year)
             # build a reverse mask to use in extracting the data
             unmasked = np.invert(normalized_max_hours_masked.mask)
             # extract the data that is unmasked
