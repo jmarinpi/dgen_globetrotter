@@ -202,7 +202,7 @@ def get_reservoir_factors(con, schema, year):
                 	a.wells_per_wellset, 
                 	a.expected_drawdown_pct_per_year,
                   a.max_sustainable_well_production_liters_per_second * .264172 * 3.154e7 as max_sustainable_well_production_gallons_per_year,
-                	b.reservoir_stimulation_costs_dollars_per_well_set
+                	b.reservoir_stimulation_costs_per_wellset_dlrs
             FROM %(schema)s.input_du_egs_reservoir_factors a
             LEFT JOIN  %(schema)s.input_du_cost_plant_subsurface b
                 	ON a.year = b.year
@@ -214,7 +214,7 @@ def get_reservoir_factors(con, schema, year):
                 	c.wells_per_wellset, 
                  c.expected_drawdown_pct_per_year,
                  31.5 * .264172 * 3.154e7::NUMERIC as max_sustainable_well_production_gallons_per_year,
-                 0::NUMERIC as reservoir_stimulation_costs_dollars_per_well_set
+                 0::NUMERIC as reservoir_stimulation_costs_per_wellset_dlrs
             FROM %(schema)s.input_du_hydrothermal_reservoir_factors c
             WHERE c.year = %(year)s;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)

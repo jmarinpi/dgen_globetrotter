@@ -7,7 +7,7 @@ CREATE TABLE diffusion_template.input_du_cost_plant_subsurface
 (
 	year integer NOT NULL,
 	future_drilling_cost_improvements_pct numeric NOT NULL,
-	reservoir_stimulation_costs_dollars_per_well_set numeric NOT NULL,
+	reservoir_stimulation_costs_per_wellset_dlrs numeric NOT NULL,
 	exploration_slim_well_cost_pct_of_normal_well numeric not null,
 	exploration_fixed_costs_dollars numeric not null,
 	CONSTRAINT input_du_cost_plant_subsurface_year_fkey FOREIGN KEY (year)
