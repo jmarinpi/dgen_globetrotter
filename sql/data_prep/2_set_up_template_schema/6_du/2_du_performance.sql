@@ -7,9 +7,7 @@ CREATE TABLE diffusion_template.input_du_performance_projections
 	year integer not null,
 	peaking_boilers_pct_of_peak_demand numeric not null,
 	max_acceptable_drawdown_pct_of_initial_capacity numeric not null,
-	res_enduse_efficiency_factor numeric not null,
-	com_enduse_efficiency_factor numeric not null,
-	ind_enduse_efficiency_factor numeric not null,
+	avg_end_use_efficiency_factor numeric not null,
 	CONSTRAINT input_du_performance_projections_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -24,7 +22,7 @@ CREATE TABLE diffusion_template.input_du_egs_reservoir_factors
 	resource_recovery_factor numeric not null,
 	area_per_wellset_sqkm numeric not null,
 	wells_per_wellset integer not null,
-	production_liters_per_second numeric not null,
+	max_sustainable_well_production_liters_per_second numeric not null,
 	expected_drawdown_pct_per_year numeric not null,
 	CONSTRAINT input_du_egs_reservoir_factors_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE

@@ -201,7 +201,7 @@ def get_reservoir_factors(con, schema, year):
     sql = """SELECT 'egs'::text as resource_type, 
                 	a.wells_per_wellset, 
                 	a.expected_drawdown_pct_per_year,
-                  a.production_liters_per_second * .264172 * 3.154e7 as production_gallons_per_year,
+                  a.max_sustainable_well_production_liters_per_second * .264172 * 3.154e7 as max_sustainable_well_production_gallons_per_year,
                 	b.reservoir_stimulation_costs_dollars_per_well_set
             FROM %(schema)s.input_du_egs_reservoir_factors a
             LEFT JOIN  %(schema)s.input_du_cost_plant_subsurface b
@@ -213,7 +213,7 @@ def get_reservoir_factors(con, schema, year):
             SELECT 'hydrothermal'::text as resource_type, 
                 	c.wells_per_wellset, 
                  c.expected_drawdown_pct_per_year,
-                 31.5 * .264172 * 3.154e7::NUMERIC as production_gallons_per_year,
+                 31.5 * .264172 * 3.154e7::NUMERIC as max_sustainable_well_production_gallons_per_year,
                  0::NUMERIC as reservoir_stimulation_costs_dollars_per_well_set
             FROM %(schema)s.input_du_hydrothermal_reservoir_factors c
             WHERE c.year = %(year)s;""" % inputs
@@ -347,8 +347,8 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
 
     # Operating Costs
     # TODO: make sure thesee make sense given plant capacity factor (won't be pumping all the time)
-    dataframe['operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_reservoir_pumping_costs_dollars_per_gal'] * dataframe['production_gallons_per_year']
-    dataframe['operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_distribution_pumping_costs_dollars_per_gal_m'] * dataframe['production_gallons_per_year'] *  dataframe['distribution_m_per_mw'] * dataframe['capacity_per_wellset_mw']
+    dataframe['operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_reservoir_pumping_costs_dollars_per_gal'] * dataframe['max_sustainable_well_production_gallons_per_year']
+    dataframe['operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_distribution_pumping_costs_dollars_per_gal_m'] * dataframe['max_sustainable_well_production_gallons_per_year'] *  dataframe['distribution_m_per_mw'] * dataframe['capacity_per_wellset_mw']
     dataframe['total_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs'] + dataframe['operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs']
     # convert to a time series
     # ***
@@ -389,7 +389,8 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
                                                     dataframe['distribution_network_construction_costs_per_wellset_dlrs'] +
                                                     dataframe['plant_installation_costs_per_wellset_dlrs'] +
                                                     dataframe['exploration_total_costs_per_wellset_dlrs'] +
-                                                    dataframe['drilling_cost_per_wellset_dlrs']
+                                                    dataframe['drilling_cost_per_wellset_dlrs'] +
+                                                    dataframe['reservoir_stimulation_costs_per_wellset_dlrs']
                                                     )
     # combine all annual costs
     dataframe['annual_costs_per_wellset_dlrs'] = (  np.array(dataframe['drawdown_boilers_cost_per_wellset_dlrs'].tolist(), dtype = np.float64) +
