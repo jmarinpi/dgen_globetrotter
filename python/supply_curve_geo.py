@@ -420,6 +420,21 @@ def drilling_costs_per_depth_m_shallow(depth_m, future_drilling_cost_improvement
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_natural_gas_prices(con, schema, year):
+    
+    inputs = locals().copy()
+
+    sql = """SELECT tract_id_alias, array_agg(dlrs_per_mwh order by year) as ng_price_dlrs_per_mwh
+            FROM %(schema)s.tract_industrial_natural_gas_prices_to_model
+            WHERE year between %(year)s and %(year)s + 29
+            GROUP BY tract_id_alias;""" % inputs
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df    
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_distribution_network_data(con, schema): # todo: add con, schema
 
     inputs = locals().copy()
@@ -438,7 +453,7 @@ def get_distribution_network_data(con, schema): # todo: add con, schema
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df, plant_finances_df,
-                                    distribution_df, capacity_factors_df):
+                                    distribution_df, capacity_factors_df, ng_prices_df):
     
     inputs = locals().copy()
     
@@ -452,6 +467,8 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     dataframe = pd.merge(dataframe, distribution_df, how = 'left', on = ['tract_id_alias'])
     # merge the capacity factor data
     dataframe = pd.merge(dataframe, capacity_factors_df, how = 'left', on = ['tract_id_alias'])
+    # merge the natural gas prices
+    dataframe = pd.merge(dataframe, ng_prices_df, how = 'left', on = ['tract_id_alias'])
  
     # for testing:
     #dataframe = pd.read_csv('/Users/mgleason/Desktop/plant_dfs/dataframe.csv')
@@ -548,9 +565,11 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     dataframe['peaking_boilers_construction_cost_per_wellset_dlrs'] = dataframe['peaking_boilers_nameplate_capacity_per_wellset_mw'] * 1000. * dataframe['natural_gas_peaking_boilers_dollars_per_kw'] 
     # ***
 
-    # Peaking Boiler Operating Costs
-    # TODO: create these
-    
+    # Peaking Boiler Annual Fuel Costs
+    dataframe['peaking_boilers_mwh_per_year_per_wellset'] = dataframe['peaking_boilers_nameplate_capacity_per_wellset_mw'] * 8760. * dataframe['peaking_boiler_capacity_factor']
+    ng_prices_array = np.array(dataframe['ng_price_dlrs_per_mwh'].tolist(), dtype = 'float64')
+    ng_annual_costs = dataframe['peaking_boilers_mwh_per_year_per_wellset'] * ng_prices_array
+    dataframe['peaking_boilers_fuel_costs_per_wellset_dlrs'] = ng_annual_costs.tolist()
 
     # Additional Boiler Costs due to Reservoir Drawdown
     # determine which years, if any, will require purchase of additional boilers due to drawdown

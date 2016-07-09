@@ -380,3 +380,31 @@ SELECT 'wind'::VARCHAR(5) as tech,
 	a.capacity_mw_industrial as capacity_mw,
 	a.systems_count_industrial as systems_count
 FROM diffusion_wind.starting_capacities_mw_2012_q4_us a;
+------------------------------------------------------------------------------
+set role 'diffusion-writers';
+DROP VIEW IF EXISTS diffusion_template.tract_industrial_natural_gas_prices_to_model;
+CREATE VIEW diffusion_template.tract_industrial_natural_gas_prices_to_model AS
+with a as
+(
+	select a.tract_id_alias, c.census_division_abbr
+	FROM diffusion_template.tracts_to_model a
+	LEFT JOIN diffusion_blocks.tract_ids b
+	ON a.tract_id_alias = b.tract_id_alias
+	LEFT JOIN diffusion_blocks.county_geoms c
+	ON b.state_fips = c.state_fips
+	and b.county_fips = c.county_fips
+),
+b as
+(
+	select a.year, a.census_division_abbr, a.dlrs_per_mmbtu*3.412e6 as dlrs_per_mwh
+	FROM diffusion_shared.aeo_energy_price_projections_2015 a
+	inner join diffusion_template.input_main_scenario_options b
+	ON a.scenario = b.regional_heating_fuel_cost_trajectories
+	where a.fuel_type = 'natural gas'
+	and a.sector_abbr = 'ind'
+)
+select a.tract_id_alias, b.year, b.dlrs_per_mwh
+from a
+LEFT JOIN b
+ON a.census_division_abbr = b.census_division_abbr;
+

@@ -281,6 +281,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get resource data (for testing only)
                     hack_year = 2014
                     resource_df = supply.get_resource_data(con, schema, hack_year)
+                    # get natural gas prics
+                    ng_prices_df = supply.get_natural_gas_prices(con, schema, hack_year)
                     # get the du cost data
                     costs_and_performance_df = supply.get_plant_cost_and_performance_data(con, schema, hack_year)
                     reservoir_factors_df = supply.get_reservoir_factors(con, schema, hack_year)
@@ -297,7 +299,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                                                      reservoir_factors_df,
                                                                                      plant_finances_df,
                                                                                      distribution_df,
-                                                                                     capacity_factors_df
+                                                                                     capacity_factors_df,
+                                                                                     ng_prices_df
                                                                                      )
 
                     
