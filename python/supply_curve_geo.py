@@ -366,15 +366,28 @@ def calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_
     peaking_boiler_hourly_demand_mw = hourly_demand_mw - plant_hourly_supply_mw    
     peaking_boiler_hourly_supply_mw = np.where(peaking_boiler_hourly_demand_mw <= dataframe['peaking_boiler_effective_capacity_mw'][:, None], peaking_boiler_hourly_demand_mw, dataframe['peaking_boiler_effective_capacity_mw'][:, None])
     # calculate capacity factors based on the hourly supply vs. nameplate capacity
-    plant_capacity_factor = plant_hourly_supply_mw.sum(axis = 1)/(dataframe['plant_nameplate_capacity_mw'] * 8760)
-    peaking_boiler_capacity_factor = peaking_boiler_hourly_supply_mw.sum(axis = 1)/(dataframe['peaking_boiler_nameplate_capacity_mw'] * 8760)
+    dataframe['plant_capacity_factor'] = plant_hourly_supply_mw.sum(axis = 1)/(dataframe['plant_nameplate_capacity_mw'] * 8760)
+    dataframe['peaking_boiler_capacity_factor'] = peaking_boiler_hourly_supply_mw.sum(axis = 1)/(dataframe['peaking_boiler_nameplate_capacity_mw'] * 8760)
+    
+    
     # FOR testing only
 
+    # deriving supply profiles
 #    test = pd.DataFrame()
 #    test['demand_mw'] = peaking_boiler_hourly_demand_mw[50,:]
 #    test['supply_mw'] = peaking_boiler_hourly_supply_mw[50,:]
 #    test['cap_mw'] = dataframe['peaking_boiler_effective_capacity_mw'][50]
 #    test.to_csv('/Users/mgleason/Desktop/capped_demand.csv', index = False)
+
+    # checking capacity factors
+#    test = pd.DataFrame()
+#    test['demand_mw'] = hourly_demand_mw[50,:]
+#    test['supply_mw'] = plant_hourly_supply_mw[50,:]
+#    test['effective_cap_mw'] = dataframe['plant_effective_capacity_mw'][50]
+#    test['np_cap_mw'] = dataframe['plant_nameplate_capacity_mw'][50]
+#    test['capacity_factor'] = plant_capacity_factor[50]
+#    test.to_csv('/Users/mgleason/Desktop/capped_demand.csv', index = False)
+
     pass
 #%%
 def drilling_costs_per_depth_m_deep(depth_m, future_drilling_cost_improvements_pct):
