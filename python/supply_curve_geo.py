@@ -312,7 +312,7 @@ def calculate_tract_peak_demand(cur, con, schema):
     sql = """DROP TABLE IF EXISTS %(schema)s.tract_peak_heat_demand;
              CREATE UNLOGGED TABLE %(schema)s.tract_peak_heat_demand AS
             SELECT a.tract_id_alias,
-                        r_array_max(a.heat_demand_profile_mw)/1000. as peak_heat_demand_mw
+                        r_array_max(a.heat_demand_profile_mw) as peak_heat_demand_mw
                 FROM %(schema)s.tract_aggregate_heat_demand_profiles a;""" % inputs
     cur.execute(sql)
     con.commit()
@@ -375,14 +375,8 @@ def calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_
     dataframe['peaking_boiler_capacity_factor'] = peaking_boiler_hourly_supply_mw.sum(axis = 1)/(dataframe['peaking_boiler_nameplate_capacity_mw'] * 8760)
     # calculate a combined capacity factor
     dataframe['total_blended_capacity_factor'] = (plant_hourly_supply_mw + peaking_boiler_hourly_supply_mw).sum(axis = 1)/((dataframe['plant_nameplate_capacity_mw'] + dataframe['peaking_boiler_nameplate_capacity_mw']) * 8760)
-
-    return_cols = ['tract_id_alias', 'plant_capacity_factor', 'peaking_boiler_capacity_factor', 'total_blended_capacity_factor']
-    dataframe = dataframe[return_cols]
-    
-    return dataframe
     
     # FOR testing only
-
     # deriving supply profiles
 #    test = pd.DataFrame()
 #    test['demand_mw'] = peaking_boiler_hourly_demand_mw[50,:]
@@ -391,14 +385,18 @@ def calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_
 #    test.to_csv('/Users/mgleason/Desktop/capped_demand.csv', index = False)
 
     # checking capacity factors
-#    test = pd.DataFrame()
-#    test['demand_mw'] = hourly_demand_mw[50,:]
-#    test['supply_mw'] = plant_hourly_supply_mw[50,:]
-#    test['effective_cap_mw'] = dataframe['plant_effective_capacity_mw'][50]
-#    test['np_cap_mw'] = dataframe['plant_nameplate_capacity_mw'][50]
-#    test['capacity_factor'] = plant_capacity_factor[50]
-#    test.to_csv('/Users/mgleason/Desktop/capped_demand.csv', index = False)
+    test = pd.DataFrame()
+    test['demand_mw'] = hourly_demand_mw[50,:]
+    test['supply_mw'] = plant_hourly_supply_mw[50,:]
+    test['effective_cap_mw'] = dataframe['plant_effective_capacity_mw'][50]
+    test['np_cap_mw'] = dataframe['plant_nameplate_capacity_mw'][50]
+    test['capacity_factor'] = dataframe['plant_capacity_factor'][50]
+    test.to_csv('/Users/mgleason/Desktop/capped_demand.csv', index = False)
 
+    return_cols = ['tract_id_alias', 'plant_capacity_factor', 'peaking_boiler_capacity_factor', 'total_blended_capacity_factor']
+    dataframe = dataframe[return_cols]
+
+    return dataframe
 
 #%%
 def drilling_costs_per_depth_m_deep(depth_m, future_drilling_cost_improvements_pct):
