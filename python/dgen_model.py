@@ -288,6 +288,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     plant_finances_df = supply.get_plant_finance_data(con, schema, hack_year)
                     plant_construction_factor_df = supply.get_plant_construction_factor_data(con, schema, hack_year)
                     plant_depreciation_df = supply.get_plant_depreciation_data(con, schema, hack_year)                    
+                    # calculate the plant and boiler capacity factors
+                    capacity_factors_df = supply.calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_performance_df, tract_demand_profiles_df, hack_year)
+    
                     # apply the plant cost data
                     resources_with_costs_df = supply.apply_cost_and_performance_data(resource_df, 
                                                                                      costs_and_performance_df, 

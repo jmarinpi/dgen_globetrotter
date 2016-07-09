@@ -369,6 +369,10 @@ def calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_
     dataframe['plant_capacity_factor'] = plant_hourly_supply_mw.sum(axis = 1)/(dataframe['plant_nameplate_capacity_mw'] * 8760)
     dataframe['peaking_boiler_capacity_factor'] = peaking_boiler_hourly_supply_mw.sum(axis = 1)/(dataframe['peaking_boiler_nameplate_capacity_mw'] * 8760)
     
+    return_cols = ['tract_id_alias', 'plant_capacity_factor', 'peaking_boiler_capacity_factor']
+    dataframe = dataframe[return_cols]
+    
+    return dataframe
     
     # FOR testing only
 
