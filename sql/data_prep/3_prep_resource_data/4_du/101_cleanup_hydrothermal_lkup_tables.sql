@@ -46,6 +46,26 @@ FROM diffusion_geo.hydro_pt_tracts
 where tract_id_alias is null;
 -- 4 rows deleted
 
+-- add primary key
+ALTER TABLE diffusion_geo.hydro_pt_tracts
+ADD PRIMARY KEY (tract_id_alias, resource_uid);
+-- rejected again due to duplicates
+
+SELECT *
+FROM diffusion_geo.hydro_pt_tracts
+where tract_id_alias = 16353
+and resource_uid = 'OR145'
+
+select *
+FROM diffusion_geo.resources_hydrothermal_pt
+where uid = 'OR145'
+
+set role 'server-superusers';
+select *
+FROm diffusion_geo.hydro_pt_lkup
+order by tract_id_alias, resource_uid
+where tract_id_alias = 16353
+and resource_uid = 'OR145'
 -- add the primary key
 
 -- why are they null?

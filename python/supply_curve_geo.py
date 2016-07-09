@@ -220,8 +220,74 @@ def get_reservoir_factors(con, schema, year):
     df = pd.read_sql(sql, con, coerce_float = False)
     
     return df    
-    
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_tract_demand_profiles(con, cur, schema):
+    
+    inputs = locals().copy()
+    scale_factor = 1/1e8
+    inputs['scale_factor'] = scale_factor
+    
+    sql = """DROP TABLE IF EXISTS %(schema)s.tract_aggregate_heat_demand_profiles;
+             CREATE UNLOGGED TABLE %(schema)s.tract_aggregate_heat_demand_profiles AS
+             WITH com as
+             (
+                 SELECT a.tract_id_alias,
+                         a.total_heat_kwh_in_bin,
+                         b.nkwh
+                 FROM %(schema)s.agent_core_attributes_com a
+                 LEFT JOIN diffusion_load_profiles.energy_plus_normalized_water_and_space_heating_com b
+                 ON a.crb_model = b.crb_model
+                 AND a.hdf_load_index = b.hdf_index
+             ),
+             res AS
+             (
+                 SELECT a.tract_id_alias,
+                         a.total_heat_kwh_in_bin,
+                         b.nkwh
+                 FROM %(schema)s.agent_core_attributes_res a
+                 LEFT JOIN diffusion_load_profiles.energy_plus_normalized_water_and_space_heating_res b
+                 ON a.crb_model = b.crb_model
+                 AND a.hdf_load_index = b.hdf_index             
+             ),
+             combined as
+             (
+                 SELECT *
+                 FROM com
+                 UNION ALL
+                 SELECT *
+                 FROM res             
+             ),
+             scaled as
+             (
+                 SELECT tract_id_alias,
+                        diffusion_shared.r_scale_array_sum(
+                            diffusion_shared.r_scale_array_precision(b.nkwh, %(scale_factor)s),
+                            total_heat_kwh_in_bin
+                        ) as kwh
+                 FROM combined             
+             )
+             SELECT tract_id_alias, diffusion_shared.r_sum_arrays(array_agg_mult(ARRAY[kwh])) as tract_thermal_load_profile
+             FROM scaled
+             GROUP BY tract_id_alias;""" % inputs
+    
+    cur.execute(sql)
+    con.commit()
+ 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_tract_demand_profiles(con, schema):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT tract_id_alias, tract_thermal_load_profile
+            FROM %(schema)s.tract_aggregate_heat_demand_profiles;""" % inputs
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df  
+    
 #%%
 def drilling_costs_per_depth_m_deep(depth_m, future_drilling_cost_improvements_pct):
     

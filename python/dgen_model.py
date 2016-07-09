@@ -263,6 +263,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, cfg.agents_per_region,
                                                               sectors, cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'])
                     
+                    # calculate tract aggregate thermal load profiles                    
+                    supply.calculate_tract_demand_profiles(con, cur, schema)
+                    tract_demand_profiles_df = supply.get_tract_demand_profiles(con, schema)
                     
                     #==========================================================================================================
                     # SETUP RESOURCE DATA

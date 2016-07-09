@@ -597,16 +597,21 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                     	b.pca_reg,
                     	b.reeds_reg,
                     	b.acres_per_bldg,
+                         b.hdf_load_index,
                     	c.bldg_type as hazus_bldg_type,
                      
                          -- thermal load
                     	d.buildings_in_bin,
-                    	ROUND(d.space_heat_kbtu_in_bin::NUMERIC, 0) as space_heat_kbtu_in_bin,
-                    	ROUND(d.space_cool_kbtu_in_bin::NUMERIC, 0) as space_cool_kbtu_in_bin,
-                    	ROUND(d.water_heat_kbtu_in_bin::NUMERIC, 0) as water_heat_kbtu_in_bin,
-                    	ROUND(d.space_heat_kbtu_per_building_in_bin::NUMERIC, 0) as space_heat_kbtu_per_building_in_bin,
-                    	ROUND(d.space_cool_kbtu_per_building_in_bin::NUMERIC, 0) as space_cool_kbtu_per_building_in_bin,
-                    	ROUND(d.water_heat_kbtu_per_building_in_bin::NUMERIC, 0) as water_heat_kbtu_per_building_in_bin,
+                    	ROUND(d.space_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_heat_kwh_in_bin,
+                    	ROUND(d.space_cool_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_cool_kwh_in_bin,
+                    	ROUND(d.water_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as water_heat_kwh_in_bin,
+                        ROUND(d.space_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) +
+                        ROUND(d.water_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as total_heat_kwh_in_bin,
+                    	ROUND(d.space_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_heat_kwh_per_building_in_bin,
+                    	ROUND(d.space_cool_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_cool_kwh_per_building_in_bin,
+                    	ROUND(d.water_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as water_heat_kwh_per_building_in_bin,
+                        ROUND(d.space_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) +
+                        ROUND(d.water_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as total_heat_kwh_per_building_in_bin,
                      
                          -- system ages
                     	e.space_heat_system_age,
@@ -641,7 +646,8 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                     	h.space_cool_fuel,
                     	h.totsqft,
                     	h.totsqft_heat,
-                    	h.totsqft_cool
+                    	h.totsqft_cool,
+                        h.crb_model
                     FROM %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s a
                     LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
                     ON a.pgid = b.pgid
