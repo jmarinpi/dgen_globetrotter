@@ -569,9 +569,11 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # Peaking Boiler Annual Fuel Costs
     dataframe['peaking_boilers_mwh_per_year_per_wellset'] = dataframe['peaking_boilers_nameplate_capacity_per_wellset_mw'] * 8760. * dataframe['peaking_boiler_capacity_factor']
     ng_prices_array = np.array(dataframe['ng_price_dlrs_per_mwh'].tolist(), dtype = 'float64')
-    ng_annual_costs = dataframe['peaking_boilers_mwh_per_year_per_wellset'] * ng_prices_array
+    ng_annual_costs = dataframe['peaking_boilers_mwh_per_year_per_wellset'][:, None] * ng_prices_array
+    # ***    
     dataframe['peaking_boilers_fuel_costs_per_wellset_dlrs'] = ng_annual_costs.tolist()
-
+    # ***
+    
     # Additional Boiler Costs due to Reservoir Drawdown
     # determine which years, if any, will require purchase of additional boilers due to drawdown
     dataframe['years_to_drawdown'] = np.floor(np.log(1-dataframe['max_acceptable_drawdown_pct_of_initial_capacity'])/np.log(1-dataframe['expected_drawdown_pct_per_year'])).astype(np.int64)
@@ -602,7 +604,8 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # combine all annual costs
     dataframe['annual_costs_per_wellset_dlrs'] = (  np.array(dataframe['drawdown_boilers_cost_per_wellset_dlrs'].tolist(), dtype = np.float64) +
                                                     np.array(dataframe['total_pumping_costs_per_wellset_dlrs'].tolist(), dtype = np.float64) +
-                                                    np.array(dataframe['om_total_costs_per_wellset_dlrs'].tolist(), dtype = np.float64)
+                                                    np.array(dataframe['om_total_costs_per_wellset_dlrs'].tolist(), dtype = np.float64) +
+                                                    np.array(dataframe['peaking_boilers_fuel_costs_per_wellset_dlrs'].tolist(), dtype = np.float64)
                                                     ).tolist()
 
     out_cols = ['tract_id_alias',
@@ -620,6 +623,9 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
                    'total_nameplate_capacity_per_wellset_mw',
                    'upfront_costs_per_wellset_dlrs', 
                    'annual_costs_per_wellset_dlrs', 
+                   'plant_capacity_factor',
+                   'peaking_boiler_capacity_factor',
+                   'total_blended_capacity_factor',
                    'inflation_rate',
                    'interest_rate_nominal',
                    'interest_rate_during_construction_nominal',
