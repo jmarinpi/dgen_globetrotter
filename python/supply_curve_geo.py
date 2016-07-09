@@ -314,12 +314,11 @@ def get_distribution_network_data(con, schema, year): # todo: add con, schema
 
     inputs = locals().copy()
 
-    # TODO:-- convert the mwh to mw using demand curves/load profiles (not 8760 constant assumption)
     sql = """WITH a as 
             (
-                SELECT tract_id_alias,
-                        r_array_max(tract_thermal_load_profile)/1000./b.avg_end_use_efficiency_factor as tract_peak_effective_peak_demand_mw
-                FROM %(schema)s.tract_aggregate_heat_demand_profiles
+                SELECT a.tract_id_alias,
+                        r_array_max(a.tract_thermal_load_profile)/1000./b.avg_end_use_efficiency_factor as tract_peak_effective_peak_demand_mw
+                FROM %(schema)s.tract_aggregate_heat_demand_profiles a
 	          LEFT JOIN %(schema)s.input_du_performance_projections b
                 ON b.year = %(year)s
              )

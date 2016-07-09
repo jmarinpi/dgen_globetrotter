@@ -44,8 +44,8 @@ pg_params_log = json.dumps(json.loads(pd.DataFrame([pg_params])[['host', 'port',
 #   set the number of customer bins to model in each county
 #==============================================================================
 agents_per_region = 5
-sample_pct = 0.05
-min_agents = 5
+sample_pct = 0.02
+min_agents = 3
 
 #==============================================================================
 #   model start year

@@ -280,7 +280,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     costs_and_performance_df = supply.get_plant_cost_and_performance_data(con, schema, hack_year)
                     reservoir_factors_df = supply.get_reservoir_factors(con, schema, hack_year)
                     # get demand density info 
-                    distribution_df = supply.get_distribution_network_data(con, schema)
+                    distribution_df = supply.get_distribution_network_data(con, schema, hack_year)
                     # get the plant finance data
                     plant_finances_df = supply.get_plant_finance_data(con, schema, hack_year)
                     plant_construction_factor_df = supply.get_plant_construction_factor_data(con, schema, hack_year)
