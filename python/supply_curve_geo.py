@@ -183,7 +183,8 @@ def get_plant_cost_and_performance_data(con, schema, year):
                 	b.natural_gas_peaking_boilers_dollars_per_kw,
                 	c.peaking_boilers_pct_of_peak_demand,
                   c.peaking_boiler_efficiency,
-                	c.max_acceptable_drawdown_pct_of_initial_capacity
+                	c.max_acceptable_drawdown_pct_of_initial_capacity,
+                  c.avg_end_use_efficiency_factor
             FROM %(schema)s.input_du_cost_plant_subsurface a
             LEFT JOIN %(schema)s.input_du_cost_plant_surface b
                          ON a.year = b.year
@@ -244,7 +245,7 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
                  CREATE UNLOGGED TABLE %(schema)s.tract_aggregate_heat_demand_profiles 
                  (
                     tract_id_alias integer,
-                    tract_thermal_load_profile NUMERIC[]
+                    heat_demand_profile_mw NUMERIC[]
                  );""" % inputs
         cur.execute(sql)
         con.commit()       
@@ -283,10 +284,10 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
                  scaled as
                  (
                      SELECT tract_id_alias,
-                            diffusion_shared.r_scale_array_sum(nkwh, total_heat_kwh_in_bin) as kwh
+                            diffusion_shared.r_scale_array_sum(nkwh, total_heat_kwh_in_bin/1000.) as mwh
                      FROM combined             
                  )
-                 SELECT tract_id_alias, diffusion_shared.r_sum_arrays(array_agg_mult(ARRAY[kwh])) as tract_thermal_load_profile
+                 SELECT tract_id_alias, diffusion_shared.r_sum_arrays(array_agg_mult(ARRAY[mwh])) as heat_demand_profile_mw
                  FROM scaled
                  GROUP BY tract_id_alias;""" % inputs
         
@@ -318,7 +319,7 @@ def get_tract_demand_profiles(con, schema):
     
     inputs = locals().copy()
     
-    sql = """SELECT tract_id_alias, tract_thermal_load_profile
+    sql = """SELECT tract_id_alias, heat_demand_profile_mw
             FROM %(schema)s.tract_aggregate_heat_demand_profiles;""" % inputs
     
     df = pd.read_sql(sql, con, coerce_float = False)
@@ -338,7 +339,43 @@ def get_tract_peak_demand(con, schema):
     df = pd.read_sql(sql, con, coerce_float = False)
     
     return df 
-    
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_performance_df, tract_demand_profiles_df, year):
+
+    # join the two dataframes
+    # add year to the tract_demand_df to facilitate join
+    tract_peak_demand_df['year'] = year
+    dataframe = pd.merge(tract_peak_demand_df, costs_and_performance_df, how = 'left', on = ['year'])
+    # merge in the hourly profiles
+    dataframe = pd.merge(dataframe, tract_demand_profiles_df, how = 'left', on = ['tract_id_alias'])
+    # calculate the boiler capacity required to meet the full demand (accounting for target pct of demand and efficiency factors)
+    dataframe['peaking_boiler_nameplate_capacity_mw'] = dataframe['peaking_boilers_pct_of_peak_demand'] * dataframe['peak_heat_demand_mw']/(dataframe['peaking_boiler_efficiency'] * dataframe['avg_end_use_efficiency_factor'])
+    # calculate the plant capacity required to meet the full demand (accounting for boiler target pct of demand and efficiency factors)
+    # (assume that plant heat is coming out of the ground at 100% efficiency factor)
+    dataframe['plant_nameplate_capacity_mw'] = (1 - dataframe['peaking_boilers_pct_of_peak_demand']) * dataframe['peak_heat_demand_mw']/(dataframe['avg_end_use_efficiency_factor'])
+    # calculate the effective capacity of each component (accounting for efficiency factors)
+    dataframe['peaking_boiler_effective_capacity_mw'] = dataframe['peaking_boiler_nameplate_capacity_mw'] * dataframe['peaking_boiler_efficiency'] * dataframe['avg_end_use_efficiency_factor']
+    dataframe['plant_effective_capacity_mw'] = dataframe['plant_nameplate_capacity_mw'] * dataframe['avg_end_use_efficiency_factor']    
+    # convert hourly profiles to a 2D np array
+    hourly_demand_mw = np.array(dataframe['heat_demand_profile_mw'].tolist(), dtype = 'float64')
+    # create plant supply profile by capping the hourly demand profile to the plant effective capacity
+    plant_hourly_supply_mw = np.where(hourly_demand_mw <= dataframe['plant_effective_capacity_mw'][:, None], hourly_demand_mw, dataframe['plant_effective_capacity_mw'][:, None])
+    # create boiler supply profile by extracting the demand exceeding the plant effective capacity and then capping the hourly demand profile to the boiler effective capacity
+    peaking_boiler_hourly_demand_mw = hourly_demand_mw - plant_hourly_supply_mw    
+    peaking_boiler_hourly_supply_mw = np.where(peaking_boiler_hourly_demand_mw <= dataframe['peaking_boiler_effective_capacity_mw'][:, None], peaking_boiler_hourly_demand_mw, dataframe['peaking_boiler_effective_capacity_mw'][:, None])
+    # calculate capacity factors based on the hourly supply vs. nameplate capacity
+    plant_capacity_factor = plant_hourly_supply_mw.sum(axis = 1)/(dataframe['plant_nameplate_capacity_mw'] * 8760)
+    peaking_boiler_capacity_factor = peaking_boiler_hourly_supply_mw.sum(axis = 1)/(dataframe['peaking_boiler_nameplate_capacity_mw'] * 8760)
+    # FOR testing only
+
+#    test = pd.DataFrame()
+#    test['demand_mw'] = peaking_boiler_hourly_demand_mw[50,:]
+#    test['supply_mw'] = peaking_boiler_hourly_supply_mw[50,:]
+#    test['cap_mw'] = dataframe['peaking_boiler_effective_capacity_mw'][50]
+#    test.to_csv('/Users/mgleason/Desktop/capped_demand.csv', index = False)
+    pass
 #%%
 def drilling_costs_per_depth_m_deep(depth_m, future_drilling_cost_improvements_pct):
     
