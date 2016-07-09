@@ -264,7 +264,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                               sectors, cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'])
                     
                     # calculate tract aggregate thermal load profiles                    
-                    supply.calculate_tract_demand_profiles(con, cur, schema)
+                    supply.calculate_tract_demand_profiles(con, cur, schema, cfg.pg_procs, cfg.pg_conn_string)
                     tract_demand_profiles_df = supply.get_tract_demand_profiles(con, schema)
                     
                     #==========================================================================================================
