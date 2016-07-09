@@ -145,7 +145,7 @@ def get_resource_data(con, schema, year):
                     a.system_type,
                     a.depth_m,
                     a.n_wellsets_in_tract,
-                    a.extractable_resource_per_wellset_in_tract_mwh as resource_per_wellset_mwh
+                    a.extractable_resource_per_wellset_in_tract_mwh as lifetime_resource_per_wellset_mwh
              FROM %(schema)s.resources_hydrothermal a
              
              UNION ALL
@@ -157,7 +157,7 @@ def get_resource_data(con, schema, year):
                     b.system_type,
                     b.depth_m,
                     b.n_wellsets_in_tract,
-                    b.extractable_resource_per_wellset_in_tract_mwh as resource_per_wellset_mwh
+                    b.extractable_resource_per_wellset_in_tract_mwh as lifetime_resource_per_wellset_mwh
              FROM %(schema)s.resources_egs_hdr b
              WHERE b.year = %(year)s;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
@@ -229,6 +229,8 @@ def get_reservoir_factors(con, schema, year):
 def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
     
     inputs = locals().copy()
+    
+    logger.info("Calculating Aggregate Heat Demand Profiles for Tracts")    
     
     # break tracts into subsets for parallel processing
     chunks, pg_procs = agent_prep.split_tracts(cur, schema, pg_procs)       
@@ -304,10 +306,12 @@ def calculate_tract_peak_demand(cur, con, schema):
     
     inputs = locals().copy()
 
+    logger.info("Calculating Peak Heat Demand for Tracts")    
+
     sql = """DROP TABLE IF EXISTS %(schema)s.tract_peak_heat_demand;
              CREATE UNLOGGED TABLE %(schema)s.tract_peak_heat_demand AS
             SELECT a.tract_id_alias,
-                        r_array_max(a.tract_thermal_load_profile)/1000. as peak_heat_demand_mw
+                        r_array_max(a.heat_demand_profile_mw)/1000. as peak_heat_demand_mw
                 FROM %(schema)s.tract_aggregate_heat_demand_profiles a;""" % inputs
     cur.execute(sql)
     con.commit()
@@ -463,21 +467,21 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # determine the nameplate capacity per well (based on energy and plant lifetime in years)
     # note: this assumes that lifetime energy is based on maximum sustainable production over the plant lifetime
     # ***
-    dataframe['nameplate_capacity_per_wellset_mw'] = dataframe['resource_per_wellset_mwh']/(dataframe['plant_lifetime_yrs'] * 8760)
+    dataframe['plant_nameplate_capacity_per_wellset_mw'] = dataframe['lifetime_resource_per_wellset_mwh']/(dataframe['plant_lifetime_yrs'] * 8760)
     # ***
     # calculate the effective nameplate capacity per well set
     # this is based on nameplate capacity * end use efficiency
-    dataframe['effective_capacity_per_wellset_mw'] = dataframe['nameplate_capacity_per_wellset_mw'] * dataframe['avg_end_use_efficiency_factor']
+    dataframe['plant_effective_capacity_per_wellset_mw'] = dataframe['plant_nameplate_capacity_per_wellset_mw'] * dataframe['avg_end_use_efficiency_factor']
     
     # calaculate the actual demand that can be met by the wellset (including peaking boilers)
-    dataframe['achievable_peak_demand_mw_per_wellset'] = dataframe['effective_capacity_per_wellset_mw']/(1 - dataframe['peaking_boilers_pct_of_peak_demand'])
+    dataframe['total_effective_capacity_per_wellset_mw'] = dataframe['plant_effective_capacity_per_wellset_mw']/(1 - dataframe['peaking_boilers_pct_of_peak_demand'])
     
     # also calculate the peaking boiler nameplate and effective capacities per wellset
-    dataframe['peaking_boilers_nameplate_capacity_mw_per_wellset'] = dataframe['peaking_boilers_pct_of_peak_demand'] * dataframe['achievable_peak_demand_mw_per_wellset']/(dataframe['peaking_boiler_efficiency'] * dataframe['avg_end_use_efficiency_factor'])
-    dataframe['peaking_boilers_effective_capacity_mw_per_wellset'] = dataframe['peaking_boilers_nameplate_capacity_mw_per_wellset'] * dataframe['peaking_boiler_efficiency'] * dataframe['avg_end_use_efficiency_factor']
+    dataframe['peaking_boilers_nameplate_capacity_per_wellset_mw'] = dataframe['peaking_boilers_pct_of_peak_demand'] * dataframe['total_effective_capacity_per_wellset_mw']/(dataframe['peaking_boiler_efficiency'] * dataframe['avg_end_use_efficiency_factor'])
+    dataframe['peaking_boilers_effective_capacity_per_wellset_mw'] = dataframe['peaking_boilers_nameplate_capacity_per_wellset_mw'] * dataframe['peaking_boiler_efficiency'] * dataframe['avg_end_use_efficiency_factor']
 
-    
-    dataframe['capacity_per_wellset_mw']/(1 - dataframe['peaking_boilers_pct_of_peak_demand']) * dataframe['peaking_boilers_pct_of_peak_demand'] * 1000
+    # calculate the total nameplate capacity of the plant + boilers
+    dataframe['total_nameplate_capacity_per_wellset_mw'] =  dataframe['plant_nameplate_capacity_per_wellset_mw'] + dataframe['peaking_boilers_nameplate_capacity_per_wellset_mw']
     
     # Drilling Costs
     dataframe['drilling_cost_per_well_dlrs'] = np.where(dataframe['depth_m'] >= 500, 
@@ -487,20 +491,21 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # ***
     dataframe['drilling_cost_per_wellset_dlrs'] = dataframe['drilling_cost_per_well_dlrs'] * dataframe['wells_per_wellset']
     # ***
-
     # Exploration Costs
     dataframe['exploration_well_costs_per_wellset_dlrs'] = dataframe['drilling_cost_per_well_dlrs'] * dataframe['exploration_slim_well_cost_pct_of_normal_well']
     # ***    
     dataframe['exploration_total_costs_per_wellset_dlrs'] = dataframe['exploration_well_costs_per_wellset_dlrs'] + dataframe['exploration_fixed_costs_dollars']
     # ***
 
+
     # Surface Plant Capital Costs
     # ***
-    dataframe['plant_installation_costs_per_wellset_dlrs'] = dataframe['nameplate_capacity_per_wellset_mw'] * 1000 * dataframe['plant_installation_costs_dollars_per_kw']
+    dataframe['plant_installation_costs_per_wellset_dlrs'] = dataframe['plant_nameplate_capacity_per_wellset_mw'] * 1000 * dataframe['plant_installation_costs_dollars_per_kw']
     # ***
     
     # O&M Costs
-    dataframe['om_labor_costs_per_wellset_per_year_dlrs'] = dataframe['om_labor_costs_dlrs_per_kw_per_year'] * 1000 * dataframe['nameplate_capacity_per_wellset_mw']
+    # use total nameplate capacity here since this is labor for everything
+    dataframe['om_labor_costs_per_wellset_per_year_dlrs'] = dataframe['om_labor_costs_dlrs_per_kw_per_year'] * 1000 * dataframe['total_nameplate_capacity_per_wellset_mw']
     dataframe['om_plant_costs_per_wellset_per_year_dlrs'] = dataframe['om_plant_costs_pct_plant_cap_costs_per_year'] * dataframe['plant_installation_costs_per_wellset_dlrs']
     dataframe['om_well_costs_per_wellset_per_year_dlrs'] = dataframe['om_well_costs_pct_well_cap_costs_per_year'] * dataframe['drilling_cost_per_wellset_dlrs']
     dataframe['om_total_costs_per_wellset_per_year_dlrs'] = dataframe['om_labor_costs_per_wellset_per_year_dlrs'] + dataframe['om_plant_costs_per_wellset_per_year_dlrs'] + dataframe['om_well_costs_per_wellset_per_year_dlrs']
@@ -518,15 +523,17 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # Distribution Network Construction Costs
     # TODO: double-check this logic makes sense
     # ***
-    # use achievable peak demand of entire plant (including boilers)
+    # use achievable peak demand of entire plant (including boilers) (=total_effective_capacity_per_wellset_mw)
     # don't use nameplate because distribution_network_construction_costs_dollars_per_m is based on actual demand
-    dataframe['distribution_network_construction_costs_per_wellset_dlrs'] = dataframe['distribution_network_construction_costs_dollars_per_m'] * dataframe['distribution_m_per_mw'] * dataframe['achievable_peak_demand_mw_per_wellset']
+    dataframe['distribution_m_per_wellset'] = dataframe['distribution_m_per_mw'] * dataframe['total_effective_capacity_per_wellset_mw']
+    dataframe['distribution_network_construction_costs_per_wellset_dlrs'] = dataframe['distribution_network_construction_costs_dollars_per_m'] * dataframe['distribution_m_per_wellset']
     # ***
 
     # Operating Costs
     # TODO: make sure thesee make sense given plant capacity factor (won't be pumping all the time)
+    # TODO: edit for capacity factor
     dataframe['operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_reservoir_pumping_costs_dollars_per_gal'] * dataframe['max_sustainable_well_production_gallons_per_year']
-    dataframe['distribution_m_per_wellset'] = dataframe['distribution_m_per_mw'] * dataframe['achievable_peak_demand_mw_per_wellset']
+    # TODO: edit for capacity factor
     dataframe['operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_distribution_pumping_costs_dollars_per_gal_m'] * dataframe['max_sustainable_well_production_gallons_per_year'] *  dataframe['distribution_m_per_wellset']
     dataframe['total_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs'] + dataframe['operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs']
     # convert to a time series
@@ -536,10 +543,11 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
 
     # Peaking Boiler Capital Construction Costs
     # ***    
-    dataframe['peaking_boilers_construction_cost_per_wellset_dlrs'] = dataframe['peaking_boilers_nameplate_capacity_mw_per_wellset'] * dataframe['natural_gas_peaking_boilers_dollars_per_kw'] 
+    dataframe['peaking_boilers_construction_cost_per_wellset_dlrs'] = dataframe['peaking_boilers_nameplate_capacity_per_wellset_mw'] * 1000. * dataframe['natural_gas_peaking_boilers_dollars_per_kw'] 
     # ***
 
     # Peaking Boiler Operating Costs
+    # TODO: create these
     
 
     # Additional Boiler Costs due to Reservoir Drawdown
@@ -554,7 +562,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     dataframe['boiler_purchase_years'] = bool_years_exceeding_drawdown.tolist()
 
     # determine the cost of boilers in each of these years
-    dataframe['drawdown_boilers_capacity_kw_per_wellset'] = dataframe['capacity_per_wellset_mw'] * dataframe['max_acceptable_drawdown_pct_of_initial_capacity'] * 1000.
+    dataframe['drawdown_boilers_capacity_kw_per_wellset'] = dataframe['plant_nameplate_capacity_per_wellset_mw'] * dataframe['max_acceptable_drawdown_pct_of_initial_capacity'] * 1000.
     dataframe['drawdown_boilers_cost_per_wellset_per_purchase_dlrs'] = dataframe['drawdown_boilers_capacity_kw_per_wellset'] * dataframe['natural_gas_peaking_boilers_dollars_per_kw'] 
     # convert to a time series (using the purchase years from above)
     # ***
@@ -581,8 +589,13 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
                    'depth_m',
                    'system_type',
                    'n_wellsets_in_tract',
-                   'resource_per_wellset_mwh',
-                   'capacity_per_wellset_mw',
+                   'lifetime_resource_per_wellset_mwh',
+                   'plant_nameplate_capacity_per_wellset_mw',
+                   'plant_effective_capacity_per_wellset_mw',
+                   'peaking_boilers_nameplate_capacity_per_wellset_mw',
+                   'peaking_boilers_effective_capacity_per_wellset_mw',
+                   'total_effective_capacity_per_wellset_mw',
+                   'total_nameplate_capacity_per_wellset_mw',
                    'upfront_costs_per_wellset_dlrs', 
                    'annual_costs_per_wellset_dlrs', 
                    'inflation_rate',
