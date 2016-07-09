@@ -274,6 +274,7 @@ def calculate_tract_demand_profiles(con, cur, schema):
     
     cur.execute(sql)
     con.commit()
+    # TODO: add capability for using p_run to speed this up? Or else come up with another more performant method...
  
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -309,7 +310,7 @@ def drilling_costs_per_depth_m_shallow(depth_m, future_drilling_cost_improvement
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_distribution_network_data(con, schema): # todo: add con, schema
+def get_distribution_network_data(con, schema, year): # todo: add con, schema
 
     inputs = locals().copy()
 
@@ -317,13 +318,13 @@ def get_distribution_network_data(con, schema): # todo: add con, schema
     sql = """WITH a as 
             (
                 SELECT tract_id_alias,
-	                (sum(space_heat_kbtu_in_bin + water_heat_kbtu_in_bin)) * 0.0002930711/8760 as heat_demand_mw
-	            FROM %(schema)s.agent_core_attributes_all
-	            WHERE tech = 'du'
-	            GROUP BY tract_id_alias
+                        r_array_max(tract_thermal_load_profile)/1000./b.avg_end_use_efficiency_factor as tract_peak_effective_peak_demand_mw
+                FROM %(schema)s.tract_aggregate_heat_demand_profiles
+	          LEFT JOIN %(schema)s.input_du_performance_projections b
+                ON b.year = %(year)s
              )
             SELECT a.tract_id_alias,
-                b.road_meters / a.heat_demand_mw as distribution_m_per_mw,
+                b.road_meters / a.tract_peak_effective_peak_demand_mw as distribution_m_per_mw,
                 b.road_meters as distribution_total_m
             FROM a
             LEFT JOIN diffusion_geo.tract_road_length b
