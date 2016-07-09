@@ -263,7 +263,7 @@ def calculate_tract_demand_profiles(con, cur, schema):
              (
                  SELECT tract_id_alias,
                         diffusion_shared.r_scale_array_sum(
-                            diffusion_shared.r_scale_array_precision(b.nkwh, %(scale_factor)s),
+                            diffusion_shared.r_scale_array_precision(nkwh, %(scale_factor)s),
                             total_heat_kwh_in_bin
                         ) as kwh
                  FROM combined             

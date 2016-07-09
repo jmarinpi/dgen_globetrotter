@@ -690,7 +690,16 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
 
     # create indices
     # TODO: add indices that are neeeded in subsequent steps?
-
+    sql = """CREATE INDEX agent_core_attributes_%(sector_abbr)s_btree_crb_model
+             ON %(schema)s.agent_core_attributes_%(sector_abbr)s
+             USING BTREE(crb_model);
+             
+             CREATE INDEX agent_core_attributes_%(sector_abbr)s_btree_hdf_load_index
+             ON %(schema)s.agent_core_attributes_%(sector_abbr)s
+             USING BTREE(hdf_load_index);""" % inputs
+    cur.execute(sql)
+    con.commit()
+             
 
     
 #%%
