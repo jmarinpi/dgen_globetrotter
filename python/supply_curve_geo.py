@@ -182,6 +182,7 @@ def get_plant_cost_and_performance_data(con, schema, year):
                 	b.operating_costs_distribution_pumping_costs_dollars_per_gal_m,
                 	b.natural_gas_peaking_boilers_dollars_per_kw,
                 	c.peaking_boilers_pct_of_peak_demand,
+                  c.peaking_boiler_efficiency,
                 	c.max_acceptable_drawdown_pct_of_initial_capacity
             FROM %(schema)s.input_du_cost_plant_subsurface a
             LEFT JOIN %(schema)s.input_du_cost_plant_surface b
@@ -295,6 +296,22 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
     finally:
         pool.close()
  
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_tract_peak_demand(cur, con, schema):
+    
+    inputs = locals().copy()
+
+    sql = """DROP TABLE IF EXISTS %(schema)s.tract_peak_heat_demand;
+             CREATE UNLOGGED TABLE %(schema)s.tract_peak_heat_demand AS
+            SELECT a.tract_id_alias,
+                        r_array_max(a.tract_thermal_load_profile)/1000. as peak_heat_demand_mw
+                FROM %(schema)s.tract_aggregate_heat_demand_profiles a;""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_tract_demand_profiles(con, schema):
@@ -306,7 +323,21 @@ def get_tract_demand_profiles(con, schema):
     
     df = pd.read_sql(sql, con, coerce_float = False)
     
-    return df  
+    return df 
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_tract_peak_demand(con, schema):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT tract_id_alias, peak_heat_demand_mw
+            FROM %(schema)s.tract_peak_heat_demand;""" % inputs
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df 
     
 #%%
 def drilling_costs_per_depth_m_deep(depth_m, future_drilling_cost_improvements_pct):
@@ -329,22 +360,14 @@ def drilling_costs_per_depth_m_shallow(depth_m, future_drilling_cost_improvement
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_distribution_network_data(con, schema, year): # todo: add con, schema
+def get_distribution_network_data(con, schema): # todo: add con, schema
 
     inputs = locals().copy()
 
-    sql = """WITH a as 
-            (
-                SELECT a.tract_id_alias,
-                        r_array_max(a.tract_thermal_load_profile)/1000./b.avg_end_use_efficiency_factor as tract_peak_effective_peak_demand_mw
-                FROM %(schema)s.tract_aggregate_heat_demand_profiles a
-	          LEFT JOIN %(schema)s.input_du_performance_projections b
-                ON b.year = %(year)s
-             )
-            SELECT a.tract_id_alias,
-                b.road_meters / a.tract_peak_effective_peak_demand_mw as distribution_m_per_mw,
+    sql = """SELECT a.tract_id_alias,
+                b.road_meters / a.peak_heat_demand_mw as distribution_m_per_mw,
                 b.road_meters as distribution_total_m
-            FROM a
+            FROM %(schema)s.tract_peak_heat_demand a
             LEFT JOIN diffusion_geo.tract_road_length b
             ON a.tract_id_alias = b.tract_id_alias;""" % inputs
 

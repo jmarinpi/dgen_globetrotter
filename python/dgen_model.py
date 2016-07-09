@@ -265,8 +265,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     # calculate tract aggregate thermal load profiles                    
                     supply.calculate_tract_demand_profiles(con, cur, schema, cfg.pg_procs, cfg.pg_conn_string)
-                    tract_demand_profiles_df = supply.get_tract_demand_profiles(con, schema)
-                    
+                    #tract_demand_profiles_df = supply.get_tract_demand_profiles(con, schema)
+                    # calculate tract peak demand
+                    supply.calculate_tract_peak_demand(cur, con, schema)
+                    tract_peak_demand_df = supply.get_tract_peak_demand(con, schema)
                     #==========================================================================================================
                     # SETUP RESOURCE DATA
                     #==========================================================================================================
@@ -280,7 +282,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     costs_and_performance_df = supply.get_plant_cost_and_performance_data(con, schema, hack_year)
                     reservoir_factors_df = supply.get_reservoir_factors(con, schema, hack_year)
                     # get demand density info 
-                    distribution_df = supply.get_distribution_network_data(con, schema, hack_year)
+                    distribution_df = supply.get_distribution_network_data(con, schema)
                     # get the plant finance data
                     plant_finances_df = supply.get_plant_finance_data(con, schema, hack_year)
                     plant_construction_factor_df = supply.get_plant_construction_factor_data(con, schema, hack_year)
