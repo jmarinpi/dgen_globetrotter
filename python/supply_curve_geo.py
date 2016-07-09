@@ -372,8 +372,10 @@ def calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_
     # calculate capacity factors based on the hourly supply vs. nameplate capacity
     dataframe['plant_capacity_factor'] = plant_hourly_supply_mw.sum(axis = 1)/(dataframe['plant_nameplate_capacity_mw'] * 8760)
     dataframe['peaking_boiler_capacity_factor'] = peaking_boiler_hourly_supply_mw.sum(axis = 1)/(dataframe['peaking_boiler_nameplate_capacity_mw'] * 8760)
-    
-    return_cols = ['tract_id_alias', 'plant_capacity_factor', 'peaking_boiler_capacity_factor']
+    # calculate a combined capacity factor
+    dataframe['total_blended_capacity_factor'] = (plant_hourly_supply_mw + peaking_boiler_hourly_supply_mw).sum(axis = 1)/((dataframe['plant_nameplate_capacity_mw'] + dataframe['peaking_boiler_nameplate_capacity_mw']) * 8760)
+
+    return_cols = ['tract_id_alias', 'plant_capacity_factor', 'peaking_boiler_capacity_factor', 'total_blended_capacity_factor']
     dataframe = dataframe[return_cols]
     
     return dataframe
@@ -436,11 +438,9 @@ def get_distribution_network_data(con, schema): # todo: add con, schema
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df, plant_finances_df,
-                                    distribution_df):
+                                    distribution_df, capacity_factors_df):
     
     inputs = locals().copy()
-
-
     
     # merge resources with reservoir factors (left join on resource_type (egs or hydrothermal))
     dataframe = pd.merge(resource_df, reservoir_factors_df, how = 'left', on = ['resource_type'])
@@ -450,7 +450,8 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     dataframe = pd.merge(dataframe, plant_finances_df, how = 'left', on = ['year'])
     # merge the distribution demand density info (left join on tract id alias)
     dataframe = pd.merge(dataframe, distribution_df, how = 'left', on = ['tract_id_alias'])
-    
+    # merge the capacity factor data
+    dataframe = pd.merge(dataframe, capacity_factors_df, how = 'left', on = ['tract_id_alias'])
  
     # for testing:
     #dataframe = pd.read_csv('/Users/mgleason/Desktop/plant_dfs/dataframe.csv')
@@ -521,7 +522,6 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # ***
 
     # Distribution Network Construction Costs
-    # TODO: double-check this logic makes sense
     # ***
     # use achievable peak demand of entire plant (including boilers) (=total_effective_capacity_per_wellset_mw)
     # don't use nameplate because distribution_network_construction_costs_dollars_per_m is based on actual demand
@@ -530,11 +530,13 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # ***
 
     # Operating Costs
-    # TODO: make sure thesee make sense given plant capacity factor (won't be pumping all the time)
-    # TODO: edit for capacity factor
-    dataframe['operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_reservoir_pumping_costs_dollars_per_gal'] * dataframe['max_sustainable_well_production_gallons_per_year']
-    # TODO: edit for capacity factor
-    dataframe['operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_distribution_pumping_costs_dollars_per_gal_m'] * dataframe['max_sustainable_well_production_gallons_per_year'] *  dataframe['distribution_m_per_wellset']
+    # costs for reservoir pumping are based on plant capacity factor
+    dataframe['reservoir_pumping_gallons_per_year'] = dataframe['max_sustainable_well_production_gallons_per_year'] * dataframe['plant_capacity_factor']
+    dataframe['operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_reservoir_pumping_costs_dollars_per_gal'] * dataframe['reservoir_pumping_gallons_per_year']
+    # costs for distribution pumping are based on blended capacity factor
+    dataframe['distribution_pumping_gallons_per_year'] = dataframe['max_sustainable_well_production_gallons_per_year'] * dataframe['total_blended_capacity_factor']
+    dataframe['operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_distribution_pumping_costs_dollars_per_gal_m'] * dataframe['distribution_pumping_gallons_per_year'] *  dataframe['distribution_m_per_wellset']
+    # combined costs
     dataframe['total_pumping_costs_per_wellset_per_year_dlrs'] = dataframe['operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs'] + dataframe['operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs']
     # convert to a time series
     # ***
