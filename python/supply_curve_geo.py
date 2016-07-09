@@ -385,13 +385,13 @@ def calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_
 #    test.to_csv('/Users/mgleason/Desktop/capped_demand.csv', index = False)
 
     # checking capacity factors
-    test = pd.DataFrame()
-    test['demand_mw'] = hourly_demand_mw[50,:]
-    test['supply_mw'] = plant_hourly_supply_mw[50,:]
-    test['effective_cap_mw'] = dataframe['plant_effective_capacity_mw'][50]
-    test['np_cap_mw'] = dataframe['plant_nameplate_capacity_mw'][50]
-    test['capacity_factor'] = dataframe['plant_capacity_factor'][50]
-    test.to_csv('/Users/mgleason/Desktop/capped_demand.csv', index = False)
+#    test = pd.DataFrame()
+#    test['demand_mw'] = hourly_demand_mw[50,:]
+#    test['supply_mw'] = plant_hourly_supply_mw[50,:]
+#    test['effective_cap_mw'] = dataframe['plant_effective_capacity_mw'][50]
+#    test['np_cap_mw'] = dataframe['plant_nameplate_capacity_mw'][50]
+#    test['capacity_factor'] = dataframe['plant_capacity_factor'][50]
+#    test.to_csv('/Users/mgleason/Desktop/capped_demand.csv', index = False)
 
     return_cols = ['tract_id_alias', 'plant_capacity_factor', 'peaking_boiler_capacity_factor', 'total_blended_capacity_factor']
     dataframe = dataframe[return_cols]
