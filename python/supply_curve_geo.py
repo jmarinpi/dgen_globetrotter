@@ -113,19 +113,20 @@ def setup_resource_data_hydrothermal(cur, con, schema, seed):
 
     sql = """DROP TABLE IF EXISTS %(schema)s.resources_hydrothermal;
              CREATE UNLOGGED TABLE %(schema)s.resources_hydrothermal AS
-             SELECT a.tract_id_alias,
-                    a.resource_id,
-                    a.resource_type,
-                    a.system_type,
-                	  round(
-                		diffusion_shared.r_runif(a.min_depth_m, 
-                				  a.max_depth_m, 
-                				 1, 
-                				 %(seed)s * a.tract_id_alias),
-                		0)::INTEGER as depth_m,
-                   n_wells_in_tract as n_wellsets_in_tract,
-                   extractable_resource_per_well_in_tract_mwh as extractable_resource_per_wellset_in_tract_mwh -- todo: just rename this in the source table
-             FROM diffusion_geo.hydrothermal_resource_data_dummy a -- TODO: replace with actual resource data from meghan -- may need to merge pts and polys;""" % inputs
+            SELECT a.tract_id_alias,
+                	b.resource_id,
+                	b.resource_type,
+                	 b.system_type,
+                		  round(
+                			diffusion_shared.r_runif(b.min_depth_m, 
+                					  b.max_depth_m, 
+                					 1, 
+                					 %(seed)s * a.tract_id_alias),
+                			0)::INTEGER as depth_m,
+                	b.n_wells_in_tract as n_wellsets_in_tract,
+                	b.extractable_resource_per_well_in_tract_mwh as extractable_resource_per_wellset_in_tract_mwh -- TODO: just rename this in the source table
+            FROM %(schema)s.tracts_to_model a -- TODO: replace with actual resource data from meghan -- may need to merge pts and poly
+            CROSS JOIN diffusion_geo.hydrothermal_resource_data_dummy b;""" % inputs
     cur.execute(sql)
     con.commit()
     # TODO: add some mechanism for only compiling data for tracts in states to model
