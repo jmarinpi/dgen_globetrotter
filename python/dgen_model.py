@@ -604,7 +604,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # CALCULATE PLANT SIZES BASED ON MARKET POTENTIAL
                     #==============================================================================                    
                     plant_sizes_market_df = demand_supply.calc_plant_sizes_market(demand_curves_df, supply_curves_df) # TODO: replace with actual function
-                
+                    
                     #==============================================================================
                     # BASS DIFFUSION
                     #==============================================================================                    
