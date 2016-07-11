@@ -192,7 +192,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             mutation = cfg.module_lkup['agent_mutation'][tech_mode]
             finfunc = cfg.module_lkup['financial_functions'][tech_mode]
             diffunc = cfg.module_lkup['diffusion_functions'][tech_mode]
-            supply = cfg.module_lkup['supply_curve'][tech_mode]
+            demand_supply = cfg.module_lkup['supply_curve'][tech_mode]
             
             # skip industrial sector if modeling geothermal technologies
             if 'ind' in sectors.keys() and tech_mode == 'geo':
@@ -296,24 +296,24 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         # CALCULATE TRACT AGGREGATE THERMAL LOAD PROFILES AND PEAK DEMAND
                         #==========================================================================================================                                    
                         # calculate tract demand profiles
-                        supply.calculate_tract_demand_profiles(con, cur, schema, cfg.pg_procs, cfg.pg_conn_string)
+                        demand_supply.calculate_tract_demand_profiles(con, cur, schema, cfg.pg_procs, cfg.pg_conn_string)
                         # get tract demand profiles
-                        tract_demand_profiles_df = supply.get_tract_demand_profiles(con, schema)
+                        tract_demand_profiles_df = demand_supply.get_tract_demand_profiles(con, schema)
     
                         # calculate tract peak demand
-                        supply.calculate_tract_peak_demand(cur, con, schema)
+                        demand_supply.calculate_tract_peak_demand(cur, con, schema)
                         # get peak demand data
-                        tract_peak_demand_df = supply.get_tract_peak_demand(con, schema)
+                        tract_peak_demand_df = demand_supply.get_tract_peak_demand(con, schema)
                         
                         #==========================================================================================================
                         # GET DEMAND DENSITY DATA
                         #==========================================================================================================                        
-                        distribution_df = supply.get_distribution_network_data(con, schema)
+                        distribution_df = demand_supply.get_distribution_network_data(con, schema)
 
                         #==========================================================================================================
                         # SETUP RESOURCE DATA
                         #==========================================================================================================
-                        supply.setup_resource_data(cur, con, schema, scenario_opts['random_generator_seed'], cfg.pg_procs, cfg.pg_conn_string)
+                        demand_supply.setup_resource_data(cur, con, schema, scenario_opts['random_generator_seed'], cfg.pg_procs, cfg.pg_conn_string)
 
     
             #==========================================================================================================
@@ -465,7 +465,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     pass
                     
-    #%%                
+                    #%%                
                     
                     
                     
@@ -552,7 +552,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     logger.info('\tWorking on %s' % year)
                         
                     #==============================================================================
-                    # BUILD DEMAND CURVE           
+                    # BUILD DEMAND CURVES FOR EACH TRACT      
                     #==============================================================================                   
                     # get core agent attributes from postgres
                     agents = mutation.get_core_agent_attributes(con, schema)
@@ -561,25 +561,25 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     
                     #==============================================================================
-                    # BUILD SUPPLY CURVE           
+                    # BUILD SUPPLY CURVES FOR EACH TRACT
                     #==============================================================================
-                    resource_df = supply.get_resource_data(con, schema, year)
+                    resource_df = demand_supply.get_resource_data(con, schema, year)
                     # get natural gas prics
-                    ng_prices_df = supply.get_natural_gas_prices(con, schema, year)
+                    ng_prices_df = demand_supply.get_natural_gas_prices(con, schema, year)
                     # get the du cost data
-                    costs_and_performance_df = supply.get_plant_cost_and_performance_data(con, schema, year)
-                    reservoir_factors_df = supply.get_reservoir_factors(con, schema, year)
+                    costs_and_performance_df = demand_supply.get_plant_cost_and_performance_data(con, schema, year)
+                    reservoir_factors_df = demand_supply.get_reservoir_factors(con, schema, year)
                     # get the plant finance data
-                    plant_finances_df = supply.get_plant_finance_data(con, schema, year)
-                    plant_construction_factor_df = supply.get_plant_construction_factor_data(con, schema, year)
-                    plant_depreciation_df = supply.get_plant_depreciation_data(con, schema, year)                    
+                    plant_finances_df = demand_supply.get_plant_finance_data(con, schema, year)
+                    plant_construction_factor_df = demand_supply.get_plant_construction_factor_data(con, schema, year)
+                    plant_depreciation_df = demand_supply.get_plant_depreciation_data(con, schema, year)                    
                     # calculate the plant and boiler capacity factors
-                    capacity_factors_df = supply.calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_performance_df, tract_demand_profiles_df, year)
+                    capacity_factors_df = demand_supply.calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_performance_df, tract_demand_profiles_df, year)
                     # apply the plant cost data
-                    resources_with_costs_df = supply.apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df,
+                    resources_with_costs_df = demand_supply.apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df,
                                                                                      plant_finances_df, distribution_df,  capacity_factors_df, ng_prices_df)
                     # build supply curve
-                    pass # TODO: add dummy function
+                    supply_curves_df = demand_supply.build_supply_curves() # TODO: replace with actual function
                     
                     #==============================================================================
                     # CALCULATE ECONOMIC POTENTIAL

@@ -22,8 +22,8 @@ import financial_functions_geo
 import financial_functions_elec
 import diffusion_functions_geo
 import diffusion_functions_elec
-import supply_curve_geo
-import supply_curve_elec
+import demand_supply_geo
+import demand_supply_elec
 
 
 #==============================================================================
@@ -76,10 +76,10 @@ module_lkup = {
                         'geo' : diffusion_functions_geo,
                         'elec': diffusion_functions_elec,
                     },
-                'supply_curve'  :
+                'demand_supply'  :
                     {
-                        'geo' : supply_curve_geo,
-                        'elec': supply_curve_elec
+                        'geo' : demand_supply_geo,
+                        'elec': demand_supply_elec
                     }
 }
 
