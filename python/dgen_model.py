@@ -556,6 +556,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================                   
                     # get core agent attributes from postgres
                     agents = mutation.get_core_agent_attributes(con, schema)
+                    # get regional prices of energy
+                    energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
+                    # apply regional heating/cooling prices
+                    agents = AgentsAlgorithm(agents, mutation.apply_regional_energy_prices, (energy_prices_df, )).compute()
+
+                    # get du cost data
+                    # TODO:
+                    # apply du cost data
+                    # TODO:                                        
+                    
                     # build demand curves
                     demand_curves_df = demand_supply.build_demand_curves(agents.dataframe) # TODO: replace with actual function
                     

@@ -405,6 +405,18 @@ b as
 )
 select a.tract_id_alias, b.year, b.dlrs_per_mwh
 from a
-LEFT JOIN b
+LEFT JOIN bc
 ON a.census_division_abbr = b.census_division_abbr;
 
+------------------------------------------------------------------------------
+set role 'diffusion-writers';
+DROP VIEW IF EXISTS diffusion_template.aeo_energy_prices_to_model;
+CREATE VIEW diffusion_template.aeo_energy_prices_to_model AS
+select a.year,
+	a.census_division_abbr,	
+	a.sector_abbr,
+	a.fuel_type, 
+	a.dlrs_per_mmbtu * 0.0034121412 as dlrs_per_kwh
+FROM diffusion_shared.aeo_energy_price_projections_2015 a
+inner join diffusion_template.input_main_scenario_options b
+ON a.scenario = b.regional_heating_fuel_cost_trajectories;
