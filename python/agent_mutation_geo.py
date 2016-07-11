@@ -131,3 +131,29 @@ def apply_regional_energy_prices(dataframe, energy_prices_df):
     dataframe = dataframe[return_cols]
     
     return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_end_user_costs_du(con, schema, year):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT *
+            FROM %(schema)s.input_du_cost_user
+            WHERE year = %(year)s;""" % inputs
+            
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_end_user_costs_du(dataframe, end_user_costs_du_df):
+    
+    # join dataframes together
+    dataframe = pd.merge(dataframe, end_user_costs_du_df, how = 'left', on = ['sector_abbr'])
+
+    return dataframe
+
+

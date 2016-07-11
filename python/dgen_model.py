@@ -562,9 +562,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, mutation.apply_regional_energy_prices, (energy_prices_df, )).compute()
 
                     # get du cost data
-                    # TODO:
+                    end_user_costs_du_df = mutation.get_end_user_costs_du(con, schema, year)
                     # apply du cost data
-                    # TODO:                                        
+                    agents = AgentsAlgorithm(agents, mutation.apply_end_user_costs_du, (end_user_costs_du_df, )).compute()                                  
                     
                     # build demand curves
                     demand_curves_df = demand_supply.build_demand_curves(agents.dataframe) # TODO: replace with actual function
