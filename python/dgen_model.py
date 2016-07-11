@@ -263,311 +263,343 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, cfg.agents_per_region,
                                                               sectors, cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'])
                     
-                    # calculate tract aggregate thermal load profiles                    
-                    supply.calculate_tract_demand_profiles(con, cur, schema, cfg.pg_procs, cfg.pg_conn_string)
-                    tract_demand_profiles_df = supply.get_tract_demand_profiles(con, schema)
-                    # calculate tract peak demand
-                    supply.calculate_tract_peak_demand(cur, con, schema)
-                    # get peak demand data
-                    tract_peak_demand_df = supply.get_tract_peak_demand(con, schema)
-                    # get demand density info 
-                    distribution_df = supply.get_distribution_network_data(con, schema)
-                    #==========================================================================================================
-                    # SETUP RESOURCE DATA
-                    #==========================================================================================================
-                    supply.setup_resource_data(cur, con, schema, scenario_opts['random_generator_seed'])
-                    
-                    # TODO: move this block to the yearly loop                    
-                    # get resource data (for testing only)
-                    hack_year = 2014
-                    resource_df = supply.get_resource_data(con, schema, hack_year)
-                    # get natural gas prics
-                    ng_prices_df = supply.get_natural_gas_prices(con, schema, hack_year)
-                    # get the du cost data
-                    costs_and_performance_df = supply.get_plant_cost_and_performance_data(con, schema, hack_year)
-                    reservoir_factors_df = supply.get_reservoir_factors(con, schema, hack_year)
-                    # get the plant finance data
-                    plant_finances_df = supply.get_plant_finance_data(con, schema, hack_year)
-                    plant_construction_factor_df = supply.get_plant_construction_factor_data(con, schema, hack_year)
-                    plant_depreciation_df = supply.get_plant_depreciation_data(con, schema, hack_year)                    
-                    # calculate the plant and boiler capacity factors
-                    capacity_factors_df = supply.calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_performance_df, tract_demand_profiles_df, hack_year)
+                    if tech_mode == 'elec':                    
+                        #==============================================================================
+                        # GET RATE TARIFF LOOKUP TABLE FOR EACH SECTOR                                    
+                        #==============================================================================
+                        rates_df = mutation.get_electric_rates(cur, con, schema, sectors, scenario_opts['random_generator_seed'], cfg.pg_conn_string)
     
-                    # apply the plant cost data
-                    resources_with_costs_df = supply.apply_cost_and_performance_data(resource_df, 
-                                                                                     costs_and_performance_df, 
-                                                                                     reservoir_factors_df,
-                                                                                     plant_finances_df,
-                                                                                     distribution_df,
-                                                                                     capacity_factors_df,
-                                                                                     ng_prices_df
-                                                                                     )
-
+                        #==============================================================================
+                        # GET NORMALIZED LOAD PROFILES
+                        #==============================================================================
+                        normalized_load_profiles_df = mutation.get_normalized_load_profiles(con, schema, sectors)
+    
+                        # get system sizing targets
+                        system_sizing_targets_df = mutation.get_system_sizing_targets(con, schema)  
+    
+                        # get annual system degradation
+                        system_degradation_df = mutation.get_system_degradation(con, schema) 
+                        
+                        # get state starting capacities
+                        # TODO: add this capability for du and ghp
+                        state_starting_capacities_df = mutation.get_state_starting_capacities(con, schema)
                     
-                    #==============================================================================
-                    # GET RATE TARIFF LOOKUP TABLE FOR EACH SECTOR                                    
-                    #==============================================================================
-                    rates_df = mutation.get_electric_rates(cur, con, schema, sectors, scenario_opts['random_generator_seed'], cfg.pg_conn_string)
-
-                    #==============================================================================
-                    # GET NORMALIZED LOAD PROFILES
-                    #==============================================================================
-                    normalized_load_profiles_df = mutation.get_normalized_load_profiles(con, schema, sectors)
-
-                    # get system sizing targets
-                    system_sizing_targets_df = mutation.get_system_sizing_targets(con, schema)  
-
-                    # get annual system degradation
-                    system_degradation_df = mutation.get_system_degradation(con, schema) 
+                        #==========================================================================================================
+                        # CHECK TECH POTENTIAL
+                        #==========================================================================================================    
+                        # TODO: get tech potential check working again
+                        #datfunc.check_tech_potential_limits(cur, con, schema, techs, sectors, out_dir)              
                     
-                    # get state starting capacities
-                    state_starting_capacities_df = mutation.get_state_starting_capacities(con, schema)
-                    
-                    #==========================================================================================================
-                    # CHECK TECH POTENTIAL
-                    #==========================================================================================================    
-                    # TODO: get tech potential check working again
-                    #datfunc.check_tech_potential_limits(cur, con, schema, techs, sectors, out_dir)              
-                    
+
+                    if 'du' in techs:
+                        #==========================================================================================================
+                        # CALCULATE TRACT AGGREGATE THERMAL LOAD PROFILES AND PEAK DEMAND
+                        #==========================================================================================================                                    
+                        # calculate tract demand profiles
+                        supply.calculate_tract_demand_profiles(con, cur, schema, cfg.pg_procs, cfg.pg_conn_string)
+                        # get tract demand profiles
+                        tract_demand_profiles_df = supply.get_tract_demand_profiles(con, schema)
+    
+                        # calculate tract peak demand
+                        supply.calculate_tract_peak_demand(cur, con, schema)
+                        # get peak demand data
+                        tract_peak_demand_df = supply.get_tract_peak_demand(con, schema)
+                        
+                        #==========================================================================================================
+                        # GET DEMAND DENSITY DATA
+                        #==========================================================================================================                        
+                        distribution_df = supply.get_distribution_network_data(con, schema)
+
+                        #==========================================================================================================
+                        # SETUP RESOURCE DATA
+                        #==========================================================================================================
+                        supply.setup_resource_data(cur, con, schema, scenario_opts['random_generator_seed'], cfg.pg_procs, cfg.pg_conn_string)
 
     
             #==========================================================================================================
             # MODEL TECHNOLOGY DEPLOYMENT    
             #==========================================================================================================
             logger.info("---------Modeling Annual Deployment---------")      
-            # get dsire incentives, srecs, and itc inputs
-            # TODO: move these to agent mutation
-            dsire_opts = datfunc.get_dsire_settings(con, schema)
-            incentives_cap = datfunc.get_incentives_cap(con, schema)
-            dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, dsire_opts)
-            srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, dsire_opts)
-            state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, dsire_opts)            
-            itc_options = datfunc.get_itc_incentives(con, schema)
-            for year in model_years:
-                logger.info('\tWorking on %s' % year)
+            if tech_mode == 'elec':    
+                # get dsire incentives, srecs, and itc inputs
+                # TODO: move these to agent mutation
+                dsire_opts = datfunc.get_dsire_settings(con, schema)
+                incentives_cap = datfunc.get_incentives_cap(con, schema)
+                dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, dsire_opts)
+                srecs = datfunc.get_srecs(cur, con, schema, techs, cfg.pg_conn_string, dsire_opts)
+                state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, dsire_opts)            
+                itc_options = datfunc.get_itc_incentives(con, schema)
+                for year in model_years:
+                    logger.info('\tWorking on %s' % year)
+                        
+                    # get core agent attributes from postgres
+                    agents = mutation.get_core_agent_attributes(con, schema)
+      
+                    #==============================================================================
+                    # LOAD/POPULATION GROWTH               
+                    #==============================================================================
+                    # get load growth
+                    load_growth_df = mutation.get_load_growth(con, schema, year)
+                    # apply load growth
+                    agents = AgentsAlgorithm(agents, mutation.apply_load_growth, (load_growth_df,)).compute(1)              
                     
-                # get core agent attributes from postgres
-                agents = mutation.get_core_agent_attributes(con, schema)
-  
-                #==============================================================================
-                # LOAD/POPULATION GROWTH               
-                #==============================================================================
-                # get load growth
-                load_growth_df = mutation.get_load_growth(con, schema, year)
-                # apply load growth
-                agents = AgentsAlgorithm(agents, mutation.apply_load_growth, (load_growth_df,)).compute(1)              
-                
-                #==============================================================================
-                # RATES         
-                #==============================================================================                
-                # get net metering settings
-                net_metering_df = mutation.get_net_metering_settings(con, schema, year)
-                # select rates, combining with net metering settings
-                agents = AgentsAlgorithm(agents, mutation.select_electric_rates, (rates_df, net_metering_df)).compute(1)
-                
-                #==============================================================================
-                # ANNUAL RESOURCE DATA
-                #==============================================================================       
-                # get annual resource data
-                resource_solar_df = mutation.get_annual_resource_solar(con, schema, sectors)
-                resource_wind_df = mutation.get_annual_resource_wind(con, schema, year, sectors)
-                # get technology performance data
-                tech_performance_solar_df = mutation.get_technology_performance_solar(con, schema, year)
-                tech_performance_wind_df = mutation.get_technology_performance_wind(con, schema, year)
-                # apply technology performance to annual resource data
-                resource_solar_df = mutation.apply_technology_performance_solar(resource_solar_df, tech_performance_solar_df)
-                resource_wind_df = mutation.apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df)     
+                    #==============================================================================
+                    # RATES         
+                    #==============================================================================                
+                    # get net metering settings
+                    net_metering_df = mutation.get_net_metering_settings(con, schema, year)
+                    # select rates, combining with net metering settings
+                    agents = AgentsAlgorithm(agents, mutation.select_electric_rates, (rates_df, net_metering_df)).compute(1)
+                    
+                    #==============================================================================
+                    # ANNUAL RESOURCE DATA
+                    #==============================================================================       
+                    # get annual resource data
+                    resource_solar_df = mutation.get_annual_resource_solar(con, schema, sectors)
+                    resource_wind_df = mutation.get_annual_resource_wind(con, schema, year, sectors)
+                    # get technology performance data
+                    tech_performance_solar_df = mutation.get_technology_performance_solar(con, schema, year)
+                    tech_performance_wind_df = mutation.get_technology_performance_wind(con, schema, year)
+                    # apply technology performance to annual resource data
+                    resource_solar_df = mutation.apply_technology_performance_solar(resource_solar_df, tech_performance_solar_df)
+                    resource_wind_df = mutation.apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df)     
+                                    
+                    #==============================================================================
+                    # SYSTEM SIZING
+                    #==============================================================================
+                    # size systems
+                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), mutation.size_systems_solar, (system_sizing_targets_df, resource_solar_df)).compute()  
+                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), mutation.size_systems_wind, (system_sizing_targets_df, resource_wind_df)).compute()   
+                    # re-combine technologies
+                    agents = agents_solar.add_agents(agents_wind)
+                    del agents_solar, agents_wind   
+                    # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
+                    agents = AgentsAlgorithm(agents, mutation.update_net_metering_fields).compute(1)  
                                 
-                #==============================================================================
-                # SYSTEM SIZING
-                #==============================================================================
-                # size systems
-                agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), mutation.size_systems_solar, (system_sizing_targets_df, resource_solar_df)).compute()  
-                agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), mutation.size_systems_wind, (system_sizing_targets_df, resource_wind_df)).compute()   
-                # re-combine technologies
-                agents = agents_solar.add_agents(agents_wind)
-                del agents_solar, agents_wind   
-                # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
-                agents = AgentsAlgorithm(agents, mutation.update_net_metering_fields).compute(1)  
-                            
-                #==============================================================================
-                # DEVELOPABLE CUSTOMERS/LOAD
-                #==============================================================================                            
-                # determine "developable" population
-                agents = AgentsAlgorithm(agents, mutation.calculate_developable_customers_and_load).compute(1)                            
-                            
-                #==============================================================================
-                # GET NORMALIZED LOAD PROFILES
-                #==============================================================================
-                # apply normalized load profiles
-                agents = AgentsAlgorithm(agents, mutation.scale_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
-               
-                #==============================================================================
-                # HOURLY RESOURCE DATA
-                #==============================================================================
-                # get hourly resource
-                normalized_hourly_resource_solar_df = mutation.get_normalized_hourly_resource_solar(con, schema, sectors)
-                normalized_hourly_resource_wind_df = mutation.get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents)
-                # apply normalized hourly resource profiles
-                agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), mutation.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, )).compute()
-                agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), mutation.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, )).compute()        
-                # re-combine technologies
-                agents = agents_solar.add_agents(agents_wind)
-                del agents_solar, agents_wind               
+                    #==============================================================================
+                    # DEVELOPABLE CUSTOMERS/LOAD
+                    #==============================================================================                            
+                    # determine "developable" population
+                    agents = AgentsAlgorithm(agents, mutation.calculate_developable_customers_and_load).compute(1)                            
+                                
+                    #==============================================================================
+                    # GET NORMALIZED LOAD PROFILES
+                    #==============================================================================
+                    # apply normalized load profiles
+                    agents = AgentsAlgorithm(agents, mutation.scale_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
+                   
+                    #==============================================================================
+                    # HOURLY RESOURCE DATA
+                    #==============================================================================
+                    # get hourly resource
+                    normalized_hourly_resource_solar_df = mutation.get_normalized_hourly_resource_solar(con, schema, sectors)
+                    normalized_hourly_resource_wind_df = mutation.get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents)
+                    # apply normalized hourly resource profiles
+                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), mutation.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, )).compute()
+                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), mutation.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, )).compute()        
+                    # re-combine technologies
+                    agents = agents_solar.add_agents(agents_wind)
+                    del agents_solar, agents_wind               
+                    
+                    #==============================================================================
+                    # TECHNOLOGY COSTS
+                    #==============================================================================
+                    # get technology costs
+                    tech_costs_solar_df = mutation.get_technology_costs_solar(con, schema, year)
+                    tech_costs_wind_df = mutation.get_technology_costs_wind(con, schema, year)
+                    # apply technology costs     
+                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), mutation.apply_tech_costs_solar, (tech_costs_solar_df, )).compute()
+                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), mutation.apply_tech_costs_wind, (tech_costs_wind_df, )).compute()
+                    # re-combine technologies
+                    agents = agents_solar.add_agents(agents_wind)
+                    del agents_solar, agents_wind
+     
+                    #==========================================================================================================
+                    # CALCULATE BILL SAVINGS
+                    #==========================================================================================================
+                    # bill savings are a function of: 
+                     # (1) hacked NEM calculations
+                    agents = AgentsAlgorithm(agents, mutation.calculate_excess_generation_and_update_nem_settings).compute()
+                     # (2) actual SAM calculations
+                    agents = AgentsAlgorithm(agents, mutation.calculate_electric_bills_sam, (cfg.local_cores, )).compute(1)
+                    # drop the hourly datasets
+                    agents.drop_attributes(['generation_hourly', 'consumption_hourly'], in_place = True)
+                    
+                    #==========================================================================================================
+                    # DEPRECIATION SCHEDULE       
+                    #==========================================================================================================
+                    # get depreciation schedule for current year
+                    depreciation_df = mutation.get_depreciation_schedule(con, schema, year)
+                    # apply depreciation schedule to agents
+                    agents = AgentsAlgorithm(agents, mutation.apply_depreciation_schedule, (depreciation_df, )).compute()
+                    
+                    #==========================================================================================================
+                    # SYSTEM DEGRADATION                
+                    #==========================================================================================================
+                    # apply system degradation to agents
+                    agents = AgentsAlgorithm(agents, mutation.apply_system_degradation, (system_degradation_df, )).compute()
+                    
+                    #==========================================================================================================
+                    # CARBON INTENSITIES
+                    #==========================================================================================================               
+                    # get carbon intensities
+                    carbon_intensities_df = mutation.get_carbon_intensities(con, schema, year)
+                    # apply carbon intensities
+                    agents = AgentsAlgorithm(agents, mutation.apply_carbon_intensities, (carbon_intensities_df, )).compute()                
+    
+                    #==========================================================================================================
+                    # LEASING AVAILABILITY
+                    #==========================================================================================================               
+                    # get leasing availability
+                    leasing_availability_df = mutation.get_leasing_availability(con, schema, year)
+                    agents = AgentsAlgorithm(agents, mutation.apply_leasing_availability, (leasing_availability_df, )).compute()                     
+                    
+                    
+                    
+                    
+                    
+                    #%%
+                    #==========================================================================================================
+                    # NEW CODE FOR STORAGE/SIZING ANALYSIS
+                    #==========================================================================================================                                  
+                    
+                    pass
+                    
+    #%%                
+                    
+                    
+                    
+                    # reeds stuff...
+                    # TODO: fix this to get linked reeds mode working
+    #                if mode == 'ReEDS':
+    #                    # When in ReEDS mode add the values from ReEDS to df
+    #                    df = pd.merge(df, distPVCurtailment, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
+    #                    df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
+    #                    df = pd.merge(df, change_elec_price, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
+    #                else:
+                    # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
+                    agents.dataframe['curtailment_rate'] = 0
+                    agents.dataframe['ReEDS_elec_price_mult'] = 1
+                    curtailment_method = 'net'           
+                                            
+                    # Calculate economics of adoption for different busines models
+                    df = finfunc.calc_economics(agents.dataframe, schema, 
+                                               market_projections, financial_parameters, rate_growth_df,
+                                               scenario_opts, max_market_share, cur, con, year,
+                                               dsire_incentives, dsire_opts, state_dsire, srecs, mode, 
+                                               curtailment_method, itc_options, inflation_rate, incentives_cap, 25)
+                    
+                    
+                    # select from choices for business model and (optionally) technology
+                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
+    
+                    #==========================================================================================================
+                    # MARKET LAST YEAR
+                    #==========================================================================================================                  
+                    # convert back to agents
+                    agents = Agents(df)
+                    is_first_year = year == cfg.start_year      
+                    if is_first_year == True:
+                        # calculate initial market shares
+                        agents = AgentsAlgorithm(agents, mutation.estimate_initial_market_shares, (state_starting_capacities_df, )).compute()
+                    else:
+                        # get last year's results
+                        market_last_year_df = mutation.get_market_last_year(con, schema)
+                        # apply last year's results to the agents
+                        agents = AgentsAlgorithm(agents, mutation.apply_market_last_year, (market_last_year_df, )).compute()                
+                    
+    
+                    #==========================================================================================================
+                    # BASS DIFFUSION
+                    #==========================================================================================================   
+                    # TODO: rewrite this section to use agents class
+                    # convert back to dataframe
+                    df = agents.dataframe
+                    # calculate diffusion based on economics and bass diffusion                   
+                    df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, is_first_year, bass_params) 
+                    
+                    #==========================================================================================================
+                    # ESTIMATE TOTAL GENERATION
+                    #==========================================================================================================      
+                    df = AgentsAlgorithm(Agents(df), mutation.estimate_total_generation).compute().dataframe
                 
-                #==============================================================================
-                # TECHNOLOGY COSTS
-                #==============================================================================
-                # get technology costs
-                tech_costs_solar_df = mutation.get_technology_costs_solar(con, schema, year)
-                tech_costs_wind_df = mutation.get_technology_costs_wind(con, schema, year)
-                # apply technology costs     
-                agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), mutation.apply_tech_costs_solar, (tech_costs_solar_df, )).compute()
-                agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), mutation.apply_tech_costs_wind, (tech_costs_wind_df, )).compute()
-                # re-combine technologies
-                agents = agents_solar.add_agents(agents_wind)
-                del agents_solar, agents_wind
- 
-                #==========================================================================================================
-                # CALCULATE BILL SAVINGS
-                #==========================================================================================================
-                # bill savings are a function of: 
-                 # (1) hacked NEM calculations
-                agents = AgentsAlgorithm(agents, mutation.calculate_excess_generation_and_update_nem_settings).compute()
-                 # (2) actual SAM calculations
-                agents = AgentsAlgorithm(agents, mutation.calculate_electric_bills_sam, (cfg.local_cores, )).compute(1)
-                # drop the hourly datasets
-                agents.drop_attributes(['generation_hourly', 'consumption_hourly'], in_place = True)
+                    #==========================================================================================================
+                    # WRITE OUTPUTS
+                    #==========================================================================================================   
+                    # TODO: rewrite this section to use agents class
+                    # write the incremental results to the database
+                    datfunc.write_outputs(con, cur, df, sectors, schema) 
+                    datfunc.write_last_year(con, cur, market_last_year, schema)
+    
+                    # TODO: get this working if we want to have learning curves
+    #                datfunc.write_cumulative_deployment(con, cur, df, schema, techs, year, cfg.start_year)
+    #                datfunc.write_costs(con, cur, schema, learning_curves_mode, year, end_year)
+                    
+    
+                    # NEXT STEPS
+                    # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays    
+                            # clustering of time series into prototypes? (e.g., vector quantization) partioning around medoids
+                            # compression/lazy load of arrays ? https://www.wakari.io/sharing/bundle/pjimenezmateo/Numba_and_blz?has_login=False   
+                            # out of memory dataframe -- dask? blz?
+    
+                    # ~~~LONG TERM~~~
+                    # TODO: may need to refactor agents algorithm to avoid pickling all agents to all cores
+                    # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
+                    # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database                
+                    # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
+            elif tech_mode == 'geo':
+                for year in model_years:
+                    logger.info('\tWorking on %s' % year)
+                        
+                    #==============================================================================
+                    # BUILD DEMAND CURVE           
+                    #==============================================================================                   
+                    # get core agent attributes from postgres
+                    agents = mutation.get_core_agent_attributes(con, schema)
+                    # build demand curve
+                    pass # TODO: add dummy function
+                    
+                    
+                    #==============================================================================
+                    # BUILD SUPPLY CURVE           
+                    #==============================================================================
+                    resource_df = supply.get_resource_data(con, schema, year)
+                    # get natural gas prics
+                    ng_prices_df = supply.get_natural_gas_prices(con, schema, year)
+                    # get the du cost data
+                    costs_and_performance_df = supply.get_plant_cost_and_performance_data(con, schema, year)
+                    reservoir_factors_df = supply.get_reservoir_factors(con, schema, year)
+                    # get the plant finance data
+                    plant_finances_df = supply.get_plant_finance_data(con, schema, year)
+                    plant_construction_factor_df = supply.get_plant_construction_factor_data(con, schema, year)
+                    plant_depreciation_df = supply.get_plant_depreciation_data(con, schema, year)                    
+                    # calculate the plant and boiler capacity factors
+                    capacity_factors_df = supply.calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_performance_df, tract_demand_profiles_df, year)
+                    # apply the plant cost data
+                    resources_with_costs_df = supply.apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df,
+                                                                                     plant_finances_df, distribution_df,  capacity_factors_df, ng_prices_df)
+                    # build supply curve
+                    pass # TODO: add dummy function
+                    
+                    #==============================================================================
+                    # CALCULATE ECONOMIC POTENTIAL
+                    #==============================================================================                    
+                    pass # TODO: add dummy function
+                                          
+                    #==============================================================================
+                    # CALCULATE MARKET POTENTIAL
+                    #==============================================================================                    
+                    pass # TODO: add dummy function                                                                                    
                 
-                #==========================================================================================================
-                # DEPRECIATION SCHEDULE       
-                #==========================================================================================================
-                # get depreciation schedule for current year
-                depreciation_df = mutation.get_depreciation_schedule(con, schema, year)
-                # apply depreciation schedule to agents
-                agents = AgentsAlgorithm(agents, mutation.apply_depreciation_schedule, (depreciation_df, )).compute()
-                
-                #==========================================================================================================
-                # SYSTEM DEGRADATION                
-                #==========================================================================================================
-                # apply system degradation to agents
-                agents = AgentsAlgorithm(agents, mutation.apply_system_degradation, (system_degradation_df, )).compute()
-                
-                #==========================================================================================================
-                # CARBON INTENSITIES
-                #==========================================================================================================               
-                # get carbon intensities
-                carbon_intensities_df = mutation.get_carbon_intensities(con, schema, year)
-                # apply carbon intensities
-                agents = AgentsAlgorithm(agents, mutation.apply_carbon_intensities, (carbon_intensities_df, )).compute()                
-
-                #==========================================================================================================
-                # LEASING AVAILABILITY
-                #==========================================================================================================               
-                # get leasing availability
-                leasing_availability_df = mutation.get_leasing_availability(con, schema, year)
-                agents = AgentsAlgorithm(agents, mutation.apply_leasing_availability, (leasing_availability_df, )).compute()                     
-                
-                
-                
-                
-                
-                #%%
-                #==========================================================================================================
-                # NEW CODE FOR STORAGE/SIZING ANALYSIS
-                #==========================================================================================================                   
-                
-                
-                
-                
-                
-                
-                
-                
-                pass
-                
-#%%                
-                
-                
-                
-                # reeds stuff...
-                # TODO: fix this to get linked reeds mode working
-#                if mode == 'ReEDS':
-#                    # When in ReEDS mode add the values from ReEDS to df
-#                    df = pd.merge(df, distPVCurtailment, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
-#                    df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
-#                    df = pd.merge(df, change_elec_price, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
-#                else:
-                # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
-                agents.dataframe['curtailment_rate'] = 0
-                agents.dataframe['ReEDS_elec_price_mult'] = 1
-                curtailment_method = 'net'           
-                                        
-                # Calculate economics of adoption for different busines models
-                df = finfunc.calc_economics(agents.dataframe, schema, 
-                                           market_projections, financial_parameters, rate_growth_df,
-                                           scenario_opts, max_market_share, cur, con, year,
-                                           dsire_incentives, dsire_opts, state_dsire, srecs, mode, 
-                                           curtailment_method, itc_options, inflation_rate, incentives_cap, 25)
-                
-                
-                # select from choices for business model and (optionally) technology
-                df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
-
-                #==========================================================================================================
-                # MARKET LAST YEAR
-                #==========================================================================================================                  
-                # convert back to agents
-                agents = Agents(df)
-                is_first_year = year == cfg.start_year      
-                if is_first_year == True:
-                    # calculate initial market shares
-                    agents = AgentsAlgorithm(agents, mutation.estimate_initial_market_shares, (state_starting_capacities_df, )).compute()
-                else:
-                    # get last year's results
-                    market_last_year_df = mutation.get_market_last_year(con, schema)
-                    # apply last year's results to the agents
-                    agents = AgentsAlgorithm(agents, mutation.apply_market_last_year, (market_last_year_df, )).compute()                
-                
-
-                #==========================================================================================================
-                # BASS DIFFUSION
-                #==========================================================================================================   
-                # TODO: rewrite this section to use agents class
-                # convert back to dataframe
-                df = agents.dataframe
-                # calculate diffusion based on economics and bass diffusion                   
-                df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, is_first_year, bass_params) 
-                
-                #==========================================================================================================
-                # ESTIMATE TOTAL GENERATION
-                #==========================================================================================================      
-                df = AgentsAlgorithm(Agents(df), mutation.estimate_total_generation).compute().dataframe
-            
-                #==========================================================================================================
-                # WRITE OUTPUTS
-                #==========================================================================================================   
-                # TODO: rewrite this section to use agents class
-                # write the incremental results to the database
-                datfunc.write_outputs(con, cur, df, sectors, schema) 
-                datfunc.write_last_year(con, cur, market_last_year, schema)
-
-                # TODO: get this working if we want to have learning curves
-#                datfunc.write_cumulative_deployment(con, cur, df, schema, techs, year, cfg.start_year)
-#                datfunc.write_costs(con, cur, schema, learning_curves_mode, year, end_year)
-                
-
-                # NEXT STEPS
-                # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays    
-                        # clustering of time series into prototypes? (e.g., vector quantization) partioning around medoids
-                        # compression/lazy load of arrays ? https://www.wakari.io/sharing/bundle/pjimenezmateo/Numba_and_blz?has_login=False   
-                        # out of memory dataframe -- dask? blz?
-
-                # ~~~LONG TERM~~~
-                # TODO: may need to refactor agents algorithm to avoid pickling all agents to all cores
-                # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
-                # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database                
-                # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
+                    #==============================================================================
+                    # BASS DIFFUSION
+                    #==============================================================================                    
+                    pass # TODO: add dummy function
+                    # TODO: add input for bass length of diffusion
+                    # TODO: add capability to track which plants were already built (this could get complicated...keep it simple for now)
+                    
+                    
+                    
                 
             #==============================================================================
             #    Outputs & Visualization

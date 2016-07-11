@@ -32,21 +32,55 @@ pg.extensions.register_type(DEC2FLOAT)
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def setup_resource_data(cur, con, schema, seed):
+def setup_resource_data(cur, con, schema, seed, pg_procs, pg_conn_string):
     
-    setup_resource_data_egs_hdr(cur, con, schema, seed)
-    setup_resource_data_hydrothermal(cur, con, schema, seed)
     
+    # break tracts into subsets for parallel processing
+    chunks, pg_procs = agent_prep.split_tracts(cur, schema, pg_procs)       
+ 
+    # create the pool of multiprocessing workers
+    # (note: do this after splitting counties because, for small states, split_counties will adjust the number of pg_procs)
+    pool = multiprocessing.Pool(processes = pg_procs) 
+    
+    try:    
+        setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, chunks)
+        setup_resource_data_hydrothermal(cur, con, schema, seed, pool, pg_conn_string, chunks)
+    except:
+        # roll back any transactions
+        con.rollback()
+        # re-raise the exception
+        raise
+    finally:
+        # close the multiprocessing pool
+        pool.close() 
     
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def setup_resource_data_egs_hdr(cur, con, schema, seed):
+def setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, chunks):
     
     inputs = locals().copy()
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['chunk_place_holder'] = '%(ids)s'
     
+    # create the output table
     sql = """DROP TABLE IF EXISTS %(schema)s.resources_egs_hdr;
-             CREATE UNLOGGED TABLE %(schema)s.resources_egs_hdr AS
+             CREATE UNLOGGED TABLE %(schema)s.resources_egs_hdr
+            (
+                  year INTEGER,
+                  tract_id_alias INTEGER,
+                  resource_id INTEGER,
+                  resource_type TEXT,
+                  system_type TEXT,
+                  depth_m NUMERIC,
+                  n_wellsets_in_tract INTEGER,
+                  extractable_resource_per_wellset_in_tract_mwh NUMERIC
+            );""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
+    # construct the sql statement to run in parallel
+    sql = """INSERT INTO %(schema)s.resources_egs_hdr          
              WITH a AS
             (
                 	SELECT a.tract_id_alias, 
@@ -63,6 +97,7 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed):
                     	ON a.cell_gid = b.gid
                   INNER JOIN %(schema)s.tracts_to_model c
                       ON a.tract_id_alias = c.tract_id_alias
+                  WHERE c.tract_id_alias IN (%(chunk_place_holder)s)
             ),
             b as
             (
@@ -98,21 +133,40 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed):
                 	ELSE c.extractable_resource_mwh/c.n_wellsets_in_tract
                 	END as extractable_resource_per_wellset_in_tract_mwh
             FROM c
-            WHERE c.n_wellsets_in_tract > 0;""" % inputs
+            WHERE c.n_wellsets_in_tract > 0;""" % inputs    
+    agent_prep.p_run(pg_conn_string, sql, chunks, pool)
+    
+    # add an index on year
+    sql = """CREATE INDEX resources_egs_hdr_btree_year
+             ON %(schema)s.resources_egs_hdr 
+             USING BTREE(year);""" % inputs
     cur.execute(sql)
     con.commit()
-    # TODO: set this up to use p_run?
     
-
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def setup_resource_data_hydrothermal(cur, con, schema, seed):
+def setup_resource_data_hydrothermal(cur, con, schema, seed, pool, pg_conn_string, chunks):
     
     inputs = locals().copy()
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['chunk_place_holder'] = '%(ids)s'
 
     sql = """DROP TABLE IF EXISTS %(schema)s.resources_hydrothermal;
-             CREATE UNLOGGED TABLE %(schema)s.resources_hydrothermal AS
+             CREATE UNLOGGED TABLE %(schema)s.resources_hydrothermal 
+             (
+                  tract_id_alias INTEGER,
+                  resource_id VARCHAR(5),
+                  resource_type TEXT,
+                  system_type TEXT,
+                  depth_m INTEGER,
+                  n_wellsets_in_tract INTEGER,
+                  extractable_resource_per_wellset_in_tract_mwh NUMERIC
+             );""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
+    sql = """INSERT INTO %(schema)s.resources_hydrothermal
             SELECT a.tract_id_alias,
                 	b.resource_id,
                 	b.resource_type,
@@ -125,12 +179,10 @@ def setup_resource_data_hydrothermal(cur, con, schema, seed):
                 			0)::INTEGER as depth_m,
                 	b.n_wells_in_tract as n_wellsets_in_tract,
                 	b.extractable_resource_per_well_in_tract_mwh as extractable_resource_per_wellset_in_tract_mwh -- TODO: just rename this in the source table
-            FROM %(schema)s.tracts_to_model a -- TODO: replace with actual resource data from meghan -- may need to merge pts and poly
-            CROSS JOIN diffusion_geo.hydrothermal_resource_data_dummy b;""" % inputs
-    cur.execute(sql)
-    con.commit()
-    # TODO: add some mechanism for only compiling data for tracts in states to model
-    # TODO: set this up to use p_run?
+            FROM %(schema)s.tracts_to_model a 
+            CROSS JOIN diffusion_geo.hydrothermal_resource_data_dummy b
+            WHERE a.tract_id_alias IN (%(chunk_place_holder)s);""" % inputs # TODO: replace with actual resource data from meghan -- may need to merge pts and poly
+    agent_prep.p_run(pg_conn_string, sql, chunks, pool)
 
 
 #%%
@@ -295,10 +347,15 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
                  GROUP BY tract_id_alias;""" % inputs
         
         agent_prep.p_run(pg_conn_string, sql, chunks, pool)        
+    except:
+        # roll back any transactions
+        con.rollback()
+        # re-raise the exception
+        raise
         
-        # TODO: add capability for using p_run to speed this up? Or else come up with another more performant method..
     finally:
-        pool.close()
+        # close the multiprocessing pool
+        pool.close() 
  
 
 #%%
