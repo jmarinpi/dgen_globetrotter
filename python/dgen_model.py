@@ -564,7 +564,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get du cost data
                     end_user_costs_du_df = mutation.get_end_user_costs_du(con, schema, year)
                     # apply du cost data
-                    agents = AgentsAlgorithm(agents, mutation.apply_end_user_costs_du, (end_user_costs_du_df, )).compute()                                  
+                    agents = AgentsAlgorithm(agents, mutation.apply_end_user_costs_du, (end_user_costs_du_df, )).compute()               
+                    
+                    # update system ages
+                    agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, )).compute()
+                    # check whether systems need replacement (outlived their expected lifetime)
+                    agents = AgentsAlgorithm(agents, mutation.check_system_expirations).compute()
                     
                     # build demand curves
                     demand_curves_df = demand_supply.build_demand_curves(agents.dataframe) # TODO: replace with actual function

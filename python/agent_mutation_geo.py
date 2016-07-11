@@ -157,3 +157,41 @@ def apply_end_user_costs_du(dataframe, end_user_costs_du_df):
     return dataframe
 
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def update_system_ages(dataframe, year):
+
+    in_cols = list(dataframe.columns)
+    
+    # add in the microdata release year field for each agent (2003 for com, 2009 for recs)
+    dataframe['microdata_release_year'] = np.where(dataframe['sector_abbr'] == 'res', 2009, 2003)
+    
+    # calculate the additional years
+    dataframe['add_years'] = year - dataframe['microdata_release_year']
+    
+    # increment the system ages
+    dataframe.loc[:, 'space_heat_system_age'] = dataframe['space_heat_system_age'] + dataframe['add_years']
+    dataframe.loc[:, 'space_cool_system_age'] = dataframe['space_cool_system_age'] + dataframe['add_years']
+    dataframe.loc[:, 'average_system_age'] = dataframe.loc[:, 'average_system_age'] + dataframe['add_years']
+    
+    # return just the input  columns
+    dataframe = dataframe[in_cols]
+    
+    return dataframe
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def check_system_expirations(dataframe):
+
+    in_cols = list(dataframe.columns)
+    
+    # add in the microdata release year field for each agent (2003 for com, 2009 for recs)
+    dataframe['needs_replacement_heat_system'] = dataframe['space_heat_system_age'] > dataframe['space_heat_system_expected_lifetime']    
+    dataframe['needs_replacement_cool_system'] = dataframe['space_cool_system_age'] > dataframe['space_cool_system_expected_lifetime']        
+    dataframe['needs_replacement_average_system'] = dataframe['average_system_age'] > dataframe['average_system_expected_lifetime']
+    
+    return_cols = ['needs_replacement_heat_system', 'needs_replacement_cool_system', 'needs_replacement_average_system']
+    out_cols = in_cols + return_cols
+    dataframe = dataframe[out_cols]
+    
+    return dataframe
