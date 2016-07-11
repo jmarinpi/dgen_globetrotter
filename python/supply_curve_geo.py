@@ -571,25 +571,6 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # ***    
     dataframe['peaking_boilers_fuel_costs_per_wellset_dlrs'] = ng_annual_costs.tolist()
     # ***
-    
-    # Additional Boiler Costs due to Reservoir Drawdown
-    # determine which years, if any, will require purchase of additional boilers due to drawdown
-    dataframe['years_to_drawdown'] = np.floor(np.log(1-dataframe['max_acceptable_drawdown_pct_of_initial_capacity'])/np.log(1-dataframe['expected_drawdown_pct_per_year'])).astype(np.int64)
-    min_years_to_drawdown = dataframe['years_to_drawdown'].min()   
-    max_multiples = plant_lifetime/min_years_to_drawdown
-    multiples = np.arange(1, max_multiples+1)
-    years_exceeding_drawdown = dataframe['years_to_drawdown'].values.reshape(nrows, 1) * multiples
-    years_exceeding_drawdown_during_lifetime = np.where(years_exceeding_drawdown < plant_lifetime, years_exceeding_drawdown, -100)
-    bool_years_exceeding_drawdown = np.sum((years_array[:,:,None] - years_exceeding_drawdown_during_lifetime[:,None,:] == 0), 2)
-    dataframe['boiler_purchase_years'] = bool_years_exceeding_drawdown.tolist()
-
-    # determine the cost of boilers in each of these years
-    dataframe['drawdown_boilers_capacity_kw_per_wellset'] = dataframe['plant_nameplate_capacity_per_wellset_mw'] * dataframe['max_acceptable_drawdown_pct_of_initial_capacity'] * 1000.
-    dataframe['drawdown_boilers_cost_per_wellset_per_purchase_dlrs'] = dataframe['drawdown_boilers_capacity_kw_per_wellset'] * dataframe['natural_gas_peaking_boilers_dollars_per_kw'] 
-    # convert to a time series (using the purchase years from above)
-    # ***
-    dataframe['drawdown_boilers_cost_per_wellset_dlrs'] = (np.array(dataframe['boiler_purchase_years'].tolist(), dtype = np.float64) * dataframe['drawdown_boilers_cost_per_wellset_per_purchase_dlrs'].values[:, None]).tolist()
-    # ***
 
     # combine all upfront costs
     dataframe['upfront_costs_per_wellset_dlrs'] = ( dataframe['peaking_boilers_construction_cost_per_wellset_dlrs'] +
@@ -600,8 +581,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
                                                     dataframe['reservoir_stimulation_costs_per_wellset_dlrs']
                                                     )
     # combine all annual costs
-    dataframe['annual_costs_per_wellset_dlrs'] = (  np.array(dataframe['drawdown_boilers_cost_per_wellset_dlrs'].tolist(), dtype = np.float64) +
-                                                    np.array(dataframe['total_pumping_costs_per_wellset_dlrs'].tolist(), dtype = np.float64) +
+    dataframe['annual_costs_per_wellset_dlrs'] = (  np.array(dataframe['total_pumping_costs_per_wellset_dlrs'].tolist(), dtype = np.float64) +
                                                     np.array(dataframe['om_total_costs_per_wellset_dlrs'].tolist(), dtype = np.float64) +
                                                     np.array(dataframe['peaking_boilers_fuel_costs_per_wellset_dlrs'].tolist(), dtype = np.float64)
                                                     ).tolist()
