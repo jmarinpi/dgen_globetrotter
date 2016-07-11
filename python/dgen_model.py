@@ -573,7 +573,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     # build demand curves
                     demand_curves_df = demand_supply.build_demand_curves(agents.dataframe) # TODO: replace with actual function
-                    
+
                     #==============================================================================
                     # BUILD SUPPLY CURVES FOR EACH TRACT
                     #==============================================================================
