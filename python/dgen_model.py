@@ -192,7 +192,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             mutation = cfg.module_lkup['agent_mutation'][tech_mode]
             finfunc = cfg.module_lkup['financial_functions'][tech_mode]
             diffunc = cfg.module_lkup['diffusion_functions'][tech_mode]
-            demand_supply = cfg.module_lkup['supply_curve'][tech_mode]
+            demand_supply = cfg.module_lkup['demand_supply'][tech_mode]
             
             # skip industrial sector if modeling geothermal technologies
             if 'ind' in sectors.keys() and tech_mode == 'geo':
@@ -556,9 +556,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================                   
                     # get core agent attributes from postgres
                     agents = mutation.get_core_agent_attributes(con, schema)
-                    # build demand curve
-                    pass # TODO: add dummy function
-                    
+                    # build demand curves
+                    demand_curves_df = demand_supply.build_demand_curves(agents.dataframe) # TODO: replace with actual function
                     
                     #==============================================================================
                     # BUILD SUPPLY CURVES FOR EACH TRACT
@@ -582,14 +581,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     supply_curves_df = demand_supply.build_supply_curves() # TODO: replace with actual function
                     
                     #==============================================================================
-                    # CALCULATE ECONOMIC POTENTIAL
+                    # CALCULATE PLANT SIZES BASED ON ECONOMIC POTENTIAL
                     #==============================================================================                    
-                    pass # TODO: add dummy function
+                    plant_sizes_economic_df = demand_supply.calc_plant_sizes_econ(demand_curves_df, supply_curves_df) # TODO: replace with actual function
                                           
                     #==============================================================================
-                    # CALCULATE MARKET POTENTIAL
+                    # CALCULATE PLANT SIZES BASED ON MARKET POTENTIAL
                     #==============================================================================                    
-                    pass # TODO: add dummy function                                                                                    
+                    plant_sizes_market_df = demand_supply.calc_plant_sizes_market(demand_curves_df, supply_curves_df) # TODO: replace with actual function
                 
                     #==============================================================================
                     # BASS DIFFUSION

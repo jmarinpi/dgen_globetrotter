@@ -731,3 +731,48 @@ def get_plant_depreciation_data(con, schema, year):
     df = pd.read_sql(sql, con, coerce_float = False)
     
     return df       
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def build_supply_curves():
+    
+    # TODO: replace with actual function from Ben
+    dataframe = pd.DataFrame()
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def build_demand_curves(agents_df):
+    
+    # TODO: replace with actual function from Ben
+    dataframe = agents_df[['tract_id_alias']]
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calc_plant_sizes_econ(demand_curves_df, supply_curves_df):
+
+    # TODO: replace with actual function from Ben    
+    dataframe = demand_curves_df.copy()
+    dataframe['plant_size_econ_mw'] = 5.
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calc_plant_sizes_market(demand_curves_df, supply_curves_df):
+
+    # TODO: replace with actual function from Ben    
+    dataframe = demand_curves_df.copy()
+    dataframe['plant_size_market_mw'] = 5. * 0.25
+    
+    return dataframe
+
+    
+#%%
