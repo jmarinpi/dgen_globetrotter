@@ -191,8 +191,7 @@ def get_resource_data(con, schema, year):
     
     inputs = locals().copy()
         
-    sql = """SELECT %(year)s as year,
-                    a.tract_id_alias,
+    sql = """SELECT a.tract_id_alias,
                     a.resource_id,
                     a.resource_type,
                     a.system_type,
@@ -203,8 +202,7 @@ def get_resource_data(con, schema, year):
              
              UNION ALL
              
-             SELECT b.year,
-                     b.tract_id_alias,
+             SELECT b.tract_id_alias,
                     b.resource_id::TEXT as resource_id,
                     b.resource_type,
                     b.system_type,
@@ -222,28 +220,44 @@ def get_resource_data(con, schema, year):
 def get_plant_cost_and_performance_data(con, schema, year):
     
     inputs = locals().copy()
-    sql = """SELECT a.year, 
-                  a.future_drilling_cost_improvements_pct, 
-                	a.exploration_slim_well_cost_pct_of_normal_well, 
-                	a.exploration_fixed_costs_dollars, 
-                	b.plant_installation_costs_dollars_per_kw,
-                	b.om_labor_costs_dlrs_per_kw_per_year,
-                	b.om_plant_costs_pct_plant_cap_costs_per_year,
-                	b.om_well_costs_pct_well_cap_costs_per_year,
-                	b.distribution_network_construction_costs_dollars_per_m,
-                	b.operating_costs_reservoir_pumping_costs_dollars_per_gal,
-                	b.operating_costs_distribution_pumping_costs_dollars_per_gal_m,
-                	b.natural_gas_peaking_boilers_dollars_per_kw,
-                	c.peaking_boilers_pct_of_peak_demand,
-                  c.peaking_boiler_efficiency,
-                	c.max_acceptable_drawdown_pct_of_initial_capacity,
-                  c.avg_end_use_efficiency_factor
-            FROM %(schema)s.input_du_cost_plant_subsurface a
-            LEFT JOIN %(schema)s.input_du_cost_plant_surface b
-                         ON a.year = b.year
-            LEFT JOIN %(schema)s.input_du_performance_projections c
-                         ON a.year = c.year
-            where a.year = %(year)s;""" % inputs
+    sql = """WITH a as
+             (
+                SELECT a.tract_id_alias, 
+                        b.cap_cost_multiplier_geo_blended as cap_cost_multiplier
+                FROM %(schema)s.tracts_to_model a
+                LEFT JOIN diffusion_geo.regional_cap_cost_multipliers b
+                ON a.county_id = b.county_id             
+             ),
+             b as
+             (
+                SELECT a.year, 
+                      a.future_drilling_cost_improvements_pct, 
+                    	a.exploration_slim_well_cost_pct_of_normal_well, 
+                    	a.exploration_fixed_costs_dollars, 
+                    	b.plant_installation_costs_dollars_per_kw,
+                    	b.om_labor_costs_dlrs_per_kw_per_year,
+                    	b.om_plant_costs_pct_plant_cap_costs_per_year,
+                    	b.om_well_costs_pct_well_cap_costs_per_year,
+                    	b.distribution_network_construction_costs_dollars_per_m,
+                    	b.operating_costs_reservoir_pumping_costs_dollars_per_gal,
+                    	b.operating_costs_distribution_pumping_costs_dollars_per_gal_m,
+                    	b.natural_gas_peaking_boilers_dollars_per_kw,
+                    	c.peaking_boilers_pct_of_peak_demand,
+                      c.peaking_boiler_efficiency,
+                    	c.max_acceptable_drawdown_pct_of_initial_capacity,
+                      c.avg_end_use_efficiency_factor
+                FROM %(schema)s.input_du_cost_plant_subsurface a
+                LEFT JOIN %(schema)s.input_du_cost_plant_surface b
+                             ON a.year = b.year
+                LEFT JOIN %(schema)s.input_du_performance_projections c
+                             ON a.year = c.year
+                WHERE a.year = %(year)s             
+             )
+             SELECT a.tract_id_alias, 
+                     a.cap_cost_multiplier,
+                    b.*
+             FROM a
+             CROSS JOIN b;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
     
     return df
@@ -407,9 +421,7 @@ def get_tract_peak_demand(con, schema):
 def calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_performance_df, tract_demand_profiles_df, year):
 
     # join the two dataframes
-    # add year to the tract_demand_df to facilitate join
-    tract_peak_demand_df['year'] = year
-    dataframe = pd.merge(tract_peak_demand_df, costs_and_performance_df, how = 'left', on = ['year'])
+    dataframe = pd.merge(tract_peak_demand_df, costs_and_performance_df, how = 'left', on = ['tract_id_alias'])
     # merge in the hourly profiles
     dataframe = pd.merge(dataframe, tract_demand_profiles_df, how = 'left', on = ['tract_id_alias'])
     # calculate the boiler capacity required to meet the full demand (accounting for target pct of demand and efficiency factors)
@@ -515,8 +527,8 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     
     # merge resources with reservoir factors (left join on resource_type (egs or hydrothermal))
     dataframe = pd.merge(resource_df, reservoir_factors_df, how = 'left', on = ['resource_type'])
-    # merge the costs and performance (effecively a cross join)
-    dataframe = pd.merge(dataframe, costs_and_performance_df, how = 'left', on = ['year'])
+    # merge the costs and performance
+    dataframe = pd.merge(dataframe, costs_and_performance_df, how = 'left', on = ['tract_id_alias'])
     # merge the finances (effecively a cross join)
     dataframe = pd.merge(dataframe, plant_finances_df, how = 'left', on = ['year'])
     # merge the distribution demand density info (left join on tract id alias)
@@ -561,12 +573,12 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     dataframe['drilling_cost_per_well_dlrs'] = np.where(dataframe['depth_m'] >= 500, 
                                                    drilling_costs_per_depth_m_deep(dataframe['depth_m'], dataframe['future_drilling_cost_improvements_pct']), 
                                                    drilling_costs_per_depth_m_shallow(dataframe['depth_m'], dataframe['future_drilling_cost_improvements_pct'])
-                                                   )
+                                                   ) * dataframe['cap_cost_multiplier']
     # ***
     dataframe['drilling_cost_per_wellset_dlrs'] = dataframe['drilling_cost_per_well_dlrs'] * dataframe['wells_per_wellset']
     # ***
     # Exploration Costs
-    dataframe['exploration_well_costs_per_wellset_dlrs'] = dataframe['drilling_cost_per_well_dlrs'] * dataframe['exploration_slim_well_cost_pct_of_normal_well']
+    dataframe['exploration_well_costs_per_wellset_dlrs'] = dataframe['drilling_cost_per_well_dlrs'] * dataframe['exploration_slim_well_cost_pct_of_normal_well'] * dataframe['cap_cost_multiplier']
     # ***    
     dataframe['exploration_total_costs_per_wellset_dlrs'] = dataframe['exploration_well_costs_per_wellset_dlrs'] + dataframe['exploration_fixed_costs_dollars']
     # ***
@@ -574,7 +586,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
 
     # Surface Plant Capital Costs
     # ***
-    dataframe['plant_installation_costs_per_wellset_dlrs'] = dataframe['plant_nameplate_capacity_per_wellset_mw'] * 1000 * dataframe['plant_installation_costs_dollars_per_kw']
+    dataframe['plant_installation_costs_per_wellset_dlrs'] = dataframe['plant_nameplate_capacity_per_wellset_mw'] * 1000 * dataframe['plant_installation_costs_dollars_per_kw'] * dataframe['cap_cost_multiplier']
     # ***
     
     # O&M Costs
@@ -590,8 +602,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
 
     # ***
     # Reservoir Stimulation Costs
-    # need this as is
-    #dataframe['reservoir_stimulation_costs_per_wellset_dlrs']
+    dataframe.loc[:, 'reservoir_stimulation_costs_per_wellset_dlrs'] = dataframe['reservoir_stimulation_costs_per_wellset_dlrs'] * dataframe['cap_cost_multiplier']
     # ***
 
     # Distribution Network Construction Costs
@@ -599,7 +610,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # use achievable peak demand of entire plant (including boilers) (=total_effective_capacity_per_wellset_mw)
     # don't use nameplate because distribution_network_construction_costs_dollars_per_m is based on actual demand
     dataframe['distribution_m_per_wellset'] = dataframe['distribution_m_per_mw'] * dataframe['total_effective_capacity_per_wellset_mw']
-    dataframe['distribution_network_construction_costs_per_wellset_dlrs'] = dataframe['distribution_network_construction_costs_dollars_per_m'] * dataframe['distribution_m_per_wellset']
+    dataframe['distribution_network_construction_costs_per_wellset_dlrs'] = dataframe['distribution_network_construction_costs_dollars_per_m'] * dataframe['distribution_m_per_wellset'] * dataframe['cap_cost_multiplier']
     # ***
 
     # Operating Costs

@@ -1,4 +1,4 @@
--- Regional Capital Cost Multipliers by County
+﻿-- Regional Capital Cost Multipliers by County
 
 -- export county geoms to shapefile
 pgsql2shp -g the_geom_96703_20m -f /Volumes/Staff/mgleason/dGeo/Data/Analysis/reg_cap_cost_zonal_stats_bycnty/cnty/cnty_20m.shp -h gispgdb -u mmooney -P mmooney dav-gis "select state_fips, county_fips, geoid10, the_geom_96703_20m from diffusion_blocks.county_geoms"
@@ -266,3 +266,50 @@ drop table if exists diffusion_geo.temp_gtbinary;
 drop table if exists mmooney.binary_closest_vals_temp;
 drop table if exists diffusion_geo.temp_gtbinary; -- = 3096 
 drop table if exists diffusion_geo.temp_gtdual; 
+
+------------------------------------------------------------------------------------
+-- create a "blended multiplier" that is the average of the two technologies
+-- this is justified because max abs difference is only:
+select @(max(cap_cost_multiplier_gt_binary-cap_cost_multiplier_gt_dual))
+from diffusion_geo.regional_cap_cost_multipliers
+-- 0.0169492
+
+ALTER TABLE diffusion_geo.regional_cap_cost_multipliers
+ADD COLUMN cap_cost_multiplier_geo_blended numeric;
+
+UPDATE diffusion_geo.regional_cap_cost_multipliers
+SET cap_cost_multiplier_geo_blended = (cap_cost_multiplier_gt_binary + cap_cost_multiplier_gt_dual)/2.;
+-- 3143 rows updated
+
+-- check for nulls
+select *
+FROM diffusion_geo.regional_cap_cost_multipliers
+where cap_cost_multiplier_geo_blended is null;
+-- 0 all set
+
+-- rename the county_id field to geoid
+ALTER TABLE diffusion_geo.regional_cap_cost_multipliers
+RENAME COLUMN county_id to geoid;
+
+-- add the real county_id
+ALTER TABLE diffusion_geo.regional_cap_cost_multipliers
+ADD COLUMN county_id integer;
+
+-- set it
+UPDATE diffusion_geo.regional_cap_cost_multipliers a
+SET county_id = b.county_id
+from diffusion_blocks.county_geoms b
+where a.geoid = b.geoid10;
+-- 3143 rows
+
+-- remove old primary key on geoid
+ALTER TABLE diffusion_geo.regional_cap_cost_multipliers 
+DROP CONSTRAINT regional_cap_cost_multipliers_county_county_id_pkey;
+
+-- add the new one
+ALTER TABLE diffusion_geo.regional_cap_cost_multipliers
+ADD primary key (county_id);
+
+
+
+

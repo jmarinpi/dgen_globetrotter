@@ -14,10 +14,14 @@ where a.state not in ('Hawaii','Alaska');
 -- create view of the valid tracts
 DROP VIEW IF EXISTS diffusion_template.tracts_to_model CASCADE;
 CREATE OR REPLACE VIEW diffusion_template.tracts_to_model AS
-SELECT distinct tract_id_alias
+SELECT distinct a.tract_id_alias, a.state_fips, a.county_fips, c.county_id
 FROM diffusion_blocks.tract_ids a
 INNER JOIN diffusion_template.states_to_model b
-ON a.state_fips = b.state_fips;
+ON a.state_fips = b.state_fips
+left join diffusion_blocks.county_geoms c
+ON a.state_fips = c.state_fips
+and a.county_fips = c.county_fips;
+
 
 -- joined block microdata
 DROP VIEW IF EXISTS diffusion_template.block_microdata_res_joined;
@@ -405,7 +409,7 @@ b as
 )
 select a.tract_id_alias, b.year, b.dlrs_per_mwh
 from a
-LEFT JOIN bc
+LEFT JOIN b
 ON a.census_division_abbr = b.census_division_abbr;
 
 ------------------------------------------------------------------------------
