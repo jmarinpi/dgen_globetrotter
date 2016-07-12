@@ -54,12 +54,15 @@ create table diffusion_geo.hydro_pt_tracts as
 		b.res_temp_deg_c, 
 		b.res_vol_km3,
 		1::NUMERIC as n_wells_in_tract,
-		b.mean_resource_1e18_joules/3600000000 as extractable_resource_in_tract_mwh,
-		b.mean_resource_1e18_joules/3600000000 as extractable_resource_per_well_in_tract_mwh
+		round(b.mean_resource_1e18_joules * 1e18 / 3600000000, 3) as extractable_resource_in_tract_mwh,
+		round(b.mean_resource_1e18_joules * 1e18 / 3600000000, 3) as extractable_resource_per_well_in_tract_mwh
 		from diffusion_geo.hydro_pt_lkup a
 		left join diffusion_geo.resources_hydrothermal_pt b
 		on a.resource_uid = b.uid
 	);
+
+select * from diffusion_geo.hydro_pt_tracts;
+
 
 -- ******************-- ******************-- ******************
 -- ** Note: "reservoir_temp_deg_c" was listed 2x in your notes. is this a typo?"
