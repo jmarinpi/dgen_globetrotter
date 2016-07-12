@@ -69,8 +69,3 @@ select * from diffusion_geo.hydro_pt_tracts;
 -- 2. For points, extractable_resource_in_tract_mwh and extractable_resource_per_well_in_tract_mwh
 	-- are the same exact value. Is this correct?
 -- ******************-- ******************-- ******************
-
-
--- ******************-- ******************
--- TODO -- Create lkup for EGS
--- ******************-- ******************
