@@ -13,6 +13,11 @@ create table diffusion_geo.hydro_poly_lkup  as (
 	diffusion_blocks.tract_geoms t
 	on st_intersects(r.the_geom_96703, t.the_geom_96703));
 
+-- 2. Delete anything with super small intersection areas (less than 0.0001)
+	delete from diffusion_geo.hydro_poly_lkup where area_of_intersection_sqkm = 0; -- 5 Rows affected
+
+-- Total = 3127
+
 ----------------------------------------
 -- B. Create Lookup Table for Hydro PT
 ----------------------------------------
@@ -27,6 +32,8 @@ create table diffusion_geo.hydro_pt_lkup  as (
 
 -- 2. Delete Null Values since they are offshore
 delete from diffusion_geo.hydro_pt_lkup where resource_uid = 'AK024' or resource_uid = 'CA113';
+
+-- Total = 1212
 
 ----------------------------------------
 -- C. Create Lookup Table for EGS
@@ -55,8 +62,10 @@ delete from diffusion_geo.hydro_pt_lkup where resource_uid = 'AK024' or resource
 -- 3. Delete tract_id_alias null values (100 records; these are located along peripheries of the US)
 	delete from diffusion_geo.egs_lkup where tract_id_alias is null;
 
+-- 4. Delete
+	delete from diffusion_geo.egs_lkup where area_of_intersection_sqkm = 0; --2038
 
-
+-- Total = 815437
 
 -----------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------------------------
