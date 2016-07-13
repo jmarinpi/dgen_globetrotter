@@ -178,7 +178,7 @@ def setup_resource_data_hydrothermal(cur, con, schema, seed, pool, pg_conn_strin
                                                         %(seed)s * a.tract_id_alias),
                 			0)::INTEGER as depth_m,
                 	a.n_wells_in_tract as n_wellsets_in_tract,
-                	a.extractable_resource_per_well_in_tract_mwh as extractable_resource_per_wellset_in_tract_mwh -- TODO: just rename this in the source table
+                	a.extractable_resource_per_well_in_tract_mwh as extractable_resource_per_wellset_in_tract_mwh
             FROM  %(schema)s.du_resources_hydrothermal a
             WHERE a.tract_id_alias IN (%(chunk_place_holder)s);""" % inputs
     agent_prep.p_run(pg_conn_string, sql, chunks, pool)
