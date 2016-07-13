@@ -69,7 +69,7 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, ch
             (
                   year INTEGER,
                   tract_id_alias INTEGER,
-                  resource_id INTEGER,
+                  resource_id TEXT,
                   resource_type TEXT,
                   system_type TEXT,
                   depth_m NUMERIC,
@@ -124,7 +124,7 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, ch
             )
             SELECT c.year,
                 	c.tract_id_alias,
-                 c.gid as resource_id,
+                 c.gid::TEXT as resource_id,
                  'egs'::TEXT as resource_type,
                  'hdr'::TEXT as system_type,
                  c.depth_km * 1000 as depth_m,
@@ -168,20 +168,19 @@ def setup_resource_data_hydrothermal(cur, con, schema, seed, pool, pg_conn_strin
     
     sql = """INSERT INTO %(schema)s.resources_hydrothermal
             SELECT a.tract_id_alias,
-                	b.resource_id,
-                	b.resource_type,
-                	 b.system_type,
+                	a.resource_uid as resource_id,
+                	a.resource_type,
+                	 a.system_type,
                 		  round(
-                			diffusion_shared.r_runif(b.min_depth_m, 
-                					  b.max_depth_m, 
-                					 1, 
-                					 %(seed)s * a.tract_id_alias),
+                			diffusion_shared.r_runif(a.min_depth_m, 
+                                                        a.max_depth_m, 
+                                                        1, 
+                                                        %(seed)s * a.tract_id_alias),
                 			0)::INTEGER as depth_m,
-                	b.n_wells_in_tract as n_wellsets_in_tract,
-                	b.extractable_resource_per_well_in_tract_mwh as extractable_resource_per_wellset_in_tract_mwh -- TODO: just rename this in the source table
-            FROM %(schema)s.tracts_to_model a 
-            CROSS JOIN diffusion_geo.hydrothermal_resource_data_dummy b
-            WHERE a.tract_id_alias IN (%(chunk_place_holder)s);""" % inputs # TODO: replace with actual resource data from meghan -- may need to merge pts and poly
+                	a.n_wells_in_tract as n_wellsets_in_tract,
+                	a.extractable_resource_per_well_in_tract_mwh as extractable_resource_per_wellset_in_tract_mwh -- TODO: just rename this in the source table
+            FROM  %(schema)s.du_resources_hydrothermal a
+            WHERE a.tract_id_alias IN (%(chunk_place_holder)s);""" % inputs
     agent_prep.p_run(pg_conn_string, sql, chunks, pool)
 
 
@@ -203,7 +202,7 @@ def get_resource_data(con, schema, year):
              UNION ALL
              
              SELECT b.tract_id_alias,
-                    b.resource_id::TEXT as resource_id,
+                    b.resource_id,
                     b.resource_type,
                     b.system_type,
                     b.depth_m,
@@ -607,9 +606,9 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
 
     # Distribution Network Construction Costs
     # ***
-    # use achievable peak demand of entire plant (including boilers) (=total_effective_capacity_per_wellset_mw)
+    # use nameplate peak demand of entire plant (including boilers) (because losses occur at end use sites)
     # don't use nameplate because distribution_network_construction_costs_dollars_per_m is based on actual demand
-    dataframe['distribution_m_per_wellset'] = dataframe['distribution_m_per_mw'] * dataframe['total_effective_capacity_per_wellset_mw']
+    dataframe['distribution_m_per_wellset'] = dataframe['distribution_m_per_mw'] * dataframe['total_nameplate_capacity_per_wellset_mw']
     dataframe['distribution_network_construction_costs_per_wellset_dlrs'] = dataframe['distribution_network_construction_costs_dollars_per_m'] * dataframe['distribution_m_per_wellset'] * dataframe['cap_cost_multiplier']
     # ***
 
