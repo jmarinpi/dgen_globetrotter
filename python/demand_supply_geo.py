@@ -768,19 +768,23 @@ def build_demand_curves(agents_df):
 def calc_plant_sizes_econ(demand_curves_df, supply_curves_df):
 
     # TODO: replace with actual function from Ben    
-    dataframe = demand_curves_df.copy()
-    dataframe['plant_size_econ_mw'] = 5.
+    tract_ids = demand_curves_df['tract_id_alias'].unique()
+    dataframe = pd.DataFrame()
+    dataframe['tract_id_alias'] = tract_ids
+    np.random.seed(1)
+    dataframe['plant_size_econ_mw'] = 5. * np.random.uniform(0, 15, dataframe.shape[0])
     
     return dataframe
 
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calc_plant_sizes_market(demand_curves_df, supply_curves_df):
+def calc_plant_sizes_market(demand_curves_df, supply_curves_df, plant_sizes_economic_df):
 
     # TODO: replace with actual function from Ben    
-    dataframe = demand_curves_df.copy()
-    dataframe['plant_size_market_mw'] = 5. * 0.25
+    dataframe = plant_sizes_economic_df.copy()
+    np.random.seed(1)
+    dataframe['plant_size_market_mw'] = dataframe['plant_size_econ_mw'] * np.random.uniform(0, .9, dataframe.shape[0])
     
     return dataframe
 

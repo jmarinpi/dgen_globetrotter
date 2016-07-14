@@ -608,7 +608,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # CALCULATE PLANT SIZES BASED ON MARKET POTENTIAL
                     #==============================================================================                    
-                    plant_sizes_market_df = demand_supply.calc_plant_sizes_market(demand_curves_df, supply_curves_df) # TODO: replace with actual function
+                    plant_sizes_market_df = demand_supply.calc_plant_sizes_market(demand_curves_df, supply_curves_df, plant_sizes_economic_df) # TODO: replace with actual function
                     
                     #==============================================================================
                     # BASS DIFFUSION
@@ -616,12 +616,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get previous year market share
                     existing_market_share = diffunc.get_existing_market_share(con, schema, year)
                     # calculate current max market share
-                    current_mms = diffunc.calculate_current_mms(plant_sizes_market_df)
+                    current_mms = diffunc.calculate_current_mms(plant_sizes_market_df, tract_peak_demand_df)
                     # calculate new incremental market share
-                    new_incremental_market_share = diffunc.calculate_new_incremantal_market_share(existing_market_share, current_mms, bass_params_df)
-                    # TODO:
+                    new_incremental_market_share = diffunc.calculate_new_incremental_market_share(existing_market_share, current_mms, bass_params_df, year)
                     # select plants to be built
-                    # TODO:
+                    plants_to_be_built_df = diffunc.select_plants_to_be_built(plant_sizes_market_df, new_incremental_market_share, scenario_opts['random_generator_seed'])
                     # write/store outputs
                     # TODO:        
 
