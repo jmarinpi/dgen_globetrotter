@@ -62,7 +62,8 @@ def get_existing_market_share(con, cur, schema, year):
         con.commit()
     
     
-    sql = """SELECT existing_market_share_pct, existing_market_share_mw
+    sql = """SELECT cumulative_market_share_pct as existing_market_share_pct, 
+                    cumulative_market_share_mw as existing_market_share_mw
             FROM %(schema)s.output_market_summary_du
             WHERE year = %(year)s - 2;""" % inputs
         

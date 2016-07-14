@@ -154,8 +154,8 @@ DROP TABLE IF EXISTS diffusion_template.output_market_summary_du;
 CREATE TABLE diffusion_template.output_market_summary_du
 (
 	year integer,
-	existing_market_share_pct numeric,
-	existing_market_share_mw numeric,
+	cumulative_market_share_pct numeric,
+	cumulative_market_share_mw numeric,
 	new_incremental_market_share_pct numeric,
 	new_incremental_capacity_mw numeric
 );
