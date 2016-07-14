@@ -51,10 +51,17 @@ def get_bass_params(con, schema):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_existing_market_share(con, schema, year):
+def get_existing_market_share(con, cur, schema, year):
     
     inputs = locals().copy()
 
+    if year == 2014:
+        sql = """INSERT INTO %(schema)s.output_market_last_year_du
+                    VALUES (2014, 0, 0);""" % inputs
+        cur.execute(sql)
+        con.commit()
+    
+    
     sql = """SELECT year, existing_market_share_pct, existing_market_share_mw
             FROM %(schema)s.output_market_last_year_du
             WHERE year = %(year)s;""" % inputs
@@ -63,22 +70,31 @@ def get_existing_market_share(con, schema, year):
     
     return df  
 
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_current_mms(plant_sizes_market_df, tract_peak_demand_df):
+def calculate_total_market_demand(tract_peak_demand_df):
+    
+    total_market_demand_mw = tract_peak_demand_df['peak_heat_demand_mw'].sum()
+    
+    return total_market_demand_mw
     
     
-    total_demand_mw = tract_peak_demand_df['peak_heat_demand_mw'].sum()
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_current_mms(plant_sizes_market_df, total_market_demand_mw):
+    
+    
     total_buildable_plant_capacity_mw = plant_sizes_market_df['plant_size_market_mw'].sum()
 
-    current_mms = total_buildable_plant_capacity_mw/total_demand_mw
+    current_mms = total_buildable_plant_capacity_mw/total_market_demand_mw
     
     return current_mms
     
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_new_incremental_market_share(existing_market_share_df, current_mms, bass_params_df, year):
+def calculate_new_incremental_market_share_pct(existing_market_share_df, current_mms, bass_params_df, year):
     
     if year == 2014:
         is_first_year = True
@@ -95,18 +111,23 @@ def calculate_new_incremental_market_share(existing_market_share_df, current_mms
     # cap the new_market_share where the market share exceeds the max market share
     bass_df['new_market_share'] = np.where(bass_df['market_share'] > bass_df['max_market_share'], 0, bass_df['new_market_share'])
     # extract out the new_market_share (this should be a one row dataframe)
-    new_market_share = bass_df['new_market_share'][0]
+    new_market_share_pct = bass_df['new_market_share'][0]
 
-    return new_market_share
+    return new_market_share_pct
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def select_plants_to_be_built(plant_sizes_market_df, new_incremental_market_share, seed, iterations = 10):
+def calculate_new_incremental_capacity_mw(new_market_share_pct, total_market_demand_mw):
     
-    # calculate the total buildable plant capacity (this is the max market share in terms of MW)
-    total_buildable_plant_capacity_mw = plant_sizes_market_df['plant_size_market_mw'].sum()
-    # multiply by the new incremental market share to find the capacity that should be added this year
-    new_incremental_capacity_mw = new_incremental_market_share * total_buildable_plant_capacity_mw
+    new_incremental_capacity_mw = new_market_share_pct * total_market_demand_mw
+    
+    return new_incremental_capacity_mw    
+    
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def select_plants_to_be_built(plant_sizes_market_df, new_incremental_capacity_mw, seed, iterations = 10):
+    
     # eliminate any plants that are larger than the new_incremental_capacity_mw
     plants_filtered_df = plant_sizes_market_df[plant_sizes_market_df['plant_size_market_mw'] <= new_incremental_capacity_mw]
     # reset the index (required to perform shuffle)
@@ -121,7 +142,7 @@ def select_plants_to_be_built(plant_sizes_market_df, new_incremental_market_shar
         seed_value = int(row['seed_value'])
         seed_id = row['seed_id']
         # randomly shuffle the dataframe 
-        plants_filtered_shuffled_df = plants_filtered_df.sample(frac = 1, random_state = seed_value)
+        plants_filtered_shuffled_df = plants_filtered_df.sample(frac = 1, random_state = seed_value, replace = False)
         # calculate the cumulative sum of the randomly ordered plants
         plants_filtered_shuffled_df['cumulative_capacity_mw'] = plants_filtered_shuffled_df['plant_size_market_mw'].cumsum(axis = 0)
         # find how close this can get to the new_incremental_capacity_mw
@@ -134,7 +155,7 @@ def select_plants_to_be_built(plant_sizes_market_df, new_incremental_market_shar
     best_seed_value = seeds_df[seeds_df['unfulfilled_capacity_mw'] == min_unfulfilled_capacity_mw]['seed_value'][0]
     # re-run the simulation for that best seed
     # randomly shuffle the dataframe 
-    plants_filtered_shuffled_df = plants_filtered_df.sample(frac = 1, random_state = best_seed_value)
+    plants_filtered_shuffled_df = plants_filtered_df.sample(frac = 1, random_state = best_seed_value, replace = False)
     # calculate the cumulative sum of the randomly ordered plants
     plants_filtered_shuffled_df['cumulative_capacity_mw'] = plants_filtered_shuffled_df['plant_size_market_mw'].cumsum(axis = 0)
     # extract the plants that have a cumulative capacity <= the new incremental capacity
@@ -147,17 +168,17 @@ def select_plants_to_be_built(plant_sizes_market_df, new_incremental_market_shar
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, tract_peak_demand_df):
-    
-    new_buildable_incremental_market_share_mw = plants_to_be_built_df['plant_size_market_mw'].sum()
-    new_incremental_market_share_pct = calculate_current_mms(plants_to_be_built_df, tract_peak_demand_df)
+def calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, total_market_demand_mw):
 
-    df = pd.DataFrame()    
-    df['new_cumulative_market_share_mw'] = existing_market_share_df['existing_market_share_mw'] + new_buildable_incremental_market_share_mw
-    df['new_cumulative_market_share_pct'] = existing_market_share_df['existing_market_share_pct'] + new_incremental_market_share_pct
+    df = pd.DataFrame()       
+    df['new_incremental_capacity_mw'] = plants_to_be_built_df['plant_size_market_mw'].sum()
+    df['new_incremental_market_share_pct'] = calculate_current_mms(plants_to_be_built_df, total_market_demand_mw)
+
+    df['new_cumulative_market_share_mw'] = existing_market_share_df['existing_market_share_mw'] + df['new_incremental_capacity_mw']
+    df['new_cumulative_market_share_pct'] = existing_market_share_df['existing_market_share_pct'] + df['new_incremental_market_share_pct']
+    
     return df
-    
-    
+        
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

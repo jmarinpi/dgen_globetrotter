@@ -614,15 +614,21 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # BASS DIFFUSION
                     #==============================================================================                    
                     # get previous year market share
-                    existing_market_share_df = diffunc.get_existing_market_share(con, schema, year)
+                    existing_market_share_df = diffunc.get_existing_market_share(con, cur, schema, year)
+                    # calculate total market demand
+                    total_market_demand_mw = diffunc.calculate_total_market_demand(tract_peak_demand_df)
                     # calculate current max market share
-                    current_mms = diffunc.calculate_current_mms(plant_sizes_market_df, tract_peak_demand_df)
-                    # calculate new incremental market share
-                    new_incremental_market_share = diffunc.calculate_new_incremental_market_share(existing_market_share_df, current_mms, bass_params_df, year)
+                    current_mms = diffunc.calculate_current_mms(plant_sizes_market_df, total_market_demand_mw)
+                    # calculate new incremental market share pct
+                    new_market_share_pct = diffunc.calculate_new_incremental_market_share_pct(existing_market_share_df, current_mms, bass_params_df, year)
+                    # calculate new incremental market share capacity (mw)
+                    new_incremental_capacity_mw = diffunc.calculate_new_incremental_capacity_mw(new_market_share_pct, total_market_demand_mw)
                     # select plants to be built
-                    plants_to_be_built_df = diffunc.select_plants_to_be_built(plant_sizes_market_df, new_incremental_market_share, scenario_opts['random_generator_seed'])
-                    # summarize the new cumulative market shre (in terms of capacity and pct)
-                    cumulative_market_share_df = diffunc.calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, tract_peak_demand_df)                    
+                    plants_to_be_built_df = diffunc.select_plants_to_be_built(plant_sizes_market_df, new_incremental_capacity_mw, scenario_opts['random_generator_seed'])
+                    # summarize the new cumulative market share (in terms of capacity and pct) based on the selected plants
+                    # (note: this will differ a bit from the new_incremental_capacity_mw and new_market_share_pct + existing_market_share_df because it is based on
+                    # selected plants, which may not sum perfectly to the theoreticaly incremental additions)
+                    cumulative_market_share_df = diffunc.calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, total_market_demand_mw)                    
                     # write/store outputs
                     diffunc.write_cumulative_market_share(con, cur, cumulative_market_share_df)
                     # TODO:        

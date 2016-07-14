@@ -148,15 +148,12 @@ CREATE TABLE diffusion_template.output_market_last_year
 
 );
 
-
+set role 'diffusion-writers';
 -- tables to hold results from each previous model year 
 DROP TABLE IF EXISTS diffusion_template.output_market_last_year_du;
 CREATE TABLE diffusion_template.output_market_last_year_du
 (
-	year integer primary key,
+	year integer,
 	existing_market_share_pct numeric,
 	existing_market_share_mw numeric
 );
-
-INSERT INTO diffusion_template.output_market_last_year_du
-VALUES (2014, 0, 0);
