@@ -148,3 +148,11 @@ CREATE TABLE diffusion_template.output_market_last_year
 
 );
 
+
+-- tables to hold results from each previous model year 
+DROP TABLE IF EXISTS diffusion_template.output_market_last_year_du;
+CREATE TABLE diffusion_template.output_market_last_year_du
+(
+	existing_market_share numeric
+);
+

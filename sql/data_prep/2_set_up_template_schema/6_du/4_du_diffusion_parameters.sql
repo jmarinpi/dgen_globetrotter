@@ -5,5 +5,5 @@ CREATE TABLE diffusion_template.input_du_bass_params
 (
 	p numeric NOT NULL,
 	q numeric NOT NULL,
-	time_to_full_subscription integer NOT NULL
+       teq_yr1 numeric not null
 );

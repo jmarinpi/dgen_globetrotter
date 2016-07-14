@@ -314,6 +314,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         # SETUP RESOURCE DATA
                         #==========================================================================================================
                         demand_supply.setup_resource_data(cur, con, schema, scenario_opts['random_generator_seed'], cfg.pg_procs, cfg.pg_conn_string)
+                        
+                        #==========================================================================================================
+                        # GET BASS DIFFUSION PARAMETERS
+                        #==========================================================================================================
+                        bass_params_df = diffunc.get_bass_params(con, schema)
 
     
             #==========================================================================================================
@@ -608,8 +613,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # BASS DIFFUSION
                     #==============================================================================                    
-                    pass # TODO: add dummy function
-                    # TODO: add input for bass length of diffusion
+                    # get previous year market share
+                    existing_market_share = diffunc.get_existing_market_share(con, schema, year)
+                    # calculate current max market share
+                    current_mms = diffunc.calculate_current_mms(plant_sizes_market_df)
+                    # calculate new incremental market share
+                    new_incremental_market_share = diffunc.calculate_new_incremantal_market_share(existing_market_share, current_mms, bass_params_df)
+                    # TODO:
+                    # select plants to be built
+                    # TODO:
+                    # write/store outputs
+                    # TODO:        
+
                     # TODO: add capability to track which plants were already built (this could get complicated...keep it simple for now)
                     
                     

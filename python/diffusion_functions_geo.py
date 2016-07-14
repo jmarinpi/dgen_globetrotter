@@ -23,7 +23,65 @@ import decorators
 #==============================================================================
 # Load logger
 logger = utilfunc.get_logger()
+
+# configure psycopg2 to treat numeric values as floats (improves performance of pulling data from the database)
+DEC2FLOAT = pg.extensions.new_type(
+    pg.extensions.DECIMAL.values,
+    'DEC2FLOAT',
+    lambda value, curs: float(value) if value is not None else None)
+pg.extensions.register_type(DEC2FLOAT)
+
 #==============================================================================
+
+
+def get_bass_params(con, schema):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT p, q, teq
+            FROM diffusion_template.input_du_bass_params;""" % inputs
+            
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df    
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_existing_market_share(con, schema, year):
+    
+    inputs = locals().copy()
+        
+    if year == 2014:
+        sql = """SELECT 0::NUMERIC as existing_market_share;"""
+    else:
+        sql = """SELECT existing_market_share
+                 FROM %(schema)s.output_market_last_year_du;""" % inputs
+        
+    df = pd.read_sql(sql, con, coerce_float = False)
+    existing_market_share = df['existing_market_share'][0]
+    
+    return existing_market_share  
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_current_mms(plant_sizes_market_df):
+    
+    
+    n_tracts = plant_sizes_market_df.shape[0]
+    n_buildable_plants = np.sum(plant_sizes_market_df['plant_size_market_mw'] > 0)
+
+    current_mms = n_buildable_plants/n_tracts
+    
+    return current_mms
+    
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_new_incremantal_market_share(existing_market_share, current_mms, bass_params_df):
+    
+    df = calc_diffusion_market_share(df, cfg, con, is_first_year)
+    pass
+    
 
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
