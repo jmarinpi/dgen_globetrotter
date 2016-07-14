@@ -629,11 +629,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # (note: this will differ a bit from the new_incremental_capacity_mw and new_market_share_pct + existing_market_share_df because it is based on
                     # selected plants, which may not sum perfectly to the theoreticaly incremental additions)
                     cumulative_market_share_df = diffunc.calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, total_market_demand_mw, year)                    
-                    # write/store outputs
+                    # write/store summary market share outputs
                     diffunc.write_cumulative_market_share(con, cur, cumulative_market_share_df, schema)
-                    # TODO:        
-                        
-                    # TODO: add capability to track which plants were already built (this could get complicated...keep it simple for now)
+                    # TODO: add capability to track which plants were already built and which customers subscribed 
+                    # NOTE: (this could get complicated in terms of next year's demand and supply curves...)
                     
                     
                     

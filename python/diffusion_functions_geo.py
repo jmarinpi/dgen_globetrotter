@@ -57,14 +57,14 @@ def get_existing_market_share(con, cur, schema, year):
 
     if year == 2014:
         sql = """INSERT INTO %(schema)s.output_market_summary_du
-                    VALUES (2014, 0, 0, 0, 0);""" % inputs
+                    VALUES (2012, 0, 0, 0, 0);""" % inputs
         cur.execute(sql)
         con.commit()
     
     
-    sql = """SELECT year, existing_market_share_pct, existing_market_share_mw
+    sql = """SELECT existing_market_share_pct, existing_market_share_mw
             FROM %(schema)s.output_market_summary_du
-            WHERE year = %(year)s;""" % inputs
+            WHERE year = %(year)s - 2;""" % inputs
         
     df = pd.read_sql(sql, con, coerce_float = False)
     
@@ -102,8 +102,9 @@ def calculate_new_incremental_market_share_pct(existing_market_share_df, current
         is_first_year = False
     
     # merge bass params and existing_market_share_df
-    bass_params_df['year'] = year
-    df = pd.merge(existing_market_share_df, bass_params_df, how = 'left', on = ['year'])
+    bass_params_df['join_key'] = 1
+    existing_market_share_df['join_key'] = 1
+    df = pd.merge(existing_market_share_df, bass_params_df, how = 'left', on = ['join_key'])
     df['max_market_share'] = current_mms
     bass_df = calc_diffusion_market_share(df, is_first_year)
     # market share floor is based on last year's market share
