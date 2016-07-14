@@ -20,7 +20,7 @@ import pandas as pd
 import utility_functions as utilfunc
 import decorators
 import psycopg2 as pg
-
+from cStringIO import StringIO
 
 #==============================================================================
 # Load logger
@@ -54,17 +54,14 @@ def get_bass_params(con, schema):
 def get_existing_market_share(con, schema, year):
     
     inputs = locals().copy()
-        
-    if year == 2014:
-        sql = """SELECT 0::NUMERIC as existing_market_share;"""
-    else:
-        sql = """SELECT existing_market_share
-                 FROM %(schema)s.output_market_last_year_du;""" % inputs
+
+    sql = """SELECT year, existing_market_share_pct, existing_market_share_mw
+            FROM %(schema)s.output_market_last_year_du
+            WHERE year = %(year)s;""" % inputs
         
     df = pd.read_sql(sql, con, coerce_float = False)
-    existing_market_share = df['existing_market_share'][0]
     
-    return existing_market_share  
+    return df  
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -81,19 +78,20 @@ def calculate_current_mms(plant_sizes_market_df, tract_peak_demand_df):
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_new_incremental_market_share(existing_market_share, current_mms, bass_params_df, year):
+def calculate_new_incremental_market_share(existing_market_share_df, current_mms, bass_params_df, year):
     
     if year == 2014:
         is_first_year = True
     
-    df = bass_params_df.copy()
-    df['existing_market_share'] = existing_market_share
+    # merge bass params and existing_market_share_df
+    bass_params_df['year'] = year
+    df = pd.merge(existing_market_share_df, bass_params_df, how = 'left', on = ['year'])
     df['max_market_share'] = current_mms
     bass_df = calc_diffusion_market_share(df, is_first_year)
     # market share floor is based on last year's market share
-    bass_df['market_share'] = np.maximum(df['diffusion_market_share'], df['existing_market_share'])
+    bass_df['market_share'] = np.maximum(df['diffusion_market_share'], df['existing_market_share_pct'])
     # calculate the new incremental market share
-    bass_df['new_market_share'] = bass_df['market_share'] - bass_df['existing_market_share']
+    bass_df['new_market_share'] = bass_df['market_share'] - bass_df['existing_market_share_pct']
     # cap the new_market_share where the market share exceeds the max market share
     bass_df['new_market_share'] = np.where(bass_df['market_share'] > bass_df['max_market_share'], 0, bass_df['new_market_share'])
     # extract out the new_market_share (this should be a one row dataframe)
@@ -147,8 +145,48 @@ def select_plants_to_be_built(plant_sizes_market_df, new_incremental_market_shar
     return buildable_plants_df
 
 
-#=============================================================================
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, tract_peak_demand_df):
+    
+    new_buildable_incremental_market_share_mw = plants_to_be_built_df['plant_size_market_mw'].sum()
+    new_incremental_market_share_pct = calculate_current_mms(plants_to_be_built_df, tract_peak_demand_df)
 
+    df = pd.DataFrame()    
+    df['new_cumulative_market_share_mw'] = existing_market_share_df['existing_market_share_mw'] + new_buildable_incremental_market_share_mw
+    df['new_cumulative_market_share_pct'] = existing_market_share_df['existing_market_share_pct'] + new_incremental_market_share_pct
+    return df
+    
+    
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def write_cumulative_market_share(con, cur, cumulative_market_share_df):
+    
+    inputs = locals().copy()    
+    
+    inputs['out_table'] = '%(schema)s.output_market_last_year_du'  % inputs
+    
+    sql = """DELETE FROM %(out_table)s;"""  % inputs
+    cur.execute(sql)
+    con.commit()
+
+    # open an in memory stringIO file (like an in memory csv)
+    s = StringIO()
+    # write the data to the stringIO
+    out_cols = ['new_cumulative_market_share_pct',
+                'new_cumulative_market_share_mw'
+                ]
+    cumulative_market_share_df[out_cols].to_csv(s, index = False, header = False)
+    # seek back to the beginning of the stringIO file
+    s.seek(0)
+    # copy the data from the stringio file to the postgres table
+    cur.copy_expert('COPY %(out_table)s FROM STDOUT WITH CSV' % inputs, s)
+    # commit the additions and close the stringio file (clears memory)
+    con.commit()    
+    s.close()
+
+#%%
 #  ^^^^ Calculate new diffusion in market segment ^^^^
 def calc_diffusion_market_share(df, is_first_year):
     ''' Calculate the fraction of overall population that have adopted the 
@@ -174,7 +212,7 @@ def calc_diffusion_market_share(df, is_first_year):
     df = bass_diffusion(df); # calculate the new diffusion by stepping forward 2 years
 
     df['bass_market_share'] = df.max_market_share * df.new_adopt_fraction; # new market adoption    
-    df['diffusion_market_share'] = np.where(df['existing_market_share'] > df['bass_market_share'], df['existing_market_share'], df['bass_market_share'])
+    df['diffusion_market_share'] = np.where(df['existing_market_share_pct'] > df['bass_market_share'], df['existing_market_share_pct'], df['bass_market_share'])
     
     return df
 #==============================================================================  
@@ -214,7 +252,7 @@ def calc_equiv_time(df):
     '''
     
     df['mms_fix_zeros'] = np.where(df['max_market_share'] == 0, 1e-9, df['max_market_share'])
-    df['ratio'] = np.where(df['existing_market_share'] > df['mms_fix_zeros'], 0, df['existing_market_share']/df['mms_fix_zeros'])
+    df['ratio'] = np.where(df['existing_market_share_pct'] > df['mms_fix_zeros'], 0, df['existing_market_share_pct']/df['mms_fix_zeros'])
    #ratio=msly/mms;  # ratio of adoption at present to adoption at terminal period
     df['teq'] = np.log( ( 1 - df['ratio']) / (1 + df['ratio']*(df['q']/df['p']))) / (-1*(df['p']+df['q'])); # solve for equivalent time
     return df

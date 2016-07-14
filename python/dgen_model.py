@@ -614,16 +614,19 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # BASS DIFFUSION
                     #==============================================================================                    
                     # get previous year market share
-                    existing_market_share = diffunc.get_existing_market_share(con, schema, year)
+                    existing_market_share_df = diffunc.get_existing_market_share(con, schema, year)
                     # calculate current max market share
                     current_mms = diffunc.calculate_current_mms(plant_sizes_market_df, tract_peak_demand_df)
                     # calculate new incremental market share
-                    new_incremental_market_share = diffunc.calculate_new_incremental_market_share(existing_market_share, current_mms, bass_params_df, year)
+                    new_incremental_market_share = diffunc.calculate_new_incremental_market_share(existing_market_share_df, current_mms, bass_params_df, year)
                     # select plants to be built
                     plants_to_be_built_df = diffunc.select_plants_to_be_built(plant_sizes_market_df, new_incremental_market_share, scenario_opts['random_generator_seed'])
+                    # summarize the new cumulative market shre (in terms of capacity and pct)
+                    cumulative_market_share_df = diffunc.calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, tract_peak_demand_df)                    
                     # write/store outputs
+                    diffunc.write_cumulative_market_share(con, cur, cumulative_market_share_df)
                     # TODO:        
-
+                        
                     # TODO: add capability to track which plants were already built (this could get complicated...keep it simple for now)
                     
                     
