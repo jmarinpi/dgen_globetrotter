@@ -56,14 +56,14 @@ def get_existing_market_share(con, cur, schema, year):
     inputs = locals().copy()
 
     if year == 2014:
-        sql = """INSERT INTO %(schema)s.output_market_last_year_du
-                    VALUES (2014, 0, 0);""" % inputs
+        sql = """INSERT INTO %(schema)s.output_market_summary_du
+                    VALUES (2014, 0, 0, 0, 0);""" % inputs
         cur.execute(sql)
         con.commit()
     
     
     sql = """SELECT year, existing_market_share_pct, existing_market_share_mw
-            FROM %(schema)s.output_market_last_year_du
+            FROM %(schema)s.output_market_summary_du
             WHERE year = %(year)s;""" % inputs
         
     df = pd.read_sql(sql, con, coerce_float = False)
@@ -98,6 +98,8 @@ def calculate_new_incremental_market_share_pct(existing_market_share_df, current
     
     if year == 2014:
         is_first_year = True
+    else:
+        is_first_year = False
     
     # merge bass params and existing_market_share_df
     bass_params_df['year'] = year
@@ -152,7 +154,7 @@ def select_plants_to_be_built(plant_sizes_market_df, new_incremental_capacity_mw
     # find the minimum residual
     min_unfulfilled_capacity_mw = seeds_df['unfulfilled_capacity_mw'].min()
     # extract that seed for for that row
-    best_seed_value = seeds_df[seeds_df['unfulfilled_capacity_mw'] == min_unfulfilled_capacity_mw]['seed_value'][0]
+    best_seed_value = seeds_df[seeds_df['unfulfilled_capacity_mw'] == min_unfulfilled_capacity_mw]['seed_value'].tolist()[0]
     # re-run the simulation for that best seed
     # randomly shuffle the dataframe 
     plants_filtered_shuffled_df = plants_filtered_df.sample(frac = 1, random_state = best_seed_value, replace = False)
@@ -168,36 +170,37 @@ def select_plants_to_be_built(plant_sizes_market_df, new_incremental_capacity_mw
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, total_market_demand_mw):
+def calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, total_market_demand_mw, year):
 
-    df = pd.DataFrame()       
-    df['new_incremental_capacity_mw'] = plants_to_be_built_df['plant_size_market_mw'].sum()
-    df['new_incremental_market_share_pct'] = calculate_current_mms(plants_to_be_built_df, total_market_demand_mw)
+    d = {}
+    d['year'] = year
+    d['new_incremental_capacity_mw'] = plants_to_be_built_df['plant_size_market_mw'].sum()
+    d['new_incremental_market_share_pct'] = calculate_current_mms(plants_to_be_built_df, total_market_demand_mw)
 
-    df['new_cumulative_market_share_mw'] = existing_market_share_df['existing_market_share_mw'] + df['new_incremental_capacity_mw']
-    df['new_cumulative_market_share_pct'] = existing_market_share_df['existing_market_share_pct'] + df['new_incremental_market_share_pct']
+    d['new_cumulative_market_share_mw'] = existing_market_share_df['existing_market_share_mw'] + d['new_incremental_capacity_mw']
+    d['new_cumulative_market_share_pct'] = existing_market_share_df['existing_market_share_pct'] + d['new_incremental_market_share_pct']
+
+    df = pd.DataFrame(d)
     
     return df
         
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def write_cumulative_market_share(con, cur, cumulative_market_share_df):
+def write_cumulative_market_share(con, cur, cumulative_market_share_df, schema):
     
     inputs = locals().copy()    
     
-    inputs['out_table'] = '%(schema)s.output_market_last_year_du'  % inputs
-    
-    sql = """DELETE FROM %(out_table)s;"""  % inputs
-    cur.execute(sql)
-    con.commit()
+    inputs['out_table'] = '%(schema)s.output_market_summary_du'  % inputs
 
     # open an in memory stringIO file (like an in memory csv)
     s = StringIO()
     # write the data to the stringIO
-    out_cols = ['new_cumulative_market_share_pct',
-                'new_cumulative_market_share_mw'
-                ]
+    out_cols = ['year',
+                'new_cumulative_market_share_pct', 
+                'new_cumulative_market_share_mw', 
+                'new_incremental_market_share_pct', 
+                'new_incremental_capacity_mw']
     cumulative_market_share_df[out_cols].to_csv(s, index = False, header = False)
     # seek back to the beginning of the stringIO file
     s.seek(0)
