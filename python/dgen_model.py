@@ -562,7 +562,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get initial agents from postgres
                     agents_initial = mutation.get_initial_agent_attributes(con, schema)
                     # update year for these initial agetns to the current year
-                    agents_initial = AgentsAlgorithm(agents, mutation.update_year, (year, )).compute()
+                    agents_initial = AgentsAlgorithm(agents_initial, mutation.update_year, (year, )).compute()
                     # get new construction agents
                     agents_new = mutation.get_new_agent_attributes(con, schema, year)
                     # combine initial and new agents
