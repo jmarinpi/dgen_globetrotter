@@ -299,7 +299,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         demand_supply.calculate_tract_demand_profiles(con, cur, schema, cfg.pg_procs, cfg.pg_conn_string)
              
                         #==========================================================================================================
-                        # GET DEMAND DENSITY DATA
+                        # GET TRACT DISTRIBUTION NEWORK SIZES 
                         #==========================================================================================================                        
                         distribution_df = demand_supply.get_distribution_network_data(con, schema)
 
@@ -587,6 +587,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     tract_demand_profiles_df = demand_supply.get_tract_demand_profiles(con, schema, year)    
                     # calculate tract peak demand
                     tract_peak_demand_df = demand_supply.calculate_tract_peak_demand(tract_demand_profiles_df)                    
+                    # calculate distribution demand density
+                    demand_density_df = demand_supply.calculate_distribution_demand_density(tract_peak_demand_df, distribution_df)
+
 
                     resource_df = demand_supply.get_resource_data(con, schema, year)
                     # get natural gas prics
@@ -602,7 +605,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     capacity_factors_df = demand_supply.calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_performance_df, tract_demand_profiles_df, year)
                     # apply the plant cost data
                     resources_with_costs_df = demand_supply.apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df,
-                                                                                     plant_finances_df, distribution_df,  capacity_factors_df, ng_prices_df)
+                                                                                     plant_finances_df, demand_density_df,  capacity_factors_df, ng_prices_df)
                     # build supply curve
                     supply_curves_df = demand_supply.build_supply_curves() # TODO: replace with actual function
                     

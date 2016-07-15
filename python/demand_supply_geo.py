@@ -416,12 +416,14 @@ def calculate_tract_peak_demand(tract_demand_profiles_df):
     
     # convert profiles to a numpy array
     profiles_array = np.array(tract_demand_profiles_df['heat_demand_profile_mw'].tolist(), dtype = 'float64')
+    dataframe = tract_demand_profiles_df[['tract_id_alias']].copy()
+    
     # calculate max for each row
-    tract_demand_profiles_df['peak_heat_demand_mw'] = np.max(profiles_array, axis = 1)
+    dataframe['peak_heat_demand_mw'] = np.max(profiles_array, axis = 1)
     
     # subset the return cols
     return_cols = ['tract_id_alias', 'peak_heat_demand_mw']
-    dataframe = tract_demand_profiles_df[return_cols]
+    dataframe = dataframe[return_cols]
     
     return dataframe
 
@@ -520,25 +522,38 @@ def get_natural_gas_prices(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_distribution_network_data(con, schema): # todo: add con, schema
+def get_distribution_network_data(con, schema):
 
     inputs = locals().copy()
 
     sql = """SELECT a.tract_id_alias,
-                b.road_meters / a.peak_heat_demand_mw as distribution_m_per_mw,
-                b.road_meters as distribution_total_m
-            FROM %(schema)s.tract_peak_heat_demand a
-            LEFT JOIN diffusion_geo.tract_road_length b
+                    a.road_meters as distribution_total_m
+            FROM diffusion_geo.tract_road_length a
+            INNER JOIN %(schema)s.tracts_to_model b
             ON a.tract_id_alias = b.tract_id_alias;""" % inputs
 
     df = pd.read_sql(sql, con, coerce_float = False)
 
     return df
 
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_distribution_demand_density(tract_peak_demand_df, distribution_df):
+    
+    dataframe = pd.merge(tract_peak_demand_df, distribution_df, how = 'left', on = 'tract_id_alias')
+    dataframe['distribution_m_per_mw'] = dataframe['distribution_total_m'] / dataframe['peak_heat_demand_mw']
+    
+    return_cols = ['tract_id_alias', 'distribution_total_m', 'distribution_m_per_mw']
+    dataframe = dataframe[return_cols]
+    
+    return dataframe
+
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df, plant_finances_df,
-                                    distribution_df, capacity_factors_df, ng_prices_df):
+                                    demand_density_df, capacity_factors_df, ng_prices_df):
     
     inputs = locals().copy()
     
@@ -549,7 +564,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # merge the finances (effecively a cross join)
     dataframe = pd.merge(dataframe, plant_finances_df, how = 'left', on = ['year'])
     # merge the distribution demand density info (left join on tract id alias)
-    dataframe = pd.merge(dataframe, distribution_df, how = 'left', on = ['tract_id_alias'])
+    dataframe = pd.merge(dataframe, demand_density_df, how = 'left', on = ['tract_id_alias'])
     # merge the capacity factor data
     dataframe = pd.merge(dataframe, capacity_factors_df, how = 'left', on = ['tract_id_alias'])
     # merge the natural gas prices

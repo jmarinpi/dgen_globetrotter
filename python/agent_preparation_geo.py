@@ -117,7 +117,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 
                 # NEW AGENTS TO REPRESENT NEW CONSTRUCTION (2014 - 2050)
                 # calculate the agents required to represent new construction
-                logger.info("\tWorking on New Construction (2014 - 2050)")
+                logger.info("\tWorking on New Construction (2014 - %s)" % end_year)
                 calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, seed, pool, pg_conn_string, end_year)
                 sample_blocks(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string, con, cur)
                 sample_building_type(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
