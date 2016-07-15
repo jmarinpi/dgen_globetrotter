@@ -34,11 +34,27 @@ pg.extensions.register_type(DEC2FLOAT)
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_core_agent_attributes(con, schema):
+def get_initial_agent_attributes(con, schema):
     
     inputs = locals().copy()
-    sql = """SELECT *
-             FROM %(schema)s.agent_core_attributes_all;""" % inputs
+    sql = """SELECT *, FALSE::BOOLEAN AS new_construction
+             FROM %(schema)s.agent_core_attributes_all
+             WHERE year = 2012;""" % inputs
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    agents = Agents(df)
+
+    return agents
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_new_agent_attributes(con, schema, year):
+    
+    inputs = locals().copy()
+    sql = """SELECT *, TRUE::BOOLEAN AS new_construction
+             FROM %(schema)s.agent_core_attributes_all
+             WHERE year = %(year)s;""" % inputs
     
     df = pd.read_sql(sql, con, coerce_float = False)
 

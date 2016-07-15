@@ -103,24 +103,30 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 create_agent_id_sequence(schema, sector_abbr, con, cur)
                 
                 # INITIAL AGENTS TO REPRESENT STARTING BUILDING STOCK (2012)
+                logger.info("\tWorking on Initial Building Stock (2012)" % sector)
                 # NOTE: each of these functions is dependent on the last, so changes from one must be cascaded to the others
                 calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, min_agents, seed, pool, pg_conn_string)                    
                 sample_blocks(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string, con, cur)
                 sample_building_type(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string)
                 # TODO: add in selection of heating fuel type for res sector
                 sample_building_microdata(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string)
-#                estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_string)
-#                estimate_system_ages(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
-#                estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
-#                map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_string)
+                estimate_agent_thermal_loads(schema, sector_abbr, 'initial', chunks, pool, pg_conn_string)
+                estimate_system_ages(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string)
+                estimate_system_lifetimes(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string)
+                map_to_generic_baseline_system(schema, sector_abbr, 'initial', chunks, pool, pg_conn_string)
                 
                 # NEW AGENTS TO REPRESENT NEW CONSTRUCTION (2014 - 2050)
                 # calculate the agents required to represent new construction
+                logger.info("\tWorking on New Construction (2014 - 2050)" % sector)
                 calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, seed, pool, pg_conn_string)
                 sample_blocks(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string, con, cur)
                 sample_building_type(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
                 sample_building_microdata(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
-                        
+                estimate_agent_thermal_loads(schema, sector_abbr, 'new', chunks, pool, pg_conn_string)
+                estimate_system_ages(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
+                estimate_system_lifetimes(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
+                map_to_generic_baseline_system(schema, sector_abbr, 'new', chunks, pool, pg_conn_string)                
+                
                 #==============================================================================
                 #     impose agent level siting  attributes (i.e., "tech potential")
                 #==============================================================================
@@ -180,7 +186,7 @@ def split_tracts(cur, schema, pg_procs):
 #%%
 def calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, min_agents, seed, pool, pg_conn_string):
 
-    msg = '\tDetermining Initial Number of Agents in Each Tract'
+    msg = '\t\tDetermining Initial Number of Agents in Each Tract'
     logger.info(msg)
 
     inputs = locals().copy()
@@ -192,7 +198,8 @@ def calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks, sam
     
     sql = """DROP TABLE IF EXISTS %(schema)s.initial_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s;
             CREATE UNLOGGED TABLE %(schema)s.initial_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s AS
-            	SELECT a.tract_id_alias, 2012::INTEGER as year,
+            	SELECT a.tract_id_alias, 
+                     2012::INTEGER as year,
                      a.bldg_count_%(sector_abbr)s as tract_bldg_count,
             		 CASE WHEN ROUND(a.bldg_count_%(sector_abbr)s * %(sample_pct)s, 0)::INTEGER < %(min_agents)s
                                THEN %(min_agents)s
@@ -212,7 +219,7 @@ def calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks, sam
 #%%
 def calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, seed, pool, pg_conn_string):
 
-    msg = '\tDetermining Number of New Construction Agents in Each Tract by Year'
+    msg = '\t\tDetermining Number of New Construction Agents in Each Tract by Year'
     logger.info(msg)
 
     inputs = locals().copy()
@@ -274,7 +281,7 @@ def create_agent_id_sequence(schema, sector_abbr, con, cur):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def sample_blocks(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string, con, cur):
 
-    msg = '\tSampling from Blocks for Each Tract'
+    msg = '\t\tSampling from Blocks for Each Tract'
     logger.info(msg)
     
     inputs = locals().copy()
@@ -329,7 +336,7 @@ def sample_blocks(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_co
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def sample_building_type(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
 
-    msg = '\tSampling Building Types from Blocks for Each Tract'
+    msg = '\t\tSampling Building Types from Blocks for Each Tract'
     logger.info(msg)
     
     inputs = locals().copy()
@@ -390,14 +397,14 @@ def sample_building_type(schema, sector_abbr, initial_or_new, chunks, seed, pool
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def sample_building_microdata(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
 
-    msg = "\tSampling from Building Microdata"
+    msg = "\t\tSampling from Building Microdata"
     logger.info(msg)
     
     
     inputs = locals().copy()    
     inputs['i_place_holder'] = '%(i)s'
     inputs['sector_abbr'] = sector_abbr
-    inputs['initial_or_new'] = initial_or_new    
+    inputs['initial_or_new'] = initial_or_new 
     
     if sector_abbr == 'res':
         if initial_or_new == 'initial':        
@@ -472,45 +479,56 @@ def sample_building_microdata(schema, sector_abbr, initial_or_new, chunks, seed,
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_string):
+def estimate_agent_thermal_loads(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_string):
 
-    msg = '\tEstimating Agent Thermal Loads'    
+    msg = '\t\tEstimating Agent Thermal Loads'    
     logger.info(msg)
     
     
     inputs = locals().copy()    
     inputs['i_place_holder'] = '%(i)s'
     inputs['sector_abbr'] = sector_abbr  
+    inputs['initial_or_new'] = initial_or_new
 
 
-
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s;
-             CREATE UNLOGGED TABLE %(schema)s.agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s AS
+    sql = """DROP TABLE IF EXISTS %(schema)s.%(initial_or_new)s_agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s;
+             CREATE UNLOGGED TABLE %(schema)s.%(initial_or_new)s_agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s AS
             WITH b as
             (
                 SELECT  a.agent_id, 
                         a.block_bldgs_weight::NUMERIC/sum(a.block_bldgs_weight) OVER (PARTITION BY a.tract_id_alias) * b.tract_bldg_count as buildings_in_bin
-                FROM %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s a
-                LEFT JOIN %(schema)s.initial_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s b
+                FROM %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s a
+                LEFT JOIN %(schema)s.%(initial_or_new)s_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s b
 			ON a.tract_id_alias = b.tract_id_alias
+                   AND a.year = b.year
             ),
             c as
             (
     
                 SELECT a.agent_id,
                            b.buildings_in_bin,
-                           (b.buildings_in_bin * a.kbtu_space_heat)/sum(b.buildings_in_bin * a.kbtu_space_heat) OVER (PARTITION BY d.old_county_id) 
-                               * e.space_heating_thermal_load_mmbtu * 1000. as space_heat_kbtu_in_bin,
-                           (b.buildings_in_bin * a.kbtu_space_cool)/sum(b.buildings_in_bin * a.kbtu_space_cool) OVER (PARTITION BY d.old_county_id) 
-                               * e.space_cooling_thermal_load_mmbtu * 1000. as space_cool_kbtu_in_bin,
-                           (b.buildings_in_bin * a.kbtu_water_heat)/sum(b.buildings_in_bin * a.kbtu_water_heat) OVER (PARTITION BY d.old_county_id) 
-                               * e.water_heating_thermal_load_mmbtu * 1000. as water_heat_kbtu_in_bin,
-                            a.totsqft
+                           CASE WHEN '%(initial_or_new)s' = 'initial' THEN
+                                       (b.buildings_in_bin * a.kbtu_space_heat)/sum(b.buildings_in_bin * a.kbtu_space_heat) OVER (PARTITION BY d.old_county_id) 
+                                       * e.space_heating_thermal_load_mmbtu * 1000. 
+                                WHEN '%(initial_or_new)s' = 'new' THEN b.buildings_in_bin * a.kbtu_space_heat
+                           END AS space_heat_kbtu_in_bin,
+                           
+                           CASE WHEN '%(initial_or_new)s' = 'initial' THEN                           
+                                       (b.buildings_in_bin * a.kbtu_space_cool)/sum(b.buildings_in_bin * a.kbtu_space_cool) OVER (PARTITION BY d.old_county_id) 
+                                       * e.space_cooling_thermal_load_mmbtu * 1000. 
+                                WHEN '%(initial_or_new)s' = 'new' THEN b.buildings_in_bin * a.kbtu_space_cool
+                           END AS space_cool_kbtu_in_bin,
 
-                 FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
+                           CASE WHEN '%(initial_or_new)s' = 'initial' THEN                           
+                                       (b.buildings_in_bin * a.kbtu_water_heat)/sum(b.buildings_in_bin * a.kbtu_water_heat) OVER (PARTITION BY d.old_county_id) 
+                                       * e.water_heating_thermal_load_mmbtu * 1000.
+                                WHEN '%(initial_or_new)s' = 'new' THEN b.buildings_in_bin * a.kbtu_water_heat
+                           END AS water_heat_kbtu_in_bin,
+                           a.totsqft
+                 FROM %(schema)s.%(initial_or_new)s_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
                  LEFT JOIN b
                      ON a.agent_id = b.agent_id         
-                 LEFT JOIN  %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s c
+                 LEFT JOIN  %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s c
                      ON a.agent_id = c.agent_id
                  LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined d
                      ON c.pgid = d.pgid
@@ -526,7 +544,7 @@ def estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_stri
     p_run(pg_conn_string, sql, chunks, pool)
     
     # add primary key
-    sql = """ALTER TABLE %(schema)s.agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s
+    sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
        
@@ -534,30 +552,42 @@ def estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_stri
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def estimate_system_ages(schema, sector_abbr, chunks, seed, pool, pg_conn_string):
+def estimate_system_ages(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
 
-    msg = '\tEstimating Agent HVAC System Ages'    
+    msg = '\t\tEstimating Agent HVAC System Ages'    
     logger.info(msg)
     
     
     inputs = locals().copy()    
     inputs['i_place_holder'] = '%(i)s'
     inputs['sector_abbr'] = sector_abbr  
-
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s;
-            CREATE UNLOGGED TABLE %(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s AS
+    inputs['initial_or_new'] = initial_or_new
+    
+    
+    sql = """DROP TABLE IF EXISTS %(schema)s.%(initial_or_new)s_agent_system_ages_%(sector_abbr)s_%(i_place_holder)s;
+            CREATE UNLOGGED TABLE %(schema)s.%(initial_or_new)s_agent_system_ages_%(sector_abbr)s_%(i_place_holder)s AS
             WITH a as
             (
                 SELECT agent_id,             
-                    CASE WHEN a.space_heat_age_min IS NULL OR a.space_heat_age_max IS NULL THEN NULL::INTEGER
-                    ELSE ROUND(diffusion_shared.r_runif(a.space_heat_age_min, a.space_heat_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
+                    CASE 
+                        WHEN '%(initial_or_new)s' = 'initial' THEN
+                            CASE
+                                WHEN a.space_heat_age_min IS NULL OR a.space_heat_age_max IS NULL THEN NULL::INTEGER
+                                ELSE ROUND(diffusion_shared.r_runif(a.space_heat_age_min, a.space_heat_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
+                            END
+                        WHEN '%(initial_or_new)s' = 'new' THEN -1::INTEGER
                     END as space_heat_system_age, 
     
-                    CASE WHEN a.space_cool_age_min IS NULL OR a.space_cool_age_max IS NULL THEN NULL::INTEGER
-                    ELSE ROUND(diffusion_shared.r_runif(a.space_cool_age_min, a.space_cool_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
+                     CASE 
+                        WHEN '%(initial_or_new)s' = 'initial' THEN
+                            CASE
+                                WHEN a.space_cool_age_min IS NULL OR a.space_cool_age_max IS NULL THEN NULL::INTEGER
+                                ELSE ROUND(diffusion_shared.r_runif(a.space_cool_age_min, a.space_cool_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
+                            END 
+                        WHEN '%(initial_or_new)s' = 'new' THEN -1::INTEGER     
                     END as space_cool_system_age
             
-                FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
+                FROM %(schema)s.%(initial_or_new)s_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
             )
             SELECT agent_id, space_heat_system_age, space_cool_system_age,
                     r_median(ARRAY[space_heat_system_age, space_cool_system_age]) as average_system_age
@@ -565,24 +595,26 @@ def estimate_system_ages(schema, sector_abbr, chunks, seed, pool, pg_conn_string
     p_run(pg_conn_string, sql, chunks, pool)    
 
     # add primary key
-    sql = """ALTER TABLE %(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s
+    sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_system_ages_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
 
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_string):
+def estimate_system_lifetimes(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
 
-    msg = '\tEstimating Agent HVAC System Expected Lifetimes'    
+    msg = '\t\tEstimating Agent HVAC System Expected Lifetimes'    
     logger.info(msg)
     
     
     inputs = locals().copy()    
     inputs['i_place_holder'] = '%(i)s'
     inputs['sector_abbr'] = sector_abbr  
+    inputs['initial_or_new'] = initial_or_new
 
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s;
-            CREATE UNLOGGED TABLE %(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s AS
+    sql = """DROP TABLE IF EXISTS %(schema)s.%(initial_or_new)s_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s;
+            CREATE UNLOGGED TABLE %(schema)s.%(initial_or_new)s_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s AS
             WITH a as
             (
                 SELECT a.agent_id,     
@@ -593,7 +625,7 @@ def estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_s
                         CASE WHEN a.space_cool_equip = 'none' THEN NULL::INTEGER
                         ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(c.mean, c.std, c.dist_type, %(seed)s * a.agent_id), 0)::INTEGER
                         END as space_cool_system_expected_lifetime
-                FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
+                FROM %(schema)s.%(initial_or_new)s_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
                 LEFT JOIN diffusion_geo.hvac_life_expectancy b
                     ON a.space_heat_equip = b.space_equip 
                     AND a.space_heat_fuel = b.space_fuel
@@ -611,27 +643,28 @@ def estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_s
     p_run(pg_conn_string, sql, chunks, pool)    
 
     # add primary key
-    sql = """ALTER TABLE %(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s
+    sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
     
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_string):
+def map_to_generic_baseline_system(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_string):
     
-    msg = '\tMapping HVAC Systems to Generic Baseline Types'    
+    msg = '\t\tMapping HVAC Systems to Generic Baseline Types'    
     logger.info(msg)
     
     
     inputs = locals().copy()    
     inputs['i_place_holder'] = '%(i)s'
-    inputs['sector_abbr'] = sector_abbr  
+    inputs['sector_abbr'] = sector_abbr
+    inputs['initial_or_new'] = initial_or_new
     
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s;
-            CREATE UNLOGGED TABLE %(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s AS
+    sql = """DROP TABLE IF EXISTS %(schema)s.%(initial_or_new)s_agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s;
+            CREATE UNLOGGED TABLE %(schema)s.%(initial_or_new)s_agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s AS
             SELECT a.agent_id, b.baseline_type as baseline_system_type
-            FROM %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
+            FROM %(schema)s.%(initial_or_new)s_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
             LEFT JOIN diffusion_geo.eia_microdata_to_baseline_system_types_lkup b
                 ON a.space_heat_equip = b.space_heat_equip
                 AND a.space_heat_fuel = b.space_heat_fuel
@@ -641,7 +674,7 @@ def map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_st
     p_run(pg_conn_string, sql, chunks, pool)
     
     # add primary key
-    sql = """ALTER TABLE %(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s
+    sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
     
@@ -651,7 +684,7 @@ def map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_st
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, sector_abbr):
 
-    msg = "\tCombining All Core Agent Attributes"
+    msg = "\t\tCombining All Core Agent Attributes"
     logger.info(msg)
     
     
@@ -661,6 +694,7 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
 
     
     sql_part = """SELECT a.agent_id,
+                        a.year,
                         -- block attributes
                     	b.pgid,
                     	b.county_id,
@@ -727,21 +761,109 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                     	h.totsqft_heat,
                     	h.totsqft_cool,
                         h.crb_model
-                    FROM %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s a
+                    FROM %(schema)s.initial_agent_blocks_%(sector_abbr)s_%(i_place_holder)s a
                     LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
                     ON a.pgid = b.pgid
-                    LEFT JOIN %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s c
+                    LEFT JOIN %(schema)s.initial_agent_building_types_%(sector_abbr)s_%(i_place_holder)s c
                     ON a.agent_id = c.agent_id
-                    LEFT JOIN %(schema)s.agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s d
+                    LEFT JOIN %(schema)s.initial_agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s d
                     ON a.agent_id = d.agent_id
-                    LEFT JOIN %(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s e
+                    LEFT JOIN %(schema)s.initial_agent_system_ages_%(sector_abbr)s_%(i_place_holder)s e
                     ON a.agent_id = e.agent_id
-                    LEFT JOIN %(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s f
+                    LEFT JOIN %(schema)s.initial_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s f
                     ON a.agent_id = f.agent_id
-                    LEFT JOIN %(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s g
+                    LEFT JOIN %(schema)s.initial_agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s g
                     ON a.agent_id = g.agent_id 
-                    LEFT JOIN %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s h
-                    ON a.agent_id = h.agent_id """ % inputs
+                    LEFT JOIN %(schema)s.initial_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s h
+                    ON a.agent_id = h.agent_id 
+                    
+            UNION ALL
+
+                   SELECT a.agent_id,
+                        a.year,
+                        -- block attributes
+                    	b.pgid,
+                    	b.county_id,
+                    	b.state_abbr,
+                    	b.state_fips,
+                    	b.county_fips,
+                    	b.tract_fips,
+                    	b.tract_id_alias,
+                    	b.old_county_id,
+                    	b.census_division_abbr,
+                    	b.census_region,
+                    	b.reportable_domain,
+                    	b.pca_reg,
+                    	b.reeds_reg,
+                    	b.acres_per_bldg,
+                         b.hdf_load_index,
+                    	c.bldg_type as hazus_bldg_type,
+                     
+                         -- thermal load
+                    	d.buildings_in_bin,
+                    	ROUND(d.space_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_heat_kwh_in_bin,
+                    	ROUND(d.space_cool_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_cool_kwh_in_bin,
+                    	ROUND(d.water_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as water_heat_kwh_in_bin,
+                        ROUND(d.space_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) +
+                        ROUND(d.water_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as total_heat_kwh_in_bin,
+                    	ROUND(d.space_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_heat_kwh_per_building_in_bin,
+                    	ROUND(d.space_cool_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_cool_kwh_per_building_in_bin,
+                    	ROUND(d.water_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as water_heat_kwh_per_building_in_bin,
+                        ROUND(d.space_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) +
+                        ROUND(d.water_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as total_heat_kwh_per_building_in_bin,
+                     
+                         -- system ages
+                    	e.space_heat_system_age,
+                    	e.space_cool_system_age,
+                    	e.average_system_age,
+                     
+                         -- system lifetimes
+                    	f.space_heat_system_expected_lifetime,
+                    	f.space_cool_system_expected_lifetime,
+                    	f.average_system_expected_lifetime,
+                     
+                         -- baseline system type
+                    	g.baseline_system_type,
+                     
+                         -- eia microdata attributes
+                    	h.eia_bldg_id,
+                    	h.eia_bldg_weight,
+                    	h.climate_zone,
+                    	h.pba,
+                    	h.pbaplus,
+                    	h.typehuq,
+                    	h.owner_occupied,
+                    	h.year_built,
+                    	h.single_family_res,
+                    	h.num_tenants,
+                    	h.num_floors,
+                    	h.space_heat_equip,
+                    	h.space_heat_fuel,
+                    	h.water_heat_equip,
+                    	h.water_heat_fuel,
+                    	h.space_cool_equip,
+                    	h.space_cool_fuel,
+                    	h.totsqft,
+                    	h.totsqft_heat,
+                    	h.totsqft_cool,
+                        h.crb_model
+                    FROM %(schema)s.new_agent_blocks_%(sector_abbr)s_%(i_place_holder)s a
+                    LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
+                    ON a.pgid = b.pgid
+                    LEFT JOIN %(schema)s.new_agent_building_types_%(sector_abbr)s_%(i_place_holder)s c
+                    ON a.agent_id = c.agent_id
+                    LEFT JOIN %(schema)s.new_agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s d
+                    ON a.agent_id = d.agent_id
+                    LEFT JOIN %(schema)s.new_agent_system_ages_%(sector_abbr)s_%(i_place_holder)s e
+                    ON a.agent_id = e.agent_id
+                    LEFT JOIN %(schema)s.new_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s f
+                    ON a.agent_id = f.agent_id
+                    LEFT JOIN %(schema)s.new_agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s g
+                    ON a.agent_id = g.agent_id 
+                    LEFT JOIN %(schema)s.new_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s h
+                    ON a.agent_id = h.agent_id  
+                    
+                    """ % inputs
     
     # create the template table
     template_inputs = inputs.copy()
@@ -768,14 +890,18 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
     con.commit()
 
     # create indices
-    # TODO: add indices that are neeeded in subsequent steps?
     sql = """CREATE INDEX agent_core_attributes_%(sector_abbr)s_btree_crb_model
              ON %(schema)s.agent_core_attributes_%(sector_abbr)s
              USING BTREE(crb_model);
              
              CREATE INDEX agent_core_attributes_%(sector_abbr)s_btree_hdf_load_index
              ON %(schema)s.agent_core_attributes_%(sector_abbr)s
-             USING BTREE(hdf_load_index);""" % inputs
+             USING BTREE(hdf_load_index);
+             
+             CREATE INDEX agent_core_attributes_%(sector_abbr)s_btree_year
+             ON %(schema)s.agent_core_attributes_%(sector_abbr)s
+             USING BTREE(year);             
+             """ % inputs
     cur.execute(sql)
     con.commit()
              

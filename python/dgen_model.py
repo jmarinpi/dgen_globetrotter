@@ -560,7 +560,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # BUILD DEMAND CURVES FOR EACH TRACT      
                     #==============================================================================                   
                     # get core agent attributes from postgres
-                    agents = mutation.get_core_agent_attributes(con, schema)
+                    agents_initial = mutation.get_initial_agent_attributes(con, schema)
+                    agents_new = mutation.get_new_agent_attributes(con, schema)
+                    # combine initial and new agents
+                    agents = agents_initial.add_agents(agents_new)
+                    del agents_initial, agents_new
+                    
                     # get regional prices of energy
                     energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
                     # apply regional heating/cooling prices
