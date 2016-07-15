@@ -78,7 +78,7 @@ def p_run(pg_conn_string, sql, chunks, pool):
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 0, prefix = '')
 def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agents, agents_per_region, sectors,
-                                            pg_procs, pg_conn_string, seed):
+                                            pg_procs, pg_conn_string, seed, end_year):
 
     inputs = locals().copy()
     inputs['i_place_holder'] = '%(i)s'
@@ -118,7 +118,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 # NEW AGENTS TO REPRESENT NEW CONSTRUCTION (2014 - 2050)
                 # calculate the agents required to represent new construction
                 logger.info("\tWorking on New Construction (2014 - 2050)")
-                calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, seed, pool, pg_conn_string)
+                calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, seed, pool, pg_conn_string, end_year)
                 sample_blocks(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string, con, cur)
                 sample_building_type(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
                 sample_building_microdata(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
@@ -192,9 +192,6 @@ def calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks, sam
     inputs = locals().copy()
     inputs['i_place_holder'] = '%(i)s'
     inputs['chunk_place_holder'] = '%(ids)s'
-    inputs['sample_pct'] = sample_pct
-    inputs['min_agents'] = min_agents
-    inputs['sector_abbr'] = sector_abbr   
     
     sql = """DROP TABLE IF EXISTS %(schema)s.initial_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s;
             CREATE UNLOGGED TABLE %(schema)s.initial_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s AS
@@ -217,19 +214,17 @@ def calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks, sam
 
 
 #%%
-def calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, seed, pool, pg_conn_string):
+def calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, seed, pool, pg_conn_string, end_year):
 
     msg = '\t\tDetermining Number of New Construction Agents in Each Tract by Year'
     logger.info(msg)
 
     inputs = locals().copy()
-    min_agents = 1    
     
     inputs['i_place_holder'] = '%(i)s'
     inputs['chunk_place_holder'] = '%(ids)s'
-    inputs['sample_pct'] = sample_pct
-    inputs['min_agents'] = min_agents 
-    inputs['sector_abbr'] = sector_abbr
+    inputs['min_agents'] = 1
+
     
     sql = """DROP TABLE IF EXISTS %(schema)s.new_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s;
             CREATE UNLOGGED TABLE %(schema)s.new_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s AS
@@ -240,7 +235,8 @@ def calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, ch
                        a.new_bldgs_%(sector_abbr)s as tract_bldg_count,
                        a.new_bldgs_%(sector_abbr)s * %(sample_pct)s as raw_sample_count
                 	FROM %(schema)s.new_building_growth_to_model a
-                	WHERE tract_id_alias in (%(chunk_place_holder)s)            
+                	WHERE tract_id_alias in (%(chunk_place_holder)s)    
+                  AND a.year <= %(end_year)s
             )           
             SELECT a.tract_id_alias,
                     a.year,
