@@ -3,9 +3,9 @@
 DROP TABLE if exists diffusion_shared.aeo_new_building_multipliers_2015;
 CREATE TABLE diffusion_shared.aeo_new_building_multipliers_2015 AS
 select state_fips, state, census_division, year, scenario, 
-	1.02::NUMERIC as housing_starts_single_family_millions, 
-        1.02::NUMERIC AS housing_starts_multi_family_millions, 
-        1.02::NUMERIC AS commercial_sq_ft_billions, 
+	1.02::NUMERIC as res_single_family_growth, 
+        1.02::NUMERIC AS res_multi_family_growth, 
+        1.02::NUMERIC AS com_growth, 
        state_abbr, census_division_abbr
 from  diffusion_shared.aeo_new_building_projections_2015;
 

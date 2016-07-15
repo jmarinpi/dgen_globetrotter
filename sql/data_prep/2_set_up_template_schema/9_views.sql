@@ -424,3 +424,15 @@ select a.year,
 FROM diffusion_shared.aeo_energy_price_projections_2015 a
 inner join diffusion_template.input_main_scenario_options b
 ON a.scenario = b.regional_heating_fuel_cost_trajectories;
+
+set role 'diffusion-writers';
+DROP VIEW IF EXISTS diffusion_template.new_building_growth_to_model;
+CREATE VIEW diffusion_template.new_building_growth_to_model AS
+select a.year,
+	a.state_abbr,	
+	a.res_single_family_growth,
+	a.res_multi_family_growth, 
+	a.com_growth
+FROM diffusion_shared.aeo_new_building_multipliers_2015 a
+inner join diffusion_template.input_main_scenario_options b
+ON a.scenario = b.new_building_growth_scenario;
