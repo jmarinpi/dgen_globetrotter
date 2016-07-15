@@ -601,6 +601,9 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # calculate the total nameplate capacity of the plant + boilers
     dataframe['total_nameplate_capacity_per_wellset_mw'] =  dataframe['plant_nameplate_capacity_per_wellset_mw'] + dataframe['peaking_boilers_nameplate_capacity_per_wellset_mw']
     
+    # calculate the total energy that will actually be used from each wellset based on nameplate capacity and capacity factor
+    dataframe['total_consumable_energy_per_wellset_mwh'] = dataframe['total_nameplate_capacity_per_wellset_mw'] * dataframe['total_blended_capacity_factor'] * 8760.
+    
     # Drilling Costs
     dataframe['drilling_cost_per_well_dlrs'] = np.where(dataframe['depth_m'] >= 500, 
                                                    drilling_costs_per_depth_m_deep(dataframe['depth_m'], dataframe['future_drilling_cost_improvements_pct']), 
@@ -693,6 +696,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
                    'system_type',
                    'n_wellsets_in_tract',
                    'lifetime_resource_per_wellset_mwh',
+                   'total_consumable_energy_per_wellset_mwh',
                    'plant_nameplate_capacity_per_wellset_mw',
                    'plant_effective_capacity_per_wellset_mw',
                    'peaking_boilers_nameplate_capacity_per_wellset_mw',
@@ -821,5 +825,95 @@ def calc_plant_sizes_market(demand_curves_df, supply_curves_df, plant_sizes_econ
     
     return dataframe
 
-    
+
 #%%
+def calc_npv(cfs, dr):
+    ''' Vectorized NPV calculation based on (m x n) cashflows and (n x 1) 
+    discount rate
+    
+    IN: cfs - numpy array - project cash flows ($/yr)
+        dr  - numpy array - annual discount rate (decimal)
+        
+    OUT: npv - numpy array - net present value of cash flows ($) 
+    
+    '''
+    dr = dr[:,np.newaxis]
+    tmp = np.empty(cfs.shape)
+    tmp[:,0] = 1
+    tmp[:,1:] = 1/(1+dr)
+    drm = np.cumprod(tmp, axis = 1)        
+    npv = (drm * cfs).sum(axis = 1)   
+    
+    return npv
+    
+ 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calc_lcoe(resources_with_costs_df, plant_depreciation_df, plant_construction_finance_factor):
+    ''' LCOE calculation, following ATB assumptions. There will be some small differences
+    since the model is already in real terms and doesn't need conversion of nominal terms
+    
+    IN: df
+        deprec schedule
+        inflation rate
+        econ life -- investment horizon, may be different than system lifetime.
+    
+    OUT: lcoe - numpy array - Levelized cost of energy (c/kWh) 
+    '''
+    
+    # extract a list of the input columns
+    in_cols = resources_with_costs_df.columns.tolist()
+
+    # convert depreciation schedule to an array
+    depreciation_schedule = plant_depreciation_df['depreciation_fraction'].values    
+        
+    resources_with_costs_df['WACC'] = ((1 + ((1-resources_with_costs_df['debt_fraction'])*((1+resources_with_costs_df['rate_of_return_on_equity'])*(1+resources_with_costs_df['inflation_rate'])-1)) + (resources_with_costs_df['debt_fraction'] * ((1+resources_with_costs_df['interest_rate_nominal'])*(1+resources_with_costs_df['inflation_rate']) - 1) *  (1 - resources_with_costs_df['tax_rate'])))/(1 + resources_with_costs_df['inflation_rate'])) -1
+    resources_with_costs_df['CRF'] = (resources_with_costs_df['WACC'])/ (1 - (1/(1+resources_with_costs_df['WACC'])**resources_with_costs_df['plant_lifetime_yrs']))# real crf
+    
+    depreciation_schedule = depreciation_schedule[np.newaxis,:] * np.ones((resources_with_costs_df.shape[0],depreciation_schedule.shape[0]))
+    resources_with_costs_df['PVD'] = calc_npv(depreciation_schedule,((1+resources_with_costs_df['WACC'] * 1+ resources_with_costs_df['inflation_rate'])-1)) # Discount rate used for depreciation is 1 - (WACC + 1)(Inflation + 1)
+    resources_with_costs_df['PVD'] /= (1 + resources_with_costs_df['WACC']) # In calc_npv we assume first entry of an array corresponds to year zero; the first entry of the depreciation schedule is for the first year, so we need to discount the PVD by one additional year
+    
+    resources_with_costs_df['PFF'] = (1 - resources_with_costs_df['tax_rate'] * resources_with_costs_df['PVD'])/(1 - resources_with_costs_df['tax_rate'])#project finance factor
+    # Construction finance factor -- passed as input now since coding it directly will take a lot of time for little benefit
+    resources_with_costs_df['CFF'] = plant_construction_finance_factor # construction finance factor -- cost of capital during construction, assume projects are built overnight, which is not true for larger systems   
+    # Assume all wellsets for given resource are identical?
+    resources_with_costs_df['OCC'] = resources_with_costs_df['upfront_costs_per_wellset_dlrs']/resources_with_costs_df['total_nameplate_capacity_per_wellset_mw'] # Overnight capital cost $/MW
+    resources_with_costs_df['GCC'] = 0 # grid connection cost $/MW, assume cost of interconnecting included in OCC
+    # Take the mean annual costs per wellset as the FOM
+    resources_with_costs_df['FOM'] = resources_with_costs_df['annual_costs_per_wellset_dlrs'].apply(np.mean, axis = 0) # fixed o&m $/MW-yr
+
+    resources_with_costs_df['lcoe_dols_mwh'] = (((resources_with_costs_df['CRF'] * resources_with_costs_df['PFF'] * resources_with_costs_df['CFF'] * (resources_with_costs_df['OCC'] * 1 + resources_with_costs_df['GCC']) + resources_with_costs_df['FOM'])/(resources_with_costs_df['total_blended_capacity_factor'] * 8760)))# LCOE 2014$/MWh
+    
+    out_cols = ['lcoe_dols_mwh']
+    return_cols = in_cols + out_cols
+    
+    resources_with_costs_df = resources_with_costs_df[return_cols]
+
+    return resources_with_costs_df
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def lcoe_to_supply_curve(resources_with_costs_df):
+
+
+    replicate_indices = np.repeat(resources_with_costs_df.index.values, resources_with_costs_df['n_wellsets_in_tract'])
+    out_cols = ['tract_id_alias',
+                'lcoe_dols_mwh',
+                'total_nameplate_capacity_per_wellset_mw',
+                'total_consumable_energy_per_wellset_mwh'
+                ]
+    # replicate each row in the source df for the number of wellsets associated with it
+    # also subsetting to the columns of interest
+    supply_curve_df = resources_with_costs_df.loc[replicate_indices, out_cols]
+    
+    # check the shape -- nrows should equal sum of n_wellsets in tract
+    if supply_curve_df.shape[0] <> resources_with_costs_df['n_wellsets_in_tract'].sum():
+        raise ValueError("Number of rows in supply_curve_df is not equal to the total number of all wellsets")
+        
+    # rename a couple of columns
+    rename_map = {'total_nameplate_capacity_per_wellset_mw' : 'capacity_mw',
+                  'total_consumable_energy_per_wellset_mwh' : 'energy_mwh'}
+    supply_curve_df = supply_curve_df.rename(columns = rename_map)             
+
+    return supply_curve_df

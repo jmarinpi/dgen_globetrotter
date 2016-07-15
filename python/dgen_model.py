@@ -600,14 +600,19 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get the plant finance data
                     plant_finances_df = demand_supply.get_plant_finance_data(con, schema, year)
                     plant_construction_factor_df = demand_supply.get_plant_construction_factor_data(con, schema, year)
+                    # NOTE: This isn't currently used, instead, we use a fixed value
+                    plant_construction_finance_factor = 1.106
+                    # TODO: change the input for plant construction factor
                     plant_depreciation_df = demand_supply.get_plant_depreciation_data(con, schema, year)                    
                     # calculate the plant and boiler capacity factors
                     capacity_factors_df = demand_supply.calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_performance_df, tract_demand_profiles_df, year)
                     # apply the plant cost data
-                    resources_with_costs_df = demand_supply.apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df,
-                                                                                     plant_finances_df, demand_density_df,  capacity_factors_df, ng_prices_df)
-                    # build supply curve
-                    supply_curves_df = demand_supply.build_supply_curves() # TODO: replace with actual function
+                    resources_with_costs_df = demand_supply.apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df, plant_finances_df, demand_density_df,  capacity_factors_df, ng_prices_df)
+                    # calculate lcoe of each resource
+                    resources_with_costs_df = demand_supply.calc_lcoe(resources_with_costs_df, plant_depreciation_df, plant_construction_finance_factor)                                                                                     
+                    # convert into a supply curve
+                    supply_curves_df = demand_supply.lcoe_to_supply_curve(resources_with_costs_df)
+
                     
                     #==============================================================================
                     # CALCULATE PLANT SIZES BASED ON ECONOMIC POTENTIAL
