@@ -782,26 +782,6 @@ def get_plant_depreciation_data(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def build_supply_curves():
-    
-    # TODO: replace with actual function from Ben
-    dataframe = pd.DataFrame()
-    
-    return dataframe
-
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def build_demand_curves(agents_df):
-    
-    # TODO: replace with actual function from Ben
-    dataframe = agents_df[['tract_id_alias']]
-    
-    return dataframe
-
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calc_plant_sizes_econ(demand_curves_df, supply_curves_df):
 
     # TODO: replace with actual function from Ben    
@@ -849,7 +829,7 @@ def calc_npv(cfs, dr):
  
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calc_lcoe(resources_with_costs_df, plant_depreciation_df, plant_construction_finance_factor):
+def calc_plant_lcoe(resources_with_costs_df, plant_depreciation_df, plant_construction_finance_factor):
     ''' LCOE calculation, following ATB assumptions. There will be some small differences
     since the model is already in real terms and doesn't need conversion of nominal terms
     
@@ -917,3 +897,81 @@ def lcoe_to_supply_curve(resources_with_costs_df):
     supply_curve_df = supply_curve_df.rename(columns = rename_map)             
 
     return supply_curve_df
+    
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calc_agent_lcoe(dataframe, plant_lifetime, ignore_sunk_cost_of_existing_equipment = True, apply_interconnection_costs_to_demand = True):
+
+    # ignore_sunk_cost_of_existing_equipment = Do We want to understand either the marginal cost of heating, or that and the sunk costs of existing equipment?
+
+    
+    # extract a list of the input columns
+    in_cols = dataframe.columns.tolist()       
+
+    dataframe['total_heat_mwh_per_building_in_bin'] = dataframe['total_heat_kwh_per_building_in_bin']/1000.     
+    
+    # As a standing assumption we'll assume the DU system provides 100% or 0% of the energy needed. It can only supply one source of energy demand
+    # Thus, we calculate cost of energy, weighted by the amount needed by end-use. This is the price the consumer uses to evaluate investment against the supply LCOE
+    if ignore_sunk_cost_of_existing_equipment == True:
+        dataframe['weighted_cost_of_energy_dlrs_per_mwh'] = np.where(dataframe['total_heat_mwh_per_building_in_bin'] == 0, 0,
+                                                                     ( dataframe['space_heat_dlrs_per_kwh'] * dataframe['space_heat_kwh_per_building_in_bin'] +
+                                                                         dataframe['water_heat_dlrs_per_kwh'] * dataframe['water_heat_kwh_per_building_in_bin']
+                                                                         ) / dataframe['total_heat_mwh_per_building_in_bin'])
+        
+    else:
+        raise ValueError("Functionality for calculating demand curve including sunk costs does not yet exist")
+
+    
+    if apply_interconnection_costs_to_demand == True:
+        dataframe['system_installation_costs_dlrs_per_sf'] = np.where(dataframe['new_construction'] == True, dataframe['new_sys_installation_costs_dollars_sf'], dataframe['new_sys_installation_costs_dollars_sf'] * dataframe['retrofit_new_sys_installation_cost_multiplier'])
+        dataframe['system_installation_costs_dlrs'] = dataframe['system_installation_costs_dlrs_per_sf'] * dataframe['totsqft_heat']
+        dataframe['upfront_costs_dlrs'] = dataframe['system_installation_costs_dlrs'] + dataframe['sys_connection_cost_dollars']
+        dataframe['levelized_upfront_costs_dlrs'] = dataframe['upfront_costs_dlrs'] / plant_lifetime
+        dataframe['fixed_om_costs_dollars_per_yr'] = dataframe['fixed_om_costs_dollars_sf_yr'] * dataframe['totsqft_heat']
+        dataframe['annual_costs_dlrs'] = dataframe['fixed_om_costs_dollars_per_yr'] + dataframe['levelized_upfront_costs_dlrs']
+        dataframe['annual_costs_dlrs_per_mwh'] = dataframe['annual_costs_dlrs'] / dataframe['total_heat_mwh_per_building_in_bin']
+    else: 
+        dataframe['annual_costs_dlrs_per_mwh'] = 0.
+    
+    
+    dataframe['lcoe_dols_mwh'] = np.maximum(dataframe['weighted_cost_of_energy_dlrs_per_mwh'] - dataframe['annual_costs_dlrs_per_mwh'], 0)
+    
+    out_cols = ['total_heat_mwh_per_building_in_bin', 
+                'lcoe_dols_mwh']
+    return_cols = in_cols + out_cols
+    
+    dataframe = dataframe[return_cols]
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def lcoe_to_demand_curve(dataframe):
+
+    # every 10 buildings will be represented by one agent
+    dataframe['replicate_count'] = np.maximum(np.round(dataframe['buildings_in_bin']/10., 0), 1).astype('int64')
+    dataframe['energy_mwh_per_replicate'] = dataframe['total_heat_mwh_per_building_in_bin'] * dataframe['buildings_in_bin'] / dataframe['replicate_count']
+    replicate_indices = np.repeat(dataframe.index.values, dataframe['replicate_count'])
+    out_cols = ['tract_id_alias',
+                'lcoe_dols_mwh',
+                'energy_mwh_per_replicate'
+                ]
+    # replicate each row in the source df for the number of wellsets associated with it
+    # also subsetting to the columns of interest
+    demand_curve_df = dataframe.loc[replicate_indices, out_cols]
+    
+    # check the shape -- nrows should equal sum of replicate_count
+    if demand_curve_df.shape[0] <> dataframe['replicate_count'].sum():
+        raise ValueError("Number of rows in demand_curve_df is not equal to the total sum of replicate_count")
+        
+    # rename energy column
+    # rename a couple of columns
+    rename_map = {'energy_mwh_per_replicate' : 'energy_mwh'}
+    demand_curve_df = demand_curve_df.rename(columns = rename_map)             
+
+    # add a capacity field (We only care about capacity for the supply curve, but need it here for consistency)
+    demand_curve_df['capacity_mw'] = 0
+
+    return demand_curve_df

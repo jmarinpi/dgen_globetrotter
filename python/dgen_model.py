@@ -561,6 +561,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # combine initial and new agents
                     agents = agents_initial.add_agents(agents_new)
                     del agents_initial, agents_new
+                    # drop ghp for now
+                    agents = agents.filter_tech('du')
                     
                     # get regional prices of energy
                     energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
@@ -608,9 +610,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     capacity_factors_df = demand_supply.calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_performance_df, tract_demand_profiles_df, year)
                     # apply the plant cost data
                     resources_with_costs_df = demand_supply.apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df, plant_finances_df, demand_density_df,  capacity_factors_df, ng_prices_df)
+                    
+                    # SUPPLY AND DEMAND CALCULATIONS
+                    plant_lifetime = plant_finances_df.plant_lifetime_yrs.tolist()[0]
+                    agents = AgentsAlgorithm(agents, demand_supply.calc_agent_lcoe, (plant_lifetime, )).compute()
+                    # convert into demand curves
+                    demand_curves_df = demand_supply.lcoe_to_demand_curve(agents.dataframe.copy())
+                    
+                    
                     # calculate lcoe of each resource
-                    resources_with_costs_df = demand_supply.calc_lcoe(resources_with_costs_df, plant_depreciation_df, plant_construction_finance_factor)                                                                                     
-                    # convert into a supply curve
+                    resources_with_costs_df = demand_supply.calc_plant_lcoe(resources_with_costs_df, plant_depreciation_df, plant_construction_finance_factor)                                                                                     
+                    # convert into supply curves
                     supply_curves_df = demand_supply.lcoe_to_supply_curve(resources_with_costs_df)
 
                     
