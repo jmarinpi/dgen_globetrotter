@@ -91,7 +91,6 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
     pool = multiprocessing.Pool(processes = pg_procs) 
     
     try:
-        # all in postgres
         for sector_abbr, sector in sectors.iteritems():
             with utilfunc.Timer() as t:
                 logger.info("Creating Agents for %s Sector" % sector)
@@ -100,17 +99,28 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 #     sample from blocks and building microdata, convolve samples, and estimate 
                 #     max demand for each agent
                 #==============================================================================
+                # create sequence to produce unique agent ids
+                create_agent_id_sequence(schema, sector_abbr, con, cur)
+                
+                # INITIAL AGENTS TO REPRESENT STARTING BUILDING STOCK (2012)
                 # NOTE: each of these functions is dependent on the last, so changes from one must be cascaded to the others
-                calculate_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, min_agents, seed, pool, pg_conn_string)                    
-                sample_blocks(schema, sector_abbr, chunks, seed, pool, pg_conn_string, con, cur)
-                sample_building_type(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
+                calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, min_agents, seed, pool, pg_conn_string)                    
+                sample_blocks(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string, con, cur)
+                sample_building_type(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string)
                 # TODO: add in selection of heating fuel type for res sector
-                sample_building_microdata(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
-                estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_string)
-                estimate_system_ages(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
-                estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
-                map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_string)
-                                        
+                sample_building_microdata(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string)
+#                estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_string)
+#                estimate_system_ages(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
+#                estimate_system_lifetimes(schema, sector_abbr, chunks, seed, pool, pg_conn_string)
+#                map_to_generic_baseline_system(schema, sector_abbr, chunks, pool, pg_conn_string)
+                
+                # NEW AGENTS TO REPRESENT NEW CONSTRUCTION (2014 - 2050)
+                # calculate the agents required to represent new construction
+                calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, seed, pool, pg_conn_string)
+                sample_blocks(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string, con, cur)
+                sample_building_type(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
+                sample_building_microdata(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
+                        
                 #==============================================================================
                 #     impose agent level siting  attributes (i.e., "tech potential")
                 #==============================================================================
@@ -168,9 +178,9 @@ def split_tracts(cur, schema, pg_procs):
 
 
 #%%
-def calculate_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, min_agents, seed, pool, pg_conn_string):
+def calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, min_agents, seed, pool, pg_conn_string):
 
-    msg = '\tDetermining Number of Agents in Each Tract'
+    msg = '\tDetermining Initial Number of Agents in Each Tract'
     logger.info(msg)
 
     inputs = locals().copy()
@@ -180,9 +190,10 @@ def calculate_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct,
     inputs['min_agents'] = min_agents
     inputs['sector_abbr'] = sector_abbr   
     
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s;
-            CREATE UNLOGGED TABLE %(schema)s.agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s AS
-            	SELECT a.tract_id_alias, a.bldg_count_%(sector_abbr)s as tract_bldg_count,
+    sql = """DROP TABLE IF EXISTS %(schema)s.initial_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s;
+            CREATE UNLOGGED TABLE %(schema)s.initial_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s AS
+            	SELECT a.tract_id_alias, 2012::INTEGER as year,
+                     a.bldg_count_%(sector_abbr)s as tract_bldg_count,
             		 CASE WHEN ROUND(a.bldg_count_%(sector_abbr)s * %(sample_pct)s, 0)::INTEGER < %(min_agents)s
                                THEN %(min_agents)s
                           ELSE ROUND(a.bldg_count_%(sector_abbr)s * %(sample_pct)s, 0)::INTEGER
@@ -193,14 +204,75 @@ def calculate_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct,
     p_run(pg_conn_string, sql, chunks, pool)
     
     # add primary key
-    sql = """ALTER TABLE %(schema)s.agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s
-             ADD PRIMARY KEY (tract_id_alias);""" % inputs
+    sql = """ALTER TABLE %(schema)s.initial_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s
+             ADD PRIMARY KEY (tract_id_alias, year);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)             
-  
+
+
+#%%
+def calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, seed, pool, pg_conn_string):
+
+    msg = '\tDetermining Number of New Construction Agents in Each Tract by Year'
+    logger.info(msg)
+
+    inputs = locals().copy()
+    min_agents = 1    
+    
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['chunk_place_holder'] = '%(ids)s'
+    inputs['sample_pct'] = sample_pct
+    inputs['min_agents'] = min_agents 
+    inputs['sector_abbr'] = sector_abbr
+    
+    sql = """DROP TABLE IF EXISTS %(schema)s.new_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s;
+            CREATE UNLOGGED TABLE %(schema)s.new_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s AS
+            WITH a as
+            (
+                SELECT a.tract_id_alias, 
+                       a.year,
+                       a.new_bldgs_%(sector_abbr)s as tract_bldg_count,
+                       a.new_bldgs_%(sector_abbr)s * %(sample_pct)s as raw_sample_count
+                	FROM %(schema)s.new_building_growth_to_model a
+                	WHERE tract_id_alias in (%(chunk_place_holder)s)            
+            )           
+            SELECT a.tract_id_alias,
+                    a.year,
+                    a.tract_bldg_count,
+                    CASE WHEN a.raw_sample_count = 0 THEN 0::INTEGER
+                         WHEN a.raw_sample_count > 0 and a.raw_sample_count < %(min_agents)s THEN %(min_agents)s
+                    ELSE ROUND(a.raw_sample_count, 0)::INTEGER
+                    END AS n_agents
+            FROM a;""" % inputs
+    
+    p_run(pg_conn_string, sql, chunks, pool)
+    
+    # add primary key
+    sql = """ALTER TABLE %(schema)s.new_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s
+             ADD PRIMARY KEY (tract_id_alias, year);""" % inputs
+    p_run(pg_conn_string, sql, chunks, pool)      
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def create_agent_id_sequence(schema, sector_abbr, con, cur):
+    
+    msg = '\tCreating Sequence for Agent IDs'    
+    logger.info(msg)
+    
+    
+    inputs = locals().copy()
+     # create a sequence that will be used to populate a new primary key across all table partitions
+    # using a sequence ensure ids will be unique across all partitioned tables
+    sql = """DROP SEQUENCE IF EXISTS %(schema)s.agent_id_%(sector_abbr)s_sequence;
+            CREATE SEQUENCE %(schema)s.agent_id_%(sector_abbr)s_sequence
+            INCREMENT 1
+            START 1;""" % inputs
+    cur.execute(sql)
+    con.commit()   
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def sample_blocks(schema, sector_abbr, chunks, seed, pool, pg_conn_string, con, cur):
+def sample_blocks(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string, con, cur):
 
     msg = '\tSampling from Blocks for Each Tract'
     logger.info(msg)
@@ -208,23 +280,15 @@ def sample_blocks(schema, sector_abbr, chunks, seed, pool, pg_conn_string, con, 
     inputs = locals().copy()
     inputs['i_place_holder'] = '%(i)s'
     inputs['chunk_place_holder'] = '%(ids)s'
-    inputs['sector_abbr'] = sector_abbr    
+    inputs['sector_abbr'] = sector_abbr   
+    inputs['initial_or_new'] = initial_or_new
     
     #==============================================================================
     #     randomly sample  N blocks from each county 
-    #==============================================================================    
-    # create a sequence that will be used to populate a new primary key across all table partitions
-    # using a sequence ensure ids will be unique across all partitioned tables
-    sql = """DROP SEQUENCE IF EXISTS %(schema)s.agent_id_%(sector_abbr)s_sequence;
-            CREATE SEQUENCE %(schema)s.agent_id_%(sector_abbr)s_sequence
-            INCREMENT 1
-            START 1;""" % inputs
-    cur.execute(sql)
-    con.commit()
-    
+    #==============================================================================        
     # (note: [this may not be true any longer...] some counties will have fewer than N points, in which case, all are returned) 
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s;
-             CREATE UNLOGGED TABLE %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s AS
+    sql = """DROP TABLE IF EXISTS %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s;
+             CREATE UNLOGGED TABLE %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s AS
              WITH a as
              (
                  SELECT a.tract_id_alias,
@@ -236,33 +300,34 @@ def sample_blocks(schema, sector_abbr, chunks, seed, pool, pg_conn_string, con, 
 
              )
              SELECT nextval('%(schema)s.agent_id_%(sector_abbr)s_sequence') as agent_id, 
-                     a.tract_id_alias, 
+                     a.tract_id_alias,
+                     b.year,
                         unnest(diffusion_shared.sample(a.pgids, 
                                                        b.n_agents, 
-                                                       %(seed)s, 
+                                                       %(seed)s * b.year, 
                                                        True, 
                                                        a.block_weights)
                                                        ) as pgid
             FROM a
-            LEFT JOIN %(schema)s.agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s b
+            LEFT JOIN %(schema)s.%(initial_or_new)s_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s b
                 ON a.tract_id_alias = b.tract_id_alias;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
 
     # add primary key
-    sql = """ALTER TABLE %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s
+    sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     
     # add indices
-    sql = """CREATE INDEX agent_blocks_%(sector_abbr)s_%(i_place_holder)s_pgid_btree 
-            ON %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s
+    sql = """CREATE INDEX %(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s_pgid_btree 
+            ON %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s
             USING BTREE(pgid);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
 
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def sample_building_type(schema, sector_abbr, chunks, seed, pool, pg_conn_string):
+def sample_building_type(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
 
     msg = '\tSampling Building Types from Blocks for Each Tract'
     logger.info(msg)
@@ -271,14 +336,12 @@ def sample_building_type(schema, sector_abbr, chunks, seed, pool, pg_conn_string
     inputs['i_place_holder'] = '%(i)s'
     inputs['chunk_place_holder'] = '%(ids)s'
     inputs['sector_abbr'] = sector_abbr    
+    inputs['initial_or_new'] = initial_or_new
     
-    #==============================================================================
-    #     randomly sample  N blocks from each county 
-    #==============================================================================    
-    # (note: [this may not be true any longer...] some counties will have fewer than N points, in which case, all are returned) 
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s;
-             CREATE UNLOGGED TABLE %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s AS
-             SELECT a.agent_id, a.tract_id_alias, b.census_division_abbr, b.reportable_domain, -- need these two fields for subsequent microdata step
+    sql = """DROP TABLE IF EXISTS %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s;
+             CREATE UNLOGGED TABLE %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s AS
+             SELECT a.agent_id, a.tract_id_alias, a.year, 
+                         b.census_division_abbr, b.reportable_domain, -- need these two fields for subsequent microdata step
                         unnest(diffusion_shared.sample(c.bldg_types, 
                                                        1, 
                                                        a.agent_id * %(seed)s,  -- ensure unique sample for each block
@@ -291,7 +354,7 @@ def sample_building_type(schema, sector_abbr, chunks, seed, pool, pg_conn_string
                                                        True, 
                                                        b.bldg_probs_%(sector_abbr)s)
                                                        ) as block_bldgs_weight
-            FROM %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s a
+            FROM %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s a
             LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
                 ON a.pgid = b.pgid
             lEFT JOIN diffusion_blocks.bldg_type_arrays c
@@ -299,25 +362,25 @@ def sample_building_type(schema, sector_abbr, chunks, seed, pool, pg_conn_string
     p_run(pg_conn_string, sql, chunks, pool)
 
     # add primary key
-    sql = """ALTER TABLE %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s
+    sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     
     # add indices
-    sql = """CREATE INDEX agent_building_types_%(sector_abbr)s_%(i_place_holder)s_bldg_type_btree 
-            ON %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s
+    sql = """CREATE INDEX %(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s_bldg_type_btree 
+            ON %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s
             USING BTREE(bldg_type);
             
-            CREATE INDEX agent_building_types_%(sector_abbr)s_%(i_place_holder)s_reportable_domain_btree 
-            ON %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s
+            CREATE INDEX %(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s_reportable_domain_btree 
+            ON %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s
             USING BTREE(reportable_domain);
 
-            CREATE INDEX agent_building_types_%(sector_abbr)s_%(i_place_holder)s_census_division_abbr_btree 
-            ON %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s
+            CREATE INDEX %(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s_census_division_abbr_btree 
+            ON %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s
             USING BTREE(census_division_abbr);            
             
-            CREATE INDEX agent_building_types_%(sector_abbr)s_%(i_place_holder)s_tract_id_alias_btree 
-            ON %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s
+            CREATE INDEX %(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s_tract_id_alias_btree 
+            ON %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s
             USING BTREE(tract_id_alias);      
             """ % inputs
     p_run(pg_conn_string, sql, chunks, pool)
@@ -325,7 +388,7 @@ def sample_building_type(schema, sector_abbr, chunks, seed, pool, pg_conn_string
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def sample_building_microdata(schema, sector_abbr, chunks, seed, pool, pg_conn_string):
+def sample_building_microdata(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
 
     msg = "\tSampling from Building Microdata"
     logger.info(msg)
@@ -334,26 +397,42 @@ def sample_building_microdata(schema, sector_abbr, chunks, seed, pool, pg_conn_s
     inputs = locals().copy()    
     inputs['i_place_holder'] = '%(i)s'
     inputs['sector_abbr'] = sector_abbr
+    inputs['initial_or_new'] = initial_or_new    
+    
     if sector_abbr == 'res':
-        inputs['eia_join_clause'] = """ b.eia_type = c.typehuq
-                                    AND b.min_tenants <= c.num_tenants
-                                    AND b.max_tenants >= c.num_tenants 
-                                    AND a.reportable_domain = c.reportable_domain
-                                    AND c.sector_abbr = '%(sector_abbr)s' """ % inputs
+        if initial_or_new == 'initial':        
+            inputs['eia_join_clause'] = """ b.eia_type = c.typehuq
+                                        AND b.min_tenants <= c.num_tenants
+                                        AND b.max_tenants >= c.num_tenants 
+                                        AND a.reportable_domain = c.reportable_domain
+                                        AND c.sector_abbr = '%(sector_abbr)s' """ % inputs
+        elif initial_or_new == 'new':  
+            # NOTE: have to relax location and building type clauses to allow for subsetting on year                  
+            inputs['eia_join_clause'] = """ b.eia_type = c.typehuq
+                                            AND b.single_family_res = c.single_family_res
+                                            AND a.census_division_abbr = c.census_division_abbr
+                                            AND c.year_built >= 2006
+                                            AND c.sector_abbr = '%(sector_abbr)s' """ % inputs
 
     else:
-        inputs['eia_join_clause'] = """ b.eia_type = c.pbaplus
-                                    AND a.census_division_abbr = c.census_division_abbr 
-                                    AND c.sector_abbr = '%(sector_abbr)s' """  % inputs
+        if initial_or_new == 'initial':  
+            inputs['eia_join_clause'] = """ b.eia_type = c.pbaplus
+                                        AND a.census_division_abbr = c.census_division_abbr 
+                                        AND c.sector_abbr = '%(sector_abbr)s' """  % inputs
+        elif initial_or_new == 'new':
+            # NOTE: have to relax location and building type clauses to allow for subsetting on year
+            inputs['eia_join_clause'] = """a.census_division_abbr = c.census_division_abbr 
+                                        AND c.year_built >= 2000
+                                        AND c.sector_abbr = '%(sector_abbr)s' """  % inputs
+    
 
-
-    sql =  """DROP TABLE IF EXISTS %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s;
-         CREATE UNLOGGED TABLE %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s AS
+    sql =  """DROP TABLE IF EXISTS %(schema)s.%(initial_or_new)s_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s;
+         CREATE UNLOGGED TABLE %(schema)s.%(initial_or_new)s_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s AS
          WITH all_bldgs AS
          (
              SELECT a.agent_id, 
                      c.building_id as eia_bldg_id, c.sample_wt::NUMERIC as eia_bldg_weight
-             FROM %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s a
+             FROM %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s a
              LEFT JOIN diffusion_shared.cdms_to_eia_lkup b
                  ON a.bldg_type = b.cdms
              lEFT JOIN diffusion_shared.cbecs_recs_expanded_combined c
@@ -386,7 +465,7 @@ def sample_building_microdata(schema, sector_abbr, chunks, seed, pool, pg_conn_s
     
 
     # add primary key
-    sql = """ALTER TABLE %(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s
+    sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     
@@ -412,7 +491,7 @@ def estimate_agent_thermal_loads(schema, sector_abbr, chunks, pool, pg_conn_stri
                 SELECT  a.agent_id, 
                         a.block_bldgs_weight::NUMERIC/sum(a.block_bldgs_weight) OVER (PARTITION BY a.tract_id_alias) * b.tract_bldg_count as buildings_in_bin
                 FROM %(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s a
-                LEFT JOIN %(schema)s.agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s b
+                LEFT JOIN %(schema)s.initial_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s b
 			ON a.tract_id_alias = b.tract_id_alias
             ),
             c as
@@ -715,14 +794,23 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
     msg = "\tCleaning Up Intermediate Tables..."
     logger.info(msg)
     intermediate_tables = [ 
-                            '%(schema)s.agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_building_types_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_system_ages_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s'
+                            '%(schema)s.initial_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.initial_agent_blocks_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.initial_agent_building_types_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.initial_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.initial_agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.initial_agent_system_ages_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.initial_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.initial_agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s',
+
+                            '%(schema)s.new_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.new_agent_blocks_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.new_agent_building_types_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.new_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.new_agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.new_agent_system_ages_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.new_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.new_agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s'
                            ]
     
     for sector_abbr, sector in sectors.iteritems():

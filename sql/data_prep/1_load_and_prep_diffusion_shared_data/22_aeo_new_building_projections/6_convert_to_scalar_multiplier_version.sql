@@ -1,11 +1,11 @@
 ﻿set role 'diffusion-writers';
 
-DROP TABLE if exists diffusion_shared.aeo_new_building_multipliers_2015;
+DROP TABLE if exists diffusion_shared.aeo_new_building_multipliers_2015 CASCADE;
 CREATE TABLE diffusion_shared.aeo_new_building_multipliers_2015 AS
 select state_fips, state, census_division, year, scenario, 
-	1.02::NUMERIC as res_single_family_growth, 
-        1.02::NUMERIC AS res_multi_family_growth, 
-        1.02::NUMERIC AS com_growth, 
+	0.01::NUMERIC as res_single_family_growth, 
+        0.01::NUMERIC AS res_multi_family_growth, 
+        0.01::NUMERIC AS com_growth, 
        state_abbr, census_division_abbr
 from  diffusion_shared.aeo_new_building_projections_2015;
 
@@ -48,3 +48,8 @@ set scenario =
 -- check results
 select distinct scenario
 from diffusion_shared.aeo_new_building_multipliers_2015;
+
+-- check some data
+select *
+FROM diffusion_shared.aeo_new_building_multipliers_2015
+limit 10;

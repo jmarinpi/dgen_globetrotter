@@ -429,10 +429,11 @@ set role 'diffusion-writers';
 DROP VIEW IF EXISTS diffusion_template.new_building_growth_to_model;
 CREATE VIEW diffusion_template.new_building_growth_to_model AS
 select a.year,
-	a.state_abbr,	
-	a.res_single_family_growth,
-	a.res_multi_family_growth, 
-	a.com_growth
-FROM diffusion_shared.aeo_new_building_multipliers_2015 a
-inner join diffusion_template.input_main_scenario_options b
-ON a.scenario = b.new_building_growth_scenario;
+	a.tract_id_alias,	
+	a.new_bldgs_com,
+	a.new_bldgs_res_single_family + a.new_bldgs_res_multi_family as new_bldgs_res
+FROM  diffusion_blocks.tract_building_growth_aeo_2015  a
+INNER JOIN diffusion_template.tracts_to_model b
+ON a.tract_id_alias = b.tract_id_alias
+inner join diffusion_template.input_main_scenario_options c
+ON a.scenario = c.new_building_growth_scenario;

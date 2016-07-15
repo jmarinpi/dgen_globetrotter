@@ -4,6 +4,8 @@ DROP TABLE IF EXISTS diffusion_blocks.tract_building_count_by_sector_temp;
 CREATE TABLE diffusion_blocks.tract_building_count_by_sector_temp AS
 SELECT a.tract_id_alias,
 	sum(b.bldg_count_res) as bldg_count_res,
+	sum(b.bldg_count_res_single_family) as bldg_count_res_single_family,
+	sum(b.bldg_count_res_multi_family) as bldg_count_res_multi_family,
 	sum(b.bldg_count_com) as bldg_count_com,
 	sum(b.bldg_count_ind) as bldg_count_ind
 FROM diffusion_blocks.block_tract_id_alias a
@@ -44,6 +46,8 @@ DROP TABLE IF EXISTS diffusion_blocks.tract_building_count_by_sector;
 CREATE TABLE diffusion_blocks.tract_building_count_by_sector AS
 SELECT a.tract_id_alias, c.division_abbr as census_division_abbr,
 	a.bldg_count_res,
+	a.bldg_count_res_single_family,
+	a.bldg_count_res_multi_family,
 	a.bldg_count_com::NUMERIC/d.bldg_count_com_cd * e.bldg_count as bldg_count_com,
 	a.bldg_count_ind
 from diffusion_blocks.tract_building_count_by_sector_temp a
@@ -94,4 +98,4 @@ limit 10;
 
 -- drop the intermediate tables
 DROP TABLE IF EXISTS diffusion_blocks.tract_building_count_by_census_division;
--- note: don't drop diffusion_blocks.tract_building_count_by_sector_temp; yet -- need it for next step
+drop TABLE IF EXISTS diffusion_blocks.tract_building_count_by_sector_temp;
