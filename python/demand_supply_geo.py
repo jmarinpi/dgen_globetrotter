@@ -313,6 +313,7 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
                  CREATE UNLOGGED TABLE %(schema)s.tract_aggregate_heat_demand_profiles 
                  (
                     tract_id_alias integer,
+                    year integer,
                     heat_demand_profile_mw NUMERIC[]
                  );""" % inputs
         cur.execute(sql)
@@ -322,6 +323,7 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
                  WITH com as
                  (
                      SELECT a.tract_id_alias,
+                             a.year,
                              a.total_heat_kwh_in_bin,
                              b.nkwh
                      FROM %(schema)s.agent_core_attributes_com a
@@ -333,6 +335,7 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
                  res AS
                  (
                      SELECT a.tract_id_alias,
+                             a.year,
                              a.total_heat_kwh_in_bin,
                              b.nkwh
                      FROM %(schema)s.agent_core_attributes_res a
@@ -351,15 +354,35 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
                  ),
                  scaled as
                  (
-                     SELECT tract_id_alias,
+                     SELECT tract_id_alias, year,
                             diffusion_shared.r_scale_array_sum(nkwh, total_heat_kwh_in_bin/1000.) as mwh
                      FROM combined             
+                 ),
+                 yearly_increments AS
+                 (
+                     SELECT tract_id_alias, year, 
+                         diffusion_shared.r_sum_arrays(array_agg_mult(ARRAY[mwh])) as mwh
+                     FROM scaled
+                     GROUP BY tract_id_alias, year    
                  )
-                 SELECT tract_id_alias, diffusion_shared.r_sum_arrays(array_agg_mult(ARRAY[mwh])) as heat_demand_profile_mw
-                 FROM scaled
-                 GROUP BY tract_id_alias;""" % inputs
+                 -- calculate cumulative sums for each year
+                 SELECT tract_id_alias,
+                         year,
+                         diffusion_shared.r_sum_arrays(
+                             array_agg_mult(ARRAY[mwh]) OVER (PARTITION BY tract_id_alias ORDER BY year ASC) 
+                             ) AS heat_demand_profile_mw
+                 FROM yearly_increments;""" % inputs
         
         agent_prep.p_run(pg_conn_string, sql, chunks, pool)        
+
+
+        # add index on year
+        sql = """CREATE INDEX tract_aggregate_heat_demand_profiles_btree_year
+                 ON %(schema)s.tract_aggregate_heat_demand_profiles
+                 USING BTREE(year);""" % inputs
+        cur.execute(sql)
+        con.commit()
+        
     except:
         # roll back any transactions
         con.rollback()
@@ -369,51 +392,46 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
     finally:
         # close the multiprocessing pool
         pool.close() 
- 
+        
 
+        
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_tract_peak_demand(cur, con, schema):
-    
-    inputs = locals().copy()
-
-    logger.info("Calculating Peak Heat Demand for Tracts")    
-
-    sql = """DROP TABLE IF EXISTS %(schema)s.tract_peak_heat_demand;
-             CREATE UNLOGGED TABLE %(schema)s.tract_peak_heat_demand AS
-            SELECT a.tract_id_alias,
-                        r_array_max(a.heat_demand_profile_mw) as peak_heat_demand_mw
-                FROM %(schema)s.tract_aggregate_heat_demand_profiles a;""" % inputs
-    cur.execute(sql)
-    con.commit()
-    
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_tract_demand_profiles(con, schema):
+def get_tract_demand_profiles(con, schema, year):
     
     inputs = locals().copy()
     
     sql = """SELECT tract_id_alias, heat_demand_profile_mw
-            FROM %(schema)s.tract_aggregate_heat_demand_profiles;""" % inputs
+            FROM %(schema)s.tract_aggregate_heat_demand_profiles
+            WHERE year = %(year)s;""" % inputs
     
     df = pd.read_sql(sql, con, coerce_float = False)
     
     return df 
+ 
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_tract_peak_demand(tract_demand_profiles_df):
+    
+    # convert profiles to a numpy array
+    profiles_array = np.array(tract_demand_profiles_df['heat_demand_profile_mw'].tolist(), dtype = 'float64')
+    # calculate max for each row
+    tract_demand_profiles_df['peak_heat_demand_mw'] = np.max(profiles_array, axis = 1)
+    
+    # subset the return cols
+    return_cols = ['tract_id_alias', 'peak_heat_demand_mw']
+    dataframe = tract_demand_profiles_df[return_cols]
+    
+    return dataframe
 
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_tract_peak_demand(con, schema):
+def filter_year(dataframe, year):
     
-    inputs = locals().copy()
-    
-    sql = """SELECT tract_id_alias, peak_heat_demand_mw
-            FROM %(schema)s.tract_peak_heat_demand;""" % inputs
-    
-    df = pd.read_sql(sql, con, coerce_float = False)
-    
-    return df 
+    return dataframe[dataframe['year'] == year]
+
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

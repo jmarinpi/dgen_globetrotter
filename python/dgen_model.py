@@ -293,18 +293,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     if 'du' in techs:
                         #==========================================================================================================
-                        # CALCULATE TRACT AGGREGATE THERMAL LOAD PROFILES AND PEAK DEMAND
+                        # CALCULATE TRACT AGGREGATE THERMAL LOAD PROFILE
                         #==========================================================================================================                                    
                         # calculate tract demand profiles
                         demand_supply.calculate_tract_demand_profiles(con, cur, schema, cfg.pg_procs, cfg.pg_conn_string)
-                        # get tract demand profiles
-                        tract_demand_profiles_df = demand_supply.get_tract_demand_profiles(con, schema)
-    
-                        # calculate tract peak demand
-                        demand_supply.calculate_tract_peak_demand(cur, con, schema)
-                        # get peak demand data
-                        tract_peak_demand_df = demand_supply.get_tract_peak_demand(con, schema)
-                        
+             
                         #==========================================================================================================
                         # GET DEMAND DENSITY DATA
                         #==========================================================================================================                        
@@ -590,6 +583,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # BUILD SUPPLY CURVES FOR EACH TRACT
                     #==============================================================================
+                    # get tract demand profiles
+                    tract_demand_profiles_df = demand_supply.get_tract_demand_profiles(con, schema, year)    
+                    # calculate tract peak demand
+                    tract_peak_demand_df = demand_supply.calculate_tract_peak_demand(tract_demand_profiles_df)                    
+
                     resource_df = demand_supply.get_resource_data(con, schema, year)
                     # get natural gas prics
                     ng_prices_df = demand_supply.get_natural_gas_prices(con, schema, year)
