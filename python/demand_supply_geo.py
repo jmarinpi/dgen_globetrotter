@@ -948,10 +948,10 @@ def calc_agent_lcoe(dataframe, plant_lifetime, ignore_sunk_cost_of_existing_equi
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def lcoe_to_demand_curve(dataframe):
+def lcoe_to_demand_curve(dataframe, building_set_size = 10):
 
-    # every 10 buildings will be represented by one agent
-    dataframe['replicate_count'] = np.maximum(np.round(dataframe['buildings_in_bin']/10., 0), 1).astype('int64')
+    # every group of building_set_size buildings will be represented by one agent
+    dataframe['replicate_count'] = np.maximum(np.round(dataframe['buildings_in_bin']/building_set_size, 0), 1).astype('int64')
     dataframe['energy_mwh_per_replicate'] = dataframe['total_heat_mwh_per_building_in_bin'] * dataframe['buildings_in_bin'] / dataframe['replicate_count']
     replicate_indices = np.repeat(dataframe.index.values, dataframe['replicate_count'])
     out_cols = ['tract_id_alias',
