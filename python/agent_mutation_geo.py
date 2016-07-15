@@ -65,6 +65,15 @@ def get_new_agent_attributes(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def update_year(dataframe, year):
+    
+    dataframe.loc[:, 'year'] = year
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_regional_energy_prices(con, schema, year):
     
     inputs = locals().copy()
@@ -182,8 +191,8 @@ def update_system_ages(dataframe, year):
     # add in the microdata release year field for each agent (2003 for com, 2009 for recs)
     dataframe['microdata_release_year'] = np.where(dataframe['sector_abbr'] == 'res', 2009, 2003)
     
-    # calculate the additional years
-    dataframe['add_years'] = year - dataframe['microdata_release_year']
+    # calculate the additional years (for new construction set = 0)
+    dataframe['add_years'] = np.where(dataframe['new_construction'] == False, year - dataframe['microdata_release_year'], 0)
     
     # increment the system ages
     dataframe.loc[:, 'space_heat_system_age'] = dataframe['space_heat_system_age'] + dataframe['add_years']

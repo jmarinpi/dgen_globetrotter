@@ -103,7 +103,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 create_agent_id_sequence(schema, sector_abbr, con, cur)
                 
                 # INITIAL AGENTS TO REPRESENT STARTING BUILDING STOCK (2012)
-                logger.info("\tWorking on Initial Building Stock (2012)" % sector)
+                logger.info("\tWorking on Initial Building Stock (2012)")
                 # NOTE: each of these functions is dependent on the last, so changes from one must be cascaded to the others
                 calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, min_agents, seed, pool, pg_conn_string)                    
                 sample_blocks(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string, con, cur)
@@ -117,7 +117,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 
                 # NEW AGENTS TO REPRESENT NEW CONSTRUCTION (2014 - 2050)
                 # calculate the agents required to represent new construction
-                logger.info("\tWorking on New Construction (2014 - 2050)" % sector)
+                logger.info("\tWorking on New Construction (2014 - 2050)")
                 calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, seed, pool, pg_conn_string)
                 sample_blocks(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string, con, cur)
                 sample_building_type(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
@@ -278,7 +278,7 @@ def create_agent_id_sequence(schema, sector_abbr, con, cur):
     con.commit()   
     
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def sample_blocks(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string, con, cur):
 
     msg = '\t\tSampling from Blocks for Each Tract'
@@ -333,7 +333,7 @@ def sample_blocks(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_co
 
 
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def sample_building_type(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
 
     msg = '\t\tSampling Building Types from Blocks for Each Tract'
@@ -394,7 +394,7 @@ def sample_building_type(schema, sector_abbr, initial_or_new, chunks, seed, pool
     
 
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def sample_building_microdata(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
 
     msg = "\t\tSampling from Building Microdata"
@@ -478,7 +478,7 @@ def sample_building_microdata(schema, sector_abbr, initial_or_new, chunks, seed,
     
 
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def estimate_agent_thermal_loads(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_string):
 
     msg = '\t\tEstimating Agent Thermal Loads'    
@@ -551,7 +551,7 @@ def estimate_agent_thermal_loads(schema, sector_abbr, initial_or_new, chunks, po
 
 
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def estimate_system_ages(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
 
     msg = '\t\tEstimating Agent HVAC System Ages'    
@@ -601,7 +601,7 @@ def estimate_system_ages(schema, sector_abbr, initial_or_new, chunks, seed, pool
 
 
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def estimate_system_lifetimes(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
 
     msg = '\t\tEstimating Agent HVAC System Expected Lifetimes'    
@@ -649,7 +649,7 @@ def estimate_system_lifetimes(schema, sector_abbr, initial_or_new, chunks, seed,
     
     
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def map_to_generic_baseline_system(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_string):
     
     msg = '\t\tMapping HVAC Systems to Generic Baseline Types'    
@@ -684,7 +684,7 @@ def map_to_generic_baseline_system(schema, sector_abbr, initial_or_new, chunks, 
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, sector_abbr):
 
-    msg = "\t\tCombining All Core Agent Attributes"
+    msg = "\tCombining All Core Agent Attributes"
     logger.info(msg)
     
     
