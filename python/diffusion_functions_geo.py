@@ -133,7 +133,16 @@ def calculate_new_incremental_capacity_mw(new_market_share_pct, total_market_dem
 def select_plants_to_be_built(plant_sizes_market_df, new_incremental_capacity_mw, seed, iterations = 10):
     
     # eliminate any plants that are larger than the new_incremental_capacity_mw
-    plants_filtered_df = plant_sizes_market_df[plant_sizes_market_df['plant_size_market_mw'] <= new_incremental_capacity_mw]
+    # as well as any with zero capacity
+    small_enough = plant_sizes_market_df['plant_size_market_mw'] <= new_incremental_capacity_mw
+    big_enough = plant_sizes_market_df['plant_size_market_mw'] > 0
+    plants_filtered_df = plant_sizes_market_df[small_enough & big_enough]
+    # check size is greater than zero
+    if plants_filtered_df.shape[0] > 0:
+        # add the cumulative capacity field
+        plants_filtered_df['cumulative_capacity_mw'] = np.array([]).astype('float64')
+        return plants_filtered_df
+    
     # reset the index (required to perform shuffle)
     plants_filtered_df.reset_index(drop = True, inplace = True)
     np.random.seed(seed)
@@ -285,4 +294,80 @@ def calc_equiv_time(df):
     
 #=============================================================================
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def identify_subscribed_agents(plants_to_be_built_df, demand_curves_df):
+    
+#    # FOR TESTING ONLY
+#    plants_to_be_built_df = plants_filtered_df.copy()
+#    plants_to_be_built_df = plants_to_be_built_df.append(plant_sizes_market_df.ix[0])
+#    plants_to_be_built_df.loc[0, 'capacity_mw'] = 30.
+#    plants_to_be_built_df.loc[0, 'energy_mwh'] = 20000.
+#    plants_to_be_built_df.loc[0, 'lcoe_dlrs_mwh'] = 120.
+#    plants_to_be_built_df.loc[0, 'plant_size_market_mw'] = 6.
+#    plants_to_be_built_df.loc[0, 'cumulative_capacity_mw'] = 6. 
+#    # *****
+    
+    # agents who buy are identified from:
+    if plants_to_be_built_df.shape[0] == 0:
+        # return empty data frame
+        subscribed_agents_df = pd.DataFrame({'agent_id' : np.array([], dtype = 'int64'), 
+                                             'subscribed_building_count': np.array([], dtype = 'float64')})
+    else:
+        
+        demand_curves_for_plants_to_be_built_df = pd.merge(demand_curves_df, plants_to_be_built_df, how = 'inner', on = 'tract_id_alias', suffixes = ['_agent', '_plant'])
+        demand_with_surplus_df = demand_curves_for_plants_to_be_built_df[demand_curves_for_plants_to_be_built_df['lcoe_dlrs_mwh_agent'] >= demand_curves_for_plants_to_be_built_df['lcoe_dlrs_mwh_plant']]
+        # sort by demand lcoe
+        demand_with_surplus_df.sort('lcoe_dlrs_mwh_agent', ascending = False, inplace = True)
+        # take the cumulative sum of agent energy
+        demand_with_surplus_df['energy_mwh_agent_cumsum'] = demand_with_surplus_df['energy_mwh_agent'].cumsum(axis = 0)
+        # filter to the set below energy_mwh_plant
+        demand_with_surplus_filtered_df = demand_with_surplus_df[demand_with_surplus_df['energy_mwh_agent_cumsum'] <= demand_with_surplus_df['energy_mwh_plant']]
+        # count how many buildings from each agent_id are asssociated with this plant
+        subscribed_agents_df = demand_with_surplus_filtered_df.groupby('agent_id')['buildings_in_replicate'].sum().reset_index(drop = False, inplace = False)
+        # rename buildings_in_replicate to subscribed_buildings
+        rename_map = {'buildings_in_replicate' : 'subscribed_building_count'}
+        subscribed_agents_df = subscribed_agents_df.rename(columns = rename_map) 
+    
+    return subscribed_agents_df
 
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def mark_subscribed_agents(dataframe, subscribed_agents_df):
+    
+    dataframe = pd.merge(dataframe, subscribed_agents_df, how = 'left', on = 'agent_id')
+    # fill NAs with zero
+    dataframe.loc[:, 'subscribed_building_count'] = dataframe['subscribed_building_count'].fillna(0)
+    # rename the column
+    rename_map = {'subscribed_building_count' : 'new_adopters'}
+    dataframe = dataframe.rename(columns = rename_map)  
+    
+    return dataframe
+
+#%%
+def write_agent_outputs(con, cur, agents, schema):
+    
+    inputs = locals().copy()    
+    
+   
+    # set fields to write
+    fields = [ 
+            ]    
+
+    # convert formatting of fields list
+    inputs['fields_str'] = utilfunc.pylist_2_pglist(fields).replace("'","")       
+
+    # open an in memory stringIO file (like an in memory csv)
+    s = StringIO()
+    # write the data to the stringIO
+    agents.dataframe.loc[:, fields].to_csv(s, index = False, header = False)
+    # seek back to the beginning of the stringIO file
+    s.seek(0)
+    # copy the data from the stringio file to the postgres table
+    sql = 'COPY %(schema)s.agent_outputs_du (%(fields_str)s) FROM STDOUT WITH CSV' % inputs
+    cur.copy_expert(sql, s)
+    # commit the additions and close the stringio file (clears memory)
+    con.commit()    
+    s.close()
+       

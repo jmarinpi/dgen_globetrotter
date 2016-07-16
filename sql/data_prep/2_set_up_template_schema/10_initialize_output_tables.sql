@@ -159,3 +159,14 @@ CREATE TABLE diffusion_template.output_market_summary_du
 	new_incremental_market_share_pct numeric,
 	new_incremental_capacity_mw numeric
 );
+
+
+set role 'diffusion-writers';
+-- tables to hold results from each previous model year 
+DROP TABLE IF EXISTS diffusion_template.diffusion_template.agent_outputs_du;
+CREATE TABLE diffusion_template.agent_outputs_du
+(
+
+
+
+);

@@ -568,17 +568,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
                     # apply regional heating/cooling prices
                     agents = AgentsAlgorithm(agents, mutation.apply_regional_energy_prices, (energy_prices_df, )).compute()
-
+                    print 'year' in agents.dataframe.columns.tolist()
                     # get du cost data
                     end_user_costs_du_df = mutation.get_end_user_costs_du(con, schema, year)
                     # apply du cost data
                     agents = AgentsAlgorithm(agents, mutation.apply_end_user_costs_du, (end_user_costs_du_df, )).compute()               
-                    
+                    print 'year' in agents.dataframe.columns.tolist()                    
                     # update system ages
                     agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, )).compute()
                     # check whether systems need replacement (outlived their expected lifetime)
                     agents = AgentsAlgorithm(agents, mutation.check_system_expirations).compute()
-
+                    print 'year' in agents.dataframe.columns.tolist()
                     #==============================================================================
                     # BUILD SUPPLY CURVES FOR EACH TRACT
                     #==============================================================================
@@ -608,9 +608,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # apply the plant cost data
                     resources_with_costs_df = demand_supply.apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df, plant_finances_df, demand_density_df,  capacity_factors_df, ng_prices_df)
                     
+                    #==============================================================================
                     # SUPPLY AND DEMAND CALCULATIONS
+                    #============================================================================== 
                     plant_lifetime = plant_finances_df.plant_lifetime_yrs.tolist()[0]
                     agents = AgentsAlgorithm(agents, demand_supply.calc_agent_lcoe, (plant_lifetime, )).compute()
+                    print 'year' in agents.dataframe.columns.tolist()
                     # convert into demand curves
                     demand_curves_df = demand_supply.lcoe_to_demand_curve(agents.dataframe.copy())
                     
@@ -650,12 +653,28 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # (note: this will differ a bit from the new_incremental_capacity_mw and new_market_share_pct + existing_market_share_df because it is based on
                     # selected plants, which may not sum perfectly to the theoreticaly incremental additions)
                     cumulative_market_share_df = diffunc.calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, total_market_demand_mw, year)                    
+                    
+                    #==============================================================================
+                    # TRACKING RESULTS
+                    #==============================================================================     
+                    # SUMMARY OF MARKET
                     # write/store summary market share outputs
                     diffunc.write_cumulative_market_share(con, cur, cumulative_market_share_df, schema)
-                    # TODO: add capability to track which plants were already built and which customers subscribed 
-                    # NOTE: (this could get complicated in terms of next year's demand and supply curves...)
+
+                    # AGENTS
+                    # identify the subscribed agents
+                    subscribed_agents_df = diffunc.identify_subscribed_agents(plants_to_be_built_df, demand_curves_df)
+                    # append this info to the agents
+                    agents = AgentsAlgorithm(agents, diffunc.mark_subscribed_agents, (subscribed_agents_df, )).compute()
+                    # write agents to database
+                    diffunc.write_agent_outputs(con, cur, agents, schema)
                     
+                    # PLANTS
+                    # TODO: identify the subscribed plants
+                    # TODO: append this info to other key information about plants
+                    # TODO: write results to database                    
                     
+                    # TODO: figure out how to use these to modify agents (buildings_in_bin) and resources available (wellsets_in_tract)
                     
                 
             #==============================================================================

@@ -177,7 +177,7 @@ def get_end_user_costs_du(con, schema, year):
 def apply_end_user_costs_du(dataframe, end_user_costs_du_df):
     
     # join dataframes together
-    dataframe = pd.merge(dataframe, end_user_costs_du_df, how = 'left', on = ['sector_abbr'])
+    dataframe = pd.merge(dataframe, end_user_costs_du_df, how = 'left', on = ['sector_abbr', 'year'])
 
     return dataframe
 

@@ -91,6 +91,8 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
     pool = multiprocessing.Pool(processes = pg_procs) 
     
     try:
+        # create sequence to produce unique agent ids
+        create_agent_id_sequence(schema, con, cur)
         for sector_abbr, sector in sectors.iteritems():
             with utilfunc.Timer() as t:
                 logger.info("Creating Agents for %s Sector" % sector)
@@ -99,8 +101,6 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 #     sample from blocks and building microdata, convolve samples, and estimate 
                 #     max demand for each agent
                 #==============================================================================
-                # create sequence to produce unique agent ids
-                create_agent_id_sequence(schema, sector_abbr, con, cur)
                 
                 # INITIAL AGENTS TO REPRESENT STARTING BUILDING STOCK (2012)
                 logger.info("\tWorking on Initial Building Stock (2012)")
@@ -257,7 +257,7 @@ def calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, ch
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def create_agent_id_sequence(schema, sector_abbr, con, cur):
+def create_agent_id_sequence(schema, con, cur):
     
     msg = '\tCreating Sequence for Agent IDs'    
     logger.info(msg)
@@ -266,8 +266,8 @@ def create_agent_id_sequence(schema, sector_abbr, con, cur):
     inputs = locals().copy()
      # create a sequence that will be used to populate a new primary key across all table partitions
     # using a sequence ensure ids will be unique across all partitioned tables
-    sql = """DROP SEQUENCE IF EXISTS %(schema)s.agent_id_%(sector_abbr)s_sequence;
-            CREATE SEQUENCE %(schema)s.agent_id_%(sector_abbr)s_sequence
+    sql = """DROP SEQUENCE IF EXISTS %(schema)s.agent_id_sequence;
+            CREATE SEQUENCE %(schema)s.agent_id_sequence
             INCREMENT 1
             START 1;""" % inputs
     cur.execute(sql)
@@ -302,7 +302,7 @@ def sample_blocks(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_co
                  GROUP BY a.tract_id_alias
 
              )
-             SELECT nextval('%(schema)s.agent_id_%(sector_abbr)s_sequence') as agent_id, 
+             SELECT nextval('%(schema)s.agent_id_sequence') as agent_id, 
                      a.tract_id_alias,
                      b.year,
                         unnest(diffusion_shared.sample(a.pgids, 

@@ -780,19 +780,6 @@ def get_plant_depreciation_data(con, schema, year):
     return df       
 
 
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calc_plant_sizes_econ(demand_curves_df, supply_curves_df):
-
-    # TODO: replace with actual function from Ben    
-    tract_ids = demand_curves_df['tract_id_alias'].unique()
-    dataframe = pd.DataFrame()
-    dataframe['tract_id_alias'] = tract_ids
-    np.random.seed(1)
-    dataframe['plant_size_econ_mw'] = 5. * np.random.uniform(0, 15, dataframe.shape[0])
-    
-    return dataframe
-
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -800,7 +787,7 @@ def calc_plant_sizes_market(demand_curves_df, supply_curves_df, plant_sizes_econ
 
     # TODO: replace with actual function from Ben    
     dataframe = plant_sizes_economic_df.copy()
-    dataframe['plant_size_market_mw'] = dataframe['plant_size_econ_mw'] * 1.
+    dataframe['plant_size_market_mw'] = dataframe['capacity_mw'] * 1.
     
     return dataframe
 
@@ -926,9 +913,9 @@ def calc_agent_lcoe(dataframe, plant_lifetime, ignore_sunk_cost_of_existing_equi
         dataframe['system_installation_costs_dlrs_per_sf'] = np.where(dataframe['new_construction'] == True, dataframe['new_sys_installation_costs_dollars_sf'], dataframe['new_sys_installation_costs_dollars_sf'] * dataframe['retrofit_new_sys_installation_cost_multiplier'])
         dataframe['system_installation_costs_dlrs'] = dataframe['system_installation_costs_dlrs_per_sf'] * dataframe['totsqft_heat']
         dataframe['upfront_costs_dlrs'] = dataframe['system_installation_costs_dlrs'] + dataframe['sys_connection_cost_dollars']
-        dataframe['levelized_upfront_costs_dlrs'] = dataframe['upfront_costs_dlrs'] / plant_lifetime
+        dataframe['levelized_upfront_costs_dlrs_per_yr'] = dataframe['upfront_costs_dlrs'] / plant_lifetime
         dataframe['fixed_om_costs_dollars_per_yr'] = dataframe['fixed_om_costs_dollars_sf_yr'] * dataframe['totsqft_heat']
-        dataframe['annual_costs_dlrs'] = dataframe['fixed_om_costs_dollars_per_yr'] + dataframe['levelized_upfront_costs_dlrs']
+        dataframe['annual_costs_dlrs'] = dataframe['fixed_om_costs_dollars_per_yr'] + dataframe['levelized_upfront_costs_dlrs_per_yr']
         dataframe['annual_costs_dlrs_per_mwh'] = dataframe['annual_costs_dlrs'] / dataframe['total_heat_mwh_per_building_in_bin']
     else: 
         dataframe['annual_costs_dlrs_per_mwh'] = 0.
@@ -937,6 +924,12 @@ def calc_agent_lcoe(dataframe, plant_lifetime, ignore_sunk_cost_of_existing_equi
     dataframe['lcoe_dlrs_mwh'] = np.maximum(dataframe['weighted_cost_of_energy_dlrs_per_mwh'] - dataframe['annual_costs_dlrs_per_mwh'], 0)
     
     out_cols = ['total_heat_mwh_per_building_in_bin', 
+                'weighted_cost_of_energy_dlrs_per_mwh',
+                'system_installation_costs_dlrs',
+                'upfront_costs_dlrs',
+                'levelized_upfront_costs_dlrs_per_yr',
+                'fixed_om_costs_dollars_per_yr',
+                'annual_costs_dlrs_per_mwh',
                 'lcoe_dlrs_mwh']
     return_cols = in_cols + out_cols
     
@@ -951,9 +944,12 @@ def lcoe_to_demand_curve(dataframe, building_set_size = 10):
 
     # every group of building_set_size buildings will be represented by one agent
     dataframe['replicate_count'] = np.maximum(np.round(dataframe['buildings_in_bin']/building_set_size, 0), 1).astype('int64')
-    dataframe['energy_mwh_per_replicate'] = dataframe['total_heat_mwh_per_building_in_bin'] * dataframe['buildings_in_bin'] / dataframe['replicate_count']
+    dataframe['buildings_in_replicate'] = dataframe['buildings_in_bin'] / dataframe['replicate_count']
+    dataframe['energy_mwh_per_replicate'] = dataframe['total_heat_mwh_per_building_in_bin'] * dataframe['buildings_in_replicate']
     replicate_indices = np.repeat(dataframe.index.values, dataframe['replicate_count'])
     out_cols = ['tract_id_alias',
+                'agent_id',
+                'buildings_in_replicate',
                 'lcoe_dlrs_mwh',
                 'energy_mwh_per_replicate'
                 ]
