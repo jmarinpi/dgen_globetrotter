@@ -578,9 +578,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, )).compute()
                     # check whether systems need replacement (outlived their expected lifetime)
                     agents = AgentsAlgorithm(agents, mutation.check_system_expirations).compute()
-                    
-                    # build demand curves
-                    demand_curves_df = demand_supply.build_demand_curves(agents.dataframe) # TODO: replace with actual function
 
                     #==============================================================================
                     # BUILD SUPPLY CURVES FOR EACH TRACT
@@ -626,8 +623,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     #==============================================================================
                     # CALCULATE PLANT SIZES BASED ON ECONOMIC POTENTIAL
-                    #==============================================================================                    
-                    plant_sizes_economic_df = demand_supply.calc_plant_sizes_econ(demand_curves_df, supply_curves_df) # TODO: replace with actual function
+                    #==============================================================================   
+                    plant_sizes_economic_df = demand_supply.intersect_supply_demand_curves(demand_curves_df, supply_curves_df) # TODO: replace with actual function
                                           
                     #==============================================================================
                     # CALCULATE PLANT SIZES BASED ON MARKET POTENTIAL

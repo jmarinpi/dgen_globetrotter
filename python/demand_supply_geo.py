@@ -800,8 +800,7 @@ def calc_plant_sizes_market(demand_curves_df, supply_curves_df, plant_sizes_econ
 
     # TODO: replace with actual function from Ben    
     dataframe = plant_sizes_economic_df.copy()
-    np.random.seed(1)
-    dataframe['plant_size_market_mw'] = dataframe['plant_size_econ_mw'] * np.random.uniform(0, .9, dataframe.shape[0])
+    dataframe['plant_size_market_mw'] = dataframe['plant_size_econ_mw'] * 1.
     
     return dataframe
 
@@ -863,9 +862,9 @@ def calc_plant_lcoe(resources_with_costs_df, plant_depreciation_df, plant_constr
     # Take the mean annual costs per wellset as the FOM
     resources_with_costs_df['FOM'] = resources_with_costs_df['annual_costs_per_wellset_dlrs'].apply(np.mean, axis = 0) # fixed o&m $/MW-yr
 
-    resources_with_costs_df['lcoe_dols_mwh'] = (((resources_with_costs_df['CRF'] * resources_with_costs_df['PFF'] * resources_with_costs_df['CFF'] * (resources_with_costs_df['OCC'] * 1 + resources_with_costs_df['GCC']) + resources_with_costs_df['FOM'])/(resources_with_costs_df['total_blended_capacity_factor'] * 8760)))# LCOE 2014$/MWh
+    resources_with_costs_df['lcoe_dlrs_mwh'] = (((resources_with_costs_df['CRF'] * resources_with_costs_df['PFF'] * resources_with_costs_df['CFF'] * (resources_with_costs_df['OCC'] * 1 + resources_with_costs_df['GCC']) + resources_with_costs_df['FOM'])/(resources_with_costs_df['total_blended_capacity_factor'] * 8760)))# LCOE 2014$/MWh
     
-    out_cols = ['lcoe_dols_mwh']
+    out_cols = ['lcoe_dlrs_mwh']
     return_cols = in_cols + out_cols
     
     resources_with_costs_df = resources_with_costs_df[return_cols]
@@ -879,7 +878,7 @@ def lcoe_to_supply_curve(resources_with_costs_df):
 
     replicate_indices = np.repeat(resources_with_costs_df.index.values, resources_with_costs_df['n_wellsets_in_tract'])
     out_cols = ['tract_id_alias',
-                'lcoe_dols_mwh',
+                'lcoe_dlrs_mwh',
                 'total_nameplate_capacity_per_wellset_mw',
                 'total_consumable_energy_per_wellset_mwh'
                 ]
@@ -935,10 +934,10 @@ def calc_agent_lcoe(dataframe, plant_lifetime, ignore_sunk_cost_of_existing_equi
         dataframe['annual_costs_dlrs_per_mwh'] = 0.
     
     
-    dataframe['lcoe_dols_mwh'] = np.maximum(dataframe['weighted_cost_of_energy_dlrs_per_mwh'] - dataframe['annual_costs_dlrs_per_mwh'], 0)
+    dataframe['lcoe_dlrs_mwh'] = np.maximum(dataframe['weighted_cost_of_energy_dlrs_per_mwh'] - dataframe['annual_costs_dlrs_per_mwh'], 0)
     
     out_cols = ['total_heat_mwh_per_building_in_bin', 
-                'lcoe_dols_mwh']
+                'lcoe_dlrs_mwh']
     return_cols = in_cols + out_cols
     
     dataframe = dataframe[return_cols]
@@ -955,7 +954,7 @@ def lcoe_to_demand_curve(dataframe, building_set_size = 10):
     dataframe['energy_mwh_per_replicate'] = dataframe['total_heat_mwh_per_building_in_bin'] * dataframe['buildings_in_bin'] / dataframe['replicate_count']
     replicate_indices = np.repeat(dataframe.index.values, dataframe['replicate_count'])
     out_cols = ['tract_id_alias',
-                'lcoe_dols_mwh',
+                'lcoe_dlrs_mwh',
                 'energy_mwh_per_replicate'
                 ]
     # replicate each row in the source df for the number of wellsets associated with it
@@ -975,3 +974,85 @@ def lcoe_to_demand_curve(dataframe, building_set_size = 10):
     demand_curve_df['capacity_mw'] = 0
 
     return demand_curve_df
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def intersect_supply_demand_curves(demand_curves_df, supply_curves_df):
+    
+    # We need to determine intersection by tract. While this can probably be vectorized, for now it is not
+    # Declare an empty dataframe for settling price and quantities by tract
+    settling_pq_values = pd.DataFrame({'tract_id_alias':[],
+                                       'capacity_mw':[],
+                                       'energy_mwh':[],
+                                       'lcoe_dlrs_mwh':[]})
+    
+    for tract in supply_curves_df['tract_id_alias'].unique():
+        supply_curve = supply_curves_df[(supply_curves_df['tract_id_alias'] == tract)].copy()
+        demand_curve = demand_curves_df[(demand_curves_df['tract_id_alias'] == tract)].copy()
+        
+
+            
+        # Three Primary Outcomes
+        if supply_curve['lcoe_dlrs_mwh'].min() > demand_curve['lcoe_dlrs_mwh'].max(): 
+            #All supply prices are higher price than demand: build no capacity
+            settling_price = {'tract_id_alias' : tract,
+                              'capacity_mw' : 0,
+                              'energy_mwh' : 0,
+                              'lcoe_dlrs_mwh' : 1e99}
+                                       
+        elif supply_curve['lcoe_dlrs_mwh'].max() < demand_curve['lcoe_dlrs_mwh'].min(): 
+            #All supply prices are lower price than demand: build all capacity
+            settling_price = supply_curve.iloc[-1].to_dict() # Take the last row, which should be the largest system size
+            
+        else: # There is at least one settling price. 
+            supply_curve.sort('lcoe_dlrs_mwh', inplace = True)
+            supply_curve['metric'] = 'supply'
+    
+            demand_curve.sort('lcoe_dlrs_mwh', ascending = False, inplace = True)
+            demand_curve['metric'] = 'demand'
+            
+            # Check if curves are monotonic-- I think its impossible since we first sort by LCOE, then do cum.sum on energy
+            supply_vals = supply_curve['energy_mwh'].diff().values[1:]
+            demand_vals = supply_curve['energy_mwh'].diff().values[1:]
+            if np.any(supply_vals<0):
+                raise ValueError("""WARNING: Supply curve is not monotonic""")
+                
+            if np.any(demand_vals<0):
+                raise ValueError("""WARNING: Demand curve is not monotonic""")            
+            
+            
+            # Sort the concatenated supply and demand curves by quantity. 
+            # Take the row-wise difference in price, and find the first supply index where the difference is negative
+            # Since we have proven monotonicity above and that an intersection occurs, we are searching for the first supply price-quanity pair
+            # for which the demand price is less than the supply price 
+            combined = pd.concat([supply_curve,demand_curve], axis = 0, ignore_index = True)
+            combined = combined.sort('energy_mwh')
+            combined['diff'] = combined['lcoe_dlrs_mwh'].diff().shift(-1) # We want the leading difference e.g. the first entry(0th) should be df[1,'lcoe'] - df[0,'lcoe']
+            combined = combined.reset_index(drop = True)
+            
+            # Add replace 'NA' last entry with a dummy value
+            combined['diff'].iloc[-1] = 1e99
+            settling_price = combined.loc[(combined['diff'] <0) & (combined['metric'] == 'supply')]
+            
+            #Two other edge cases: all demand is satisfied at a consumer surplus: build all capacity up to demand total
+            #                      all available supply could satisfy demand at a surplus
+            
+            if settling_price.shape[0] == 0:
+                max_demand = combined[combined['metric'] == 'demand'].max().energy_mwh
+                max_supply = combined[combined['metric'] == 'supply'].max().energy_mwh
+                
+                if max_demand > max_supply:
+                    settling_price = combined[(combined['energy_mwh'] == max_demand)].iloc[0]
+                elif max_demand <= max_supply:
+                    combined[(combined['metric'] == 'supply') & (combined['energy_mwh'] > max_demand)].iloc[0]
+                    #Take the first supply that's greater than the max demand 
+            else:
+                settling_price.iloc[0]
+                settling_price.drop(['metric','diff'], inplace = True)
+
+
+        settling_pq_values = settling_pq_values.append(settling_price, ignore_index = True)
+    
+    
+    return settling_pq_values
