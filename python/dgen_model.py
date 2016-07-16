@@ -568,17 +568,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
                     # apply regional heating/cooling prices
                     agents = AgentsAlgorithm(agents, mutation.apply_regional_energy_prices, (energy_prices_df, )).compute()
-                    print 'year' in agents.dataframe.columns.tolist()
+                    
                     # get du cost data
                     end_user_costs_du_df = mutation.get_end_user_costs_du(con, schema, year)
                     # apply du cost data
                     agents = AgentsAlgorithm(agents, mutation.apply_end_user_costs_du, (end_user_costs_du_df, )).compute()               
-                    print 'year' in agents.dataframe.columns.tolist()                    
+                                 
                     # update system ages
                     agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, )).compute()
                     # check whether systems need replacement (outlived their expected lifetime)
                     agents = AgentsAlgorithm(agents, mutation.check_system_expirations).compute()
-                    print 'year' in agents.dataframe.columns.tolist()
+                    
                     #==============================================================================
                     # BUILD SUPPLY CURVES FOR EACH TRACT
                     #==============================================================================
@@ -611,18 +611,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # SUPPLY AND DEMAND CALCULATIONS
                     #============================================================================== 
+                    # CALCULATE AGENT LCOE
                     plant_lifetime = plant_finances_df.plant_lifetime_yrs.tolist()[0]
                     agents = AgentsAlgorithm(agents, demand_supply.calc_agent_lcoe, (plant_lifetime, )).compute()
-                    print 'year' in agents.dataframe.columns.tolist()
-                    # convert into demand curves
+                    # CONVERT INTO DEMAND CURVES
                     demand_curves_df = demand_supply.lcoe_to_demand_curve(agents.dataframe.copy())
                     
-                    
-                    # calculate lcoe of each resource
+                    # CALCULATE PLANT LCOE
                     resources_with_costs_df = demand_supply.calc_plant_lcoe(resources_with_costs_df, plant_depreciation_df, plant_construction_finance_factor)                                                                                     
-                    # convert into supply curves
+                    # CONVERT INTO SUPPLY CURVES
                     supply_curves_df = demand_supply.lcoe_to_supply_curve(resources_with_costs_df)
-
                     
                     #==============================================================================
                     # CALCULATE PLANT SIZES BASED ON ECONOMIC POTENTIAL

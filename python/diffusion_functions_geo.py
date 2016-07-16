@@ -138,7 +138,7 @@ def select_plants_to_be_built(plant_sizes_market_df, new_incremental_capacity_mw
     big_enough = plant_sizes_market_df['plant_size_market_mw'] > 0
     plants_filtered_df = plant_sizes_market_df[small_enough & big_enough]
     # check size is greater than zero
-    if plants_filtered_df.shape[0] > 0:
+    if plants_filtered_df.shape[0] == 0:
         # add the cumulative capacity field
         plants_filtered_df['cumulative_capacity_mw'] = np.array([]).astype('float64')
         return plants_filtered_df
@@ -344,15 +344,93 @@ def mark_subscribed_agents(dataframe, subscribed_agents_df):
     dataframe = dataframe.rename(columns = rename_map)  
     
     return dataframe
+    
 
 #%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def write_agent_outputs(con, cur, agents, schema):
     
     inputs = locals().copy()    
     
-   
     # set fields to write
-    fields = [ 
+    fields = [  'agent_id',
+                'year',
+                'pgid',
+                'county_id',
+                'state_abbr',
+                'state_fips',
+                'county_fips',
+                'tract_fips',
+                'tract_id_alias',
+                'old_county_id',
+                'census_division_abbr',
+                'census_region',
+                'reportable_domain',
+                'pca_reg',
+                'reeds_reg',
+                'acres_per_bldg',
+                'hdf_load_index',
+                'hazus_bldg_type',
+                'buildings_in_bin',
+                'space_heat_kwh_in_bin',
+                'space_cool_kwh_in_bin',
+                'water_heat_kwh_in_bin',
+                'total_heat_kwh_in_bin',
+                'space_heat_kwh_per_building_in_bin',
+                'space_cool_kwh_per_building_in_bin',
+                'water_heat_kwh_per_building_in_bin',
+                'total_heat_kwh_per_building_in_bin',
+                'space_heat_system_age',
+                'space_cool_system_age',
+                'average_system_age',
+                'space_heat_system_expected_lifetime',
+                'space_cool_system_expected_lifetime',
+                'average_system_expected_lifetime',
+                'baseline_system_type',
+                'eia_bldg_id',
+                'eia_bldg_weight',
+                'climate_zone',
+                'pba',
+                'pbaplus',
+                'typehuq',
+                'owner_occupied',
+                'year_built',
+                'single_family_res',
+                'num_tenants',
+                'num_floors',
+                'space_heat_equip',
+                'space_heat_fuel',
+                'water_heat_equip',
+                'water_heat_fuel',
+                'space_cool_equip',
+                'space_cool_fuel',
+                'totsqft',
+                'totsqft_heat',
+                'totsqft_cool',
+                'crb_model',
+                'sector_abbr',
+                'sector',
+                'tech',
+                'new_construction',
+                'space_heat_dlrs_per_kwh',
+                'water_heat_dlrs_per_kwh',
+                'space_cool_dlrs_per_kwh',
+                'sys_connection_cost_dollars',
+                'fixed_om_costs_dollars_sf_yr',
+                'new_sys_installation_costs_dollars_sf',
+                'retrofit_new_sys_installation_cost_multiplier',
+                'needs_replacement_heat_system',
+                'needs_replacement_cool_system',
+                'needs_replacement_average_system',
+                'total_heat_mwh_per_building_in_bin',
+                'weighted_cost_of_energy_dlrs_per_mwh',
+                'system_installation_costs_dlrs',
+                'upfront_costs_dlrs',
+                'levelized_upfront_costs_dlrs_per_yr',
+                'fixed_om_costs_dollars_per_yr',
+                'annual_costs_dlrs_per_mwh',
+                'lcoe_dlrs_mwh',
+                'new_adopters'
             ]    
 
     # convert formatting of fields list
