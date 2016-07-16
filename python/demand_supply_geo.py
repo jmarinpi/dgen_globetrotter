@@ -849,7 +849,7 @@ def calc_plant_lcoe(resources_with_costs_df, plant_depreciation_df, plant_constr
     # Take the mean annual costs per wellset as the FOM
     resources_with_costs_df['FOM'] = resources_with_costs_df['annual_costs_per_wellset_dlrs'].apply(np.mean, axis = 0) # fixed o&m $/MW-yr
 
-    resources_with_costs_df['lcoe_dlrs_mwh'] = (((resources_with_costs_df['CRF'] * resources_with_costs_df['PFF'] * resources_with_costs_df['CFF'] * (resources_with_costs_df['OCC'] * 1 + resources_with_costs_df['GCC']) + resources_with_costs_df['FOM'])/(resources_with_costs_df['total_blended_capacity_factor'] * 8760)))# LCOE 2014$/MWh
+    resources_with_costs_df['lcoe_dlrs_mwh'] = (((resources_with_costs_df['CRF'] * resources_with_costs_df['PFF'] * resources_with_costs_df['CFF'] * (resources_with_costs_df['OCC'] * 1 + resources_with_costs_df['GCC']) + resources_with_costs_df['FOM'])/(resources_with_costs_df['total_consumable_energy_per_wellset_mwh'] * 8760)))# LCOE 2014$/MWh
     
     out_cols = ['lcoe_dlrs_mwh']
     return_cols = in_cols + out_cols
