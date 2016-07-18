@@ -414,8 +414,6 @@ def sample_building_microdata(schema, sector_abbr, initial_or_new, chunks, seed,
         elif initial_or_new == 'new':  
             # NOTE: have to relax location and building type clauses to allow for subsetting on year                  
             inputs['eia_join_clause'] = """ b.eia_type = c.typehuq
-                                            AND b.min_tenants <= c.num_tenants
-                                            AND b.max_tenants >= c.num_tenants 
                                             AND a.climate_zone_recs = c.climate_zone
                                             AND c.year_built >= 2005
                                             AND c.sector_abbr = '%(sector_abbr)s' """ % inputs
