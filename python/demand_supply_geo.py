@@ -906,7 +906,7 @@ def calc_plant_lcoe(resources_with_costs_df, plant_depreciation_df, plant_constr
 def lcoe_to_supply_curve(resources_with_costs_df):
 
 
-    replicate_indices = np.repeat(resources_with_costs_df.index.values, resources_with_costs_df['n_wellsets_in_tract'])
+    replicate_indices = np.repeat(resources_with_costs_df.index.values, resources_with_costs_df['n_wellsets_in_tract'].astype('int64'))
     out_cols = ['tract_id_alias',
                 'resource_uid',
                 'lcoe_dlrs_mwh',
@@ -1158,7 +1158,7 @@ def subtract_previously_subscribed_wellsets(resource_df, previously_subscribed_w
     # fill nas in previously_subscribed wellsets
     resource_df['previously_subscribed_wellsets'] = resource_df['previously_subscribed_wellsets'].fillna(0)
     # subtract from n_wellsets_in_tract
-    resource_df.loc[:, 'n_wellsets_in_tract'] = resource_df['n_wellsets_in_tract'] - resource_df['previously_subscribed_wellsets']
+    resource_df.loc[:, 'n_wellsets_in_tract'] = (resource_df['n_wellsets_in_tract'] - resource_df['previously_subscribed_wellsets']).astype('int64')
     # drop any wellsets with zero remaining welslets
     resource_df = resource_df[resource_df['n_wellsets_in_tract'] > 0]
     
