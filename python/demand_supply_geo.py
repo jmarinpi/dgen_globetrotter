@@ -890,7 +890,7 @@ def calc_plant_lcoe(resources_with_costs_df, plant_depreciation_df, plant_constr
     resources_with_costs_df['OCC'] = resources_with_costs_df['upfront_costs_per_wellset_dlrs']/resources_with_costs_df['total_nameplate_capacity_per_wellset_mw'] # Overnight capital cost $/MW
     resources_with_costs_df['GCC'] = 0 # grid connection cost $/MW, assume cost of interconnecting included in OCC
     # Take the mean annual costs per wellset as the FOM
-    resources_with_costs_df['FOM'] = resources_with_costs_df['annual_costs_per_wellset_dlrs'].apply(np.mean, axis = 0) # fixed o&m $/MW-yr
+    resources_with_costs_df['FOM'] = resources_with_costs_df['annual_costs_per_wellset_dlrs'].apply(np.mean, axis = 0)/resources_with_costs_df['total_nameplate_capacity_per_wellset_mw'] # fixed o&m $/MW-yr
 
     resources_with_costs_df['lcoe_dlrs_mwh'] = ((resources_with_costs_df['CRF'] * resources_with_costs_df['PFF'] * resources_with_costs_df['CFF'] * (resources_with_costs_df['OCC'] * 1 + resources_with_costs_df['GCC']) + resources_with_costs_df['FOM'])/(resources_with_costs_df['total_blended_capacity_factor'] * 8760))# LCOE 2014$/MWh
     
