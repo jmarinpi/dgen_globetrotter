@@ -743,10 +743,13 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
                                                     dataframe['reservoir_stimulation_costs_per_wellset_dlrs']
                                                     )
     # combine all annual costs
-    dataframe['annual_costs_per_wellset_dlrs'] = (  np.array(dataframe['total_pumping_costs_per_wellset_dlrs'].tolist(), dtype = np.float64) +
+    annual_costs_per_wellset_dlrs = (np.array(dataframe['total_pumping_costs_per_wellset_dlrs'].tolist(), dtype = np.float64) +
                                                     np.array(dataframe['om_total_costs_per_wellset_dlrs'].tolist(), dtype = np.float64) +
                                                     np.array(dataframe['peaking_boilers_fuel_costs_per_wellset_dlrs'].tolist(), dtype = np.float64)
-                                                    ).tolist()
+                                                    )
+    # calculat average annual costs
+    dataframe['avg_annual_costs_per_wellset_dlrs'] = annual_costs_per_wellset_dlrs.mean(axis = 1)
+
 
     out_cols = [   'year',
                    'tract_id_alias',
@@ -764,7 +767,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
                    'total_effective_capacity_per_wellset_mw',
                    'total_nameplate_capacity_per_wellset_mw',
                    'upfront_costs_per_wellset_dlrs', 
-                   'annual_costs_per_wellset_dlrs', 
+                   'avg_annual_costs_per_wellset_dlrs', 
                    
                    'plant_installation_costs_per_wellset_dlrs',
                    'exploration_total_costs_per_wellset_dlrs',
@@ -925,7 +928,7 @@ def calc_plant_lcoe(resources_with_costs_df, plant_depreciation_df, plant_constr
     resources_with_costs_df['OCC'] = resources_with_costs_df['upfront_costs_per_wellset_dlrs']/resources_with_costs_df['total_nameplate_capacity_per_wellset_mw'] # Overnight capital cost $/MW
     resources_with_costs_df['GCC'] = 0 # grid connection cost $/MW, assume cost of interconnecting included in OCC
     # Take the mean annual costs per wellset as the FOM
-    resources_with_costs_df['FOM'] = resources_with_costs_df['annual_costs_per_wellset_dlrs'].apply(np.mean, axis = 0)/resources_with_costs_df['total_nameplate_capacity_per_wellset_mw'] # fixed o&m $/MW-yr
+    resources_with_costs_df['FOM'] = resources_with_costs_df['avg_annual_costs_per_wellset_dlrs']/resources_with_costs_df['total_nameplate_capacity_per_wellset_mw'] # fixed o&m $/MW-yr
 
     resources_with_costs_df['lcoe_dlrs_mwh'] = ((resources_with_costs_df['CRF'] * resources_with_costs_df['PFF'] * resources_with_costs_df['CFF'] * (resources_with_costs_df['OCC'] * 1 + resources_with_costs_df['GCC']) + resources_with_costs_df['FOM'])/(resources_with_costs_df['total_blended_capacity_factor'] * 8760))# LCOE 2014$/MWh
     

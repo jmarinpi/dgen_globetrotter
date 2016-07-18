@@ -267,7 +267,7 @@ CREATE TABLE diffusion_template.resource_outputs_du
 	total_effective_capacity_per_wellset_mw NUMERIC,
 	total_nameplate_capacity_per_wellset_mw NUMERIC,
 	upfront_costs_per_wellset_dlrs NUMERIC,
-	annual_costs_per_wellset_dlrs text,
+	avg_annual_costs_per_wellset_dlrs NUMERIC,
 	
 	plant_installation_costs_per_wellset_dlrs NUMERIC,
 	exploration_total_costs_per_wellset_dlrs NUMERIC,

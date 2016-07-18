@@ -505,7 +505,7 @@ def write_resources_outputs(con, cur, resources_df, schema):
                 'total_effective_capacity_per_wellset_mw',
                 'total_nameplate_capacity_per_wellset_mw',
                 'upfront_costs_per_wellset_dlrs',
-                'annual_costs_per_wellset_dlrs',
+                'avg_annual_costs_per_wellset_dlrs',
                 
                'plant_installation_costs_per_wellset_dlrs',
                'exploration_total_costs_per_wellset_dlrs',
