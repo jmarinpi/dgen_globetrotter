@@ -533,7 +533,9 @@ def estimate_agent_thermal_loads(schema, sector_abbr, initial_or_new, chunks, po
                      ON d.old_county_id = e.county_id
             )
             SELECT agent_id, buildings_in_bin, totsqft,
-                   space_heat_kbtu_in_bin, space_cool_kbtu_in_bin, water_heat_kbtu_in_bin,
+                   COALESCE(space_heat_kbtu_in_bin, 0) as space_heat_kbtu_in_bin, 
+                   COALESCE(space_cool_kbtu_in_bin, 0) as space_cool_kbtu_in_bin, 
+                   COALESCE(water_heat_kbtu_in_bin, 0) as water_heat_kbtu_in_bin,
                    COALESCE(space_heat_kbtu_in_bin/buildings_in_bin, 0) as space_heat_kbtu_per_building_in_bin,
                    COALESCE(space_cool_kbtu_in_bin/buildings_in_bin, 0) as space_cool_kbtu_per_building_in_bin,
                    COALESCE(water_heat_kbtu_in_bin/buildings_in_bin, 0) as water_heat_kbtu_per_building_in_bin
