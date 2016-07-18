@@ -344,7 +344,7 @@ def sample_building_type(schema, sector_abbr, initial_or_new, chunks, seed, pool
     sql = """DROP TABLE IF EXISTS %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s;
              CREATE UNLOGGED TABLE %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s AS
              SELECT a.agent_id, a.tract_id_alias, a.year, 
-                         b.census_division_abbr, b.reportable_domain, -- need these two fields for subsequent microdata step
+                         b.census_division_abbr, b.reportable_domain, b.climate_zone_recs, b.climate_zone_cbecs, -- need these two fields for subsequent microdata step
                         unnest(diffusion_shared.sample(c.bldg_types, 
                                                        1, 
                                                        a.agent_id * %(seed)s,  -- ensure unique sample for each block
@@ -412,9 +412,10 @@ def sample_building_microdata(schema, sector_abbr, initial_or_new, chunks, seed,
         elif initial_or_new == 'new':  
             # NOTE: have to relax location and building type clauses to allow for subsetting on year                  
             inputs['eia_join_clause'] = """ b.eia_type = c.typehuq
-                                            AND b.single_family_res = c.single_family_res
-                                            AND a.census_division_abbr = c.census_division_abbr
-                                            AND c.year_built >= 2006
+                                            AND b.min_tenants <= c.num_tenants
+                                            AND b.max_tenants >= c.num_tenants 
+                                            AND a.climate_zone_recs = c.climate_zone
+                                            AND c.year_built >= 2005
                                             AND c.sector_abbr = '%(sector_abbr)s' """ % inputs
 
     else:
@@ -504,19 +505,19 @@ def estimate_agent_thermal_loads(schema, sector_abbr, initial_or_new, chunks, po
                 SELECT a.agent_id,
                            b.buildings_in_bin,
                            CASE WHEN '%(initial_or_new)s' = 'initial' THEN
-                                       (b.buildings_in_bin * a.kbtu_space_heat)/sum(b.buildings_in_bin * a.kbtu_space_heat) OVER (PARTITION BY d.old_county_id) 
+                                       (b.buildings_in_bin * a.kbtu_space_heat)/sum(b.buildings_in_bin * NULLIF(a.kbtu_space_heat, 0)) OVER (PARTITION BY d.old_county_id) 
                                        * e.space_heating_thermal_load_mmbtu * 1000. 
                                 WHEN '%(initial_or_new)s' = 'new' THEN b.buildings_in_bin * a.kbtu_space_heat
                            END AS space_heat_kbtu_in_bin,
                            
                            CASE WHEN '%(initial_or_new)s' = 'initial' THEN                           
-                                       (b.buildings_in_bin * a.kbtu_space_cool)/sum(b.buildings_in_bin * a.kbtu_space_cool) OVER (PARTITION BY d.old_county_id) 
+                                       (b.buildings_in_bin * a.kbtu_space_cool)/sum(b.buildings_in_bin * NULLIF(a.kbtu_space_cool, 0)) OVER (PARTITION BY d.old_county_id) 
                                        * e.space_cooling_thermal_load_mmbtu * 1000. 
                                 WHEN '%(initial_or_new)s' = 'new' THEN b.buildings_in_bin * a.kbtu_space_cool
                            END AS space_cool_kbtu_in_bin,
 
                            CASE WHEN '%(initial_or_new)s' = 'initial' THEN                           
-                                       (b.buildings_in_bin * a.kbtu_water_heat)/sum(b.buildings_in_bin * a.kbtu_water_heat) OVER (PARTITION BY d.old_county_id) 
+                                       (b.buildings_in_bin * a.kbtu_water_heat)/sum(b.buildings_in_bin * NULLIF(a.kbtu_water_heat, 0)) OVER (PARTITION BY d.old_county_id) 
                                        * e.water_heating_thermal_load_mmbtu * 1000.
                                 WHEN '%(initial_or_new)s' = 'new' THEN b.buildings_in_bin * a.kbtu_water_heat
                            END AS water_heat_kbtu_in_bin,
@@ -533,9 +534,9 @@ def estimate_agent_thermal_loads(schema, sector_abbr, initial_or_new, chunks, po
             )
             SELECT agent_id, buildings_in_bin, totsqft,
                    space_heat_kbtu_in_bin, space_cool_kbtu_in_bin, water_heat_kbtu_in_bin,
-                   space_heat_kbtu_in_bin/buildings_in_bin as space_heat_kbtu_per_building_in_bin,
-                   space_cool_kbtu_in_bin/buildings_in_bin as space_cool_kbtu_per_building_in_bin,
-                   water_heat_kbtu_in_bin/buildings_in_bin as water_heat_kbtu_per_building_in_bin
+                   COALESCE(space_heat_kbtu_in_bin/buildings_in_bin, 0) as space_heat_kbtu_per_building_in_bin,
+                   COALESCE(space_cool_kbtu_in_bin/buildings_in_bin, 0) as space_cool_kbtu_per_building_in_bin,
+                   COALESCE(water_heat_kbtu_in_bin/buildings_in_bin, 0) as water_heat_kbtu_per_building_in_bin
             FROM c;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     

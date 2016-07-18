@@ -31,7 +31,9 @@ select  a.pgid,
 	k.ulocale,
 	l.rate_ids,
 	l.rate_ranks,
-	g.hdf_load_index
+	g.hdf_load_index,
+	s.climate_zone_building_america as climate_zone_recs,
+	s.climate_zone_cbecs_2003 as climate_zone_cbecs
 from diffusion_blocks.blocks_ind a
 LEFT JOIN diffusion_blocks.block_canopy_height b
 	ON a.pgid = b.pgid
@@ -65,7 +67,9 @@ lEFT JOIN diffusion_shared.capital_cost_multipliers_us o
 LEFT JOIN diffusion_shared.load_and_customers_by_county_us p
 	on m.old_county_id = p.county_id
 LEFT JOIN diffusion_blocks.block_tract_id_alias r
-	ON a.pgid = r.pgid;
+	ON a.pgid = r.pgid
+LEFT JOIN diffusion_shared.county_geom s
+	on m.old_county_id = s.county_id;
 -- 945,057 rows
 
 -- row count should be:
