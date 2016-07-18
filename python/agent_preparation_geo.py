@@ -203,7 +203,8 @@ def calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks, sam
                           ELSE ROUND(a.bldg_count_%(sector_abbr)s * %(sample_pct)s, 0)::INTEGER
                       END AS n_agents
             	FROM diffusion_blocks.tract_building_count_by_sector a
-            	WHERE tract_id_alias in (%(chunk_place_holder)s);""" % inputs
+            	WHERE tract_id_alias in (%(chunk_place_holder)s)
+            AND a.bldg_count_%(sector_abbr)s > 0;""" % inputs
     
     p_run(pg_conn_string, sql, chunks, pool)
     
@@ -299,6 +300,7 @@ def sample_blocks(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_co
                          array_agg(a.sample_weight ORDER BY a.pgid) as block_weights
                  FROM %(schema)s.block_microdata_%(sector_abbr)s_joined a
                  WHERE a.tract_id_alias in (%(chunk_place_holder)s)
+                 AND a.bldg_count_%(sector_abbr)s > 0 
                  GROUP BY a.tract_id_alias
 
              )
