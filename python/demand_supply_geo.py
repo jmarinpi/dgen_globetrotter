@@ -568,12 +568,26 @@ def get_natural_gas_prices(con, schema, year):
 def get_distribution_network_data(con, schema):
 
     inputs = locals().copy()
-
-    sql = """SELECT a.tract_id_alias,
-                    a.road_meters as distribution_total_m
-            FROM diffusion_geo.tract_road_length a
-            INNER JOIN %(schema)s.tracts_to_model b
-            ON a.tract_id_alias = b.tract_id_alias;""" % inputs
+    # these two values come from Reber's thesis
+    inputs['road_scalar'] = 0.75
+    inputs['max_m_per_sqkm'] = 7500.
+    
+    sql = """WITH a AS
+            (
+                SELECT a.tract_id_alias,
+                    a.road_meters * %(road_scalar)s as road_meters,
+                    c.aland_sqm/1000./1000. * %(max_m_per_sqkm)s as max_distribution_m
+                FROM diffusion_geo.tract_road_length a
+                INNER JOIN %(schema)s.tracts_to_model b
+                    ON a.tract_id_alias = b.tract_id_alias
+                LEFT JOIN diffusion_blocks.tract_geoms c
+                    ON a.tract_id_alias = c.tract_id_alias
+            )
+            SELECT tract_id_alias,
+                   CASE WHEN road_meters > max_distribution_m THEN max_distribution_m
+                   ELSE road_meters
+                   END as distribution_total_m
+            from a;""" % inputs
 
     df = pd.read_sql(sql, con, coerce_float = False)
 
