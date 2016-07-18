@@ -489,7 +489,8 @@ def write_resources_outputs(con, cur, resources_df, schema):
     inputs = locals().copy()    
     
     # set fields to write
-    fields = [ 'tract_id_alias',
+    fields = [  'year',
+                'tract_id_alias',
                 'resource_uid',
                 'resource_type',
                 'depth_m',
@@ -505,6 +506,22 @@ def write_resources_outputs(con, cur, resources_df, schema):
                 'total_nameplate_capacity_per_wellset_mw',
                 'upfront_costs_per_wellset_dlrs',
                 'annual_costs_per_wellset_dlrs',
+                
+                'plant_installation_costs_per_wellset_dlrs',
+                'exploration_total_costs_per_wellset_dlrs',
+                'drilling_cost_per_wellset_dlrs',
+                'distribution_network_construction_costs_per_wellset_dlrs',
+                'distribution_m_per_wellset',
+                'peaking_boilers_construction_cost_per_wellset_dlrs',
+                'reservoir_pumping_gallons_per_year',
+                'operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs',
+                'distribution_pumping_gallons_per_year',                   
+                'operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs'
+                'reservoir_stimulation_costs_per_wellset_dlrs',
+                'om_labor_costs_per_wellset_per_year_dlrs',
+                'om_plant_costs_per_wellset_per_year_dlrs',
+                'om_well_costs_per_wellset_per_year_dlrs',
+                
                 'plant_capacity_factor',
                 'peaking_boiler_capacity_factor',
                 'total_blended_capacity_factor',

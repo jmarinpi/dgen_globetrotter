@@ -251,6 +251,7 @@ set role 'diffusion-writers';
 DROP TABLE IF EXISTS diffusion_template.resource_outputs_du;
 CREATE TABLE diffusion_template.resource_outputs_du
 (
+	year integer,
 	tract_id_alias INTEGER,
 	resource_uid INTEGER,
 	resource_type TEXT,
@@ -267,6 +268,20 @@ CREATE TABLE diffusion_template.resource_outputs_du
 	total_nameplate_capacity_per_wellset_mw NUMERIC,
 	upfront_costs_per_wellset_dlrs NUMERIC,
 	annual_costs_per_wellset_dlrs text,
+	plant_installation_costs_per_wellset_dlrs NUMERIC,
+	exploration_total_costs_per_wellset_dlrs NUMERIC,
+	drilling_cost_per_wellset_dlrs NUMERIC,
+	distribution_network_construction_costs_per_wellset_dlrs NUMERIC,
+	distribution_m_per_wellset NUMERIC,
+	peaking_boilers_construction_cost_per_wellset_dlrs NUMERIC,
+	reservoir_pumping_gallons_per_year NUMERIC,
+	operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs NUMERIC,
+	distribution_pumping_gallons_per_year NUMERIC,
+	operating_costs_distribution_pumping_costs_per_wellset_per_year_dlr NUMERIC,
+	reservoir_stimulation_costs_per_wellset_dlrs NUMERIC,
+	om_labor_costs_per_wellset_per_year_dlrs NUMERIC,
+	om_plant_costs_per_wellset_per_year_dlrs NUMERIC,
+	om_well_costs_per_wellset_per_year_dlrs NUMERIC,
 	plant_capacity_factor NUMERIC,
 	peaking_boiler_capacity_factor NUMERIC,
 	total_blended_capacity_factor NUMERIC,
