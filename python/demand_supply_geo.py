@@ -701,7 +701,8 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # ***
     # use nameplate peak demand of entire plant (including boilers) (because losses occur at end use sites)
     # don't use nameplate because distribution_network_construction_costs_dollars_per_m is based on actual demand
-    dataframe['distribution_m_per_wellset'] = dataframe['distribution_m_per_mw'] * dataframe['total_nameplate_capacity_per_wellset_mw']
+    dataframe['distribution_network_capacity_per_wellset_mw'] = dataframe['plant_nameplate_capacity_per_wellset_mw'] + (dataframe['peaking_boilers_nameplate_capacity_per_wellset_mw'] * dataframe['peaking_boiler_efficiency'])
+    dataframe['distribution_m_per_wellset'] = dataframe['distribution_m_per_mw'] * dataframe['distribution_network_capacity_per_wellset_mw']
     dataframe['distribution_network_construction_costs_per_wellset_dlrs'] = dataframe['distribution_network_construction_costs_dollars_per_m'] * dataframe['distribution_m_per_wellset'] * dataframe['cap_cost_multiplier']
     # ***
 
