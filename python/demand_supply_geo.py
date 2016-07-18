@@ -43,6 +43,7 @@ def setup_resource_data(cur, con, schema, seed, pg_procs, pg_conn_string):
     pool = multiprocessing.Pool(processes = pg_procs) 
     
     try:    
+        create_resource_id_sequence(schema, con, cur)
         setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, chunks)
         setup_resource_data_hydrothermal(cur, con, schema, seed, pool, pg_conn_string, chunks)
     except:
@@ -53,6 +54,26 @@ def setup_resource_data(cur, con, schema, seed, pg_procs, pg_conn_string):
     finally:
         # close the multiprocessing pool
         pool.close() 
+    
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def create_resource_id_sequence(schema, con, cur):
+    
+    msg = '\tCreating Sequence for Resource IDs'    
+    logger.info(msg)
+    
+    
+    inputs = locals().copy()
+     # create a sequence that will be used to populate a new primary key across all table partitions
+    # using a sequence ensure ids will be unique across all partitioned tables
+    sql = """DROP SEQUENCE IF EXISTS %(schema)s.resource_id_sequence;
+            CREATE SEQUENCE %(schema)s.resource_id_sequence
+            INCREMENT 1
+            START 1;""" % inputs
+    cur.execute(sql)
+    con.commit()   
+    
     
     
 #%%
@@ -67,9 +88,10 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, ch
     sql = """DROP TABLE IF EXISTS %(schema)s.resources_egs_hdr;
              CREATE UNLOGGED TABLE %(schema)s.resources_egs_hdr
             (
+                  resource_uid INTEGER,
                   year INTEGER,
                   tract_id_alias INTEGER,
-                  resource_id TEXT,
+                  source_resource_id TEXT,
                   resource_type TEXT,
                   system_type TEXT,
                   depth_m NUMERIC,
@@ -83,7 +105,8 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, ch
     sql = """INSERT INTO %(schema)s.resources_egs_hdr          
              WITH a AS
             (
-                	SELECT a.tract_id_alias, 
+                	SELECT nextval('%(schema)s.resource_id_sequence') as resource_uid,
+                         a.tract_id_alias, 
                          a.cell_gid as gid, 
                          a.area_of_intersection_sqkm as area_sqkm,
                          b.depth_km, 
@@ -101,7 +124,7 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, ch
             ),
             b as
             (
-                	SELECT tract_id_alias, gid, area_sqkm,
+                	SELECT resource_uid, tract_id_alias, gid, area_sqkm,
                 		depth_km, thickness_km,
                 		case when t_deg_c_est > 150 or t_deg_c_est < 30 then 0 -- bound temps between 30 and 150
                 		     else t_deg_c_est
@@ -111,7 +134,8 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, ch
             ),
             c as
             (
-                	SELECT c.year,
+                	SELECT b.resource_uid,
+                         c.year,
                          b.tract_id_alias,
                          b.gid,
                          b.depth_km,
@@ -122,9 +146,10 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, ch
                  FROM b
                  CROSS JOIN %(schema)s.input_du_egs_reservoir_factors c
             )
-            SELECT c.year,
+            SELECT c.resource_uid,
+                    c.year,
                 	c.tract_id_alias,
-                 c.gid::TEXT as resource_id,
+                 c.gid::TEXT as source_resource_id,
                  'egs'::TEXT as resource_type,
                  'hdr'::TEXT as system_type,
                  c.depth_km * 1000 as depth_m,
@@ -142,7 +167,13 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, ch
              USING BTREE(year);""" % inputs
     cur.execute(sql)
     con.commit()
-    
+
+    # add primary key
+    sql = """ALTER TABLE %(schema)s.resources_egs_hdr 
+             ADD PRIMARY KEY (resource_uid, year);""" % inputs
+    cur.execute(sql)
+    con.commit()
+        
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -155,8 +186,9 @@ def setup_resource_data_hydrothermal(cur, con, schema, seed, pool, pg_conn_strin
     sql = """DROP TABLE IF EXISTS %(schema)s.resources_hydrothermal;
              CREATE UNLOGGED TABLE %(schema)s.resources_hydrothermal 
              (
+                  resource_uid INTEGER,
                   tract_id_alias INTEGER,
-                  resource_id VARCHAR(5),
+                  source_resource_id VARCHAR(5),
                   resource_type TEXT,
                   system_type TEXT,
                   depth_m INTEGER,
@@ -167,8 +199,9 @@ def setup_resource_data_hydrothermal(cur, con, schema, seed, pool, pg_conn_strin
     con.commit()
     
     sql = """INSERT INTO %(schema)s.resources_hydrothermal
-            SELECT a.tract_id_alias,
-                	a.resource_uid as resource_id,
+            SELECT nextval('%(schema)s.resource_id_sequence') as resource_uid,
+                    a.tract_id_alias,
+                	a.resource_uid as source_resource_id,
                 	a.resource_type,
                 	 a.system_type,
                 		  round(
@@ -183,6 +216,12 @@ def setup_resource_data_hydrothermal(cur, con, schema, seed, pool, pg_conn_strin
             WHERE a.tract_id_alias IN (%(chunk_place_holder)s);""" % inputs
     agent_prep.p_run(pg_conn_string, sql, chunks, pool)
 
+    # add primary key
+    sql = """ALTER TABLE %(schema)s.resources_hydrothermal 
+             ADD PRIMARY KEY (resource_uid);""" % inputs
+    cur.execute(sql)
+    con.commit()
+
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -190,26 +229,30 @@ def get_resource_data(con, schema, year):
     
     inputs = locals().copy()
         
-    sql = """SELECT a.tract_id_alias,
-                    a.resource_id,
+    sql = """SELECT a.resource_uid,
+                    a.tract_id_alias,
+                    a.source_resource_id,
                     a.resource_type,
                     a.system_type,
                     a.depth_m,
                     a.n_wellsets_in_tract,
                     a.extractable_resource_per_wellset_in_tract_mwh as lifetime_resource_per_wellset_mwh
              FROM %(schema)s.resources_hydrothermal a
+             WHERE a.extractable_resource_per_wellset_in_tract_mwh > 0
              
              UNION ALL
              
-             SELECT b.tract_id_alias,
-                    b.resource_id,
+             SELECT b.resource_uid,
+                    b.tract_id_alias,
+                    b.source_resource_id,
                     b.resource_type,
                     b.system_type,
                     b.depth_m,
                     b.n_wellsets_in_tract,
                     b.extractable_resource_per_wellset_in_tract_mwh as lifetime_resource_per_wellset_mwh
              FROM %(schema)s.resources_egs_hdr b
-             WHERE b.year = %(year)s;""" % inputs
+             WHERE b.year = %(year)s
+             AND b.extractable_resource_per_wellset_in_tract_mwh > 0;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
     
     return df
@@ -690,7 +733,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
                                                     ).tolist()
 
     out_cols = ['tract_id_alias',
-                   'resource_id',
+                   'resource_uid',
                    'resource_type',
                    'depth_m',
                    'system_type',
@@ -865,6 +908,7 @@ def lcoe_to_supply_curve(resources_with_costs_df):
 
     replicate_indices = np.repeat(resources_with_costs_df.index.values, resources_with_costs_df['n_wellsets_in_tract'])
     out_cols = ['tract_id_alias',
+                'resource_uid',
                 'lcoe_dlrs_mwh',
                 'total_nameplate_capacity_per_wellset_mw',
                 'total_consumable_energy_per_wellset_mwh'
@@ -984,8 +1028,9 @@ def intersect_supply_demand_curves(demand_curves_df, supply_curves_df):
                                        'lcoe_dlrs_mwh':[]})
     
     for tract in supply_curves_df['tract_id_alias'].unique():
-        supply_curve = supply_curves_df[(supply_curves_df['tract_id_alias'] == tract)].copy()
-        demand_curve = demand_curves_df[(demand_curves_df['tract_id_alias'] == tract)].copy()
+        cols = ['tract_id_alias', 'capacity_mw', 'energy_mwh', 'lcoe_dlrs_mwh']
+        supply_curve = supply_curves_df[(supply_curves_df['tract_id_alias'] == tract)][cols].copy()
+        demand_curve = demand_curves_df[(demand_curves_df['tract_id_alias'] == tract)][cols].copy()
         
 
             
@@ -999,13 +1044,17 @@ def intersect_supply_demand_curves(demand_curves_df, supply_curves_df):
                                        
         elif supply_curve['lcoe_dlrs_mwh'].max() < demand_curve['lcoe_dlrs_mwh'].min(): 
             #All supply prices are lower price than demand: build all capacity
-            settling_price = supply_curve.iloc[-1].to_dict() # Take the last row, which should be the largest system size
+            settling_price = supply_curve.iloc[-1][cols].to_dict() # Take the last row, which should be the largest system size
             
         else: # There is at least one settling price. 
             supply_curve.sort('lcoe_dlrs_mwh', inplace = True)
+            supply_curve['capacity_mw'] = supply_curve['capacity_mw'].cumsum()
+            supply_curve['energy_mwh'] = supply_curve['energy_mwh'].cumsum()
             supply_curve['metric'] = 'supply'
     
             demand_curve.sort('lcoe_dlrs_mwh', ascending = False, inplace = True)
+            demand_curve['capacity_mw'] = demand_curve['capacity_mw'].cumsum()
+            demand_curve['energy_mwh'] = demand_curve['energy_mwh'].cumsum()
             demand_curve['metric'] = 'demand'
             
             # Check if curves are monotonic-- I think its impossible since we first sort by LCOE, then do cum.sum on energy
@@ -1029,7 +1078,7 @@ def intersect_supply_demand_curves(demand_curves_df, supply_curves_df):
             
             # Add replace 'NA' last entry with a dummy value
             combined['diff'].iloc[-1] = 1e99
-            settling_price = combined.loc[(combined['diff'] <0) & (combined['metric'] == 'supply')]
+            settling_price = combined.loc[(combined['diff'] <0) & (combined['metric'] == 'supply')][cols]
             
             #Two other edge cases: all demand is satisfied at a consumer surplus: build all capacity up to demand total
             #                      all available supply could satisfy demand at a surplus
@@ -1039,16 +1088,82 @@ def intersect_supply_demand_curves(demand_curves_df, supply_curves_df):
                 max_supply = combined[combined['metric'] == 'supply'].max().energy_mwh
                 
                 if max_demand > max_supply:
-                    settling_price = combined[(combined['energy_mwh'] == max_demand)].iloc[0]
+                    settling_price = combined[(combined['energy_mwh'] == max_demand)].iloc[0][cols]
                 elif max_demand <= max_supply:
-                    combined[(combined['metric'] == 'supply') & (combined['energy_mwh'] > max_demand)].iloc[0]
+                    settling_price = combined[(combined['metric'] == 'supply') & (combined['energy_mwh'] > max_demand)].iloc[0][cols]
                     #Take the first supply that's greater than the max demand 
             else:
-                settling_price.iloc[0]
-                settling_price.drop(['metric','diff'], inplace = True)
+                settling_price = settling_price.iloc[0][cols]
+
+            #settling_price.drop(['metric','diff'], inplace = True, axis = 1)
 
 
         settling_pq_values = settling_pq_values.append(settling_price, ignore_index = True)
     
     
     return settling_pq_values
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_previously_subscribed_agents(con, schema):
+    
+    inputs = locals().copy()
+    sql = """SELECT agent_id, 
+                    sum(new_adopters) as previously_subscribed_buildings
+                    FROM %(schema)s.agent_outputs_du
+                    WHERE new_adopters > 0
+                    GROUP BY agent_id;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df                    
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_previously_subscribed_wellsets(con, schema):
+    
+    inputs = locals().copy()
+    sql = """SELECT resource_uid, 
+                    sum(subscribed_wellsets) as previously_subscribed_wellsets
+            FROM %(schema)s.resource_outputs_du
+            WHERE subscribed_wellsets > 0
+            GROUP BY resource_uid;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df                    
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def subtract_previously_subscribed_agents(dataframe, previously_subscribed_agents_df):
+    
+    in_cols = dataframe.columns.tolist()
+    dataframe = pd.merge(dataframe, previously_subscribed_agents_df, how = 'left', on = 'agent_id')
+    # fill nas in previously_subscribed_buildings
+    dataframe['previously_subscribed_buildings'] = dataframe['previously_subscribed_buildings'].fillna(0)
+    # subtract from buildings in bin
+    dataframe.loc[:, 'buildings_in_bin'] = dataframe['buildings_in_bin'] - dataframe['previously_subscribed_buildings']    
+    
+    return_cols = in_cols
+    dataframe = dataframe[return_cols]
+    
+    return dataframe
+    
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def subtract_previously_subscribed_wellsets(resource_df, previously_subscribed_wellsets_df):
+    
+    in_cols = resource_df.columns.tolist()
+    resource_df = pd.merge(resource_df, previously_subscribed_wellsets_df, how = 'left', on = 'resource_uid')
+    # fill nas in previously_subscribed wellsets
+    resource_df['previously_subscribed_wellsets'] = resource_df['previously_subscribed_wellsets'].fillna(0)
+    # subtract from n_wellsets_in_tract
+    resource_df.loc[:, 'n_wellsets_in_tract'] = resource_df['n_wellsets_in_tract'] - resource_df['previously_subscribed_wellsets']
+    # drop any wellsets with zero remaining welslets
+    resource_df = resource_df[resource_df['n_wellsets_in_tract'] > 0]
+    
+    return_cols = in_cols
+    resource_df = resource_df[return_cols]
+    
+    return resource_df
+ 

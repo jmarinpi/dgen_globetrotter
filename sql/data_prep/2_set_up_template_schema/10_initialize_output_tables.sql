@@ -245,3 +245,40 @@ CREATE TABLE diffusion_template.agent_outputs_du
 	lcoe_dlrs_mwh numeric,
 	new_adopters numeric
 );
+
+
+set role 'diffusion-writers';
+DROP TABLE IF EXISTS diffusion_template.resource_outputs_du;
+CREATE TABLE diffusion_template.resource_outputs_du
+(
+	tract_id_alias INTEGER,
+	resource_uid INTEGER,
+	resource_type TEXT,
+	depth_m NUMERIC,
+	system_type TEXT,
+	n_wellsets_in_tract INTEGER,
+	lifetime_resource_per_wellset_mwh NUMERIC,
+	total_consumable_energy_per_wellset_mwh NUMERIC,
+	plant_nameplate_capacity_per_wellset_mw NUMERIC,
+	plant_effective_capacity_per_wellset_mw NUMERIC,
+	peaking_boilers_nameplate_capacity_per_wellset_mw NUMERIC,
+	peaking_boilers_effective_capacity_per_wellset_mw NUMERIC,
+	total_effective_capacity_per_wellset_mw NUMERIC,
+	total_nameplate_capacity_per_wellset_mw NUMERIC,
+	upfront_costs_per_wellset_dlrs NUMERIC,
+	annual_costs_per_wellset_dlrs text,
+	plant_capacity_factor NUMERIC,
+	peaking_boiler_capacity_factor NUMERIC,
+	total_blended_capacity_factor NUMERIC,
+	inflation_rate NUMERIC,
+	interest_rate_nominal NUMERIC,
+	interest_rate_during_construction_nominal NUMERIC,
+	rate_of_return_on_equity NUMERIC,
+	debt_fraction NUMERIC,
+	tax_rate NUMERIC,
+	construction_period_yrs INTEGER,
+	plant_lifetime_yrs INTEGER,
+	depreciation_period INTEGER,
+	lcoe_dlrs_mwh NUMERIC,
+	subscribed_wellsets NUMERIC
+);

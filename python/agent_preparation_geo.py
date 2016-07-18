@@ -68,7 +68,7 @@ def p_run(pg_conn_string, sql, chunks, pool):
     errors_df = results_df[results_df['status_code'] == 1]
     if errors_df.shape[0] > 0:
         # errors = '\n\n'.join(errors_df['msg']) # if you'd rather print all messages, but usually they will be redundant
-        first_error = errors_df['msg'][0]
+        first_error = errors_df['msg'].tolist()[0]
         pool.close() 
         raise Exception('One or more SQL errors occurred.\n\nFirst error was:\n\n%s' % first_error)
     else:

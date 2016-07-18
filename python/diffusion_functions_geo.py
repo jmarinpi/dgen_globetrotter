@@ -298,16 +298,6 @@ def calc_equiv_time(df):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def identify_subscribed_agents(plants_to_be_built_df, demand_curves_df):
     
-#    # FOR TESTING ONLY
-#    plants_to_be_built_df = plants_filtered_df.copy()
-#    plants_to_be_built_df = plants_to_be_built_df.append(plant_sizes_market_df.ix[0])
-#    plants_to_be_built_df.loc[0, 'capacity_mw'] = 30.
-#    plants_to_be_built_df.loc[0, 'energy_mwh'] = 20000.
-#    plants_to_be_built_df.loc[0, 'lcoe_dlrs_mwh'] = 120.
-#    plants_to_be_built_df.loc[0, 'plant_size_market_mw'] = 6.
-#    plants_to_be_built_df.loc[0, 'cumulative_capacity_mw'] = 6. 
-#    # *****
-    
     # agents who buy are identified from:
     if plants_to_be_built_df.shape[0] == 0:
         # return empty data frame
@@ -318,9 +308,9 @@ def identify_subscribed_agents(plants_to_be_built_df, demand_curves_df):
         demand_curves_for_plants_to_be_built_df = pd.merge(demand_curves_df, plants_to_be_built_df, how = 'inner', on = 'tract_id_alias', suffixes = ['_agent', '_plant'])
         demand_with_surplus_df = demand_curves_for_plants_to_be_built_df[demand_curves_for_plants_to_be_built_df['lcoe_dlrs_mwh_agent'] >= demand_curves_for_plants_to_be_built_df['lcoe_dlrs_mwh_plant']]
         # sort by demand lcoe
-        demand_with_surplus_df.sort('lcoe_dlrs_mwh_agent', ascending = False, inplace = True)
+        demand_with_surplus_df.sort(['tract_id_alias', 'lcoe_dlrs_mwh_agent'], ascending = False, inplace = True)
         # take the cumulative sum of agent energy
-        demand_with_surplus_df['energy_mwh_agent_cumsum'] = demand_with_surplus_df['energy_mwh_agent'].cumsum(axis = 0)
+        demand_with_surplus_df['energy_mwh_agent_cumsum'] = demand_with_surplus_df.groupby('tract_id_alias')['energy_mwh_agent'].cumsum(axis = 0)
         # filter to the set below energy_mwh_plant
         demand_with_surplus_filtered_df = demand_with_surplus_df[demand_with_surplus_df['energy_mwh_agent_cumsum'] <= demand_with_surplus_df['energy_mwh_plant']]
         # count how many buildings from each agent_id are asssociated with this plant
@@ -448,4 +438,104 @@ def write_agent_outputs(con, cur, agents, schema):
     # commit the additions and close the stringio file (clears memory)
     con.commit()    
     s.close()
-       
+
+
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def identify_subscribed_resources(plants_to_be_built_df, supply_curves_df):
+    
+    # agents who buy are identified from:
+    if plants_to_be_built_df.shape[0] == 0:
+        # return empty data frame
+        subscribed_resources_df = pd.DataFrame({'resource_uid' : np.array([], dtype = 'int64'), 
+                                             'subscribed_wellsets': np.array([], dtype = 'int64')})
+    else:
+        
+        supply_curves_for_plants_to_be_built_df = pd.merge(supply_curves_df, plants_to_be_built_df, how = 'inner', on = 'tract_id_alias', suffixes = ['_resource', '_plant'])
+        supply_with_surplus_df = supply_curves_for_plants_to_be_built_df[supply_curves_for_plants_to_be_built_df['lcoe_dlrs_mwh_resource'] <= supply_curves_for_plants_to_be_built_df['lcoe_dlrs_mwh_plant']]
+        # sort by supply (resource) lcoe
+        supply_with_surplus_df.sort(['tract_id_alias','lcoe_dlrs_mwh_resource'], ascending = True, inplace = True)
+        # take the cumulative sum of agent energy
+        supply_with_surplus_df['energy_mwh_resource_cumsum'] = supply_with_surplus_df.groupby('tract_id_alias')['energy_mwh_resource'].cumsum(axis = 0)
+        # filter to the set below energy_mwh_plant
+        supply_with_surplus_filtered_df = supply_with_surplus_df[supply_with_surplus_df['energy_mwh_resource_cumsum'] <= supply_with_surplus_df['energy_mwh_plant']]
+        # add wellsets field
+        supply_with_surplus_filtered_df['n_wellsets'] = 1
+        # count how many buildings from each agent_id are asssociated with this plant
+        subscribed_resources_df = supply_with_surplus_filtered_df.groupby('resource_uid')['n_wellsets'].sum().reset_index(drop = False, inplace = False)
+        # rename buildings_in_replicate to subscribed_buildings
+        rename_map = {'n_wellsets' : 'subscribed_wellsets'}
+        subscribed_resources_df = subscribed_resources_df.rename(columns = rename_map) 
+    
+    return subscribed_resources_df
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def mark_subscribed_resources(dataframe, subscribed_resources_df):
+    
+    dataframe = pd.merge(dataframe, subscribed_resources_df, how = 'left', on = 'resource_uid')
+    # fill NAs with zero
+    dataframe.loc[:, 'subscribed_wellsets'] = dataframe['subscribed_wellsets'].fillna(0)
+
+    return dataframe
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def write_resources_outputs(con, cur, resources_df, schema):
+    
+    inputs = locals().copy()    
+    
+    # set fields to write
+    fields = [ 'tract_id_alias',
+                'resource_uid',
+                'resource_type',
+                'depth_m',
+                'system_type',
+                'n_wellsets_in_tract',
+                'lifetime_resource_per_wellset_mwh',
+                'total_consumable_energy_per_wellset_mwh',
+                'plant_nameplate_capacity_per_wellset_mw',
+                'plant_effective_capacity_per_wellset_mw',
+                'peaking_boilers_nameplate_capacity_per_wellset_mw',
+                'peaking_boilers_effective_capacity_per_wellset_mw',
+                'total_effective_capacity_per_wellset_mw',
+                'total_nameplate_capacity_per_wellset_mw',
+                'upfront_costs_per_wellset_dlrs',
+                'annual_costs_per_wellset_dlrs',
+                'plant_capacity_factor',
+                'peaking_boiler_capacity_factor',
+                'total_blended_capacity_factor',
+                'inflation_rate',
+                'interest_rate_nominal',
+                'interest_rate_during_construction_nominal',
+                'rate_of_return_on_equity',
+                'debt_fraction',
+                'tax_rate',
+                'construction_period_yrs',
+                'plant_lifetime_yrs',
+                'depreciation_period',
+                'lcoe_dlrs_mwh',
+                'subscribed_wellsets'
+            ]    
+
+    # convert formatting of fields list
+    inputs['fields_str'] = utilfunc.pylist_2_pglist(fields).replace("'","")       
+
+    # open an in memory stringIO file (like an in memory csv)
+    s = StringIO()
+    # write the data to the stringIO
+    resources_df.loc[:, fields].to_csv(s, index = False, header = False)
+    # seek back to the beginning of the stringIO file
+    s.seek(0)
+    # copy the data from the stringio file to the postgres table
+    sql = 'COPY %(schema)s.resource_outputs_du (%(fields_str)s) FROM STDOUT WITH CSV' % inputs
+    cur.copy_expert(sql, s)
+    # commit the additions and close the stringio file (clears memory)
+    con.commit()    
+    s.close()
+
+
+    

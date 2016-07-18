@@ -563,6 +563,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     del agents_initial, agents_new
                     # drop ghp for now
                     agents = agents.filter_tech('du')
+                    # get previously subscribed agents
+                    previously_subscribed_agents_df = demand_supply.get_previously_subscribed_agents(con, schema)
+                    # subtract previously subscribed agents
+                    agents_initial = AgentsAlgorithm(agents, demand_supply.subtract_previously_subscribed_agents, (previously_subscribed_agents_df, )).compute()
+                    
                     
                     # get regional prices of energy
                     energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
@@ -589,8 +594,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # calculate distribution demand density
                     demand_density_df = demand_supply.calculate_distribution_demand_density(tract_peak_demand_df, distribution_df)
 
-
+                    # get resources
                     resource_df = demand_supply.get_resource_data(con, schema, year)
+                    # get previously subscribed wellsets
+                    previously_subscribed_wellsets_df = demand_supply.get_previously_subscribed_wellsets(con, schema)
+                    # subtract previously subscribed wellsets
+                    resource_df = demand_supply.subtract_previously_subscribed_wellsets(resource_df, previously_subscribed_wellsets_df)
+                                        
+                    
+                    
                     # get natural gas prics
                     ng_prices_df = demand_supply.get_natural_gas_prices(con, schema, year)
                     # get the du cost data
@@ -625,7 +637,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # CALCULATE PLANT SIZES BASED ON ECONOMIC POTENTIAL
                     #==============================================================================   
-                    plant_sizes_economic_df = demand_supply.intersect_supply_demand_curves(demand_curves_df, supply_curves_df) # TODO: replace with actual function
+                    plant_sizes_economic_df = demand_supply.intersect_supply_demand_curves(demand_curves_df, supply_curves_df)
                                           
                     #==============================================================================
                     # CALCULATE PLANT SIZES BASED ON MARKET POTENTIAL
@@ -668,12 +680,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     diffunc.write_agent_outputs(con, cur, agents, schema)
                     
                     # PLANTS
-                    # TODO: identify the subscribed plants
-                    # TODO: append this info to other key information about plants
-                    # TODO: write results to database                    
-                    
-                    # TODO: figure out how to use these to modify agents (buildings_in_bin) and resources available (wellsets_in_tract)
-                    
+                    # identify the subscribed resources
+                    subscribed_resources_df = diffunc.identify_subscribed_resources(plants_to_be_built_df, supply_curves_df)
+                    # append this info to other key information about 
+                    subscribed_resources_with_costs_df = diffunc.mark_subscribed_resources(resources_with_costs_df, subscribed_resources_df)
+                    # write results to database                    
+                    diffunc.write_resources_outputs(con, cur, subscribed_resources_with_costs_df, schema)
+            
+            # TODO: get visualizations working and remove this short-circuit
+            return        
                 
             #==============================================================================
             #    Outputs & Visualization
