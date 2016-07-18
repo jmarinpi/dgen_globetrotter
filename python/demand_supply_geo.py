@@ -731,6 +731,8 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
     # ***    
     dataframe['peaking_boilers_fuel_costs_per_wellset_dlrs'] = ng_annual_costs.tolist()
     # ***
+    # calculate average (for results tracking only)
+    dataframe['avg_peaking_boilers_fuel_costs_per_wellset_dlrs'] = ng_annual_costs.mean(axis = 1)
 
     # combine all upfront costs
     dataframe['upfront_costs_per_wellset_dlrs'] = ( dataframe['peaking_boilers_construction_cost_per_wellset_dlrs'] +
@@ -767,6 +769,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
                    'plant_installation_costs_per_wellset_dlrs',
                    'exploration_total_costs_per_wellset_dlrs',
                    'drilling_cost_per_wellset_dlrs',
+                   'reservoir_stimulation_costs_per_wellset_dlrs',
                    'distribution_network_construction_costs_per_wellset_dlrs',
                    'distribution_m_per_wellset',
                    'peaking_boilers_construction_cost_per_wellset_dlrs',
@@ -774,10 +777,11 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
                    'operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs',
                    'distribution_pumping_gallons_per_year',                   
                    'operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs',
-                   'reservoir_stimulation_costs_per_wellset_dlrs',
                    'om_labor_costs_per_wellset_per_year_dlrs',
                    'om_plant_costs_per_wellset_per_year_dlrs',
                    'om_well_costs_per_wellset_per_year_dlrs',
+                   'peaking_boilers_mwh_per_year_per_wellset',
+                   'avg_peaking_boilers_fuel_costs_per_wellset_dlrs',
                    
                    'plant_capacity_factor',
                    'peaking_boiler_capacity_factor',
