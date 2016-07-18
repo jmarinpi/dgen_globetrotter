@@ -773,7 +773,7 @@ def apply_cost_and_performance_data(resource_df, costs_and_performance_df, reser
                    'reservoir_pumping_gallons_per_year',
                    'operating_costs_reservoir_pumping_costs_per_wellset_per_year_dlrs',
                    'distribution_pumping_gallons_per_year',                   
-                   'operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs'
+                   'operating_costs_distribution_pumping_costs_per_wellset_per_year_dlrs',
                    'reservoir_stimulation_costs_per_wellset_dlrs',
                    'om_labor_costs_per_wellset_per_year_dlrs',
                    'om_plant_costs_per_wellset_per_year_dlrs',
