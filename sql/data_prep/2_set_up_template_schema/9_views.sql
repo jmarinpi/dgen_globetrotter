@@ -400,7 +400,7 @@ with a as
 ),
 b as
 (
-	select a.year, a.census_division_abbr, a.dlrs_per_mmbtu*3.412e6 as dlrs_per_mwh
+	select a.year, a.census_division_abbr, a.dlrs_per_mmbtu*3.412141 as dlrs_per_mwh
 	FROM diffusion_shared.aeo_energy_price_projections_2015 a
 	inner join diffusion_template.input_main_scenario_options b
 	ON a.scenario = b.regional_heating_fuel_cost_trajectories
@@ -420,7 +420,7 @@ select a.year,
 	a.census_division_abbr,	
 	a.sector_abbr,
 	a.fuel_type, 
-	a.dlrs_per_mmbtu * 0.0034121412 as dlrs_per_kwh
+	a.dlrs_per_mmbtu * 0.003412141 as dlrs_per_kwh
 FROM diffusion_shared.aeo_energy_price_projections_2015 a
 inner join diffusion_template.input_main_scenario_options b
 ON a.scenario = b.regional_heating_fuel_cost_trajectories;
