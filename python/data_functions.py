@@ -836,7 +836,10 @@ def get_bass_params(con, schema):
              FROM %(schema)s.input_solar_bass_params
              UNION ALL
              SELECT *
-             FROM %(schema)s.input_wind_bass_params;""" % inputs
+             FROM %(schema)s.input_wind_bass_params
+             UNION ALL
+             SELECT *
+             FROM %(schema)s.input_ghp_bass_params;""" % inputs
     
     bass_df = pd.read_sql(sql, con, coerce_float = True)
     

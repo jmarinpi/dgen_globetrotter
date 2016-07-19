@@ -555,7 +555,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
             elif tech_mode == 'geo' and sub_mode == 'ghp':
                 # TODO: fix/write these
-                #dsire_opts = datfunc.get_dsire_settings(con, schema)
+                dsire_opts = datfunc.get_dsire_settings(con, schema)
                 #incentives_cap = datfunc.get_incentives_cap(con, schema)
                 #state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, dsire_opts)            
                 #itc_options = datfunc.get_itc_incentives(con, schema)
@@ -623,6 +623,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     leasing_availability_df = mutation.get_leasing_availability(con, schema, year)
                     agents = AgentsAlgorithm(agents, mutation.apply_leasing_availability, (leasing_availability_df, )).compute()                                        
             
+                    #==========================================================================================================
+                    # CASHFLOWS CALCULATIONS
+                    #==========================================================================================================               
                     # Calculate economics of adoption for different busines models
                     df = finfunc.calc_economics(agents.dataframe, schema, 
                                                market_projections, financial_parameters, rate_growth_df,

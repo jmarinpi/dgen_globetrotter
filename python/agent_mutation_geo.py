@@ -74,7 +74,8 @@ def get_psuedo_ghp_agents(con, schema):
                     10000. as buildings_in_bin,
                     FALSE::BOOLEAN as new_construction,
                     'closed vertical' as sys_config,
-                    25000. as totsqft_conditioned
+                    25000. as totsqft_conditioned,
+                    'WY'::VARCHAR(2) as state_abbr
              FROM diffusion_geo.ghp_simulations_com;""" % inputs
     
     df = pd.read_sql(sql, con, coerce_float = False)
