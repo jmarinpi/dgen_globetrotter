@@ -72,19 +72,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
         rate_esc.loc[:, 'rate_escalations'] = np.array(rate_esc.rate_escalations.tolist(), dtype = 'float64')[:, start_i:end_i].tolist()
         df = pd.merge(df, rate_esc, how = 'left', on = ['sector_abbr', 'census_division_abbr'])
 
-    # split out rows to run through state and old dsire incentives
-    df_dsire_incentives = df[(df['tech'] == 'solar')]
-    df_state_dsire_incentives = df[(df['tech'] == 'wind')]
-    # Calculate value of incentives. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
-    value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, srecs, year, 
-                                                              dsire_opts, assumed_duration = 10)
-    value_of_incentives_state_dsire = datfunc.calc_state_dsire_incentives(df_state_dsire_incentives, state_dsire, year)
-    # combine the results by concatenating the dataframes
-    value_of_incentives_all = pd.concat([value_of_incentives_dsire, value_of_incentives_state_dsire], axis = 0, ignore_index = True)
-    # sum up total incentives by agent
-    value_of_incentives_all_summed = value_of_incentives_all[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']].groupby(['tech', 'sector_abbr', 'county_id','bin_id','business_model']).sum().reset_index()     
-    # join back to the main df
-    df = pd.merge(df, value_of_incentives_all_summed, how = 'left', on = ['county_id','bin_id','business_model', 'tech', 'sector_abbr'])
+    # TODO: add new calc dsire for ghp
     fill_vals = {'value_of_increment' : 0,
                 'value_of_pbi_fit' : 0,
                 'value_of_ptc' : 0,
@@ -92,9 +80,10 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
                 'ptc_length' : 0,
                 'value_of_rebate' : 0,
                 'value_of_tax_credit_or_deduction' : 0}    
-    df.fillna(fill_vals, inplace = True)
+    for col, val in fill_vals.iteritems():
+        df[col] = val
     # Calculates value of ITC, return df with a new column 'value_of_itc'
-    df = datfunc.calc_value_of_itc(df, itc_options, year)
+    df = calc_value_of_itc(df, itc_options, year)
 
     # calculate cashflows
     revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime)    
@@ -102,12 +91,14 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
 
-    df = calc_lcoe(df, inflation_rate, econ_life = 20)
+    
+    #df = calc_lcoe(df, inflation_rate, econ_life = 20)
     npv4 = calc_npv(cfs, np.array([0.04]))
     npv_agent = calc_npv(cfs, df.discount_rate)
     with np.errstate(invalid = 'ignore'):
-        df['npv4'] = np.where(df.system_size_kw == 0, 0, npv4/df.system_size_kw)
-        df['npv_agent'] = np.where(df.system_size_kw == 0, 0, npv_agent/df.system_size_kw)
+        # TODO: normmalize to system size???
+        df['npv4'] = np.where(df['ghp_system_size_tons'] == 0, 0, npv4)
+        df['npv_agent'] = np.where(df['ghp_system_size_tons'] == 0, 0, npv_agent)
 
     
     # Convert metric value to integer as a primary key, then bound within max market share ranges
@@ -136,12 +127,52 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     
     # Derate the maximum market share for commercial and industrial customers in leased buildings by (1/3)
     # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
-    df['max_market_share'] = np.where(df.owner_occupancy_status == 2, df.max_market_share/3,df.max_market_share)
+    df['max_market_share'] = np.where(df['owner_occupied_building'] == True, df['max_market_share']/3, df['max_market_share'])
     
     return df
 #==============================================================================    
     
+def calc_value_of_itc(df, itc_options, year):
+        
+    # create duplicates of the itc data for each business model
+    # host-owend
+    itc_ho = itc_options.copy() 
+    # set the business model
+    itc_ho['business_model'] = 'host_owned'
     
+    # tpo
+    itc_tpo_nonres = itc_options[itc_options['sector_abbr'] <> 'res'].copy() 
+    itc_tpo_res = itc_options[itc_options['sector_abbr'] == 'com'].copy() 
+    # reset the sector_abbr to res
+    itc_tpo_res.loc[:, 'sector_abbr'] = 'res'
+    # combine the data
+    itc_tpo = pd.concat([itc_tpo_nonres, itc_tpo_res], axis = 0, ignore_index = True)
+    # set the business model
+    itc_tpo['business_model'] = 'tpo'    
+    
+    # concatente the business models
+    itc_all = pd.concat([itc_ho, itc_tpo], axis = 0, ignore_index = True)
+
+    row_count = df.shape[0]   
+    # merge to df
+    df = pd.merge(df, itc_all, how = 'left', on = ['sector_abbr', 'year', 'business_model', 'tech'])
+    # drop the rows that are outside of the allowable system sizes
+    keep_rows = np.where(df['tech'] == 'ghp', (df['ghp_system_size_tons'] > df['min_size_kw_or_tons']) & (df['ghp_system_size_tons'] <= df['max_size_kw_or_tons']), (df['system_size_kw'] > df['min_size_kw_or_tons']) & (df['system_size_kw'] <= df['max_size_kw_or_tons']))
+    df = df[keep_rows]
+    # confirm shape hasn't changed
+    if df.shape[0] <> row_count:
+        raise ValueError('Row count of dataframe changed during merge')
+        
+#    # Calculate the value of ITC (accounting for reduced costs from state/local incentives)
+    df['applicable_ic'] = df['installed_costs_dlrs'] - (df['value_of_tax_credit_or_deduction'] + df['value_of_rebate'] + df['value_of_increment'])
+    df['value_of_itc'] =  (
+                            df['applicable_ic'] *
+                            df['itc_fraction'] 
+                          )
+                          
+    df = df.drop(['applicable_ic', 'itc_fraction'], axis = 1)
+    
+    return df    
     
 #==============================================================================
 def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime = 25):
@@ -178,7 +209,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
 
     # default is 25 year analysis periods
     shape=(len(df),tech_lifetime); 
-    df['ic'] = df['installed_costs_dollars_per_kw'] * df['system_size_kw']
+    df['ic'] = df['installed_costs_dlrs']
     
     # merge in the incentives cap
     df = pd.merge(df, incentive_cap, how = 'left', on = ['tech'])
@@ -223,14 +254,14 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
     # but for solar, calculate and replace the inverter replacement costs with actual values
     inverter_cost = np.zeros(shape)
     # Annualized (undiscounted) inverter replacement cost $/year (includes system size). Applied from year 10 onwards since assume initial 10-year warranty
-    with np.errstate(invalid = 'ignore'):
-        inverter_replacement_cost  = np.where(df['tech'] == 'solar', df['system_size_kw'] * df.inverter_cost_dollars_per_kw/df.inverter_lifetime_yrs, 0)
-    inverter_cost[:,10:] = -inverter_replacement_cost[:,np.newaxis]
+#    with np.errstate(invalid = 'ignore'):
+#        inverter_replacement_cost  = np.where(df['tech'] == 'solar', df['system_size_kw'] * df.inverter_cost_dollars_per_kw/df.inverter_lifetime_yrs, 0)
+    #inverter_cost[:,10:] = -inverter_replacement_cost[:,np.newaxis]
     
     # 2) Costs of fixed & variable O&M. O&M costs are tax deductible for commerical entitites
     om_cost = np.zeros(shape);
-    om_cost[:] =   (-df.variable_om_dollars_per_kwh * df['aep'])[:,np.newaxis]
-    om_cost[:] +=  (-df.fixed_om_dollars_per_kw_per_yr * df['system_size_kw'])[:,np.newaxis]
+    om_cost[:] =   (-df['variable_om_dlrs_per_year'])[:,np.newaxis]
+    om_cost[:] +=  (-df['fixed_om_dlrs_per_year'])[:,np.newaxis]
     om_cost[:] *= (1 - (df.tax_rate[:,np.newaxis] * ((df.sector_abbr == 'ind') | (df.sector_abbr == 'com') | (df.business_model == 'tpo'))[:,np.newaxis]))
 
     ## Revenue
@@ -247,19 +278,19 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
     # Take the difference of bills in first year, this is the revenue in the first year. Then assume that bill savings will follow
     # the same trajectories as changes in rate escalation. Output of this should be a data frame of shape (len(df),30)
     
-    # TODO: curtailments should be applied to the generation, however currently infeasible for SAM integration
-    if curtailment_method == 'net':
-        df['first_year_energy_savings'] = (1- (df['curtailment_rate'] * df['excess_generation_percent'])) * (df['first_year_bill_without_system'] - df['first_year_bill_with_system'])
-    elif curtailment_method == 'gross':
-        df['first_year_energy_savings'] = (1- df['curtailment_rate']) * (df['first_year_bill_without_system'] - df['first_year_bill_with_system'])
-    elif curtailment_method == 'off':
-        df['first_year_energy_savings'] = df['first_year_bill_without_system'] - df['first_year_bill_with_system']
+    df['first_year_energy_savings'] = df['first_year_bill_without_system'] - df['first_year_bill_with_system']
     
-    generation_revenue = df['first_year_energy_savings'][:,np.newaxis] * np.array(list(df['rate_escalations']), dtype = 'float64') 
+
+    # TODO: account for anticipated ng and elec rate esclations in generation revenue
+    rate_escalations = np.array(list(df['rate_escalations']), dtype = 'float64')
+    rate_escalations[:] = 1.
+    generation_revenue =  df['first_year_energy_savings'][:,np.newaxis] * rate_escalations
     
     # Decrement the revenue to account for system degradation.
     system_degradation_factor = np.empty(shape)
     system_degradation_factor[:,0] = 1
+    # TODO: account for actual ann_system_degradation
+    df['ann_system_degradation'] = 0.
     system_degradation_factor[:,1:]  = 1 - df['ann_system_degradation'][:, np.newaxis]
     system_degradation_factor = system_degradation_factor.cumprod(axis = 1)
     
@@ -284,7 +315,8 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
     """
     
     carbon_tax_revenue = np.empty(shape)
-    carbon_tax_revenue[:] = (df.carbon_price_cents_per_kwh * df.aep)[:,np.newaxis] * system_degradation_factor / 100
+    #carbon_tax_revenue[:] = (df.carbon_price_cents_per_kwh * df.aep)[:,np.newaxis] * system_degradation_factor / 100
+    carbon_tax_revenue[:] = 0.
         
     '''
     5) Revenue from depreciation.  
@@ -336,7 +368,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
     annual_payments = annual_loan_pmts + down_payment_cost/df.loan_term_yrs[:, np.newaxis]
     yearly_bill_savings = tpo_revenue + annual_payments
     monthly_bill_savings = yearly_bill_savings/12
-    yearly_bills_without_system = df.first_year_bill_without_system[:,np.newaxis] * np.array(list(df['rate_escalations']), dtype = 'float64')
+    yearly_bills_without_system = df.first_year_bill_without_system[:,np.newaxis] * rate_escalations
     percent_monthly_bill_savings = yearly_bill_savings/yearly_bills_without_system
     avg_percent_monthly_bill_savings = percent_monthly_bill_savings.sum(axis = 1)/df.loan_term_yrs
     
@@ -348,12 +380,8 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
     # overwrite the values for first_year_bill_without_system and with system
     # to account for the first year rate escalation (the original values are always based on year = 2014)
     df.loc[:, 'first_year_bill_without_system'] = yearly_bills_without_system[:, 0] 
-    df.loc[:, 'first_year_bill_with_system'] = df.first_year_bill_with_system * np.array(list(df['rate_escalations']), dtype = 'float64')[:, 0]
-    # also adjust the avg cost of elec
-    df.loc[:, 'cost_of_elec_dols_per_kwh'] = np.where(df['load_kwh_per_customer_in_bin'] == 0, 
-                                                      np.nan, 
-                                                      df['first_year_bill_without_system']/df['load_kwh_per_customer_in_bin']) 
-    
+    df.loc[:, 'first_year_bill_with_system'] = df.first_year_bill_with_system * rate_escalations[:, 0]
+
     new_cols = ['total_value_of_incentives', 'monthly_bill_savings', 'percent_monthly_bill_savings']
     out_cols = in_cols + new_cols
     out_df = df[out_cols]    
@@ -361,49 +389,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
     
     return revenue, costs, cfs, out_df
 
-#==============================================================================    
-def calc_lcoe(df, inflation_rate, econ_life = 20):
-    ''' LCOE calculation, following ATB assumptions. There will be some small differences
-    since the model is already in real terms and doesn't need conversion of nominal terms
-    
-    IN: df
-        deprec schedule
-        inflation rate
-        econ life -- investment horizon, may be different than system lifetime.
-    
-    OUT: lcoe - numpy array - Levelized cost of energy (c/kWh) 
-    '''
-    
-    # extract a list of the input columns
-    in_cols = df.columns.tolist()
-    
-    df['IR'] = inflation_rate
-    df['DF'] = 1 - df['down_payment']
-    df['CoE'] = df['discount_rate']
-    df['CoD'] = df['loan_rate']
-    df['TR'] = df['tax_rate']
-    
-    
-    df['WACC'] = ((1 + ((1-df['DF'])*((1+df['CoE'])*(1+df['IR'])-1)) + (df['DF'] * ((1+df['CoD'])*(1+df['IR']) - 1) *  (1 - df['TR'])))/(1 + df['IR'])) -1
-    df['CRF'] = (df['WACC'])/ (1 - (1/(1+df['WACC'])**econ_life))# real crf
-    
-    #df = df.merge(deprec_schedule, how = 'left', on = ['tech','year'])
-    df['PVD'] = calc_npv(np.array(list(df['deprec'])),((1+df['WACC'] * 1+ df['IR'])-1)) # Discount rate used for depreciation is 1 - (WACC + 1)(Inflation + 1)
-    df['PVD'] /= (1 + df['WACC']) # In calc_npv we assume first entry of an array corresponds to year zero; the first entry of the depreciation schedule is for the first year, so we need to discount the PVD by one additional year
-    
-    df['PFF'] = (1 - df['TR'] * df['PVD'])/(1 - df['TR'])#project finance factor
-    df['CFF'] = 1 # construction finance factor -- cost of capital during construction, assume projects are built overnight, which is not true for larger systems   
-    df['OCC'] = df['installed_costs_dollars_per_kw'] # overnight capital cost $/kW
-    df['GCC'] = 0 # grid connection cost $/kW, assume cost of interconnecting included in OCC
-    df['FOM']  = df['fixed_om_dollars_per_kw_per_yr'] # fixed o&m $/kW-yr
-    df['CF'] = df['aep']/df['system_size_kw']/8760 # capacity factor
-    df['VOM'] = df['variable_om_dollars_per_kwh'] #variable O&M $/kWh
-    
-    df['lcoe'] = 100 * (((df['CRF'] * df['PFF'] * df['CFF'] * (df['OCC'] * 1 + df['GCC']) + df['FOM'])/(df['CF'] * 8760)) + df['VOM'])# LCOE 2014c/kWh
-    
-    out_cols = in_cols + ['lcoe']    
-    
-    return df[out_cols]
+
    
 #==============================================================================    
 

@@ -850,7 +850,7 @@ def get_itc_incentives(con, schema):
     inputs = locals().copy()
     
     sql = """SELECT year, substring(lower(sector), 1, 3) as sector_abbr, 
-                    itc_fraction, tech, min_kw, max_kw
+                    itc_fraction, tech, min_size_kw_or_tons, max_size_kw_or_tons
              FROM %(schema)s.input_main_itc_options;""" % inputs
     itc_options = pd.read_sql(sql, con) 
     
@@ -1645,13 +1645,14 @@ def calc_value_of_itc(df, itc_options, year):
     # merge to df
     df = pd.merge(df, itc_all, how = 'left', on = ['sector_abbr', 'year', 'business_model', 'tech'])
     # drop the rows that are outside of the allowable system sizes
-    df = df[(df['system_size_kw'] > df['min_kw']) & (df['system_size_kw'] <= df['max_kw'])]
+    keep_rows = np.where(df['tech'] == 'ghp', (df['ghp_system_size_tons'] > df['min_size_kw_or_tons']) & (df['ghp_system_size_tons'] <= df['max_size_kw_or_tons']), (df['system_size_kw'] > df['min_size_kw_or_tons']) & (df['system_size_kw'] <= df['max_size_kw_or_tons']))
+    df = df[keep_rows]
     # confirm shape hasn't changed
     if df.shape[0] <> row_count:
         raise ValueError('Row count of dataframe changed during merge')
         
 #    # Calculate the value of ITC (accounting for reduced costs from state/local incentives)
-    df['applicable_ic'] = (df['installed_costs_dollars_per_kw'] * df['system_size_kw']) - (df['value_of_tax_credit_or_deduction'] + df['value_of_rebate'] + df['value_of_increment'])
+    df['applicable_ic'] = (df['installed_costs_dlrs'] * df['system_size_kw']) - (df['value_of_tax_credit_or_deduction'] + df['value_of_rebate'] + df['value_of_increment'])
     df['value_of_itc'] =  (
                             df['applicable_ic'] *
                             df['itc_fraction'] *

@@ -627,7 +627,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             
                     #==========================================================================================================
                     # CASHFLOWS CALCULATIONS
-                    #==========================================================================================================               
+                    #==========================================================================================================
+                    agents.dataframe['curtailment_rate'] = 0
+                    agents.dataframe['ReEDS_elec_price_mult'] = 1
+                    curtailment_method = 'net'                  
                     # Calculate economics of adoption for different busines models
                     df = finfunc.calc_economics(agents.dataframe, schema, 
                                                market_projections, financial_parameters, rate_growth_df,
@@ -637,7 +640,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     
                     # select from choices for business model and (optionally) technology
-                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
+                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)          
     
                     #==========================================================================================================
                     # MARKET LAST YEAR

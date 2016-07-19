@@ -75,7 +75,9 @@ def get_psuedo_ghp_agents(con, schema):
                     FALSE::BOOLEAN as new_construction,
                     'closed vertical' as sys_config,
                     25000. as totsqft_conditioned,
-                    'WY'::VARCHAR(2) as state_abbr
+                    'WY'::VARCHAR(2) as state_abbr,
+                    'MTN'::VARCHAR(3) as census_division_abbr,
+                    TRUE::BOOLEAN owner_occupied_building
              FROM diffusion_geo.ghp_simulations_com;""" % inputs
     
     df = pd.read_sql(sql, con, coerce_float = False)
@@ -89,6 +91,8 @@ def get_psuedo_ghp_agents(con, schema):
 def size_systems_ghp(dataframe):
     
     dataframe['ghp_system_size_tons'] = dataframe['cooling_capacity_ton']
+    # add system size kw (for compatibility with downstream code)
+    dataframe['system_size_kw'] = dataframe['ghp_system_size_tons'] * 3.5168525
     
     return dataframe
 
@@ -138,6 +142,7 @@ def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):
     dataframe['installed_costs_dlrs'] = dataframe['ghx_cost_dlrs'] + dataframe['heat_pump_cost_dlrs'] + dataframe['rest_of_system_cost_dlrs']
     # O&M
     dataframe['fixed_om_dlrs_per_year'] = dataframe['totsqft_conditioned'] * dataframe['fixed_om_dollars_per_sf_per_year']
+    dataframe['variable_om_dlrs_per_year'] = 0.
     
     return dataframe
 
