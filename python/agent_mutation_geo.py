@@ -62,6 +62,82 @@ def get_new_agent_attributes(con, schema, year):
 
     return agents
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_psuedo_ghp_agents(con, schema):
+    
+    inputs = locals().copy()
+    sql = """SELECT *, 
+                    'com'::VARCHAR(3) as sector_abbr, 
+                    10000. as buildings_in_bin,
+                    FALSE::BOOLEAN as new_construction,
+                    'closed vertical' as sys_config,
+                    25000. as totsqft_conditioned
+             FROM diffusion_geo.ghp_simulations_com;""" % inputs
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    agents = Agents(df)
+
+    return agents
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def size_systems_ghp(dataframe):
+    
+    dataframe['ghp_system_size_tons'] = dataframe['cooling_capacity_ton']
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_developable_customers_and_load(dataframe):
+
+    dataframe['developable_customers_in_bin'] = np.where(dataframe['ghp_system_size_tons'] == 0, 
+                                                                  0,
+                                                                  dataframe['buildings_in_bin'])
+                                                        
+    dataframe['developable_load_kwh_in_bin'] = dataframe['developable_customers_in_bin'] * dataframe['baseline_source_energy_mbtu']/1000./3412.14 
+                                                            
+    return dataframe    
+    
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_technology_costs_ghp(con, schema, year):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT year, 
+                    sector_abbr,
+                    sys_config,
+                    new_heat_exchanger_cost_dollars_per_ton as ghx_cost_dlrs_per_ton,
+                    new_heat_pump_cost_dollars_per_ton as heat_pump_dlrs_per_ton,
+                    fixed_om_dollars_per_sf_per_year,
+                    retrofit_rest_of_system_multiplier
+             FROM %(schema)s.input_ghp_cost
+             WHERE year = %(year)s;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):    
+    
+
+    dataframe = pd.merge(dataframe, tech_costs_ghp_df, how = 'left', on = ['sector_abbr', 'sys_config'])
+    # Installed Costs
+    dataframe['ghx_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['ghx_cost_dlrs_per_ton']
+    dataframe['heat_pump_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['heat_pump_dlrs_per_ton']
+    dataframe['rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 0., (dataframe['ghx_cost_dlrs'] + dataframe['heat_pump_cost_dlrs']) * dataframe['retrofit_rest_of_system_multiplier'])
+    dataframe['installed_costs_dlrs'] = dataframe['ghx_cost_dlrs'] + dataframe['heat_pump_cost_dlrs'] + dataframe['rest_of_system_cost_dlrs']
+    # O&M
+    dataframe['fixed_om_dlrs_per_year'] = dataframe['totsqft_conditioned'] * dataframe['fixed_om_dollars_per_sf_per_year']
+    
+    return dataframe
+
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

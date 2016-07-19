@@ -182,8 +182,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # determine technology mode (electricity or geo)
                 if set(['wind','solar', 'storage']).isdisjoint(set(techs)) == False:
                     tech_mode = 'elec'
-                elif set(['du','ghp']).isdisjoint(set(techs)) == False:
+                    sub_mode = 'elec'
+                elif techs == ['du']:
                     tech_mode = 'geo'
+                    sub_mode = 'du'
+                elif techs == ['ghp']:
+                    tech_mode = 'geo'
+                    sub_mode = 'ghp'
+                elif set(techs) == set(['du','ghp']):
+                    raise Exception('Cannot run model simulataneously for du and ghp at this time.')
                 else:
                     raise Exception("No technologies selected to be analyzed")
             
@@ -259,8 +266,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # CREATE AGENTS
                     #==========================================================================================================
-                    logger.info("--------------Creating Agents---------------")                        
-                    agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, cfg.agents_per_region,
+                    logger.info("--------------Creating Agents---------------")                   
+                    if sub_mode <> 'ghp':                    
+                        agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, cfg.agents_per_region,
                                                               sectors, cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'], end_year)
                     
                     if tech_mode == 'elec':                    
@@ -545,7 +553,167 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
                     # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database                
                     # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
-            elif tech_mode == 'geo':
+            elif tech_mode == 'geo' and sub_mode == 'ghp':
+                # TODO: fix/write these
+                #dsire_opts = datfunc.get_dsire_settings(con, schema)
+                #incentives_cap = datfunc.get_incentives_cap(con, schema)
+                #state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, dsire_opts)            
+                #itc_options = datfunc.get_itc_incentives(con, schema)
+                for year in model_years:
+                    logger.info('\tWorking on %s' % year)
+                        
+                    # get core agent attributes from postgres
+                    # TODO: replace with actual agents (from DU process), linked (where possible) to Xiaobing's building sims
+                    #       include: new growth, ground thermal conductivity, siting constraints
+                    agents = mutation.get_psuedo_ghp_agents(con, schema)                           
+                    
+                    # get technology performance data
+                    # TODO: write this
+                    #tech_performance_ghp_df = mutation.get_technology_performance_ghp(con, schema, year)
+
+                    # apply technology performance to annual resource data
+                    #agents = AgentsAlgorithm(agents, mutation.apply_technology_performance_ghp, (tech_performance_ghp_df, )).compute()  
+                                    
+                    #==============================================================================
+                    # SYSTEM SIZING
+                    #==============================================================================
+                    # size systems
+                    # TODO: revise this to actually dynamically size based on performance improvements and siting constraints
+                    agents = AgentsAlgorithm(agents, mutation.size_systems_ghp).compute()  
+                    
+                                
+                    #==============================================================================
+                    # DEVELOPABLE CUSTOMERS/LOAD
+                    #==============================================================================                            
+                    # determine "developable" population (based on siting constraints)
+                    agents = AgentsAlgorithm(agents, mutation.calculate_developable_customers_and_load).compute()                            
+                                
+                    #==============================================================================
+                    # TECHNOLOGY COSTS
+                    #==============================================================================
+                    # get technology costs
+                    tech_costs_ghp_df = mutation.get_technology_costs_ghp(con, schema, year)
+                    # apply technology costs     
+                    agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()
+
+                    #==========================================================================================================
+                    # CALCULATE BILL SAVINGS
+                    #==========================================================================================================
+                    # bill savings are a function of: 
+                     # (1) hacked NEM calculations
+                    agents = AgentsAlgorithm(agents, mutation.calculate_excess_generation_and_update_nem_settings).compute()
+                     # (2) actual SAM calculations
+                    agents = AgentsAlgorithm(agents, mutation.calculate_electric_bills_sam, (cfg.local_cores, )).compute(1)
+                    # drop the hourly datasets
+                    agents.drop_attributes(['generation_hourly', 'consumption_hourly'], in_place = True)
+                    
+                    #==========================================================================================================
+                    # DEPRECIATION SCHEDULE       
+                    #==========================================================================================================
+                    # get depreciation schedule for current year
+                    depreciation_df = mutation.get_depreciation_schedule(con, schema, year)
+                    # apply depreciation schedule to agents
+                    agents = AgentsAlgorithm(agents, mutation.apply_depreciation_schedule, (depreciation_df, )).compute()
+                    
+                    #==========================================================================================================
+                    # SYSTEM DEGRADATION                
+                    #==========================================================================================================
+                    # apply system degradation to agents
+                    agents = AgentsAlgorithm(agents, mutation.apply_system_degradation, (system_degradation_df, )).compute()
+                    
+                    #==========================================================================================================
+                    # CARBON INTENSITIES
+                    #==========================================================================================================               
+                    # get carbon intensities
+                    carbon_intensities_df = mutation.get_carbon_intensities(con, schema, year)
+                    # apply carbon intensities
+                    agents = AgentsAlgorithm(agents, mutation.apply_carbon_intensities, (carbon_intensities_df, )).compute()                
+    
+                    #==========================================================================================================
+                    # LEASING AVAILABILITY
+                    #==========================================================================================================               
+                    # get leasing availability
+                    leasing_availability_df = mutation.get_leasing_availability(con, schema, year)
+                    agents = AgentsAlgorithm(agents, mutation.apply_leasing_availability, (leasing_availability_df, )).compute()                     
+                    
+                    
+                    
+                    
+                    
+                    #%%
+                    #==========================================================================================================
+                    # NEW CODE FOR STORAGE/SIZING ANALYSIS
+                    #==========================================================================================================                                  
+                    
+                    pass
+                    
+                    #%%                
+                    
+                    
+                    
+                    # reeds stuff...
+                    # TODO: fix this to get linked reeds mode working
+    #                if mode == 'ReEDS':
+    #                    # When in ReEDS mode add the values from ReEDS to df
+    #                    df = pd.merge(df, distPVCurtailment, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
+    #                    df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
+    #                    df = pd.merge(df, change_elec_price, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
+    #                else:
+                    # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
+                    agents.dataframe['curtailment_rate'] = 0
+                    agents.dataframe['ReEDS_elec_price_mult'] = 1
+                    curtailment_method = 'net'           
+                                            
+                    # Calculate economics of adoption for different busines models
+                    df = finfunc.calc_economics(agents.dataframe, schema, 
+                                               market_projections, financial_parameters, rate_growth_df,
+                                               scenario_opts, max_market_share, cur, con, year,
+                                               dsire_incentives, dsire_opts, state_dsire, srecs, mode, 
+                                               curtailment_method, itc_options, inflation_rate, incentives_cap, 25)
+                    
+                    
+                    # select from choices for business model and (optionally) technology
+                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
+    
+                    #==========================================================================================================
+                    # MARKET LAST YEAR
+                    #==========================================================================================================                  
+                    # convert back to agents
+                    agents = Agents(df)
+                    is_first_year = year == cfg.start_year      
+                    if is_first_year == True:
+                        # calculate initial market shares
+                        agents = AgentsAlgorithm(agents, mutation.estimate_initial_market_shares, (state_starting_capacities_df, )).compute()
+                    else:
+                        # get last year's results
+                        market_last_year_df = mutation.get_market_last_year(con, schema)
+                        # apply last year's results to the agents
+                        agents = AgentsAlgorithm(agents, mutation.apply_market_last_year, (market_last_year_df, )).compute()                
+                    
+    
+                    #==========================================================================================================
+                    # BASS DIFFUSION
+                    #==========================================================================================================   
+                    # TODO: rewrite this section to use agents class
+                    # convert back to dataframe
+                    df = agents.dataframe
+                    # calculate diffusion based on economics and bass diffusion                   
+                    df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, is_first_year, bass_params) 
+                    
+                    #==========================================================================================================
+                    # ESTIMATE TOTAL GENERATION
+                    #==========================================================================================================      
+                    df = AgentsAlgorithm(Agents(df), mutation.estimate_total_generation).compute().dataframe
+                
+                    #==========================================================================================================
+                    # WRITE OUTPUTS
+                    #==========================================================================================================   
+                    # TODO: rewrite this section to use agents class
+                    # write the incremental results to the database
+                    datfunc.write_outputs(con, cur, df, sectors, schema) 
+                    datfunc.write_last_year(con, cur, market_last_year, schema)
+    
+            elif tech_mode == 'geo' and sub_mode == 'du':
                 for year in model_years:
                     logger.info('\tWorking on %s' % year)
                         
