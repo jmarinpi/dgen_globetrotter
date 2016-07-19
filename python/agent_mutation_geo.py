@@ -16,7 +16,8 @@ import data_functions as datfunc
 from agent import Agent, Agents, AgentsAlgorithm
 from cStringIO import StringIO
 import pssc_mp
-
+# functions borrowed from electricity
+from agent_mutation_elec import get_depreciation_schedule, apply_depreciation_schedule, get_leasing_availability, apply_leasing_availability
 
 #%% GLOBAL SETTINGS
 
@@ -68,6 +69,7 @@ def get_psuedo_ghp_agents(con, schema):
     
     inputs = locals().copy()
     sql = """SELECT *, 
+                    'ghp' as tech,
                     'com'::VARCHAR(3) as sector_abbr, 
                     10000. as buildings_in_bin,
                     FALSE::BOOLEAN as new_construction,
@@ -80,7 +82,7 @@ def get_psuedo_ghp_agents(con, schema):
     agents = Agents(df)
 
     return agents
-
+    
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def size_systems_ghp(dataframe):
@@ -138,6 +140,15 @@ def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):
     
     return dataframe
 
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_bill_savings_ghp(dataframe):
+    
+    dataframe['first_year_bill_with_system'] = dataframe['gshp_energy_cost']
+    dataframe['first_year_bill_without_system'] = dataframe['baseline_energy_cost']
+    
+    return dataframe
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

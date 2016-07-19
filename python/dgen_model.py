@@ -599,13 +599,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # CALCULATE BILL SAVINGS
                     #==========================================================================================================
-                    # bill savings are a function of: 
-                     # (1) hacked NEM calculations
-                    agents = AgentsAlgorithm(agents, mutation.calculate_excess_generation_and_update_nem_settings).compute()
-                     # (2) actual SAM calculations
-                    agents = AgentsAlgorithm(agents, mutation.calculate_electric_bills_sam, (cfg.local_cores, )).compute(1)
-                    # drop the hourly datasets
-                    agents.drop_attributes(['generation_hourly', 'consumption_hourly'], in_place = True)
+                    agents = AgentsAlgorithm(agents, mutation.calculate_bill_savings_ghp).compute()
                     
                     #==========================================================================================================
                     # DEPRECIATION SCHEDULE       
@@ -619,51 +613,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # SYSTEM DEGRADATION                
                     #==========================================================================================================
                     # apply system degradation to agents
-                    agents = AgentsAlgorithm(agents, mutation.apply_system_degradation, (system_degradation_df, )).compute()
-                    
-                    #==========================================================================================================
-                    # CARBON INTENSITIES
-                    #==========================================================================================================               
-                    # get carbon intensities
-                    carbon_intensities_df = mutation.get_carbon_intensities(con, schema, year)
-                    # apply carbon intensities
-                    agents = AgentsAlgorithm(agents, mutation.apply_carbon_intensities, (carbon_intensities_df, )).compute()                
+                    # TODO: write this
+                    #agents = AgentsAlgorithm(agents, mutation.apply_system_degradation, (system_degradation_df, )).compute()
     
                     #==========================================================================================================
                     # LEASING AVAILABILITY
                     #==========================================================================================================               
                     # get leasing availability
                     leasing_availability_df = mutation.get_leasing_availability(con, schema, year)
-                    agents = AgentsAlgorithm(agents, mutation.apply_leasing_availability, (leasing_availability_df, )).compute()                     
-                    
-                    
-                    
-                    
-                    
-                    #%%
-                    #==========================================================================================================
-                    # NEW CODE FOR STORAGE/SIZING ANALYSIS
-                    #==========================================================================================================                                  
-                    
-                    pass
-                    
-                    #%%                
-                    
-                    
-                    
-                    # reeds stuff...
-                    # TODO: fix this to get linked reeds mode working
-    #                if mode == 'ReEDS':
-    #                    # When in ReEDS mode add the values from ReEDS to df
-    #                    df = pd.merge(df, distPVCurtailment, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
-    #                    df['curtailment_rate'] = df['curtailment_rate'].fillna(0.)
-    #                    df = pd.merge(df, change_elec_price, how = 'left', on = 'pca_reg') # TODO: probably need to add sector as a merge key
-    #                else:
-                    # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
-                    agents.dataframe['curtailment_rate'] = 0
-                    agents.dataframe['ReEDS_elec_price_mult'] = 1
-                    curtailment_method = 'net'           
-                                            
+                    agents = AgentsAlgorithm(agents, mutation.apply_leasing_availability, (leasing_availability_df, )).compute()                                        
+            
                     # Calculate economics of adoption for different busines models
                     df = finfunc.calc_economics(agents.dataframe, schema, 
                                                market_projections, financial_parameters, rate_growth_df,
@@ -712,6 +671,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # write the incremental results to the database
                     datfunc.write_outputs(con, cur, df, sectors, schema) 
                     datfunc.write_last_year(con, cur, market_last_year, schema)
+                # TODO: get visualizations working and remove this short-circuit
+                return 'Simulations Complete'  
     
             elif tech_mode == 'geo' and sub_mode == 'du':
                 for year in model_years:

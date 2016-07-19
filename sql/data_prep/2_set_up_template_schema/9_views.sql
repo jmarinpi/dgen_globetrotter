@@ -272,7 +272,10 @@ select *, 'wind'::text as tech
 from diffusion_template.input_wind_finances
 UNION ALL
 select *, 'solar'::text as tech
-from diffusion_template.input_solar_finances;
+from diffusion_template.input_solar_finances
+UNION ALL
+SELECT *, 'ghp'::TEXT as tech
+FROM diffusion_template.input_ghp_finances;
 
 ------------------------------------------------------------------------------------------------
 -- finances
@@ -286,19 +289,13 @@ from diffusion_template.input_wind_finances
 UNION ALL
 select year, business_model, sector_abbr, loan_term_yrs, loan_rate, down_payment, 
        discount_rate, tax_rate, length_of_irr_analysis_yrs, 'solar'::text as tech
-from diffusion_template.input_solar_finances;
+from diffusion_template.input_solar_finances
+UNION ALL
+select year, business_model, sector_abbr, loan_term_yrs, loan_rate, down_payment, 
+       discount_rate, tax_rate, length_of_irr_analysis_yrs, 'ghp'::text as tech
+from diffusion_template.input_ghp_finances;
 
 ------------------------------------------------------------------------------------------------
--- manual incentive options
-set role 'diffusion-writers';
-
-DROP VIEW IF EXISTS diffusion_template.input_incentive_options;
-CREATE VIEW diffusion_template.input_incentive_options AS
-SELECT incentive_source, incentive_start_year, 'wind'::text as tech
-FROM diffusion_template.input_wind_incentive_options
-UNION ALL
-SELECT incentive_source, incentive_start_year, 'solar'::text as tech
-FROM diffusion_template.input_solar_incentive_options;
 
 ------------------------------------------------------------------------------------------------
 -- depreciation schedule
@@ -308,7 +305,10 @@ SELECT *, 'wind'::text as tech
 FROM diffusion_template.input_wind_finances_depreciation_schedule 
 UNION ALL
 SELECT *, 'solar'::text as tech
-FROM diffusion_template.input_solar_finances_depreciation_schedule;
+FROM diffusion_template.input_solar_finances_depreciation_schedule
+UNION ALL
+SELECT *, 'ghp'::text as tech
+FROM diffusion_template.input_ghp_finances_depreciation_schedule;
 
 ------------------------------------------------------------------------------------------------
 -- annual system degradation
@@ -337,7 +337,10 @@ SELECT 'solar'::VARCHAR(5) as tech, a.*
 FROM diffusion_template.input_solar_leasing_availability a
 UNION ALL
 SELECT 'wind'::VARCHAR(5) as tech, b.*
-FROM diffusion_template.input_wind_leasing_availability b;
+FROM diffusion_template.input_wind_leasing_availability b
+UNION ALL
+SELECT 'ghp'::VARCHAR(5) as tech, c.*
+FROM diffusion_template.input_wind_leasing_availability c;
 
 ------------------------------------------------------------------------------------------------
 -- starting_capacities to model

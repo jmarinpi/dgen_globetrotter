@@ -1059,7 +1059,7 @@ def get_depreciation_schedule(con, schema, year):
             ORDER BY tech, year;''' % inputs
     df = pd.read_sql(sql, con)
     
-    return df       
+    return df
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
