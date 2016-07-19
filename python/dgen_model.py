@@ -554,11 +554,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database                
                     # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
             elif tech_mode == 'geo' and sub_mode == 'ghp':
-                # TODO: fix/write these
                 dsire_opts = datfunc.get_dsire_settings(con, schema)
-                #incentives_cap = datfunc.get_incentives_cap(con, schema)
-                #state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, techs, dsire_opts)            
-                #itc_options = datfunc.get_itc_incentives(con, schema)
+                incentives_cap = datfunc.get_incentives_cap(con, schema)
+                state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, ['geo'], dsire_opts)
+                itc_options = datfunc.get_itc_incentives(con, schema)
+                # NOTE: these two don't apply to ghp or du, but pull in for consistency with wind and solar
+                dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, dsire_opts)
+                srecs = dsire_incentives.copy()
                 for year in model_years:
                     logger.info('\tWorking on %s' % year)
                         

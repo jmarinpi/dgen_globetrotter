@@ -50,6 +50,10 @@ where sector_abbr = 'com';
 select *
 FROM diffusion_wind.state_dsire_incentives;
 
+-- add tech field
+ALTER TABLE diffusion_wind.state_dsire_incentives
+ADD COLUMN tech varchar(5) default 'wind';
+
 --------------------------------------------------------------------------------------------------------------------------------
 -- create an equivalent, but empty table for solar
 DROP TABLE IF EXISTS diffusion_solar.state_dsire_incentives;
@@ -75,6 +79,9 @@ CREATE TABLE diffusion_solar.state_dsire_incentives
 	val_pct_cost	numeric,
 	fixed_kwh	numeric,
 	min_aep_kwh	double precision,
-	max_aep_kwh	double precision
+	max_aep_kwh	double precision,
+	tech		varchar(5)
 );
+
+
 

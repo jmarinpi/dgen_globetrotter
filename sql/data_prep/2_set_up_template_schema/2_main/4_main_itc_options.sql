@@ -47,26 +47,9 @@ CREATE TABLE diffusion_template.input_main_itc_large_wind
 	ON UPDATE NO ACTION ON DELETE RESTRICT
 );
 
-
--- DROP TABLE IF EXISTS diffusion_template.input_main_itc_options;
-DROP VIEW IF EXISTS diffusion_template.input_main_itc_options;
-CREATE VIEW diffusion_template.input_main_itc_options AS
-SELECT *, 'solar'::TEXT as tech, 
-	-1::DOUBLE PRECISION as min_kw, 'Inf'::DOUBLE PRECISION as max_kw
-from diffusion_template.input_main_itc_solar
-UNION ALL
-SELECT *, 'wind'::TEXT as tech, 
-	-1::DOUBLE PRECISION as min_kw, 100::DOUBLE PRECISION as max_kw
-from diffusion_template.input_main_itc_small_wind
-UNION ALL
-SELECT *, 'wind'::TEXT as tech, 
-	100::DOUBLE PRECISION as min_kw, 'Inf'::DOUBLE PRECISION as max_kw
-from diffusion_template.input_main_itc_large_wind;
-
-
 -- DU
-DROP TABLE IF EXISTS diffusion_template.input_main_itc_geo;
-CREATE TABLE diffusion_template.input_main_itc_geo
+DROP TABLE IF EXISTS diffusion_template.input_main_itc_du;
+CREATE TABLE diffusion_template.input_main_itc_du
 (
   year integer NOT NULL,
   sector text NOT NULL,
@@ -94,3 +77,29 @@ CREATE TABLE diffusion_template.input_main_itc_ghp
   REFERENCES diffusion_config.sceninp_sector (sector) MATCH SIMPLE
   ON UPDATE NO ACTION ON DELETE RESTRICT
 );
+
+-- DROP TABLE IF EXISTS diffusion_template.input_main_itc_options;
+DROP VIEW IF EXISTS diffusion_template.input_main_itc_options;
+CREATE VIEW diffusion_template.input_main_itc_options AS
+SELECT *, 'solar'::TEXT as tech, 
+	-1::DOUBLE PRECISION as min_kw, 'Inf'::DOUBLE PRECISION as max_kw
+from diffusion_template.input_main_itc_solar
+UNION ALL
+SELECT *, 'wind'::TEXT as tech, 
+	-1::DOUBLE PRECISION as min_kw, 100::DOUBLE PRECISION as max_kw
+from diffusion_template.input_main_itc_small_wind
+UNION ALL
+SELECT *, 'wind'::TEXT as tech, 
+	100::DOUBLE PRECISION as min_kw, 'Inf'::DOUBLE PRECISION as max_kw
+from diffusion_template.input_main_itc_large_wind
+UNION ALL
+SELECT *, 'du'::TEXT as tech, 
+	-1::DOUBLE PRECISION as min_kw, 'Inf'::DOUBLE PRECISION as max_kw
+from diffusion_template.input_main_itc_du
+UNION ALL
+SELECT *, 'ghp'::TEXT as tech, 
+	-1::DOUBLE PRECISION as min_kw, 'Inf'::DOUBLE PRECISION as max_kw
+from diffusion_template.input_main_itc_ghp;
+
+
+

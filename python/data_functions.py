@@ -885,11 +885,7 @@ def get_state_dsire_incentives(cur, con, schema, techs, dsire_opts):
     sql_list = []
     for tech in techs:
         inputs['tech'] = tech
-        sql =   """SELECT incentive_type, state_abbr, sector_abbr, dlrs_per_kw, fixed_dlrs, 
-                           fixed_kw, min_size_kw, max_size_kw, cap_dlrs, cap_pct_cost, exp_date,
-                           dsire_program_name, dsire_last_updated, dsire_link, dlrs_per_kwh, 
-                           duration_years, cap_dlrs_yr, val_pct_cost, fixed_kwh, min_aep_kwh, 
-                           max_aep_kwh, '%(tech)s'::TEXT as tech
+        sql =   """SELECT *
                    FROM diffusion_%(tech)s.state_dsire_incentives
                 """ % inputs
         sql_list.append(sql)
