@@ -68,17 +68,17 @@ def get_new_agent_attributes(con, schema, year):
 def get_psuedo_ghp_agents(con, schema):
     
     inputs = locals().copy()
-    sql = """SELECT *, 
+    sql = """SELECT a.*, 
                     'ghp' as tech,
                     'com'::VARCHAR(3) as sector_abbr, 
-                    10000. as buildings_in_bin,
+                    1. as buildings_in_bin,
                     FALSE::BOOLEAN as new_construction,
                     'closed vertical' as sys_config,
-                    25000. as totsqft_conditioned,
+                    a.tot_sqft * 0.9 as totsqft_conditioned,
                     'WY'::VARCHAR(2) as state_abbr,
                     'MTN'::VARCHAR(3) as census_division_abbr,
                     TRUE::BOOLEAN owner_occupied_building
-             FROM diffusion_geo.ghp_simulations_com;""" % inputs
+             FROM diffusion_geo.ghp_simulations_com a;""" % inputs
     
     df = pd.read_sql(sql, con, coerce_float = False)
 
@@ -119,8 +119,9 @@ def get_technology_costs_ghp(con, schema, year):
     sql = """SELECT year, 
                     sector_abbr,
                     sys_config,
-                    new_heat_exchanger_cost_dollars_per_ton as ghx_cost_dlrs_per_ton,
-                    new_heat_pump_cost_dollars_per_ton as heat_pump_dlrs_per_ton,
+                    heat_exchanger_cost_dollars_per_ft,
+                    heat_pump_cost_dollars_per_cooling_ton,
+                    new_rest_of_system_costs_dollars_per_cooling_ton,
                     fixed_om_dollars_per_sf_per_year,
                     retrofit_rest_of_system_multiplier
              FROM %(schema)s.input_ghp_cost
@@ -136,9 +137,11 @@ def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):
 
     dataframe = pd.merge(dataframe, tech_costs_ghp_df, how = 'left', on = ['sector_abbr', 'sys_config'])
     # Installed Costs
-    dataframe['ghx_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['ghx_cost_dlrs_per_ton']
-    dataframe['heat_pump_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['heat_pump_dlrs_per_ton']
-    dataframe['rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 0., (dataframe['ghx_cost_dlrs'] + dataframe['heat_pump_cost_dlrs']) * dataframe['retrofit_rest_of_system_multiplier'])
+    dataframe['heat_exchanger_cost_dollars_per_ft'] = dataframe['total_ghx_length'] * dataframe['heat_exchanger_cost_dollars_per_ft']
+    dataframe['heat_pump_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['heat_pump_cost_dollars_per_cooling_ton']
+    dataframe['rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 
+                                                     dataframe['new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 
+                                                     dataframe['new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'] * dataframe['retrofit_rest_of_system_multiplier'])
     dataframe['installed_costs_dlrs'] = dataframe['ghx_cost_dlrs'] + dataframe['heat_pump_cost_dlrs'] + dataframe['rest_of_system_cost_dlrs']
     # O&M
     dataframe['fixed_om_dlrs_per_year'] = dataframe['totsqft_conditioned'] * dataframe['fixed_om_dollars_per_sf_per_year']
@@ -149,7 +152,7 @@ def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_bill_savings_ghp(dataframe):
+def calculate_energy_cost_savings_ghp(dataframe):
     
     dataframe['first_year_bill_with_system'] = dataframe['gshp_energy_cost']
     dataframe['first_year_bill_without_system'] = dataframe['baseline_energy_cost']

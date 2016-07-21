@@ -601,7 +601,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # CALCULATE BILL SAVINGS
                     #==========================================================================================================
-                    agents = AgentsAlgorithm(agents, mutation.calculate_bill_savings_ghp).compute()
+                    agents = AgentsAlgorithm(agents, mutation.calculate_energy_cost_savings_ghp).compute()
                     
                     #==========================================================================================================
                     # DEPRECIATION SCHEDULE       
