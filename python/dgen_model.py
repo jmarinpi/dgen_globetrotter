@@ -637,8 +637,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                scenario_opts, max_market_share, cur, con, year,
                                                dsire_incentives, dsire_opts, state_dsire, srecs, mode, 
                                                curtailment_method, itc_options, inflation_rate, incentives_cap, 30)
-                    
-                    
+                    df.to_csv('/Users/mgleason/Desktop/ghp_sim_results/df_%s.csv' % cdate, index = False)
+                    raise
                     # select from choices for business model and (optionally) technology
                     df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)          
     

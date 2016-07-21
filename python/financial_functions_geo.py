@@ -89,7 +89,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime)    
 
     ## Calc metric value here
-    df['metric_value_precise'] = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
+    df = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
 
     
     #df = calc_lcoe(df, inflation_rate, econ_life = 20)
@@ -209,7 +209,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
 
     # default is 25 year analysis periods
     shape=(len(df),tech_lifetime); 
-    df['ic'] = df['installed_costs_dlrs']
+    df['ic'] = df['ghp_cost_premium_dlrs']
     
     # merge in the incentives cap
     df = pd.merge(df, incentive_cap, how = 'left', on = ['tech'])
@@ -457,17 +457,14 @@ def calc_ttd(cfs):
     
     '''
     irrs = virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5)
-    # suppress errors due to irrs of nan
-    with np.errstate(invalid = 'ignore'):
-        irrs = np.where(irrs<=0,1e-6,irrs)
+    irrs = np.where(irrs<=0,1e-6,irrs)
     ttd = np.log(2) / np.log(1 + irrs)
-    # deal with ttd of nan by setting to max payback period (this should only occur when cashflows = 0)
+    ttd[ttd <= 0] = 0
+    ttd[ttd > 30] = 30
+    # also deal with ttd of nan by setting to max payback period (this should only occur when cashflows = 0)
     if not np.all(np.isnan(ttd) == np.all(cfs == 0, axis = 1)):
         raise Exception("np.nan found in ttd for non-zero cashflows")
     ttd[np.isnan(ttd)] = 30
-    # cap ttd values between 0 and 30
-    ttd[ttd <= 0] = 0
-    ttd[ttd > 30] = 30
 
     
     return ttd.round(decimals = 1) # must be rounded to nearest 0.1 to join with max_market_share
@@ -719,7 +716,13 @@ def calc_metric_value(df,cfs,revenue,costs, tech_lifetime):
     Where Avg. annual system payment = Sum(down payment + monthly system payment (aka loan_cost)) / loan term (20 years for TPO and 15 for HO)
     """ 
 
-    metric_value = np.where(df.business_model == 'tpo',df.percent_monthly_bill_savings, np.where((df.sector_abbr == 'ind') | (df.sector_abbr == 'com'),ttd,payback))
+    df['payback_period'] = payback
+    df['ttd'] = ttd    
+    df['metric_value_precise'] = np.where(df['business_model'] == 'tpo',
+                                          df['percent_monthly_bill_savings'], 
+                                          np.where((df.sector_abbr == 'ind') | (df.sector_abbr == 'com'),
+                                                    df['ttd'],
+                                                    df['payback_period']))
 
-    return metric_value    
+    return df    
 #==============================================================================
