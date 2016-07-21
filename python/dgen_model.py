@@ -567,7 +567,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get core agent attributes from postgres
                     # TODO: replace with actual agents (from DU process), linked (where possible) to Xiaobing's building sims
                     #       include: new growth, ground thermal conductivity, siting constraints
-                    agents = mutation.get_psuedo_ghp_agents(con, schema)                           
+                    agents = mutation.get_psuedo_ghp_agents(con, schema)
                     
                     # get technology performance data
                     # TODO: write this
