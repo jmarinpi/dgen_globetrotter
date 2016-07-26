@@ -590,14 +590,32 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, mutation.check_system_expirations).compute()
 
                     #==============================================================================
-                    # TECHNOLOGY PERFORMANCE
-                    #==============================================================================                      
-                    # TODO: write this
-                    #tech_performance_ghp_df = mutation.get_technology_performance_ghp(con, schema, year)
+                    # CALCULATE BASELINE ENERGY BILL
+                    #==============================================================================                          
+                    
 
-                    # apply technology performance to annual resource data
-                    #agents = AgentsAlgorithm(agents, mutation.apply_technology_performance_ghp, (tech_performance_ghp_df, )).compute()  
-                                    
+                    #==============================================================================
+                    # REPLICATE AGENTS FOR DIFFERENT GHP SYSTEM CONFIGURATIONS
+                    #==============================================================================        
+                    system_configurations = ['vertical', 'horizontal']                    
+                    agents = AgentsAlgorithm(agents, mutation.replicate_agents_by_factor, ('sys_config', system_configurations), row_increase_factor = len(system_configurations)).compute()
+
+                    #==============================================================================
+                    # TECHNOLOGY PERFORMANCE IMPROVEMENTS
+                    #==============================================================================                      
+                    # get technology performance improvements
+                    tech_performance_ghp_df = mutation.get_technology_performance_improvements_ghp(con, schema, year)
+                    # apply technology performance improvements
+                    agents = AgentsAlgorithm(agents, mutation.apply_technology_performance_ghp, (tech_performance_ghp_df, )).compute()
+                           
+                    #==========================================================================================================
+                    # SYSTEM DEGRADATION                
+                    #==========================================================================================================
+                    # apply system degradation to agents
+                    # TODO: write this
+                    #agents = AgentsAlgorithm(agents, mutation.apply_system_degradation, (system_degradation_df, )).compute()                           
+                           
+                           
                     #==============================================================================
                     # SYSTEM SIZING
                     #==============================================================================
@@ -650,12 +668,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # apply depreciation schedule to agents
                     agents = AgentsAlgorithm(agents, mutation.apply_depreciation_schedule, (depreciation_df, )).compute()
                     
-                    #==========================================================================================================
-                    # SYSTEM DEGRADATION                
-                    #==========================================================================================================
-                    # apply system degradation to agents
-                    # TODO: write this
-                    #agents = AgentsAlgorithm(agents, mutation.apply_system_degradation, (system_degradation_df, )).compute()
+
     
                     #==========================================================================================================
                     # LEASING AVAILABILITY

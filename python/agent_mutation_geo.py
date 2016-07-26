@@ -63,6 +63,47 @@ def get_new_agent_attributes(con, schema, year):
 
     return agents
 
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def replicate_agents_by_factor(dataframe, new_column_name, factor_list):
+    
+    df_list = []
+    for factor in factor_list:
+        temp_df = dataframe.copy()
+        temp_df[new_column_name] = factor
+        df_list.append(temp_df)
+    
+    dataframe = pd.concat(df_list, axis = 0, ignore_index = True)
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_technology_performance_improvements_ghp(con, schema, year):
+    
+    inputs = locals().copy()
+    sql = """SELECT heat_pump_lifetime_yrs, 
+                    efficiency_improvement_factor,
+                    sys_config
+             FROM %(schema)s.input_ghp_performance_improvements
+             WHERE year = %(year)s;""" % inputs
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_technology_performance_ghp(dataframe, tech_performance_ghp_df):
+    
+    # join on sys_config
+    dataframe = pd.merge(dataframe, tech_performance_ghp_df, how = 'left', on = 'sys_config')
+    
+    return dataframe
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_siting_constraints_ghp(con, schema):
