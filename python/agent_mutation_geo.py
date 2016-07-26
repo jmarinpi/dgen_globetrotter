@@ -111,7 +111,7 @@ def get_system_degradataion_ghp(con, schema, year):
     
     inputs = locals().copy()
     sql = """SELECT iecc_temperature_zone, 
-                    annual_degradation_pct,
+                    annual_degradation_pct as ann_system_degradation,
                     sys_config
              FROM %(schema)s.input_ghp_system_degradation
              WHERE year = %(year)s;""" % inputs
