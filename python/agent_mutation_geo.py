@@ -63,6 +63,18 @@ def get_new_agent_attributes(con, schema, year):
 
     return agents
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_siting_constraints_ghp(con, schema):
+    
+    inputs = locals().copy()
+    sql = """SELECT area_per_well_sqft_vertical, area_per_pipe_length_sqft_per_foot_horizontal
+             FROM %(schema)s.input_ghp_siting;""" % inputs
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
+
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -202,7 +214,7 @@ def get_regional_energy_prices(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_regional_energy_prices(dataframe, energy_prices_df):
+def apply_regional_energy_prices_du(dataframe, energy_prices_df):
     
     
     in_cols = list(dataframe.columns)

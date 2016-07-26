@@ -1,216 +1,66 @@
--- Vertical
-DROP TABLE IF EXISTs diffusion_template.input_ghp_performance_improvements_vertical CASCADE;
-CREATE TABLE diffusion_template.input_ghp_performance_improvements_vertical
+﻿set role 'diffusion-writers';
+
+-- improvements
+DROP TABLE IF EXISTs diffusion_template.input_ghp_performance_improvements_raw CASCADE;
+CREATE TABLE diffusion_template.input_ghp_performance_improvements_raw
 (
 	year integer NOT NULL,
-	efficiency_improvement_factor_cooling numeric NOT NULL,
-	efficiency_improvement_factor_cop numeric NOT NULL,
-	efficiency_improvement_factor_water_heating numeric NOT NULL,
 	heat_pump_lifetime_yrs numeric NOT NULL,
-	CONSTRAINT input_ghp_performance_improvements_vertical_year_fkey FOREIGN KEY (year)
+	efficiency_improvement_factor_horizontal numeric NOT NULL,
+	efficiency_improvement_factor_vertical numeric NOT NULL,
+	CONSTRAINT input_ghp_performance_improvements_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
 );
 
+
+-- system degradation -- vertical
 DROP TABLE IF EXISTs diffusion_template.input_ghp_performance_degradation_vertical CASCADE;
 CREATE TABLE diffusion_template.input_ghp_performance_degradation_vertical
 (
+	iecc_temperature_zone integer not null,
 	year integer NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_1 numeric NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_2 numeric NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_3 numeric NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_4 numeric NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_5 numeric NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_6 numeric NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_7 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_1 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_2 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_3 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_4 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_5 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_6 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_7 numeric NOT NULL,
+	annual_degradatation_pct numeric not null,
 	CONSTRAINT input_ghp_performance_degradation_vertical_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
 );
 
-
--- Horizontal
-DROP TABLE IF EXISTs diffusion_template.input_ghp_performance_improvements_horizontal CASCADE;
-
-CREATE TABLE diffusion_template.input_ghp_performance_improvements_horizontal
-(
-	year integer NOT NULL,
-	efficiency_improvement_factor_cooling numeric NOT NULL,
-	efficiency_improvement_factor_cop numeric NOT NULL,
-	efficiency_improvement_factor_water_heating numeric NOT NULL,
-	heat_pump_lifetime_yrs numeric NOT NULL,
-	CONSTRAINT input_ghp_performance_horizontal_improvements_year_fkey FOREIGN KEY (year)
-		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
-		ON UPDATE NO ACTION ON DELETE RESTRICT
-);
-
+-- system degradation -- horizontal
 DROP TABLE IF EXISTs diffusion_template.input_ghp_performance_degradation_horizontal CASCADE;
 CREATE TABLE diffusion_template.input_ghp_performance_degradation_horizontal
 (
+	iecc_temperature_zone integer not null,
 	year integer NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_1 numeric NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_2 numeric NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_3 numeric NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_4 numeric NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_5 numeric NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_6 numeric NOT NULL,
-	res_perc_annual_system_degradation_climate_zone_7 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_1 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_2 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_3 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_4 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_5 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_6 numeric NOT NULL,
-	com_perc_annual_system_degradation_climate_zone_7 numeric NOT NULL,
+	annual_degradatation_pct numeric not null,
 	CONSTRAINT input_ghp_performance_degradation_horizontal_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
 );
 
-
-
---- Create views
+-- views
 DROP VIEW IF EXISTS diffusion_template.input_ghp_performance_improvements;
-CREATE VIEW diffusion_template.input_ghp_performance_improvements AS 
-(
-	SELECT year, 'closed horizontal'::text as sys_config, 
-	efficiency_improvement_factor_cooling, efficiency_improvement_factor_cop,
-	efficiency_improvement_factor_water_heating, heat_pump_lifetime_yrs
-	FROM diffusion_template.input_ghp_performance_improvements_horizontal 
-	UNION ALL
-	SELECT year, 'closed vertical'::text as sys_config, 
-	efficiency_improvement_factor_cooling, efficiency_improvement_factor_cop,
-	efficiency_improvement_factor_water_heating, heat_pump_lifetime_yrs
-	FROM diffusion_template.input_ghp_performance_improvements_vertical
-);
+CREATE VIEW diffusion_template.input_ghp_performance_improvements AS
+select year, 
+	heat_pump_lifetime_yrs, 
+	efficiency_improvement_factor_horizontal as efficiency_improvement_factor,
+	'horizontal'::TEXT as sys_config
+FROM  diffusion_template.input_ghp_performance_improvements_raw
+UNION ALL
+select year, 
+	heat_pump_lifetime_yrs, 
+	efficiency_improvement_factor_vertical as efficiency_improvement_factor,
+	'vertical'::TEXT as sys_config
+FROM  diffusion_template.input_ghp_performance_improvements_raw;
+
+
 
 DROP VIEW IF EXISTS diffusion_template.input_ghp_performance_degradation;
-CREATE VIEW diffusion_template.input_ghp_performance_degradation AS 
-(
-	-- horizontal res
-	SELECT year, 'res'::char varying(3) as sector_abbr_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 1'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_1 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 2'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_2 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 3'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_3 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 4'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_4 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 5'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_5 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 6'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_6 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 7'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_7 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	
-	-- horizontal comm
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 1'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_1 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 2'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_2 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 3'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_3 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 4'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_4 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 5'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_5 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config, 
-	'climate zone 6'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_6 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed horizontal'::text as sys_config,
-	'climate zone 7'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_7 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_horizontal
+CREATE VIEW diffusion_template.input_ghp_performance_degradation AS
+select *, 'vertical' as sys_config
+from diffusion_template.input_ghp_performance_degradation_vertical
+UNION ALL
+select *, 'horizontal' as sys_config
+from diffusion_template.input_ghp_performance_degradation_horizontal;
 
-	-- vertical res
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 1'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_1 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 2'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_2 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 3'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_3 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 4'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_4 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 5'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_5 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 6'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_6 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-	UNION ALL
-	SELECT year, 'res'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 7'::char varying(14) as climate_zone, res_perc_annual_system_degradation_climate_zone_7 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-
-	-- vertical comm
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 1'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_1 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 2'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_2 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 3'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_3 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 4'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_4 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 5'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_5 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 6'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_6 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-	UNION ALL
-	SELECT year, 'com'::char varying(3) as sector_abbr, 'closed vertical'::text as sys_config, 
-	'climate zone 7'::char varying(14) as climate_zone, com_perc_annual_system_degradation_climate_zone_7 as degradation_pct_annual
-	FROM diffusion_template.input_ghp_performance_degradation_vertical
-);
 
