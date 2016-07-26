@@ -91,7 +91,6 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     ## Calc metric value here
     df = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
 
-    
     #df = calc_lcoe(df, inflation_rate, econ_life = 20)
     df['npv4'] = calc_npv(cfs, np.array([0.04]))
     df['npv_agent'] = calc_npv(cfs, df.discount_rate)
