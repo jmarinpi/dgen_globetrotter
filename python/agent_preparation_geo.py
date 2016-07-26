@@ -678,6 +678,39 @@ def map_to_generic_baseline_system(schema, sector_abbr, initial_or_new, chunks, 
     p_run(pg_conn_string, sql, chunks, pool)    
     
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
+def sample_ground_thermal_conductivity(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_string, seed):
+    
+    msg = '\t\tSimulating Ground Thermal Conductivity for Buildings'    
+    logger.info(msg)
+    
+    
+    inputs = locals().copy()    
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['sector_abbr'] = sector_abbr
+    inputs['initial_or_new'] = initial_or_new
+    
+    sql = """DROP TABLE IF EXISTS %(schema)s.%(initial_or_new)s_agent_gtc_%(sector_abbr)s_%(i_place_holder)s;
+            CREATE UNLOGGED TABLE %(schema)s.%(initial_or_new)s_agent_gtc_%(sector_abbr)s_%(i_place_holder)s AS
+            SELECT a.agent_id,
+                  (diffusion_shared.sample(array[c.q25, c.q50, c.q75], 
+                                           1, 
+                                           %(seed)s * a.agent_id, 
+                                           True, 
+                                           array[.375, .25, .375]))[1] as gtc_btu_per_hftf            
+            FROM %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s a
+            LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
+                     ON a.pgid = b.pgid
+            LEFT JOIN diffusion_geo.thermal_conductivity_summary_by_climate_zone c
+                ON b.iecc_climate_zone = c.climate_zone;""" % inputs
+    p_run(pg_conn_string, sql, chunks, pool)
+    
+    # add primary key
+    sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_gtc_%(sector_abbr)s_%(i_place_holder)s
+             ADD PRIMARY KEY (agent_id);""" % inputs
+    p_run(pg_conn_string, sql, chunks, pool)        
+    
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -759,22 +792,28 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                     	h.totsqft,
                     	h.totsqft_heat,
                     	h.totsqft_cool,
-                        h.crb_model
+                        h.crb_model,
+                        
+                        -- resource
+                        i.gtc_btu_per_hftf
+                        
                     FROM %(schema)s.initial_agent_blocks_%(sector_abbr)s_%(i_place_holder)s a
                     LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
-                    ON a.pgid = b.pgid
+                        ON a.pgid = b.pgid
                     LEFT JOIN %(schema)s.initial_agent_building_types_%(sector_abbr)s_%(i_place_holder)s c
-                    ON a.agent_id = c.agent_id
+                        ON a.agent_id = c.agent_id
                     LEFT JOIN %(schema)s.initial_agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s d
-                    ON a.agent_id = d.agent_id
+                        ON a.agent_id = d.agent_id
                     LEFT JOIN %(schema)s.initial_agent_system_ages_%(sector_abbr)s_%(i_place_holder)s e
-                    ON a.agent_id = e.agent_id
+                        ON a.agent_id = e.agent_id
                     LEFT JOIN %(schema)s.initial_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s f
-                    ON a.agent_id = f.agent_id
+                        ON a.agent_id = f.agent_id
                     LEFT JOIN %(schema)s.initial_agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s g
-                    ON a.agent_id = g.agent_id 
+                        ON a.agent_id = g.agent_id 
                     LEFT JOIN %(schema)s.initial_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s h
-                    ON a.agent_id = h.agent_id 
+                        ON a.agent_id = h.agent_id 
+                    LEFT JOIN %(schema)s.%(initial_or_new)s_agent_gtc_%(sector_abbr)s_%(i_place_holder)s i
+                        ON a.agent_id = i.agent_id
                     
             UNION ALL
 
@@ -845,24 +884,28 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                     	h.totsqft,
                     	h.totsqft_heat,
                     	h.totsqft_cool,
-                        h.crb_model
+                        h.crb_model,
+                        
+                        -- resource
+                        i.gtc_btu_per_hftf
+                        
                     FROM %(schema)s.new_agent_blocks_%(sector_abbr)s_%(i_place_holder)s a
                     LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
-                    ON a.pgid = b.pgid
+                        ON a.pgid = b.pgid
                     LEFT JOIN %(schema)s.new_agent_building_types_%(sector_abbr)s_%(i_place_holder)s c
-                    ON a.agent_id = c.agent_id
+                        ON a.agent_id = c.agent_id
                     LEFT JOIN %(schema)s.new_agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s d
-                    ON a.agent_id = d.agent_id
+                        ON a.agent_id = d.agent_id
                     LEFT JOIN %(schema)s.new_agent_system_ages_%(sector_abbr)s_%(i_place_holder)s e
-                    ON a.agent_id = e.agent_id
+                        ON a.agent_id = e.agent_id
                     LEFT JOIN %(schema)s.new_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s f
-                    ON a.agent_id = f.agent_id
+                        ON a.agent_id = f.agent_id
                     LEFT JOIN %(schema)s.new_agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s g
-                    ON a.agent_id = g.agent_id 
+                        ON a.agent_id = g.agent_id 
                     LEFT JOIN %(schema)s.new_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s h
-                    ON a.agent_id = h.agent_id  
-                    
-                    """ % inputs
+                        ON a.agent_id = h.agent_id  
+                    LEFT JOIN %(schema)s.%(initial_or_new)s_agent_gtc_%(sector_abbr)s_%(i_place_holder)s i
+                        ON a.agent_id = i.agent_id""" % inputs
     
     # create the template table
     template_inputs = inputs.copy()
@@ -927,6 +970,7 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
                             '%(schema)s.initial_agent_system_ages_%(sector_abbr)s_%(i_place_holder)s',
                             '%(schema)s.initial_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s',
                             '%(schema)s.initial_agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.initial_agent_gtc_%(sector_abbr)s_%(i_place_holder)s',
 
                             '%(schema)s.new_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s',
                             '%(schema)s.new_agent_blocks_%(sector_abbr)s_%(i_place_holder)s',
@@ -935,7 +979,8 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
                             '%(schema)s.new_agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s',
                             '%(schema)s.new_agent_system_ages_%(sector_abbr)s_%(i_place_holder)s',
                             '%(schema)s.new_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s',
-                            '%(schema)s.new_agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s'
+                            '%(schema)s.new_agent_system_baseline_types_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.new_agent_gtc_%(sector_abbr)s_%(i_place_holder)s'
                            ]
     
     for sector_abbr, sector in sectors.iteritems():

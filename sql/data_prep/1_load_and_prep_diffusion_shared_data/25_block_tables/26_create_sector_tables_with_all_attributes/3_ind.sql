@@ -33,7 +33,10 @@ select  a.pgid,
 	l.rate_ranks,
 	g.hdf_load_index,
 	s.climate_zone_building_america as climate_zone_recs,
-	s.climate_zone_cbecs_2003 as climate_zone_cbecs
+	s.climate_zone_cbecs_2003 as climate_zone_cbecs,
+	t.climate_zone as iecc_temperature_zone,
+	t.moisture_regime as iecc_moisture_regime,
+	t.climate_zone::TExT || COALESCE(t.moisture_regime::TEXT,'') as iecc_climate_zone
 from diffusion_blocks.blocks_ind a
 LEFT JOIN diffusion_blocks.block_canopy_height b
 	ON a.pgid = b.pgid
@@ -69,7 +72,10 @@ LEFT JOIN diffusion_shared.load_and_customers_by_county_us p
 LEFT JOIN diffusion_blocks.block_tract_id_alias r
 	ON a.pgid = r.pgid
 LEFT JOIN diffusion_shared.county_geom s
-	on m.old_county_id = s.county_id;
+	on m.old_county_id = s.county_id
+LEFT JOIN ashrae.county_to_iecc_building_climate_zones_lkup t
+	on m.county_fips = t.county_fips
+	and m.state_fips = t.state_fips;	
 -- 945,057 rows
 
 -- row count should be:
@@ -90,17 +96,21 @@ CREATE INDEX block_microdata_ind_btree_state_fips
 ON diffusion_blocks.block_microdata_ind
 USING BTREE(state_fips);
 
-CREATE INDEX block_microdata_ind_btree_state_county_fips
+CREATE INDEX block_microdata_ind_btree_county_fips
 ON diffusion_blocks.block_microdata_ind
 USING BTREE(county_fips);
 
-CREATE INDEX block_microdata_ind_btree_state_county_id
+CREATE INDEX block_microdata_ind_btree_county_id
 ON diffusion_blocks.block_microdata_ind
 USING BTREE(county_id);
 
-CREATE INDEX block_microdata_ind_btree_state_tract_id_alias
+CREATE INDEX block_microdata_ind_btree_tract_id_alias
 ON diffusion_blocks.block_microdata_ind
 USING BTREE(tract_id_alias);
+
+CREATE INDEX block_microdata_ind_btree_iecc_climate_zone
+ON diffusion_blocks.block_microdata_ind
+USING BTREE(iecc_climate_zone);
 
 -- update stats
 VACUUM ANALYZE diffusion_blocks.block_microdata_ind;
