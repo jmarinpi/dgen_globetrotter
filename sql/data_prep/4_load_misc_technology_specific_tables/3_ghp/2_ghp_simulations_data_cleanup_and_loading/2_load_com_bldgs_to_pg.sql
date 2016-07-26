@@ -84,6 +84,12 @@ set savings_pct_peak_electricity_demand_kw =
 (baseline_peak_electricity_demand_kw - gshp_peak_electricity_demand_kw)/
 baseline_peak_electricity_demand_kw;
 
+-- change the school column to "Secondary School"
+UPDATE diffusion_geo.ghp_simulations_com
+set building_type = 'Secondary School'
+where building_type = 'School';
+
+
 -- look at results
 select *
 FROM diffusion_geo.ghp_simulations_com;

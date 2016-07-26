@@ -1,12 +1,25 @@
 ﻿-- RECS
--- add the "crb_model" to this table (should be "reference" for all single family, owner occ homes)
+-- add the "crb_model" to this table (should be "reference" for all single family, owner occ homes and "midrise_apartment" for all others)
 ALTER TABLE diffusion_shared.eia_microdata_recs_2009_expanded_bldgs
 ADD COLUMN crb_model text;
 
-UPDATE diffusion_shared.eia_microdata_recs_2009_expanded_bldgs a
-SET crb_model = 'reference';
--- 12083
+-- check unique combos of typehuq and single_family_res
+select distinct single_family_res, typehuq
+from diffusion_shared.eia_microdata_recs_2009_expanded_bldgs;
+-- typehuq 4 and 5 are the only multifamily types -- this makes sense given they represent:
+-- 4: Apartment in Building with 2 - 4 Units
+-- 5: Apartment in Building with 5+ Units
 
+UPDATE diffusion_shared.eia_microdata_recs_2009_expanded_bldgs a
+SET crb_model = CASE WHEN typehuq in (1, 2, 3) THEN 'reference' -- mobile home, single family detached, single family attached
+		     WHEN typehuq in (4, 5) THEN 'midrise_apartment'-- apartment in bldg with 2-4 units, apt in bldg with 5+ units
+		END;
+-- 12083
+-- check for nulls
+select count(*)
+FROM diffusion_shared.eia_microdata_recs_2009_expanded_bldgs
+where crb_model is null;
+-- 0 all set
 ------------------------------------------------------------------------------------------
 
 -- CBECS
