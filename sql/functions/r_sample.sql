@@ -111,3 +111,20 @@ $BODY$
 $BODY$
 LANGUAGE 'plr'
 COST 100;
+
+
+SET ROLE 'server-superusers';
+DROP FUNCTION IF EXISTS diffusion_shared.sample(NUMERIC[], integer, BIGINT, boolean, numeric[]);
+CREATE OR REPLACE FUNCTION diffusion_shared.sample(vals NUMERIC[], size integer, seed  BIGINT default 1, with_replacement boolean default false, probabilities numeric[] default NULL) 
+RETURNS NUMERIC[] AS 
+$BODY$
+	set.seed(seed)
+	if (length(vals) == 1) {
+		s = rep(vals, size)
+	} else {
+		s = sample(vals, size, with_replacement, probabilities)
+	}
+	return(s)
+$BODY$
+LANGUAGE 'plr'
+COST 100;

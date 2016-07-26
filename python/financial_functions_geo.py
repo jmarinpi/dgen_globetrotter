@@ -126,7 +126,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     
     # Derate the maximum market share for commercial and industrial customers in leased buildings by (1/3)
     # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
-    df['max_market_share'] = np.where(df['owner_occupied_building'] == True, df['max_market_share']/3, df['max_market_share'])
+    df['max_market_share'] = np.where(df['owner_occupied'] == True, df['max_market_share']/3, df['max_market_share'])
     
     return df
 #==============================================================================    

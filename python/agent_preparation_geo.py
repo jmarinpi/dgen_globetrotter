@@ -114,6 +114,9 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 estimate_system_ages(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string)
                 estimate_system_lifetimes(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string)
                 map_to_generic_baseline_system(schema, sector_abbr, 'initial', chunks, pool, pg_conn_string)
+                # get GHP resource (thermal conductivity)
+                sample_ground_thermal_conductivity(schema, sector_abbr, 'initial', chunks, pool, pg_conn_string, seed)  
+                # get GHP siting constraints and determine system configuration
                 
                 # NEW AGENTS TO REPRESENT NEW CONSTRUCTION (2014 - 2050)
                 # calculate the agents required to represent new construction
@@ -125,12 +128,16 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 estimate_agent_thermal_loads(schema, sector_abbr, 'new', chunks, pool, pg_conn_string)
                 estimate_system_ages(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
                 estimate_system_lifetimes(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
-                map_to_generic_baseline_system(schema, sector_abbr, 'new', chunks, pool, pg_conn_string)                
+                map_to_generic_baseline_system(schema, sector_abbr, 'new', chunks, pool, pg_conn_string)     
+                sample_ground_thermal_conductivity(schema, sector_abbr, 'new', chunks, pool, pg_conn_string, seed)
+                # get GHP resource (thermal conductivity)
+                sample_ground_thermal_conductivity(schema, sector_abbr, 'new', chunks, pool, pg_conn_string, seed)
+                # get GHP siting constraints and determine system configuration
                 
                 #==============================================================================
-                #     impose agent level siting  attributes (i.e., "tech potential")
+                #     technology specific attributes (i.e., "tech potential")
                 #==============================================================================
-                # TODO: add this for ghp, similar to wind
+
 
     
                 #==============================================================================
@@ -711,6 +718,12 @@ def sample_ground_thermal_conductivity(schema, sector_abbr, initial_or_new, chun
              ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)        
     
+    # make sure no nulls
+    sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_gtc_%(sector_abbr)s_%(i_place_holder)s
+             ALTER COLUMN gtc_btu_per_hftf
+             SET NOT NULL;""" % inputs
+    p_run(pg_conn_string, sql, chunks, pool)        
+    
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -812,7 +825,7 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                         ON a.agent_id = g.agent_id 
                     LEFT JOIN %(schema)s.initial_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s h
                         ON a.agent_id = h.agent_id 
-                    LEFT JOIN %(schema)s.%(initial_or_new)s_agent_gtc_%(sector_abbr)s_%(i_place_holder)s i
+                    LEFT JOIN %(schema)s.initial_agent_gtc_%(sector_abbr)s_%(i_place_holder)s i
                         ON a.agent_id = i.agent_id
                     
             UNION ALL
@@ -904,7 +917,7 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                         ON a.agent_id = g.agent_id 
                     LEFT JOIN %(schema)s.new_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s h
                         ON a.agent_id = h.agent_id  
-                    LEFT JOIN %(schema)s.%(initial_or_new)s_agent_gtc_%(sector_abbr)s_%(i_place_holder)s i
+                    LEFT JOIN %(schema)s.new_agent_gtc_%(sector_abbr)s_%(i_place_holder)s i
                         ON a.agent_id = i.agent_id""" % inputs
     
     # create the template table

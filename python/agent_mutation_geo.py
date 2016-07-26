@@ -63,28 +63,6 @@ def get_new_agent_attributes(con, schema, year):
 
     return agents
 
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_psuedo_ghp_agents(con, schema):
-    
-    inputs = locals().copy()
-    sql = """SELECT a.*, 
-                    'ghp' as tech,
-                    'com'::VARCHAR(3) as sector_abbr, 
-                    1. as buildings_in_bin,
-                    FALSE::BOOLEAN as new_construction,
-                    'closed vertical' as sys_config,
-                    a.tot_sqft * 0.9 as totsqft_conditioned,
-                    'WY'::VARCHAR(2) as state_abbr,
-                    'MTN'::VARCHAR(3) as census_division_abbr,
-                    TRUE::BOOLEAN owner_occupied_building
-             FROM diffusion_geo.ghp_simulations_com a;""" % inputs
-    
-    df = pd.read_sql(sql, con, coerce_float = False)
-
-    agents = Agents(df)
-
-    return agents
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

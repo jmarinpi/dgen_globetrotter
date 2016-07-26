@@ -37,7 +37,7 @@ pg.extensions.register_type(DEC2FLOAT)
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_bass_params(con, schema):
+def get_bass_params_du(con, schema):
     
     inputs = locals().copy()
     
@@ -398,6 +398,7 @@ def write_agent_outputs(con, cur, agents, schema):
                 'totsqft_heat',
                 'totsqft_cool',
                 'crb_model',
+                'gtc_btu_per_hftf',
                 'sector_abbr',
                 'sector',
                 'tech',

@@ -221,6 +221,7 @@ CREATE TABLE diffusion_template.agent_outputs_du
 	totsqft_heat numeric,
 	totsqft_cool numeric,
 	crb_model text,
+	gtc_btu_per_hftf numeric,
 	sector_abbr varchar(3),
 	sector text,
 	tech varchar(5),

@@ -266,9 +266,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # CREATE AGENTS
                     #==========================================================================================================
-                    logger.info("--------------Creating Agents---------------")                   
-                    if sub_mode <> 'ghp':                    
-                        agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, cfg.agents_per_region,
+                    logger.info("--------------Creating Agents---------------")                                       
+                    agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, cfg.agents_per_region,
                                                               sectors, cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'], end_year)
                     
                     if tech_mode == 'elec':                    
@@ -297,15 +296,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         #==========================================================================================================    
                         # TODO: get tech potential check working again
                         #datfunc.check_tech_potential_limits(cur, con, schema, techs, sectors, out_dir)              
-                    
-
+             
                     if 'du' in techs:
                         #==========================================================================================================
                         # CALCULATE TRACT AGGREGATE THERMAL LOAD PROFILE
                         #==========================================================================================================                                    
                         # calculate tract demand profiles
-                        demand_supply.calculate_tract_demand_profiles(con, cur, schema, cfg.pg_procs, cfg.pg_conn_string)
-             
+                        demand_supply.calculate_tract_demand_profiles(con, cur, schema, cfg.pg_procs, cfg.pg_conn_string)                        
+                        
                         #==========================================================================================================
                         # GET TRACT DISTRIBUTION NEWORK SIZES 
                         #==========================================================================================================                        
@@ -319,7 +317,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         #==========================================================================================================
                         # GET BASS DIFFUSION PARAMETERS
                         #==========================================================================================================
-                        bass_params_df = diffunc.get_bass_params(con, schema)
+                        bass_params_df = diffunc.get_bass_params_du(con, schema)
 
     
             #==========================================================================================================
@@ -564,11 +562,40 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 for year in model_years:
                     logger.info('\tWorking on %s' % year)
                         
-                    # get core agent attributes from postgres
-                    # TODO: replace with actual agents (from DU process), linked (where possible) to Xiaobing's building sims
-                    #       include: new growth, ground thermal conductivity, siting constraints
-                    agents = mutation.get_psuedo_ghp_agents(con, schema)
+                    # get initial agents from postgres
+                    agents_initial = mutation.get_initial_agent_attributes(con, schema)
+                    # update year for these initial agetns to the current year
+                    agents_initial = AgentsAlgorithm(agents_initial, mutation.update_year, (year, )).compute()
+                    # get new construction agents
+                    agents_new = mutation.get_new_agent_attributes(con, schema, year)
+                    # combine initial and new agents
+                    agents = agents_initial.add_agents(agents_new)
+                    del agents_initial, agents_new
+                    # drop du agents
+                    agents = agents.filter_tech('ghp')                  
                     
+                    # get regional prices of energy
+                    energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
+                    # apply regional heating/cooling prices
+                    # TO DO: fix this -- should only apply natural gas or electricity  for com bldgs
+                    #agents = AgentsAlgorithm(agents, mutation.apply_regional_energy_prices, (energy_prices_df, )).compute()
+                    
+                    #==============================================================================
+                    # TECHNOLOGY COSTS
+                    #==============================================================================
+                    # get technology costs
+                    tech_costs_ghp_df = mutation.get_technology_costs_ghp(con, schema, year)
+                    # apply technology costs     
+                    agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()             
+                                 
+                    #==============================================================================
+                    # SYSTEM AGES
+                    #==============================================================================                        
+                    # update system ages
+                    agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, )).compute()
+                    # check whether systems need replacement (outlived their expected lifetime)
+                    agents = AgentsAlgorithm(agents, mutation.check_system_expirations).compute()
+
                     # get technology performance data
                     # TODO: write this
                     #tech_performance_ghp_df = mutation.get_technology_performance_ghp(con, schema, year)
@@ -582,21 +609,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # size systems
                     # TODO: revise this to actually dynamically size based on performance improvements and siting constraints
                     agents = AgentsAlgorithm(agents, mutation.size_systems_ghp).compute()  
-                    
                                 
                     #==============================================================================
                     # DEVELOPABLE CUSTOMERS/LOAD
                     #==============================================================================                            
                     # determine "developable" population (based on siting constraints)
+                    # TODO: this should account for: siting constraints, unrepresentable buildings, and buildings that don't have sufiicnelty old systems
                     agents = AgentsAlgorithm(agents, mutation.calculate_developable_customers_and_load).compute()                            
                                 
-                    #==============================================================================
-                    # TECHNOLOGY COSTS
-                    #==============================================================================
-                    # get technology costs
-                    tech_costs_ghp_df = mutation.get_technology_costs_ghp(con, schema, year)
-                    # apply technology costs     
-                    agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()
 
                     #==========================================================================================================
                     # CALCULATE BILL SAVINGS
