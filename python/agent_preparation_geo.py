@@ -709,9 +709,10 @@ def sample_ground_thermal_conductivity(schema, sector_abbr, initial_or_new, chun
             FROM %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s a
             LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
                      ON a.pgid = b.pgid
-            LEFT JOIN diffusion_geo.thermal_conductivity_summary_by_climate_zone c
+            LEFT JOIN diffusion_geo.thermal_conductivity_summary_by_climate_zone_ornl c
                 ON b.iecc_climate_zone = c.climate_zone;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
+    # TODO: should be using diffusion_geo.thermal_conductivity_summary_by_climate_zone, but not sure what ORNL used so have to use theirs for now
     
     # add primary key
     sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_gtc_%(sector_abbr)s_%(i_place_holder)s

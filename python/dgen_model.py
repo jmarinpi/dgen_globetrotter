@@ -617,11 +617,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, mutation.apply_system_degradation_ghp, (system_degradation_df, )).compute()
                            
                            
+                    #==========================================================================================================
+                    # CRB GHP SIMULATIONS
+                    #==========================================================================================================                          
+                    # get CRB GHP simulations
+                    crb_ghp_df = mutation.get_crb_ghp_simulations(con, schema)
+                    # apply CRB GHP simulations
+                    agents = AgentsAlgorithm(agents, mutation.apply_crb_ghp_simulations, (crb_ghp_df, )).compute()
+
                     #==============================================================================
                     # SYSTEM SIZING
                     #==============================================================================
                     # size systems
-                    # TODO: revise this to actually dynamically size based on performance improvements and siting constraints
                     agents = AgentsAlgorithm(agents, mutation.size_systems_ghp).compute()  
 
                     #==============================================================================
@@ -638,7 +645,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get technology costs
                     tech_costs_ghp_df = mutation.get_technology_costs_ghp(con, schema, year)
                     # apply technology costs     
-                    agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()      
+                    # TODO: revise for both GHP and baseline system
+                    #agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()      
                                 
                     #==============================================================================
                     # DEVELOPABLE CUSTOMERS/LOAD

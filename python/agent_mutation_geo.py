@@ -133,6 +133,39 @@ def apply_system_degradation_ghp(dataframe, system_degradation_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_crb_ghp_simulations(con, schema):
+    
+    inputs = locals().copy()
+    sql = """SELECT crb_model, 
+                	 iecc_climate_zone, 
+                	 gtc_btu_per_hftf, 
+                	 savings_pct_electricity_consumption, 
+                   savings_pct_natural_gas_consumption, 
+                   crb_ghx_length_ft, 
+                   crb_cooling_capacity_ton, 
+                   crb_totsqft,
+                   cooling_ton_per_sqft, 
+                   ghx_length_ft_per_cooling_ton
+          FROM diffusion_geo.ghp_simulations_dummy;"""
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_crb_ghp_simulations(dataframe, crb_ghp_df):
+    
+    # join on crb_model, iecc_cliamte_zone, and gtc value
+    # TODO: this will change based on feedback from xiaobing about how to extrapolate from crbs to cbecs/recs (issue #)
+    dataframe = pd.merge(dataframe, crb_ghp_df, how = 'left', on = ['crb_model', 'iecc_climate_zone', 'gtc_btu_per_hftf'])
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_siting_constraints_ghp(con, schema):
     
     inputs = locals().copy()
@@ -148,10 +181,16 @@ def get_siting_constraints_ghp(con, schema):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def size_systems_ghp(dataframe):
     
-    dataframe['ghp_system_size_tons'] = dataframe['cooling_capacity_ton']
+    # output should be both ghx_length_ft and cooling_capacity_ton
+
+    # first calculate required system capacity
+    dataframe['ghp_system_size_tons'] = dataframe['cooling_ton_per_sqft'] * dataframe['totsqft']
     # add system size kw (for compatibility with downstream code)
     dataframe['system_size_kw'] = dataframe['ghp_system_size_tons'] * 3.5168525
-    
+
+    # next, calculate the ghx length required to provide that capacity (accounting for efficiency improvements from performance projections)
+    dataframe['ghx_length_ft'] = dataframe['ghp_system_size_tons'] * dataframe['ghx_length_ft_per_cooling_ton'] * (1 - dataframe['efficiency_improvement_factor'])
+
     return dataframe
 
 
@@ -195,7 +234,7 @@ def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):
 
     dataframe = pd.merge(dataframe, tech_costs_ghp_df, how = 'left', on = ['sector_abbr', 'sys_config'])
     # Installed Costs
-    dataframe['heat_exchanger_cost_dlrs'] = dataframe['total_ghx_length'] * dataframe['heat_exchanger_cost_dollars_per_ft']
+    dataframe['heat_exchanger_cost_dlrs'] = dataframe['ghx_length_ft'] * dataframe['heat_exchanger_cost_dollars_per_ft']
     dataframe['heat_pump_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['heat_pump_cost_dollars_per_cooling_ton']
     dataframe['rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 
                                                      dataframe['new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 
