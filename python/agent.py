@@ -138,7 +138,7 @@ class Agents(object):
 
 class AgentsAlgorithm(object):
     
-    def __init__(self, agents, f = None, fargs = None, agent_settings = None, in_schema = None, out_schema = None, debug_mode = False, debug_directory = None):
+    def __init__(self, agents, f = None, fargs = None, agent_settings = None, in_schema = None, out_schema = None, debug_mode = False, debug_directory = None, row_increase_factor = 1):
         
         self.agents = agents
         self.agent_settings = agent_settings
@@ -148,7 +148,8 @@ class AgentsAlgorithm(object):
         self.agent_settings = agent_settings
         self.f = f
         self.fargs = fargs
-        
+        self.row_increase_factor = row_increase_factor
+            
 
         if in_schema is None:
             self.in_schema = in_schema
@@ -188,7 +189,7 @@ class AgentsAlgorithm(object):
                 
         # also check the row count
         result_rows = result_agents.dataframe.shape[0]
-        if result_rows <> self.in_rows:
+        if result_rows <> self.in_rows * self.row_increase_factor:
             raise ValueError('postcheck failed due to change in number of agents')
         
     def pickle(self, out_directory):
@@ -296,6 +297,5 @@ def __test__():
     newagents2 = AgentsAlgorithm(agents, size_selector, (20,)).compute()
 
     return newagents2
-
 
 
