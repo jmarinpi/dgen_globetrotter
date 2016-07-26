@@ -93,12 +93,12 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
 
     
     #df = calc_lcoe(df, inflation_rate, econ_life = 20)
-    npv4 = calc_npv(cfs, np.array([0.04]))
-    npv_agent = calc_npv(cfs, df.discount_rate)
+    df['npv4'] = calc_npv(cfs, np.array([0.04]))
+    df['npv_agent'] = calc_npv(cfs, df.discount_rate)
+    # also calcualte normalized values (for visualizations/comparisons)
     with np.errstate(invalid = 'ignore'):
-        # TODO: normmalize to system size???
-        df['npv4'] = np.where(df['ghp_system_size_tons'] == 0, 0, npv4)
-        df['npv_agent'] = np.where(df['ghp_system_size_tons'] == 0, 0, npv_agent)
+        df['npv4_per_ton'] = np.where(df['ghp_system_size_tons'] == 0, 0, df['npv4']/df['ghp_system_size_tons'])
+        df['npv_agent_per_ton'] = np.where(df['ghp_system_size_tons'] == 0, 0, df['npv_agent']/df['ghp_system_size_tons'])
 
     
     # Convert metric value to integer as a primary key, then bound within max market share ranges
