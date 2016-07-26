@@ -1,11 +1,18 @@
-set role 'diffusion-writers';
+﻿set role 'diffusion-writers';
 
-DROP TABLE IF EXISTs diffusion_template.input_ghp_siting_parcel_size CASCADE;
-CREATE TABLE diffusion_template.input_ghp_siting_parcel_size
+DROP TABLE IF EXISTs diffusion_template.input_ghp_siting_vertical CASCADE;
+CREATE TABLE diffusion_template.input_ghp_siting_vertical
 (
-	sys_config TEXT not null,
-	min_parcel_size_acres numeric not null
+	area_per_well_sqft numeric not null
 );
+
+DROP TABLE IF EXISTs diffusion_template.input_ghp_siting_horizontal CASCADE;
+CREATE TABLE diffusion_template.input_ghp_siting_horizontal
+(
+	area_per_pipe_length_sqft_per_foot numeric not null
+);
+
+
 
 
 -- Create view for sys_config naming convention
