@@ -604,16 +604,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # TECHNOLOGY PERFORMANCE IMPROVEMENTS
                     #==============================================================================                      
                     # get technology performance improvements
-                    tech_performance_ghp_df = mutation.get_technology_performance_improvements_ghp(con, schema, year)
+                    tech_performance_df = mutation.get_technology_performance_improvements_ghp(con, schema, year)
                     # apply technology performance improvements
-                    agents = AgentsAlgorithm(agents, mutation.apply_technology_performance_ghp, (tech_performance_ghp_df, )).compute()
+                    agents = AgentsAlgorithm(agents, mutation.apply_technology_performance_ghp, (tech_performance_df, )).compute()
                            
                     #==========================================================================================================
                     # SYSTEM DEGRADATION                
                     #==========================================================================================================
-                    # apply system degradation to agents
-                    # TODO: write this
-                    #agents = AgentsAlgorithm(agents, mutation.apply_system_degradation, (system_degradation_df, )).compute()                           
+                    # get system degradatation
+                    system_degradation_df = mutation.get_system_degradataion_ghp(con, schema, year)
+                    # apply technology performance improvements
+                    agents = AgentsAlgorithm(agents, mutation.apply_system_degradation_ghp, (system_degradation_df, )).compute()
                            
                            
                     #==============================================================================

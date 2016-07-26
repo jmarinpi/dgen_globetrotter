@@ -756,6 +756,8 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                     	b.reeds_reg,
                     	b.acres_per_bldg,
                          b.hdf_load_index,
+                         b.iecc_temperature_zone,
+                         b.iecc_climate_zone,
                     	c.bldg_type as hazus_bldg_type,
                      
                          -- thermal load
@@ -848,6 +850,8 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                     	b.reeds_reg,
                     	b.acres_per_bldg,
                          b.hdf_load_index,
+                         b.iecc_temperature_zone,
+                         b.iecc_climate_zone,
                     	c.bldg_type as hazus_bldg_type,
                      
                          -- thermal load

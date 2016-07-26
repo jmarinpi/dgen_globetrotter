@@ -97,12 +97,39 @@ def get_technology_performance_improvements_ghp(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_technology_performance_ghp(dataframe, tech_performance_ghp_df):
+def apply_technology_performance_ghp(dataframe, tech_performance_df):
     
     # join on sys_config
-    dataframe = pd.merge(dataframe, tech_performance_ghp_df, how = 'left', on = 'sys_config')
+    dataframe = pd.merge(dataframe, tech_performance_df, how = 'left', on = 'sys_config')
     
     return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_system_degradataion_ghp(con, schema, year):
+    
+    inputs = locals().copy()
+    sql = """SELECT iecc_temperature_zone, 
+                    annual_degradation_pct,
+                    sys_config
+             FROM %(schema)s.input_ghp_system_degradation
+             WHERE year = %(year)s;""" % inputs
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_system_degradation_ghp(dataframe, system_degradation_df):
+    
+    # join on sys_config and iecc_temperature_zone
+    dataframe = pd.merge(dataframe, system_degradation_df, how = 'left', on = ['sys_config', 'iecc_temperature_zone'])
+    
+    return dataframe
+
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

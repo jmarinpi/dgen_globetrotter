@@ -20,7 +20,7 @@ CREATE TABLE diffusion_template.input_ghp_performance_degradation_vertical
 (
 	iecc_temperature_zone integer not null,
 	year integer NOT NULL,
-	annual_degradatation_pct numeric not null,
+	annual_degradation_pct numeric not null,
 	CONSTRAINT input_ghp_performance_degradation_vertical_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -32,7 +32,7 @@ CREATE TABLE diffusion_template.input_ghp_performance_degradation_horizontal
 (
 	iecc_temperature_zone integer not null,
 	year integer NOT NULL,
-	annual_degradatation_pct numeric not null,
+	annual_degradation_pct numeric not null,
 	CONSTRAINT input_ghp_performance_degradation_horizontal_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -55,8 +55,8 @@ FROM  diffusion_template.input_ghp_performance_improvements_raw;
 
 
 
-DROP VIEW IF EXISTS diffusion_template.input_ghp_performance_degradation;
-CREATE VIEW diffusion_template.input_ghp_performance_degradation AS
+DROP VIEW IF EXISTS diffusion_template.input_ghp_system_degradation;
+CREATE VIEW diffusion_template.input_ghp_system_degradation AS
 select *, 'vertical' as sys_config
 from diffusion_template.input_ghp_performance_degradation_vertical
 UNION ALL
