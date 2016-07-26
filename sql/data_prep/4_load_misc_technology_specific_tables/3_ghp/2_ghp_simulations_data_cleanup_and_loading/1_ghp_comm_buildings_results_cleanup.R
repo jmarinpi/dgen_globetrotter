@@ -3,7 +3,7 @@ library(reshape)
 
 setwd('/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/4_load_misc_technology_specific_tables/3_ghp/2_ghp_simulations_data_cleanup_and_loading')
 
-in_xlsx = 'source/Commercial GHP Simulation Results (7-15-2016).xlsx'
+in_xlsx = 'source/Commercial GHP Simulation Results (7-20-2016).xlsx'
 wb = loadWorkbook(in_xlsx)
 sheets = getSheets(wb)
 sheet_names = names(sheets)
@@ -93,8 +93,18 @@ out_cols = !grepl('tc_val', names(complete_df_no_nas))
 complete_df_no_nas = complete_df_no_nas[, out_cols]
 # replace values of NA with NA (applies only to energy savings pct)
 complete_df_no_nas[complete_df_no_nas == 'NA'] = NA
+# fix dtypes
+char_cols = c('building_type', 'city', 'climate_zone')
+for (col in names(complete_df_no_nas)){
+  if (col %in% char_cols){
+    # do nothing
+  } else {
+    # cast to numeric
+    complete_df_no_nas[, col] = as.numeric(complete_df_no_nas[, col])
+  }
+}
 # write to csv
-write.csv(complete_df_no_nas, 'output/ghp_results.csv', row.names = F, na = '')
+write.csv(complete_df_no_nas, 'output/ghp_results_2016_07_20.csv', row.names = F, na = '')
 
 
 

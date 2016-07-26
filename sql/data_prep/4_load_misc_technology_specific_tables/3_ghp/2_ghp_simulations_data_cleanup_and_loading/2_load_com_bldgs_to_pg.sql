@@ -42,7 +42,7 @@ CREATE TABLE diffusion_geo.ghp_simulations_com
 	climate_zone TEXT
 );
 
-\COPY diffusion_geo.ghp_simulations_com FROM '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/4_load_misc_technology_specific_tables/3_ghp/2_ghp_simulations_data_cleanup_and_loading/output/ghp_results.csv' with csv header;
+\COPY diffusion_geo.ghp_simulations_com FROM '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/4_load_misc_technology_specific_tables/3_ghp/2_ghp_simulations_data_cleanup_and_loading/output/ghp_results_2016_07_20.csv' with csv header;
 
 -- add primary key on building type, gtc, and city
 ALTER TABLE diffusion_geo.ghp_simulations_com
@@ -56,8 +56,8 @@ baseline_electricity_consumption_kwh;
 
 UPDATE diffusion_geo.ghp_simulations_com
 set savings_pct_natural_gas_consumption_mbtu =
-(baseline_natural_gas_consumption_mbtu - gshp_natural_gas_consumption_mbtu)/
-baseline_natural_gas_consumption_mbtu;
+COALESCE((baseline_natural_gas_consumption_mbtu - gshp_natural_gas_consumption_mbtu)/
+NULLIF(baseline_natural_gas_consumption_mbtu, 0), 0);
 
 UPDATE diffusion_geo.ghp_simulations_com
 set savings_pct_site_energy_mbtu =
