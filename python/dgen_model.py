@@ -677,8 +677,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # apply depreciation schedule to agents
                     agents = AgentsAlgorithm(agents, mutation.apply_depreciation_schedule, (depreciation_df, )).compute()
                     
-
-    
                     #==========================================================================================================
                     # LEASING AVAILABILITY
                     #==========================================================================================================               
