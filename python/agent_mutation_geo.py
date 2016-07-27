@@ -166,13 +166,15 @@ def apply_crb_ghp_simulations(dataframe, crb_ghp_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_siting_constraints_ghp(con, schema):
+def get_siting_constraints_ghp(con, schema, year):
     
     inputs = locals().copy()
     sql = """SELECT area_per_well_sqft_vertical, area_per_pipe_length_sqft_per_foot_horizontal
              FROM %(schema)s.input_ghp_siting;""" % inputs
     
     df = pd.read_sql(sql, con, coerce_float = False)
+    # add year field (only to facilitate downstream joins)
+    df['year'] = year
 
     return df
 
@@ -193,6 +195,13 @@ def size_systems_ghp(dataframe):
 
     return dataframe
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_siting_constraints_ghp(dataframe, siting_constraints_df):
+    
+    dataframe = pd.merge(dataframe, siting_constraints_df, how = 'left', on = 'year')
+    dataframe['acres_per_bldg'] * 43560.
+    
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
