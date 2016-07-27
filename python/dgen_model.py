@@ -637,7 +637,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get siting constraints settings
                     siting_constraints_df = mutation.get_siting_constraints_ghp(con, schema, year)
                     # apply siting constraints
-                    agents = AgentsAlgorithm(agents, mutation.apply_siting_constraints_ghp, (siting_constraints_df, )).compute()  
+                    agents = AgentsAlgorithm(agents, mutation.apply_siting_constraints_ghp, (siting_constraints_df, )).compute()
                     
                     #==============================================================================
                     # TECHNOLOGY COSTS

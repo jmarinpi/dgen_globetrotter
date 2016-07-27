@@ -169,7 +169,9 @@ def apply_crb_ghp_simulations(dataframe, crb_ghp_df):
 def get_siting_constraints_ghp(con, schema, year):
     
     inputs = locals().copy()
-    sql = """SELECT area_per_well_sqft_vertical, area_per_pipe_length_sqft_per_foot_horizontal
+    sql = """SELECT area_per_well_sqft_vertical, 
+                    max_well_depth_ft,
+                    area_per_pipe_length_sqft_per_foot_horizontal
              FROM %(schema)s.input_ghp_siting;""" % inputs
     
     df = pd.read_sql(sql, con, coerce_float = False)
@@ -199,9 +201,31 @@ def size_systems_ghp(dataframe):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_siting_constraints_ghp(dataframe, siting_constraints_df):
     
-    dataframe = pd.merge(dataframe, siting_constraints_df, how = 'left', on = 'year')
-    dataframe['acres_per_bldg'] * 43560.
+    in_cols = dataframe.columns.tolist()
     
+    dataframe = pd.merge(dataframe, siting_constraints_df, how = 'left', on = 'year')
+    dataframe['parcel_size_sqft'] = dataframe['acres_per_bldg'] * 43560.
+    # find the number of wells and total length of vertical loop that could be installed
+    dataframe['n_installable_wells_vertical'] = dataframe['parcel_size_sqft'] / dataframe['area_per_well_sqft_vertical']
+    dataframe['length_installable_vertical_ft'] = dataframe['n_installable_wells_vertical'] * dataframe['max_well_depth_ft']
+    # find the length of horizontal loop that could be isntalled
+    dataframe['length_installable_horizontal_ft'] = dataframe['parcel_size_sqft'] / dataframe['area_per_pipe_length_sqft_per_foot_horizontal']
+    # determine whether each option is viable
+    dataframe['length_installable_ft'] = np.where(dataframe['sys_config'] == 'vertical', dataframe['length_installable_vertical_ft'], dataframe['length_installable_horizontal_ft'])
+    dataframe['viable_sys_config'] = dataframe['length_installable_ft'] >= dataframe['ghx_length_ft']
+    
+    out_cols = ['area_per_well_sqft_vertical',
+                'max_well_depth_ft',
+                'area_per_pipe_length_sqft_per_foot_horizontal',
+                'n_installable_wells_vertical', 
+                'length_installable_ft',
+                'viable_sys_config'
+                ]
+    return_cols = in_cols + out_cols
+    
+    dataframe = dataframe[return_cols]
+    
+    return dataframe
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
