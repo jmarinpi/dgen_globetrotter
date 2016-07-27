@@ -599,23 +599,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================        
                     system_configurations = ['vertical', 'horizontal']                    
                     agents = AgentsAlgorithm(agents, mutation.replicate_agents_by_factor, ('sys_config', system_configurations), row_increase_factor = len(system_configurations)).compute()
-
-                    #==============================================================================
-                    # TECHNOLOGY PERFORMANCE IMPROVEMENTS
-                    #==============================================================================                      
-                    # get technology performance improvements
-                    tech_performance_df = mutation.get_technology_performance_improvements_ghp(con, schema, year)
-                    # apply technology performance improvements
-                    agents = AgentsAlgorithm(agents, mutation.apply_technology_performance_ghp, (tech_performance_df, )).compute()
-                           
-                    #==========================================================================================================
-                    # SYSTEM DEGRADATION                
-                    #==========================================================================================================
-                    # get system degradatation
-                    system_degradation_df = mutation.get_system_degradataion_ghp(con, schema, year)
-                    # apply technology performance improvements
-                    agents = AgentsAlgorithm(agents, mutation.apply_system_degradation_ghp, (system_degradation_df, )).compute()
-                           
                            
                     #==========================================================================================================
                     # CRB GHP SIMULATIONS
@@ -638,15 +621,32 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     siting_constraints_df = mutation.get_siting_constraints_ghp(con, schema, year)
                     # apply siting constraints
                     agents = AgentsAlgorithm(agents, mutation.apply_siting_constraints_ghp, (siting_constraints_df, )).compute()
+
+                    #==============================================================================
+                    # TECHNOLOGY PERFORMANCE IMPROVEMENTS
+                    #==============================================================================                      
+                    # get technology performance improvements
+                    tech_performance_df = mutation.get_technology_performance_improvements_ghp(con, schema, year)
+                    # apply technology performance improvements
+                    agents = AgentsAlgorithm(agents, mutation.apply_technology_performance_ghp, (tech_performance_df, )).compute()
+                    # TODO: write functions to get and apply baseline system performance
+                           
+                    #==========================================================================================================
+                    # SYSTEM DEGRADATION                
+                    #==========================================================================================================
+                    # get system degradatation
+                    system_degradation_df = mutation.get_system_degradataion_ghp(con, schema, year)
+                    # apply technology performance improvements
+                    agents = AgentsAlgorithm(agents, mutation.apply_system_degradation_ghp, (system_degradation_df, )).compute()
                     
                     #==============================================================================
                     # TECHNOLOGY COSTS
                     #==============================================================================
-                    # get technology costs
+                    # get ghp technology costs
                     tech_costs_ghp_df = mutation.get_technology_costs_ghp(con, schema, year)
-                    # apply technology costs     
-                    # TODO: revise for both GHP and baseline system
-                    #agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()      
+                    # apply ghp technology costs     
+                    agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()
+                    # TODO: write functions to get and apply baseline costs
                                 
                     #==============================================================================
                     # DEVELOPABLE CUSTOMERS/LOAD

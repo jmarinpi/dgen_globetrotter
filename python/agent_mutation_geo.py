@@ -246,8 +246,7 @@ def get_technology_costs_ghp(con, schema, year):
     
     inputs = locals().copy()
     
-    sql = """SELECT year, 
-                    sector_abbr,
+    sql = """SELECT sector_abbr,
                     sys_config,
                     heat_exchanger_cost_dollars_per_ft,
                     heat_pump_cost_dollars_per_cooling_ton,
@@ -267,21 +266,12 @@ def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):
 
     dataframe = pd.merge(dataframe, tech_costs_ghp_df, how = 'left', on = ['sector_abbr', 'sys_config'])
     # Installed Costs
-    dataframe['heat_exchanger_cost_dlrs'] = dataframe['ghx_length_ft'] * dataframe['heat_exchanger_cost_dollars_per_ft']
-    dataframe['heat_pump_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['heat_pump_cost_dollars_per_cooling_ton']
-    dataframe['rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 
+    dataframe['ghx_cost_dlrs'] = dataframe['ghx_length_ft'] * dataframe['heat_exchanger_cost_dollars_per_ft']
+    dataframe['ghp_heat_pump_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['heat_pump_cost_dollars_per_cooling_ton']
+    dataframe['ghp_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 
                                                      dataframe['new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 
                                                      dataframe['new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'] * dataframe['retrofit_rest_of_system_multiplier'])
-    dataframe['installed_costs_dlrs'] = dataframe['heat_exchanger_cost_dlrs'] + dataframe['heat_pump_cost_dlrs'] + dataframe['rest_of_system_cost_dlrs']
-    
-    
-    # costs of conventional system
-    # ducts + vav
-    dataframe['baseline_system_costs_dlrs'] = 2802. * dataframe['ghp_system_size_tons'] + 2500.* dataframe['ghp_system_size_tons']
-    dataframe['ghp_cost_premium_dlrs'] = dataframe['installed_costs_dlrs'] - dataframe['baseline_system_costs_dlrs']
-    # O&M
-    dataframe['fixed_om_dlrs_per_year'] = dataframe['totsqft_conditioned'] * dataframe['fixed_om_dollars_per_sf_per_year']
-    dataframe['variable_om_dlrs_per_year'] = 0.
+    dataframe['ghp_installed_costs_dlrs'] = dataframe['ghx_cost_dlrs'] + dataframe['ghp_heat_pump_cost_dlrs'] + dataframe['ghp_rest_of_system_cost_dlrs']
     
     return dataframe
 
