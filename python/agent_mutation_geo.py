@@ -250,9 +250,9 @@ def get_technology_costs_ghp(con, schema, year):
                     sys_config,
                     heat_exchanger_cost_dollars_per_ft,
                     heat_pump_cost_dollars_per_cooling_ton,
-                    new_rest_of_system_costs_dollars_per_cooling_ton,
-                    fixed_om_dollars_per_sf_per_year,
-                    retrofit_rest_of_system_multiplier
+                    new_rest_of_system_costs_dollars_per_cooling_ton as ghp_new_rest_of_system_costs_dollars_per_cooling_ton,
+                    fixed_om_dollars_per_sf_per_year as ghp_fixed_om_dollars_per_sf_per_year,
+                    retrofit_rest_of_system_multiplier as ghp_retrofit_rest_of_system_multiplier
              FROM %(schema)s.input_ghp_cost
              WHERE year = %(year)s;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
@@ -263,17 +263,51 @@ def get_technology_costs_ghp(con, schema, year):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):    
     
-
     dataframe = pd.merge(dataframe, tech_costs_ghp_df, how = 'left', on = ['sector_abbr', 'sys_config'])
     # Installed Costs
     dataframe['ghx_cost_dlrs'] = dataframe['ghx_length_ft'] * dataframe['heat_exchanger_cost_dollars_per_ft']
     dataframe['ghp_heat_pump_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['heat_pump_cost_dollars_per_cooling_ton']
     dataframe['ghp_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 
-                                                     dataframe['new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 
-                                                     dataframe['new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'] * dataframe['retrofit_rest_of_system_multiplier'])
+                                                     dataframe['ghp_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 
+                                                     dataframe['ghp_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'] * dataframe['ghp_retrofit_rest_of_system_multiplier'])
     dataframe['ghp_installed_costs_dlrs'] = dataframe['ghx_cost_dlrs'] + dataframe['ghp_heat_pump_cost_dlrs'] + dataframe['ghp_rest_of_system_cost_dlrs']
     
     return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_technology_costs_baseline(con, schema, year):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT sector_abbr,
+                    baseline_system_type,
+                    hvac_equipment_cost_dollars_per_cooling_ton,
+                    new_rest_of_system_costs_dollars_per_cooling_ton as baseline_new_rest_of_system_costs_dollars_per_cooling_ton,
+                    retrofit_rest_of_system_multiplier as baseline_retrofit_rest_of_system_multiplier,
+                    fixed_om_dollars_per_sf_per_year as baseline_fixed_om_dollars_per_sf_per_year
+             FROM %(schema)s.input_baseline_costs_hvac
+             WHERE year = %(year)s;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df):    
+    
+
+    dataframe = pd.merge(dataframe, tech_costs_baseline_df, how = 'left', on = ['sector_abbr', 'baseline_system_type'])
+    # Installed Costs
+    dataframe['baseline_equipment_cost_dollars'] = dataframe['ghp_system_size_tons'] * dataframe['hvac_equipment_cost_dollars_per_cooling_ton']
+    dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 
+                                                     dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 
+                                                     dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'] * dataframe['baseline_retrofit_rest_of_system_multiplier'])
+    dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_cost_dollars'] + dataframe['baseline_rest_of_system_cost_dlrs']
+    
+    return dataframe
+
 
 
 #%%

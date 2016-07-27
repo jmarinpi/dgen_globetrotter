@@ -646,8 +646,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     tech_costs_ghp_df = mutation.get_technology_costs_ghp(con, schema, year)
                     # apply ghp technology costs     
                     agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()
-                    # TODO: write functions to get and apply baseline costs
-                                
+                    
+                    # get baseline/conventional system costs
+                    tech_costs_baseline_df = mutation.get_technology_costs_baseline(con, schema, year)                     
+                    # apply baseline/conventional system costs
+                    agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_baseline, (tech_costs_baseline_df, )).compute()
+                     
                     #==============================================================================
                     # DEVELOPABLE CUSTOMERS/LOAD
                     #==============================================================================                            
