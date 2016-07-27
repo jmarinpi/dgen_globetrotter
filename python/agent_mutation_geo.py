@@ -188,8 +188,8 @@ def size_systems_ghp(dataframe):
     # add system size kw (for compatibility with downstream code)
     dataframe['system_size_kw'] = dataframe['ghp_system_size_tons'] * 3.5168525
 
-    # next, calculate the ghx length required to provide that capacity (accounting for efficiency improvements from performance projections)
-    dataframe['ghx_length_ft'] = dataframe['ghp_system_size_tons'] * dataframe['ghx_length_ft_per_cooling_ton'] * (1 - dataframe['efficiency_improvement_factor'])
+    # next, calculate the ghx length required to provide that capacity
+    dataframe['ghx_length_ft'] = dataframe['ghp_system_size_tons'] * dataframe['ghx_length_ft_per_cooling_ton']
 
     return dataframe
 
