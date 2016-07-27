@@ -651,28 +651,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     tech_performance_baseline_df = mutation.get_technology_performance_improvements_and_degradation_baseline(con, schema, year)
                     # apply baseline tech performance improvements and degradation
                     agents = AgentsAlgorithm(agents, mutation.apply_technology_performance_improvements_and_degradation_baseline, (tech_performance_baseline_df, )).compute()
-
-
-                    #==============================================================================
-                    # DEVELOPABLE CUSTOMERS/LOAD
-                    #==============================================================================                            
-                    # determine "developable" population (based on siting constraints)
-                    # TODO: this should account for: siting constraints, unrepresentable buildings, and buildings that don't have sufiicnelty old systems
-                    agents = AgentsAlgorithm(agents, mutation.calculate_developable_customers_and_load).compute()                        
-                                
-                    #==============================================================================
-                    # ENERGY PRICES
-                    #==============================================================================
-                    energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
-                    # apply regional heating/cooling prices
-                    # TO DO: fix this -- should only apply natural gas or electricity  for com bldgs
-                    # TODO: consider moving this and bill savings up above siting constraints...
-                    #agents = AgentsAlgorithm(agents, mutation.apply_regional_energy_prices, (energy_prices_df, )).compute()
                     
                     #==========================================================================================================
-                    # CALCULATE BILL SAVINGS
+                    # CALCULATE SITE ENERGY CONSUMPTION
                     #==========================================================================================================
-                    agents = AgentsAlgorithm(agents, mutation.calculate_energy_cost_savings_ghp).compute()
+                    # TODO: write this function (#638)
+                    agents = AgentsAlgorithm(agents, mutation.calculate_site_energy_consumption_ghp).compute()
                     
                     #==========================================================================================================
                     # DEPRECIATION SCHEDULE       
@@ -688,6 +672,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get leasing availability
                     leasing_availability_df = mutation.get_leasing_availability(con, schema, year)
                     agents = AgentsAlgorithm(agents, mutation.apply_leasing_availability, (leasing_availability_df, )).compute()                                        
+            
+                    #==============================================================================
+                    # ENERGY PRICES
+                    #==============================================================================
+                    energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
+                    # apply regional heating/cooling prices
+                    # TO DO: fix this -- should only apply natural gas or electricity  for com bldgs
+                    # TODO: consider moving this and bill savings up above siting constraints...
+                    #agents = AgentsAlgorithm(agents, mutation.apply_regional_energy_prices, (energy_prices_df, )).compute()            
+            
             
                     #==========================================================================================================
                     # CASHFLOWS CALCULATIONS
@@ -705,6 +699,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     raise
                     # select from choices for business model and (optionally) technology
                     df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)          
+    
+                    #==============================================================================
+                    # DEVELOPABLE CUSTOMERS/LOAD
+                    #==============================================================================                            
+                    # flag the agents that can actually be developed (these will be ignored in market potential calcs)
+                    agents = AgentsAlgorithm(agents, mutation.identify_developable_agents).compute()                            
     
                     #==========================================================================================================
                     # MARKET LAST YEAR

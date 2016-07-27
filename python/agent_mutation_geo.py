@@ -256,14 +256,11 @@ def apply_siting_constraints_ghp(dataframe, siting_constraints_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_developable_customers_and_load(dataframe):
+def identify_developable_agents(dataframe):
 
-    dataframe['developable_customers_in_bin'] = np.where(dataframe['ghp_system_size_tons'] == 0, 
-                                                                  0,
-                                                                  dataframe['buildings_in_bin'])
-                                                        
-    dataframe['developable_load_kwh_in_bin'] = dataframe['developable_customers_in_bin'] * dataframe['baseline_source_energy_mbtu']/1000./3412.14 
-                                                            
+    # TODO: also account for the fact that some microdata can't be represented by CRBs
+    dataframe['developable'] = (dataframe['viable_sys_config'] == True) & (dataframe['needs_replacement_average_system'] == True)
+   
     return dataframe    
     
     
@@ -339,11 +336,10 @@ def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_energy_cost_savings_ghp(dataframe):
+def calculate_site_energy_savings_ghp(dataframe):
     
-    dataframe['first_year_bill_with_system'] = dataframe['gshp_energy_cost']
-    dataframe['first_year_bill_without_system'] = dataframe['baseline_energy_cost']
-    
+    # TODO: see issue #638
+
     return dataframe
 
 #%%
