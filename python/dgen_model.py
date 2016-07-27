@@ -623,23 +623,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, mutation.apply_siting_constraints_ghp, (siting_constraints_df, )).compute()
 
                     #==============================================================================
-                    # TECHNOLOGY PERFORMANCE IMPROVEMENTS
-                    #==============================================================================                      
-                    # get technology performance improvements
-                    tech_performance_df = mutation.get_technology_performance_improvements_ghp(con, schema, year)
-                    # apply technology performance improvements
-                    agents = AgentsAlgorithm(agents, mutation.apply_technology_performance_ghp, (tech_performance_df, )).compute()
-                    # TODO: write functions to get and apply baseline system performance
-                           
-                    #==========================================================================================================
-                    # SYSTEM DEGRADATION                
-                    #==========================================================================================================
-                    # get system degradatation
-                    system_degradation_df = mutation.get_system_degradataion_ghp(con, schema, year)
-                    # apply technology performance improvements
-                    agents = AgentsAlgorithm(agents, mutation.apply_system_degradation_ghp, (system_degradation_df, )).compute()
-                    
-                    #==============================================================================
                     # TECHNOLOGY COSTS
                     #==============================================================================
                     # get ghp technology costs
@@ -651,7 +634,25 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     tech_costs_baseline_df = mutation.get_technology_costs_baseline(con, schema, year)
                     # apply baseline/conventional system costs
                     agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_baseline, (tech_costs_baseline_df, )).compute()
-                     
+
+                    #==============================================================================
+                    # TECHNOLOGY PERFORMANCE IMPROVEMENTS AND DEGRADATION
+                    #==============================================================================                      
+                    # get GHP technology performance improvements
+                    tech_performance_ghp_df = mutation.get_technology_performance_improvements_ghp(con, schema, year)
+                    # apply GHP technology performance improvements
+                    agents = AgentsAlgorithm(agents, mutation.apply_technology_performance_ghp, (tech_performance_ghp_df, )).compute()
+                    # get GHP system degradatation
+                    system_degradation_df = mutation.get_system_degradataion_ghp(con, schema, year)
+                    # apply GHP degradation
+                    agents = AgentsAlgorithm(agents, mutation.apply_system_degradation_ghp, (system_degradation_df, )).compute()
+                    
+                    # get baseline tech performance improvements and degradation
+                    tech_performance_baseline_df = mutation.get_technology_performance_improvements_and_degradation_baseline(con, schema, year)
+                    # apply baseline tech performance improvements and degradation
+                    agents = AgentsAlgorithm(agents, mutation.apply_technology_performance_improvements_and_degradation_baseline, (tech_performance_baseline_df, )).compute()
+
+
                     #==============================================================================
                     # DEVELOPABLE CUSTOMERS/LOAD
                     #==============================================================================                            

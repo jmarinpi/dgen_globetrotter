@@ -84,8 +84,8 @@ def replicate_agents_by_factor(dataframe, new_column_name, factor_list):
 def get_technology_performance_improvements_ghp(con, schema, year):
     
     inputs = locals().copy()
-    sql = """SELECT heat_pump_lifetime_yrs, 
-                    efficiency_improvement_factor,
+    sql = """SELECT heat_pump_lifetime_yrs as ghp_heat_pump_lifetime_yrs, 
+                    efficiency_improvement_factor as ghp_efficiency_improvement_factor,
                     sys_config
              FROM %(schema)s.input_ghp_performance_improvements
              WHERE year = %(year)s;""" % inputs
@@ -104,15 +104,14 @@ def apply_technology_performance_ghp(dataframe, tech_performance_df):
     
     return dataframe
 
-
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_system_degradataion_ghp(con, schema, year):
     
     inputs = locals().copy()
     sql = """SELECT iecc_temperature_zone, 
-                    annual_degradation_pct as ann_system_degradation,
-                    sys_config
+                    sys_config,
+                    annual_degradation_pct as ghp_ann_system_degradation
              FROM %(schema)s.input_ghp_system_degradation
              WHERE year = %(year)s;""" % inputs
     
@@ -127,6 +126,34 @@ def apply_system_degradation_ghp(dataframe, system_degradation_df):
     
     # join on sys_config and iecc_temperature_zone
     dataframe = pd.merge(dataframe, system_degradation_df, how = 'left', on = ['sys_config', 'iecc_temperature_zone'])
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_technology_performance_improvements_and_degradation_baseline(con, schema, year):
+    
+    inputs = locals().copy()
+    sql = """SELECT sector_abbr, 
+                    baseline_system_type, 
+                    efficiency_improvement_factor as baseline_efficiency_improvement_factor, 
+                    system_lifetime_yrs as baseline_system_lifetime_yrs, 
+                    annual_degradation_pct as baseline_ann_system_degradation
+             FROM %(schema)s.input_baseline_performance_hvac
+             WHERE year = %(year)s;""" % inputs
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_technology_performance_improvements_and_degradation_baseline(dataframe, tech_performance_df):
+    
+    # join on sector and baseline type
+    dataframe = pd.merge(dataframe, tech_performance_df, how = 'left', on = ['sector_abbr', 'baseline_system_type'])
     
     return dataframe
 
