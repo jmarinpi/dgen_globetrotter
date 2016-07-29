@@ -367,7 +367,7 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
                  (
                      SELECT a.tract_id_alias,
                              a.year,
-                             a.total_heat_kwh_in_bin,
+                             a.demand_total_heat_in_bin_kwh,
                              b.nkwh
                      FROM %(schema)s.agent_core_attributes_com a
                      LEFT JOIN diffusion_load_profiles.energy_plus_normalized_water_and_space_heating_com b
@@ -379,7 +379,7 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
                  (
                      SELECT a.tract_id_alias,
                              a.year,
-                             a.total_heat_kwh_in_bin,
+                             a.demand_total_heat_in_bin_kwh,
                              b.nkwh
                      FROM %(schema)s.agent_core_attributes_res a
                      LEFT JOIN diffusion_load_profiles.energy_plus_normalized_water_and_space_heating_res b
@@ -398,7 +398,7 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
                  scaled as
                  (
                      SELECT tract_id_alias, year,
-                            diffusion_shared.r_scale_array_sum(nkwh, total_heat_kwh_in_bin/1000.) as mwh
+                            diffusion_shared.r_scale_array_sum(nkwh, demand_total_heat_in_bin_kwh/1000.) as mwh
                      FROM combined             
                  ),
                  yearly_increments AS
@@ -978,15 +978,15 @@ def calc_agent_lcoe(dataframe, plant_lifetime, ignore_sunk_cost_of_existing_equi
     # extract a list of the input columns
     in_cols = dataframe.columns.tolist()       
 
-    dataframe['total_heat_mwh_per_building_in_bin'] = dataframe['total_heat_kwh_per_building_in_bin']/1000.     
+    dataframe['site_total_heat_per_building_in_bin_mwh'] = dataframe['site_total_heat_per_building_in_bin_kwh']/1000.     
     
     # As a standing assumption we'll assume the DU system provides 100% or 0% of the energy needed. It can only supply one source of energy demand
     # Thus, we calculate cost of energy, weighted by the amount needed by end-use. This is the price the consumer uses to evaluate investment against the supply LCOE
     if ignore_sunk_cost_of_existing_equipment == True:
-        dataframe['weighted_cost_of_energy_dlrs_per_mwh'] = np.where(dataframe['total_heat_mwh_per_building_in_bin'] == 0, 0,
+        dataframe['weighted_cost_of_energy_dlrs_per_mwh'] = np.where(dataframe['site_total_heat_per_building_in_bin_mwh'] == 0, 0,
                                                                      ( dataframe['space_heat_dlrs_per_kwh'] * dataframe['space_heat_kwh_per_building_in_bin'] +
                                                                          dataframe['water_heat_dlrs_per_kwh'] * dataframe['water_heat_kwh_per_building_in_bin']
-                                                                         ) / dataframe['total_heat_mwh_per_building_in_bin'])
+                                                                         ) / dataframe['site_total_heat_per_building_in_bin_mwh'])
         
     else:
         raise ValueError("Functionality for calculating demand curve including sunk costs does not yet exist")
@@ -999,14 +999,14 @@ def calc_agent_lcoe(dataframe, plant_lifetime, ignore_sunk_cost_of_existing_equi
         dataframe['levelized_upfront_costs_dlrs_per_yr'] = dataframe['upfront_costs_dlrs'] / plant_lifetime
         dataframe['fixed_om_costs_dollars_per_yr'] = dataframe['fixed_om_costs_dollars_sf_yr'] * dataframe['totsqft_heat']
         dataframe['annual_costs_dlrs'] = dataframe['fixed_om_costs_dollars_per_yr'] + dataframe['levelized_upfront_costs_dlrs_per_yr']
-        dataframe['annual_costs_dlrs_per_mwh'] = dataframe['annual_costs_dlrs'] / dataframe['total_heat_mwh_per_building_in_bin']
+        dataframe['annual_costs_dlrs_per_mwh'] = dataframe['annual_costs_dlrs'] / dataframe['site_total_heat_per_building_in_bin_mwh']
     else: 
         dataframe['annual_costs_dlrs_per_mwh'] = 0.
     
     
     dataframe['lcoe_dlrs_mwh'] = np.maximum(dataframe['weighted_cost_of_energy_dlrs_per_mwh'] - dataframe['annual_costs_dlrs_per_mwh'], 0)
     
-    out_cols = ['total_heat_mwh_per_building_in_bin', 
+    out_cols = ['site_total_heat_per_building_in_bin_mwh', 
                 'weighted_cost_of_energy_dlrs_per_mwh',
                 'system_installation_costs_dlrs',
                 'upfront_costs_dlrs',
@@ -1028,7 +1028,7 @@ def lcoe_to_demand_curve(dataframe, building_set_size = 10):
     # every group of building_set_size buildings will be represented by one agent
     dataframe['replicate_count'] = np.maximum(np.round(dataframe['buildings_in_bin']/building_set_size, 0), 1).astype('int64')
     dataframe['buildings_in_replicate'] = dataframe['buildings_in_bin'] / dataframe['replicate_count']
-    dataframe['energy_mwh_per_replicate'] = dataframe['total_heat_mwh_per_building_in_bin'] * dataframe['buildings_in_replicate']
+    dataframe['energy_mwh_per_replicate'] = dataframe['site_total_heat_per_building_in_bin_mwh'] * dataframe['buildings_in_replicate']
     replicate_indices = np.repeat(dataframe.index.values, dataframe['replicate_count'])
     out_cols = ['tract_id_alias',
                 'agent_id',

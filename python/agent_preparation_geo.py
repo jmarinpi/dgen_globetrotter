@@ -461,17 +461,70 @@ def sample_building_microdata(schema, sector_abbr, initial_or_new, chunks, seed,
             FROM all_bldgs a
             GROUP BY a.agent_id
         )
-        SELECT  a.agent_id, a.eia_bldg_id,
+        SELECT  a.agent_id, 
+                a.eia_bldg_id,
                 b.sample_wt as eia_bldg_weight,
-                b.climate_zone, b.pba, b.pbaplus, b.typehuq, b.roof_material, b.owner_occupied, b.kwh, b.year_built, b.single_family_res,
-                b.num_tenants, b.num_floors, b.space_heat_equip, b.space_heat_fuel, b.space_heat_age_min, b.space_heat_age_max, 
-                b.water_heat_equip, b.water_heat_fuel, b.water_heat_age_min, b.water_heat_age_max, b.space_cool_equip, b.space_cool_fuel,
-                b.space_cool_age_min, b.space_cool_age_max, b.ducts, b.totsqft, b.totsqft_heat, b.totsqft_cool, b.kbtu_space_heat,
-                b.kbtu_space_cool, b.kbtu_water_heat, b.crb_model, b.roof_style, b.roof_sqft
+                b.climate_zone, 
+                b.pba, 
+                b.pbaplus, 
+                b.typehuq, 
+                b.roof_material, 
+                b.owner_occupied, 
+                b.kwh, 
+                b.year_built, 
+                b.single_family_res,
+                b.num_tenants,
+                b.num_floors, 
+                b.space_heat_equip, 
+                b.space_heat_fuel, 
+                b.space_heat_age_min, 
+                b.space_heat_age_max, 
+                b.water_heat_equip, 
+                b.water_heat_fuel, 
+                b.water_heat_age_min, 
+                b.water_heat_age_max, 
+                b.space_cool_equip, 
+                b.space_cool_fuel,
+                b.space_cool_age_min, 
+                b.space_cool_age_max, 
+                b.ducts, 
+                b.totsqft, 
+                b.totsqft_heat, 
+                b.totsqft_cool, 
+                b.kbtu_space_heat as site_space_heat_kbtu,
+                b.kbtu_space_cool as site_space_cool_kbtu, 
+                b.kbtu_water_heat as site_water_heat_kbtu, 
+                b.crb_model, 
+                b.roof_style, 
+                b.roof_sqft,
+                
+                c.efficiency as space_heat_efficiency,
+                d.efficiency as space_cool_efficiency,
+                e.efficiency as water_heat_efficiency
+                
         FROM sampled_bldgs a
+        
         LEFT JOIN diffusion_shared.cbecs_recs_expanded_combined b
             ON a.eia_bldg_id = b.building_id
-            AND b.sector_abbr = '%(sector_abbr)s';""" % inputs
+            AND b.sector_abbr = '%(sector_abbr)s'
+            
+        LEFT JOIN diffusion_geo.cbecs_recs_thermal_efficiency_factors c
+            ON c.sector_abbr = '%(sector_abbr)s'
+            AND b.space_heat_equip = c.equipment_type
+            and b.space_heat_fuel = c.fuel
+            AND c.end_use = 'space_heat'        
+
+        LEFT JOIN diffusion_geo.cbecs_recs_thermal_efficiency_factors d
+            ON d.sector_abbr = '%(sector_abbr)s'
+            AND b.space_cool_equip = d.equipment_type
+            and b.space_cool_fuel = d.fuel
+            AND d.end_use = 'space_cool'
+
+        LEFT JOIN diffusion_geo.cbecs_recs_thermal_efficiency_factors e
+            ON e.sector_abbr = '%(sector_abbr)s'
+            AND b.water_heat_equip = e.equipment_type
+            and b.water_heat_fuel = e.fuel
+            AND e.end_use = 'water_heat';""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     
 
@@ -512,23 +565,26 @@ def estimate_agent_thermal_loads(schema, sector_abbr, initial_or_new, chunks, po
                 SELECT a.agent_id,
                            b.buildings_in_bin,
                            CASE WHEN '%(initial_or_new)s' = 'initial' THEN
-                                       (b.buildings_in_bin * a.kbtu_space_heat)/sum(b.buildings_in_bin * NULLIF(a.kbtu_space_heat, 0)) OVER (PARTITION BY d.old_county_id) 
+                                       (b.buildings_in_bin * a.site_space_heat_kbtu)/sum(b.buildings_in_bin * NULLIF(a.site_space_heat_kbtu, 0)) OVER (PARTITION BY d.old_county_id) 
                                        * e.space_heating_thermal_load_mmbtu * 1000. 
-                                WHEN '%(initial_or_new)s' = 'new' THEN b.buildings_in_bin * a.kbtu_space_heat
-                           END AS space_heat_kbtu_in_bin,
+                                WHEN '%(initial_or_new)s' = 'new' THEN b.buildings_in_bin * a.site_space_heat_kbtu
+                           END AS site_space_heat_in_bin_kbtu,
                            
                            CASE WHEN '%(initial_or_new)s' = 'initial' THEN                           
-                                       (b.buildings_in_bin * a.kbtu_space_cool)/sum(b.buildings_in_bin * NULLIF(a.kbtu_space_cool, 0)) OVER (PARTITION BY d.old_county_id) 
+                                       (b.buildings_in_bin * a.site_space_cool_kbtu)/sum(b.buildings_in_bin * NULLIF(a.site_space_cool_kbtu, 0)) OVER (PARTITION BY d.old_county_id) 
                                        * e.space_cooling_thermal_load_mmbtu * 1000. 
-                                WHEN '%(initial_or_new)s' = 'new' THEN b.buildings_in_bin * a.kbtu_space_cool
-                           END AS space_cool_kbtu_in_bin,
+                                WHEN '%(initial_or_new)s' = 'new' THEN b.buildings_in_bin * a.site_space_cool_kbtu
+                           END AS site_space_cool_in_bin_kbtu,
 
                            CASE WHEN '%(initial_or_new)s' = 'initial' THEN                           
-                                       (b.buildings_in_bin * a.kbtu_water_heat)/sum(b.buildings_in_bin * NULLIF(a.kbtu_water_heat, 0)) OVER (PARTITION BY d.old_county_id) 
+                                       (b.buildings_in_bin * a.site_water_heat_kbtu)/sum(b.buildings_in_bin * NULLIF(a.site_water_heat_kbtu, 0)) OVER (PARTITION BY d.old_county_id) 
                                        * e.water_heating_thermal_load_mmbtu * 1000.
-                                WHEN '%(initial_or_new)s' = 'new' THEN b.buildings_in_bin * a.kbtu_water_heat
-                           END AS water_heat_kbtu_in_bin,
-                           a.totsqft
+                                WHEN '%(initial_or_new)s' = 'new' THEN b.buildings_in_bin * a.site_water_heat_kbtu
+                           END AS site_water_heat_in_bin_kbtu,                          
+                            a.space_heat_efficiency,
+                            a.space_cool_efficiency,
+                            a.water_heat_efficiency,                                                     
+                            a.totsqft
                  FROM %(schema)s.%(initial_or_new)s_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
                  LEFT JOIN b
                      ON a.agent_id = b.agent_id         
@@ -538,22 +594,63 @@ def estimate_agent_thermal_loads(schema, sector_abbr, initial_or_new, chunks, po
                      ON c.pgid = d.pgid
                  LEFT JOIN diffusion_shared.county_thermal_demand_%(sector_abbr)s e
                      ON d.old_county_id = e.county_id
+            ),
+            d AS
+            (
+                SELECT agent_id, 
+                        buildings_in_bin, 
+                        totsqft,
+                        space_heat_efficiency,
+                        space_cool_efficiency,
+                        water_heat_efficiency,
+                       ROUND(COALESCE(site_space_heat_in_bin_kbtu, 0) * 1000 / 3412.14) as site_space_heat_in_bin_kwh, 
+                       ROUND(COALESCE(site_space_cool_in_bin_kbtu, 0) * 1000 / 3412.14) as site_space_cool_in_bin_kwh, 
+                       ROUND(COALESCE(site_water_heat_in_bin_kbtu, 0) * 1000 / 3412.14) as site_water_heat_in_bin_kwh,
+                       ROUND(COALESCE(site_space_heat_in_bin_kbtu / buildings_in_bin, 0) * 1000 / 3412.14) as site_space_heat_per_building_in_bin_kwh,
+                       ROUND(COALESCE(site_space_cool_in_bin_kbtu / buildings_in_bin, 0) * 1000 / 3412.14) as site_space_cool_per_building_in_bin_kwh,
+                       ROUND(COALESCE(site_water_heat_in_bin_kbtu / buildings_in_bin, 0) * 1000 / 3412.14) as site_water_heat_per_building_in_bin_kwh
+                FROM c          
             )
-            SELECT agent_id, buildings_in_bin, totsqft,
-                   COALESCE(space_heat_kbtu_in_bin, 0) as space_heat_kbtu_in_bin, 
-                   COALESCE(space_cool_kbtu_in_bin, 0) as space_cool_kbtu_in_bin, 
-                   COALESCE(water_heat_kbtu_in_bin, 0) as water_heat_kbtu_in_bin,
-                   COALESCE(space_heat_kbtu_in_bin/buildings_in_bin, 0) as space_heat_kbtu_per_building_in_bin,
-                   COALESCE(space_cool_kbtu_in_bin/buildings_in_bin, 0) as space_cool_kbtu_per_building_in_bin,
-                   COALESCE(water_heat_kbtu_in_bin/buildings_in_bin, 0) as water_heat_kbtu_per_building_in_bin
-            FROM c;""" % inputs
+            SELECT agent_id,
+                    buildings_in_bin,
+                    totsqft,
+                    site_space_heat_in_bin_kwh,
+                    site_space_cool_in_bin_kwh,
+                    site_water_heat_in_bin_kwh,
+                    site_space_heat_in_bin_kwh + site_water_heat_in_bin_kwh as site_total_heat_in_bin_kwh,
+
+                    site_space_heat_per_building_in_bin_kwh,
+                    site_space_cool_per_building_in_bin_kwh,
+                    site_water_heat_per_building_in_bin_kwh,
+                    site_space_heat_per_building_in_bin_kwh + site_water_heat_per_building_in_bin_kwh as site_total_heat_per_building_in_bin_kwh,
+                    
+                    site_space_heat_in_bin_kwh * space_heat_efficiency as demand_space_heat_in_bin_kwh,
+                    site_space_cool_in_bin_kwh * space_cool_efficiency as demand_space_cool_in_bin_kwh,
+                    site_water_heat_in_bin_kwh * water_heat_efficiency as demand_water_heat_in_bin_kwh,
+                    site_space_heat_in_bin_kwh * space_heat_efficiency + site_water_heat_in_bin_kwh * water_heat_efficiency as demand_total_heat_in_bin_kwh,
+
+                    site_space_heat_per_building_in_bin_kwh * space_heat_efficiency as demand_space_heat_per_building_in_bin_kwh,
+                    site_space_cool_per_building_in_bin_kwh * space_cool_efficiency as demand_space_cool_per_building_in_bin_kwh,
+                    site_water_heat_per_building_in_bin_kwh * water_heat_efficiency as demand_water_heat_per_building_in_bin_kwh,
+                    site_space_heat_per_building_in_bin_kwh * space_heat_efficiency + site_water_heat_per_building_in_bin_kwh * water_heat_efficiency as demand_total_heat_per_building_in_bin_kwh
+                    
+            FROM d;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     
     # add primary key
     sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
-       
+
+                   
+#space_heat_kwh_in_bin,
+#space_cool_kwh_in_bin,
+#water_heat_kwh_in_bin,
+#total_heat_kwh_in_bin,
+#space_heat_kwh_per_building_in_bin,
+#space_cool_kwh_per_building_in_bin,
+#water_heat_kwh_per_building_in_bin,
+#total_heat_kwh_per_building_in_bin,           
 
 
 #%%
@@ -763,16 +860,22 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                      
                          -- thermal load
                     	d.buildings_in_bin,
-                    	ROUND(d.space_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_heat_kwh_in_bin,
-                    	ROUND(d.space_cool_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_cool_kwh_in_bin,
-                    	ROUND(d.water_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as water_heat_kwh_in_bin,
-                        ROUND(d.space_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) +
-                        ROUND(d.water_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as total_heat_kwh_in_bin,
-                    	ROUND(d.space_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_heat_kwh_per_building_in_bin,
-                    	ROUND(d.space_cool_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_cool_kwh_per_building_in_bin,
-                    	ROUND(d.water_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as water_heat_kwh_per_building_in_bin,
-                        ROUND(d.space_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) +
-                        ROUND(d.water_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as total_heat_kwh_per_building_in_bin,
+                        d.site_space_heat_in_bin_kwh,
+                        d.site_space_cool_in_bin_kwh,
+                        d.site_water_heat_in_bin_kwh,
+                        d.site_total_heat_in_bin_kwh,
+                        d.site_space_heat_per_building_in_bin_kwh,
+                        d.site_space_cool_per_building_in_bin_kwh,
+                        d.site_water_heat_per_building_in_bin_kwh,
+                        d.site_total_heat_per_building_in_bin_kwh,
+                        d.demand_space_heat_in_bin_kwh,
+                        d.demand_space_cool_in_bin_kwh,
+                        d.demand_water_heat_in_bin_kwh,
+                        d.demand_total_heat_in_bin_kwh,
+                        d.demand_space_heat_per_building_in_bin_kwh,
+                        d.demand_space_cool_per_building_in_bin_kwh,
+                        d.demand_water_heat_per_building_in_bin_kwh,
+                        d.demand_total_heat_per_building_in_bin_kwh,
                      
                          -- system ages
                     	e.space_heat_system_age,
@@ -805,6 +908,9 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                     	h.water_heat_fuel,
                     	h.space_cool_equip,
                     	h.space_cool_fuel,
+                        h.space_heat_efficiency,
+                        h.space_cool_efficiency,
+                        h.water_heat_efficiency,                                          
                     	h.totsqft,
                     	h.totsqft_heat,
                     	h.totsqft_cool,
@@ -857,16 +963,22 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                      
                          -- thermal load
                     	d.buildings_in_bin,
-                    	ROUND(d.space_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_heat_kwh_in_bin,
-                    	ROUND(d.space_cool_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_cool_kwh_in_bin,
-                    	ROUND(d.water_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as water_heat_kwh_in_bin,
-                        ROUND(d.space_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) +
-                        ROUND(d.water_heat_kbtu_in_bin::NUMERIC * 1000 / 3412.14, 0) as total_heat_kwh_in_bin,
-                    	ROUND(d.space_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_heat_kwh_per_building_in_bin,
-                    	ROUND(d.space_cool_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as space_cool_kwh_per_building_in_bin,
-                    	ROUND(d.water_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as water_heat_kwh_per_building_in_bin,
-                        ROUND(d.space_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) +
-                        ROUND(d.water_heat_kbtu_per_building_in_bin::NUMERIC * 1000 / 3412.14, 0) as total_heat_kwh_per_building_in_bin,
+                        d.site_space_heat_in_bin_kwh,
+                        d.site_space_cool_in_bin_kwh,
+                        d.site_water_heat_in_bin_kwh,
+                        d.site_total_heat_in_bin_kwh,
+                        d.site_space_heat_per_building_in_bin_kwh,
+                        d.site_space_cool_per_building_in_bin_kwh,
+                        d.site_water_heat_per_building_in_bin_kwh,
+                        d.site_total_heat_per_building_in_bin_kwh,
+                        d.demand_space_heat_in_bin_kwh,
+                        d.demand_space_cool_in_bin_kwh,
+                        d.demand_water_heat_in_bin_kwh,
+                        d.demand_total_heat_in_bin_kwh,
+                        d.demand_space_heat_per_building_in_bin_kwh,
+                        d.demand_space_cool_per_building_in_bin_kwh,
+                        d.demand_water_heat_per_building_in_bin_kwh,
+                        d.demand_total_heat_per_building_in_bin_kwh,
                      
                          -- system ages
                     	e.space_heat_system_age,
@@ -899,6 +1011,9 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                     	h.water_heat_fuel,
                     	h.space_cool_equip,
                     	h.space_cool_fuel,
+                        h.space_heat_efficiency,
+                        h.space_cool_efficiency,
+                        h.water_heat_efficiency,
                     	h.totsqft,
                     	h.totsqft_heat,
                     	h.totsqft_cool,
