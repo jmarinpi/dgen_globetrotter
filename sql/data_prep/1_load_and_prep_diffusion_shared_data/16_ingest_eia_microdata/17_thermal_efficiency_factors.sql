@@ -20,12 +20,17 @@ DROP COLUMN count;
 
 -- edit the efficiency field to be decimal
 UPDATE diffusion_geo.cbecs_recs_thermal_efficiency_factors
-set efficiency = efficiency/100.;
--- 164 rows
+set efficiency = round(efficiency/100, 2)
+where end_use <> 'space_cool';
+-- 138 rows
 
 -- add primary key
 ALTER TABLE diffusion_geo.cbecs_recs_thermal_efficiency_factors
 ADD PRIMARY KEY (equipment_type, fuel, end_use, sector_abbr);
+
+-- look at the data
+select *
+FROM diffusion_geo.cbecs_recs_thermal_efficiency_factors;
 
 -- check results -- does it cover all records in the microdata?
 -- check space heat first
