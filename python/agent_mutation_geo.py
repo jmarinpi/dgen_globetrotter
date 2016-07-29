@@ -336,10 +336,16 @@ def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_site_energy_savings_ghp(dataframe):
+def calculate_site_energy_consumption_ghp(dataframe):
     
-    # TODO: see issue #638
-
+    # determine the total amount of natural gas and elec used for space heating and cooling by BASELINE HVAC
+    dataframe['site_hvac_natgas_per_building_kwh'] = (dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'natural gas') + dataframe['site_space_cool_per_building_in_bin_kwh'] * (dataframe['space_cool_fuel'] == 'natural gas'))
+    dataframe['site_hvac_elec_per_building_kwh'] = (dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'electricity') + dataframe['site_space_cool_per_building_in_bin_kwh'] * (dataframe['space_cool_fuel'] == 'electricity'))
+    # determine the total amount of natural gas and elec used for space heating and cooling by GHP
+    # (account for energy savings from CRBS)
+    dataframe['site_ghp_natgas_per_building_kwh'] = dataframe['site_hvac_natgas_per_building_kwh'] * (1. - dataframe['savings_pct_natural_gas_consumption'])
+    dataframe['site_ghp_elec_per_building_kwh'] = dataframe['site_hvac_elec_per_building_kwh'] * (1. - dataframe['savings_pct_electricity_consumption'])        
+    
     return dataframe
 
 #%%

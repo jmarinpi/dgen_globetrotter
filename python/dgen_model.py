@@ -587,12 +587,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # update system ages
                     agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, )).compute()
                     # check whether systems need replacement (outlived their expected lifetime)
-                    agents = AgentsAlgorithm(agents, mutation.check_system_expirations).compute()
-
-                    #==============================================================================
-                    # CALCULATE BASELINE ENERGY BILL
-                    #==============================================================================                          
-                    
+                    agents = AgentsAlgorithm(agents, mutation.check_system_expirations).compute()                                
 
                     #==============================================================================
                     # REPLICATE AGENTS FOR DIFFERENT GHP SYSTEM CONFIGURATIONS
