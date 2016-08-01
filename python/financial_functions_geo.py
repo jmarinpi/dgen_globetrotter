@@ -263,12 +263,6 @@ def calc_cashflows(df, tech, apply_incentives = False, analysis_period = 30):
     avoided cost, or no credit. Amount of excess energy is aep * excess_gen_factor + 0.31 * (gen/load - 1) 
     See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail    
     """
-    # rate_growth_mult is a cumulative factor i.e. [1,1.02,1.044] instead of [0.02, 0.02, 0.02]
-        
-    # Take the difference of bills in first year, this is the revenue in the first year. Then assume that bill savings will follow
-    # the same trajectories as changes in rate escalation. Output of this should be a data frame of shape (len(df),30)
-    
-    df['first_year_energy_savings'] = df['first_year_bill_without_system'] - df['first_year_bill_with_system']
     annual_energy_costs_dlrs = df[site_natgas_consumption_column] * df['dlrs_per_kwh_natgas'].values + df[site_elec_consumption_column] * df['dlrs_per_kwh_elec'].values
 
     
