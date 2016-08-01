@@ -435,29 +435,9 @@ def apply_regional_energy_prices(dataframe, energy_prices_df):
     # check for nulls; if found, raise error    
     nulls_exist = dataframe[['space_heat_dlrs_per_kwh', 'water_heat_dlrs_per_kwh', 'space_cool_dlrs_per_kwh']].isnull().any().any()
     if nulls_exist == True:
-        raise ValueError("null values exist in space_heat_dlrs_per_kwh, water_heat_dlrs_per_kwh, or space_cool_dlrs_per_kwh")
+        raise ValueError("null values exist in space_heat_dlrs_per_kwh, water_heat_dlrs_per_kwh, or space_cool_dlrs_per_kwh")    
     
-    
-    # merge in costs of natural gas and electricity specifically (for GHP)
-    ng_prices_df = energy_prices_df[energy_prices_df['fuel_type'] == 'natural gas']
-    # rename price column
-    rename_map = {'dlrs_per_kwh' : 'dlrs_per_kwh_natgas'}
-    ng_prices_df.rename(columns = rename_map, inplace = True)   
-    # drop fuel_type column
-    ng_prices_df.drop('fuel_type', axis = 1, inplace = True)
-    # join to main dataframe
-    dataframe = pd.merge(dataframe, ng_prices_df, how = 'left', on = ['census_division_abbr', 'sector_abbr'])
-    
-    elec_prices_df = energy_prices_df[energy_prices_df['fuel_type'] == 'electricity']
-    # rename price column
-    rename_map = {'dlrs_per_kwh' : 'dlrs_per_kwh_elec'}
-    # drop fuel_type column
-    elec_prices_df.rename(columns = rename_map, inplace = True)
-    # join to main dataframe
-    dataframe = pd.merge(dataframe, elec_prices_df, how = 'left', on = ['census_division_abbr', 'sector_abbr'])    
-    
-    
-    out_cols = ['space_heat_dlrs_per_kwh', 'water_heat_dlrs_per_kwh', 'space_cool_dlrs_per_kwh', 'dlrs_per_kwh_natgas', 'dlrs_per_kwh_elec']
+    out_cols = ['space_heat_dlrs_per_kwh', 'water_heat_dlrs_per_kwh', 'space_cool_dlrs_per_kwh']
     return_cols = in_cols + out_cols
     dataframe = dataframe[return_cols]
     
@@ -526,3 +506,76 @@ def check_system_expirations(dataframe):
     dataframe = dataframe[out_cols]
     
     return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def add_metric_field(dataframe):
+    
+    dataframe['metric'] = np.where(dataframe['business_model'] == 'tpo', 'percent_monthly_bill_savings', 'payback_period')
+
+    return dataframe
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_financial_parameters(dataframe, financial_parameters_df):
+    
+    dataframe = pd.merge(dataframe, financial_parameters_df, how = 'left', on = ['sector_abbr', 'business_model', 'tech', 'year'])
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_expected_rate_escalations(con, schema, year):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT sector_abbr, 
+                   census_division_abbr, 
+                   fuel_type, 
+                   array_agg(dlrs_per_kwh order by year) as dlrs_per_kwh
+            FROM %(schema)s.aeo_energy_prices_to_model
+            WHERE year BETWEEN %(year)s and %(year)s + 29
+                AND fuel_type IN ('natural gas', 'electricity')
+            GROUP BY sector_abbr, census_division_abbr, fuel_type;""" % inputs
+            
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df
+    
+    
+    
+
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_expected_rate_escalations(dataframe, rate_escalations_df):
+ 
+
+    
+    in_cols = list(dataframe.columns)
+    
+    # merge in costs of natural gas and electricity specifically (for GHP)
+    ng_prices_df = rate_escalations_df[rate_escalations_df['fuel_type'] == 'natural gas']
+    # rename price column
+    rename_map = {'dlrs_per_kwh' : 'dlrs_per_kwh_natgas'}
+    ng_prices_df.rename(columns = rename_map, inplace = True)   
+    # drop fuel_type column
+    ng_prices_df.drop('fuel_type', axis = 1, inplace = True)
+    # join to main dataframe
+    dataframe = pd.merge(dataframe, ng_prices_df, how = 'left', on = ['census_division_abbr', 'sector_abbr'])
+    
+    elec_prices_df = rate_escalations_df[rate_escalations_df['fuel_type'] == 'electricity']
+    # rename price column
+    rename_map = {'dlrs_per_kwh' : 'dlrs_per_kwh_elec'}
+    # drop fuel_type column
+    elec_prices_df.rename(columns = rename_map, inplace = True)
+    # join to main dataframe
+    dataframe = pd.merge(dataframe, elec_prices_df, how = 'left', on = ['census_division_abbr', 'sector_abbr'])    
+    
+    
+    out_cols = ['dlrs_per_kwh_natgas', 'dlrs_per_kwh_elec']
+    return_cols = in_cols + out_cols
+    dataframe = dataframe[return_cols]
+ 
+        
+    

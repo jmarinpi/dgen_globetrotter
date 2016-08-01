@@ -680,11 +680,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================            
                     # replicate agents for business models
                     agents =  AgentsAlgorithm(agents, mutation.replicate_agents_by_factor, ('business_model', ['host_owned', 'tpo']), row_increase_factor = 2).compute()
+                    # add metric field based on business model                    
+                    agents =  AgentsAlgorithm(agents, mutation.add_metric_field).compute()
+
+                    # apply financial parameters
+                    agents =  AgentsAlgorithm(agents, mutation.apply_financial_parameters, (financial_parameters, )).compute()
                     
-                    # get and apply financial params
-#                    df = pd.merge(df, financial_parameters, how = 'left', on = ['sector_abbr', 'business_model', 'tech', 'year'])
-            
+                        
+                        
                     # get and apply expected rate escalations
+                    rate_escalations_df = mutation.get_expected_rate_escalations(con, schema, year)
+                    agents =  AgentsAlgorithm(agents, mutation.apply_expected_rate_escalations, (rate_escalations_df, )).compute()
+
 #                    # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
 #                    if mode == 'ReEDS' and max(df['ReEDS_elec_price_mult']) > 0:
 #                        rate_growth_mult = np.ones((len(df), tech_lifetime))
