@@ -131,7 +131,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     return df
     
 #==============================================================================
-def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime = 25):
+def calc_cashflows(df, tech, apply_incentives = False, analysis_period = 30):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 
@@ -163,61 +163,95 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
     # extract a list of the input columns
     in_cols = df.columns.tolist()
 
-    # default is 25 year analysis periods
-    shape=(len(df),tech_lifetime); 
-    df['ic'] = df['ghp_cost_premium_dlrs']
+    installed_cost_column = '%s_costs_dlrs' % tech
+    incentives_column = '%s_total_value_of_incentives' % tech
+    fixed_om_cost_column = '%s_fixed_om_dlrs_per_year' % tech
+    system_degradation_column = '%s_ann_system_degradation' % tech
+    site_natgas_consumption_column = '%s_site_natgas_per_building_kwh' % tech
+    site_elec_consumption_column = '%s_site_elec_per_building_kwh' % tech
+    if tech == 'ghp':
+        replacement_part_cost_column = 'ghp_heat_pump_cost_dlrs'
+        replacement_part_lifetime_column = 'ghp_heat_pump_lifetime_yrs'
+    elif tech == 'baseline':
+        replacement_part_cost_column ='baseline_equipment_cost_dlrs'
+        replacement_part_lifetime_column = 'baseline_system_lifetime_yrs'        
     
-    # merge in the incentives cap
-    df = pd.merge(df, incentive_cap, how = 'left', on = ['tech'])
+
+    # default is 30 year analysis period
+    shape = (len(df), analysis_period)
     
-    # Remove NAs if not rebate are passed in input sheet   
-    df.ptc_length = df.ptc_length.fillna(0)
-    df.ptc_length = df.ptc_length.astype(int)
-    df.value_of_ptc = df.value_of_ptc.fillna(0)
-    df.pbi_fit_length = df.pbi_fit_length.fillna(0)
-    df.pbi_fit_length = df.pbi_fit_length.astype(int)
-    df.value_of_pbi_fit = df.value_of_pbi_fit.fillna(0)
-    df.value_of_tax_credit_or_deduction = df.value_of_tax_credit_or_deduction.fillna(0)
-    df.value_of_rebate = df.value_of_rebate.fillna(0)
-    df.value_of_increment = df.value_of_increment.fillna(0)
-    df.value_of_rebate = df.value_of_rebate.fillna(0)
+    df['ic'] = df[installed_cost_column]
+    
+    if tech == 'ghp':        
+        # Remove NAs if not rebate are passed in input sheet   
+        df['ptc_length'] = df['ptc_length'].fillna(0)
+        df['ptc_length'] = df['ptc_length'].astype(int)
+        df['value_of_ptc'] = df['value_of_ptc'].fillna(0)
+        df['pbi_fit_length'] = df['pbi_fit_length'].fillna(0)
+        df['pbi_fit_length'] = df['pbi_fit_length'].astype(int)
+        df['value_of_pbi_fit'] = df['value_of_pbi_fit'].fillna(0)
+        df['value_of_tax_credit_or_deduction'] = df['value_of_tax_credit_or_deduction'].fillna(0)
+        df['value_of_rebate'] = df['value_of_rebate'].fillna(0)
+        df['value_of_increment'] = df['value_of_increment'].fillna(0)
+        df['value_of_rebate'] = df['value_of_rebate'].fillna(0)
+
+        # Constrain incentive to max incentive fraction
+        df[incentives_column] = np.minimum(df['max_incentive_fraction'] * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'] + df['value_of_itc'])
+        
+        # calculate max allowable depreciation
+        max_depreciation_reduction = np.minimum(df[incentives_column], df['value_of_tax_credit_or_deduction']  + df['value_of_rebate'])
+        
+        
+        # revenue from other incentives
+        incentive_revenue = np.zeros(shape)
+        # cap value of ptc and pbi fit
+        remainder_for_incentive_revenues = np.maximum((df['max_incentive_fraction'] * df['ic']) - df[incentives_column], 0)
+        df['adj_value_of_ptc'] = np.minimum(remainder_for_incentive_revenues/df['ptc_length'], df['value_of_ptc'] * df['ptc_length'])
+        df['adj_value_of_ptc'] = df['adj_value_of_ptc'].fillna(0)
+        remainder_for_incentive_revenues = np.maximum(remainder_for_incentive_revenues - df['adj_value_of_ptc'] * df['ptc_length'], 0)
+        df['adj_value_of_pbi_fit'] = np.minimum(remainder_for_incentive_revenues/df['pbi_fit_length'], df['value_of_pbi_fit'] * df['pbi_fit_length'])
+        df['adj_value_of_pbi_fit'] = df['adj_value_of_pbi_fit'].fillna(0)
+        ptc_revenue = datfunc.fill_jagged_array(df['adj_value_of_ptc'], df.ptc_length, cols = analysis_period)
+        pbi_fit_revenue = datfunc.fill_jagged_array(df['adj_value_of_pbi_fit'], df.pbi_fit_length, cols = analysis_period)    
+        incentive_revenue += ptc_revenue + pbi_fit_revenue
+        
+    elif tech == 'baseline':
+        df[incentives_column] = 0.
+        max_depreciation_reduction = 0.
+        incentive_revenue = 0.
     
     ## COSTS    
     
     # 1)  Cost of servicing loan/leasing payments
-    df['crf'] = (df.loan_rate*(1 + df.loan_rate)**df.loan_term_yrs) / ( (1+df.loan_rate)**df.loan_term_yrs - 1);
+    df['crf'] = (df['loan_rate'] * (1 + df['loan_rate'])**df['loan_term_yrs']) / ( (1 + df['loan_rate'])**df['loan_term_yrs'] - 1);
 
     # Cap the fraction of capital costs that incentives may offset
     # TODO: Applying this as a hot-fix for bugs in the DSIRE dataset. We should review dsire dataset to ensure incentives are being
     # accurately valued
 
-    # Constrain incentive to max incente fraction
-    df['total_value_of_incentives'] = np.minimum(df['max_incentive_fraction'] * df['ic'], df['value_of_increment'] + df['value_of_rebate'] + df['value_of_tax_credit_or_deduction'] + df['value_of_itc'])
     
     # Assume that incentives received in first year are directly credited against installed cost; This help avoid
     # ITC cash flow imbalances in first year
-    df['net_installed_cost'] = df['ic'] - df['total_value_of_incentives']
+    df['net_installed_cost'] = df['ic'] - df[incentives_column]
     
     # Calculate the annual payment net the downpayment and upfront incentives
     pmt = - (1 - df.down_payment) * df['net_installed_cost'] * df['crf']    
-    annual_loan_pmts = datfunc.fill_jagged_array(pmt,df.loan_term_yrs,cols = tech_lifetime)
+    annual_loan_pmts = datfunc.fill_jagged_array(pmt, df['loan_term_yrs'], cols = analysis_period)
 
     # Pay the down payment in year zero and loan payments thereafter. The downpayment is added at
     # the end of the cash flow calculations to make the year zero framing simpler
     down_payment_cost = (-df['net_installed_cost'] * df.down_payment)[:,np.newaxis] 
     
-    # wind turbines do not have inverters hence no replacement cost.
-    # but for solar, calculate and replace the inverter replacement costs with actual values
-    inverter_cost = np.zeros(shape)
+    # replacement part costs
+    replacement_part_costs = np.zeros(shape)
     # Annualized (undiscounted) inverter replacement cost $/year (includes system size). Applied from year 10 onwards since assume initial 10-year warranty
-#    with np.errstate(invalid = 'ignore'):
-#        inverter_replacement_cost  = np.where(df['tech'] == 'solar', df['system_size_kw'] * df.inverter_cost_dollars_per_kw/df.inverter_lifetime_yrs, 0)
-    #inverter_cost[:,10:] = -inverter_replacement_cost[:,np.newaxis]
+    with np.errstate(invalid = 'ignore'):        
+        replacement_part_costs_amortized  = df[replacement_part_cost_column]/df[replacement_part_lifetime_column]
+    replacement_part_costs[:, 10:] = -replacement_part_costs_amortized[:, np.newaxis]
     
     # 2) Costs of fixed & variable O&M. O&M costs are tax deductible for commerical entitites
     om_cost = np.zeros(shape);
-    om_cost[:] =   (-df['variable_om_dlrs_per_year'])[:,np.newaxis]
-    om_cost[:] +=  (-df['fixed_om_dlrs_per_year'])[:,np.newaxis]
+    om_cost[:] +=  (-df[fixed_om_cost_column])[:,np.newaxis]
     om_cost[:] *= (1 - (df.tax_rate[:,np.newaxis] * ((df.sector_abbr == 'ind') | (df.sector_abbr == 'com') | (df.business_model == 'tpo'))[:,np.newaxis]))
 
     ## Revenue
@@ -235,26 +269,20 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
     # the same trajectories as changes in rate escalation. Output of this should be a data frame of shape (len(df),30)
     
     df['first_year_energy_savings'] = df['first_year_bill_without_system'] - df['first_year_bill_with_system']
-    
+    annual_energy_costs_dlrs = df[site_natgas_consumption_column] * df['dlrs_per_kwh_natgas'].values + df[site_elec_consumption_column] * df['dlrs_per_kwh_elec'].values
 
-    # TODO: account for anticipated ng and elec rate esclations in generation revenue
-    rate_escalations = np.array(list(df['rate_escalations']), dtype = 'float64')
-    rate_escalations[:] = 1.
-    generation_revenue =  df['first_year_energy_savings'][:,np.newaxis] * rate_escalations
     
-    # Decrement the revenue to account for system degradation.
+    # add to the the revenue to account for system degradation.
     system_degradation_factor = np.empty(shape)
-    system_degradation_factor[:,0] = 1
-    # TODO: account for actual ann_system_degradation
-    df['ann_system_degradation'] = 0.
-    system_degradation_factor[:,1:]  = 1 - df['ann_system_degradation'][:, np.newaxis]
+    system_degradation_factor[:, 0] = 1
+    system_degradation_factor[:, 1:]  = 1 + df[system_degradation_column][:, np.newaxis]
     system_degradation_factor = system_degradation_factor.cumprod(axis = 1)
     
-    generation_revenue *= system_degradation_factor
+    annual_energy_costs_dlrs *= system_degradation_factor
     
-    # Since electricity expenses are tax deductible for commercial & industrial 
-    # entities, the net annual savings from a system is reduced by the marginal tax rate
-    generation_revenue *= (1 - df.tax_rate[:,np.newaxis] * ((df.sector_abbr == 'ind') | (df.sector_abbr == 'com'))[:,np.newaxis])
+    # Since energy expenses are tax deductible for commercial & industrial 
+    # entities, the net annual energy costs from a system is reduced by the marginal tax rate
+    annual_energy_costs_dlrs *= (1 - df.tax_rate[:,np.newaxis] * ((df.sector_abbr == 'ind') | (df.sector_abbr == 'com'))[:,np.newaxis])
     
     """
     4) Revenue from carbon price.
@@ -270,6 +298,7 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
     Annual revenue is ~$6-12/kW/year per $10/t
     """
     
+    #TODO: add carbon tax revenue
     carbon_tax_revenue = np.empty(shape)
     #carbon_tax_revenue[:] = (df.carbon_price_cents_per_kwh * df.aep)[:,np.newaxis] * system_degradation_factor / 100
     carbon_tax_revenue[:] = 0.
@@ -280,10 +309,9 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
     Revenue comes from taxable deduction [basis * tax rate * schedule] and cannot be monetized by Residential
     '''
     depreciation_revenue = np.zeros(shape)
-    max_depreciation_reduction = np.minimum(df['total_value_of_incentives'], df['value_of_tax_credit_or_deduction']  + df['value_of_rebate'])
-    deprec_basis = np.maximum(df.ic - 0.5 * (max_depreciation_reduction),0)[:,np.newaxis] # depreciable basis reduced by half the incentive
+    deprec_basis = np.maximum(df['ic'] - 0.5 * (max_depreciation_reduction), 0)[:, np.newaxis] # depreciable basis reduced by half the incentive
     deprec_schedule_arr = np.array(list(df['deprec']))    
-    depreciation_revenue[:,:20] = deprec_basis * deprec_schedule_arr * df.tax_rate[:,np.newaxis] * ((df.sector_abbr == 'ind') | (df.sector_abbr == 'com') | (df.business_model == 'tpo'))[:,np.newaxis]   
+    depreciation_revenue[:,:20] = deprec_basis * deprec_schedule_arr * df['tax_rate'][:, np.newaxis] * ((df['sector_abbr'] == 'ind') | (df['sector_abbr'] == 'com') | (df['business_model'] == 'tpo'))[:, np.newaxis]
 
     '''
     6) Interest paid on loans is tax-deductible for commercial & industrial users; 
@@ -291,59 +319,41 @@ def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_li
     '''
     
     # Calc interest paid on serving the loan
-    interest_paid = calc_interest_pmt_schedule(df,tech_lifetime)
-    interest_on_loan_pmts_revenue = interest_paid * df.tax_rate[:,np.newaxis] * (((df.sector_abbr == 'ind') | (df.sector_abbr == 'com')) & (df.business_model == 'host_owned'))[:,np.newaxis]
+    interest_paid = calc_interest_pmt_schedule(df, analysis_period)
+    interest_on_loan_pmts_revenue = interest_paid * df['tax_rate'][:,np.newaxis] * (((df['sector_abbr'] == 'ind') | (df['sector_abbr'] == 'com')) & (df['business_model'] == 'host_owned'))[:, np.newaxis]
     
-    '''
-    7) Revenue from other incentives
-    '''
-    
-    incentive_revenue = np.zeros(shape)
-    
-    # cap value of ptc and pbi fit
-    remainder_for_incentive_revenues = np.maximum((df['max_incentive_fraction'] * df['ic']) - df['total_value_of_incentives'], 0)
-    df['adj_value_of_ptc'] = np.minimum(remainder_for_incentive_revenues/df['ptc_length'], df['value_of_ptc'] * df['ptc_length'])
-    df['adj_value_of_ptc'] = df['adj_value_of_ptc'].fillna(0)
-    remainder_for_incentive_revenues = np.maximum(remainder_for_incentive_revenues - df['adj_value_of_ptc'] * df['ptc_length'], 0)
-    df['adj_value_of_pbi_fit'] = np.minimum(remainder_for_incentive_revenues/df['pbi_fit_length'], df['value_of_pbi_fit'] * df['pbi_fit_length'])
-    df['adj_value_of_pbi_fit'] = df['adj_value_of_pbi_fit'].fillna(0)
-    
-    ptc_revenue = datfunc.fill_jagged_array(df['adj_value_of_ptc'], df.ptc_length, cols = tech_lifetime)
-    pbi_fit_revenue = datfunc.fill_jagged_array(df['adj_value_of_pbi_fit'], df.pbi_fit_length, cols = tech_lifetime)    
-
-    incentive_revenue += ptc_revenue + pbi_fit_revenue
-    
-    revenue = generation_revenue + carbon_tax_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
-    revenue = np.hstack((np.zeros((len(df),1)),revenue)) # Add a zero column to revenues to reflect year zero
-    costs = annual_loan_pmts + om_cost + inverter_cost
+    # calculate total revenue
+    revenue = carbon_tax_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
+    revenue = np.hstack((np.zeros((len(df), 1)), revenue)) # Add a zero column to revenues to reflect year zero
+    costs = annual_energy_costs_dlrs + annual_loan_pmts + om_cost + replacement_part_costs
     costs = np.hstack((down_payment_cost, costs)) # Down payment occurs in year zero
-    cfs = revenue + costs
+    cashflows = revenue + costs
     
     # Calculate the avg  and avg pct monthly bill savings (accounting for rate escalations, generation revenue, and average over all years)
     tpo_revenue = generation_revenue + carbon_tax_revenue + incentive_revenue
-    annual_payments = annual_loan_pmts + down_payment_cost/df.loan_term_yrs[:, np.newaxis]
+    annual_payments = annual_loan_pmts + down_payment_cost / df['loan_term_yrs'][:, np.newaxis]
     yearly_bill_savings = tpo_revenue + annual_payments
-    monthly_bill_savings = yearly_bill_savings/12
-    yearly_bills_without_system = df.first_year_bill_without_system[:,np.newaxis] * rate_escalations
-    percent_monthly_bill_savings = yearly_bill_savings/yearly_bills_without_system
-    avg_percent_monthly_bill_savings = percent_monthly_bill_savings.sum(axis = 1)/df.loan_term_yrs
+    monthly_bill_savings = yearly_bill_savings / 12
+    yearly_bills_without_system = df['first_year_bill_without_system'][:, np.newaxis] * rate_escalations
+    percent_monthly_bill_savings = yearly_bill_savings / yearly_bills_without_system
+    avg_percent_monthly_bill_savings = percent_monthly_bill_savings.sum(axis = 1) / df['loan_term_yrs']
     
     # If monthly_bill_savings is zero, percent_mbs will be non-finite
-    avg_percent_monthly_bill_savings = np.where(df.first_year_bill_without_system.values == 0, 0, avg_percent_monthly_bill_savings)
+    avg_percent_monthly_bill_savings = np.where(df['first_year_bill_without_system'].values == 0, 0, avg_percent_monthly_bill_savings)
     df['monthly_bill_savings'] = monthly_bill_savings.mean(axis = 1)
     df['percent_monthly_bill_savings'] = avg_percent_monthly_bill_savings
     
     # overwrite the values for first_year_bill_without_system and with system
     # to account for the first year rate escalation (the original values are always based on year = 2014)
     df.loc[:, 'first_year_bill_without_system'] = yearly_bills_without_system[:, 0] 
-    df.loc[:, 'first_year_bill_with_system'] = df.first_year_bill_with_system * rate_escalations[:, 0]
+    df.loc[:, 'first_year_bill_with_system'] = df['first_year_bill_with_system'] * rate_escalations[:, 0]
 
-    new_cols = ['total_value_of_incentives', 'monthly_bill_savings', 'percent_monthly_bill_savings']
+    new_cols = [incentives_column, 'monthly_bill_savings', 'percent_monthly_bill_savings']
     out_cols = in_cols + new_cols
     out_df = df[out_cols]    
     
     
-    return revenue, costs, cfs, out_df
+    return revenue, costs, cashflows, out_df
 
 
    

@@ -554,12 +554,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
             elif tech_mode == 'geo' and sub_mode == 'ghp':
                 dsire_opts = datfunc.get_dsire_settings(con, schema)
-                incentives_cap = datfunc.get_incentives_cap(con, schema)
+                incentives_cap_df = datfunc.get_incentives_cap(con, schema)
                 state_incentives_df = datfunc.get_state_dsire_incentives(cur, con, schema, ['geo'], dsire_opts)
                 itc_options = datfunc.get_itc_incentives(con, schema)
-                # NOTE: these two don't apply to ghp or du, but pull in for consistency with wind and solar
-                dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, dsire_opts)
-                srecs = dsire_incentives.copy()
+                
                 for year in model_years:
                     logger.info('\tWorking on %s' % year)
                         
@@ -691,8 +689,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # calculate value of itc
                     agents = AgentsAlgorithm(agents, mutation.calc_value_of_itc, (itc_options, year)).compute()
             
+                    # apply incentives cap
+                    agents = AgentsAlgorithm(agents, mutation.apply_incentives_cap, (incentives_cap_df, )).compute()
+                    
+                    
                     # calculate cashflows
-                    pass
+                    agents = AgentsAlgorithm(agents, finfunc.calc_cashflows, (incentives_cap_df, )).compute()
+                    
 #                    revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime)    
             
                     #==========================================================================================================
