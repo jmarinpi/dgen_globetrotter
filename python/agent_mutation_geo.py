@@ -339,8 +339,10 @@ def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df):
 def calculate_site_energy_consumption_ghp(dataframe):
     
     # determine the total amount of natural gas and elec used for space heating and cooling by BASELINE HVAC
-    dataframe['site_hvac_natgas_per_building_kwh'] = (dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'natural gas') + dataframe['site_space_cool_per_building_in_bin_kwh'] * (dataframe['space_cool_fuel'] == 'natural gas'))
-    dataframe['site_hvac_elec_per_building_kwh'] = (dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'electricity') + dataframe['site_space_cool_per_building_in_bin_kwh'] * (dataframe['space_cool_fuel'] == 'electricity'))
+    dataframe['site_hvac_natgas_per_building_kwh'] = (dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'natural gas') + 
+                                                      dataframe['site_space_cool_per_building_in_bin_kwh'] * (dataframe['space_cool_fuel'] == 'natural gas'))
+    dataframe['site_hvac_elec_per_building_kwh'] = (dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'electricity') + 
+                                                    dataframe['site_space_cool_per_building_in_bin_kwh'] * (dataframe['space_cool_fuel'] == 'electricity'))
     # determine the total amount of natural gas and elec used for space heating and cooling by GHP
     # (account for energy savings from CRBS)
     dataframe['site_ghp_natgas_per_building_kwh'] = dataframe['site_hvac_natgas_per_building_kwh'] * (1. - dataframe['savings_pct_natural_gas_consumption'])
@@ -407,7 +409,7 @@ def get_regional_energy_prices(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_regional_energy_prices_du(dataframe, energy_prices_df):
+def apply_regional_energy_prices(dataframe, energy_prices_df):
     
     
     in_cols = list(dataframe.columns)
@@ -436,7 +438,26 @@ def apply_regional_energy_prices_du(dataframe, energy_prices_df):
         raise ValueError("null values exist in space_heat_dlrs_per_kwh, water_heat_dlrs_per_kwh, or space_cool_dlrs_per_kwh")
     
     
-    out_cols = ['space_heat_dlrs_per_kwh', 'water_heat_dlrs_per_kwh', 'space_cool_dlrs_per_kwh']
+    # merge in costs of natural gas and electricity specifically (for GHP)
+    ng_prices_df = energy_prices_df[energy_prices_df['fuel_type'] == 'natural gas']
+    # rename price column
+    rename_map = {'dlrs_per_kwh' : 'dlrs_per_kwh_natgas'}
+    ng_prices_df.rename(columns = rename_map, inplace = True)   
+    # drop fuel_type column
+    ng_prices_df.drop('fuel_type', axis = 1, inplace = True)
+    # join to main dataframe
+    dataframe = pd.merge(dataframe, ng_prices_df, how = 'left', on = ['census_division_abbr', 'sector_abbr'])
+    
+    elec_prices_df = energy_prices_df[energy_prices_df['fuel_type'] == 'electricity']
+    # rename price column
+    rename_map = {'dlrs_per_kwh' : 'dlrs_per_kwh_elec'}
+    # drop fuel_type column
+    elec_prices_df.rename(columns = rename_map, inplace = True)
+    # join to main dataframe
+    dataframe = pd.merge(dataframe, elec_prices_df, how = 'left', on = ['census_division_abbr', 'sector_abbr'])    
+    
+    
+    out_cols = ['space_heat_dlrs_per_kwh', 'water_heat_dlrs_per_kwh', 'space_cool_dlrs_per_kwh', 'dlrs_per_kwh_natgas', 'dlrs_per_kwh_elec']
     return_cols = in_cols + out_cols
     dataframe = dataframe[return_cols]
     

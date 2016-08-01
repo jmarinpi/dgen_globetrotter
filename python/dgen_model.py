@@ -650,7 +650,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # CALCULATE SITE ENERGY CONSUMPTION
                     #==========================================================================================================
-                    # TODO: write this function (#638)
                     agents = AgentsAlgorithm(agents, mutation.calculate_site_energy_consumption_ghp).compute()
                     
                     #==========================================================================================================
@@ -673,10 +672,48 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
                     # apply regional heating/cooling prices
-                    # TO DO: fix this -- should only apply natural gas or electricity  for com bldgs
-                    # TODO: consider moving this and bill savings up above siting constraints...
-                    #agents = AgentsAlgorithm(agents, mutation.apply_regional_energy_prices, (energy_prices_df, )).compute()            
+                    agents = AgentsAlgorithm(agents, mutation.apply_regional_energy_prices, (energy_prices_df, )).compute()            
             
+            
+                    #==========================================================================================================
+                    # FINANCIAL CALCULATIONS
+                    #==========================================================================================================            
+                    # replicate agents for business models
+                    agents =  AgentsAlgorithm(agents, mutation.replicate_agents_by_factor, ('business_model', ['host_owned', 'tpo']), row_increase_factor = 2).compute()
+                    
+                    # get and apply financial params
+#                    df = pd.merge(df, financial_parameters, how = 'left', on = ['sector_abbr', 'business_model', 'tech', 'year'])
+            
+                    # get and apply expected rate escalations
+#                    # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
+#                    if mode == 'ReEDS' and max(df['ReEDS_elec_price_mult']) > 0:
+#                        rate_growth_mult = np.ones((len(df), tech_lifetime))
+#                        rate_growth_mult *= df['ReEDS_elec_price_mult'][:,np.newaxis]
+#                        df['rate_escalations'] = rate_growth_mult.tolist()
+#                    else:
+#                        # if not in ReEDS mode, use the calc_expected_rate_escal function
+#                        start_i = year - 2014
+#                        end_i = start_i + tech_lifetime
+#                        rate_esc = rate_growth_df.copy()
+#                        rate_esc.loc[:, 'rate_escalations'] = np.array(rate_esc.rate_escalations.tolist(), dtype = 'float64')[:, start_i:end_i].tolist()
+#                        df = pd.merge(df, rate_esc, how = 'left', on = ['sector_abbr', 'census_division_abbr'])
+            
+                    # calculate incentives
+#                    # TODO: add new calc dsire for ghp
+#                    fill_vals = {'value_of_increment' : 0,
+#                                'value_of_pbi_fit' : 0,
+#                                'value_of_ptc' : 0,
+#                                'pbi_fit_length' : 0,
+#                                'ptc_length' : 0,
+#                                'value_of_rebate' : 0,
+#                                'value_of_tax_credit_or_deduction' : 0}    
+#                    for col, val in fill_vals.iteritems():
+#                        df[col] = val
+#                    # Calculates value of ITC, return df with a new column 'value_of_itc'
+#                    df = calc_value_of_itc(df, itc_options, year)            
+            
+                    # calculate cashflows
+#                    revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime)    
             
                     #==========================================================================================================
                     # CASHFLOWS CALCULATIONS
