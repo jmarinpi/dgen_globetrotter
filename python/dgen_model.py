@@ -555,7 +555,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             elif tech_mode == 'geo' and sub_mode == 'ghp':
                 dsire_opts = datfunc.get_dsire_settings(con, schema)
                 incentives_cap = datfunc.get_incentives_cap(con, schema)
-                state_dsire = datfunc.get_state_dsire_incentives(cur, con, schema, ['geo'], dsire_opts)
+                state_incentives_df = datfunc.get_state_dsire_incentives(cur, con, schema, ['geo'], dsire_opts)
                 itc_options = datfunc.get_itc_incentives(con, schema)
                 # NOTE: these two don't apply to ghp or du, but pull in for consistency with wind and solar
                 dsire_incentives = datfunc.get_dsire_incentives(cur, con, schema, techs, sectors, cfg.pg_conn_string, dsire_opts)
@@ -670,10 +670,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # ENERGY PRICES
                     #==============================================================================
-                    energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
-                    # apply regional heating/cooling prices
-                    agents = AgentsAlgorithm(agents, mutation.apply_regional_energy_prices, (energy_prices_df, )).compute()            
-            
+                    # get and apply expected rate escalations
+                    rate_escalations_df = mutation.get_expected_rate_escalations(con, schema, year)
+                    agents =  AgentsAlgorithm(agents, mutation.apply_expected_rate_escalations, (rate_escalations_df, )).compute()
             
                     #==========================================================================================================
                     # FINANCIAL CALCULATIONS
@@ -686,40 +685,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # apply financial parameters
                     agents =  AgentsAlgorithm(agents, mutation.apply_financial_parameters, (financial_parameters, )).compute()
                     
-                        
-                        
-                    # get and apply expected rate escalations
-                    rate_escalations_df = mutation.get_expected_rate_escalations(con, schema, year)
-                    agents =  AgentsAlgorithm(agents, mutation.apply_expected_rate_escalations, (rate_escalations_df, )).compute()
+                    # calculate state incentives
+                    agents = AgentsAlgorithm(agents, mutation.calc_state_incentives, (state_incentives_df, )).compute()
 
-#                    # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
-#                    if mode == 'ReEDS' and max(df['ReEDS_elec_price_mult']) > 0:
-#                        rate_growth_mult = np.ones((len(df), tech_lifetime))
-#                        rate_growth_mult *= df['ReEDS_elec_price_mult'][:,np.newaxis]
-#                        df['rate_escalations'] = rate_growth_mult.tolist()
-#                    else:
-#                        # if not in ReEDS mode, use the calc_expected_rate_escal function
-#                        start_i = year - 2014
-#                        end_i = start_i + tech_lifetime
-#                        rate_esc = rate_growth_df.copy()
-#                        rate_esc.loc[:, 'rate_escalations'] = np.array(rate_esc.rate_escalations.tolist(), dtype = 'float64')[:, start_i:end_i].tolist()
-#                        df = pd.merge(df, rate_esc, how = 'left', on = ['sector_abbr', 'census_division_abbr'])
-            
-                    # calculate incentives
-#                    # TODO: add new calc dsire for ghp
-#                    fill_vals = {'value_of_increment' : 0,
-#                                'value_of_pbi_fit' : 0,
-#                                'value_of_ptc' : 0,
-#                                'pbi_fit_length' : 0,
-#                                'ptc_length' : 0,
-#                                'value_of_rebate' : 0,
-#                                'value_of_tax_credit_or_deduction' : 0}    
-#                    for col, val in fill_vals.iteritems():
-#                        df[col] = val
-#                    # Calculates value of ITC, return df with a new column 'value_of_itc'
-#                    df = calc_value_of_itc(df, itc_options, year)            
+                    # calculate value of itc
+                    agents = AgentsAlgorithm(agents, mutation.calc_value_of_itc, (itc_options, year)).compute()
             
                     # calculate cashflows
+                    pass
 #                    revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime)    
             
                     #==========================================================================================================

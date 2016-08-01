@@ -545,13 +545,10 @@ def get_expected_rate_escalations(con, schema, year):
     return df
     
     
-    
-
+#%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_expected_rate_escalations(dataframe, rate_escalations_df):
  
-
-    
     in_cols = list(dataframe.columns)
     
     # merge in costs of natural gas and electricity specifically (for GHP)
@@ -576,6 +573,74 @@ def apply_expected_rate_escalations(dataframe, rate_escalations_df):
     out_cols = ['dlrs_per_kwh_natgas', 'dlrs_per_kwh_elec']
     return_cols = in_cols + out_cols
     dataframe = dataframe[return_cols]
- 
-        
     
+    return dataframe
+ 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calc_state_incentives(dataframe, state_incentives_df):        
+
+    #TODO: need to actually write this code (issue #517)
+    fill_vals = {'value_of_increment' : 0,
+                'value_of_pbi_fit' : 0,
+                'value_of_ptc' : 0,
+                'pbi_fit_length' : 0,
+                'ptc_length' : 0,
+                'value_of_rebate' : 0,
+                'value_of_tax_credit_or_deduction' : 0}    
+    for col, val in fill_vals.iteritems():
+        dataframe[col] = val
+        
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calc_value_of_itc(df, itc_options, year):
+        
+    in_cols = df.columns.tolist()        
+        
+    # create duplicates of the itc data for each business model
+    # host-owend
+    itc_ho = itc_options.copy() 
+    # set the business model
+    itc_ho['business_model'] = 'host_owned'
+    
+    # tpo
+    itc_tpo_nonres = itc_options[itc_options['sector_abbr'] <> 'res'].copy() 
+    itc_tpo_res = itc_options[itc_options['sector_abbr'] == 'com'].copy() 
+    # reset the sector_abbr to res
+    itc_tpo_res.loc[:, 'sector_abbr'] = 'res'
+    # combine the data
+    itc_tpo = pd.concat([itc_tpo_nonres, itc_tpo_res], axis = 0, ignore_index = True)
+    # set the business model
+    itc_tpo['business_model'] = 'tpo'    
+    
+    # concatente the business models
+    itc_all = pd.concat([itc_ho, itc_tpo], axis = 0, ignore_index = True)
+
+    row_count = df.shape[0]   
+    # merge to df
+    df = pd.merge(df, itc_all, how = 'left', on = ['sector_abbr', 'year', 'business_model', 'tech'])
+    # drop the rows that are outside of the allowable system sizes
+    keep_rows = np.where(df['tech'] == 'ghp', (df['ghp_system_size_tons'] > df['min_size_kw_or_tons']) & (df['ghp_system_size_tons'] <= df['max_size_kw_or_tons']), (df['system_size_kw'] > df['min_size_kw_or_tons']) & (df['system_size_kw'] <= df['max_size_kw_or_tons']))
+    df = df[keep_rows]
+    # confirm shape hasn't changed
+    if df.shape[0] <> row_count:
+        raise ValueError('Row count of dataframe changed during merge')
+        
+    # Calculate the value of ITC (accounting for reduced costs from state/local incentives)
+    df['applicable_ic'] = df['ghp_installed_costs_dlrs'] - (df['value_of_tax_credit_or_deduction'] + df['value_of_rebate'] + df['value_of_increment'])
+    df['value_of_itc'] =  (
+                            df['applicable_ic'] *
+                            df['itc_fraction'] 
+                          )
+                          
+    df = df.drop(['applicable_ic', 'itc_fraction'], axis = 1)
+    
+    out_cols = ['value_of_itc']
+    return_cols = in_cols + out_cols
+    
+    df = df[return_cols]
+    
+    return df    
