@@ -20,86 +20,10 @@ logger = utilfunc.get_logger()
 
 
 
-#==============================================================================
+#%%
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
-def calc_economics(df, schema, market_projections, financial_parameters, rate_growth_df, 
-                   scenario_opts, max_market_share, cur, con,
-                   year, dsire_incentives, dsire_opts, state_dsire, srecs, 
-                   mode, curtailment_method, itc_options, inflation_rate, incentive_cap, tech_lifetime = 25):
-    '''
-    Calculates the economics of DER adoption through cash-flow analysis.  (cashflows, payback, irr, etc.)
+def calculate_max_market_share(dataframe, max_market_share):
 
-    
-    
-        IN:
-            Lots    
-        
-        OUT:
-            df - pd dataframe - main dataframe with econ outputs appended as columns
-    '''
-    
-    logger.info("\t\tCalculating System Economics")
-
-    # append year to the dataframe
-    df['year'] = year
-
-    # duplicate the data frame for each business model
-    df_tpo = df.copy()
-    df_tpo['business_model'] = 'tpo'
-    df_tpo['metric'] = 'percent_monthly_bill_savings'
-
-    df_ho = df.copy()
-    df_ho['business_model'] = 'host_owned'
-    df_ho['metric'] = 'payback_period'
-
-    # recombine into a single data frame    
-    df = pd.concat([df_ho, df_tpo], axis = 0, ignore_index = True)
-        
-    # merge in financial parameters
-    df = pd.merge(df, financial_parameters, how = 'left', on = ['sector_abbr', 'business_model', 'tech', 'year'])
-
-    # get customer expected rate escalations
-    # Use the electricity rate multipliers from ReEDS if in ReEDS modes and non-zero multipliers have been passed
-    if mode == 'ReEDS' and max(df['ReEDS_elec_price_mult']) > 0:
-        rate_growth_mult = np.ones((len(df), tech_lifetime))
-        rate_growth_mult *= df['ReEDS_elec_price_mult'][:,np.newaxis]
-        df['rate_escalations'] = rate_growth_mult.tolist()
-    else:
-        # if not in ReEDS mode, use the calc_expected_rate_escal function
-        start_i = year - 2014
-        end_i = start_i + tech_lifetime
-        rate_esc = rate_growth_df.copy()
-        rate_esc.loc[:, 'rate_escalations'] = np.array(rate_esc.rate_escalations.tolist(), dtype = 'float64')[:, start_i:end_i].tolist()
-        df = pd.merge(df, rate_esc, how = 'left', on = ['sector_abbr', 'census_division_abbr'])
-
-    # TODO: add new calc dsire for ghp
-    fill_vals = {'value_of_increment' : 0,
-                'value_of_pbi_fit' : 0,
-                'value_of_ptc' : 0,
-                'pbi_fit_length' : 0,
-                'ptc_length' : 0,
-                'value_of_rebate' : 0,
-                'value_of_tax_credit_or_deduction' : 0}    
-    for col, val in fill_vals.iteritems():
-        df[col] = val
-    # Calculates value of ITC, return df with a new column 'value_of_itc'
-    df = calc_value_of_itc(df, itc_options, year)
-
-    # calculate cashflows
-    revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime)    
-
-    ## Calc metric value here
-    df = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
-
-    #df = calc_lcoe(df, inflation_rate, econ_life = 20)
-    df['npv4'] = calc_npv(cfs, np.array([0.04]))
-    df['npv_agent'] = calc_npv(cfs, df.discount_rate)
-    # also calcualte normalized values (for visualizations/comparisons)
-    with np.errstate(invalid = 'ignore'):
-        df['npv4_per_ton'] = np.where(df['ghp_system_size_tons'] == 0, 0, df['npv4']/df['ghp_system_size_tons'])
-        df['npv_agent_per_ton'] = np.where(df['ghp_system_size_tons'] == 0, 0, df['npv_agent']/df['ghp_system_size_tons'])
-
-    
     # Convert metric value to integer as a primary key, then bound within max market share ranges
     max_payback = max_market_share[max_market_share.metric == 'payback_period'].metric_value.max()
     min_payback = max_market_share[max_market_share.metric == 'payback_period'].metric_value.min()
@@ -107,32 +31,33 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     min_mbs = max_market_share[max_market_share.metric == 'percent_monthly_bill_savings'].metric_value.min()
     
     # copy the metric valeus to a new column to store an edited version
-    metric_value_bounded = df.metric_value_precise.values.copy()
+    metric_value_bounded = dataframe['metric_value_precise'].values.copy()
     
     # where the metric value exceeds the corresponding max market curve bounds, set the value to the corresponding bound
-    metric_value_bounded[np.where((df.metric == 'payback_period') & (df.metric_value_precise < min_payback))] = min_payback
-    metric_value_bounded[np.where((df.metric == 'payback_period') & (df.metric_value_precise > max_payback))] = max_payback    
-    metric_value_bounded[np.where((df.metric == 'percent_monthly_bill_savings') & (df.metric_value_precise < min_mbs))] = min_mbs
-    metric_value_bounded[np.where((df.metric == 'percent_monthly_bill_savings') & (df.metric_value_precise > max_mbs))] = max_mbs
-    df['metric_value_bounded'] = metric_value_bounded
+    metric_value_bounded[np.where((dataframe['metric'] == 'payback_period') & (dataframe['metric_value_precise'] < min_payback))] = min_payback
+    metric_value_bounded[np.where((dataframe['metric'] == 'payback_period') & (dataframe['metric_value_precise'] > max_payback))] = max_payback    
+    metric_value_bounded[np.where((dataframe['metric'] == 'percent_monthly_bill_savings') & (dataframe['metric_value_precise'] < min_mbs))] = min_mbs
+    metric_value_bounded[np.where((dataframe['metric'] == 'percent_monthly_bill_savings') & (dataframe['metric_value_precise'] > max_mbs))] = max_mbs
+    dataframe['metric_value_bounded'] = metric_value_bounded
 
     # scale and round to nearest int    
-    df['metric_value_as_factor'] = (df['metric_value_bounded'] * 100).round().astype('int')
+    dataframe['metric_value_as_factor'] = (dataframe['metric_value_bounded'] * 100).round().astype('int')
     # add a scaled key to the max_market_share df too
     max_market_share['metric_value_as_factor'] = (max_market_share['metric_value'] * 100).round().astype('int')
 
     # Join the max_market_share table and df in order to select the ultimate mms based on the metric value. 
-    df = pd.merge(df, max_market_share, how = 'left', on = ['sector_abbr', 'metric','metric_value_as_factor','business_model'])
+    dataframe = pd.merge(dataframe, max_market_share, how = 'left', on = ['sector_abbr', 'metric', 'metric_value_as_factor', 'business_model'])
     
     # Derate the maximum market share for commercial and industrial customers in leased buildings by (1/3)
     # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
-    df['max_market_share'] = np.where(df['owner_occupied'] == True, df['max_market_share']/3, df['max_market_share'])
+    dataframe['max_market_share'] = np.where(dataframe['owner_occupied'] == True, dataframe['max_market_share']/3, dataframe['max_market_share'])
     
-    return df
+    return dataframe
+    
     
 #%%
-    
-def calc_cashflows(df, tech, analysis_period = 30):
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_cashflows(df, tech, analysis_period = 30):
 
 
     # extract a list of the input columns
@@ -208,7 +133,7 @@ def calc_cashflows(df, tech, analysis_period = 30):
     ## COSTS    
     
     # 1)  Cost of servicing loan/leasing payments
-    df['crf'] = (df['loan_rate'] * (1 + df['loan_rate'])**df['loan_term_yrs']) / ( (1 + df['loan_rate'])**df['loan_term_yrs'] - 1);
+    df['crf'] = (df['loan_rate'] * (1 + df['loan_rate'])**df['loan_term_yrs']) / ( (1 + df['loan_rate'])**df['loan_term_yrs'] - 1)
     
     # Assume that incentives received in first year are directly credited against installed cost; This help avoid
     # ITC cash flow imbalances in first year

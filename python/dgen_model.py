@@ -692,11 +692,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # apply incentives cap
                     agents = AgentsAlgorithm(agents, mutation.apply_incentives_cap, (incentives_cap_df, )).compute()
                     
-                    
-                    # calculate cashflows
+                    # calculate raw cashflows for ghp and baseline technologies
                     analysis_period = 30
-                    agents = AgentsAlgorithm(agents, finfunc.calc_cashflows, ('ghp', analysis_period)).compute()
-                    agents = AgentsAlgorithm(agents, finfunc.calc_cashflows, ('baseline', analysis_period)).compute()
+                    agents = AgentsAlgorithm(agents, finfunc.calculate_cashflows, ('ghp', analysis_period)).compute()
+                    agents = AgentsAlgorithm(agents, finfunc.calculate_cashflows, ('baseline', analysis_period)).compute()
+                    
+                    # calculate net cashflows for GHP system relative to baseline
                     agents = AgentsAlgorithm(agents, finfunc.calculate_net_cashflows_host_owned).compute()
                     agents = AgentsAlgorithm(agents, finfunc.calculate_net_cashflows_third_party_owned).compute()
 
@@ -717,26 +718,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # join inflation rate info (needed for lcoe calcs)
                     agents = AgentsAlgorithm(agents, finfunc.assign_value, (inflation_rate, 'inflation_rate')).compute()
                     # calculate LCOE
-                    # TODO: revise this function
-                    agents = AgentsAlgorithm(agents, finfunc.calculate_lcoe).compute()
-                    # TODO: assign max market share                       
-            
+                    agents = AgentsAlgorithm(agents, finfunc.calculate_lcoe).compute()  # TODO: revise this function
+                   
                     #==========================================================================================================
-                    # CASHFLOWS CALCULATIONS
-                    #==========================================================================================================
-                    agents.dataframe['curtailment_rate'] = 0
-                    agents.dataframe['ReEDS_elec_price_mult'] = 1
-                    curtailment_method = 'net'                  
-                    # Calculate economics of adoption for different busines models
-                    df = finfunc.calc_economics(agents.dataframe, schema, 
-                                               market_projections, financial_parameters, rate_growth_df,
-                                               scenario_opts, max_market_share, cur, con, year,
-                                               dsire_incentives, dsire_opts, state_dsire, srecs, mode, 
-                                               curtailment_method, itc_options, inflation_rate, incentives_cap, 30)
-                    df.to_csv('/Users/mgleason/Desktop/ghp_sim_results/df_%s.csv' % cdate, index = False)
-                    raise
+                    # MARKET DIFFUSION
+                    #==========================================================================================================                      
+                    #  assign max market share
+                    agents = AgentsAlgorithm(agents, finfunc.calculate_max_market_share, (max_market_share, )).compute()
                     # select from choices for business model and (optionally) technology
-                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)          
+                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)    
+                    
+      
     
                     #==============================================================================
                     # DEVELOPABLE CUSTOMERS/LOAD
