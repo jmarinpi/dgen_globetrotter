@@ -450,7 +450,7 @@ def assign_metric_value_precise(dataframe):
     
 #%%    
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calc_npv(cfs, dr):
+def calc_npv(dataframe, cashflow_column, discount_rate_val_or_column, out_col):
     ''' Vectorized NPV calculation based on (m x n) cashflows and (n x 1) 
     discount rate
     
@@ -460,13 +460,22 @@ def calc_npv(cfs, dr):
     OUT: npv - numpy array - net present value of cash flows ($) 
     
     '''
-    dr = dr[:,np.newaxis]
-    tmp = np.empty(cfs.shape)
+    
+    if discount_rate_val_or_column.__class__ == str:
+        discount_rates = dataframe[discount_rate_val_or_column][:, np.newaxis]
+    elif discount_rate_val_or_column.__class__ == float:
+        discount_rates = np.array(discount_rate_val_or_column, dtype = 'float64')[:, np.newaxis]
+    
+    cashflows = dataframe[cashflow_column]
+    tmp = np.empty(cashflows.shape)
     tmp[:,0] = 1
-    tmp[:,1:] = 1/(1+dr)
+    tmp[:,1:] = 1 / (1 + discount_rates)
     drm = np.cumprod(tmp, axis = 1)        
-    npv = (drm * cfs).sum(axis = 1)   
-    return npv
+    npv = (drm * cashflows).sum(axis = 1)   
+    
+    dataframe[out_col] = npv
+
+    return dataframe
     
     
 

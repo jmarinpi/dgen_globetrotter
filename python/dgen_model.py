@@ -708,8 +708,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, finfunc.calculate_ttd, ('net_cashflows_ho', )).compute()
                     # assign metric value precise
                     agents = AgentsAlgorithm(agents, finfunc.assign_metric_value_precise).compute()
-                    
-#                    revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime)    
+                    # calculate NPV (assuming different discount rates)
+                    agents = AgentsAlgorithm(agents, finfunc.calc_npv, ('net_cashflows_ho', 0.04, 'npv4')).compute()
+                    agents = AgentsAlgorithm(agents, finfunc.calc_npv, ('net_cashflows_ho', 'discount_rate', 'npv_agent')).compute()
+                    # TODO: normalize NPV values
+#                    with np.errstate(invalid = 'ignore'):
+#                        df['npv4_per_ton'] = np.where(df['ghp_system_size_tons'] == 0, 0, df['npv4']/df['ghp_system_size_tons'])
+#                        df['npv_agent_per_ton'] = np.where(df['ghp_system_size_tons'] == 0, 0, df['npv_agent']/df['ghp_system_size_tons'])                    
+                    # TODO: assign max market share
+                    # TODO: calculate LCOE
+                       
             
                     #==========================================================================================================
                     # CASHFLOWS CALCULATIONS
