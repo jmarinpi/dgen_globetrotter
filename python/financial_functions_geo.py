@@ -373,68 +373,40 @@ def calculate_monthly_bill_savings(dataframe):
     return dataframe
     
     
-    
- #%%
-    
-    
-    
-#==============================================================================    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_payback(dataframe, cashflow_column, analysis_period):
 
-def calc_irr(cfs):
-    ''' IRR calculation. Take minimum of return values ### Vectorize this ###
-    
-    IN: cfs - numpy array - project cash flows ($/yr)
+    cashflows = np.array(dataframe[cashflow_column].tolist(), dtype = 'float64')
 
-    OUT: irr - numpy array - minimum IRR of cash flows ($) 
+    years = np.array([np.arange(0, analysis_period)] * cashflows.shape[0])
     
-    '''
-    if cfs.ndim == 1: 
-        irr_out = [np.array(irr(cfs)).min()]
-    else: 
-        irr_out = []
-        for x in cfs:
-            out = np.array(irr(x)).min()
-            if np.isnan(out): out = -1
-            irr_out.append(out)
-    return np.array(irr_out)
-
-#==============================================================================
+    cum_cfs = cashflows.cumsum(axis = 1)   
+    no_payback = np.logical_or(cum_cfs[:, -1] <= 0, np.all(cum_cfs <= 0, axis = 1))
+    instant_payback = np.all(cum_cfs > 0, axis = 1)
+    neg_to_pos_years = np.diff(np.sign(cum_cfs)) > 0
+    base_years = np.amax(np.where(neg_to_pos_years, years, -1), axis = 1)
+    # replace values of -1 with 30
+    base_years_fix = np.where(base_years == -1, analysis_period - 1, base_years)
+    base_year_mask = years == base_years_fix[:, np.newaxis]
+    # base year values
+    base_year_values = cum_cfs[:, :-1][base_year_mask]
+    next_year_values = cum_cfs[:, 1:][base_year_mask]
+    frac_years = base_year_values/(base_year_values - next_year_values)
+    pp_year = base_years_fix + frac_years
+    pp_precise = np.where(no_payback, 30, np.where(instant_payback, 0, pp_year))
     
-def calc_mirr(cfs,finance_rate, reinvest_rate):
-    ''' MIRR calculation. ### Vectorize this ###
+    # round to nearest 0.1 to join with max_market_share
+    pp_final = np.array(pp_precise).round(decimals =1)
     
-    IN: cfs - numpy array - project cash flows ($/yr)
-        finance_rate - numpy array - Interest rate paid on the cash flows
-        reinvest_rate - numpy array - Interest rate received on the cash flows upon reinvestment
-
-    OUT: mirr - numpy array - Modified IRR of cash flows ($) 
+    dataframe['payback_period'] = pp_final
     
-    '''
-    if cfs.ndim == 1: 
-        cfs = np.asarray(cfs, dtype=np.double)
-        n = cfs.size
-        pos = cfs > 0
-        neg = cfs < 0
-        if not (pos.any() and neg.any()):
-            return np.nan
-        numer = np.abs(calc_npv(cfs = cfs*pos, dr = reinvest_rate))*(1 + reinvest_rate)
-        denom = np.abs(calc_npv(cfs = cfs*neg, dr = finance_rate, ))*(1 + finance_rate)
-        mirr_out = (numer/denom)**(1.0/(n - 1))*(1 + reinvest_rate) - 1
-    else:
-        cfs = np.asarray(cfs, dtype=np.double)
-        n = cfs.size / finance_rate.size
-        pos = cfs > 0
-        neg = cfs < 0
-        if not (pos.any() and neg.any()):
-            return np.nan
-        numer = np.abs(calc_npv(cfs = cfs*pos, dr = reinvest_rate))*(1 + reinvest_rate)
-        denom = np.abs(calc_npv(cfs = cfs*neg, dr = finance_rate, ))*(1 + finance_rate)
-        mirr_out = (numer/denom)**(1.0/(n - 1))*(1 + reinvest_rate) - 1
-    return mirr_out
+    return dataframe    
 
-#==============================================================================
 
-def calc_ttd(cfs):
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_ttd(dataframe, cashflow_column):
     ''' Calculate time to double investment based on the MIRR. This is used for
     the commercial and industrial sectors.
     
@@ -443,22 +415,42 @@ def calc_ttd(cfs):
     OUT: ttd - numpy array - Time to double investment (years) 
     
     '''
-    irrs = virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5)
+    cashflows = np.array(dataframe[cashflow_column].tolist(), dtype = 'float64')    
+    
+    irrs = virr(cashflows, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5)
     irrs = np.where(irrs<=0,1e-6,irrs)
     ttd = np.log(2) / np.log(1 + irrs)
     ttd[ttd <= 0] = 0
     ttd[ttd > 30] = 30
     # also deal with ttd of nan by setting to max payback period (this should only occur when cashflows = 0)
-    if not np.all(np.isnan(ttd) == np.all(cfs == 0, axis = 1)):
+    if not np.all(np.isnan(ttd) == np.all(cashflows == 0, axis = 1)):
         raise Exception("np.nan found in ttd for non-zero cashflows")
     ttd[np.isnan(ttd)] = 30
+    # round results to nearest 0.1 (to join with max market share lkup)    
+    dataframe['ttd'] = ttd.round(decimals = 1)    
+    
+    return dataframe
 
     
-    return ttd.round(decimals = 1) # must be rounded to nearest 0.1 to join with max_market_share
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def assign_metric_value_precise(dataframe):
+    
+    dataframe['metric_value_precise'] = np.where(dataframe['business_model'] == 'tpo',
+                                                 dataframe['percent_monthly_bill_savings'], 
+                                                 np.where((dataframe['sector_abbr'] == 'ind') | (dataframe['sector_abbr'] == 'com'),
+                                                           dataframe['ttd'],
+                                                           dataframe['payback_period']
+                                                         )
+                                                )
 
-#==============================================================================
-
-def calc_npv(cfs,dr):
+    return dataframe
+    
+    
+#%%    
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calc_npv(cfs, dr):
     ''' Vectorized NPV calculation based on (m x n) cashflows and (n x 1) 
     discount rate
     
@@ -477,121 +469,14 @@ def calc_npv(cfs,dr):
     return npv
     
     
+
+#%%
 #==============================================================================
- 
-def calc_payback(cfs,revenue,costs,tech_lifetime):
-    '''payback calculator ### VECTORIZE THIS ###
-    IN: cfs - numpy array - project cash flows ($/yr)
-    OUT: pp - numpy array - interpolated payback period (years)
-    '''
-    cum_cfs = cfs.cumsum(axis = 1)
-    out = []
-    for x in cum_cfs:
-        if x[-1] < 0: # No payback if the cum. cfs are negative in the final year
-            pp = 30
-        elif all(x<0): # Is positive cashflow ever achieved?
-            pp = 30
-        elif all(x>0): # Is positive cashflow instantly achieved?
-            pp = 0
-        else:
-            # Return the last year where cumulative cfs changed from negative to positive
-            base_year = np.where(np.diff(np.sign(x))>0)[0] 
-            if base_year.size > 0:      
-                base_year = base_year.max()
-                frac_year = x[base_year]/(x[base_year] - x[base_year+1])
-                pp = base_year + frac_year
-            else: # If the array is empty i.e. never positive cfs, pp = 30
-                pp = 30
-        out.append(pp)
-    return np.array(out).round(decimals =1) # must be rounded to nearest 0.1 to join with max_market_share
-    
-def calc_payback_vectorized(cfs, tech_lifetime):
-    '''payback calculator ### VECTORIZE THIS ###
-    IN: cfs - numpy array - project cash flows ($/yr)
-    OUT: pp - numpy array - interpolated payback period (years)
-    '''
-    
-    years = np.array([np.arange(0, tech_lifetime)] * cfs.shape[0])
-    
-    cum_cfs = cfs.cumsum(axis = 1)   
-    no_payback = np.logical_or(cum_cfs[:, -1] <= 0, np.all(cum_cfs <= 0, axis = 1))
-    instant_payback = np.all(cum_cfs > 0, axis = 1)
-    neg_to_pos_years = np.diff(np.sign(cum_cfs)) > 0
-    base_years = np.amax(np.where(neg_to_pos_years, years, -1), axis = 1)
-    # replace values of -1 with 30
-    base_years_fix = np.where(base_years == -1, tech_lifetime - 1, base_years)
-    base_year_mask = years == base_years_fix[:, np.newaxis]
-    # base year values
-    base_year_values = cum_cfs[:, :-1][base_year_mask]
-    next_year_values = cum_cfs[:, 1:][base_year_mask]
-    frac_years = base_year_values/(base_year_values - next_year_values)
-    pp_year = base_years_fix + frac_years
-    pp_precise = np.where(no_payback, 30, np.where(instant_payback, 0, pp_year))
-    
-    # round to nearest 0.1 to join with max_market_share
-    pp_final = np.array(pp_precise).round(decimals =1)
-    
-    
-    return pp_final
-    
+# HELPER FUNCTIONS
 #==============================================================================
 
-def recalc_down_payment(df):
-    # Recalculate the down payment s.t. it exceeds the first year incentives
-    value_of_first_yr_incentives = df.value_of_increment + df.value_of_rebate + df.value_of_tax_credit_or_deduction
-    first_yr_incentives_fraction = value_of_first_yr_incentives/ df.ic
-    df.down_payment = np.where(first_yr_incentives_fraction > df.down_payment, first_yr_incentives_fraction + 0.1, df.down_payment)
-    df.down_payment = np.where(df.down_payment < 0, 0,df.down_payment)
-    df.down_payment = np.where(df.down_payment > 1, 1,df.down_payment)
-    return df
-    
-#==============================================================================
-
-def irr(values):
-    """
-    Return the minimum Internal Rate of Return (IRR) within the range [-30%,+Inf].
-
-    This is the "average" periodically compounded rate of return
-    that gives a net present value of 0.0; for a more complete explanation,
-    see Notes below.
-
-    Parameters
-    ----------
-    values : array_like, shape(N,)
-        Input cash flows per time period.  By convention, net "deposits"
-        are negative and net "withdrawals" are positive.  Thus, for example,
-        at least the first element of `values`, which represents the initial
-        investment, will typically be negative.
-
-    Returns
-    -------
-    out : float
-        Internal Rate of Return for periodic input values.
-
-    Notes
-    -----
-
-    """
-    res = np.roots(values[::-1])
-    # Find the root(s) between 0 and 1
-    mask = (res.imag == 0) & (res.real > 0)
-    res = res[mask].real
-    if res.size == 0:
-        return np.nan
-    rate = 1.0/res - 1
-    if sum(values)>0:
-        rate = rate[rate>0] # Negative IRR is returned otherwise
-    rate = rate[rate>-.3]
-    if rate.size == 0:
-        return np.nan
-    if rate.size == 1:
-        rate = rate.item()
-    else: 
-        rate = min(rate)
-    return rate
-
-#==============================================================================
-
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5):
     ''' Vectorized IRR calculator. First calculate a 3D array of the discounted
     cash flows along cash flow series, time period, and discount rate. Sum over time to 
@@ -658,8 +543,7 @@ def virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5):
         
     return r
     
-#==============================================================================
-    
+#%%
 def calc_interest_pmt_schedule(df,yrs):
     ''' Calculate the schedule of interest payments for a loan
     '''
@@ -674,42 +558,6 @@ def calc_interest_pmt_schedule(df,yrs):
     # Interest payment is product of loan rate and balance on loan
     interest_pmt = np.maximum(df.loan_rate[:,np.newaxis] * fv,0)
     return interest_pmt
-    
-#==============================================================================
 
-def calc_metric_value(df,cfs,revenue,costs, tech_lifetime):
-    '''
-    Calculates the economic value of adoption given the metric chosen. Residential buyers
-    use simple payback, non-residential buyers use time-to-double, leasers use monthly bill savings
-    
-        IN:
-            df    
-        
-        OUT:
-            metric_value - pd series - series of values given the business_model and sector
-    '''
-    # calculate payback period
-    payback = calc_payback_vectorized(cfs, tech_lifetime)
-    # calculate time to double
-    ttd = calc_ttd(cfs)
-    
-    """ MBS is calculated in the calc_cashflows function using this method:
-    Annual bill savings = [First year bill w/o tech] - [First year bill w/ tech] - [Avg. annual system payment]
-    Monthly bill savings = Annual bill savings / 12
-    Percent Monthly Bill Savings = Annual bill savings/ First year bill w/o tech
 
-    Where First year bill w/o tech and  First year bill are outputs of calling SAM
-    and
-    Where Avg. annual system payment = Sum(down payment + monthly system payment (aka loan_cost)) / loan term (20 years for TPO and 15 for HO)
-    """ 
-
-    df['payback_period'] = payback
-    df['ttd'] = ttd    
-    df['metric_value_precise'] = np.where(df['business_model'] == 'tpo',
-                                          df['percent_monthly_bill_savings'], 
-                                          np.where((df.sector_abbr == 'ind') | (df.sector_abbr == 'com'),
-                                                    df['ttd'],
-                                                    df['payback_period']))
-
-    return df    
-#==============================================================================
+#%%  

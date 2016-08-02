@@ -694,18 +694,20 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     
                     # calculate cashflows
-                    agents = AgentsAlgorithm(agents, finfunc.calc_cashflows, ('ghp', )).compute()
-                    agents = AgentsAlgorithm(agents, finfunc.calc_cashflows, ('baseline', )).compute()
+                    analysis_period = 30
+                    agents = AgentsAlgorithm(agents, finfunc.calc_cashflows, ('ghp', analysis_period)).compute()
+                    agents = AgentsAlgorithm(agents, finfunc.calc_cashflows, ('baseline', analysis_period)).compute()
                     agents = AgentsAlgorithm(agents, finfunc.calculate_net_cashflows_host_owned).compute()
                     agents = AgentsAlgorithm(agents, finfunc.calculate_net_cashflows_third_party_owned).compute()
 
                     # calculate monthly bill savings
                     agents = AgentsAlgorithm(agents, finfunc.calculate_monthly_bill_savings).compute()
                     # calculate payback
-                    
+                    agents = AgentsAlgorithm(agents, finfunc.calculate_payback, ('net_cashflows_ho', analysis_period)).compute()
                     # calculate ttd
-                    
-                    # calculate irr
+                    agents = AgentsAlgorithm(agents, finfunc.calculate_ttd, ('net_cashflows_ho', )).compute()
+                    # assign metric value precise
+                    agents = AgentsAlgorithm(agents, finfunc.assign_metric_value_precise).compute()
                     
 #                    revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime)    
             
