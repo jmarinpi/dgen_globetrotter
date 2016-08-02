@@ -131,49 +131,34 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     return df
     
 #==============================================================================
-def calc_cashflows(df, tech, apply_incentives = False, analysis_period = 30):
-    """
-    Name:   calc_cashflows
-    Purpose: Function to calculate revenue and cost cashflows associated with 
-    system ownership:
-    
-        i) costs from servicing loan
-        ii) costs from variable and fixed O&M
-        iii) revenue from generation
-        iv) revenue from depreciation
-        v) revenue deduction of interest on loan
-        vi) revenue from all other incentives
-             
-    Author: bsigrin
-    Last Revision: 5/21/15
-    
-        IN:
-            df - pandas dataframe - dataframe containing: [ic ($), loan_rate, 
-                                    loan_term, down_payment, vom ($/kWh), fom ($/kW-yr), 
-                                    rate_growth, aep (kWh/kW), avg_rate, cap (kW), tax_rt, sector]
-            value_of_incentive
-            value_of_rebate
-            deprec_schedule
-        
-        OUT:
-            cfs - numpy array of net cashflows
-        
-        
-"""                
+def calc_cashflows(df, tech, analysis_period = 30):
+
+
     # extract a list of the input columns
     in_cols = df.columns.tolist()
 
-    installed_cost_column = '%s_costs_dlrs' % tech
+    installed_cost_column = '%s_installed_costs_dlrs' % tech
     incentives_column = '%s_total_value_of_incentives' % tech
     fixed_om_cost_column = '%s_fixed_om_dlrs_per_year' % tech
     system_degradation_column = '%s_ann_system_degradation' % tech
     site_natgas_consumption_column = '%s_site_natgas_per_building_kwh' % tech
     site_elec_consumption_column = '%s_site_elec_per_building_kwh' % tech
+
+    ho_cashflows_column = '%s_ho_cashflows' % tech
+    ho_costs_column = '%s_ho_costs' % tech
+    ho_revenue_column = '%s_ho_revenue' % tech
+
+    tpo_cashflows_column = '%s_tpo_cashflows' % tech
+    tpo_costs_column = '%s_tpo_costs' % tech
+    tpo_revenue_column = '%s_tpo_revenue' % tech    
+    
+    energy_costs_column = '%s_avg_annual_energy_costs_dlrs' % tech
+    
     if tech == 'ghp':
         replacement_part_cost_column = 'ghp_heat_pump_cost_dlrs'
         replacement_part_lifetime_column = 'ghp_heat_pump_lifetime_yrs'
     elif tech == 'baseline':
-        replacement_part_cost_column ='baseline_equipment_cost_dlrs'
+        replacement_part_cost_column ='baseline_equipment_costs_dlrs'
         replacement_part_lifetime_column = 'baseline_system_lifetime_yrs'        
     
 
@@ -201,7 +186,6 @@ def calc_cashflows(df, tech, apply_incentives = False, analysis_period = 30):
         # calculate max allowable depreciation
         max_depreciation_reduction = np.minimum(df[incentives_column], df['value_of_tax_credit_or_deduction']  + df['value_of_rebate'])
         
-        
         # revenue from other incentives
         incentive_revenue = np.zeros(shape)
         # cap value of ptc and pbi fit
@@ -224,29 +208,24 @@ def calc_cashflows(df, tech, apply_incentives = False, analysis_period = 30):
     
     # 1)  Cost of servicing loan/leasing payments
     df['crf'] = (df['loan_rate'] * (1 + df['loan_rate'])**df['loan_term_yrs']) / ( (1 + df['loan_rate'])**df['loan_term_yrs'] - 1);
-
-    # Cap the fraction of capital costs that incentives may offset
-    # TODO: Applying this as a hot-fix for bugs in the DSIRE dataset. We should review dsire dataset to ensure incentives are being
-    # accurately valued
-
     
     # Assume that incentives received in first year are directly credited against installed cost; This help avoid
     # ITC cash flow imbalances in first year
     df['net_installed_cost'] = df['ic'] - df[incentives_column]
     
     # Calculate the annual payment net the downpayment and upfront incentives
-    pmt = - (1 - df.down_payment) * df['net_installed_cost'] * df['crf']    
+    pmt = - (1 - df['down_payment']) * df['net_installed_cost'] * df['crf']    
     annual_loan_pmts = datfunc.fill_jagged_array(pmt, df['loan_term_yrs'], cols = analysis_period)
 
     # Pay the down payment in year zero and loan payments thereafter. The downpayment is added at
     # the end of the cash flow calculations to make the year zero framing simpler
-    down_payment_cost = (-df['net_installed_cost'] * df.down_payment)[:,np.newaxis] 
+    down_payment_cost = (-df['net_installed_cost'] * df['down_payment'])[:,np.newaxis] 
     
     # replacement part costs
     replacement_part_costs = np.zeros(shape)
     # Annualized (undiscounted) inverter replacement cost $/year (includes system size). Applied from year 10 onwards since assume initial 10-year warranty
     with np.errstate(invalid = 'ignore'):        
-        replacement_part_costs_amortized  = df[replacement_part_cost_column]/df[replacement_part_lifetime_column]
+        replacement_part_costs_amortized  = df[replacement_part_cost_column] / df[replacement_part_lifetime_column]
     replacement_part_costs[:, 10:] = -replacement_part_costs_amortized[:, np.newaxis]
     
     # 2) Costs of fixed & variable O&M. O&M costs are tax deductible for commerical entitites
@@ -263,9 +242,9 @@ def calc_cashflows(df, tech, apply_incentives = False, analysis_period = 30):
     avoided cost, or no credit. Amount of excess energy is aep * excess_gen_factor + 0.31 * (gen/load - 1) 
     See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail    
     """
-    annual_energy_costs_dlrs = df[site_natgas_consumption_column] * df['dlrs_per_kwh_natgas'].values + df[site_elec_consumption_column] * df['dlrs_per_kwh_elec'].values
+    annual_energy_costs_dlrs = df[site_natgas_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_natgas'].tolist(), dtype = 'float64') + df[site_elec_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_elec'].tolist(), dtype = 'float64')
+    df[energy_costs_column] = np.mean(annual_energy_costs_dlrs, axis = 1)
 
-    
     # add to the the revenue to account for system degradation.
     system_degradation_factor = np.empty(shape)
     system_degradation_factor[:, 0] = 1
@@ -305,7 +284,7 @@ def calc_cashflows(df, tech, apply_incentives = False, analysis_period = 30):
     depreciation_revenue = np.zeros(shape)
     deprec_basis = np.maximum(df['ic'] - 0.5 * (max_depreciation_reduction), 0)[:, np.newaxis] # depreciable basis reduced by half the incentive
     deprec_schedule_arr = np.array(list(df['deprec']))    
-    depreciation_revenue[:,:20] = deprec_basis * deprec_schedule_arr * df['tax_rate'][:, np.newaxis] * ((df['sector_abbr'] == 'ind') | (df['sector_abbr'] == 'com') | (df['business_model'] == 'tpo'))[:, np.newaxis]
+    depreciation_revenue[:, :20] = deprec_basis * deprec_schedule_arr * df['tax_rate'][:, np.newaxis] * ((df['sector_abbr'] == 'ind') | (df['sector_abbr'] == 'com') | (df['business_model'] == 'tpo'))[:, np.newaxis]
 
     '''
     6) Interest paid on loans is tax-deductible for commercial & industrial users; 
@@ -317,40 +296,88 @@ def calc_cashflows(df, tech, apply_incentives = False, analysis_period = 30):
     interest_on_loan_pmts_revenue = interest_paid * df['tax_rate'][:,np.newaxis] * (((df['sector_abbr'] == 'ind') | (df['sector_abbr'] == 'com')) & (df['business_model'] == 'host_owned'))[:, np.newaxis]
     
     # calculate total revenue
-    revenue = carbon_tax_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
-    revenue = np.hstack((np.zeros((len(df), 1)), revenue)) # Add a zero column to revenues to reflect year zero
-    costs = annual_energy_costs_dlrs + annual_loan_pmts + om_cost + replacement_part_costs
-    costs = np.hstack((down_payment_cost, costs)) # Down payment occurs in year zero
-    cashflows = revenue + costs
+    ho_revenue = carbon_tax_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
+    ho_revenue = np.hstack((np.zeros((len(df), 1)), ho_revenue)) # Add a zero column to revenues to reflect year zero
+    ho_costs = -annual_energy_costs_dlrs + annual_loan_pmts + om_cost + replacement_part_costs
+    ho_costs = np.hstack((down_payment_cost, ho_costs)) # Down payment occurs in year zero
+    ho_cashflows = ho_revenue + ho_costs
     
-    # Calculate the avg  and avg pct monthly bill savings (accounting for rate escalations, generation revenue, and average over all years)
-    tpo_revenue = generation_revenue + carbon_tax_revenue + incentive_revenue
-    annual_payments = annual_loan_pmts + down_payment_cost / df['loan_term_yrs'][:, np.newaxis]
-    yearly_bill_savings = tpo_revenue + annual_payments
-    monthly_bill_savings = yearly_bill_savings / 12
-    yearly_bills_without_system = df['first_year_bill_without_system'][:, np.newaxis] * rate_escalations
-    percent_monthly_bill_savings = yearly_bill_savings / yearly_bills_without_system
-    avg_percent_monthly_bill_savings = percent_monthly_bill_savings.sum(axis = 1) / df['loan_term_yrs']
-    
-    # If monthly_bill_savings is zero, percent_mbs will be non-finite
-    avg_percent_monthly_bill_savings = np.where(df['first_year_bill_without_system'].values == 0, 0, avg_percent_monthly_bill_savings)
-    df['monthly_bill_savings'] = monthly_bill_savings.mean(axis = 1)
-    df['percent_monthly_bill_savings'] = avg_percent_monthly_bill_savings
-    
-    # overwrite the values for first_year_bill_without_system and with system
-    # to account for the first year rate escalation (the original values are always based on year = 2014)
-    df.loc[:, 'first_year_bill_without_system'] = yearly_bills_without_system[:, 0] 
-    df.loc[:, 'first_year_bill_with_system'] = df['first_year_bill_with_system'] * rate_escalations[:, 0]
+#    # Calculate the avg  and avg pct monthly bill savings (accounting for rate escalations, generation revenue, and average over all years)
+    if tech == 'ghp':
+        tpo_revenue = carbon_tax_revenue + incentive_revenue
+        tpo_revenue = np.hstack((np.zeros((len(df), 1)), tpo_revenue)) # Add a zero column to revenues to reflect year zero        
+        tpo_costs = -annual_energy_costs_dlrs + annual_loan_pmts + down_payment_cost / df['loan_term_yrs'][:, np.newaxis]
+        tpo_costs = np.hstack((np.zeros((len(df), 1)), tpo_costs)) # No down payment, but need to reflect year zero anyway
+        tpo_cashflows = tpo_revenue + tpo_costs
+    elif tech == 'baseline':
+        tpo_revenue = np.array(np.nan, dtype = 'float64')
+        tpo_costs = np.array(np.nan, dtype = 'float64')
+        tpo_cashflows = np.array(np.nan, dtype = 'float64')
+        
 
-    new_cols = [incentives_column, 'monthly_bill_savings', 'percent_monthly_bill_savings']
-    out_cols = in_cols + new_cols
-    out_df = df[out_cols]    
-    
-    
-    return revenue, costs, cashflows, out_df
+    df[ho_cashflows_column] = ho_cashflows.tolist()
+    df[ho_revenue_column] = ho_revenue.tolist()
+    df[ho_costs_column] = ho_costs.tolist()
 
 
-   
+    df[tpo_cashflows_column] = tpo_cashflows.tolist()
+    df[tpo_revenue_column] = tpo_revenue.tolist()
+    df[tpo_costs_column] = tpo_costs.tolist()
+    
+    
+    out_cols = [    incentives_column, 
+                    energy_costs_column,
+                    ho_cashflows_column, 
+                    ho_revenue_column,
+                    ho_costs_column,
+                    tpo_cashflows_column, 
+                    tpo_revenue_column,
+                    tpo_costs_column                
+                ]
+    return_cols = in_cols + out_cols
+    df = df[return_cols]    
+    
+    
+    return df
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_net_cashflows_host_owned(dataframe):
+       
+    dataframe['net_cashflows_ho'] = (np.array(dataframe['ghp_ho_cashflows'].tolist(), dtype = 'float64') - np.array(dataframe['baseline_ho_cashflows'].tolist(), dtype = 'float64')).tolist()
+
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_net_cashflows_third_party_owned(dataframe):
+       
+    dataframe['net_cashflows_tpo'] = (np.array(dataframe['ghp_tpo_cashflows'].tolist(), dtype = 'float64') - np.array(dataframe['baseline_ho_cashflows'].tolist(), dtype = 'float64')).tolist()
+
+    return dataframe
+ 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_monthly_bill_savings(dataframe):   
+
+    
+    dataframe['avg_annual_net_cashflow_tpo'] = np.mean(np.array(dataframe['net_cashflows_tpo'].tolist(), dtype = 'float64'), axis = 1)
+    # absolute monthly bill savings are the annual average net cashflow spread over 12 months
+    dataframe['monthly_bill_savings'] = dataframe['avg_annual_net_cashflow_tpo'] / 12.
+    # the percent monthly bill savings is simply the average net cashflow divided by the original energy costs of the consumer
+    # (use annual numbers because they should be same as monthly (if you divide both by 12 and then divide, it's the same as dividing the originals))
+    dataframe['percent_monthly_bill_savings'] = np.where(dataframe['baseline_avg_annual_energy_costs_dlrs'] == 0, 0., dataframe['avg_annual_net_cashflow_tpo'] / dataframe['baseline_avg_annual_energy_costs_dlrs'])
+    
+    return dataframe
+    
+    
+    
+ #%%
+    
+    
+    
 #==============================================================================    
 
 def calc_irr(cfs):

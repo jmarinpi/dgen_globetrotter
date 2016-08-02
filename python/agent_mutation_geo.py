@@ -325,11 +325,11 @@ def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df):
 
     dataframe = pd.merge(dataframe, tech_costs_baseline_df, how = 'left', on = ['sector_abbr', 'baseline_system_type'])
     # Installed Costs
-    dataframe['baseline_equipment_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['hvac_equipment_cost_dollars_per_cooling_ton']
+    dataframe['baseline_equipment_costs_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['hvac_equipment_cost_dollars_per_cooling_ton']
     dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 
                                                      dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 
                                                      dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'] * dataframe['baseline_retrofit_rest_of_system_multiplier'])
-    dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_cost_dollars'] + dataframe['baseline_rest_of_system_cost_dlrs']
+    dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_costs_dlrs'] + dataframe['baseline_rest_of_system_cost_dlrs']
     dataframe['baseline_fixed_om_dlrs_per_year'] = dataframe['baseline_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']
     
     return dataframe
@@ -347,8 +347,8 @@ def calculate_site_energy_consumption_ghp(dataframe):
                                                     dataframe['site_space_cool_per_building_in_bin_kwh'] * (dataframe['space_cool_fuel'] == 'electricity'))
     # determine the total amount of natural gas and elec used for space heating and cooling by GHP
     # (account for energy savings from CRBS)
-    dataframe['ghp_site_natgas_per_building_kwh'] = dataframe['site_hvac_natgas_per_building_kwh'] * (1. - dataframe['savings_pct_natural_gas_consumption'])
-    dataframe['ghp_site_elec_per_building_kwh'] = dataframe['site_hvac_elec_per_building_kwh'] * (1. - dataframe['savings_pct_electricity_consumption'])        
+    dataframe['ghp_site_natgas_per_building_kwh'] = dataframe['baseline_site_natgas_per_building_kwh'] * (1. - dataframe['savings_pct_natural_gas_consumption'])
+    dataframe['ghp_site_elec_per_building_kwh'] = dataframe['baseline_site_elec_per_building_kwh'] * (1. - dataframe['savings_pct_electricity_consumption'])        
     
     return dataframe
 
