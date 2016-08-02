@@ -709,15 +709,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # assign metric value precise
                     agents = AgentsAlgorithm(agents, finfunc.assign_metric_value_precise).compute()
                     # calculate NPV (assuming different discount rates)
-                    agents = AgentsAlgorithm(agents, finfunc.calc_npv, ('net_cashflows_ho', 0.04, 'npv4')).compute()
-                    agents = AgentsAlgorithm(agents, finfunc.calc_npv, ('net_cashflows_ho', 'discount_rate', 'npv_agent')).compute()
-                    # TODO: normalize NPV values
-#                    with np.errstate(invalid = 'ignore'):
-#                        df['npv4_per_ton'] = np.where(df['ghp_system_size_tons'] == 0, 0, df['npv4']/df['ghp_system_size_tons'])
-#                        df['npv_agent_per_ton'] = np.where(df['ghp_system_size_tons'] == 0, 0, df['npv_agent']/df['ghp_system_size_tons'])                    
-                    # TODO: assign max market share
-                    # TODO: calculate LCOE
-                       
+                    agents = AgentsAlgorithm(agents, finfunc.calculate_npv, ('net_cashflows_ho', 0.04, 'npv4')).compute()
+                    agents = AgentsAlgorithm(agents, finfunc.calculate_npv, ('net_cashflows_ho', 'discount_rate', 'npv_agent')).compute()
+                    # normalize npv values
+                    agents = AgentsAlgorithm(agents, finfunc.normalize_value, ('npv4', 'ghp_system_size_tons', 'npv4_per_ton')).compute()
+                    agents = AgentsAlgorithm(agents, finfunc.normalize_value, ('npv_agent', 'ghp_system_size_tons', 'npv_agent_per_ton')).compute()
+                    # join inflation rate info (needed for lcoe calcs)
+                    agents = AgentsAlgorithm(agents, finfunc.assign_value, (inflation_rate, 'inflation_rate')).compute()
+                    # calculate LCOE
+                    # TODO: revise this function
+                    agents = AgentsAlgorithm(agents, finfunc.calculate_lcoe).compute()
+                    # TODO: assign max market share                       
             
                     #==========================================================================================================
                     # CASHFLOWS CALCULATIONS

@@ -130,7 +130,8 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     
     return df
     
-#==============================================================================
+#%%
+    
 def calc_cashflows(df, tech, analysis_period = 30):
 
 
@@ -450,7 +451,7 @@ def assign_metric_value_precise(dataframe):
     
 #%%    
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calc_npv(dataframe, cashflow_column, discount_rate_val_or_column, out_col):
+def calculate_npv(dataframe, cashflow_column, discount_rate_val_or_column, out_col):
     ''' Vectorized NPV calculation based on (m x n) cashflows and (n x 1) 
     discount rate
     
@@ -464,9 +465,9 @@ def calc_npv(dataframe, cashflow_column, discount_rate_val_or_column, out_col):
     if discount_rate_val_or_column.__class__ == str:
         discount_rates = dataframe[discount_rate_val_or_column][:, np.newaxis]
     elif discount_rate_val_or_column.__class__ == float:
-        discount_rates = np.array(discount_rate_val_or_column, dtype = 'float64')[:, np.newaxis]
+        discount_rates = np.array([discount_rate_val_or_column], dtype = 'float64')[:, np.newaxis]
     
-    cashflows = dataframe[cashflow_column]
+    cashflows = np.array(dataframe[cashflow_column].tolist(), dtype = 'float64')
     tmp = np.empty(cashflows.shape)
     tmp[:,0] = 1
     tmp[:,1:] = 1 / (1 + discount_rates)
@@ -477,8 +478,76 @@ def calc_npv(dataframe, cashflow_column, discount_rate_val_or_column, out_col):
 
     return dataframe
     
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def normalize_value(dataframe, value_column, normalization_column, out_column):
     
+    with np.errstate(invalid = 'ignore'):
+        dataframe[out_column] = np.where(dataframe[normalization_column] == 0, 0., dataframe[value_column] / dataframe[normalization_column])
+    
+    return dataframe
 
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def assign_value(dataframe, value, out_column):
+
+    dataframe[out_column] = value
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_lcoe(dataframe):
+    ''' LCOE calculation, following ATB assumptions. There will be some small differences
+    since the model is already in real terms and doesn't need conversion of nominal terms
+    
+    IN: df
+        deprec schedule
+        inflation rate
+        econ life -- investment horizon, may be different than system lifetime.
+    
+    OUT: lcoe - numpy array - Levelized cost of energy (c/kWh) 
+    '''
+    
+    #TODO: revise this function to work for energy savings
+#    # extract a list of the input columns
+#    in_cols = dataframe.columns.tolist()
+#    
+#    dataframe['IR'] = dataframe['inflation_rate']
+#    dataframe['DF'] = 1 - dataframe['down_payment']
+#    dataframe['CoE'] = dataframe['discount_rate']
+#    dataframe['CoD'] = dataframe['loan_rate']
+#    dataframe['TR'] = dataframe['tax_rate']
+#    
+#    
+#    dataframe['WACC'] = ((1 + ((1-dataframe['DF'])*((1+dataframe['CoE'])*(1+dataframe['IR'])-1)) + (dataframe['DF'] * ((1+dataframe['CoD'])*(1+dataframe['IR']) - 1) *  (1 - dataframe['TR'])))/(1 + dataframe['IR'])) -1
+#    dataframe['CRF'] = (dataframe['WACC'])/ (1 - (1/(1+dataframe['WACC'])**dataframe['loan_term_yrs']))# real crf
+#    
+#    dataframe['DR'] = (1+dataframe['WACC'] * 1 + dataframe['IR'])-1 # Discount rate used for depreciation is 1 - (WACC + 1)(Inflation + 1)
+#    dataframe['PVD'] = calculate_npv(dataframe, 'deprec', 'DR', 'PVD') 
+#    dataframe['PVD'] /= (1 + dataframe['WACC']) # In calc_npv we assume first entry of an array corresponds to year zero; the first entry of the depreciation schedule is for the first year, so we need to discount the PVD by one additional year
+#    
+#    dataframe['PFF'] = (1 - dataframe['TR'] * dataframe['PVD'])/(1 - dataframe['TR'])#project finance factor
+#    dataframe['CFF'] = 1 # construction finance factor -- cost of capital during construction, assume projects are built overnight, which is not true for larger systems   
+#    dataframe['OCC'] = dataframe['installed_costs_dollars_per_kw'] # overnight capital cost $/kW
+#    dataframe['GCC'] = 0 # grid connection cost $/kW, assume cost of interconnecting included in OCC
+#    dataframe['FOM']  = dataframe['fixed_om_dollars_per_kw_per_yr'] # fixed o&m $/kW-yr
+#    dataframe['CF'] = dataframe['aep']/dataframe['system_size_kw']/8760 # capacity factor
+#    dataframe['VOM'] = dataframe['variable_om_dollars_per_kwh'] #variable O&M $/kWh
+#    
+#    dataframe['lcoe'] = 100 * (((dataframe['CRF'] * dataframe['PFF'] * dataframe['CFF'] * (dataframe['OCC'] * 1 + dataframe['GCC']) + dataframe['FOM'])/(dataframe['CF'] * 8760)) + dataframe['VOM'])# LCOE 2014c/kWh
+#    
+#    
+#    out_cols = ['lcoe']
+#    return_cols = in_cols + out_cols
+#    
+#    dataframe = dataframe[return_cols]
+    dataframe['lcoe'] = np.nan
+    
+    return dataframe
+ 
 #%%
 #==============================================================================
 # HELPER FUNCTIONS
