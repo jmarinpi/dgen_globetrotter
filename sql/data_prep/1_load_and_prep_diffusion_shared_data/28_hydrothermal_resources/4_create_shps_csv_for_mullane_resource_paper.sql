@@ -117,11 +117,11 @@ from diffusion_geo.resources_hydrothermal
 -- check #s with 'US Low T Hydrothermal Resource Data.xlsx'
 
 -- export CSV
-\COPY (SELECT * FROM diffusion_geo.resources_hydrothermal) TO '/Users/mmooney/Dropbox/Projects/2016_01_27_dGeo/Documents/resources/Data/Output/Data_Share/US_Low_Temp_Data_Export/062916/us_low_temp_hydro_062816.csv' with csv header;
+\COPY (SELECT * FROM diffusion_geo.resources_hydrothermal) TO '/Users/mmooney/Dropbox (NREL GIS Team)/Projects/2016_01_27_dGeo/Documents/resources/Data/Output/Data_Share/US_Low_Temp_Data_Export/080316/us_low_temp_hydro_080316.csv' with csv header;
 
 -- export SHP
-pgsql2shp -g the_geom_4326 -f /Users/mmooney/Dropbox/Projects/2016_01_27_dGeo/Documents/resources/Data/Output/Data_Share/US_Low_Temp_Data_Export/062916/shapefiles/us_low_temp_hydro_poly_062916.shp -h gispgdb -u mmooney -P mmooney dav-gis "select * from diffusion_geo.resources_hydrothermal_shp where sys_type != 'isolated system'";
-pgsql2shp -g the_geom_4326 -f /Users/mmooney/Dropbox/Projects/2016_01_27_dGeo/Documents/resources/Data/Output/Data_Share/US_Low_Temp_Data_Export/062916/shapefiles/us_low_temp_hydro_pt_062916.shp -h gispgdb -u mmooney -P mmooney dav-gis "select * from diffusion_geo.resources_hydrothermal_shp where sys_type = 'isolated system'";
+pgsql2shp -g the_geom_4326 -f '/Users/mmooney/Dropbox (NREL GIS Team)/Projects/2016_01_27_dGeo/Documents/resources/Data/Output/Data_Share/US_Low_Temp_Data_Export/080316/shapefiles/us_low_temp_hydro_poly_080316.shp' -h gispgdb -u mmooney -P mmooney dav-gis "select * from diffusion_geo.resources_hydrothermal_shp where sys_type != 'isolated system'";
+pgsql2shp -g the_geom_4326 -f '/Users/mmooney/Dropbox (NREL GIS Team)/Projects/2016_01_27_dGeo/Documents/resources/Data/Output/Data_Share/US_Low_Temp_Data_Export/080316/shapefiles/us_low_temp_hydro_pt_080316.shp' -h gispgdb -u mmooney -P mmooney dav-gis "select * from diffusion_geo.resources_hydrothermal_shp where sys_type = 'isolated system'";
 
 -- Confirm there are no duplicate Ids:
 select unique_id, count(*) from diffusion_geo.resources_hydrothermal group by unique_id having count(*)>1
