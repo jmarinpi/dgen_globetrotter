@@ -1940,7 +1940,7 @@ def create_pc_transitions(cur, con, schema):
                 		     WHEN perf_improvement_factor >=.25 THEN array[0.25, 0.25]
                 		END as perf_improvement_factor_bounds,
                 		CASE WHEN perf_improvement_factor >= 0 and perf_improvement_factor < .1 THEN perf_improvement_factor/0.1
-                		     WHEN perf_improvement_factor >= .1 and perf_improvement_factor < .25 THEN perf_improvement_factor/0.25
+                		     WHEN perf_improvement_factor >= .1 and perf_improvement_factor < .25 THEN (perf_improvement_factor - 0.1)/(0.25 - 0.1)
                 		     WHEN perf_improvement_factor >=.25 THEN 0
                 		END as interp_factor
                 	FROM %(schema)s.input_wind_performance_improvements
