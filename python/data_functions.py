@@ -393,8 +393,7 @@ def combine_outputs_wind(schema, sectors, cur, con):
                     b.i, b.j, b.cf_bin,
                     b.nturb, b.turbine_size_kw, 
                     b.turbine_height_m, b.scoe,
-                    
-                    a.first_year_bill_without_system/b.load_kwh_per_customer_in_bin as cost_of_elec_dols_per_kwh,
+                    CASE WHEN b.load_kwh_per_customer_in_bin = 0 THEN 0 ELSE a.first_year_bill_without_system/b.load_kwh_per_customer_in_bin END as cost_of_elec_dols_per_kwh,
                     
                     c.initial_market_share, c.initial_number_of_adopters,
                     c.initial_capacity_kw / 1000 as initial_capacity_mw,
