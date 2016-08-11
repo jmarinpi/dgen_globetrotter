@@ -37,7 +37,7 @@ pg_params_log = json.dumps(json.loads(pd.DataFrame([pg_params])[['host', 'port',
 #==============================================================================
 #   set the number of customer bins to model in each county
 #==============================================================================
-customer_bins = 5
+customer_bins = 10
 
 #==============================================================================
 #   model start year
