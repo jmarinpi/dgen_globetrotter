@@ -3683,19 +3683,18 @@ def get_max_market_share(con, schema):
     '''
 
     sql = '''SELECT * 
-             FROM %s.max_market_curves_to_model;'''  % schema
-    max_market_share = pd.read_sql(sql, con)
-   
-    sql = '''SELECT 30.1 as metric_value, sector, sector_abbr, 0::NUMERIC as max_market_share, metric, source, business_model
+             FROM %s.max_market_curves_to_model
+             
+             UNION ALL
+             
+            SELECT 30.1 as metric_value, sector, sector_abbr, 0::NUMERIC as max_market_share, metric, source, business_model
             FROM %s.max_market_curves_to_model
             WHERE metric_value = 30 
             AND metric = 'payback_period' 
-            AND business_model = 'host_owned';'''  % schema
-    max_paybacks = pd.read_sql(sql, con)
-    
-    max_market_share_all = pd.concat([max_market_share, max_paybacks], axis = 0, ignore_index = True) 
+            AND business_model = 'host_owned';'''  % (schema, schema)
+    max_market_share = pd.read_sql(sql, con)
    
-    return max_market_share_all
+    return max_market_share
     
 
 def get_market_projections(con, schema):
