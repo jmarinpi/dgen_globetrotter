@@ -473,11 +473,11 @@ def calc_ttd(cfs):
     irrs = np.where(irrs<=0,1e-6,irrs)
     ttd = np.log(2) / np.log(1 + irrs)
     ttd[ttd <= 0] = 0
-    ttd[ttd > 30] = 30
+    ttd[ttd > 30] = 30.1
     # also deal with ttd of nan by setting to max payback period (this should only occur when cashflows = 0)
     if not np.all(np.isnan(ttd) == np.all(cfs == 0, axis = 1)):
         raise Exception("np.nan found in ttd for non-zero cashflows")
-    ttd[np.isnan(ttd)] = 30
+    ttd[np.isnan(ttd)] = 30.1
     
     return ttd.round(decimals = 1) # must be rounded to nearest 0.1 to join with max_market_share
 
@@ -551,7 +551,7 @@ def calc_payback_vectorized(cfs, tech_lifetime):
     next_year_values = cum_cfs[:, 1:][base_year_mask]
     frac_years = base_year_values/(base_year_values - next_year_values)
     pp_year = base_years_fix + frac_years
-    pp_precise = np.where(no_payback, 30, np.where(instant_payback, 0, pp_year))
+    pp_precise = np.where(no_payback, 30.1, np.where(instant_payback, 0, pp_year))
     
     # round to nearest 0.1 to join with max_market_share
     pp_final = np.array(pp_precise).round(decimals =1)
