@@ -141,7 +141,15 @@ def get_technology_performance_improvements_and_degradation_baseline(con, schema
                     system_lifetime_yrs as baseline_system_lifetime_yrs, 
                     annual_degradation_pct as baseline_ann_system_degradation
              FROM %(schema)s.input_baseline_performance_hvac
-             WHERE year = %(year)s;""" % inputs
+             WHERE year = %(year)s
+             
+             UNION ALL
+
+             SELECT unnest(ARRAY['res', 'com']) as sector_abbr,
+                    -1::INTEGER as baseline_system_type,
+                    NULL::NUMERIC as baseline_efficiency_improvement_factor,
+                    NULL::NUMERIC as baseline_system_lifetime_yrs, 
+                    NULL::NUMERIC as baseline_ann_system_degradation;""" % inputs
     
     df = pd.read_sql(sql, con, coerce_float = False)
 
@@ -187,6 +195,53 @@ def apply_crb_ghp_simulations(dataframe, crb_ghp_df):
     # join on crb_model, iecc_cliamte_zone, and gtc value
     # TODO: this will change based on feedback from xiaobing about how to extrapolate from crbs to cbecs/recs (issue #)
     dataframe = pd.merge(dataframe, crb_ghp_df, how = 'left', on = ['crb_model', 'iecc_climate_zone', 'gtc_btu_per_hftf'])
+    # change some random set to have no mapping (this will happen with the real mapping data, so we need to simulate it here to write downstream code)
+    cols = ['savings_pct_electricity_consumption',
+            'savings_pct_natural_gas_consumption',
+            'crb_ghx_length_ft',
+            'crb_cooling_capacity_ton',
+            'crb_totsqft',
+            'cooling_ton_per_sqft',
+            'ghx_length_ft_per_cooling_ton']
+    np.random.seed(1)
+    dataframe.loc[np.random.randint(0, dataframe.shape[0], 20), cols] = np.nan
+   
+    return dataframe
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_baseline_system_types(con, schema):
+    
+    # TODO: revise this to map to baseline systems based on the GHP CRB simulation
+    inputs = locals().copy()
+    sql = """SELECT crb_model, 
+                	 iecc_climate_zone, 
+                	 gtc_btu_per_hftf, 
+                   1::INTEGER as baseline_system_type
+          FROM diffusion_geo.ghp_simulations_dummy;"""
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df   
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_baseline_system_types(dataframe, baseline_systems_df):
+    
+    # join on crb_model, iecc_cliamte_zone, and gtc value
+    # TODO: this will change based on feedback from xiaobing about how to extrapolate from crbs to cbecs/recs (issue #)
+    dataframe = pd.merge(dataframe, baseline_systems_df, how = 'left', on = ['crb_model', 'iecc_climate_zone', 'gtc_btu_per_hftf'])
+    # change the rows with no CRB mapping to have no baseline type (this will happen with the real mapping data, so we need to simulate it here to write downstream code)
+    dataframe.loc[dataframe['cooling_ton_per_sqft'].isnull(), 'baseline_system_type'] = -1
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def mark_unmodellable_agents(dataframe):
+    
+    dataframe['modellable'] = np.where(dataframe['baseline_system_type'] == -1, False, True)
     
     return dataframe
 
@@ -215,12 +270,12 @@ def size_systems_ghp(dataframe):
     # output should be both ghx_length_ft and cooling_capacity_ton
 
     # first calculate required system capacity
-    dataframe['ghp_system_size_tons'] = dataframe['cooling_ton_per_sqft'] * dataframe['totsqft']
+    dataframe['ghp_system_size_tons'] = np.where(dataframe['modellable'] == True, dataframe['cooling_ton_per_sqft'] * dataframe['totsqft'], np.nan)
     # add system size kw (for compatibility with downstream code)
-    dataframe['system_size_kw'] = dataframe['ghp_system_size_tons'] * 3.5168525
+    dataframe['system_size_kw'] = np.where(dataframe['modellable'] == True, dataframe['ghp_system_size_tons'] * 3.5168525, np.nan)
 
     # next, calculate the ghx length required to provide that capacity
-    dataframe['ghx_length_ft'] = dataframe['ghp_system_size_tons'] * dataframe['ghx_length_ft_per_cooling_ton']
+    dataframe['ghx_length_ft'] = np.where(dataframe['modellable'] == True, dataframe['ghp_system_size_tons'] * dataframe['ghx_length_ft_per_cooling_ton'], np.nan)
 
     return dataframe
 
@@ -239,7 +294,7 @@ def apply_siting_constraints_ghp(dataframe, siting_constraints_df):
     dataframe['length_installable_horizontal_ft'] = dataframe['parcel_size_sqft'] / dataframe['area_per_pipe_length_sqft_per_foot_horizontal']
     # determine whether each option is viable
     dataframe['length_installable_ft'] = np.where(dataframe['sys_config'] == 'vertical', dataframe['length_installable_vertical_ft'], dataframe['length_installable_horizontal_ft'])
-    dataframe['viable_sys_config'] = dataframe['length_installable_ft'] >= dataframe['ghx_length_ft']
+    dataframe['viable_sys_config'] = np.where(dataframe['modellable'] == True, dataframe['length_installable_ft'] >= dataframe['ghx_length_ft'], np.nan)
     
     out_cols = ['area_per_well_sqft_vertical',
                 'max_well_depth_ft',
@@ -296,6 +351,13 @@ def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):
                                                      dataframe['ghp_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'] * dataframe['ghp_retrofit_rest_of_system_multiplier'])
     dataframe['ghp_installed_costs_dlrs'] = dataframe['ghx_cost_dlrs'] + dataframe['ghp_heat_pump_cost_dlrs'] + dataframe['ghp_rest_of_system_cost_dlrs']
     dataframe['ghp_fixed_om_dlrs_per_year'] = dataframe['ghp_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']
+     # reset values to NA where the system isn't modellable
+    out_cols = ['ghx_cost_dlrs', 
+                'ghp_heat_pump_cost_dlrs', 
+                'ghp_rest_of_system_cost_dlrs', 
+                'ghp_installed_costs_dlrs', 
+                'ghp_fixed_om_dlrs_per_year']
+    dataframe.loc[dataframe['modellable'] == False, out_cols] = np.nan   
     
     return dataframe
 
@@ -313,7 +375,16 @@ def get_technology_costs_baseline(con, schema, year):
                     retrofit_rest_of_system_multiplier as baseline_retrofit_rest_of_system_multiplier,
                     fixed_om_dollars_per_sf_per_year as baseline_fixed_om_dollars_per_sf_per_year
              FROM %(schema)s.input_baseline_costs_hvac
-             WHERE year = %(year)s;""" % inputs
+             WHERE year = %(year)s
+             
+             UNION ALL
+
+             SELECT unnest(ARRAY['res', 'com']) as sector_abbr,
+                    -1::INTEGER as baseline_system_type,
+                    NULL::NUMERIC as hvac_equipment_cost_dollars_per_cooling_ton,
+                    NULL::NUMERIC as baseline_new_rest_of_system_costs_dollars_per_cooling_ton,
+                    NULL::NUMERIC as baseline_retrofit_rest_of_system_multiplier,
+                    NULL::NUMERIC as baseline_fixed_om_dollars_per_sf_per_year;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
 
     return df
@@ -331,6 +402,9 @@ def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df):
                                                      dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'] * dataframe['baseline_retrofit_rest_of_system_multiplier'])
     dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_costs_dlrs'] + dataframe['baseline_rest_of_system_cost_dlrs']
     dataframe['baseline_fixed_om_dlrs_per_year'] = dataframe['baseline_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']
+    # reset values to NA where the system isn't modellable
+    out_cols = ['baseline_equipment_costs_dlrs', 'baseline_rest_of_system_cost_dlrs', 'baseline_installed_costs_dlrs', 'baseline_fixed_om_dlrs_per_year']
+    dataframe.loc[dataframe['modellable'] == False, out_cols] = np.nan
     
     return dataframe
 
@@ -347,8 +421,8 @@ def calculate_site_energy_consumption_ghp(dataframe):
                                                     dataframe['site_space_cool_per_building_in_bin_kwh'] * (dataframe['space_cool_fuel'] == 'electricity'))
     # determine the total amount of natural gas and elec used for space heating and cooling by GHP
     # (account for energy savings from CRBS)
-    dataframe['ghp_site_natgas_per_building_kwh'] = dataframe['baseline_site_natgas_per_building_kwh'] * (1. - dataframe['savings_pct_natural_gas_consumption'])
-    dataframe['ghp_site_elec_per_building_kwh'] = dataframe['baseline_site_elec_per_building_kwh'] * (1. - dataframe['savings_pct_electricity_consumption'])        
+    dataframe['ghp_site_natgas_per_building_kwh'] = np.where(dataframe['modellable'] == True, dataframe['baseline_site_natgas_per_building_kwh'] * (1. - dataframe['savings_pct_natural_gas_consumption']), np.nan)
+    dataframe['ghp_site_elec_per_building_kwh'] = np.where(dataframe['modellable'] == True, dataframe['baseline_site_elec_per_building_kwh'] * (1. - dataframe['savings_pct_electricity_consumption']), np.nan)
     
     return dataframe
 

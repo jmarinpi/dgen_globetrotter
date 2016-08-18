@@ -587,25 +587,40 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # check whether systems need replacement (outlived their expected lifetime)
                     agents = AgentsAlgorithm(agents, mutation.check_system_expirations).compute()                                
 
-                    #==============================================================================
-                    # REPLICATE AGENTS FOR DIFFERENT GHP SYSTEM CONFIGURATIONS
-                    #==============================================================================        
-                    system_configurations = ['vertical', 'horizontal']                    
-                    agents = AgentsAlgorithm(agents, mutation.replicate_agents_by_factor, ('sys_config', system_configurations), row_increase_factor = len(system_configurations)).compute()
-                           
                     #==========================================================================================================
-                    # CRB GHP SIMULATIONS
+                    # MAP TO CRB GHP SIMULATIONS
                     #==========================================================================================================                          
                     # get CRB GHP simulations
                     crb_ghp_df = mutation.get_crb_ghp_simulations(con, schema)
                     # apply CRB GHP simulations
                     agents = AgentsAlgorithm(agents, mutation.apply_crb_ghp_simulations, (crb_ghp_df, )).compute()
 
+                    #==========================================================================================================
+                    # BASELINE SYSTEM TYPES
+                    #==========================================================================================================   
+                    # these are a function of the CRB GHP Simulations mapped in the previous step                       
+                    # get CRB GHP simulations
+                    baseline_systems_df = mutation.get_baseline_system_types(con, schema)
+                    # apply CRB GHP simulations
+                    agents = AgentsAlgorithm(agents, mutation.apply_baseline_system_types, (baseline_systems_df, )).compute()
+                    
+                    #==========================================================================================================
+                    # MARK MODELLABLE AND UN-MODELLABLE AGENTS
+                    #==========================================================================================================                          
+                    # mark agents that can't be modeled due to no representative GHP simulations
+                    agents = AgentsAlgorithm(agents, mutation.mark_unmodellable_agents).compute()
+                    
                     #==============================================================================
                     # SYSTEM SIZING
                     #==============================================================================
                     # size systems
-                    agents = AgentsAlgorithm(agents, mutation.size_systems_ghp).compute()  
+                    agents = AgentsAlgorithm(agents, mutation.size_systems_ghp).compute()
+
+                    #==============================================================================
+                    # REPLICATE AGENTS FOR DIFFERENT GHP SYSTEM CONFIGURATIONS
+                    #==============================================================================        
+                    system_configurations = ['vertical', 'horizontal']                    
+                    agents = AgentsAlgorithm(agents, mutation.replicate_agents_by_factor, ('sys_config', system_configurations), row_increase_factor = len(system_configurations)).compute()
 
                     #==============================================================================
                     # SITING CONSTRAINTS
