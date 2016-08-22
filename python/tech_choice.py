@@ -34,7 +34,7 @@ def which_max(group, col):
     
     return uid
 
-@decorators.fn_timer(logger = logger, verbose = show_times, tab_level = 3, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def select_financing_and_tech(df, prng, alpha_lkup, sectors, decision_col, choose_tech = False, techs = ['solar', 'wind']):
         
     if choose_tech == True:
