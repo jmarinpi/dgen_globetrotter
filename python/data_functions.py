@@ -247,7 +247,6 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
 
     # convert formatting of fields list
     inputs['fields_str'] = utilfunc.pylist_2_pglist(fields).replace("'","")       
-
     # open an in memory stringIO file (like an in memory csv)
     s = StringIO()
     # write the data to the stringIO
@@ -1344,7 +1343,15 @@ def get_max_market_share(con, schema):
     '''
 
     sql = '''SELECT * 
-             FROM %s.max_market_curves_to_model;'''  % schema
+             FROM %s.max_market_curves_to_model
+             
+             UNION ALL
+             
+            SELECT 30.1 as metric_value, sector, sector_abbr, 0::NUMERIC as max_market_share, metric, source, business_model
+            FROM %s.max_market_curves_to_model
+            WHERE metric_value = 30 
+            AND metric = 'payback_period' 
+            AND business_model = 'host_owned';'''  % (schema, schema)
     max_market_share = pd.read_sql(sql, con)
    
     return max_market_share

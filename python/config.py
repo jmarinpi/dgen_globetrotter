@@ -42,7 +42,7 @@ pg_params_log = json.dumps(json.loads(pd.DataFrame([pg_params])[['host', 'port',
 #==============================================================================
 #   set the number of customer bins to model in each county
 #==============================================================================
-agents_per_region = 5
+agents_per_region = 10
 sample_pct = 0.05
 min_agents = 5
 
@@ -111,6 +111,11 @@ init_model = True
 # or directly sold to grid (True)
 gross_fit_mode = False
 
+#==============================================================================
+# tech_choice decision variable
+#==============================================================================
+tech_choice_decision_var = 'max_market_share'
+# alternative options are: npv4 or npv
 
 #==============================================================================
 #  Set method for determining Bass parameters

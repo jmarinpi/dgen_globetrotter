@@ -471,7 +471,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 
                 # select from choices for business model and (optionally) technology
-                df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
+                df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, cfg.tech_choice_decision_var, choose_tech, techs)                 
 
                 #==========================================================================================================
                 # MARKET LAST YEAR
