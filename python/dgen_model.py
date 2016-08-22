@@ -295,7 +295,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                            incentives_cap, 25)         
                 
                 # select from choices for business model and (optionally) technology
-                df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, 'max_market_share', choose_tech, techs)                 
+                df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, cfg.tech_choice_decision_var, choose_tech, techs)                 
 
                 # calculate diffusion based on economics and bass diffusion      
                 df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, year, 

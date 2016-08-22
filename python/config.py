@@ -77,6 +77,11 @@ init_model = True
 # or directly sold to grid (True)
 gross_fit_mode = False
 
+#==============================================================================
+# tech_choice decision variable
+#==============================================================================
+tech_choice_decision_var = 'max_market_share'
+# alternative options are: npv4 or npv
 
 #==============================================================================
 #  Set method for determining Bass parameters
