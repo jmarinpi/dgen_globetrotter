@@ -14,7 +14,8 @@ where a.state not in ('Hawaii','Alaska');
 -- joined block microdata
 DROP VIEW IF EXISTS diffusion_template.block_microdata_res_joined;
 CREATE VIEW  diffusion_template.block_microdata_res_joined AS
-SELECT a.*, a.bldg_count_single_fam_res as sample_weight
+SELECT a.*, a.bldg_count_single_fam_res as sample_weight,
+	a.bldg_count_res as sample_weight_geo
 FROM diffusion_blocks.block_microdata_res a
 INNER JOIN diffusion_template.states_to_model b
 ON a.state_abbr = b.state_abbr;
