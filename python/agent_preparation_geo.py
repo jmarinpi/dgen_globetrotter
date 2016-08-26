@@ -293,7 +293,7 @@ def sample_blocks(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_co
              (
                  SELECT a.tract_id_alias,
                          array_agg(a.pgid ORDER BY a.pgid) as pgids,
-                         array_agg(a.sample_weight ORDER BY a.pgid) as block_weights
+                         array_agg(a.sample_weight_geo ORDER BY a.pgid) as block_weights
                  FROM %(schema)s.block_microdata_%(sector_abbr)s_joined a
                  WHERE a.tract_id_alias in (%(chunk_place_holder)s)
                  AND a.bldg_count_%(sector_abbr)s > 0 
