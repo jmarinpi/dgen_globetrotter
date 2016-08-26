@@ -240,16 +240,17 @@ def calculate_cashflows(df, tech, analysis_period = 30):
         tpo_costs = np.array(np.nan, dtype = 'float64')
         tpo_cashflows = np.array(np.nan, dtype = 'float64')
         
+    nan_array = np.empty((len(df), analysis_period + 1)) * np.nan
+    df[ho_cashflows_column] = np.where((df['modellable'] == True)[:, np.newaxis], ho_cashflows, nan_array).tolist()
+    df[ho_revenue_column] = np.where((df['modellable'] == True)[:, np.newaxis], ho_revenue, nan_array).tolist()
+    df[ho_costs_column] = np.where((df['modellable'] == True)[:, np.newaxis], ho_costs, nan_array).tolist()
 
-    df[ho_cashflows_column] = ho_cashflows.tolist()
-    df[ho_revenue_column] = ho_revenue.tolist()
-    df[ho_costs_column] = ho_costs.tolist()
-
-
-    df[tpo_cashflows_column] = tpo_cashflows.tolist()
-    df[tpo_revenue_column] = tpo_revenue.tolist()
-    df[tpo_costs_column] = tpo_costs.tolist()
+    df[tpo_cashflows_column] = np.where((df['modellable'] == True)[:, np.newaxis], tpo_cashflows, nan_array).tolist()
+    df[tpo_revenue_column] = np.where((df['modellable'] == True)[:, np.newaxis], tpo_revenue, nan_array).tolist()
+    df[tpo_costs_column] = np.where((df['modellable'] == True)[:, np.newaxis], tpo_costs, nan_array).tolist()
     
+    # set the incentives column adn energy costs column to null for unmodellable agents
+    df.loc[df['modellable'] == False, [incentives_column, energy_costs_column]] = np.nan
     
     out_cols = [    incentives_column, 
                     energy_costs_column,
@@ -260,6 +261,8 @@ def calculate_cashflows(df, tech, analysis_period = 30):
                     tpo_revenue_column,
                     tpo_costs_column                
                 ]
+    # for output columns, null out unmodellable agents
+    #df.loc[df['modellable'] == False, out_cols] = np
     return_cols = in_cols + out_cols
     df = df[return_cols]    
     
@@ -270,7 +273,9 @@ def calculate_cashflows(df, tech, analysis_period = 30):
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calculate_net_cashflows_host_owned(dataframe):
-       
+      
+    # TODO: add code to ensure that net cashflows are nan for unmodellable agents
+    # (note: this happens implicitly already, but would be good to add an additional explicit catch here)
     dataframe['net_cashflows_ho'] = (np.array(dataframe['ghp_ho_cashflows'].tolist(), dtype = 'float64') - np.array(dataframe['baseline_ho_cashflows'].tolist(), dtype = 'float64')).tolist()
 
     return dataframe
@@ -279,7 +284,9 @@ def calculate_net_cashflows_host_owned(dataframe):
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calculate_net_cashflows_third_party_owned(dataframe):
-       
+
+    # TODO: add code to ensure that net cashflows are nan for unmodellable agents
+    # (note: this happens implicitly already, but would be good to add an additional explicit catch here)       
     dataframe['net_cashflows_tpo'] = (np.array(dataframe['ghp_tpo_cashflows'].tolist(), dtype = 'float64') - np.array(dataframe['baseline_ho_cashflows'].tolist(), dtype = 'float64')).tolist()
 
     return dataframe
@@ -295,6 +302,10 @@ def calculate_monthly_bill_savings(dataframe):
     # the percent monthly bill savings is simply the average net cashflow divided by the original energy costs of the consumer
     # (use annual numbers because they should be same as monthly (if you divide both by 12 and then divide, it's the same as dividing the originals))
     dataframe['percent_monthly_bill_savings'] = np.where(dataframe['baseline_avg_annual_energy_costs_dlrs'] == 0, 0., dataframe['avg_annual_net_cashflow_tpo'] / dataframe['baseline_avg_annual_energy_costs_dlrs'])
+    
+    # make sure values are null for unmodellable 
+    out_cols = ['avg_annual_net_cashflow_tpo', 'monthly_bill_savings', 'percent_monthly_bill_savings']
+    dataframe.loc[dataframe['modellable'] == False, out_cols] = np.nan
     
     return dataframe
     
@@ -324,8 +335,8 @@ def calculate_payback(dataframe, cashflow_column, analysis_period):
     
     # round to nearest 0.1 to join with max_market_share
     pp_final = np.array(pp_precise).round(decimals =1)
-    
-    dataframe['payback_period'] = pp_final
+    # assign to dataframe, making sure values are null for unmodellable 
+    dataframe['payback_period'] = np.where(dataframe['modellable'] == True, pp_final, np.nan)
     
     return dataframe    
 
@@ -353,7 +364,9 @@ def calculate_ttd(dataframe, cashflow_column):
         raise Exception("np.nan found in ttd for non-zero cashflows")
     ttd[np.isnan(ttd)] = 30.1
     # round results to nearest 0.1 (to join with max market share lkup)    
-    dataframe['ttd'] = ttd.round(decimals = 1)    
+    ttd = ttd.round(decimals = 1)
+    # assign to dataframe, making sure values are null for unmodellable 
+    dataframe['ttd'] = np.where(dataframe['modellable'] == True, ttd, np.nan)
     
     return dataframe
 
@@ -370,6 +383,8 @@ def assign_metric_value_precise(dataframe):
                                                            dataframe['payback_period']
                                                          )
                                                 )
+    # make sure values are null for unmodellable 
+    dataframe.loc[dataframe['modellable'] == False, 'metric_value_precise'] = np.nan
 
     return dataframe
     
@@ -399,7 +414,7 @@ def calculate_npv(dataframe, cashflow_column, discount_rate_val_or_column, out_c
     drm = np.cumprod(tmp, axis = 1)        
     npv = (drm * cashflows).sum(axis = 1)   
     
-    dataframe[out_col] = npv
+    dataframe[out_col] = np.where(dataframe['modellable'] == True, npv, np.nan)
 
     return dataframe
     
@@ -486,11 +501,15 @@ def calculate_lcoe(dataframe):
                                ) + dataframe['VOM'])# LCOE 2014c/kWh
     
     
-    out_cols = ['lcoe']
-    return_cols = in_cols + out_cols
-    
-    dataframe = dataframe[return_cols]
+    # TODO: temporary for now, remove later: replace all values nan since above calculations havent been revised for ghp
     dataframe['lcoe'] = np.nan
+    
+    # make sure value is null for unmodellable
+    dataframe.loc[dataframe['modellable'] == False, 'lcoe'] = np.nan
+
+    out_cols = ['lcoe']
+    return_cols = in_cols + out_cols    
+    dataframe = dataframe[return_cols]
     
     return dataframe
  

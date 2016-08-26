@@ -635,7 +635,8 @@ def apply_expected_rate_escalations(dataframe, rate_escalations_df):
     # drop fuel_type column
     ng_prices_df.drop('fuel_type', axis = 1, inplace = True)
     # join to main dataframe
-    dataframe = pd.merge(dataframe, ng_prices_df, how = 'left', on = ['census_division_abbr', 'sector_abbr'])
+    join_keys = ['census_division_abbr', 'sector_abbr']
+    dataframe = pd.merge(dataframe, ng_prices_df, how = 'left', on = join_keys)   
     
     elec_prices_df = rate_escalations_df[rate_escalations_df['fuel_type'] == 'electricity']
     # rename price column
@@ -643,8 +644,9 @@ def apply_expected_rate_escalations(dataframe, rate_escalations_df):
     # drop fuel_type column
     elec_prices_df.rename(columns = rename_map, inplace = True)
     # join to main dataframe
-    dataframe = pd.merge(dataframe, elec_prices_df, how = 'left', on = ['census_division_abbr', 'sector_abbr'])    
-    
+    join_keys = ['census_division_abbr', 'sector_abbr']
+    dataframe = pd.merge(dataframe, elec_prices_df, how = 'left', on = join_keys)    
+
     
     out_cols = ['dlrs_per_kwh_natgas', 'dlrs_per_kwh_elec']
     return_cols = in_cols + out_cols
@@ -665,7 +667,7 @@ def calc_state_incentives(dataframe, state_incentives_df):
                 'value_of_rebate' : 0,
                 'value_of_tax_credit_or_deduction' : 0}    
     for col, val in fill_vals.iteritems():
-        dataframe[col] = val
+        dataframe[col] = np.where(dataframe['modellable'] == True, val, np.nan)
         
     return dataframe
 
@@ -706,10 +708,7 @@ def calc_value_of_itc(df, itc_options, year):
         
     # Calculate the value of ITC (accounting for reduced costs from state/local incentives)
     df['applicable_ic'] = df['ghp_installed_costs_dlrs'] - (df['value_of_tax_credit_or_deduction'] + df['value_of_rebate'] + df['value_of_increment'])
-    df['value_of_itc'] =  (
-                            df['applicable_ic'] *
-                            df['itc_fraction'] 
-                          )
+    df['value_of_itc'] =  np.where(df['modellable'] == True, df['applicable_ic'] * df['itc_fraction'], np.nan)
                           
     df = df.drop(['applicable_ic', 'itc_fraction'], axis = 1)
     
@@ -725,6 +724,19 @@ def calc_value_of_itc(df, itc_options, year):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_incentives_cap(dataframe, incentives_cap_df):
     
-    dataframe = pd.merge(dataframe, incentives_cap_df, how = 'left', on = 'tech')
+    join_keys = ['tech']
+    dataframe = pd.merge(dataframe, incentives_cap_df, how = 'left', on = join_keys)
+    
+    return dataframe
+
+
+
+#%%
+def apply_nan_to_unmodellable_agents(dataframe, lkup_table, join_keys):
+    
+    # NOTE: only works for simple, single-value columns. compound (i.e., list or array) columns do not work
+    # figure out waht the newly added columns are
+    new_cols = list(set(lkup_table.columns.tolist()) - set(join_keys))
+    dataframe.loc[dataframe['modellable'] == False, new_cols] = np.nan
     
     return dataframe
