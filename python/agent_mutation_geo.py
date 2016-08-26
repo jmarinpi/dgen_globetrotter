@@ -699,8 +699,7 @@ def calc_value_of_itc(df, itc_options, year):
     # merge to df
     df = pd.merge(df, itc_all, how = 'left', on = ['sector_abbr', 'year', 'business_model', 'tech'])
     # drop the rows that are outside of the allowable system sizes
-    keep_rows = np.where(df['tech'] == 'ghp', (df['ghp_system_size_tons'] > df['min_size_kw_or_tons']) & (df['ghp_system_size_tons'] <= df['max_size_kw_or_tons']), (df['system_size_kw'] > df['min_size_kw_or_tons']) & (df['system_size_kw'] <= df['max_size_kw_or_tons']))
-    df = df[keep_rows]
+    df = df[(df['system_size_kw'] > df['min_size_kw']) & (df['system_size_kw'] <= df['max_size_kw']) | df['system_size_kw'].isnull()]
     # confirm shape hasn't changed
     if df.shape[0] <> row_count:
         raise ValueError('Row count of dataframe changed during merge')
