@@ -1341,12 +1341,22 @@ def get_max_market_share(con, schema):
                                                 keys are sector & payback period 
     '''
 
-    sql = '''SELECT * 
+    sql = '''SELECT metric_value, 
+                    sector_abbr, 
+                    max_market_share, 
+                    metric, 
+                    source, 
+                    business_model
              FROM %s.max_market_curves_to_model
              
              UNION ALL
              
-            SELECT 30.1 as metric_value, sector, sector_abbr, 0::NUMERIC as max_market_share, metric, source, business_model
+            SELECT 30.1 as metric_value, 
+                    sector_abbr, 
+                    0::NUMERIC as max_market_share, 
+                    metric, 
+                    source, 
+                    business_model
             FROM %s.max_market_curves_to_model
             WHERE metric_value = 30 
             AND metric = 'payback_period' 

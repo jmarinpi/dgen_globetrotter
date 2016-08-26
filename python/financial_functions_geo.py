@@ -39,6 +39,8 @@ def calculate_max_market_share(dataframe, max_market_share):
     metric_value_bounded[np.where((dataframe['metric'] == 'percent_monthly_bill_savings') & (dataframe['metric_value_precise'] < min_mbs))] = min_mbs
     metric_value_bounded[np.where((dataframe['metric'] == 'percent_monthly_bill_savings') & (dataframe['metric_value_precise'] > max_mbs))] = max_mbs
     dataframe['metric_value_bounded'] = metric_value_bounded
+    # for unmodellable agents, temporarily change metric_value_bounded to 30.1
+    dataframe.loc[dataframe['modellable'] == False, 'metric_value_bounded'] = 30.1
 
     # scale and round to nearest int    
     dataframe['metric_value_as_factor'] = (dataframe['metric_value_bounded'] * 100).round().astype('int')
@@ -51,6 +53,13 @@ def calculate_max_market_share(dataframe, max_market_share):
     # Derate the maximum market share for commercial and industrial customers in leased buildings by (1/3)
     # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
     dataframe['max_market_share'] = np.where(dataframe['owner_occupied'] == True, dataframe['max_market_share']/3, dataframe['max_market_share'])
+    
+    # null values for unmodellable agents
+    out_cols = ['metric_value_bounded',
+                'metric_value_as_factor',
+                'max_market_share',
+                'metric_value']
+    dataframe.loc[dataframe['modellable'] == False, out_cols] = np.nan
     
     return dataframe
     
@@ -454,51 +463,51 @@ def calculate_lcoe(dataframe):
     #TODO: revise this function to work for energy savings
     # extract a list of the input columns
     in_cols = dataframe.columns.tolist()
-    
-    # inflation rate
-    dataframe['IR'] = dataframe['inflation_rate']
-    # debt fraction
-    dataframe['DF'] = 1 - dataframe['down_payment']
-    # cost of equity
-    dataframe['CoE'] = dataframe['discount_rate']
-    # cost of debt
-    dataframe['CoD'] = dataframe['loan_rate']
-    # tax rate
-    dataframe['TR'] = dataframe['tax_rate']
-    
-    
-    # weighted average cost of capital (~avg of cost of debt and cost of equity)
-    dataframe['WACC'] = ((1 + ((1-dataframe['DF'])*((1+dataframe['CoE'])*(1+dataframe['IR'])-1)) + (dataframe['DF'] * ((1+dataframe['CoD'])*(1+dataframe['IR']) - 1) *  (1 - dataframe['TR'])))/(1 + dataframe['IR'])) -1
-    # capital recovery factor
-    dataframe['CRF'] = (dataframe['WACC'])/ (1 - (1/(1+dataframe['WACC'])**dataframe['loan_term_yrs']))# real crf
-    
-    # discount rate used for depreciation calculations
-    dataframe['DR'] = (1+dataframe['WACC'] * 1 + dataframe['IR'])-1 # Discount rate used for depreciation is 1 - (WACC + 1)(Inflation + 1)
-    # present value of depreciation (simplified version of cashflows)
-    dataframe['PVD'] = calculate_npv(dataframe, 'deprec', 'DR', 'PVD')
-    dataframe['PVD'] /= (1 + dataframe['WACC']) # In calc_npv we assume first entry of an array corresponds to year zero; the first entry of the depreciation schedule is for the first year, so we need to discount the PVD by one additional year
-    
-    # project finance factor
-    dataframe['PFF'] = (1 - dataframe['TR'] * dataframe['PVD'])/(1 - dataframe['TR'])
-    dataframe['CFF'] = 1 # construction finance factor -- cost of capital during construction, assume projects are built overnight, which is not true for larger systems   
-    # overnight capital cost $/kW
-    dataframe['OCC'] = dataframe['installed_costs_dollars_per_kw']
-    # grid connection cost $/kW, assume cost of interconnecting included in OCC
-    dataframe['GCC'] = 0 
-    # fixed o&m $/kW-yr
-    dataframe['FOM']  = dataframe['fixed_om_dollars_per_kw_per_yr'] 
-    # capacity factor
-    dataframe['CF'] = dataframe['aep']/dataframe['system_size_kw']/8760
-    #variable O&M $/kWh
-    dataframe['VOM'] = dataframe['variable_om_dollars_per_kwh'] 
-    
-    
-    dataframe['lcoe'] = 100 * (
-                                    (
-                                        (dataframe['CRF'] * dataframe['PFF'] * dataframe['CFF'] * 
-                                            (dataframe['OCC'] * 1 + dataframe['GCC']) + 
-                                            dataframe['FOM']) / (dataframe['CF'] * 8760)
-                               ) + dataframe['VOM'])# LCOE 2014c/kWh
+#    
+#    # inflation rate
+#    dataframe['IR'] = dataframe['inflation_rate']
+#    # debt fraction
+#    dataframe['DF'] = 1 - dataframe['down_payment']
+#    # cost of equity
+#    dataframe['CoE'] = dataframe['discount_rate']
+#    # cost of debt
+#    dataframe['CoD'] = dataframe['loan_rate']
+#    # tax rate
+#    dataframe['TR'] = dataframe['tax_rate']
+#    
+#    
+#    # weighted average cost of capital (~avg of cost of debt and cost of equity)
+#    dataframe['WACC'] = ((1 + ((1-dataframe['DF'])*((1+dataframe['CoE'])*(1+dataframe['IR'])-1)) + (dataframe['DF'] * ((1+dataframe['CoD'])*(1+dataframe['IR']) - 1) *  (1 - dataframe['TR'])))/(1 + dataframe['IR'])) -1
+#    # capital recovery factor
+#    dataframe['CRF'] = (dataframe['WACC'])/ (1 - (1/(1+dataframe['WACC'])**dataframe['loan_term_yrs']))# real crf
+#    
+#    # discount rate used for depreciation calculations
+#    dataframe['DR'] = (1+dataframe['WACC'] * 1 + dataframe['IR'])-1 # Discount rate used for depreciation is 1 - (WACC + 1)(Inflation + 1)
+#    # present value of depreciation (simplified version of cashflows)
+#    dataframe['PVD'] = calculate_npv(dataframe, 'deprec', 'DR', 'PVD')
+#    dataframe['PVD'] /= (1 + dataframe['WACC']) # In calc_npv we assume first entry of an array corresponds to year zero; the first entry of the depreciation schedule is for the first year, so we need to discount the PVD by one additional year
+#    
+#    # project finance factor
+#    dataframe['PFF'] = (1 - dataframe['TR'] * dataframe['PVD'])/(1 - dataframe['TR'])
+#    dataframe['CFF'] = 1 # construction finance factor -- cost of capital during construction, assume projects are built overnight, which is not true for larger systems   
+#    # overnight capital cost $/kW
+#    dataframe['OCC'] = dataframe['installed_costs_dollars_per_kw']
+#    # grid connection cost $/kW, assume cost of interconnecting included in OCC
+#    dataframe['GCC'] = 0 
+#    # fixed o&m $/kW-yr
+#    dataframe['FOM']  = dataframe['fixed_om_dollars_per_kw_per_yr'] 
+#    # capacity factor
+#    dataframe['CF'] = dataframe['aep']/dataframe['system_size_kw']/8760
+#    #variable O&M $/kWh
+#    dataframe['VOM'] = dataframe['variable_om_dollars_per_kwh'] 
+#    
+#    
+#    dataframe['lcoe'] = 100 * (
+#                                    (
+#                                        (dataframe['CRF'] * dataframe['PFF'] * dataframe['CFF'] * 
+#                                            (dataframe['OCC'] * 1 + dataframe['GCC']) + 
+#                                            dataframe['FOM']) / (dataframe['CF'] * 8760)
+#                               ) + dataframe['VOM'])# LCOE 2014c/kWh
     
     
     # TODO: temporary for now, remove later: replace all values nan since above calculations havent been revised for ghp

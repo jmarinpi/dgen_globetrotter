@@ -573,11 +573,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # drop du agents
                     agents = agents.filter_tech('ghp')                  
                     
+                    # add bin_id column
+                    # NOTE: this is only necessary to make compatibile with the tech choice module
+                    agents = AgentsAlgorithm(agents, mutation.add_bin_id).compute()
+                    
                     # TODO: write this for ghp
 #                    # get previously subscribed agents
 #                    previously_subscribed_agents_df = demand_supply.get_previously_subscribed_agents(con, schema)
 #                    # subtract previously subscribed agents
 #                    agents_initial = AgentsAlgorithm(agents, demand_supply.subtract_previously_subscribed_agents, (previously_subscribed_agents_df, )).compute()                    
+                    # really, this is more about flagging which agents just installed a hvac or ghp system in the previous year
+                    # and then accountin for that in the system ages below (i.e., reset to system age to zero)
                     
                     #==============================================================================
                     # HVAC SYSTEM AGES
@@ -629,6 +635,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     siting_constraints_df = mutation.get_siting_constraints_ghp(con, schema, year)
                     # apply siting constraints
                     agents = AgentsAlgorithm(agents, mutation.apply_siting_constraints_ghp, (siting_constraints_df, )).compute()
+
+                    #==============================================================================
+                    # IDENTIFY DEVELOPABLE CUSTOMERS
+                    #==============================================================================                            
+                    # flag the agents that can actually be developed (these will be ignored in market potential calcs)
+                    agents = AgentsAlgorithm(agents, mutation.identify_developable_agents).compute()
 
                     #==============================================================================
                     # TECHNOLOGY COSTS
@@ -734,28 +746,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, finfunc.assign_value, (inflation_rate, 'inflation_rate')).compute()
                     # calculate LCOE
                     agents = AgentsAlgorithm(agents, finfunc.calculate_lcoe).compute()  # TODO: revise this function
-                   
-                    #==========================================================================================================
-                    # MARKET DIFFUSION
-                    #==========================================================================================================                      
+
                     #  assign max market share
                     agents = AgentsAlgorithm(agents, finfunc.calculate_max_market_share, (max_market_share, )).compute()
                     # select from choices for business model and (optionally) technology
-                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)    
-                    
-      
+                    agents_2 = Agents(tech_choice.select_financing_and_tech(agents.dataframe, prng, sectors, alpha_lkup_val = 2, decision_col = 'max_market_share', choose_tech = True, techs = ['vertical', 'horizontal'], tech_field = 'sys_config'))
     
-                    #==============================================================================
-                    # DEVELOPABLE CUSTOMERS/LOAD
-                    #==============================================================================                            
-                    # flag the agents that can actually be developed (these will be ignored in market potential calcs)
-                    agents = AgentsAlgorithm(agents, mutation.identify_developable_agents).compute()                            
     
+                    # TODO: finish everything from here down
                     #==========================================================================================================
                     # MARKET LAST YEAR
                     #==========================================================================================================                  
-                    # convert back to agents
-                    agents = Agents(df)
                     is_first_year = year == cfg.start_year      
                     if is_first_year == True:
                         # calculate initial market shares

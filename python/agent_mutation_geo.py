@@ -294,7 +294,7 @@ def apply_siting_constraints_ghp(dataframe, siting_constraints_df):
     dataframe['length_installable_horizontal_ft'] = dataframe['parcel_size_sqft'] / dataframe['area_per_pipe_length_sqft_per_foot_horizontal']
     # determine whether each option is viable
     dataframe['length_installable_ft'] = np.where(dataframe['sys_config'] == 'vertical', dataframe['length_installable_vertical_ft'], dataframe['length_installable_horizontal_ft'])
-    dataframe['viable_sys_config'] = np.where(dataframe['modellable'] == True, dataframe['length_installable_ft'] >= dataframe['ghx_length_ft'], np.nan)
+    dataframe['viable_sys_config'] = np.where(dataframe['modellable'] == True, dataframe['length_installable_ft'] >= dataframe['ghx_length_ft'], False)
     
     out_cols = ['area_per_well_sqft_vertical',
                 'max_well_depth_ft',
@@ -314,7 +314,7 @@ def apply_siting_constraints_ghp(dataframe, siting_constraints_df):
 def identify_developable_agents(dataframe):
 
     # TODO: also account for the fact that some microdata can't be represented by CRBs
-    dataframe['developable'] = (dataframe['viable_sys_config'] == True) & (dataframe['needs_replacement_average_system'] == True)
+    dataframe['developable'] = (dataframe['viable_sys_config'] == True) & (dataframe['needs_replacement_average_system'] == True) & (dataframe['modellable'] == True)
    
     return dataframe    
     
@@ -719,6 +719,15 @@ def calc_value_of_itc(df, itc_options, year):
     
     return df
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def add_bin_id(dataframe):
+    
+    # add bin_id field -- only purpose is for compatiblity with tech choice function
+    dataframe['bin_id'] = dataframe.groupby(['county_id'])['agent_id'].rank(ascending = True, method = 'first')
+
+    return dataframe
+    
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
