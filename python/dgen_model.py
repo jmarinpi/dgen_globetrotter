@@ -846,7 +846,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     previously_subscribed_wellsets_df = demand_supply.get_previously_subscribed_wellsets(con, schema)
                     # subtract previously subscribed wellsets
                     resource_df = demand_supply.subtract_previously_subscribed_wellsets(resource_df, previously_subscribed_wellsets_df)
-                                        
+
                     # get natural gas prics
                     ng_prices_df = demand_supply.get_natural_gas_prices(con, schema, year)
                     # get the du cost data

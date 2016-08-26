@@ -24,18 +24,18 @@ def weighted_choice(group, prng):
     
     return sample
 
-def which_max_npv4(group):
+def which_max(group, col):
     
     # rescale probabilities to sum to one
     uid_list = group['uid'].tolist()
-    max_npv = group['npv4'].max()
-    i =  group['npv4'].tolist().index(max_npv)
+    max_val = group[col].max()
+    i =  group[col].tolist().index(max_val)
     uid = uid_list[i]
     
     return uid
 
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
-def select_financing_and_tech(df, prng, alpha_lkup, sectors, choose_tech = False, techs = ['solar', 'wind']):
+def select_financing_and_tech(df, prng, alpha_lkup, sectors, decision_col, choose_tech = False, techs = ['solar', 'wind']):
         
     if choose_tech == True:
         msg = "\t\tSelecting Financing Option and Technology"
@@ -60,19 +60,17 @@ def select_financing_and_tech(df, prng, alpha_lkup, sectors, choose_tech = False
     
     df['uid'] = range(0, df.shape[0])
     df = df.merge(alpha_lkup)
-    #npv may be negative so, if the alpha is even, it won't rank the npvs properly eg. (-100)^2 > 5^2
-    #we need to rescale the npvs to the range observed in the data
   
     if choose_tech == True:
         group_by_cols = ['county_id', 'bin_id', 'sector_abbr']
     else:
         group_by_cols = ['county_id', 'bin_id', 'sector_abbr', 'tech']
   
-    # Change any negative npvs to zero
-    df['npv'] = np.where(df['npv4'] < 0, 0, df['npv4'])
+    # Change any negative values to zero
+    df['dv'] = np.where(df[decision_col] < 0, 0, df[decision_col])
     
     # Calculate the exponentiated value, filtering by whether leasing is allowed
-    df['mkt_exp'] = df['npv']**df['alpha']
+    df['mkt_exp'] = df['dv']**df['alpha']
     df.loc[(df['business_model'] == 'tpo') & (df['leasing_allowed'] == False),'mkt_exp'] = 0 #Restrict leasing if not allowed by state
     
     # Calculate the total exponentiated values for each group
@@ -124,8 +122,8 @@ def select_financing_and_tech(df, prng, alpha_lkup, sectors, choose_tech = False
         # identify which technology was not selected for each agent
         unselected_techs = df_selected.merge(selected_techs, on = ['county_id', 'bin_id', 'sector_abbr', 'tech'], how = 'outer')
         unselected_techs = unselected_techs[unselected_techs.selected_tech.isnull()]
-        # rank the remainders by npv4
-        best_unselected_tech = unselected_techs.groupby(['county_id', 'bin_id', 'sector_abbr',]).apply(which_max_npv4).reset_index()
+        # rank the remainders by mms
+        best_unselected_tech = unselected_techs.groupby(['county_id', 'bin_id', 'sector_abbr',]).apply(which_max, args = (decision_col, )).reset_index()
         best_unselected_tech.columns = ['county_id', 'bin_id', 'sector_abbr', 'best_alternative']
         best_unselected_tech.drop(['county_id', 'bin_id', 'sector_abbr'], axis = 1, inplace = True)
         df_selected_and_unselected = df_selected.merge(best_unselected_tech, left_on = ['uid'], right_on = ['best_alternative'], how = 'outer')      

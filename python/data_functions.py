@@ -247,7 +247,6 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
 
     # convert formatting of fields list
     inputs['fields_str'] = utilfunc.pylist_2_pglist(fields).replace("'","")       
-
     # open an in memory stringIO file (like an in memory csv)
     s = StringIO()
     # write the data to the stringIO
@@ -850,7 +849,7 @@ def get_itc_incentives(con, schema):
     inputs = locals().copy()
     
     sql = """SELECT year, substring(lower(sector), 1, 3) as sector_abbr, 
-                    itc_fraction, tech, min_size_kw_or_tons, max_size_kw_or_tons
+                    itc_fraction, tech, min_size_kw, max_size_kw
              FROM %(schema)s.input_main_itc_options;""" % inputs
     itc_options = pd.read_sql(sql, con) 
     
@@ -1343,7 +1342,15 @@ def get_max_market_share(con, schema):
     '''
 
     sql = '''SELECT * 
-             FROM %s.max_market_curves_to_model;'''  % schema
+             FROM %s.max_market_curves_to_model
+             
+             UNION ALL
+             
+            SELECT 30.1 as metric_value, sector, sector_abbr, 0::NUMERIC as max_market_share, metric, source, business_model
+            FROM %s.max_market_curves_to_model
+            WHERE metric_value = 30 
+            AND metric = 'payback_period' 
+            AND business_model = 'host_owned';'''  % (schema, schema)
     max_market_share = pd.read_sql(sql, con)
    
     return max_market_share
@@ -1621,7 +1628,7 @@ def assign_business_model(df, prng, method = 'prob', alpha = 2):
 
 
 def calc_value_of_itc(df, itc_options, year):
-        
+    
     # create duplicates of the itc data for each business model
     # host-owend
     itc_ho = itc_options.copy() 
@@ -1645,23 +1652,23 @@ def calc_value_of_itc(df, itc_options, year):
     # merge to df
     df = pd.merge(df, itc_all, how = 'left', on = ['sector_abbr', 'year', 'business_model', 'tech'])
     # drop the rows that are outside of the allowable system sizes
-    keep_rows = np.where(df['tech'] == 'ghp', (df['ghp_system_size_tons'] > df['min_size_kw_or_tons']) & (df['ghp_system_size_tons'] <= df['max_size_kw_or_tons']), (df['system_size_kw'] > df['min_size_kw_or_tons']) & (df['system_size_kw'] <= df['max_size_kw_or_tons']))
-    df = df[keep_rows]
+    df = df[(df['system_size_kw'] > df['min_size_kw']) & (df['system_size_kw'] <= df['max_size_kw'])]
     # confirm shape hasn't changed
     if df.shape[0] <> row_count:
         raise ValueError('Row count of dataframe changed during merge')
         
 #    # Calculate the value of ITC (accounting for reduced costs from state/local incentives)
-    df['applicable_ic'] = (df['installed_costs_dlrs'] * df['system_size_kw']) - (df['value_of_tax_credit_or_deduction'] + df['value_of_rebate'] + df['value_of_increment'])
+    df['applicable_ic'] = df['installed_costs_dlrs'] - (df['value_of_tax_credit_or_deduction'] + df['value_of_rebate'] + df['value_of_increment'])
     df['value_of_itc'] =  (
                             df['applicable_ic'] *
                             df['itc_fraction'] *
-                            (df['system_size_kw'] > df['min_kw']) * # filter for system sizes (only applies to wind) [ this is redundant with the filter above ]
-                            (df['system_size_kw'] <= df['max_kw'])
+                            (df['system_size_kw'] > df['min_size_kw']) * # filter for system sizes (only applies to wind) [ this is redundant with the filter above ]
+                            (df['system_size_kw'] <= df['max_size_kw'])
                           )
                           
     df = df.drop(['applicable_ic', 'sector', 'itc_fraction'], axis = 1)
     
     return df
+
 
     

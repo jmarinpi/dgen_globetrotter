@@ -1,9 +1,9 @@
 library(dplyr)
 
-tech = 'solar'
-oops_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/new_test_oops_results_20160616_124150'
+tech = 'wind'
+oops_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160825_104907_oops_nrel'
 
-benchmark_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/new_test_dev_results_20160616_125156'
+benchmark_dir = '/Users/mgleason/NREL_Projects/github/diffusion/runs/results_20160824_170038_dev_nrel/'
 benchmark_file = sprintf('%s/BAU/%s/outputs_%s.csv.gz', benchmark_dir, tech, tech)
 oops_file = sprintf('%s/BAU/%s/outputs_%s.csv.gz', oops_dir, tech, tech)
 one  = read.csv(benchmark_file, stringsAsFactors = F)
