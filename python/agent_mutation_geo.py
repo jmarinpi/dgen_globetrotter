@@ -964,3 +964,36 @@ def append_previous_year_results(dataframe, agents_last_year_df):
             dataframe[col] = val
     
     return dataframe
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def create_new_id_column(dataframe, columns, id_col_name):
+    
+    unique_combos = dataframe.groupby(columns).size().reset_index()
+    # drop the new columns
+    new_column_i = len(unique_combos.columns.tolist()) - 1
+    new_column = unique_combos.columns[new_column_i]
+    unique_combos.drop(new_column, axis = 1, inplace = True)
+    unique_combos[id_col_name] = unique_combos.index
+    
+    dataframe = pd.merge(dataframe, unique_combos, how = 'left', on = columns)
+
+    return dataframe
+
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def mark_excluded_options(dataframe):
+    
+    dataframe['excluded_option'] = (dataframe['market_eligible'] == False) | ((dataframe['business_model'] == 'tpo') & (dataframe['leasing_allowed'] == False))
+    
+    return dataframe    
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def sanitize_decision_col(dataframe, decision_col, new_col):
+    
+    dataframe[new_col] = np.where((dataframe[decision_col] < 0) | (dataframe[decision_col].isnull()), 0, dataframe[decision_col])
+    
+    return dataframe   
