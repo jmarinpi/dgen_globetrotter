@@ -38,72 +38,63 @@ def which_max(group, col):
     
     return uid
 
-@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
-def select_financing_and_tech(df, prng, sectors, decision_col, alpha_lkup_df = None, alpha_lkup_val = 2, choose_tech = False, techs = ['solar', 'wind'], tech_field = 'tech'):
-        
-    if choose_tech == True:
-        msg = "\t\tSelecting Financing Option and Technology"
-    else:
-        msg = "\t\tSelecting Financing Option"
-        
-    logger.info(msg)    
-    
-    in_columns = df.columns.tolist()
-    
-    # check each customer bin + tech + sector_abbr has two business models
-    test = df.groupby(['county_id', 'bin_id', 'sector_abbr', tech_field])['business_model'].count().reset_index()
-    if np.any(test.iloc[:, 4] <> 2) == True:
-        raise ValueError("Incorrect number of business models for each customer bin")
-        sys.exit(-1)
-        
-    # check each customer bin + business model + sector has the correct nmber of techs
-    test = df.groupby(['county_id', 'bin_id', 'sector_abbr', 'business_model'])[tech_field].count().reset_index()
-    if np.any(test.iloc[:, 4] <> len(techs)) == True:
-        raise ValueError("Incorrect number of techs for each customer bin")
-        sys.exit(-1)   
-    
-    df['uid'] = range(0, df.shape[0])
-    if alpha_lkup_df is not None:
-        df = df.merge(alpha_lkup)
-    elif alpha_lkup_val is not None:
-        df['alpha'] = 2
-    else:
-        raise ValueError('One of either alpha_lkup_df or alpha_lkup_val must be specified')
-  
-    if choose_tech == True:
-        group_by_cols = ['county_id', 'bin_id', 'sector_abbr']
-    else:
-        group_by_cols = ['county_id', 'bin_id', 'sector_abbr', tech_field]
-  
+# helper functions
+# 1 -- create new unique id column for first selection since agent_id won't work
+# 2 - create a decision variable cleanup function
     # Change any negative values or nans to zero
-    df['dv'] = np.where(([decision_col] < 0) | (df[decision_col].isnull()), 0, df[decision_col])
+    #df['dv'] = np.where(([decision_col] < 0) | (df[decision_col].isnull()), 0, df[decision_col])
+
+#    # Restrict leasing if not allowed by state
+#    df.loc[(df['business_model'] == 'tpo') & (df['leasing_allowed'] == False),'mkt_exp'] = 0
+#    # also set mkt exp to zero for unmodellable agents
+#    df.loc[df['modellable'] == False, 'mkt_exp'] = 0    
+#    # and for system configurations that arent viable
+#    df.loc[df['viable_sys_config'] == False, 'mkt_exp'] == 0
+
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
+def probabilistic_choice(df, prng, uid_col, options_col, excluded_options_col, decision_col, alpha = 2, always_return_one = True):
+        
+    in_columns = df.columns.tolist()
+    # determine the total number of unique ids
+    n_uids = len(df[uid_col].unique().tolist())
+    n_options = len(df[options_col].unique().tolist())
+    n_combos = n_uids * n_options
+    n_rows = df.shape[0]
+    # make sure the total number of rows matches the product of these two numbers
+    if n_rows <> n_combos:
+        raise ValueError("Number of rows in dataframe (%s) doesn't match number of expected combinations (%s) based on %s options and %s unique IDs" % (n_rows, n_combos, n_options, n_uids))
+
+    # create a new temporary id column for each row
+    df['row_id'] = range(0, n_rows)
+    
+    # append the apha value
+    df['alpha'] = alpha
+
+    # decision variable must be   
+    # Change any negative values or nans to zero
+    df['dv'] = df[decision_col]
     
     # Calculate the exponentiated value, filtering by whether leasing is allowed
-    df['mkt_exp'] = df['dv']**df['alpha']
-    
-    # adjust for special cases
-    # Restrict leasing if not allowed by state
-    df.loc[(df['business_model'] == 'tpo') & (df['leasing_allowed'] == False),'mkt_exp'] = 0
-    # also set mkt exp to zero for unmodellable agents
-    df.loc[df['modellable'] == False, 'mkt_exp'] = 0    
-    # and for system configurations that arent viable
-    df.loc[df['viable_sys_config'] == False, 'mkt_exp'] == 0
+    df['exp'] = df['dv']**df['alpha']
     
     # Calculate the total exponentiated values for each group
-    gb = df.groupby(group_by_cols)
-    gb = pd.DataFrame({'mkt_sum': gb['mkt_exp'].sum()})
+    gb = df.groupby(uid_col)
+    gb = pd.DataFrame({'exp_sum': gb['exp'].sum()})
     
     # Merge the random number and expo values back 
-    df = df.merge(gb, left_on = group_by_cols, right_index = True)
+    df = df.merge(gb, left_on = uid_col, right_index = True)
     
-    # Determine the probability of adopting
+    # Determine the probability associated with each choice
     with np.errstate(invalid = 'ignore'):
-        df['p'] = np.where(df['mkt_sum'] > 0, df['mkt_exp']/df['mkt_sum'], np.where((df['business_model'] == 'tpo') & (df['leasing_allowed'] == False), 0., 1.))
-    # also set p to zero for unmodellable agents
-    df.loc[df['modellable'] == False, 'p'] = 0.0
-    # and for system configurations that arent viable
-    df.loc[df['viable_sys_config'] == False, 'p'] = 0.0
+        df['p'] = np.where(df['exp_sum'] > 0, df['exp'] / df['exp_sum'], 1.)
         
+    # hard code probability to zero where specified by the excluded_options_col
+    if excluded_options_col is not None:
+        df.loc[df[excluded_options_col] == True, 'p'] = 0.
+        
+    if always_return_one == True:
+        # make sure that one gets returned even if all options are excluded
+    
     # Do a weighted random draw by group and return the p-value that was selected
     # Note: If choose_tech = False, it's necessary to split up the dataframe by technology
     # and re-initialize the random seed for each tech. This ensures that results will be consistent
