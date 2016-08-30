@@ -41,7 +41,9 @@ def get_bass_params_du(con, schema):
     
     inputs = locals().copy()
     
-    sql = """SELECT p, q, teq_yr1
+    sql = """SELECT p, 
+                    q, 
+                    teq_yr1
             FROM %(schema)s.input_du_bass_params;""" % inputs
             
     df = pd.read_sql(sql, con, coerce_float = False)
@@ -238,7 +240,7 @@ def calc_diffusion_market_share(df, is_first_year):
     # The relative economic attractiveness controls the p,q values in Bass diffusion
     # Current assumption is that only payback and MBS are being used, that pp is bounded [0-30] and MBS bounded [0-120]
        
-    df = calc_equiv_time(df); # find the 'equivalent time' on the newly scaled diffusion curve
+    df = calc_equiv_time(df) # find the 'equivalent time' on the newly scaled diffusion curve
     if is_first_year == True:
         df['teq2'] = df['teq'] + df['teq_yr1']
     else:
@@ -246,9 +248,10 @@ def calc_diffusion_market_share(df, is_first_year):
     
     df = bass_diffusion(df); # calculate the new diffusion by stepping forward 2 years
 
-    df['bass_market_share'] = df.max_market_share * df.new_adopt_fraction; # new market adoption    
-    df['diffusion_market_share'] = np.where(df['existing_market_share_pct'] > df['bass_market_share'], df['existing_market_share_pct'], df['bass_market_share'])
-    
+    df['bass_market_share'] = df['max_market_share'] * df['new_adopt_fraction'] # new market adoption   
+    # make sure diffusion doesn't decrease
+    df['diffusion_market_share'] = np.maximum(df['bass_market_share'], df['existing_market_share_pct'])
+        
     return df
 #==============================================================================  
     
@@ -285,11 +288,13 @@ def calc_equiv_time(df):
         OUT: t_eq - numpy array - Equivalent number of years after diffusion 
                                   started on the diffusion curve
     '''
-    
-    df['mms_fix_zeros'] = np.where(df['max_market_share'] == 0, 1e-9, df['max_market_share'])
-    df['ratio'] = np.where(df['existing_market_share_pct'] > df['mms_fix_zeros'], 0, df['existing_market_share_pct']/df['mms_fix_zeros'])
+
+    if 'bass_ratio' not in df.columns.tolist():    
+        df['mms_fix_zeros'] = np.where(df['max_market_share'] == 0, 1e-9, df['max_market_share'])
+        df['bass_ratio'] = np.where(df['existing_market_share_pct'] > df['mms_fix_zeros'], 0., df['existing_market_share_pct']/df['mms_fix_zeros'])
    #ratio=msly/mms;  # ratio of adoption at present to adoption at terminal period
-    df['teq'] = np.log( ( 1 - df['ratio']) / (1 + df['ratio']*(df['q']/df['p']))) / (-1*(df['p']+df['q'])); # solve for equivalent time
+    df['teq'] = np.log( ( 1 - df['bass_ratio']) / (1 + df['bass_ratio']*(df['q']/df['p']))) / (-1*(df['p']+df['q'])); # solve for equivalent time
+    
     return df
     
 #=============================================================================

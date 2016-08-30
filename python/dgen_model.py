@@ -770,29 +770,29 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================                  
                     is_first_year = year == cfg.start_year      
                     if is_first_year == True:
-                        # calculate initial market shares
-                        agents = AgentsAlgorithm(agents, mutation.estimate_initial_market_shares, (state_starting_capacities_df, )).compute()
-                    else:
-                        # get last year's results
-                        market_last_year_df = mutation.get_market_last_year(con, schema)
-                        # apply last year's results to the agents
-                        agents = AgentsAlgorithm(agents, mutation.apply_market_last_year, (market_last_year_df, )).compute()                
+                        # calculate existing market shares by state and sector
+                        state_existing_market_share_df = mutation.estimate_initial_market_shares(agents.dataframe, state_starting_capacities_df, year)
+                        # write to postgres
+                        mutation.write_cumulative_market_share(con, cur, state_existing_market_share_df, schema)
                     
-    
+                    # get previous year's results
+                    market_last_year_df = mutation.get_market_last_year(con, schema, year)
+                    
                     #==========================================================================================================
                     # BASS DIFFUSION
                     #==========================================================================================================   
+                    # calculate "bass ratio" = existing market share in tons / max market share in tons
+                    agents = AgentsAlgorithm(agents, mutation.calculate_bass_ratio, (market_last_year_df, )).compute(1)
+                    # apply bass p/q/teq params
+                    agents = AgentsAlgorithm(agents, mutation.apply_bass_params, (bass_params, )).compute()
                     # TODO: rewrite this section to use agents class
-                    # convert back to dataframe
-                    df = agents.dataframe
                     # calculate diffusion based on economics and bass diffusion                   
-                    df, market_last_year = diffunc.calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, is_first_year, bass_params) 
+                    agents = Agents(diffunc.calc_diffusion_market_share(agents.dataframe, is_first_year))
+                    # calculate various metrics showing diffusion results
+                    agents = AgentsAlgorithm(agents, mutation.calculate_diffusion_result_metrics).compute()
+                    # summarize results to states
+                    state_market_deployment_df = mutation.summarize_state_deployment(agents.dataframe, year)
                     
-                    #==========================================================================================================
-                    # ESTIMATE TOTAL GENERATION
-                    #==========================================================================================================      
-                    df = AgentsAlgorithm(Agents(df), mutation.estimate_total_generation).compute().dataframe
-                
                     #==========================================================================================================
                     # WRITE OUTPUTS
                     #==========================================================================================================   
@@ -800,6 +800,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # write the incremental results to the database
                     datfunc.write_outputs(con, cur, df, sectors, schema) 
                     datfunc.write_last_year(con, cur, market_last_year, schema)
+                    
                 # TODO: get visualizations working and remove this short-circuit
                 return 'Simulations Complete'  
     

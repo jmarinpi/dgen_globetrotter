@@ -21,8 +21,8 @@ CREATE TABLE diffusion_template.input_ghp_bass_com
 
 DROP VIEW IF EXISTS diffusion_template.input_ghp_bass_params;
 CREATE VIEW diffusion_template.input_ghp_bass_params AS
-SELECT state_abbr, p, q, teq_yr1, 'res'::varchar(3) as sector_abbr, 'du'::text as tech
+SELECT state_abbr, p, q, teq_yr1, 'res'::varchar(3) as sector_abbr, 'ghp'::text as tech
 FROM diffusion_template.input_ghp_bass_res
 UNION ALL
-SELECT state_abbr, p, q, teq_yr1, 'com'::varchar(3) as sector_abbr, 'du'::text as tech
+SELECT state_abbr, p, q, teq_yr1, 'com'::varchar(3) as sector_abbr, 'ghp'::text as tech
 FROM diffusion_template.input_ghp_bass_com;

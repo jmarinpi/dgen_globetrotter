@@ -769,7 +769,7 @@ def get_state_starting_capacities_ghp(con, schema):
     
     sql = '''SELECT sector_abbr,
                     state_abbr,
-                    capacity_tons,
+                    capacity_tons as cumulative_market_share_tons,
                     'ghp'::text as tech
              FROM diffusion_geo.starting_capacities_2012_ghp;''' % inputs
     df = pd.read_sql(sql, con)
@@ -780,64 +780,65 @@ def get_state_starting_capacities_ghp(con, schema):
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
+def estimate_initial_market_shares(dataframe, state_starting_capacities_df, year):
+  
+    # calculate the total capacity of systems for market eligible in each state and sector
+    dataframe['market_eligible_capacity_tons_in_bin'] = dataframe['market_eligible_buildings_in_bin'] * dataframe['ghp_system_size_tons']
+    state_total_market_eligible_capacity = dataframe[['state_abbr', 'sector_abbr', 'tech', 'market_eligible_capacity_tons_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
+    # rename column
+    state_total_market_eligible_capacity.rename(columns = {'market_eligible_capacity_tons_in_bin' : 'market_eligible_capacity_tons_in_state'}, inplace = True)
+    
+    # combine with state starting capacities
+    state_df = pd.merge(state_total_market_eligible_capacity, state_starting_capacities_df, how = 'left', on = ['tech', 'state_abbr', 'sector_abbr'])
+    state_df['cumulative_market_share_pct'] = state_df['cumulative_market_share_tons'] / state_df['market_eligible_capacity_tons_in_state']
+    # add dummy columns for incremental market share
+    state_df['new_incremental_market_share_pct'] = np.nan
+    state_df['new_incremental_capacity_tons'] = np.nan
+    state_df['year'] = year - 2
+    
+    return state_df
 
-#    market_eligible
-#    bass_deployable
-    
-    # record input columns
-    in_cols = list(dataframe.columns)
-            
-    # find the total number of customers in each state (by technology and sector)
-    state_total_market_eligible_buildings = dataframe[['state_abbr', 'sector_abbr', 'tech', 'market_eligible_buildings_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
-    state_total_agents = dataframe[['state_abbr', 'sector_abbr', 'tech', 'market_eligible_buildings_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).count().reset_index()
-    # rename the final columns
-    state_total_market_eligible_buildings.columns = state_total_market_eligible_buildings.columns.str.replace('market_eligible_buildings_in_bin', 'market_eligible_buildings_in_state')
-    state_total_agents.columns = state_total_agents.columns.str.replace('market_eligible_buildings_in_bin', 'agent_count_in_state')
-    # merge together
-    state_denominators = pd.merge(state_total_market_eligible_buildings, state_total_agents, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
-    
-    # merge back to the main dataframe
-    dataframe = pd.merge(dataframe, state_denominators, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
-    
-    # merge in the state starting capacities
-    dataframe = pd.merge(dataframe, state_starting_capacities_df, how = 'left', on = ['tech', 'state_abbr', 'sector_abbr'])
-
-    # determine the portion of initial load and systems that should be allocated to each agent
-    # (when there are no developable agnets in the state, simply apportion evenly to all agents)
-    dataframe['portion_of_state'] = np.where(dataframe['market_eligible_buildings_in_state'] > 0, 
-                                             dataframe['market_eligible_buildings_in_bin'] / dataframe['market_eligible_buildings_in_state'], 
-                                             1./dataframe['agent_count_in_state'])
-    # apply the agent's portion to the total to calculate starting capacity and systems                                         
-    dataframe['installed_capacity_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['capacity_tons'], 6)
-    dataframe['number_of_adopters_last_year'] = np.round(dataframe['installed_capacity_last_year'] * dataframe['ghp_system_size_tons'], 6)
-    dataframe['market_share_last_year'] = np.where(dataframe['market_eligible_buildings_in_bin'] == 0, 
-                                                 0, 
-                                                 np.round(dataframe['number_of_adopters_last_year']/dataframe['market_eligible_buildings_in_bin'], 6))
-    dataframe['market_value_last_year'] = dataframe['ghp_installed_costs_dlrs'] * dataframe['number_of_adopters_last_year']
-
-    # reproduce these columns as "initial" columns too
-    dataframe['initial_number_of_adopters'] = dataframe['number_of_adopters_last_year']
-    dataframe['initial_capacity_mw'] = dataframe['installed_capacity_last_year']  /1000.  
-    dataframe['initial_market_share'] = dataframe['market_share_last_year']
-    dataframe['initial_market_value'] = dataframe['market_value_last_year']
-    
-    # isolate the return columns
-    return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value', 
-                   'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_share_last_year', 'market_value_last_year']
-    out_cols = in_cols + return_cols
-    dataframe = dataframe[out_cols]
-    
-    return dataframe
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_market_last_year(con, schema):
+def write_cumulative_market_share(con, cur, cumulative_market_share_df, schema):
+    
+    inputs = locals().copy()    
+    
+    inputs['out_table'] = '%(schema)s.output_market_summary_ghp'  % inputs
+
+    # open an in memory stringIO file (like an in memory csv)
+    s = StringIO()
+    # write the data to the stringIO
+    out_cols = ['year',
+                'state_abbr',
+                'sector_abbr',
+                'cumulative_market_share_pct', 
+                'cumulative_market_share_tons', 
+                'new_incremental_market_share_pct', 
+                'new_incremental_capacity_tons']
+    cumulative_market_share_df[out_cols].to_csv(s, index = False, header = False)
+    # seek back to the beginning of the stringIO file
+    s.seek(0)
+    # copy the data from the stringio file to the postgres table
+    cur.copy_expert('COPY %(out_table)s FROM STDOUT WITH CSV' % inputs, s)
+    # commit the additions and close the stringio file (clears memory)
+    con.commit()    
+    s.close()
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_market_last_year(con, schema, year):
     
     inputs = locals().copy()
     
-    sql = """SELECT *
-            FROM %(schema)s.output_market_last_year;""" % inputs
+    sql = """SELECT state_abbr, 
+                    sector_abbr, 
+                    cumulative_market_share_pct as existing_state_market_share_pct,
+                    cumulative_market_share_tons as existing_state_market_share_tons
+            FROM %(schema)s.output_market_summary_ghp
+            WHERE year = %(year)s - 2;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
     
     return df
@@ -847,7 +848,71 @@ def get_market_last_year(con, schema):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_market_last_year(dataframe, market_last_year_df):
     
-    dataframe = pd.merge(dataframe, market_last_year_df, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])
+    dataframe = pd.merge(dataframe, market_last_year_df, how = 'left', on = ['state_abbr', 'sector_abbr'])
     
     return dataframe
 
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_bass_ratio(dataframe, market_last_year_df):
+
+    # record input columns
+    in_cols = list(dataframe.columns)
+
+    # calculate bass ratio for each state and sector as: bass ratio = existing market share in tons / max market share in tons
+
+    # calculate the total capacity that is available based on the max market share for each bin
+    dataframe['max_market_share_tons'] = dataframe['max_market_share'] * dataframe['ghp_system_size_tons'] * dataframe['market_eligible_buildings_in_bin']
+    # sum to state level
+    state_max_market_share_tons = dataframe[['state_abbr', 'sector_abbr', 'max_market_share_tons']].groupby(['state_abbr', 'sector_abbr']).sum().reset_index()
+    # merge to the market last year
+    state_df = pd.merge(state_max_market_share_tons, market_last_year_df, how = 'left', on = ['state_abbr', 'sector_abbr'])
+    # calculate the ratio of market share to max market share tons
+    state_df['bass_ratio'] = np.where(state_df['existing_state_market_share_tons'] > state_df['max_market_share_tons'], 0., state_df['existing_state_market_share_tons'] / state_df['max_market_share_tons'])
+
+    # merge to the agents dataframe
+    dataframe = pd.merge(dataframe, state_df, how = 'left', on = ['state_abbr', 'sector_abbr'])    
+    # calculate the implied existing market share for each agent
+    dataframe['existing_market_share_pct'] = dataframe['bass_ratio'] * dataframe['max_market_share']
+    
+    out_cols = ['bass_ratio', 'existing_market_share_pct']
+    return_cols = in_cols + out_cols
+    dataframe = dataframe[return_cols]
+    
+    return dataframe
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_bass_params(dataframe, bass_params_df):
+    
+    dataframe = pd.merge(dataframe, bass_params_df, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_diffusion_result_metrics(dataframe):
+    
+    dataframe['new_adopters'] = dataframe['diffusion_market_share'] * dataframe['bass_deployable_buildings_in_bin']
+    # cap the new_market_share where the market share exceeds the max market share
+    dataframe['new_market_share'] = np.maximum(0., dataframe['diffusion_market_share'] - dataframe['existing_market_share_pct'])
+    # calculate new adopters, capacity and market value
+    dataframe['new_capacity'] = dataframe['new_adopters'] * dataframe['ghp_system_size_tons']
+    dataframe['new_market_value'] = dataframe['new_adopters'] * dataframe['ghp_installed_costs_dlrs']
+    # then add these values to values from last year to get cumulative values:
+    #dataframe['number_of_adopters'] = dataframe['number_of_adopters_last_year'] + dataframe['new_adopters']
+    dataframe['installed_capacity'] = dataframe['installed_capacity_last_year'] + dataframe['new_capacity'] # All capacity in tons in the model
+    dataframe['market_value'] = dataframe['market_value_last_year'] + dataframe['new_market_value']
+    
+    return dataframe
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def summarize_state_deployment(dataframe, year):
+    
+    state_df = dataframe[['state_abbr', 'sector_abbr', 'new_capacity', 'installed_capacity']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
+    
+
+    state_df['year'] = year

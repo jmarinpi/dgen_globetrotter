@@ -160,6 +160,20 @@ CREATE TABLE diffusion_template.output_market_summary_du
 	new_incremental_capacity_mw numeric
 );
 
+-- tables to hold results from each previous model year 
+DROP TABLE IF EXISTS diffusion_template.output_market_summary_ghp;
+CREATE TABLE diffusion_template.output_market_summary_ghp
+(
+	year integer,
+	state_abbr varchar(2),
+	sector_abbr varchar(3),
+	cumulative_market_share_pct numeric,
+	cumulative_market_share_tons numeric,
+	new_incremental_market_share_pct numeric,
+	new_incremental_capacity_tons numeric
+);
+
+
 
 set role 'diffusion-writers';
 -- tables to hold results from each previous model year 
