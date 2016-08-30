@@ -561,21 +561,27 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 state_incentives_df = datfunc.get_state_dsire_incentives(cur, con, schema, ['geo'], dsire_opts)
                 itc_options = datfunc.get_itc_incentives(con, schema)
                 
+                # get initial agents from postgres
+                agents_initial = mutation.get_initial_agent_attributes(con, schema)
+                agents_last_year = None
                 for year in model_years:
                     logger.info('\tWorking on %s' % year)
-                        
-                    # get initial agents from postgres
-                    agents_initial = mutation.get_initial_agent_attributes(con, schema)
+ 
                     # update year for these initial agetns to the current year
                     agents_initial = AgentsAlgorithm(agents_initial, mutation.update_year, (year, )).compute()
+ 
                     # get new construction agents
                     agents_new = mutation.get_new_agent_attributes(con, schema, year)
-                    # combine initial and new agents
+
+                     # combine initial and new agents
                     agents = agents_initial.add_agents(agents_new)
                     del agents_initial, agents_new
                     # drop du agents
-                    agents = agents.filter_tech('ghp')                  
-                    
+                    agents = agents.filter_tech('ghp')                                        
+
+                    # mutate agents to account for results from previous year
+                    agents_initial = AgentsAlgorithm(agents, mutation.append_previous_year_results, (agents_last_year.dataframe, )).compute()
+
                     # add bin_id column
                     # NOTE: this is only necessary to make compatibile with the tech choice module
                     agents = AgentsAlgorithm(agents, mutation.add_bin_id).compute()
@@ -593,8 +599,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================                        
                     # update system ages
                     agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, )).compute()
-                    # check whether systems need replacement (outlived their expected lifetime)
-                    agents = AgentsAlgorithm(agents, mutation.check_system_expirations).compute()                                
+                    # check which agents require new systems (new construction and those whose systems are too old)
+                    agents = AgentsAlgorithm(agents, mutation.identify_agents_requiring_new_systems).compute()                                
 
                     #==========================================================================================================
                     # MAP TO CRB GHP SIMULATIONS
@@ -790,6 +796,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = Agents(diffunc.calc_diffusion_market_share(agents.dataframe, is_first_year))
                     # calculate various metrics showing diffusion results
                     agents = AgentsAlgorithm(agents, mutation.calculate_diffusion_result_metrics).compute()
+                    # summarize results for next year (store as "last year" since it wil be referenced during the next iteration)
+                    agents_last_year = AgentsAlgorithm(agents, mutation.summarize_results_for_next_year).compute()                    
+                                        
+                    
                     # summarize results to states
                     state_market_deployment_df = mutation.summarize_state_deployment(agents.dataframe, year)
                     

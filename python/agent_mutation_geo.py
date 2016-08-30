@@ -314,7 +314,7 @@ def apply_siting_constraints_ghp(dataframe, siting_constraints_df):
 def identify_bass_deployable_agents(dataframe):
 
     # deployable customers are those: (1) with a system that can be sited on the property, (2) that are modellable (i.e., we have a CRB model to use), and (3) need a replacement system NOW
-    dataframe['bass_deployable'] = (dataframe['viable_sys_config'] == True) & (dataframe['modellable'] == True) & (dataframe['needs_replacement_average_system'] == True)
+    dataframe['bass_deployable'] = (dataframe['viable_sys_config'] == True) & (dataframe['modellable'] == True) & (dataframe['needs_average_system'] == True)
     dataframe['bass_deployable_buildings_in_bin'] = np.where(dataframe['bass_deployable'] == True, dataframe['buildings_in_bin'], 0.)   
    
     return dataframe
@@ -567,9 +567,9 @@ def update_system_ages(dataframe, year):
     dataframe['add_years'] = np.where(dataframe['new_construction'] == False, year - dataframe['microdata_release_year'], 0)
     
     # increment the system ages
-    dataframe.loc[:, 'space_heat_system_age'] = dataframe['space_heat_system_age'] + dataframe['add_years']
-    dataframe.loc[:, 'space_cool_system_age'] = dataframe['space_cool_system_age'] + dataframe['add_years']
-    dataframe.loc[:, 'average_system_age'] = dataframe.loc[:, 'average_system_age'] + dataframe['add_years']
+    dataframe.loc[:, 'space_heat_system_age'] = np.where(dataframe['updated_system_last_year'] == True, 0., dataframe['space_heat_system_age'] + dataframe['add_years'])
+    dataframe.loc[:, 'space_cool_system_age'] = np.where(dataframe['updated_system_last_year'] == True, 0., dataframe['space_cool_system_age'] + dataframe['add_years'])
+    dataframe.loc[:, 'average_system_age'] = np.where(dataframe['updated_system_last_year'] == True, 0., dataframe.loc[:, 'average_system_age'] + dataframe['add_years'])
     
     # return just the input  columns
     dataframe = dataframe[in_cols]
@@ -578,16 +578,16 @@ def update_system_ages(dataframe, year):
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def check_system_expirations(dataframe):
+def identify_agents_requiring_new_systems(dataframe):
 
     in_cols = list(dataframe.columns)
     
     # add in the microdata release year field for each agent (2003 for com, 2009 for recs)
-    dataframe['needs_replacement_heat_system'] = dataframe['space_heat_system_age'] > dataframe['space_heat_system_expected_lifetime']    
-    dataframe['needs_replacement_cool_system'] = dataframe['space_cool_system_age'] > dataframe['space_cool_system_expected_lifetime']        
-    dataframe['needs_replacement_average_system'] = dataframe['average_system_age'] > dataframe['average_system_expected_lifetime']
+    dataframe['needs_heat_system'] = np.where(dataframe['new_construction'] == True, True, dataframe['space_heat_system_age'] > dataframe['space_heat_system_expected_lifetime'])
+    dataframe['needs_cool_system'] = np.where(dataframe['new_construction'] == True, True, dataframe['space_cool_system_age'] > dataframe['space_cool_system_expected_lifetime'])
+    dataframe['needs_average_system'] = np.where(dataframe['new_construction'] == True, True, dataframe['average_system_age'] > dataframe['average_system_expected_lifetime'])
     
-    return_cols = ['needs_replacement_heat_system', 'needs_replacement_cool_system', 'needs_replacement_average_system']
+    return_cols = ['needs_heat_system', 'needs_cool_system', 'needs_average_system']
     out_cols = in_cols + return_cols
     dataframe = dataframe[out_cols]
     
@@ -902,17 +902,52 @@ def calculate_diffusion_result_metrics(dataframe):
     dataframe['new_capacity'] = dataframe['new_adopters'] * dataframe['ghp_system_size_tons']
     dataframe['new_market_value'] = dataframe['new_adopters'] * dataframe['ghp_installed_costs_dlrs']
     # then add these values to values from last year to get cumulative values:
-    #dataframe['number_of_adopters'] = dataframe['number_of_adopters_last_year'] + dataframe['new_adopters']
+    dataframe['number_of_adopters'] = dataframe['number_of_adopters_last_year'] + dataframe['new_adopters']
     dataframe['installed_capacity'] = dataframe['installed_capacity_last_year'] + dataframe['new_capacity'] # All capacity in tons in the model
     dataframe['market_value'] = dataframe['market_value_last_year'] + dataframe['new_market_value']
     
     return dataframe
 
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def summarize_state_deployment(dataframe, year):
-    
-    state_df = dataframe[['state_abbr', 'sector_abbr', 'new_capacity', 'installed_capacity']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
-    
+#@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+#def summarize_state_deployment(dataframe, year):
+#    
+#    state_df = dataframe[['state_abbr', 'sector_abbr', 'new_capacity', 'installed_capacity']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
+#    
+#
+#    state_df['year'] = year
 
-    state_df['year'] = year
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def summarize_results_for_next_year(dataframe):
+    
+    dataframe['updated_system_last_year'] = dataframe['bass_deployable'] == True
+    dataframe['market_value_last_year'] = dataframe['market_value']
+    dataframe['installed_capacity_last_year'] = dataframe['installed_capacity']
+    dataframe['number_of_adopters_last_year'] = dataframe['number_of_adopters']
+    out_cols = ['agent_id',
+                'updated_system_last_year',
+                'market_value_last_year',
+                'installed_capacity_last_year',
+                'number_of_adopters_last_year'
+    ]
+    dataframe = dataframe[out_cols]
+    
+    return dataframe
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def append_previous_year_results(dataframe, agents_last_year_df):
+    
+    if agents_last_year_df is not None:
+        dataframe = pd.merge(dataframe, agents_last_year_df, how = 'left', on = 'agent_id')
+    else:
+        new_cols = {'updated_system_last_year' : False,
+                    'market_value_last_year' : 0.,
+                    'installed_capacity_last_year' : 0.,
+                    'number_of_adopters_last_year' : 0.,
+                    }
+        for col, val in new_cols.iteritems():
+            dataframe[col] = val
+    
+    return dataframe
