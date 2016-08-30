@@ -908,14 +908,27 @@ def calculate_diffusion_result_metrics(dataframe):
     
     return dataframe
 
+
 #%%
-#@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-#def summarize_state_deployment(dataframe, year):
-#    
-#    state_df = dataframe[['state_abbr', 'sector_abbr', 'new_capacity', 'installed_capacity']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
-#    
-#
-#    state_df['year'] = year
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def summarize_state_deployment(dataframe, year):
+    
+    # calculate the total eligible capacity in bin
+    dataframe['market_eligible_capacity_in_bin'] = dataframe['ghp_system_size_tons'] * dataframe['market_eligible_buildings_in_bin']
+    state_df = dataframe[['state_abbr', 'sector_abbr', 'new_capacity', 'installed_capacity', 'market_eligible_capacity_in_bin']].groupby(['state_abbr', 'sector_abbr']).sum().reset_index()
+
+    # rename columns
+    rename_map = {'new_capacity' : 'new_incremental_capacity_tons',
+                   'installed_capacity' : 'cumulative_market_share_tons',
+                   'market_eligible_capacity_in_bin' : 'market_eligible_capacity_in_state'}
+    state_df.rename(columns = rename_map, inplace = True)
+    
+    state_df['new_incremental_market_share_pct'] = state_df['new_incremental_capacity_tons'] / state_df['market_eligible_capacity_in_state']
+    state_df['cumulative_market_share_pct'] = state_df['cumulative_market_share_tons'] / state_df['market_eligible_capacity_in_state']
+    
+    state_df['year'] = year
+    
+    return state_df
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

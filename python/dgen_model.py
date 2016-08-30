@@ -563,7 +563,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 # get initial agents from postgres
                 agents_initial = mutation.get_initial_agent_attributes(con, schema)
-                agents_last_year = None
+                agents_last_year_df = None
                 for year in model_years:
                     logger.info('\tWorking on %s' % year)
  
@@ -580,7 +580,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = agents.filter_tech('ghp')                                        
 
                     # mutate agents to account for results from previous year
-                    agents_initial = AgentsAlgorithm(agents, mutation.append_previous_year_results, (agents_last_year.dataframe, )).compute()
+                    agents = AgentsAlgorithm(agents, mutation.append_previous_year_results, (agents_last_year_df, )).compute()
 
                     # add bin_id column
                     # NOTE: this is only necessary to make compatibile with the tech choice module
@@ -797,19 +797,21 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # calculate various metrics showing diffusion results
                     agents = AgentsAlgorithm(agents, mutation.calculate_diffusion_result_metrics).compute()
                     # summarize results for next year (store as "last year" since it wil be referenced during the next iteration)
-                    agents_last_year = AgentsAlgorithm(agents, mutation.summarize_results_for_next_year).compute()                    
+                    agents_last_year_df = mutation.summarize_results_for_next_year(agents.dataframe)
                                         
-                    
                     # summarize results to states
                     state_market_deployment_df = mutation.summarize_state_deployment(agents.dataframe, year)
+                    # write to postgres
+                    mutation.write_cumulative_market_share(con, cur, state_existing_market_share_df, schema)
                     
                     #==========================================================================================================
-                    # WRITE OUTPUTS
+                    # WRITE AGENT OUTPUTS
                     #==========================================================================================================   
                     # TODO: rewrite this section to use agents class
                     # write the incremental results to the database
-                    datfunc.write_outputs(con, cur, df, sectors, schema) 
-                    datfunc.write_last_year(con, cur, market_last_year, schema)
+                    # TODO: write this section
+                    #datfunc.write_outputs(con, cur, df, sectors, schema) 
+
                     
                 # TODO: get visualizations working and remove this short-circuit
                 return 'Simulations Complete'  
