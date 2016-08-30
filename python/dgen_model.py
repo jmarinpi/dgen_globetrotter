@@ -288,7 +288,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         system_degradation_df = mutation.get_system_degradation(con, schema) 
                         
                         # get state starting capacities
-                        # TODO: add this capability for du and ghp
                         state_starting_capacities_df = mutation.get_state_starting_capacities(con, schema)
                     
                         #==========================================================================================================
@@ -318,6 +317,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         # GET BASS DIFFUSION PARAMETERS
                         #==========================================================================================================
                         bass_params_df = diffunc.get_bass_params_du(con, schema)
+                        
+                    if 'ghp' in techs:
+                        # get state starting capacities                     
+                        state_starting_capacities_df = mutation.get_state_starting_capacities_ghp(con, schema)
                         
 
     
@@ -637,10 +640,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, mutation.apply_siting_constraints_ghp, (siting_constraints_df, )).compute()
 
                     #==============================================================================
-                    # IDENTIFY DEVELOPABLE CUSTOMERS
+                    # IDENTIFY MARKET ELIGIBLE BUILDINGS
                     #==============================================================================                            
-                    # flag the agents that can actually be developed (these will be ignored in market potential calcs)
-                    agents = AgentsAlgorithm(agents, mutation.identify_developable_agents).compute()
+                    # flag the agents that are part of the eligible market for GHP
+                    # (i.e., these agents can be developed EVENTUALLY)
+                    agents = AgentsAlgorithm(agents, mutation.identify_market_eligible_agents).compute()
+                    
+                    #==============================================================================
+                    # IDENTIFY BASS DEPLOYABLE BUILDINGS
+                    #==============================================================================                            
+                    # flag the agents that are deployable during this model year
+                    # (i.e., these are the subset of market eligible agents can be developed NOW)
+                    agents = AgentsAlgorithm(agents, mutation.identify_bass_deployable_agents).compute()                                 
 
                     #==============================================================================
                     # TECHNOLOGY COSTS
@@ -750,7 +761,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #  assign max market share
                     agents = AgentsAlgorithm(agents, finfunc.calculate_max_market_share, (max_market_share, )).compute()
                     # select from choices for business model and (optionally) technology
-                    agents_2 = Agents(tech_choice.select_financing_and_tech(agents.dataframe, prng, sectors, alpha_lkup_val = 2, decision_col = 'max_market_share', choose_tech = True, techs = ['vertical', 'horizontal'], tech_field = 'sys_config'))
+                    agents = Agents(tech_choice.select_financing_and_tech(agents.dataframe, prng, sectors, alpha_lkup_val = 2, decision_col = 'max_market_share', choose_tech = True, techs = ['vertical', 'horizontal'], tech_field = 'sys_config'))
     
     
                     # TODO: finish everything from here down

@@ -155,8 +155,6 @@ def select_financing_and_tech(df, prng, sectors, decision_col, alpha_lkup_df = N
             sys.exit(-1)
         # check that the number of selected and unselected options both = 1/2 the shape of the input df
         num_selected = sum(return_df['selected_option'] == True)
-        x = return_df[(return_df['selected_option'] == True) & ((return_df['viable_sys_config'] <> True) | (return_df['modellable'] <> True))]
-        x.to_csv('/Users/mgleason/desktop/errors.csv')
         #num_unselected = sum(return_df['selected_option'] <> False)
         # viable agents
         n_viable = len(df[(df['modellable'] == True) & (df['viable_sys_config'] == True)]['agent_id'].unique())

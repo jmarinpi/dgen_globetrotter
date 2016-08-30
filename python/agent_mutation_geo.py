@@ -311,13 +311,23 @@ def apply_siting_constraints_ghp(dataframe, siting_constraints_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def identify_developable_agents(dataframe):
+def identify_bass_deployable_agents(dataframe):
+
+    # deployable customers are those: (1) with a system that can be sited on the property, (2) that are modellable (i.e., we have a CRB model to use), and (3) need a replacement system NOW
+    dataframe['bass_deployable'] = (dataframe['viable_sys_config'] == True) & (dataframe['modellable'] == True) & (dataframe['needs_replacement_average_system'] == True)
+    dataframe['bass_deployable_buildings_in_bin'] = np.where(dataframe['bass_deployable'] == True, dataframe['buildings_in_bin'], 0.)   
+   
+    return dataframe
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def identify_market_eligible_agents(dataframe):
 
     # TODO: also account for the fact that some microdata can't be represented by CRBs
-    dataframe['developable'] = (dataframe['viable_sys_config'] == True) & (dataframe['needs_replacement_average_system'] == True) & (dataframe['modellable'] == True)
-   
-    return dataframe    
+    dataframe['market_eligible'] = (dataframe['viable_sys_config'] == True) & (dataframe['modellable'] == True)
+    dataframe['market_eligible_buildings_in_bin'] = np.where(dataframe['market_eligible'] == True, dataframe['buildings_in_bin'], 0.)
     
+    return dataframe
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -749,3 +759,95 @@ def apply_nan_to_unmodellable_agents(dataframe, lkup_table, join_keys):
     dataframe.loc[dataframe['modellable'] == False, new_cols] = np.nan
     
     return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_state_starting_capacities_ghp(con, schema):
+
+    inputs = locals().copy()    
+    
+    sql = '''SELECT sector_abbr,
+                    state_abbr,
+                    capacity_tons,
+                    'ghp'::text as tech
+             FROM diffusion_geo.starting_capacities_2012_ghp;''' % inputs
+    df = pd.read_sql(sql, con)
+    
+    return df    
+    
+
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
+
+#    market_eligible
+#    bass_deployable
+    
+    # record input columns
+    in_cols = list(dataframe.columns)
+            
+    # find the total number of customers in each state (by technology and sector)
+    state_total_market_eligible_buildings = dataframe[['state_abbr', 'sector_abbr', 'tech', 'market_eligible_buildings_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
+    state_total_agents = dataframe[['state_abbr', 'sector_abbr', 'tech', 'market_eligible_buildings_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).count().reset_index()
+    # rename the final columns
+    state_total_market_eligible_buildings.columns = state_total_market_eligible_buildings.columns.str.replace('market_eligible_buildings_in_bin', 'market_eligible_buildings_in_state')
+    state_total_agents.columns = state_total_agents.columns.str.replace('market_eligible_buildings_in_bin', 'agent_count_in_state')
+    # merge together
+    state_denominators = pd.merge(state_total_market_eligible_buildings, state_total_agents, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
+    
+    # merge back to the main dataframe
+    dataframe = pd.merge(dataframe, state_denominators, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
+    
+    # merge in the state starting capacities
+    dataframe = pd.merge(dataframe, state_starting_capacities_df, how = 'left', on = ['tech', 'state_abbr', 'sector_abbr'])
+
+    # determine the portion of initial load and systems that should be allocated to each agent
+    # (when there are no developable agnets in the state, simply apportion evenly to all agents)
+    dataframe['portion_of_state'] = np.where(dataframe['market_eligible_buildings_in_state'] > 0, 
+                                             dataframe['market_eligible_buildings_in_bin'] / dataframe['market_eligible_buildings_in_state'], 
+                                             1./dataframe['agent_count_in_state'])
+    # apply the agent's portion to the total to calculate starting capacity and systems                                         
+    dataframe['installed_capacity_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['capacity_tons'], 6)
+    dataframe['number_of_adopters_last_year'] = np.round(dataframe['installed_capacity_last_year'] * dataframe['ghp_system_size_tons'], 6)
+    dataframe['market_share_last_year'] = np.where(dataframe['market_eligible_buildings_in_bin'] == 0, 
+                                                 0, 
+                                                 np.round(dataframe['number_of_adopters_last_year']/dataframe['market_eligible_buildings_in_bin'], 6))
+    dataframe['market_value_last_year'] = dataframe['ghp_installed_costs_dlrs'] * dataframe['number_of_adopters_last_year']
+
+    # reproduce these columns as "initial" columns too
+    dataframe['initial_number_of_adopters'] = dataframe['number_of_adopters_last_year']
+    dataframe['initial_capacity_mw'] = dataframe['installed_capacity_last_year']  /1000.  
+    dataframe['initial_market_share'] = dataframe['market_share_last_year']
+    dataframe['initial_market_value'] = dataframe['market_value_last_year']
+    
+    # isolate the return columns
+    return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value', 
+                   'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_share_last_year', 'market_value_last_year']
+    out_cols = in_cols + return_cols
+    dataframe = dataframe[out_cols]
+    
+    return dataframe
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_market_last_year(con, schema):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT *
+            FROM %(schema)s.output_market_last_year;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_market_last_year(dataframe, market_last_year_df):
+    
+    dataframe = pd.merge(dataframe, market_last_year_df, how = 'left', on = ['county_id', 'bin_id', 'tech', 'sector_abbr'])
+    
+    return dataframe
+

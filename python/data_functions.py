@@ -831,13 +831,32 @@ def get_bass_params(con, schema):
     
     inputs = locals().copy()
     
-    sql = """SELECT *
+    sql = """SELECT state_abbr, 
+                    p, 
+                    q, 
+                    teq_yr1, 
+                    sector_abbr, 
+                    tech
              FROM %(schema)s.input_solar_bass_params
+
              UNION ALL
-             SELECT *
+
+             SELECT state_abbr, 
+                    p, 
+                    q, 
+                    teq_yr1, 
+                    sector_abbr, 
+                    tech
              FROM %(schema)s.input_wind_bass_params
+
              UNION ALL
-             SELECT *
+
+             SELECT state_abbr, 
+                    p, 
+                    q, 
+                    teq_yr1, 
+                    sector_abbr, 
+                    tech
              FROM %(schema)s.input_ghp_bass_params;""" % inputs
     
     bass_df = pd.read_sql(sql, con, coerce_float = True)
