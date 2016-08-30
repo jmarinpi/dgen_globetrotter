@@ -767,12 +767,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================                         
                     # clean up the decision var for tech/financing choice
                     agents = AgentsAlgorithm(agents, mutation.sanitize_decision_col, ('max_market_share', 'mms_sanitized')).compute()
-                    # a new temporary id for agent + sys config combos
+                    # a new temporary id for agent + business model combos
                     agents = AgentsAlgorithm(agents, mutation.create_new_id_column, (['agent_id', 'business_model'], 'temp_id')).compute()
                     # mark options to exclude from sys_config and business_model choices
                     agents = AgentsAlgorithm(agents, mutation.mark_excluded_options).compute()
                     # select from sys_config choices
-                    agents = Agents(tech_choice_geo.probabilistic_choice(agents.dataframe, prng, uid_col = 'sys_config_temp_id', options_col = 'sys_config', excluded_options_col = 'excluded_option', decision_col = 'mms_sanitized', alpha = 2, always_return_one = True))
+                    agents = Agents(tech_choice_geo.probabilistic_choice(agents.dataframe, prng, uid_col = 'temp_id', options_col = 'sys_config', excluded_options_col = 'excluded_option', decision_col = 'mms_sanitized', alpha = 2, always_return_one = True))
                     # select from business_model choices
                     agents = Agents(tech_choice_geo.probabilistic_choice(agents.dataframe, prng, uid_col = 'agent_id', options_col = 'business_model', excluded_options_col = 'excluded_option', decision_col = 'mms_sanitized', alpha = 2, always_return_one = True))    
     
