@@ -564,10 +564,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # get initial agents from postgres
                 agents_initial = mutation.get_initial_agent_attributes(con, schema)
                 agents_last_year_df = None
+                
                 for year in model_years:
                     logger.info('\tWorking on %s' % year)
  
-                    # update year for these initial agetns to the current year
+                    # update year for these initial agents to the current year
                     agents_initial = AgentsAlgorithm(agents_initial, mutation.update_year, (year, )).compute()
  
                     # get new construction agents
@@ -575,7 +576,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                      # combine initial and new agents
                     agents = agents_initial.add_agents(agents_new)
-                    del agents_initial, agents_new
+                    del agents_new
                     # drop du agents
                     agents = agents.filter_tech('ghp')                                        
 
@@ -586,13 +587,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # NOTE: this is only necessary to make compatibile with the tech choice module
                     agents = AgentsAlgorithm(agents, mutation.add_bin_id).compute()
                     
-                    # TODO: write this for ghp
-#                    # get previously subscribed agents
-#                    previously_subscribed_agents_df = demand_supply.get_previously_subscribed_agents(con, schema)
-#                    # subtract previously subscribed agents
-#                    agents_initial = AgentsAlgorithm(agents, demand_supply.subtract_previously_subscribed_agents, (previously_subscribed_agents_df, )).compute()                    
-                    # really, this is more about flagging which agents just installed a hvac or ghp system in the previous year
-                    # and then accountin for that in the system ages below (i.e., reset to system age to zero)
                     
                     #==============================================================================
                     # HVAC SYSTEM AGES
