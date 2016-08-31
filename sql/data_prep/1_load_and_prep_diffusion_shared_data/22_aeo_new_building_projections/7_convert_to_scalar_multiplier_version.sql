@@ -1,13 +1,25 @@
 ﻿set role 'diffusion-writers';
 
 DROP TABLE if exists diffusion_shared.aeo_new_building_multipliers_2015 CASCADE;
-CREATE TABLE diffusion_shared.aeo_new_building_multipliers_2015 AS
-select state_fips, state, census_division, year, scenario, 
-	0.01::NUMERIC as res_single_family_growth, 
-        0.01::NUMERIC AS res_multi_family_growth, 
-        0.01::NUMERIC AS com_growth, 
-       state_abbr, census_division_abbr
-from  diffusion_shared.aeo_new_building_projections_2015;
+CREATE TABLE diffusion_shared.aeo_new_building_multipliers_2015 
+(	
+	  state_fips character varying(2),
+	  state text,
+	  state_abbr character varying(2) NOT NULL,
+	  census_division text,
+	  census_division_abbr text,
+	  year integer NOT NULL,
+	  scenario text NOT NULL,
+	  res_single_family_growth numeric,
+	  res_multi_family_growth numeric,
+	  com_growth numeric
+);
+
+\COPY diffusion_shared.aeo_new_building_multipliers_2015  FROM '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/EIA_NewBuilds_HousingStarts_ComFloospace/data_for_converting_to_scalars/output/new_building_growth_multipliers.csv' with csv header;
+
+-- check results
+select *
+from diffusion_shared.aeo_new_building_multipliers_2015;
 
 -- add primary key on state, year, scenario
 ALTER TABLE diffusion_shared.aeo_new_building_multipliers_2015
@@ -44,6 +56,7 @@ set scenario =
 		WHEN scenario = 'Low Price' THEN 'AEO2015 Low Prices'
 		WHEN scenario = 'High Price' THEN 'AEO2015 High Prices'
 	end;
+-- 5100 rows
 
 -- check results
 select distinct scenario

@@ -1,6 +1,6 @@
 ﻿set role 'diffusion-writers';
 
-drop table if exists diffusion_blocks.tract_building_growth_aeo_2015;
+drop table if exists diffusion_blocks.tract_building_growth_aeo_2015 CASCADE;
 CREATE TABLE diffusion_blocks.tract_building_growth_aeo_2015 AS
 select a.tract_id_alias, 
 	d.scenario,
