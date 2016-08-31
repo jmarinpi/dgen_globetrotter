@@ -556,20 +556,25 @@ def apply_end_user_costs_du(dataframe, end_user_costs_du_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def update_system_ages(dataframe, year):
+def update_system_ages(dataframe, year, is_first_year):
 
     in_cols = list(dataframe.columns)
     
-    # add in the microdata release year field for each agent (2003 for com, 2009 for recs)
-    dataframe['microdata_release_year'] = np.where(dataframe['sector_abbr'] == 'res', 2009, 2003)
+    if is_first_year == True:
+        
+        # add in the microdata release year field for each agent (2003 for com, 2009 for recs)
+        dataframe['microdata_release_year'] = np.where(dataframe['sector_abbr'] == 'res', 2009, 2003)
     
-    # calculate the additional years (for new construction set = 0)
-    dataframe['add_years'] = np.where(dataframe['new_construction'] == False, year - dataframe['microdata_release_year'], 0)
+        # calculate the additional years (for new construction set = 0)
+        dataframe['add_years'] = np.where(dataframe['new_construction'] == False, year - dataframe['microdata_release_year'], 0)
     
+    else:
+        dataframe['add_years'] = 2
+
     # increment the system ages
-    dataframe.loc[:, 'space_heat_system_age'] = np.where(dataframe['updated_system_last_year'] == True, 0., dataframe['space_heat_system_age'] + dataframe['add_years'])
-    dataframe.loc[:, 'space_cool_system_age'] = np.where(dataframe['updated_system_last_year'] == True, 0., dataframe['space_cool_system_age'] + dataframe['add_years'])
-    dataframe.loc[:, 'average_system_age'] = np.where(dataframe['updated_system_last_year'] == True, 0., dataframe.loc[:, 'average_system_age'] + dataframe['add_years'])
+    dataframe.loc[:, 'space_heat_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe['space_heat_system_age'] + dataframe['add_years'])
+    dataframe.loc[:, 'space_cool_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe['space_cool_system_age'] + dataframe['add_years'])
+    dataframe.loc[:, 'average_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe.loc[:, 'average_system_age'] + dataframe['add_years'])
     
     # return just the input  columns
     dataframe = dataframe[in_cols]
@@ -938,11 +943,18 @@ def summarize_results_for_next_year(dataframe):
     dataframe['market_value_last_year'] = dataframe['market_value']
     dataframe['installed_capacity_last_year'] = dataframe['installed_capacity']
     dataframe['number_of_adopters_last_year'] = dataframe['number_of_adopters']
+    dataframe['space_heat_system_age_last_year'] = np.where(dataframe['bass_deployable'] == True, 0., dataframe['space_heat_system_age'])
+    dataframe['space_cool_system_age_last_year'] = np.where(dataframe['bass_deployable'] == True, 0., dataframe['space_cool_system_age'])
+    dataframe['average_system_age_last_year'] = np.where(dataframe['bass_deployable'] == True, 0., dataframe['average_system_age'])
+    
     out_cols = ['agent_id',
                 'updated_system_last_year',
                 'market_value_last_year',
                 'installed_capacity_last_year',
-                'number_of_adopters_last_year'
+                'number_of_adopters_last_year',
+                'space_heat_system_age_last_year',
+                'space_cool_system_age_last_year',
+                'average_system_age_last_year'
     ]
     dataframe = dataframe[out_cols]
     
@@ -952,16 +964,29 @@ def summarize_results_for_next_year(dataframe):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def append_previous_year_results(dataframe, agents_last_year_df):
     
+    in_cols = dataframe.columns.tolist()
+    
     if agents_last_year_df is not None:
         dataframe = pd.merge(dataframe, agents_last_year_df, how = 'left', on = 'agent_id')
+        # update the system ages 
+        dataframe.loc[:, 'space_heat_system_age'] = dataframe['space_heat_system_age_last_year']
+        dataframe.loc[:, 'space_cool_system_age'] = dataframe['space_cool_system_age_last_year']
+        dataframe.loc[:, 'average_system_age'] = dataframe['average_system_age_last_year']        
+        
     else:
-        new_cols = {'updated_system_last_year' : False,
-                    'market_value_last_year' : 0.,
+        new_cols = {'market_value_last_year' : 0.,
                     'installed_capacity_last_year' : 0.,
-                    'number_of_adopters_last_year' : 0.,
+                    'number_of_adopters_last_year' : 0.
                     }
         for col, val in new_cols.iteritems():
             dataframe[col] = val
+        
+
+    out_cols = ['market_value_last_year',
+                'installed_capacity_last_year',
+                'number_of_adopters_last_year']
+    return_cols = in_cols + out_cols
+    dataframe = dataframe[return_cols]
     
     return dataframe
     

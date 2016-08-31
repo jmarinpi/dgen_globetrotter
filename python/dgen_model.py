@@ -568,6 +568,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 for year in model_years:
                     logger.info('\tWorking on %s' % year)
+                    
+                    # is it the first year?
+                    is_first_year = year == cfg.start_year    
  
                     # update year for these initial agents to the current year
                     agents_initial = AgentsAlgorithm(agents_initial, mutation.update_year, (year, )).compute()
@@ -593,7 +596,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # HVAC SYSTEM AGES
                     #==============================================================================                        
                     # update system ages
-                    agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, )).compute()
+                    agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, is_first_year )).compute()
                     # check which agents require new systems (new construction and those whose systems are too old)
                     agents = AgentsAlgorithm(agents, mutation.identify_agents_requiring_new_systems).compute()                                
 
@@ -779,8 +782,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # TODO: finish everything from here down
                     #==========================================================================================================
                     # MARKET LAST YEAR
-                    #==========================================================================================================                  
-                    is_first_year = year == cfg.start_year      
+                    #==========================================================================================================                    
                     if is_first_year == True:
                         # calculate existing market shares by state and sector
                         state_existing_market_share_df = mutation.estimate_initial_market_shares(agents.dataframe, state_starting_capacities_df, year)

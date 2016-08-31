@@ -631,16 +631,6 @@ def estimate_agent_thermal_loads(schema, sector_abbr, initial_or_new, chunks, po
              ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
 
-                   
-#space_heat_kwh_in_bin,
-#space_cool_kwh_in_bin,
-#water_heat_kwh_in_bin,
-#total_heat_kwh_in_bin,
-#space_heat_kwh_per_building_in_bin,
-#space_cool_kwh_per_building_in_bin,
-#water_heat_kwh_per_building_in_bin,
-#total_heat_kwh_per_building_in_bin,           
-
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
