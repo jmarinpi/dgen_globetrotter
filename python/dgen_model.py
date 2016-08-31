@@ -810,7 +810,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # summarize results to states
                     state_market_deployment_df = mutation.summarize_state_deployment(agents.dataframe, year)
                     # write to postgres
-                    mutation.write_cumulative_market_share(con, cur, state_existing_market_share_df, schema)
+                    mutation.write_cumulative_market_share(con, cur, state_market_deployment_df, schema)
                     
                     #==========================================================================================================
                     # WRITE AGENT OUTPUTS
