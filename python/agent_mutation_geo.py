@@ -894,8 +894,9 @@ def apply_market_last_year(dataframe, market_last_year_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_bass_ratio(dataframe, market_last_year_df):
+def calculate_bass_ratio_and_existing_market_share_pct(dataframe, market_last_year_df, is_first_year):
 
+    # TOOO: separate this into two separate functinos, one for bass_ratio and one for existing_market_share_pct
     # record input columns
     in_cols = list(dataframe.columns)
 
@@ -913,7 +914,14 @@ def calculate_bass_ratio(dataframe, market_last_year_df):
     # merge to the agents dataframe
     dataframe = pd.merge(dataframe, state_df, how = 'left', on = ['state_abbr', 'sector_abbr'])    
     # calculate the implied existing market share for each agent
-    dataframe['existing_market_share_pct'] = dataframe['bass_ratio'] * dataframe['max_market_share']
+    # if first year, existing market share pct comes from bass_ratio * the max_market_share
+    # any other year, it comes from the previous years market share
+    if is_first_year == True:
+        dataframe['existing_market_share_pct'] = dataframe['bass_ratio'] * dataframe['max_market_share']    
+    elif is_first_year == False:
+        dataframe['existing_market_share_pct'] = np.where(dataframe['new_construction'] == True, 0., dataframe['market_share_last_year'])
+    else:
+        raise ValueError('is_first_year must be one of: True/False')        
     
     out_cols = ['bass_ratio', 'existing_market_share_pct']
     return_cols = in_cols + out_cols
@@ -944,6 +952,7 @@ def calculate_diffusion_result_metrics(dataframe):
     dataframe['number_of_adopters'] = dataframe['number_of_adopters_last_year'] + dataframe['new_adopters']
     dataframe['installed_capacity'] = dataframe['installed_capacity_last_year'] + dataframe['new_capacity'] # All capacity in tons in the model
     dataframe['market_value'] = dataframe['market_value_last_year'] + dataframe['new_market_value']
+    dataframe['market_share'] = dataframe['existing_market_share_pct'] + dataframe['new_market_share']
     
     return dataframe
 
@@ -974,7 +983,9 @@ def summarize_state_deployment(dataframe, year):
 def summarize_results_for_next_year(dataframe, sunk_costs):
     
     dataframe['market_value_last_year'] = dataframe['market_value']
+    dataframe['market_share_last_year'] = dataframe['market_share']
     dataframe['installed_capacity_last_year'] = dataframe['installed_capacity']
+    dataframe['number_of_adopters_last_year'] = dataframe['number_of_adopters']
     dataframe['number_of_adopters_last_year'] = dataframe['number_of_adopters']
     # if sunk_costs == True, the system ages don't really matter, so set to np.nan
     if sunk_costs == True:
@@ -990,6 +1001,7 @@ def summarize_results_for_next_year(dataframe, sunk_costs):
 
     
     out_cols = ['agent_id',
+                'market_share_last_year',
                 'market_value_last_year',
                 'installed_capacity_last_year',
                 'number_of_adopters_last_year',
@@ -1007,23 +1019,29 @@ def append_previous_year_results(dataframe, agents_last_year_df):
     
     in_cols = dataframe.columns.tolist()
     
+    new_cols = { 'market_share_last_year' : 0.,
+                 'market_value_last_year' : 0.,
+                'installed_capacity_last_year' : 0.,
+                'number_of_adopters_last_year' : 0.
+                }    
+    
     if agents_last_year_df is not None:
         dataframe = pd.merge(dataframe, agents_last_year_df, how = 'left', on = 'agent_id')
         # update the system ages 
         dataframe.loc[:, 'space_heat_system_age'] = dataframe['space_heat_system_age_last_year']
         dataframe.loc[:, 'space_cool_system_age'] = dataframe['space_cool_system_age_last_year']
         dataframe.loc[:, 'average_system_age'] = dataframe['average_system_age_last_year']        
-        
+        ## initialize values for new contruction to zero
+        for col, val in new_cols.iteritems():
+            dataframe.loc[dataframe['new_construction'] == True, col] = val        
     else:
-        new_cols = {'market_value_last_year' : 0.,
-                    'installed_capacity_last_year' : 0.,
-                    'number_of_adopters_last_year' : 0.
-                    }
+        # initialize values for all rows to zero
         for col, val in new_cols.iteritems():
             dataframe[col] = val
-        
+            
 
-    out_cols = ['market_value_last_year',
+    out_cols = ['market_share_last_year',
+                'market_value_last_year',
                 'installed_capacity_last_year',
                 'number_of_adopters_last_year']
     return_cols = in_cols + out_cols
