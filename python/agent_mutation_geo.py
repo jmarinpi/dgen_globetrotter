@@ -311,10 +311,20 @@ def apply_siting_constraints_ghp(dataframe, siting_constraints_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def identify_bass_deployable_agents(dataframe):
+def identify_bass_deployable_agents(dataframe, sunk_costs):
 
-    # deployable customers are those: (1) with a system that can be sited on the property, (2) that are modellable (i.e., we have a CRB model to use), and (3) need a replacement system NOW
-    dataframe['bass_deployable'] = (dataframe['viable_sys_config'] == True) & (dataframe['modellable'] == True) & (dataframe['needs_average_system'] == True)
+    # deployable customers are those: 
+    # (1) with a system that can be sited on the property, 
+    # (2) that are modellable (i.e., we have a CRB model to use), and 
+    # (3) need a replacement system NOW (ONLY if sunk_costs == False) 
+
+    if sunk_costs == True:
+        dataframe['bass_deployable'] = (dataframe['viable_sys_config'] == True) & (dataframe['modellable'] == True)        
+    elif sunk_costs == False:
+        dataframe['bass_deployable'] = (dataframe['viable_sys_config'] == True) & (dataframe['modellable'] == True) & (dataframe['needs_average_system'] == True)        
+    else:
+        raise ValueError('sunk_costs must be one of: True/False')
+
     dataframe['bass_deployable_buildings_in_bin'] = np.where(dataframe['bass_deployable'] == True, dataframe['buildings_in_bin'], 0.)   
    
     return dataframe
@@ -323,7 +333,6 @@ def identify_bass_deployable_agents(dataframe):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def identify_market_eligible_agents(dataframe):
 
-    # TODO: also account for the fact that some microdata can't be represented by CRBs
     dataframe['market_eligible'] = (dataframe['viable_sys_config'] == True) & (dataframe['modellable'] == True)
     dataframe['market_eligible_buildings_in_bin'] = np.where(dataframe['market_eligible'] == True, dataframe['buildings_in_bin'], 0.)
     
@@ -401,23 +410,33 @@ def get_technology_costs_baseline(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df):    
+def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df, sunk_costs):    
     
 
     dataframe = pd.merge(dataframe, tech_costs_baseline_df, how = 'left', on = ['sector_abbr', 'baseline_system_type'])
     # Installed Costs
-    dataframe['baseline_equipment_costs_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['hvac_equipment_cost_dollars_per_cooling_ton']
-    dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 
-                                                     dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 
-                                                     dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'] * dataframe['baseline_retrofit_rest_of_system_multiplier'])
-    dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_costs_dlrs'] + dataframe['baseline_rest_of_system_cost_dlrs']
-    dataframe['baseline_fixed_om_dlrs_per_year'] = dataframe['baseline_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']
+    if sunk_costs == True:
+        # installation costs will be zero, except for new construction
+        # O&M are normal
+        dataframe['baseline_equipment_costs_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['ghp_system_size_tons'] * dataframe['hvac_equipment_cost_dollars_per_cooling_ton'], 0.)
+        dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 0.)
+        dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_costs_dlrs'] + dataframe['baseline_rest_of_system_cost_dlrs']
+        dataframe['baseline_fixed_om_dlrs_per_year'] = dataframe['baseline_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']     
+    elif sunk_costs == False:
+        dataframe['baseline_equipment_costs_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['hvac_equipment_cost_dollars_per_cooling_ton']
+        dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 
+                                                         dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 
+                                                         dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'] * dataframe['baseline_retrofit_rest_of_system_multiplier'])
+        dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_costs_dlrs'] + dataframe['baseline_rest_of_system_cost_dlrs']
+        dataframe['baseline_fixed_om_dlrs_per_year'] = dataframe['baseline_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']     
+    else:
+        raise ValueError('sunk_costs must be one of: True/False')
+
     # reset values to NA where the system isn't modellable
-    out_cols = ['baseline_equipment_costs_dlrs', 'baseline_rest_of_system_cost_dlrs', 'baseline_installed_costs_dlrs', 'baseline_fixed_om_dlrs_per_year']
-    dataframe.loc[dataframe['modellable'] == False, out_cols] = np.nan
+    out_cols = ['baseline_equipment_costs_dlrs', 'baseline_rest_of_system_cost_dlrs', 'baseline_installed_costs_dlrs', 'baseline_fixed_om_dlrs_per_year']    
+    dataframe.loc[dataframe['modellable'] == False, out_cols] = np.nan       
     
     return dataframe
-
 
 
 #%%
@@ -937,18 +956,25 @@ def summarize_state_deployment(dataframe, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def summarize_results_for_next_year(dataframe):
+def summarize_results_for_next_year(dataframe, sunk_costs):
     
-    dataframe['updated_system_last_year'] = dataframe['bass_deployable'] == True
     dataframe['market_value_last_year'] = dataframe['market_value']
     dataframe['installed_capacity_last_year'] = dataframe['installed_capacity']
     dataframe['number_of_adopters_last_year'] = dataframe['number_of_adopters']
-    dataframe['space_heat_system_age_last_year'] = np.where(dataframe['bass_deployable'] == True, 0., dataframe['space_heat_system_age'])
-    dataframe['space_cool_system_age_last_year'] = np.where(dataframe['bass_deployable'] == True, 0., dataframe['space_cool_system_age'])
-    dataframe['average_system_age_last_year'] = np.where(dataframe['bass_deployable'] == True, 0., dataframe['average_system_age'])
+    # if sunk_costs == True, the system ages don't really matter, so set to np.nan
+    if sunk_costs == True:
+        dataframe['space_heat_system_age_last_year'] = np.nan
+        dataframe['space_cool_system_age_last_year'] = np.nan
+        dataframe['average_system_age_last_year'] = np.nan
+    elif sunk_costs == False:
+        dataframe['space_heat_system_age_last_year'] = np.where(dataframe['bass_deployable'] == True, 0., dataframe['space_heat_system_age'])
+        dataframe['space_cool_system_age_last_year'] = np.where(dataframe['bass_deployable'] == True, 0., dataframe['space_cool_system_age'])
+        dataframe['average_system_age_last_year'] = np.where(dataframe['bass_deployable'] == True, 0., dataframe['average_system_age'])
+    else:
+        raise ValueError('sunk_costs must be one of: True/False')
+
     
     out_cols = ['agent_id',
-                'updated_system_last_year',
                 'market_value_last_year',
                 'installed_capacity_last_year',
                 'number_of_adopters_last_year',

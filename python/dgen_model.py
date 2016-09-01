@@ -655,7 +655,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================                            
                     # flag the agents that are deployable during this model year
                     # (i.e., these are the subset of market eligible agents can be developed NOW)
-                    agents = AgentsAlgorithm(agents, mutation.identify_bass_deployable_agents).compute()                                 
+                    agents = AgentsAlgorithm(agents, mutation.identify_bass_deployable_agents, cfg.sunk_costs).compute()                                 
 
                     #==============================================================================
                     # TECHNOLOGY COSTS
@@ -668,7 +668,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get baseline/conventional system costs
                     tech_costs_baseline_df = mutation.get_technology_costs_baseline(con, schema, year)
                     # apply baseline/conventional system costs
-                    agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_baseline, (tech_costs_baseline_df, )).compute()
+                    agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_baseline, (tech_costs_baseline_df, cfg.sunk_costs)).compute()                  
 
                     #==============================================================================
                     # TECHNOLOGY PERFORMANCE IMPROVEMENTS AND DEGRADATION
@@ -805,7 +805,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # calculate various metrics showing diffusion results
                     agents = AgentsAlgorithm(agents, mutation.calculate_diffusion_result_metrics).compute()
                     # summarize results for next year (store as "last year" since it wil be referenced during the next iteration)
-                    agents_last_year_df = mutation.summarize_results_for_next_year(agents.dataframe)
+                    agents_last_year_df = mutation.summarize_results_for_next_year(agents.dataframe, cfg.sunk_costs)
                                         
                     # summarize results to states
                     state_market_deployment_df = mutation.summarize_state_deployment(agents.dataframe, year)
