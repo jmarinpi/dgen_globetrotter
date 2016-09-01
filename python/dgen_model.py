@@ -596,9 +596,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # HVAC SYSTEM AGES
                     #==============================================================================                        
                     # update system ages
-                    agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, is_first_year )).compute()
+                    agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, is_first_year, cfg.sunk_costs)).compute()
                     # check which agents require new systems (new construction and those whose systems are too old)
-                    agents = AgentsAlgorithm(agents, mutation.identify_agents_requiring_new_systems).compute()                                
+                    agents = AgentsAlgorithm(agents, mutation.identify_agents_requiring_new_systems, (cfg.sunk_costs, )).compute()                                
 
                     #==========================================================================================================
                     # MAP TO CRB GHP SIMULATIONS
@@ -655,7 +655,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================                            
                     # flag the agents that are deployable during this model year
                     # (i.e., these are the subset of market eligible agents can be developed NOW)
-                    agents = AgentsAlgorithm(agents, mutation.identify_bass_deployable_agents, cfg.sunk_costs).compute()                                 
+                    agents = AgentsAlgorithm(agents, mutation.identify_bass_deployable_agents, (cfg.sunk_costs, )).compute()                                 
 
                     #==============================================================================
                     # TECHNOLOGY COSTS

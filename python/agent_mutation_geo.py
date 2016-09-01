@@ -575,7 +575,7 @@ def apply_end_user_costs_du(dataframe, end_user_costs_du_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def update_system_ages(dataframe, year, is_first_year):
+def update_system_ages(dataframe, year, is_first_year, sunk_costs):
 
     in_cols = list(dataframe.columns)
     
@@ -591,10 +591,17 @@ def update_system_ages(dataframe, year, is_first_year):
         dataframe['add_years'] = 2
 
     # increment the system ages
-    dataframe.loc[:, 'space_heat_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe['space_heat_system_age'] + dataframe['add_years'])
-    dataframe.loc[:, 'space_cool_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe['space_cool_system_age'] + dataframe['add_years'])
-    dataframe.loc[:, 'average_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe.loc[:, 'average_system_age'] + dataframe['add_years'])
-    
+    if sunk_costs == True:
+        dataframe.loc[:, 'space_heat_system_age'] = np.nan
+        dataframe.loc[:, 'space_cool_system_age'] = np.nan
+        dataframe.loc[:, 'average_system_age'] = np.nan
+    elif sunk_costs == False:
+        dataframe.loc[:, 'space_heat_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe['space_heat_system_age'] + dataframe['add_years'])
+        dataframe.loc[:, 'space_cool_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe['space_cool_system_age'] + dataframe['add_years'])
+        dataframe.loc[:, 'average_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe.loc[:, 'average_system_age'] + dataframe['add_years'])  
+    else:
+        raise ValueError('sunk_costs must be one of: True/False')
+
     # return just the input  columns
     dataframe = dataframe[in_cols]
     
@@ -602,15 +609,23 @@ def update_system_ages(dataframe, year, is_first_year):
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def identify_agents_requiring_new_systems(dataframe):
+def identify_agents_requiring_new_systems(dataframe, sunk_costs):
 
     in_cols = list(dataframe.columns)
-    
+
+    if sunk_costs == True:
+        # use syntax below to assign np.nan but keep the dtype compatible with boolean True/False operators
+        dataframe['needs_heat_system'] = pd.Series(np.nan, dtype = 'object')
+        dataframe['needs_cool_system'] = pd.Series(np.nan, dtype = 'object')
+        dataframe['needs_average_system'] = pd.Series(np.nan, dtype = 'object')
+    elif sunk_costs == False:
+        dataframe['needs_heat_system'] = np.where(dataframe['new_construction'] == True, True, dataframe['space_heat_system_age'] > dataframe['space_heat_system_expected_lifetime'])
+        dataframe['needs_cool_system'] = np.where(dataframe['new_construction'] == True, True, dataframe['space_cool_system_age'] > dataframe['space_cool_system_expected_lifetime'])
+        dataframe['needs_average_system'] = np.where(dataframe['new_construction'] == True, True, dataframe['average_system_age'] > dataframe['average_system_expected_lifetime'])   
+    else:
+        raise ValueError('sunk_costs must be one of: True/False')    
     # add in the microdata release year field for each agent (2003 for com, 2009 for recs)
-    dataframe['needs_heat_system'] = np.where(dataframe['new_construction'] == True, True, dataframe['space_heat_system_age'] > dataframe['space_heat_system_expected_lifetime'])
-    dataframe['needs_cool_system'] = np.where(dataframe['new_construction'] == True, True, dataframe['space_cool_system_age'] > dataframe['space_cool_system_expected_lifetime'])
-    dataframe['needs_average_system'] = np.where(dataframe['new_construction'] == True, True, dataframe['average_system_age'] > dataframe['average_system_expected_lifetime'])
-    
+
     return_cols = ['needs_heat_system', 'needs_cool_system', 'needs_average_system']
     out_cols = in_cols + return_cols
     dataframe = dataframe[out_cols]
