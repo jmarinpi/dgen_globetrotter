@@ -796,7 +796,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # BASS DIFFUSION
                     #==========================================================================================================   
                     # calculate "bass ratio" = existing market share in tons / max market share in tons
-                    agents = AgentsAlgorithm(agents, mutation.calculate_bass_ratio_and_existing_market_share_pct, (market_last_year_df, is_first_year)).compute(1)
+                    agents = AgentsAlgorithm(agents, mutation.calculate_bass_ratio, (market_last_year_df, )).compute(1)
+                    # calculate existing market share
+                    agents = AgentsAlgorithm(agents, mutation.calculate_existing_market_share_pct, (is_first_year, )).compute()
                     # apply bass p/q/teq params
                     agents = AgentsAlgorithm(agents, mutation.apply_bass_params, (bass_params, )).compute()
                     # TODO: rewrite this section to use agents class

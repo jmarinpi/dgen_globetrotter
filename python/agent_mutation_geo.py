@@ -894,9 +894,8 @@ def apply_market_last_year(dataframe, market_last_year_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_bass_ratio_and_existing_market_share_pct(dataframe, market_last_year_df, is_first_year):
+def calculate_bass_ratio(dataframe, market_last_year_df):
 
-    # TOOO: separate this into two separate functinos, one for bass_ratio and one for existing_market_share_pct
     # record input columns
     in_cols = list(dataframe.columns)
 
@@ -913,9 +912,20 @@ def calculate_bass_ratio_and_existing_market_share_pct(dataframe, market_last_ye
 
     # merge to the agents dataframe
     dataframe = pd.merge(dataframe, state_df, how = 'left', on = ['state_abbr', 'sector_abbr'])    
-    # calculate the implied existing market share for each agent
-    # if first year, existing market share pct comes from bass_ratio * the max_market_share
-    # any other year, it comes from the previous years market share
+    
+    out_cols = ['bass_ratio']
+    return_cols = in_cols + out_cols
+    dataframe = dataframe[return_cols]
+    
+    return dataframe
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_existing_market_share_pct(dataframe, is_first_year):
+
+    # record input columns
+    in_cols = list(dataframe.columns)
+
     if is_first_year == True:
         dataframe['existing_market_share_pct'] = dataframe['bass_ratio'] * dataframe['max_market_share']    
     elif is_first_year == False:
@@ -923,7 +933,7 @@ def calculate_bass_ratio_and_existing_market_share_pct(dataframe, market_last_ye
     else:
         raise ValueError('is_first_year must be one of: True/False')        
     
-    out_cols = ['bass_ratio', 'existing_market_share_pct']
+    out_cols = ['existing_market_share_pct']
     return_cols = in_cols + out_cols
     dataframe = dataframe[return_cols]
     
@@ -942,17 +952,25 @@ def apply_bass_params(dataframe, bass_params_df):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calculate_diffusion_result_metrics(dataframe):
     
-    dataframe['new_adopters'] = dataframe['diffusion_market_share'] * dataframe['bass_deployable_buildings_in_bin']
+    # ensure no diffusion for non-bass deployable agents
+    dataframe.loc[:, 'diffusion_market_share'] = dataframe['diffusion_market_share'] * dataframe['bass_deployable'] 
+    # market sahre is equal to the diffusion_market_share (which has already been capped to ensure it isn't lower than the existing market share pct)
+    dataframe['market_share'] = np.maximum(dataframe['diffusion_market_share'], dataframe['market_share_last_year'])
+    # calculate the new market share (market_share - existing_market_share)
+    dataframe['new_market_share'] = dataframe['market_share'] - dataframe['market_share_last_year']
     # cap the new_market_share where the market share exceeds the max market share
-    dataframe['new_market_share'] = np.maximum(0., dataframe['diffusion_market_share'] - dataframe['existing_market_share_pct'])
+    dataframe.loc[:, 'new_market_share'] = np.where(dataframe['market_share'] > dataframe['max_market_share'], 0, dataframe['new_market_share'])
+
     # calculate new adopters, capacity and market value
+    dataframe['new_adopters'] = dataframe['new_market_share'] * dataframe['bass_deployable_buildings_in_bin']
     dataframe['new_capacity'] = dataframe['new_adopters'] * dataframe['ghp_system_size_tons']
     dataframe['new_market_value'] = dataframe['new_adopters'] * dataframe['ghp_installed_costs_dlrs']
+    
     # then add these values to values from last year to get cumulative values:
     dataframe['number_of_adopters'] = dataframe['number_of_adopters_last_year'] + dataframe['new_adopters']
     dataframe['installed_capacity'] = dataframe['installed_capacity_last_year'] + dataframe['new_capacity'] # All capacity in tons in the model
     dataframe['market_value'] = dataframe['market_value_last_year'] + dataframe['new_market_value']
-    dataframe['market_share'] = dataframe['existing_market_share_pct'] + dataframe['new_market_share']
+
     
     return dataframe
 
@@ -986,7 +1004,7 @@ def summarize_results_for_next_year(dataframe, sunk_costs):
     dataframe['market_share_last_year'] = dataframe['market_share']
     dataframe['installed_capacity_last_year'] = dataframe['installed_capacity']
     dataframe['number_of_adopters_last_year'] = dataframe['number_of_adopters']
-    dataframe['number_of_adopters_last_year'] = dataframe['number_of_adopters']
+    
     # if sunk_costs == True, the system ages don't really matter, so set to np.nan
     if sunk_costs == True:
         dataframe['space_heat_system_age_last_year'] = np.nan
