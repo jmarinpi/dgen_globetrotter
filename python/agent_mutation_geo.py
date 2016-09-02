@@ -907,7 +907,7 @@ def calculate_bass_ratio(dataframe, market_last_year_df):
     state_max_market_share_tons = dataframe[['state_abbr', 'sector_abbr', 'max_market_share_tons']].groupby(['state_abbr', 'sector_abbr']).sum().reset_index()
     # merge to the market last year
     state_df = pd.merge(state_max_market_share_tons, market_last_year_df, how = 'left', on = ['state_abbr', 'sector_abbr'])
-    # calculate the ratio of market share to max market share tons
+    # calculate the ratio of market share to max market share tons 
     state_df['bass_ratio'] = np.where(state_df['existing_state_market_share_tons'] > state_df['max_market_share_tons'], 0., state_df['existing_state_market_share_tons'] / state_df['max_market_share_tons'])
 
     # merge to the agents dataframe
@@ -919,23 +919,43 @@ def calculate_bass_ratio(dataframe, market_last_year_df):
     
     return dataframe
 
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_existing_market_share_pct(dataframe, is_first_year):
+def append_existing_state_market_share_pct(dataframe, market_last_year_df):
 
     # record input columns
     in_cols = list(dataframe.columns)
 
+    dataframe = pd.merge(dataframe, market_last_year_df, how = 'left', on = ['state_abbr', 'sector_abbr'])
+    
+    out_cols = ['existing_state_market_share_pct']
+    return_cols = in_cols + out_cols
+    dataframe = dataframe[return_cols]
+    
+    return dataframe
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def update_market_share_last_year(dataframe, is_first_year):
+
     if is_first_year == True:
-        dataframe['existing_market_share_pct'] = dataframe['bass_ratio'] * dataframe['max_market_share']    
+        dataframe.loc[:, 'market_share_last_year'] = dataframe['existing_state_market_share_pct']
     elif is_first_year == False:
-        dataframe['existing_market_share_pct'] = np.where(dataframe['new_construction'] == True, 0., dataframe['market_share_last_year'])
+        pass
     else:
         raise ValueError('is_first_year must be one of: True/False')        
     
-    out_cols = ['existing_market_share_pct']
-    return_cols = in_cols + out_cols
-    dataframe = dataframe[return_cols]
+    return dataframe
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_existing_market_share_pct(dataframe):
+
+    # this is juat an alias/duplicate of market_share_last_year
+    # we create it for compatibility with some of the older diffuion functions
+    
+    dataframe['existing_market_share_pct'] = dataframe['market_share_last_year']
     
     return dataframe
 
@@ -956,20 +976,20 @@ def calculate_diffusion_result_metrics(dataframe):
     dataframe.loc[:, 'diffusion_market_share'] = dataframe['diffusion_market_share'] * dataframe['bass_deployable'] 
     # market sahre is equal to the diffusion_market_share (which has already been capped to ensure it isn't lower than the existing market share pct)
     dataframe['market_share'] = np.maximum(dataframe['diffusion_market_share'], dataframe['market_share_last_year'])
-    # calculate the new market share (market_share - existing_market_share)
+    # calculate the new market share
     dataframe['new_market_share'] = dataframe['market_share'] - dataframe['market_share_last_year']
     # cap the new_market_share where the market share exceeds the max market share
     dataframe.loc[:, 'new_market_share'] = np.where(dataframe['market_share'] > dataframe['max_market_share'], 0, dataframe['new_market_share'])
+
+    # then add these values to values from last year to get cumulative values:
+    dataframe['number_of_adopters'] = dataframe['market_share'] * dataframe['bass_deployable_buildings_in_bin']
+    dataframe['installed_capacity'] = dataframe['number_of_adopters'] * dataframe['ghp_system_size_tons'] # All capacity in tons in the model
+    dataframe['market_value'] = dataframe['number_of_adopters'] * dataframe['ghp_installed_costs_dlrs']
 
     # calculate new adopters, capacity and market value
     dataframe['new_adopters'] = dataframe['new_market_share'] * dataframe['bass_deployable_buildings_in_bin']
     dataframe['new_capacity'] = dataframe['new_adopters'] * dataframe['ghp_system_size_tons']
     dataframe['new_market_value'] = dataframe['new_adopters'] * dataframe['ghp_installed_costs_dlrs']
-    
-    # then add these values to values from last year to get cumulative values:
-    dataframe['number_of_adopters'] = dataframe['number_of_adopters_last_year'] + dataframe['new_adopters']
-    dataframe['installed_capacity'] = dataframe['installed_capacity_last_year'] + dataframe['new_capacity'] # All capacity in tons in the model
-    dataframe['market_value'] = dataframe['market_value_last_year'] + dataframe['new_market_value']
 
     
     return dataframe

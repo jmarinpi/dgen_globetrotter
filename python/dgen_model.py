@@ -770,7 +770,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     #==========================================================================================================
                     # CHOOSE FROM SYSTEM CONFIGURATIONS AND BUSINESS MODELS
-                    #==========================================================================================================                         
+                    #==========================================================================================================     
+                    #TODO: remove this line and uncomment the rest of the block
+                    #agents = Agents(agents.dataframe[(agents.dataframe['sys_config'] == 'vertical') & (agents.dataframe['business_model'] == 'host_owned')])
                     # clean up the decision var for tech/financing choice
                     agents = AgentsAlgorithm(agents, mutation.sanitize_decision_col, ('max_market_share', 'mms_sanitized')).compute()
                     # a new temporary id for agent + business model combos
@@ -782,7 +784,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # select from business_model choices
                     agents = Agents(tech_choice_geo.probabilistic_choice(agents.dataframe, prng, uid_col = 'agent_id', options_col = 'business_model', excluded_options_col = 'excluded_option', decision_col = 'mms_sanitized', alpha = 2, always_return_one = True))    
     
-                    # TODO: finish everything from here down
                     #==========================================================================================================
                     # MARKET LAST YEAR
                     #==========================================================================================================                    
@@ -800,8 +801,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================   
                     # calculate "bass ratio" = existing market share in tons / max market share in tons
                     agents = AgentsAlgorithm(agents, mutation.calculate_bass_ratio, (market_last_year_df, )).compute(1)
-                    # calculate existing market share
-                    agents = AgentsAlgorithm(agents, mutation.calculate_existing_market_share_pct, (is_first_year, )).compute()
+                    # append state market share percetn
+                    agents = AgentsAlgorithm(agents, mutation.append_existing_state_market_share_pct, (market_last_year_df, )).compute()
+                    # update the market_share_last_year value (only applies if is_first_year == True)
+                    agents = AgentsAlgorithm(agents, mutation.update_market_share_last_year, (is_first_year, )).compute()      
+                    # calculate existing_market_share_pct (= maarket_share_last_year)
+                    agents = AgentsAlgorithm(agents, mutation.calculate_existing_market_share_pct).compute()    
                     # apply bass p/q/teq params
                     agents = AgentsAlgorithm(agents, mutation.apply_bass_params, (bass_params, )).compute()
                     # TODO: rewrite this section to use agents class

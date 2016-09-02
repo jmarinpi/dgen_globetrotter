@@ -98,7 +98,7 @@ if Rscript_path == None:
 #==============================================================================
 #   set number of parallel processes to run postgres queries (this is ignored if parallelize = F)
 #==============================================================================
-pg_procs = 12
+pg_procs = 1
 
 #==============================================================================
 #   local cores
