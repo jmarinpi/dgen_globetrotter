@@ -14,6 +14,7 @@ import warnings
 import utility_functions
 import operator
 from numpy import dtype
+import copy
 
 class Agent(object):
     
@@ -134,6 +135,10 @@ class Agents(object):
             self.dataframe = dataframe
         else:
             return Agents(dataframe)
+    
+    def copy(self):
+        
+        return copy.deepcopy(self)
 
 
 class AgentsAlgorithm(object):

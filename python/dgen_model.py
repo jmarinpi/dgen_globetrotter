@@ -562,8 +562,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 state_incentives_df = datfunc.get_state_dsire_incentives(cur, con, schema, ['geo'], dsire_opts)
                 itc_options = datfunc.get_itc_incentives(con, schema)
                 
-                # get initial agents from postgres
+                # get initial (year = 2012) agents from postgres
                 agents_initial = mutation.get_initial_agent_attributes(con, schema)
+                # set data for "last year" to None (since this will be the first year)
                 agents_last_year_df = None
                 
                 for year in model_years:
@@ -572,25 +573,27 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # is it the first year?
                     is_first_year = year == cfg.start_year    
  
-                    # update year for these initial agents to the current year
+                    # update year for the initial agents to the current year
                     agents_initial = AgentsAlgorithm(agents_initial, mutation.update_year, (year, )).compute()
  
                     # get new construction agents
                     agents_new = mutation.get_new_agent_attributes(con, schema, year)
 
-                     # combine initial and new agents
-                    agents = agents_initial.add_agents(agents_new)
+                     # add new agents to the initial agents (this ensures they will be there again next year)
+                    agents_initial = agents_initial.add_agents(agents_new)
+                    # drop agents_new -- it's no longer needed
                     del agents_new
+                    
+                    # copy agents_initial (which will be preserved unmutated -- i.e., as-is -- for next year) to agents (which will be mutated for the current year)
+                    agents = agents_initial.copy()
+                    # change new construction to false for all agents in agents_initial (this ensures that next year they will be treated appropriately)
+                    agents_initial.dataframe['new_construction'] = False
+        
                     # drop du agents
                     agents = agents.filter_tech('ghp')                                        
 
                     # mutate agents to account for results from previous year
                     agents = AgentsAlgorithm(agents, mutation.append_previous_year_results, (agents_last_year_df, )).compute()
-
-                    # add bin_id column
-                    # NOTE: this is only necessary to make compatibile with the tech choice module
-                    agents = AgentsAlgorithm(agents, mutation.add_bin_id).compute()
-                    
                     
                     #==============================================================================
                     # HVAC SYSTEM AGES

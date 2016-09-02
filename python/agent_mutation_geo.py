@@ -1048,10 +1048,10 @@ def append_previous_year_results(dataframe, agents_last_year_df):
         # update the system ages 
         dataframe.loc[:, 'space_heat_system_age'] = dataframe['space_heat_system_age_last_year']
         dataframe.loc[:, 'space_cool_system_age'] = dataframe['space_cool_system_age_last_year']
-        dataframe.loc[:, 'average_system_age'] = dataframe['average_system_age_last_year']        
+        dataframe.loc[:, 'average_system_age'] = dataframe['average_system_age_last_year']  
         ## initialize values for new contruction to zero
         for col, val in new_cols.iteritems():
-            dataframe.loc[dataframe['new_construction'] == True, col] = val        
+            dataframe.loc[dataframe['new_construction'] == True, col] = val
     else:
         # initialize values for all rows to zero
         for col, val in new_cols.iteritems():
