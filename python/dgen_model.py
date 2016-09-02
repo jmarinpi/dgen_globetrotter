@@ -822,6 +822,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # write to postgres
                     mutation.write_cumulative_market_share(con, cur, state_market_deployment_df, schema)
                     
+#                    if year == 2016:
+#                        agents.dataframe.to_csv('/Users/mgleason/Desktop/agents_2016_2.csv', index = False)
+#                        crash
                     #==========================================================================================================
                     # WRITE AGENT OUTPUTS
                     #==========================================================================================================   

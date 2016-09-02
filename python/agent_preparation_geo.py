@@ -107,6 +107,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 # NOTE: each of these functions is dependent on the last, so changes from one must be cascaded to the others
                 calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, min_agents, seed, pool, pg_conn_string)                    
                 sample_blocks(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string, con, cur)
+                add_agent_ids(schema, sector_abbr, 'initial', chunks, pool, pg_conn_string, con, cur)
                 sample_building_type(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string)
                 # TODO: add in selection of heating fuel type for res sector
                 sample_building_microdata(schema, sector_abbr, 'initial', chunks, seed, pool, pg_conn_string)
@@ -121,6 +122,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 logger.info("\tWorking on New Construction (2014 - %s)" % end_year)
                 calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, chunks, sample_pct, seed, pool, pg_conn_string, end_year)
                 sample_blocks(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string, con, cur)
+                add_agent_ids(schema, sector_abbr, 'new', chunks, pool, pg_conn_string, con, cur)
                 sample_building_type(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
                 sample_building_microdata(schema, sector_abbr, 'new', chunks, seed, pool, pg_conn_string)
                 estimate_agent_thermal_loads(schema, sector_abbr, 'new', chunks, pool, pg_conn_string)
@@ -300,7 +302,7 @@ def sample_blocks(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_co
                  GROUP BY a.tract_id_alias
 
              )
-             SELECT nextval('%(schema)s.agent_id_sequence') as agent_id, 
+             SELECT NULL::INTEGER agent_id, 
                      a.tract_id_alias,
                      b.year,
                         unnest(diffusion_shared.sample(a.pgids, 
@@ -311,18 +313,40 @@ def sample_blocks(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_co
                                                        ) as pgid
             FROM a
             LEFT JOIN %(schema)s.%(initial_or_new)s_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s b
-                ON a.tract_id_alias = b.tract_id_alias;""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
-
-    # add primary key
-    sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s
-             ADD PRIMARY KEY (agent_id);""" % inputs
+                ON a.tract_id_alias = b.tract_id_alias
+            ORDER BY b.year, a.tract_id_alias, pgid;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     
     # add indices
     sql = """CREATE INDEX %(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s_pgid_btree 
             ON %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s
             USING BTREE(pgid);""" % inputs
+    p_run(pg_conn_string, sql, chunks, pool)
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
+def add_agent_ids(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_string, con, cur):
+    
+    inputs = locals().copy()
+    
+    # need to do this sequentially to ensure conssitent application of agent_ids
+    # (if run in parallel, there is no guarantee the order in which each table will be hitting the sequence)
+    for i in range(0, len(chunks)):
+        inputs['i_place_holder'] = i
+        sql = """UPDATE %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s
+                 SET agent_id = nextval('%(schema)s.agent_id_sequence');""" % inputs
+        cur.execute(sql)
+        con.commit()
+
+
+    # add primary key
+    # (can do this part in parallel)
+
+    # reset i_place_holder to normal value
+    inputs['i_place_holder'] = '%(i)s'
+    # run query
+    sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s
+             ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
 
 
