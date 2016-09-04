@@ -316,15 +316,8 @@ def identify_bass_deployable_agents(dataframe, sunk_costs):
     # deployable customers are those: 
     # (1) with a system that can be sited on the property, 
     # (2) that are modellable (i.e., we have a CRB model to use), and 
-    # (3) need a replacement system NOW (ONLY if sunk_costs == False) 
 
-    if sunk_costs == True:
-        dataframe['bass_deployable'] = (dataframe['viable_sys_config'] == True) & (dataframe['modellable'] == True)        
-    elif sunk_costs == False:
-        dataframe['bass_deployable'] = (dataframe['viable_sys_config'] == True) & (dataframe['modellable'] == True) & (dataframe['needs_average_system'] == True)        
-    else:
-        raise ValueError('sunk_costs must be one of: True/False')
-
+    dataframe['bass_deployable'] = (dataframe['viable_sys_config'] == True) & (dataframe['modellable'] == True)        
     dataframe['bass_deployable_buildings_in_bin'] = np.where(dataframe['bass_deployable'] == True, dataframe['buildings_in_bin'], 0.)   
    
     return dataframe
@@ -591,16 +584,17 @@ def update_system_ages(dataframe, year, is_first_year, sunk_costs):
         dataframe['add_years'] = 2
 
     # increment the system ages
-    if sunk_costs == True:
-        dataframe.loc[:, 'space_heat_system_age'] = np.nan
-        dataframe.loc[:, 'space_cool_system_age'] = np.nan
-        dataframe.loc[:, 'average_system_age'] = np.nan
-    elif sunk_costs == False:
-        dataframe.loc[:, 'space_heat_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe['space_heat_system_age'] + dataframe['add_years'])
-        dataframe.loc[:, 'space_cool_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe['space_cool_system_age'] + dataframe['add_years'])
-        dataframe.loc[:, 'average_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe.loc[:, 'average_system_age'] + dataframe['add_years'])  
-    else:
-        raise ValueError('sunk_costs must be one of: True/False')
+    dataframe.loc[:, 'space_heat_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe['space_heat_system_age'] + dataframe['add_years'])
+    dataframe.loc[:, 'space_cool_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe['space_cool_system_age'] + dataframe['add_years'])
+    dataframe.loc[:, 'average_system_age'] = np.where(dataframe['new_construction'] == True, 0, dataframe.loc[:, 'average_system_age'] + dataframe['add_years'])  
+
+    # if system is older than expected expiration, assume it was reinstalled last year and therefore has an age of 2
+    if is_first_year == False:
+        # note: do not apply this in the first year, because if the system is older than the expiration in first model year, it needs to replaced this year
+        dataframe.loc[dataframe['space_heat_system_age'] > dataframe['space_heat_system_expected_lifetime'], 'space_heat_system_age'] = 0 + dataframe['add_years']
+        dataframe.loc[dataframe['space_cool_system_age'] > dataframe['space_cool_system_expected_lifetime'], 'space_cool_system_age'] = 0 + dataframe['add_years']
+        dataframe.loc[dataframe['average_system_age'] > dataframe['average_system_expected_lifetime'], 'average_system_age'] = 0 + dataframe['add_years']
+
 
     # return just the input  columns
     dataframe = dataframe[in_cols]
@@ -609,27 +603,17 @@ def update_system_ages(dataframe, year, is_first_year, sunk_costs):
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def identify_agents_requiring_new_systems(dataframe, sunk_costs):
+def calc_years_to_replacement(dataframe):
 
-    in_cols = list(dataframe.columns)
-
-    if sunk_costs == True:
-        # use syntax below to assign np.nan but keep the dtype compatible with boolean True/False operators
-        dataframe['needs_heat_system'] = pd.Series(np.nan, dtype = 'object')
-        dataframe['needs_cool_system'] = pd.Series(np.nan, dtype = 'object')
-        dataframe['needs_average_system'] = pd.Series(np.nan, dtype = 'object')
-    elif sunk_costs == False:
-        dataframe['needs_heat_system'] = np.where(dataframe['new_construction'] == True, True, dataframe['space_heat_system_age'] > dataframe['space_heat_system_expected_lifetime'])
-        dataframe['needs_cool_system'] = np.where(dataframe['new_construction'] == True, True, dataframe['space_cool_system_age'] > dataframe['space_cool_system_expected_lifetime'])
-        dataframe['needs_average_system'] = np.where(dataframe['new_construction'] == True, True, dataframe['average_system_age'] > dataframe['average_system_expected_lifetime'])   
-    else:
-        raise ValueError('sunk_costs must be one of: True/False')    
-    # add in the microdata release year field for each agent (2003 for com, 2009 for recs)
-
-    return_cols = ['needs_heat_system', 'needs_cool_system', 'needs_average_system']
-    out_cols = in_cols + return_cols
-    dataframe = dataframe[out_cols]
-    
+    # calculate the years remaining until the expected lifetime
+    dataframe['years_to_replacement_heat'] = np.round(dataframe['space_heat_system_expected_lifetime'] - dataframe['space_heat_system_age'], 0).astype('int64')
+    dataframe['years_to_replacement_cool'] = np.round(dataframe['space_cool_system_expected_lifetime'] - dataframe['space_cool_system_age'], 0).astype('int64')
+    dataframe['years_to_replacement_average'] = np.round(dataframe['average_system_expected_lifetime'] - dataframe['average_system_age'], 0).astype('int64')
+    # if years to replacement is negative, set to zero (this will only apply in year 1)
+    dataframe.loc[dataframe['years_to_replacement_heat'] < 0, 'years_to_replacement_heat'] = 0
+    dataframe.loc[dataframe['years_to_replacement_cool'] < 0, 'years_to_replacement_cool'] = 0
+    dataframe.loc[dataframe['years_to_replacement_average'] < 0, 'years_to_replacement_average'] = 0
+        
     return dataframe
 
 
@@ -1073,9 +1057,9 @@ def write_agent_outputs_ghp(con, cur, schema, dataframe):
                 'sector',
                 'tech',
                 'new_construction',
-                'needs_heat_system',
-                'needs_cool_system',
-                'needs_average_system',
+                'years_to_replacement_heat',
+                'years_to_replacement_cool',
+                'years_to_replacement_average',
                 'savings_pct_electricity_consumption',
                 'savings_pct_natural_gas_consumption',
                 'cooling_ton_per_sqft',

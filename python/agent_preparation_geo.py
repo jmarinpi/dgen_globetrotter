@@ -678,7 +678,7 @@ def estimate_system_ages(schema, sector_abbr, initial_or_new, chunks, seed, pool
                     CASE 
                         WHEN '%(initial_or_new)s' = 'initial' THEN
                             CASE
-                                WHEN a.space_heat_age_min IS NULL OR a.space_heat_age_max IS NULL THEN NULL::INTEGER
+                                WHEN a.space_heat_age_min IS NULL OR a.space_heat_age_max IS NULL THEN ROUND(diffusion_shared.r_runif(0, 25, 1, %(seed)s * agent_id), 0)::INTEGER
                                 ELSE ROUND(diffusion_shared.r_runif(a.space_heat_age_min, a.space_heat_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
                             END
                         WHEN '%(initial_or_new)s' = 'new' THEN -1::INTEGER
@@ -687,7 +687,7 @@ def estimate_system_ages(schema, sector_abbr, initial_or_new, chunks, seed, pool
                      CASE 
                         WHEN '%(initial_or_new)s' = 'initial' THEN
                             CASE
-                                WHEN a.space_cool_age_min IS NULL OR a.space_cool_age_max IS NULL THEN NULL::INTEGER
+                                WHEN a.space_cool_age_min IS NULL OR a.space_cool_age_max IS NULL THEN ROUND(diffusion_shared.r_runif(0, 25, 1, %(seed)s * agent_id), 0)::INTEGER
                                 ELSE ROUND(diffusion_shared.r_runif(a.space_cool_age_min, a.space_cool_age_max, 1, %(seed)s * agent_id), 0)::INTEGER
                             END 
                         WHEN '%(initial_or_new)s' = 'new' THEN -1::INTEGER     
@@ -724,11 +724,11 @@ def estimate_system_lifetimes(schema, sector_abbr, initial_or_new, chunks, seed,
             WITH a as
             (
                 SELECT a.agent_id,     
-                        CASE WHEN a.space_heat_equip = 'none' THEN NULL::INTEGER
+                        CASE WHEN a.space_heat_equip = 'none' THEN -1::INTEGER
                         ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(b.mean, b.std, b.dist_type, %(seed)s * a.agent_id), 0)::INTEGER
                         END as space_heat_system_expected_lifetime,
         
-                        CASE WHEN a.space_cool_equip = 'none' THEN NULL::INTEGER
+                        CASE WHEN a.space_cool_equip = 'none' THEN -1::INTEGER
                         ELSE ROUND(diffusion_shared.r_rnorm_rlnorm(c.mean, c.std, c.dist_type, %(seed)s * a.agent_id), 0)::INTEGER
                         END as space_cool_system_expected_lifetime
                 FROM %(schema)s.%(initial_or_new)s_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a

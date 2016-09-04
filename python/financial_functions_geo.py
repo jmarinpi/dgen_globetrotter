@@ -151,10 +151,16 @@ def calculate_cashflows(df, tech, analysis_period = 30):
     # Calculate the annual payment net the downpayment and upfront incentives
     pmt = - (1 - df['down_payment']) * df['net_installed_cost'] * df['crf']    
     annual_loan_pmts = datfunc.fill_jagged_array(pmt, df['loan_term_yrs'], cols = analysis_period)
-
+    # for baseline, push costs out into the future based on the expected remaining system liftime (lpad with zeros, truncate beyond analysis period)
+    if tech == 'baseline':
+        annual_loan_pmts = pad_array(annual_loan_pmts, df['years_to_replacement_average'].tolist())
+        
     # Pay the down payment in year zero and loan payments thereafter. The downpayment is added at
     # the end of the cash flow calculations to make the year zero framing simpler
     down_payment_cost = (-df['net_installed_cost'] * df['down_payment'])[:,np.newaxis] 
+    # for baseline, push costs out into the future based on the expected remaining system liftime (lpad with zeros, truncate beyond analysis period)
+    if tech == 'baseline':
+        down_payment_cost = pad_array(down_payment_cost, df['years_to_replacement_average'].tolist())
     
     # replacement part costs
     replacement_part_costs = np.zeros(shape)
@@ -162,7 +168,10 @@ def calculate_cashflows(df, tech, analysis_period = 30):
     with np.errstate(invalid = 'ignore'):        
         replacement_part_costs_amortized  = df[replacement_part_cost_column] / df[replacement_part_lifetime_column]
     replacement_part_costs[:, 10:] = -replacement_part_costs_amortized[:, np.newaxis]
-    
+    # for baseline, push costs out into the future based on the expected remaining system liftime (lpad with zeros, truncate beyond analysis period)
+    if tech == 'baseline':
+        replacement_part_costs = pad_array(replacement_part_costs, df['years_to_replacement_average'].tolist())
+
     # 2) Costs of fixed & variable O&M. O&M costs are tax deductible for commerical entitites
     om_cost = np.zeros(shape);
     om_cost[:] +=  (-df[fixed_om_cost_column])[:,np.newaxis]
@@ -220,6 +229,9 @@ def calculate_cashflows(df, tech, analysis_period = 30):
     deprec_basis = np.maximum(df['ic'] - 0.5 * (max_depreciation_reduction), 0)[:, np.newaxis] # depreciable basis reduced by half the incentive
     deprec_schedule_arr = np.array(list(df['deprec']))    
     depreciation_revenue[:, :20] = deprec_basis * deprec_schedule_arr * df['tax_rate'][:, np.newaxis] * ((df['sector_abbr'] == 'ind') | (df['sector_abbr'] == 'com') | (df['business_model'] == 'tpo'))[:, np.newaxis]
+    # for baseline, push costs out into the future based on the expected remaining system liftime (lpad with zeros, truncate beyond analysis period)
+    if tech == 'baseline':
+        depreciation_revenue = pad_array(depreciation_revenue, df['years_to_replacement_average'].tolist())
 
     '''
     6) Interest paid on loans is tax-deductible for commercial & industrial users; 
@@ -229,6 +241,8 @@ def calculate_cashflows(df, tech, analysis_period = 30):
     # Calc interest paid on serving the loan
     interest_paid = calc_interest_pmt_schedule(df, analysis_period)
     interest_on_loan_pmts_revenue = interest_paid * df['tax_rate'][:,np.newaxis] * (((df['sector_abbr'] == 'ind') | (df['sector_abbr'] == 'com')) & (df['business_model'] == 'host_owned'))[:, np.newaxis]
+    if tech == 'baseline':
+        interest_on_loan_pmts_revenue = pad_array(interest_on_loan_pmts_revenue, df['years_to_replacement_average'].tolist())
     
     # calculate total revenue
     ho_revenue = carbon_tax_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
@@ -612,4 +626,33 @@ def calc_interest_pmt_schedule(df,yrs):
     return interest_pmt
 
 
-#%%  
+#%%
+def pad_array(a, pads):
+    
+    # determine the initial number of columns in the input array
+    # the same number of columns need to be returned
+    ncol = a.shape[1]
+    
+    # determine the maximum pad value
+    max_pad = np.max(pads)
+    # pad the input array with zeros, out to the maximum number needed
+    ap = np.pad(a, ((0, 0), (max_pad, max_pad)), 'constant')
+    # determine "offsets" = the starting indices for slicing the padded array for each row
+    offsets = max_pad - pads
+    
+    # create an empty mask, same size as the padded array
+    mask = np.zeros(ap.shape)
+    # mark the first value needed for each row with a 1
+    mask[np.arange(0, mask.shape[0]), offsets] = 1
+    # identify the end indices for each row
+    ends = offsets + ncol
+    # mark the values at the end indices with -1
+    mask[np.arange(0,mask.shape[0]), ends] = -1
+    # calculate the cumsum along each row
+    mask = np.cumsum(mask, axis = 1)
+    # convert ap to a masked array using the max
+    masked = np.ma.MaskedArray(ap, mask == 0)
+    # extract out the maskd values and reshape to the original input array shape
+    out = np.ma.compressed(masked).reshape(a.shape)
+    
+    return out

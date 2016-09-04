@@ -598,7 +598,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # update system ages
                     agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, is_first_year, cfg.sunk_costs)).compute()
                     # check which agents require new systems (new construction and those whose systems are too old)
-                    agents = AgentsAlgorithm(agents, mutation.identify_agents_requiring_new_systems, (cfg.sunk_costs, )).compute()                                
+                    agents = AgentsAlgorithm(agents, mutation.calc_years_to_replacement).compute()                                
 
                     #==========================================================================================================
                     # MAP TO CRB GHP SIMULATIONS
