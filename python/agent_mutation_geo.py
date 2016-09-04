@@ -768,6 +768,7 @@ def calc_value_of_itc(df, itc_options, year):
     
     return df
 
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def add_bin_id(dataframe):
@@ -788,7 +789,6 @@ def apply_incentives_cap(dataframe, incentives_cap_df):
     return dataframe
 
 
-
 #%%
 def apply_nan_to_unmodellable_agents(dataframe, lkup_table, join_keys):
     
@@ -798,166 +798,7 @@ def apply_nan_to_unmodellable_agents(dataframe, lkup_table, join_keys):
     dataframe.loc[dataframe['modellable'] == False, new_cols] = np.nan
     
     return dataframe
-
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_state_starting_capacities_ghp(con, schema):
-
-    inputs = locals().copy()    
-    
-    sql = '''SELECT sector_abbr,
-                    state_abbr,
-                    capacity_tons as cumulative_market_share_tons,
-                    'ghp'::text as tech
-             FROM diffusion_geo.starting_capacities_2012_ghp;''' % inputs
-    df = pd.read_sql(sql, con)
-    
-    return df    
-    
-
-    
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def estimate_initial_market_shares(dataframe, state_starting_capacities_df, year):
   
-    # calculate the total capacity of systems for market eligible in each state and sector
-    dataframe['market_eligible_capacity_tons_in_bin'] = dataframe['market_eligible_buildings_in_bin'] * dataframe['ghp_system_size_tons']
-    state_total_market_eligible_capacity = dataframe[['state_abbr', 'sector_abbr', 'tech', 'market_eligible_capacity_tons_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
-    # rename column
-    state_total_market_eligible_capacity.rename(columns = {'market_eligible_capacity_tons_in_bin' : 'market_eligible_capacity_tons_in_state'}, inplace = True)
-    
-    # combine with state starting capacities
-    state_df = pd.merge(state_total_market_eligible_capacity, state_starting_capacities_df, how = 'left', on = ['tech', 'state_abbr', 'sector_abbr'])
-    state_df['cumulative_market_share_pct'] = state_df['cumulative_market_share_tons'] / state_df['market_eligible_capacity_tons_in_state']
-    # add dummy columns for incremental market share
-    state_df['new_incremental_market_share_pct'] = np.nan
-    state_df['new_incremental_capacity_tons'] = np.nan
-    state_df['year'] = year - 2
-    
-    return state_df
-
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def write_cumulative_market_share(con, cur, cumulative_market_share_df, schema):
-    
-    inputs = locals().copy()    
-    
-    inputs['out_table'] = '%(schema)s.output_market_summary_ghp'  % inputs
-
-    # open an in memory stringIO file (like an in memory csv)
-    s = StringIO()
-    # write the data to the stringIO
-    out_cols = ['year',
-                'state_abbr',
-                'sector_abbr',
-                'cumulative_market_share_pct', 
-                'cumulative_market_share_tons', 
-                'new_incremental_market_share_pct', 
-                'new_incremental_capacity_tons']
-    cumulative_market_share_df[out_cols].to_csv(s, index = False, header = False)
-    # seek back to the beginning of the stringIO file
-    s.seek(0)
-    # copy the data from the stringio file to the postgres table
-    cur.copy_expert('COPY %(out_table)s FROM STDOUT WITH CSV' % inputs, s)
-    # commit the additions and close the stringio file (clears memory)
-    con.commit()    
-    s.close()
-
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_market_last_year(con, schema, year):
-    
-    inputs = locals().copy()
-    
-    sql = """SELECT state_abbr, 
-                    sector_abbr, 
-                    cumulative_market_share_pct as existing_state_market_share_pct,
-                    cumulative_market_share_tons as existing_state_market_share_tons
-            FROM %(schema)s.output_market_summary_ghp
-            WHERE year = %(year)s - 2;""" % inputs
-    df = pd.read_sql(sql, con, coerce_float = False)
-    
-    return df
-
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_market_last_year(dataframe, market_last_year_df):
-    
-    dataframe = pd.merge(dataframe, market_last_year_df, how = 'left', on = ['state_abbr', 'sector_abbr'])
-    
-    return dataframe
-
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_bass_ratio(dataframe, market_last_year_df):
-
-    # record input columns
-    in_cols = list(dataframe.columns)
-
-    # calculate bass ratio for each state and sector as: bass ratio = existing market share in tons / max market share in tons
-
-    # calculate the total capacity that is available based on the max market share for each bin
-    dataframe['max_market_share_tons'] = dataframe['max_market_share'] * dataframe['ghp_system_size_tons'] * dataframe['market_eligible_buildings_in_bin']
-    # sum to state level
-    state_max_market_share_tons = dataframe[['state_abbr', 'sector_abbr', 'max_market_share_tons']].groupby(['state_abbr', 'sector_abbr']).sum().reset_index()
-    # merge to the market last year
-    state_df = pd.merge(state_max_market_share_tons, market_last_year_df, how = 'left', on = ['state_abbr', 'sector_abbr'])
-    # calculate the ratio of market share to max market share tons 
-    state_df['bass_ratio'] = np.where(state_df['existing_state_market_share_tons'] > state_df['max_market_share_tons'], 0., state_df['existing_state_market_share_tons'] / state_df['max_market_share_tons'])
-
-    # merge to the agents dataframe
-    dataframe = pd.merge(dataframe, state_df, how = 'left', on = ['state_abbr', 'sector_abbr'])    
-    
-    out_cols = ['bass_ratio']
-    return_cols = in_cols + out_cols
-    dataframe = dataframe[return_cols]
-    
-    return dataframe
-
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def append_existing_state_market_share_pct(dataframe, market_last_year_df):
-
-    # record input columns
-    in_cols = list(dataframe.columns)
-
-    dataframe = pd.merge(dataframe, market_last_year_df, how = 'left', on = ['state_abbr', 'sector_abbr'])
-    
-    out_cols = ['existing_state_market_share_pct']
-    return_cols = in_cols + out_cols
-    dataframe = dataframe[return_cols]
-    
-    return dataframe
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def update_market_share_last_year(dataframe, is_first_year):
-
-    if is_first_year == True:
-        dataframe.loc[:, 'market_share_last_year'] = dataframe['existing_state_market_share_pct']
-    elif is_first_year == False:
-        pass
-    else:
-        raise ValueError('is_first_year must be one of: True/False')        
-    
-    return dataframe
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_existing_market_share_pct(dataframe):
-
-    # this is juat an alias/duplicate of market_share_last_year
-    # we create it for compatibility with some of the older diffuion functions
-    
-    dataframe['existing_market_share_pct'] = dataframe['market_share_last_year']
-    
-    return dataframe
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -970,123 +811,156 @@ def apply_bass_params(dataframe, bass_params_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_diffusion_result_metrics(dataframe):
+def get_state_starting_capacities_ghp(con, schema):
+
+    inputs = locals().copy()    
     
-    # ensure no diffusion for non-bass deployable agents
-    dataframe.loc[:, 'diffusion_market_share'] = dataframe['diffusion_market_share'] * dataframe['bass_deployable'] 
-    # market sahre is equal to the diffusion_market_share (which has already been capped to ensure it isn't lower than the existing market share pct)
-    dataframe['market_share'] = np.maximum(dataframe['diffusion_market_share'], dataframe['market_share_last_year'])
-    # calculate the new market share
-    dataframe['new_market_share'] = dataframe['market_share'] - dataframe['market_share_last_year']
-    # cap the new_market_share where the market share exceeds the max market share
-    dataframe.loc[:, 'new_market_share'] = np.where(dataframe['market_share'] > dataframe['max_market_share'], 0, dataframe['new_market_share'])
-
-    # then add these values to values from last year to get cumulative values:
-    dataframe['number_of_adopters'] = dataframe['market_share'] * dataframe['bass_deployable_buildings_in_bin']
-    dataframe['installed_capacity'] = dataframe['number_of_adopters'] * dataframe['ghp_system_size_tons'] # All capacity in tons in the model
-    dataframe['market_value'] = dataframe['number_of_adopters'] * dataframe['ghp_installed_costs_dlrs']
-
-    # calculate new adopters, capacity and market value
-    dataframe['new_adopters'] = dataframe['new_market_share'] * dataframe['bass_deployable_buildings_in_bin']
-    dataframe['new_capacity'] = dataframe['new_adopters'] * dataframe['ghp_system_size_tons']
-    dataframe['new_market_value'] = dataframe['new_adopters'] * dataframe['ghp_installed_costs_dlrs']
-
+    sql = '''SELECT sector_abbr,
+                    state_abbr,
+                    capacity_tons,
+                    'ghp'::text as tech
+             FROM diffusion_geo.starting_capacities_2012_ghp;''' % inputs
+    df = pd.read_sql(sql, con)
     
-    return dataframe
-
+    return df  
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def summarize_state_deployment(dataframe, year):
-    
-    # calculate the total eligible capacity in bin
-    dataframe['market_eligible_capacity_in_bin'] = dataframe['ghp_system_size_tons'] * dataframe['market_eligible_buildings_in_bin']
-    state_df = dataframe[['state_abbr', 'sector_abbr', 'new_capacity', 'installed_capacity', 'market_eligible_capacity_in_bin']].groupby(['state_abbr', 'sector_abbr']).sum().reset_index()
+def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
 
-    # rename columns
-    rename_map = {'new_capacity' : 'new_incremental_capacity_tons',
-                   'installed_capacity' : 'cumulative_market_share_tons',
-                   'market_eligible_capacity_in_bin' : 'market_eligible_capacity_in_state'}
-    state_df.rename(columns = rename_map, inplace = True)
+    # record input columns
+    in_cols = list(dataframe.columns)
+            
+    # find the total market eligible ghp capacity in each state (by technology and sector)
+    dataframe['market_eligible_capacity_in_bin'] = dataframe['market_eligible_buildings_in_bin'] * dataframe['ghp_system_size_tons']
+    state_total_market_eligible_capacity = dataframe[['state_abbr', 'sector_abbr', 'tech', 'market_eligible_capacity_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
+    state_total_agents = dataframe[['state_abbr', 'sector_abbr', 'tech', 'market_eligible_capacity_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).count().reset_index()
+    # rename the final columns
+    state_total_market_eligible_capacity.columns = state_total_market_eligible_capacity.columns.str.replace('market_eligible_capacity_in_bin', 'market_eligible_capacity_in_state')
+    state_total_agents.columns = state_total_agents.columns.str.replace('market_eligible_capacity_in_bin', 'agent_count_in_state')
+    # merge together
+    state_denominators = pd.merge(state_total_market_eligible_capacity, state_total_agents, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
     
-    state_df['new_incremental_market_share_pct'] = state_df['new_incremental_capacity_tons'] / state_df['market_eligible_capacity_in_state']
-    state_df['cumulative_market_share_pct'] = state_df['cumulative_market_share_tons'] / state_df['market_eligible_capacity_in_state']
+    # merge back to the main dataframe
+    dataframe = pd.merge(dataframe, state_denominators, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
     
-    state_df['year'] = year
-    
-    return state_df
+    # merge in the state starting capacities
+    dataframe = pd.merge(dataframe, state_starting_capacities_df, how = 'left', on = ['tech', 'state_abbr', 'sector_abbr'])
 
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def summarize_results_for_next_year(dataframe, sunk_costs):
-    
-    dataframe['market_value_last_year'] = dataframe['market_value']
-    dataframe['market_share_last_year'] = dataframe['market_share']
-    dataframe['installed_capacity_last_year'] = dataframe['installed_capacity']
-    dataframe['number_of_adopters_last_year'] = dataframe['number_of_adopters']
-    
-    # if sunk_costs == True, the system ages don't really matter, so set to np.nan
-    if sunk_costs == True:
-        dataframe['space_heat_system_age_last_year'] = np.nan
-        dataframe['space_cool_system_age_last_year'] = np.nan
-        dataframe['average_system_age_last_year'] = np.nan
-    elif sunk_costs == False:
-        dataframe['space_heat_system_age_last_year'] = np.where(dataframe['bass_deployable'] == True, 0., dataframe['space_heat_system_age'])
-        dataframe['space_cool_system_age_last_year'] = np.where(dataframe['bass_deployable'] == True, 0., dataframe['space_cool_system_age'])
-        dataframe['average_system_age_last_year'] = np.where(dataframe['bass_deployable'] == True, 0., dataframe['average_system_age'])
-    else:
-        raise ValueError('sunk_costs must be one of: True/False')
+    # determine the portion of initial load and systems that should be allocated to each agent
+    # (when there are no developable agnets in the state, simply apportion evenly to all agents)
+    dataframe['portion_of_state'] = np.where(dataframe['market_eligible_capacity_in_state'] > 0, 
+                                             dataframe['market_eligible_capacity_in_bin'] / dataframe['market_eligible_capacity_in_state'], 
+                                             1./dataframe['agent_count_in_state'])
+    # apply the agent's portion to the total to calculate starting capacity and systems                                         
+    dataframe['installed_capacity_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['capacity_tons'], 6)
+    dataframe['number_of_adopters_last_year'] = np.round(dataframe['installed_capacity_last_year'] / dataframe['ghp_system_size_tons'], 6)
+    dataframe['market_share_last_year'] = np.where(dataframe['market_eligible_capacity_in_bin'] == 0, 
+                                                 0, 
+                                                 np.round(dataframe['installed_capacity_last_year'] / dataframe['market_eligible_capacity_in_bin'], 6))
+    dataframe['market_value_last_year'] = dataframe['ghp_installed_costs_dlrs'] * dataframe['number_of_adopters_last_year']
 
+    # reproduce these columns as "initial" columns too
+    dataframe['initial_number_of_adopters'] = dataframe['number_of_adopters_last_year']
+    dataframe['initial_capacity_tons'] = dataframe['installed_capacity_last_year']
+    dataframe['initial_market_share'] = dataframe['market_share_last_year']
+    dataframe['initial_market_value'] = dataframe['market_value_last_year']
     
-    out_cols = ['agent_id',
-                'market_share_last_year',
-                'market_value_last_year',
-                'installed_capacity_last_year',
-                'number_of_adopters_last_year',
-                'space_heat_system_age_last_year',
-                'space_cool_system_age_last_year',
-                'average_system_age_last_year'
-    ]
+    # isolate the return columns
+    return_cols = ['initial_number_of_adopters', 
+                   'initial_capacity_tons', 
+                   'initial_market_share', 
+                   'initial_market_value', 
+                   'number_of_adopters_last_year', 
+                   'installed_capacity_last_year', 
+                   'market_share_last_year', 
+                   'market_value_last_year']
+    out_cols = in_cols + return_cols
     dataframe = dataframe[out_cols]
     
     return dataframe
 
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def append_previous_year_results(dataframe, agents_last_year_df):
+def get_market_last_year(con, schema):
     
-    in_cols = dataframe.columns.tolist()
+    inputs = locals().copy()
     
-    new_cols = { 'market_share_last_year' : 0.,
-                 'market_value_last_year' : 0.,
-                'installed_capacity_last_year' : 0.,
-                'number_of_adopters_last_year' : 0.
-                }    
+    sql = """SELECT agent_id,
+                    tech,
+                    market_share_last_year,
+                    max_market_share_last_year,
+                    number_of_adopters_last_year,
+                    installed_capacity_last_year,
+                    market_value_last_year,
+                    initial_number_of_adopters,
+                    initial_capacity_tons,
+                    initial_market_share,
+                    initial_market_value
+            FROM %(schema)s.output_market_last_year_ghp;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
     
-    if agents_last_year_df is not None:
-        dataframe = pd.merge(dataframe, agents_last_year_df, how = 'left', on = 'agent_id')
-        # update the system ages 
-        dataframe.loc[:, 'space_heat_system_age'] = dataframe['space_heat_system_age_last_year']
-        dataframe.loc[:, 'space_cool_system_age'] = dataframe['space_cool_system_age_last_year']
-        dataframe.loc[:, 'average_system_age'] = dataframe['average_system_age_last_year']  
-        ## initialize values for new contruction to zero
-        for col, val in new_cols.iteritems():
-            dataframe.loc[dataframe['new_construction'] == True, col] = val
-    else:
-        # initialize values for all rows to zero
-        for col, val in new_cols.iteritems():
-            dataframe[col] = val
-            
+    return df
 
-    out_cols = ['market_share_last_year',
-                'market_value_last_year',
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_market_last_year(dataframe, market_last_year_df):
+    
+    dataframe = pd.merge(dataframe, market_last_year_df, how = 'left', on = ['agent_id', 'tech'])
+    # fill in values with zero for new construction
+    new_cols = ['market_share_last_year',
+                'max_market_share_last_year',
+                'number_of_adopters_last_year',
                 'installed_capacity_last_year',
-                'number_of_adopters_last_year']
-    return_cols = in_cols + out_cols
-    dataframe = dataframe[return_cols]
+                'market_value_last_year',
+                'initial_number_of_adopters',
+                'initial_capacity_tons',
+                'initial_market_share',
+                'initial_market_value']
+    dataframe[dataframe['new_construction'] == True, new_cols] = 0.
     
     return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def write_last_year(con, cur, market_last_year, schema):
     
+    inputs = locals().copy()    
+    
+    inputs['out_table'] = '%(schema)s.output_market_last_year_ghp'  % inputs
+    
+    sql = """DELETE FROM %(out_table)s;"""  % inputs
+    cur.execute(sql)
+    con.commit()
+
+    # open an in memory stringIO file (like an in memory csv)
+    s = StringIO()
+    # write the data to the stringIO
+    out_cols = ['agent_id',
+                'tech',
+                'market_share_last_year',
+                'max_market_share_last_year',
+                'number_of_adopters_last_year',
+                'installed_capacity_last_year',
+                'market_value_last_year',
+                'initial_number_of_adopters',
+                'initial_capacity_tons',
+                'initial_market_share',
+                'initial_market_value'
+                ]
+    market_last_year[out_cols].to_csv(s, index = False, header = False)
+    # seek back to the beginning of the stringIO file
+    s.seek(0)
+    # copy the data from the stringio file to the postgres table
+    cur.copy_expert('COPY %(out_table)s FROM STDOUT WITH CSV' % inputs, s)
+    # commit the additions and close the stringio file (clears memory)
+    con.commit()    
+    s.close()
+
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def create_new_id_column(dataframe, columns, id_col_name):
@@ -1119,3 +993,214 @@ def sanitize_decision_col(dataframe, decision_col, new_col):
     dataframe[new_col] = np.where((dataframe[decision_col] < 0) | (dataframe[decision_col].isnull()), 0, dataframe[decision_col])
     
     return dataframe   
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def write_agent_outputs_ghp(con, cur, schema, dataframe):
+    
+    inputs = locals().copy()    
+    
+    # set fields to write
+    fields = [  'agent_id',
+                'year',
+                'pgid',
+                'county_id',
+                'state_abbr',
+                'state_fips',
+                'county_fips',
+                'tract_fips',
+                'tract_id_alias',
+                'old_county_id',
+                'census_division_abbr',
+                'census_region',
+                'reportable_domain',
+                'pca_reg',
+                'reeds_reg',
+                'acres_per_bldg',
+                'hdf_load_index',
+                'iecc_temperature_zone',
+                'iecc_climate_zone',
+                'hazus_bldg_type',
+                'buildings_in_bin',
+                'site_space_heat_in_bin_kwh',
+                'site_space_cool_in_bin_kwh',
+                'site_water_heat_in_bin_kwh',
+                'site_total_heat_in_bin_kwh',
+                'site_space_heat_per_building_in_bin_kwh',
+                'site_space_cool_per_building_in_bin_kwh',
+                'site_water_heat_per_building_in_bin_kwh',
+                'site_total_heat_per_building_in_bin_kwh',
+                'demand_space_heat_in_bin_kwh',
+                'demand_space_cool_in_bin_kwh',
+                'demand_water_heat_in_bin_kwh',
+                'demand_total_heat_in_bin_kwh',
+                'demand_space_heat_per_building_in_bin_kwh',
+                'demand_space_cool_per_building_in_bin_kwh',
+                'demand_water_heat_per_building_in_bin_kwh',
+                'demand_total_heat_per_building_in_bin_kwh',
+                'space_heat_system_age',
+                'space_cool_system_age',
+                'average_system_age',
+                'space_heat_system_expected_lifetime',
+                'space_cool_system_expected_lifetime',
+                'average_system_expected_lifetime',
+                'eia_bldg_id',
+                'eia_bldg_weight',
+                'climate_zone',
+                'pba',
+                'pbaplus',
+                'typehuq',
+                'owner_occupied',
+                'year_built',
+                'single_family_res',
+                'num_tenants',
+                'num_floors',
+                'space_heat_equip',
+                'space_heat_fuel',
+                'water_heat_equip',
+                'water_heat_fuel',
+                'space_cool_equip',
+                'space_cool_fuel',
+                'space_heat_efficiency',
+                'space_cool_efficiency',
+                'water_heat_efficiency',
+                'totsqft',
+                'totsqft_heat',
+                'totsqft_cool',
+                'crb_model',
+                'gtc_btu_per_hftf',
+                'sector_abbr',
+                'sector',
+                'tech',
+                'new_construction',
+                'needs_heat_system',
+                'needs_cool_system',
+                'needs_average_system',
+                'savings_pct_electricity_consumption',
+                'savings_pct_natural_gas_consumption',
+                'cooling_ton_per_sqft',
+                'ghx_length_ft_per_cooling_ton',
+                'baseline_system_type',
+                'modellable',
+                'ghp_system_size_tons',
+                'system_size_kw',
+                'ghx_length_ft',
+                'sys_config',
+                'area_per_well_sqft_vertical',
+                'max_well_depth_ft',
+                'area_per_pipe_length_sqft_per_foot_horizontal',
+                'n_installable_wells_vertical',
+                'length_installable_ft',
+                'viable_sys_config',
+                'market_eligible',
+                'market_eligible_buildings_in_bin',
+                'bass_deployable',
+                'bass_deployable_buildings_in_bin',
+                'heat_exchanger_cost_dollars_per_ft',
+                'heat_pump_cost_dollars_per_cooling_ton',
+                'ghp_new_rest_of_system_costs_dollars_per_cooling_ton',
+                'ghp_fixed_om_dollars_per_sf_per_year',
+                'ghp_retrofit_rest_of_system_multiplier',
+                'ghx_cost_dlrs',
+                'ghp_heat_pump_cost_dlrs',
+                'ghp_rest_of_system_cost_dlrs',
+                'ghp_installed_costs_dlrs',
+                'ghp_fixed_om_dlrs_per_year',
+                'hvac_equipment_cost_dollars_per_cooling_ton',
+                'baseline_new_rest_of_system_costs_dollars_per_cooling_ton',
+                'baseline_retrofit_rest_of_system_multiplier',
+                'baseline_fixed_om_dollars_per_sf_per_year',
+                'baseline_equipment_costs_dlrs',
+                'baseline_rest_of_system_cost_dlrs',
+                'baseline_installed_costs_dlrs',
+                'baseline_fixed_om_dlrs_per_year',
+                'ghp_heat_pump_lifetime_yrs',
+                'ghp_efficiency_improvement_factor',
+                'ghp_ann_system_degradation',
+                'baseline_efficiency_improvement_factor',
+                'baseline_system_lifetime_yrs',
+                'baseline_ann_system_degradation',
+                'baseline_site_natgas_per_building_kwh',
+                'baseline_site_elec_per_building_kwh',
+                'ghp_site_natgas_per_building_kwh',
+                'ghp_site_elec_per_building_kwh',
+                'leasing_allowed',
+                'business_model',
+                'metric',
+                'loan_term_yrs',
+                'loan_rate',
+                'down_payment',
+                'discount_rate',
+                'tax_rate',
+                'length_of_irr_analysis_yrs',
+                'value_of_pbi_fit',
+                'value_of_tax_credit_or_deduction',
+                'pbi_fit_length',
+                'value_of_increment',
+                'value_of_rebate',
+                'ptc_length',
+                'value_of_ptc',
+                'value_of_itc',
+                'max_incentive_fraction',
+                'ghp_total_value_of_incentives',
+                'ghp_avg_annual_energy_costs_dlrs',
+                'baseline_avg_annual_energy_costs_dlrs',
+                'avg_annual_net_cashflow_tpo',
+                'monthly_bill_savings',
+                'percent_monthly_bill_savings',
+                'payback_period',
+                'ttd',
+                'metric_value_precise',
+                'npv4',
+                'npv_agent',
+                'npv4_per_ton',
+                'npv_agent_per_ton',
+                'inflation_rate',
+                'lcoe',
+                'metric_value_bounded',
+                'metric_value_as_factor',
+                'metric_value',
+                'max_market_share',
+                'initial_number_of_adopters',
+                'initial_capacity_tons',
+                'initial_market_share',
+                'initial_market_value',
+                'number_of_adopters_last_year',
+                'installed_capacity_last_year',
+                'market_share_last_year',
+                'market_value_last_year',
+                'p',
+                'q',
+                'teq_yr1',
+                'mms_fix_zeros',
+                'bass_ratio',
+                'teq',
+                'teq2',
+                'f',
+                'new_adopt_fraction',
+                'bass_market_share',
+                'diffusion_market_share',
+                'market_share',
+                'new_market_share',
+                'new_adopters',
+                'new_capacity',
+                'new_market_value',
+                'number_of_adopters',
+                'installed_capacity',
+                'market_value'
+            ]    
+
+    # convert formatting of fields list
+    inputs['fields_str'] = utilfunc.pylist_2_pglist(fields).replace("'","")       
+    # open an in memory stringIO file (like an in memory csv)
+    s = StringIO()
+    # write the data to the stringIO
+    dataframe.loc[:, fields].to_csv(s, index = False, header = False)
+    # seek back to the beginning of the stringIO file
+    s.seek(0)
+    # copy the data from the stringio file to the postgres table
+    sql = 'COPY %(schema)s.agent_outputs_ghp (%(fields_str)s) FROM STDOUT WITH CSV' % inputs
+    cur.copy_expert(sql, s)
+    # commit the additions and close the stringio file (clears memory)
+    con.commit()    
+    s.close()

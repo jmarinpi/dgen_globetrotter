@@ -591,9 +591,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         
                     # drop du agents
                     agents = agents.filter_tech('ghp')                                        
-
-                    # mutate agents to account for results from previous year
-                    agents = AgentsAlgorithm(agents, mutation.append_previous_year_results, (agents_last_year_df, )).compute()
                     
                     #==============================================================================
                     # HVAC SYSTEM AGES
@@ -772,66 +769,55 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # CHOOSE FROM SYSTEM CONFIGURATIONS AND BUSINESS MODELS
                     #==========================================================================================================     
                     #TODO: remove this line and uncomment the rest of the block
-                    agents = Agents(agents.dataframe[(agents.dataframe['sys_config'] == 'vertical') & (agents.dataframe['business_model'] == 'host_owned')])
-#                    # clean up the decision var for tech/financing choice
-#                    agents = AgentsAlgorithm(agents, mutation.sanitize_decision_col, ('max_market_share', 'mms_sanitized')).compute()
-#                    # a new temporary id for agent + business model combos
-#                    agents = AgentsAlgorithm(agents, mutation.create_new_id_column, (['agent_id', 'business_model'], 'temp_id')).compute()
-#                    # mark options to exclude from sys_config and business_model choices
-#                    agents = AgentsAlgorithm(agents, mutation.mark_excluded_options).compute()
-#                    # select from sys_config choices
-#                    agents = Agents(tech_choice_geo.probabilistic_choice(agents.dataframe, prng, uid_col = 'temp_id', options_col = 'sys_config', excluded_options_col = 'excluded_option', decision_col = 'mms_sanitized', alpha = 2, always_return_one = True))
-#                    # select from business_model choices
-#                    agents = Agents(tech_choice_geo.probabilistic_choice(agents.dataframe, prng, uid_col = 'agent_id', options_col = 'business_model', excluded_options_col = 'excluded_option', decision_col = 'mms_sanitized', alpha = 2, always_return_one = True))    
-#    
+#                    agents = Agents(agents.dataframe[(agents.dataframe['sys_config'] == 'vertical') & (agents.dataframe['business_model'] == 'host_owned')])
+                    # clean up the decision var for tech/financing choice
+                    agents = AgentsAlgorithm(agents, mutation.sanitize_decision_col, ('max_market_share', 'mms_sanitized')).compute()
+                    # a new temporary id for agent + business model combos
+                    agents = AgentsAlgorithm(agents, mutation.create_new_id_column, (['agent_id', 'business_model'], 'temp_id')).compute()
+                    # mark options to exclude from sys_config and business_model choices
+                    agents = AgentsAlgorithm(agents, mutation.mark_excluded_options).compute()
+                    # select from sys_config choices
+                    agents = Agents(tech_choice_geo.probabilistic_choice(agents.dataframe, prng, uid_col = 'temp_id', options_col = 'sys_config', excluded_options_col = 'excluded_option', decision_col = 'mms_sanitized', alpha = 2, always_return_one = True))
+                    # select from business_model choices
+                    agents = Agents(tech_choice_geo.probabilistic_choice(agents.dataframe, prng, uid_col = 'agent_id', options_col = 'business_model', excluded_options_col = 'excluded_option', decision_col = 'mms_sanitized', alpha = 2, always_return_one = True))    
+
                     #==========================================================================================================
                     # MARKET LAST YEAR
-                    #==========================================================================================================                    
+                    #==========================================================================================================                     
                     if is_first_year == True:
-                        # calculate existing market shares by state and sector
-                        state_existing_market_share_df = mutation.estimate_initial_market_shares(agents.dataframe, state_starting_capacities_df, year)
-                        # write to postgres
-                        mutation.write_cumulative_market_share(con, cur, state_existing_market_share_df, schema)
+                        # calculate initial market shares
+                        agents = AgentsAlgorithm(agents, mutation.estimate_initial_market_shares, (state_starting_capacities_df, )).compute()
+                    else:
+                        # get last year's results
+                        market_last_year_df = mutation.get_market_last_year(con, schema)
+                        # apply last year's results to the agents
+                        agents = AgentsAlgorithm(agents, mutation.apply_market_last_year, (market_last_year_df, )).compute()                
                     
-                    # get previous year's results
-                    market_last_year_df = mutation.get_market_last_year(con, schema, year)
-                    
+    
                     #==========================================================================================================
                     # BASS DIFFUSION
-                    #==========================================================================================================   
-                    # calculate "bass ratio" = existing market share in tons / max market share in tons
-                    agents = AgentsAlgorithm(agents, mutation.calculate_bass_ratio, (market_last_year_df, )).compute(1)
-                    # append state market share percetn
-                    agents = AgentsAlgorithm(agents, mutation.append_existing_state_market_share_pct, (market_last_year_df, )).compute()
-                    # update the market_share_last_year value (only applies if is_first_year == True)
-                    agents = AgentsAlgorithm(agents, mutation.update_market_share_last_year, (is_first_year, )).compute()      
-                    # calculate existing_market_share_pct (= maarket_share_last_year)
-                    agents = AgentsAlgorithm(agents, mutation.calculate_existing_market_share_pct).compute()    
-                    # apply bass p/q/teq params
-                    agents = AgentsAlgorithm(agents, mutation.apply_bass_params, (bass_params, )).compute()
-                    # TODO: rewrite this section to use agents class
-                    # calculate diffusion based on economics and bass diffusion                   
-                    agents = Agents(diffunc.calc_diffusion_market_share(agents.dataframe, is_first_year))
-                    # calculate various metrics showing diffusion results
-                    agents = AgentsAlgorithm(agents, mutation.calculate_diffusion_result_metrics).compute()
-                    # summarize results for next year (store as "last year" since it wil be referenced during the next iteration)
-                    agents_last_year_df = mutation.summarize_results_for_next_year(agents.dataframe, cfg.sunk_costs)
-                                        
-                    # summarize results to states
-                    state_market_deployment_df = mutation.summarize_state_deployment(agents.dataframe, year)
-                    # write to postgres
-                    mutation.write_cumulative_market_share(con, cur, state_market_deployment_df, schema)
-                    
-#                    if year == 2016:
-#                        agents.dataframe.to_csv('/Users/mgleason/Desktop/agents_2016_2.csv', index = False)
-#                        crash
                     #==========================================================================================================
-                    # WRITE AGENT OUTPUTS
+                    # apply bass p/q/teq params
+                    agents = AgentsAlgorithm(agents, mutation.apply_bass_params, (bass_params, )).compute()    
+                    # calculate the equivalent time that has passed on the newly scaled bass curve
+                    agents = AgentsAlgorithm(agents, diffunc.calc_equiv_time).compute()
+                    # set the number of years to advance along bass curve (= teq2)
+                    agents = AgentsAlgorithm(agents, diffunc.set_number_of_years_to_advance, (is_first_year, )).compute()
+                    # calculate new cumulative "adoption fraction" according to bass
+                    agents = AgentsAlgorithm(agents, diffunc.bass_diffusion).compute()
+                    # apply adoption fraction to MMS to calculate actual diffusion
+                    agents = AgentsAlgorithm(agents, diffunc.calculate_bass_and_diffusion_market_share).compute()
+                    # calculate diffusion results metrics
+                    agents = AgentsAlgorithm(agents, diffunc.calculate_diffusion_result_metrics).compute()
+                    # extract results for "market last year"
+                    market_last_year_df = diffunc.extract_market_last_year(agents.dataframe)
+    
+                    #==========================================================================================================
+                    # WRITE OUTPUTS
                     #==========================================================================================================   
-                    # TODO: rewrite this section to use agents class
                     # write the incremental results to the database
-                    # TODO: write this section
-                    #datfunc.write_outputs(con, cur, df, sectors, schema) 
+                    mutation.write_agent_outputs_ghp(con, cur, schema, agents.dataframe) 
+                    mutation.write_last_year(con, cur, market_last_year_df, schema)
 
                     
                 # TODO: get visualizations working and remove this short-circuit
