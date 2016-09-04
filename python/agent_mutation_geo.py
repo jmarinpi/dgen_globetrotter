@@ -903,7 +903,7 @@ def apply_market_last_year(dataframe, market_last_year_df):
                 'initial_capacity_tons',
                 'initial_market_share',
                 'initial_market_value']
-    dataframe[dataframe['new_construction'] == True, new_cols] = 0.
+    dataframe.loc[dataframe['new_construction'] == True, new_cols] = 0.
     
     return dataframe
 
