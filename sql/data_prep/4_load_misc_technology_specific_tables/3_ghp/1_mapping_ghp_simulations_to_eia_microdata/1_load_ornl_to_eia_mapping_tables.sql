@@ -3,7 +3,7 @@
 DROP TABLE IF EXISTS diffusion_geo.ornl_simulations_lkup;
 CREATE TABLE diffusion_geo.ornl_simulations_lkup
 (
-	simulation_id integer primary key,
+	baseline_type integer primary key,
 	building_type text,
 	baseline_cooling text,
 	baseline_heating text,

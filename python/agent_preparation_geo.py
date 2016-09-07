@@ -481,6 +481,7 @@ def sample_building_microdata(schema, sector_abbr, initial_or_new, chunks, seed,
                 b.pba, 
                 b.pbaplus, 
                 b.typehuq, 
+                b.pba_or_typehuq,
                 b.roof_material, 
                 b.owner_occupied, 
                 b.kwh, 
@@ -779,7 +780,7 @@ def sample_ground_thermal_conductivity(schema, sector_abbr, initial_or_new, chun
             LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
                      ON a.pgid = b.pgid
             LEFT JOIN diffusion_geo.thermal_conductivity_summary_by_climate_zone_ornl c
-                ON b.iecc_climate_zone = c.climate_zone;""" % inputs
+                ON b.iecc_climate_zone = c.iecc_climate_zone;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)
     # TODO: should be using diffusion_geo.thermal_conductivity_summary_by_climate_zone, but not sure what ORNL used so have to use theirs for now
     
@@ -866,6 +867,7 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                     	h.pba,
                     	h.pbaplus,
                     	h.typehuq,
+                        h.pba_or_typehuq,
                     	h.owner_occupied,
                     	h.year_built,
                     	h.single_family_res,
@@ -964,6 +966,7 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
                     	h.pba,
                     	h.pbaplus,
                     	h.typehuq,
+                        h.pba_or_typehuq,
                     	h.owner_occupied,
                     	h.year_built,
                     	h.single_family_res,

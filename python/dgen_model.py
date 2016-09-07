@@ -602,20 +602,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     #==========================================================================================================
                     # MAP TO CRB GHP SIMULATIONS
-                    #==========================================================================================================                          
-                    # get CRB GHP simulations
-                    crb_ghp_df = mutation.get_crb_ghp_simulations(con, schema)
-                    # apply CRB GHP simulations
-                    agents = AgentsAlgorithm(agents, mutation.apply_crb_ghp_simulations, (crb_ghp_df, )).compute()
-
-                    #==========================================================================================================
-                    # BASELINE SYSTEM TYPES
-                    #==========================================================================================================   
-                    # these are a function of the CRB GHP Simulations mapped in the previous step                       
-                    # get CRB GHP simulations
-                    baseline_systems_df = mutation.get_baseline_system_types(con, schema)
-                    # apply CRB GHP simulations
-                    agents = AgentsAlgorithm(agents, mutation.apply_baseline_system_types, (baseline_systems_df, )).compute()
+                    #========================================================================================================== 
+                    # get mapping lkup table
+                    baseline_lkup_df = mutation.get_ghp_baseline_type_lkup(con, schema)
+                    # map agents to baseline system types
+                    agents = AgentsAlgorithm(agents, mutation.map_agents_to_ghp_baseline_types, (baseline_lkup_df, )).compute()
+                    # get baseline GHP simulations
+                    baseline_ghp_sims_df = mutation.get_ghp_baseline_simulations(con, schema)
+                    # join baseline GHP simulations
+                    agents = AgentsAlgorithm(agents, mutation.join_crb_ghp_simulations, (baseline_ghp_sims_df, )).compute()
                     
                     #==========================================================================================================
                     # MARK MODELLABLE AND UN-MODELLABLE AGENTS

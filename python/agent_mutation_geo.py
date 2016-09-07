@@ -136,7 +136,7 @@ def get_technology_performance_improvements_and_degradation_baseline(con, schema
     
     inputs = locals().copy()
     sql = """SELECT sector_abbr, 
-                    baseline_system_type, 
+                    baseline_system_type as baseline_type, 
                     efficiency_improvement_factor as baseline_efficiency_improvement_factor, 
                     system_lifetime_yrs as baseline_system_lifetime_yrs, 
                     annual_degradation_pct as baseline_ann_system_degradation
@@ -146,7 +146,7 @@ def get_technology_performance_improvements_and_degradation_baseline(con, schema
              UNION ALL
 
              SELECT unnest(ARRAY['res', 'com']) as sector_abbr,
-                    -1::INTEGER as baseline_system_type,
+                    -1::INTEGER as baseline_type,
                     NULL::NUMERIC as baseline_efficiency_improvement_factor,
                     NULL::NUMERIC as baseline_system_lifetime_yrs, 
                     NULL::NUMERIC as baseline_ann_system_degradation;""" % inputs
@@ -161,17 +161,38 @@ def get_technology_performance_improvements_and_degradation_baseline(con, schema
 def apply_technology_performance_improvements_and_degradation_baseline(dataframe, tech_performance_df):
     
     # join on sector and baseline type
-    dataframe = pd.merge(dataframe, tech_performance_df, how = 'left', on = ['sector_abbr', 'baseline_system_type'])
+    dataframe = pd.merge(dataframe, tech_performance_df, how = 'left', on = ['sector_abbr', 'baseline_type'])
     
     return dataframe
 
 
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_crb_ghp_simulations(con, schema):
+def get_ghp_baseline_type_lkup(con, schema):
     
     inputs = locals().copy()
-    sql = """SELECT crb_model, 
+    sql = """SELECT baseline_type, 
+                    sector_abbr,   
+                    pba_or_typehuq, 
+                    pba_or_typehuq_desc, 
+                    space_heat_equip, 
+                    space_heat_fuel, 
+                    space_cool_equip, 
+                    space_cool_fuel
+              FROM diffusion_geo.eia_buildings_to_ornl_baseline_lkup
+              WHERE provided = TRUE;"""
+    
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_ghp_baseline_simulations(con, schema):
+    
+    inputs = locals().copy()
+    sql = """SELECT baseline_type,
                 	 iecc_climate_zone, 
                 	 gtc_btu_per_hftf, 
                 	 savings_pct_electricity_consumption, 
@@ -181,67 +202,49 @@ def get_crb_ghp_simulations(con, schema):
                    crb_totsqft,
                    cooling_ton_per_sqft, 
                    ghx_length_ft_per_cooling_ton
-          FROM diffusion_geo.ghp_simulations_dummy;"""
+          FROM diffusion_geo.ghp_simulations_com;"""
     
     df = pd.read_sql(sql, con, coerce_float = False)
 
     return df
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def map_agents_to_ghp_baseline_types(dataframe, baseline_lkup_df):
+    
+    in_cols = dataframe.columns.tolist()
+
+    join_cols = ['sector_abbr',
+                'pba_or_typehuq',
+                'space_heat_equip',
+                'space_heat_fuel',
+                'space_cool_equip',
+                'space_cool_fuel']
+    
+    dataframe = pd.merge(dataframe, baseline_lkup_df, how = 'left', on = join_cols)
+    # mark NAs (those with no mapping) with a value of -1
+    dataframe.loc[:, 'baseline_type'] = dataframe['baseline_type'].fillna(-1)
+    
+    out_cols = ['baseline_type']
+    return_cols = in_cols + out_cols
+    dataframe = dataframe[return_cols]    
+    
+    return dataframe
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_crb_ghp_simulations(dataframe, crb_ghp_df):
+def join_crb_ghp_simulations(dataframe, baseline_ghp_sims_df):
     
-    # join on crb_model, iecc_cliamte_zone, and gtc value
-    # TODO: this will change based on feedback from xiaobing about how to extrapolate from crbs to cbecs/recs (issue #)
-    dataframe = pd.merge(dataframe, crb_ghp_df, how = 'left', on = ['crb_model', 'iecc_climate_zone', 'gtc_btu_per_hftf'])
-    # change some random set to have no mapping (this will happen with the real mapping data, so we need to simulate it here to write downstream code)
-    cols = ['savings_pct_electricity_consumption',
-            'savings_pct_natural_gas_consumption',
-            'crb_ghx_length_ft',
-            'crb_cooling_capacity_ton',
-            'crb_totsqft',
-            'cooling_ton_per_sqft',
-            'ghx_length_ft_per_cooling_ton']
-    np.random.seed(1)
-    dataframe.loc[np.random.randint(0, dataframe.shape[0], 20), cols] = np.nan
+    # join on baseline_type and geographic variables (= iecc_cliamte_zone and gtc value)
+    dataframe = pd.merge(dataframe, baseline_ghp_sims_df, how = 'left', on = ['baseline_type', 'iecc_climate_zone', 'gtc_btu_per_hftf'])
    
     return dataframe
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_baseline_system_types(con, schema):
-    
-    # TODO: revise this to map to baseline systems based on the GHP CRB simulation
-    inputs = locals().copy()
-    sql = """SELECT crb_model, 
-                	 iecc_climate_zone, 
-                	 gtc_btu_per_hftf, 
-                   1::INTEGER as baseline_system_type
-          FROM diffusion_geo.ghp_simulations_dummy;"""
-    
-    df = pd.read_sql(sql, con, coerce_float = False)
-
-    return df   
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_baseline_system_types(dataframe, baseline_systems_df):
-    
-    # join on crb_model, iecc_cliamte_zone, and gtc value
-    # TODO: this will change based on feedback from xiaobing about how to extrapolate from crbs to cbecs/recs (issue #)
-    dataframe = pd.merge(dataframe, baseline_systems_df, how = 'left', on = ['crb_model', 'iecc_climate_zone', 'gtc_btu_per_hftf'])
-    # change the rows with no CRB mapping to have no baseline type (this will happen with the real mapping data, so we need to simulate it here to write downstream code)
-    dataframe.loc[dataframe['cooling_ton_per_sqft'].isnull(), 'baseline_system_type'] = -1
-    
-    return dataframe
-
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def mark_unmodellable_agents(dataframe):
     
-    dataframe['modellable'] = np.where(dataframe['baseline_system_type'] == -1, False, True)
+    dataframe['modellable'] = np.where((dataframe['baseline_type'] == -1) | (dataframe['savings_pct_electricity_consumption'].isnull()), False, True)
     
     return dataframe
 
@@ -381,7 +384,7 @@ def get_technology_costs_baseline(con, schema, year):
     inputs = locals().copy()
     
     sql = """SELECT sector_abbr,
-                    baseline_system_type,
+                    baseline_system_type as baseline_type,
                     hvac_equipment_cost_dollars_per_cooling_ton,
                     new_rest_of_system_costs_dollars_per_cooling_ton as baseline_new_rest_of_system_costs_dollars_per_cooling_ton,
                     retrofit_rest_of_system_multiplier as baseline_retrofit_rest_of_system_multiplier,
@@ -392,7 +395,7 @@ def get_technology_costs_baseline(con, schema, year):
              UNION ALL
 
              SELECT unnest(ARRAY['res', 'com']) as sector_abbr,
-                    -1::INTEGER as baseline_system_type,
+                    -1::INTEGER as baseline_type,
                     NULL::NUMERIC as hvac_equipment_cost_dollars_per_cooling_ton,
                     NULL::NUMERIC as baseline_new_rest_of_system_costs_dollars_per_cooling_ton,
                     NULL::NUMERIC as baseline_retrofit_rest_of_system_multiplier,
@@ -406,7 +409,7 @@ def get_technology_costs_baseline(con, schema, year):
 def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df, sunk_costs):    
     
 
-    dataframe = pd.merge(dataframe, tech_costs_baseline_df, how = 'left', on = ['sector_abbr', 'baseline_system_type'])
+    dataframe = pd.merge(dataframe, tech_costs_baseline_df, how = 'left', on = ['sector_abbr', 'baseline_type'])
     # Installed Costs
     if sunk_costs == True:
         # installation costs will be zero, except for new construction
@@ -1064,7 +1067,7 @@ def write_agent_outputs_ghp(con, cur, schema, dataframe):
                 'savings_pct_natural_gas_consumption',
                 'cooling_ton_per_sqft',
                 'ghx_length_ft_per_cooling_ton',
-                'baseline_system_type',
+                'baseline_type',
                 'modellable',
                 'ghp_system_size_tons',
                 'system_size_kw',

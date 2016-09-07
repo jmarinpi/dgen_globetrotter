@@ -10,7 +10,7 @@ sheet_names = names(sheets)
 
 sheets_to_skip = c('GHX Comparison', 'Comparison Charts')
 ranges = read.csv('helper/ghp_range_lkup.csv', stringsAsFactors = F)
-bldg_type_to_id_lkup = read.csv('helper/building_type_to_building_id_lkup.csv', stringsAsFactors = F)
+bldg_type_to_id_lkup = read.csv('helper/building_type_to_baseline_type_lkup.csv', stringsAsFactors = F)
 
 sheet_dfs = list()
 for (sheet_name in sheet_names){
@@ -99,7 +99,7 @@ complete_df_no_nas = complete_df[rowSums(is.na(complete_df)) < 26,]
 # replace values of NA with NA (applies only to energy savings pct)
 complete_df_no_nas[complete_df_no_nas == 'NA'] = NA
 # fix dtypes
-char_cols = c('building_type', 'city', 'climate_zone')
+char_cols = c('building_type', 'city', 'climate_zone', 'tc_val')
 for (col in names(complete_df_no_nas)){
   if (col %in% char_cols){
     # do nothing
@@ -117,7 +117,7 @@ if (expected_nrows != nrow(complete_df_no_nas)){
   print("Warning: expected number of rows doesn't match actual number of rows")
 }
 # reorder columns
-out_cols = unique(c('building_id', names(complete_df_no_nas)))
+out_cols = unique(c('baseline_type', names(complete_df_no_nas)))
 final_df = complete_df_no_nas[, out_cols]
 
 # write to csv
