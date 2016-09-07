@@ -660,6 +660,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # apply ghp technology costs     
                     agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()
                     
+                    # TODO: revise (issue #681)
                     # get baseline/conventional system costs
                     tech_costs_baseline_df = mutation.get_technology_costs_baseline(con, schema, year)
                     # apply baseline/conventional system costs
@@ -667,7 +668,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     #==============================================================================
                     # TECHNOLOGY PERFORMANCE IMPROVEMENTS AND DEGRADATION
-                    #==============================================================================                      
+                    #==============================================================================       
+                    # TODO: revise (or remove?) (issue #682))           
                     # get GHP technology performance improvements
                     tech_performance_ghp_df = mutation.get_technology_performance_improvements_ghp(con, schema, year)
                     # apply GHP technology performance improvements
