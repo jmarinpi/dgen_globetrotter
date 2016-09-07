@@ -1,15 +1,16 @@
 library(xlsx)
 library(reshape)
 
-setwd('/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/4_load_misc_technology_specific_tables/3_ghp/2_ghp_simulations_data_cleanup_and_loading')
+setwd('/Volumes/Staff/mgleason/dGeo/Data/Source_Data/ORNL_GHP_CRB_Simulations/ghp_simulation_results')
 
-in_xlsx = 'source/Commercial GHP Simulation Results (7-20-2016).xlsx'
+in_xlsx = 'source/Building Comparison GTV (commercial and residential 8-29-2016).xlsx'
 wb = loadWorkbook(in_xlsx)
 sheets = getSheets(wb)
 sheet_names = names(sheets)
 
 sheets_to_skip = c('GHX Comparison', 'Comparison Charts')
 ranges = read.csv('helper/ghp_range_lkup.csv', stringsAsFactors = F)
+bldg_type_to_id_lkup = read.csv('helper/building_type_to_building_id_lkup.csv', stringsAsFactors = F)
 
 sheet_dfs = list()
 for (sheet_name in sheet_names){
@@ -57,6 +58,10 @@ for (sheet_name in sheet_names){
       if (!(grepl('ground_thermal', df_name))){
         df = get(df_name)
         df = merge(df, gtc, by = 'tc_val')
+        # replace building names with building ids
+        df = merge(df, bldg_type_to_id_lkup, by = c('building_type'))
+        keep_cols = names(df)[names(df) != 'building_type']
+        df = df[, keep_cols]
         assign(df_name, df)
       }
     }
@@ -87,10 +92,10 @@ for (sheet_name in sheet_names){
 # merge everything into one
 complete_df = Reduce(function(...) rbind(...), sheet_dfs)
 # drop rows where multiple vlaues are NA
-complete_df_no_nas = complete_df[rowSums(is.na(complete_df)) == 0,]
+complete_df_no_nas = complete_df[rowSums(is.na(complete_df)) < 26,]
 # drop the tc_val column
-out_cols = !grepl('tc_val', names(complete_df_no_nas))
-complete_df_no_nas = complete_df_no_nas[, out_cols]
+# out_cols = !grepl('tc_val', names(complete_df_no_nas))
+# complete_df_no_nas = complete_df_no_nas[, out_cols]
 # replace values of NA with NA (applies only to energy savings pct)
 complete_df_no_nas[complete_df_no_nas == 'NA'] = NA
 # fix dtypes
@@ -103,8 +108,22 @@ for (col in names(complete_df_no_nas)){
     complete_df_no_nas[, col] = as.numeric(complete_df_no_nas[, col])
   }
 }
+
+
+# expected rows
+
+expected_nrows = 3 * 7 * 13
+if (expected_nrows != nrow(complete_df_no_nas)){
+  print("Warning: expected number of rows doesn't match actual number of rows")
+}
+# reorder columns
+out_cols = unique(c('building_id', names(complete_df_no_nas)))
+final_df = complete_df_no_nas[, out_cols]
+
 # write to csv
-write.csv(complete_df_no_nas, 'output/ghp_results_2016_07_20.csv', row.names = F, na = '')
+date = format(Sys.Date(), '%Y_%m_%d')
+out_file = sprintf('consolidated/ghp_results_%s.csv', date)
+write.csv(final_df, out_file, row.names = F, na = '')
 
 
 

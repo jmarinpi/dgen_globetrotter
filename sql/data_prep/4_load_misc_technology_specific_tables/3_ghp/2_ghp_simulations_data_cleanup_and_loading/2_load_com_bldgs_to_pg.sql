@@ -1,9 +1,10 @@
 ﻿set role 'diffusion-writers';
 
-DROP TABLE IF EXISTS diffusion_geo.ghp_simulations_com;
+DROP TABLE IF EXISTS diffusion_geo.ghp_simulations_com CASCADE;
 CREATE TABLE diffusion_geo.ghp_simulations_com
 (
-	building_type TEXT,
+	building_id integer,
+	tc_val varchar(4),
 	gtc_btu_per_hftF NUMERIC,
 	baseline_electricity_consumption_kwh NUMERIC,
 	baseline_natural_gas_consumption_mbtu NUMERIC,
@@ -42,11 +43,18 @@ CREATE TABLE diffusion_geo.ghp_simulations_com
 	climate_zone TEXT
 );
 
-\COPY diffusion_geo.ghp_simulations_com FROM '/Users/mgleason/NREL_Projects/github/diffusion/sql/data_prep/4_load_misc_technology_specific_tables/3_ghp/2_ghp_simulations_data_cleanup_and_loading/output/ghp_results_2016_07_20.csv' with csv header;
+\COPY diffusion_geo.ghp_simulations_com FROM '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/ORNL_GHP_CRB_Simulations/ghp_simulation_results/consolidated/ghp_results_2016_09_07.csv' with csv header;
 
 -- add primary key on building type, gtc, and city
 ALTER TABLE diffusion_geo.ghp_simulations_com
-ADD PRIMARY KEY (building_type, city, gtc_btu_per_hftF);
+ADD PRIMARY KEY (building_id, city, gtc_btu_per_hftF);
+
+-- drop the data for tc_1 and 3 for building types 4 -7 
+DELETE FROM diffusion_geo.ghp_simulations_com
+where building_id in (4, 5, 6, 7)
+and tc_val in ('tc_1' ,'tc_3');
+-- 104 rows deleted
+
 
 -- fill in the pct savings values
 UPDATE diffusion_geo.ghp_simulations_com
@@ -83,12 +91,6 @@ UPDATE diffusion_geo.ghp_simulations_com
 set savings_pct_peak_electricity_demand_kw =
 (baseline_peak_electricity_demand_kw - gshp_peak_electricity_demand_kw)/
 baseline_peak_electricity_demand_kw;
-
--- change the school column to "Secondary School"
-UPDATE diffusion_geo.ghp_simulations_com
-set building_type = 'Secondary School'
-where building_type = 'School';
-
 
 -- look at results
 select *

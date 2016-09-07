@@ -752,7 +752,7 @@ def estimate_system_lifetimes(schema, sector_abbr, initial_or_new, chunks, seed,
     sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
-    
+
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
