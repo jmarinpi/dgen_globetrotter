@@ -326,7 +326,30 @@ def identify_market_eligible_agents(dataframe):
     dataframe['market_eligible_buildings_in_bin'] = np.where(dataframe['market_eligible'] == True, dataframe['buildings_in_bin'], 0.)
     
     return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def determine_ghp_compatibility(dataframe):
+
+    #TODO: revise this to actually account for the existing HVAC system configuration (issue #687)
+    dataframe['is_ghp_compatible'] = np.where(dataframe['modellable'] == True, True, False)
     
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def requires_ghp_rest_of_sysem_costs(dataframe):
+
+    dataframe['requires_ghp_rest_of_system_costs'] = (dataframe['new_construction'] == True) | (dataframe['is_ghp_compatible'] == False)
+    # convert to dtype = object to handle nans
+    dataframe.loc[:, 'requires_ghp_rest_of_system_costs'] = dataframe['requires_ghp_rest_of_system_costs'].astype('object')
+    # set unmodellable to NA
+    dataframe.loc[dataframe['modellable'] == False, 'requires_ghp_rest_of_system_costs'] = np.nan
+    
+    return dataframe
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_technology_costs_ghp(con, schema, year):
@@ -353,7 +376,7 @@ def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):
     # Installed Costs
     dataframe['ghx_cost_dlrs'] = dataframe['ghx_length_ft'] * dataframe['heat_exchanger_cost_dollars_per_ft']
     dataframe['ghp_heat_pump_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['heat_pump_cost_dollars_per_cooling_ton']
-    dataframe['ghp_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['ghp_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 0.)
+    dataframe['ghp_rest_of_system_cost_dlrs'] = np.where(dataframe['requires_ghp_rest_of_system_costs'] == True, dataframe['ghp_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 0.)
     dataframe['ghp_installed_costs_dlrs'] = dataframe['ghx_cost_dlrs'] + dataframe['ghp_heat_pump_cost_dlrs'] + dataframe['ghp_rest_of_system_cost_dlrs']
     dataframe['ghp_fixed_om_dlrs_per_year'] = dataframe['ghp_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']
      # reset values to NA where the system isn't modellable
@@ -1065,6 +1088,8 @@ def write_agent_outputs_ghp(con, cur, schema, dataframe):
                 'market_eligible_buildings_in_bin',
                 'bass_deployable',
                 'bass_deployable_buildings_in_bin',
+                'is_ghp_compatible',
+                'requires_ghp_rest_of_system_costs',
                 'heat_exchanger_cost_dollars_per_ft',
                 'heat_pump_cost_dollars_per_cooling_ton',
                 'ghp_rest_of_system_costs_dollars_per_cooling_ton',

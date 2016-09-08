@@ -653,14 +653,20 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, mutation.identify_bass_deployable_agents, (cfg.sunk_costs, )).compute()                                 
 
                     #==============================================================================
+                    # DETERMINE GHP-COMPATIBILITY
+                    #==============================================================================  
+                    agents = AgentsAlgorithm(agents, mutation.determine_ghp_compatibility).compute()
+                    
+                    #==============================================================================
                     # TECHNOLOGY COSTS
                     #==============================================================================
                     # get ghp technology costs
                     tech_costs_ghp_df = mutation.get_technology_costs_ghp(con, schema, year)
+                    # determine whether to apply rest of system GHP costs
+                    agents = AgentsAlgorithm(agents, mutation.requires_ghp_rest_of_sysem_costs).compute()
                     # apply ghp technology costs     
                     agents = AgentsAlgorithm(agents, mutation.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()
                     
-                    # TODO: revise (issue #681)
                     # get baseline/conventional system costs
                     tech_costs_baseline_df = mutation.get_technology_costs_baseline(con, schema, year)
                     # apply baseline/conventional system costs
