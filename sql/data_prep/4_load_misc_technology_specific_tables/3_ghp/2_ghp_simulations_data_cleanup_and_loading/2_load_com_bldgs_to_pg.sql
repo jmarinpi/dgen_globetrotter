@@ -49,10 +49,10 @@ CREATE TABLE diffusion_geo.ghp_simulations_com
 ALTER TABLE diffusion_geo.ghp_simulations_com
 ADD PRIMARY KEY (baseline_type, iecc_climate_zone, gtc_btu_per_hftF);
 
--- drop the data for tc_1 and 3 for building types 4 -7 
+-- drop the data for tc_2 and 3 for building types 4 -7 
 DELETE FROM diffusion_geo.ghp_simulations_com
 where baseline_type in (4, 5, 6, 7)
-and tc_val in ('tc_1' ,'tc_3');
+and tc_val in ('tc_2' , 'tc_3'); -- tc_2 = 25%, tc_3 = 75%
 -- 104 rows deleted
 
 
@@ -92,6 +92,36 @@ set savings_pct_peak_electricity_demand =
 (baseline_peak_electricity_demand_kw - gshp_peak_electricity_demand_kw)/
 baseline_peak_electricity_demand_kw;
 -- 169 rows
+
+-- check values are reasonable
+select  min(savings_pct_natural_gas_consumption), 
+	avg(savings_pct_natural_gas_consumption),
+	max(savings_pct_natural_gas_consumption)
+FROM diffusion_geo.ghp_simulations_com;
+-- -0.00797266514806378132,0.79731407793464913434,1.00000000000000000000
+-- seem reasonable, except for the negative?
+
+select  min(savings_pct_electricity_consumption), 
+	avg(savings_pct_electricity_consumption),
+	max(savings_pct_electricity_consumption)
+FROM diffusion_geo.ghp_simulations_com;
+-- -5.8816608996539792,-0.16488008974524962066,0.44827450980392156863
+-- seem reasonable except for the magnitude of hte negative
+
+-- look into these  more closely:
+select savings_pct_natural_gas_consumption, *
+FROM diffusion_geo.ghp_simulations_com
+where savings_pct_natural_gas_consumption < 0;
+-- hotel in San Diego -- makes sense because (from Xiaobing's FY16Q3 report)
+-- "a smallportion of the baseline HVAC system (i.e., the makeup air system using a gas-fired furnace) was not
+-- replaced with the GHP system due to the large swing of outdoor air temperature"
+
+
+select savings_pct_electricity_consumption, iecc_climate_zone, *
+FROM diffusion_geo.ghp_simulations_com
+where savings_pct_electricity_consumption < 0
+order by 1;
+-- these numbers match the original values in Xiaobing's summary, so i think they are okay
 
 -- look at results
 select *
