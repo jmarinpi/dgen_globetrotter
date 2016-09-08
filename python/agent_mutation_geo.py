@@ -380,22 +380,11 @@ def get_technology_costs_baseline(con, schema, year):
     inputs = locals().copy()
     
     sql = """SELECT sector_abbr,
-                    baseline_system_type as baseline_type,
                     hvac_equipment_cost_dollars_per_cooling_ton,
-                    new_rest_of_system_costs_dollars_per_cooling_ton as baseline_new_rest_of_system_costs_dollars_per_cooling_ton,
-                    retrofit_rest_of_system_multiplier as baseline_retrofit_rest_of_system_multiplier,
+                    rest_of_system_costs_dollars_per_cooling_ton as baseline_rest_of_system_costs_dollars_per_cooling_ton,
                     fixed_om_dollars_per_sf_per_year as baseline_fixed_om_dollars_per_sf_per_year
              FROM %(schema)s.input_baseline_costs_hvac
-             WHERE year = %(year)s
-             
-             UNION ALL
-
-             SELECT unnest(ARRAY['res', 'com']) as sector_abbr,
-                    -1::INTEGER as baseline_type,
-                    NULL::NUMERIC as hvac_equipment_cost_dollars_per_cooling_ton,
-                    NULL::NUMERIC as baseline_new_rest_of_system_costs_dollars_per_cooling_ton,
-                    NULL::NUMERIC as baseline_retrofit_rest_of_system_multiplier,
-                    NULL::NUMERIC as baseline_fixed_om_dollars_per_sf_per_year;""" % inputs
+             WHERE year = %(year)s;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
 
     return df
@@ -405,27 +394,30 @@ def get_technology_costs_baseline(con, schema, year):
 def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df, sunk_costs):    
     
 
-    dataframe = pd.merge(dataframe, tech_costs_baseline_df, how = 'left', on = ['sector_abbr', 'baseline_type'])
-    # Installed Costs
+    dataframe = pd.merge(dataframe, tech_costs_baseline_df, how = 'left', on = ['sector_abbr'])
+
     if sunk_costs == True:
         # installation costs will be zero, except for new construction
         # O&M are normal
         dataframe['baseline_equipment_costs_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['ghp_system_size_tons'] * dataframe['hvac_equipment_cost_dollars_per_cooling_ton'], 0.)
-        dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 0.)
-        dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_costs_dlrs'] + dataframe['baseline_rest_of_system_cost_dlrs']
-        dataframe['baseline_fixed_om_dlrs_per_year'] = dataframe['baseline_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']     
+        dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['baseline_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 0.)
     elif sunk_costs == False:
         dataframe['baseline_equipment_costs_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['hvac_equipment_cost_dollars_per_cooling_ton']
-        dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 
-                                                         dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 
-                                                         dataframe['baseline_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'] * dataframe['baseline_retrofit_rest_of_system_multiplier'])
-        dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_costs_dlrs'] + dataframe['baseline_rest_of_system_cost_dlrs']
-        dataframe['baseline_fixed_om_dlrs_per_year'] = dataframe['baseline_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']     
+        dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['baseline_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 0.)  
     else:
         raise ValueError('sunk_costs must be one of: True/False')
 
+    dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_costs_dlrs'] + dataframe['baseline_rest_of_system_cost_dlrs']
+    dataframe['baseline_fixed_om_dlrs_per_year'] = dataframe['baseline_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']   
+   
     # reset values to NA where the system isn't modellable
-    out_cols = ['baseline_equipment_costs_dlrs', 'baseline_rest_of_system_cost_dlrs', 'baseline_installed_costs_dlrs', 'baseline_fixed_om_dlrs_per_year']    
+    out_cols = ['hvac_equipment_cost_dollars_per_cooling_ton',
+                'baseline_rest_of_system_costs_dollars_per_cooling_ton',
+                'baseline_fixed_om_dollars_per_sf_per_year',
+                'baseline_equipment_costs_dlrs', 
+                'baseline_rest_of_system_cost_dlrs', 
+                'baseline_installed_costs_dlrs', 
+                'baseline_fixed_om_dlrs_per_year']    
     dataframe.loc[dataframe['modellable'] == False, out_cols] = np.nan       
     
     return dataframe
@@ -1089,8 +1081,7 @@ def write_agent_outputs_ghp(con, cur, schema, dataframe):
                 'ghp_installed_costs_dlrs',
                 'ghp_fixed_om_dlrs_per_year',
                 'hvac_equipment_cost_dollars_per_cooling_ton',
-                'baseline_new_rest_of_system_costs_dollars_per_cooling_ton',
-                'baseline_retrofit_rest_of_system_multiplier',
+                'baseline_rest_of_system_costs_dollars_per_cooling_ton',
                 'baseline_fixed_om_dollars_per_sf_per_year',
                 'baseline_equipment_costs_dlrs',
                 'baseline_rest_of_system_cost_dlrs',
