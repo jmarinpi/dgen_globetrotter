@@ -167,9 +167,9 @@ def calculate_cashflows(df, tech, analysis_period = 30):
     # Annualized (undiscounted) inverter replacement cost $/year (includes system size). Applied from year 10 onwards since assume initial 10-year warranty
     with np.errstate(invalid = 'ignore'):        
         replacement_part_costs_amortized  = df[replacement_part_cost_column] / df[replacement_part_lifetime_column]
-    replacement_part_costs[:, 10:] = -replacement_part_costs_amortized[:, np.newaxis]
-    # for baseline, push costs out into the future based on the expected remaining system liftime (lpad with zeros, truncate beyond analysis period)
+    replacement_part_costs[:, :] = -replacement_part_costs_amortized[:, np.newaxis]
     if tech == 'baseline':
+        # for baseline, push amortized costs out into the future based on the expected remaining system liftime
         replacement_part_costs = pad_array(replacement_part_costs, df['years_to_replacement_average'].tolist())
 
     # 2) Costs of fixed & variable O&M. O&M costs are tax deductible for commerical entitites

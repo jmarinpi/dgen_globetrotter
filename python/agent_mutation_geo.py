@@ -343,10 +343,9 @@ def get_technology_costs_ghp(con, schema, year):
                     sys_config,
                     heat_exchanger_cost_dollars_per_ft,
                     heat_pump_cost_dollars_per_cooling_ton,
-                    new_rest_of_system_costs_dollars_per_cooling_ton as ghp_new_rest_of_system_costs_dollars_per_cooling_ton,
-                    fixed_om_dollars_per_sf_per_year as ghp_fixed_om_dollars_per_sf_per_year,
-                    retrofit_rest_of_system_multiplier as ghp_retrofit_rest_of_system_multiplier
-             FROM %(schema)s.input_ghp_cost
+                    rest_of_system_costs_dollars_per_cooling_ton as ghp_rest_of_system_costs_dollars_per_cooling_ton,
+                    fixed_om_dollars_per_sf_per_year as ghp_fixed_om_dollars_per_sf_per_year
+             FROM %(schema)s.input_ghp_costs
              WHERE year = %(year)s;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
 
@@ -360,9 +359,7 @@ def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):
     # Installed Costs
     dataframe['ghx_cost_dlrs'] = dataframe['ghx_length_ft'] * dataframe['heat_exchanger_cost_dollars_per_ft']
     dataframe['ghp_heat_pump_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['heat_pump_cost_dollars_per_cooling_ton']
-    dataframe['ghp_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, 
-                                                     dataframe['ghp_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 
-                                                     dataframe['ghp_new_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'] * dataframe['ghp_retrofit_rest_of_system_multiplier'])
+    dataframe['ghp_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['ghp_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 0.)
     dataframe['ghp_installed_costs_dlrs'] = dataframe['ghx_cost_dlrs'] + dataframe['ghp_heat_pump_cost_dlrs'] + dataframe['ghp_rest_of_system_cost_dlrs']
     dataframe['ghp_fixed_om_dlrs_per_year'] = dataframe['ghp_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']
      # reset values to NA where the system isn't modellable
@@ -1084,9 +1081,8 @@ def write_agent_outputs_ghp(con, cur, schema, dataframe):
                 'bass_deployable_buildings_in_bin',
                 'heat_exchanger_cost_dollars_per_ft',
                 'heat_pump_cost_dollars_per_cooling_ton',
-                'ghp_new_rest_of_system_costs_dollars_per_cooling_ton',
+                'ghp_rest_of_system_costs_dollars_per_cooling_ton',
                 'ghp_fixed_om_dollars_per_sf_per_year',
-                'ghp_retrofit_rest_of_system_multiplier',
                 'ghx_cost_dlrs',
                 'ghp_heat_pump_cost_dlrs',
                 'ghp_rest_of_system_cost_dlrs',
@@ -1101,9 +1097,7 @@ def write_agent_outputs_ghp(con, cur, schema, dataframe):
                 'baseline_installed_costs_dlrs',
                 'baseline_fixed_om_dlrs_per_year',
                 'ghp_heat_pump_lifetime_yrs',
-                'ghp_efficiency_improvement_factor',
                 'ghp_ann_system_degradation',
-                'baseline_efficiency_improvement_factor',
                 'baseline_system_lifetime_yrs',
                 'baseline_ann_system_degradation',
                 'baseline_site_natgas_per_building_kwh',
