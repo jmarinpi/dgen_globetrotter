@@ -1,13 +1,11 @@
 ﻿set role 'diffusion-writers';
 
 -- improvements
-DROP TABLE IF EXISTs diffusion_template.input_ghp_performance_improvements_raw CASCADE;
-CREATE TABLE diffusion_template.input_ghp_performance_improvements_raw
+DROP TABLE IF EXISTs diffusion_template.input_ghp_performance_improvements CASCADE;
+CREATE TABLE diffusion_template.input_ghp_performance_improvements
 (
 	year integer NOT NULL,
-	heat_pump_lifetime_yrs numeric NOT NULL,
-	efficiency_improvement_factor_horizontal numeric NOT NULL,
-	efficiency_improvement_factor_vertical numeric NOT NULL,
+	ghp_heat_pump_lifetime_yrs numeric NOT NULL,
 	CONSTRAINT input_ghp_performance_improvements_year_fkey FOREIGN KEY (year)
 		REFERENCES diffusion_config.sceninp_year_range (val) MATCH SIMPLE
 		ON UPDATE NO ACTION ON DELETE RESTRICT
@@ -39,28 +37,18 @@ CREATE TABLE diffusion_template.input_ghp_performance_degradation_horizontal
 );
 
 -- views
-DROP VIEW IF EXISTS diffusion_template.input_ghp_performance_improvements;
-CREATE VIEW diffusion_template.input_ghp_performance_improvements AS
-select year, 
-	heat_pump_lifetime_yrs, 
-	efficiency_improvement_factor_horizontal as efficiency_improvement_factor,
-	'horizontal'::TEXT as sys_config
-FROM  diffusion_template.input_ghp_performance_improvements_raw
-UNION ALL
-select year, 
-	heat_pump_lifetime_yrs, 
-	efficiency_improvement_factor_vertical as efficiency_improvement_factor,
-	'vertical'::TEXT as sys_config
-FROM  diffusion_template.input_ghp_performance_improvements_raw;
-
-
-
 DROP VIEW IF EXISTS diffusion_template.input_ghp_system_degradation;
 CREATE VIEW diffusion_template.input_ghp_system_degradation AS
-select *, 'vertical' as sys_config
+select iecc_temperature_zone,
+	year,
+	annual_degradation_pct, 
+	'vertical' as sys_config
 from diffusion_template.input_ghp_performance_degradation_vertical
 UNION ALL
-select *, 'horizontal' as sys_config
+select iecc_temperature_zone,
+	year,
+	annual_degradation_pct,
+	'horizontal' as sys_config
 from diffusion_template.input_ghp_performance_degradation_horizontal;
 
 

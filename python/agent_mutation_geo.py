@@ -84,9 +84,8 @@ def replicate_agents_by_factor(dataframe, new_column_name, factor_list):
 def get_technology_performance_improvements_ghp(con, schema, year):
     
     inputs = locals().copy()
-    sql = """SELECT heat_pump_lifetime_yrs as ghp_heat_pump_lifetime_yrs, 
-                    efficiency_improvement_factor as ghp_efficiency_improvement_factor,
-                    sys_config
+    sql = """SELECT year,
+                    ghp_heat_pump_lifetime_yrs
              FROM %(schema)s.input_ghp_performance_improvements
              WHERE year = %(year)s;""" % inputs
     
@@ -100,7 +99,7 @@ def get_technology_performance_improvements_ghp(con, schema, year):
 def apply_technology_performance_ghp(dataframe, tech_performance_df):
     
     # join on sys_config
-    dataframe = pd.merge(dataframe, tech_performance_df, how = 'left', on = 'sys_config')
+    dataframe = pd.merge(dataframe, tech_performance_df, how = 'left', on = 'year')
     
     return dataframe
 

@@ -668,8 +668,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     #==============================================================================
                     # TECHNOLOGY PERFORMANCE IMPROVEMENTS AND DEGRADATION
-                    #==============================================================================       
-                    # TODO: revise (or remove?) (issue #682))           
+                    #==============================================================================              
                     # get GHP technology performance improvements
                     tech_performance_ghp_df = mutation.get_technology_performance_improvements_ghp(con, schema, year)
                     # apply GHP technology performance improvements
