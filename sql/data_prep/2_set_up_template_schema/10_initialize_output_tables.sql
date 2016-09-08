@@ -411,7 +411,7 @@ CREATE TABLE diffusion_template.agent_outputs_ghp
 	savings_pct_natural_gas_consumption                        numeric,
 	cooling_ton_per_sqft                                       numeric,
 	ghx_length_ft_per_cooling_ton                              numeric,
-	baseline_system_type                                       integer,
+	baseline_type                                              integer,
 	modellable                                                 boolean,
 	ghp_system_size_tons                                       numeric,
 	system_size_kw                                             numeric,

@@ -217,6 +217,8 @@ def map_agents_to_ghp_baseline_types(dataframe, baseline_lkup_df):
     dataframe = pd.merge(dataframe, baseline_lkup_df, how = 'left', on = join_cols)
     # mark NAs (those with no mapping) with a value of -1
     dataframe.loc[:, 'baseline_type'] = dataframe['baseline_type'].fillna(-1)
+    # set as ingeteger
+    dataframe.loc[:, 'baseline_type'] = dataframe['baseline_type'].astype('int64')
     
     out_cols = ['baseline_type']
     return_cols = in_cols + out_cols
