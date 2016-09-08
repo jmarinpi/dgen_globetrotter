@@ -135,20 +135,10 @@ def get_technology_performance_improvements_and_degradation_baseline(con, schema
     
     inputs = locals().copy()
     sql = """SELECT sector_abbr, 
-                    baseline_system_type as baseline_type, 
-                    efficiency_improvement_factor as baseline_efficiency_improvement_factor, 
                     system_lifetime_yrs as baseline_system_lifetime_yrs, 
                     annual_degradation_pct as baseline_ann_system_degradation
-             FROM %(schema)s.input_baseline_performance_hvac
-             WHERE year = %(year)s
-             
-             UNION ALL
-
-             SELECT unnest(ARRAY['res', 'com']) as sector_abbr,
-                    -1::INTEGER as baseline_type,
-                    NULL::NUMERIC as baseline_efficiency_improvement_factor,
-                    NULL::NUMERIC as baseline_system_lifetime_yrs, 
-                    NULL::NUMERIC as baseline_ann_system_degradation;""" % inputs
+             FROM %(schema)s.input_baseline_system_performance
+             WHERE year = %(year)s;""" % inputs
     
     df = pd.read_sql(sql, con, coerce_float = False)
 
@@ -160,7 +150,11 @@ def get_technology_performance_improvements_and_degradation_baseline(con, schema
 def apply_technology_performance_improvements_and_degradation_baseline(dataframe, tech_performance_df):
     
     # join on sector and baseline type
-    dataframe = pd.merge(dataframe, tech_performance_df, how = 'left', on = ['sector_abbr', 'baseline_type'])
+    dataframe = pd.merge(dataframe, tech_performance_df, how = 'left', on = ['sector_abbr'])
+    # fill nas for unmodellable agents
+    out_cols = ['baseline_system_lifetime_yrs',
+                'baseline_ann_system_degradation']
+    dataframe.loc[dataframe['modellable'] == False, out_cols] = np.nan    
     
     return dataframe
 
