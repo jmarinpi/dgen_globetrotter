@@ -828,7 +828,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             elif tech_mode == 'geo' and sub_mode == 'du':
                 for year in model_years:
                     logger.info('\tWorking on %s' % year)
-                        
+                    
+                    # is it the first year?
+                    is_first_year = year == cfg.start_year                        
+                    
                     #==============================================================================
                     # BUILD DEMAND CURVES FOR EACH TRACT      
                     #==============================================================================                   
@@ -852,7 +855,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get regional prices of energy
                     energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
                     # apply regional heating/cooling prices
-                    agents = AgentsAlgorithm(agents, mutation.apply_regional_energy_prices_du, (energy_prices_df, )).compute()
+                    agents = AgentsAlgorithm(agents, mutation.apply_regional_energy_prices, (energy_prices_df, )).compute()
                     
                     # get du cost data
                     end_user_costs_du_df = mutation.get_end_user_costs_du(con, schema, year)
@@ -860,9 +863,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, mutation.apply_end_user_costs_du, (end_user_costs_du_df, )).compute()               
                                  
                     # update system ages
-                    agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, )).compute()
-                    # check whether systems need replacement (outlived their expected lifetime)
-                    agents = AgentsAlgorithm(agents, mutation.check_system_expirations).compute()
+                    agents = AgentsAlgorithm(agents, mutation.update_system_ages, (year, is_first_year, cfg.sunk_costs)).compute()
+                    # check which agents require new systems (new construction and those whose systems are too old)
+                    agents = AgentsAlgorithm(agents, mutation.calc_years_to_replacement).compute()
                     
                     #==============================================================================
                     # BUILD SUPPLY CURVES FOR EACH TRACT

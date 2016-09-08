@@ -64,8 +64,8 @@ def get_existing_market_share(con, cur, schema, year):
         con.commit()
     
     
-    sql = """SELECT cumulative_market_share_pct as existing_market_share_pct, 
-                    cumulative_market_share_mw as existing_market_share_mw
+    sql = """SELECT cumulative_market_share_pct as market_share_last_year, 
+                    cumulative_market_share_mw as installed_capacity_last_year_mw
             FROM %(schema)s.output_market_summary_du
             WHERE year = %(year)s - 2;""" % inputs
         
@@ -111,9 +111,9 @@ def calculate_new_incremental_market_share_pct(existing_market_share_df, current
     df['max_market_share'] = current_mms
     bass_df = calc_diffusion_market_share(df, is_first_year)
     # market share floor is based on last year's market share
-    bass_df['market_share'] = np.maximum(df['diffusion_market_share'], df['existing_market_share_pct'])
+    bass_df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
     # calculate the new incremental market share
-    bass_df['new_market_share'] = bass_df['market_share'] - bass_df['existing_market_share_pct']
+    bass_df['new_market_share'] = bass_df['market_share'] - bass_df['market_share_last_year']
     # cap the new_market_share where the market share exceeds the max market share
     bass_df['new_market_share'] = np.where(bass_df['market_share'] > bass_df['max_market_share'], 0, bass_df['new_market_share'])
     # extract out the new_market_share (this should be a one row dataframe)
@@ -190,8 +190,8 @@ def calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be
     d['new_incremental_capacity_mw'] = plants_to_be_built_df['plant_size_market_mw'].sum()
     d['new_incremental_market_share_pct'] = calculate_current_mms(plants_to_be_built_df, total_market_demand_mw)
 
-    d['new_cumulative_market_share_mw'] = existing_market_share_df['existing_market_share_mw'] + d['new_incremental_capacity_mw']
-    d['new_cumulative_market_share_pct'] = existing_market_share_df['existing_market_share_pct'] + d['new_incremental_market_share_pct']
+    d['new_cumulative_market_share_mw'] = existing_market_share_df['installed_capacity_last_year_mw'] + d['new_incremental_capacity_mw']
+    d['new_cumulative_market_share_pct'] = existing_market_share_df['market_share_last_year'] + d['new_incremental_market_share_pct']
 
     df = pd.DataFrame(d)
     
@@ -250,7 +250,7 @@ def calc_diffusion_market_share(df, is_first_year):
 
     df['bass_market_share'] = df['max_market_share'] * df['new_adopt_fraction'] # new market adoption   
     # make sure diffusion doesn't decrease
-    df['diffusion_market_share'] = np.maximum(df['bass_market_share'], df['existing_market_share_pct'])
+    df['diffusion_market_share'] = np.maximum(df['bass_market_share'], df['market_share_last_year'])
         
     return df
 #==============================================================================  

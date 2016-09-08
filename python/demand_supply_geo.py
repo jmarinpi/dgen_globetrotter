@@ -398,7 +398,7 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
                  scaled as
                  (
                      SELECT tract_id_alias, year,
-                            diffusion_shared.r_scale_array_sum(nkwh, demand_total_heat_in_bin_kwh/1000.) as mwh
+                            diffusion_shared.r_scale_array_sum(nkwh::NUMERIC[], demand_total_heat_in_bin_kwh::NUMERIC/1000.) as mwh
                      FROM combined             
                  ),
                  yearly_increments AS
@@ -984,8 +984,8 @@ def calc_agent_lcoe(dataframe, plant_lifetime, ignore_sunk_cost_of_existing_equi
     # Thus, we calculate cost of energy, weighted by the amount needed by end-use. This is the price the consumer uses to evaluate investment against the supply LCOE
     if ignore_sunk_cost_of_existing_equipment == True:
         dataframe['weighted_cost_of_energy_dlrs_per_mwh'] = np.where(dataframe['site_total_heat_per_building_in_bin_mwh'] == 0, 0,
-                                                                     ( dataframe['space_heat_dlrs_per_kwh'] * dataframe['space_heat_kwh_per_building_in_bin'] +
-                                                                         dataframe['water_heat_dlrs_per_kwh'] * dataframe['water_heat_kwh_per_building_in_bin']
+                                                                     ( dataframe['space_heat_dlrs_per_kwh'] * dataframe['site_space_heat_per_building_in_bin_kwh'] +
+                                                                         dataframe['water_heat_dlrs_per_kwh'] * dataframe['site_water_heat_per_building_in_bin_kwh']
                                                                          ) / dataframe['site_total_heat_per_building_in_bin_mwh'])
         
     else:
