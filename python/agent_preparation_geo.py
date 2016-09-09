@@ -697,7 +697,7 @@ def estimate_system_ages(schema, sector_abbr, initial_or_new, chunks, seed, pool
                 FROM %(schema)s.%(initial_or_new)s_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s a
             )
             SELECT agent_id, space_heat_system_age, space_cool_system_age,
-                    r_median(ARRAY[space_heat_system_age, space_cool_system_age]) as average_system_age
+                    diffusion_shared.r_median(ARRAY[space_heat_system_age, space_cool_system_age]) as average_system_age
             FROM a;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
 
@@ -745,7 +745,7 @@ def estimate_system_lifetimes(schema, sector_abbr, initial_or_new, chunks, seed,
                     AND c.sector_abbr = '%(sector_abbr)s'
             )            
             SELECT agent_id, space_heat_system_expected_lifetime, space_cool_system_expected_lifetime,
-                    r_median(ARRAY[space_heat_system_expected_lifetime, space_cool_system_expected_lifetime]) as average_system_expected_lifetime
+                    diffusion_shared.r_median(ARRAY[space_heat_system_expected_lifetime, space_cool_system_expected_lifetime]) as average_system_expected_lifetime
             FROM a;""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)    
 
