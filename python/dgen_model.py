@@ -826,31 +826,38 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 return 'Simulations Complete'  
     
             elif tech_mode == 'geo' and sub_mode == 'du':
+                # get initial (year = 2012) agents from postgres
+                agents_initial = mutation.get_initial_agent_attributes(con, schema)                
+                
                 for year in model_years:
                     logger.info('\tWorking on %s' % year)
                     
                     # is it the first year?
                     is_first_year = year == cfg.start_year                        
                     
-                    #==============================================================================
-                    # BUILD DEMAND CURVES FOR EACH TRACT      
-                    #==============================================================================                   
-                    # get initial agents from postgres
-                    agents_initial = mutation.get_initial_agent_attributes(con, schema)
-                    # update year for these initial agetns to the current year
+                    # update year for the initial agents to the current year
                     agents_initial = AgentsAlgorithm(agents_initial, mutation.update_year, (year, )).compute()
+ 
                     # get new construction agents
-                    agents_new = mutation.get_new_agent_attributes(con, schema, year)
-                    # combine initial and new agents
-                    agents = agents_initial.add_agents(agents_new)
-                    del agents_initial, agents_new
-                    # drop ghp for now
-                    agents = agents.filter_tech('du')
+                    agents_new = mutation.get_new_agent_attributes(con, schema, year)                   
+                    
+                    # add new agents to the initial agents (this ensures they will be there again next year)
+                    agents_initial = agents_initial.add_agents(agents_new)
+                    # drop agents_new -- it's no longer needed
+                    del agents_new                    
+                    
+                    # copy agents_initial (which will be preserved unmutated -- i.e., as-is -- for next year) to agents (which will be mutated for the current year)
+                    agents = agents_initial.copy()
+                    # change new construction to false for all agents in agents_initial (this ensures that next year they will be treated appropriately)
+                    agents_initial.dataframe['new_construction'] = False
+        
+                    # drop ghp agents
+                    agents = agents.filter_tech('du')                           
+                    
                     # get previously subscribed agents
                     previously_subscribed_agents_df = demand_supply.get_previously_subscribed_agents(con, schema)
                     # subtract previously subscribed agents
-                    agents_initial = AgentsAlgorithm(agents, demand_supply.subtract_previously_subscribed_agents, (previously_subscribed_agents_df, )).compute()
-                    
+                    agents = AgentsAlgorithm(agents, demand_supply.subtract_previously_subscribed_agents, (previously_subscribed_agents_df, )).compute()
                     
                     # get regional prices of energy
                     energy_prices_df = mutation.get_regional_energy_prices(con, schema, year)
