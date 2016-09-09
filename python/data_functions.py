@@ -1687,7 +1687,7 @@ def calc_value_of_itc(df, itc_options, year):
         raise ValueError('Row count of dataframe changed during merge')
         
 #    # Calculate the value of ITC (accounting for reduced costs from state/local incentives)
-    df['applicable_ic'] = df['installed_costs_dlrs'] - (df['value_of_tax_credit_or_deduction'] + df['value_of_rebate'] + df['value_of_increment'])
+    df['applicable_ic'] = (df['installed_costs_dollars_per_kw'] * df['system_size_kw']) - (df['value_of_tax_credit_or_deduction'] + df['value_of_rebate'] + df['value_of_increment'])
     df['value_of_itc'] =  (
                             df['applicable_ic'] *
                             df['itc_fraction'] *
@@ -1698,6 +1698,5 @@ def calc_value_of_itc(df, itc_options, year):
     df = df.drop(['applicable_ic', 'sector', 'itc_fraction'], axis = 1)
     
     return df
-
 
     

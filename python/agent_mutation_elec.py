@@ -1059,7 +1059,7 @@ def get_depreciation_schedule(con, schema, year):
             ORDER BY tech, year;''' % inputs
     df = pd.read_sql(sql, con)
     
-    return df
+    return df       
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -1168,7 +1168,7 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
     in_cols = list(dataframe.columns)
     
     # find the total number of customers in each state (by technology and sector)
-    state_total_developable_customers = dataframe[['state_abbr', 'sector_abbr', 'tech','buildings_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
+    state_total_developable_customers = dataframe[['state_abbr', 'sector_abbr', 'tech','developable_customers_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
     state_total_agents = dataframe[['state_abbr', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).count().reset_index()
     # rename the final columns
     state_total_developable_customers.columns = state_total_developable_customers.columns.str.replace('developable_customers_in_bin', 'developable_customers_in_state')

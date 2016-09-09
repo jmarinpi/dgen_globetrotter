@@ -267,9 +267,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # CREATE AGENTS
                     #==========================================================================================================
-                    logger.info("--------------Creating Agents---------------")                                       
+                    logger.info("--------------Creating Agents---------------")                                      
                     agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, cfg.agents_per_region,
-                                                              sectors, cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'], end_year)
+                                                              sectors, cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'])
                     
                     if tech_mode == 'elec':                    
                         #==============================================================================
@@ -500,7 +500,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     
                     # select from choices for business model and (optionally) technology
-                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, choose_tech, techs)                 
+                    df = tech_choice.select_financing_and_tech(df, prng, cfg.alpha_lkup, sectors, cfg.tech_choice_decision_var, choose_tech, techs)                 
     
                     #==========================================================================================================
                     # MARKET LAST YEAR
@@ -975,8 +975,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # write results to database                    
                     diffunc.write_resources_outputs(con, cur, subscribed_resources_with_costs_df, schema)
             
-            # TODO: get visualizations working and remove this short-circuit
-            return 'Simulations Complete'   
+                # TODO: get visualizations working and remove this short-circuit
+                return 'Simulations Complete'   
                 
             #==============================================================================
             #    Outputs & Visualization
