@@ -269,7 +269,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     logger.info("--------------Creating Agents---------------")                                      
                     agent_prep.generate_core_agent_attributes(cur, con, techs, schema, cfg.sample_pct, cfg.min_agents, cfg.agents_per_region,
-                                                              sectors, cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'])
+                                                              sectors, cfg.pg_procs, cfg.pg_conn_string, scenario_opts['random_generator_seed'], end_year)
                     
                     if tech_mode == 'elec':                    
                         #==============================================================================

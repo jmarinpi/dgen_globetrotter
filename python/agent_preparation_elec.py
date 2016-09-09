@@ -82,7 +82,7 @@ def p_run(pg_conn_string, sql, county_chunks, pool):
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 0, prefix = '')
 def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agents, agents_per_region, sectors,
-                                            pg_procs, pg_conn_string, seed):
+                                            pg_procs, pg_conn_string, seed, end_year):
 
     inputs = locals().copy()
     inputs['i_place_holder'] = '%(i)s'
