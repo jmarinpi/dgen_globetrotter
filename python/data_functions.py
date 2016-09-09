@@ -1695,7 +1695,7 @@ def calc_value_of_itc(df, itc_options, year):
                             (df['system_size_kw'] <= df['max_size_kw'])
                           )
                           
-    df = df.drop(['applicable_ic', 'sector', 'itc_fraction'], axis = 1)
+    df = df.drop(['applicable_ic', 'itc_fraction'], axis = 1)
     
     return df
 
