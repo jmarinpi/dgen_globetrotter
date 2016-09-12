@@ -16,6 +16,7 @@ import data_functions as datfunc
 from agent import Agent, Agents, AgentsAlgorithm
 from cStringIO import StringIO
 import pssc_mp
+import os
 
 
 #%% GLOBAL SETTINGS
@@ -1241,6 +1242,135 @@ def estimate_total_generation(dataframe):
     dataframe['total_gen_twh'] = ((dataframe['number_of_adopters'] - dataframe['initial_number_of_adopters']) * dataframe['aep'] * 1e-9) + (0.23 * 8760 * dataframe['initial_capacity_mw'] * 1e-6)                
      
     return dataframe
+
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_tech_potential_limits_wind(con):
+
+    inputs = locals().copy()
+    
+    sql = """SELECT state_abbr,
+                    cap_gw,
+                    gen_gwh,
+                    systems_count
+            FROM diffusion_wind.tech_potential_by_state;"""
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df            
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def check_tech_potential_limits_wind(dataframe, tech_potential_limits_wind_df, out_dir, is_first_year):
+    
+    inputs = locals().copy()    
+
+    # only run if it's the first year
+    if is_first_year == False:    
+        pass
+    else:    
+        dataframe['gen_gwh_model'] = dataframe['aep'] * dataframe['developable_customers_in_bin']  / 1e6
+        dataframe['systems_count_model'] = dataframe['developable_customers_in_bin']
+        dataframe['cap_gw_model'] = dataframe['developable_customers_in_bin'] * dataframe['system_size_kw'] / 1e6
+    
+        cols = ['state_abbr', 
+                'gen_gwh_model',
+                'systems_count_model',
+                'cap_gw_model']
+        model_tech_potential = dataframe[cols].groupby(['state_abbr']).sum().reset_index()
+        
+        # combine with tech potential limits and calculate ratios
+        model_tech_potential = pd.merge(model_tech_potential, tech_potential_limits_wind_df, how = 'left', on = 'state_abbr')         
+        model_tech_potential['pct_of_tech_potential_capacity'] = model_tech_potential['cap_gw_model'] / model_tech_potential['cap_gw']
+        model_tech_potential['pct_of_tech_potential_generation'] = model_tech_potential['gen_gwh_model'] / model_tech_potential['gen_gwh']
+        model_tech_potential['pct_of_tech_potential_systems_count'] = model_tech_potential['systems_count_model'] / model_tech_potential['systems_count']
+                               
+        # find overages
+        overages = model_tech_potential[(model_tech_potential['pct_of_tech_potential_capacity'] > 1) | (model_tech_potential['pct_of_tech_potential_generation'] > 1) | (model_tech_potential['pct_of_tech_potential_systems_count'] > 1)]
+        
+        # report overages, if any
+        if overages.shape[0] > 0:
+            inputs['out_overage_csv'] = os.path.join(out_dir, 'tech_potential_overages_wind.csv')
+            logger.warning('\tModel WIND tech potential exceeds actual tech potential for some states. See: %(out_overage_csv)s for details.' % inputs)                
+            overages.to_csv(inputs['out_overage_csv'], index = False, header = True)
+        else:
+            inputs['out_ratios_csv'] = os.path.join(out_dir, 'tech_potential_ratios_wind.csv')
+            logger.info('\tModel WIND tech potential is within state tech potential limits. See: %(out_ratios_csv)s for details.' % inputs)
+            cols = ['state_abbr',
+                    'pct_of_tech_potential_capacity',
+                    'pct_of_tech_potential_generation',
+                    'pct_of_tech_potential_systems_count']
+            ratios = model_tech_potential[cols]
+            ratios.to_csv(inputs['out_ratios_csv'], index = False, header = True)
+
+    return
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_tech_potential_limits_solar(con):
+
+    inputs = locals().copy()
+    
+    sql = """SELECT state_abbr, 
+                    size_class as bldg_size_class,
+                    cap_gw,
+                    gen_gwh,
+                    area_m2
+             FROM diffusion_solar.rooftop_tech_potential_limits_by_state;"""
+             
+    df = pd.read_sql(sql, con, coerce_float = False)
+    
+    return df     
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def check_tech_potential_limits_solar(dataframe, tech_potential_limits_solar_df, out_dir, is_first_year):
+    
+    inputs = locals().copy()    
+    
+    # only run if it's the first year
+    if is_first_year == False:    
+        pass
+    else:
+        dataframe['gen_gwh_model'] = dataframe['aep'] * dataframe['developable_customers_in_bin'] / 1e6
+        dataframe['area_m2_model'] = dataframe['developable_customers_in_bin'] * dataframe['developable_roof_sqft'] / 10.7639
+        dataframe['cap_gw_model'] = dataframe['developable_customers_in_bin'] * dataframe['system_size_kw'] / 1e6
+    
+        cols = ['state_abbr',
+                'bldg_size_class',
+                'gen_gwh_model',
+                'area_m2_model',
+                'cap_gw_model']
+        model_tech_potential = dataframe[cols].groupby(['state_abbr', 'bldg_size_class']).sum().reset_index()
+        
+        # combine with tech potential limits and calculate ratios
+        model_tech_potential = pd.merge(model_tech_potential, tech_potential_limits_solar_df, how = 'left', on = ['state_abbr', 'bldg_size_class'])
+        model_tech_potential['pct_of_tech_potential_capacity'] = model_tech_potential['cap_gw_model'] / model_tech_potential['cap_gw']
+        model_tech_potential['pct_of_tech_potential_generation'] = model_tech_potential['gen_gwh_model'] / model_tech_potential['gen_gwh']
+        model_tech_potential['pct_of_tech_potential_area'] = model_tech_potential['area_m2_model'] / model_tech_potential['area_m2']
+                               
+        # find overages
+        overages = model_tech_potential[(model_tech_potential['pct_of_tech_potential_capacity'] > 1) | (model_tech_potential['pct_of_tech_potential_generation'] > 1) | (model_tech_potential['pct_of_tech_potential_area'] > 1)]
+        
+        # report overages, if any
+        if overages.shape[0] > 0:
+            inputs['out_overage_csv'] = os.path.join(out_dir, 'tech_potential_overages_solar.csv')
+            logger.warning('\tModel SOLAR tech potential exceeds actual tech potential for some states. See: %(out_overage_csv)s for details.' % inputs)                
+            overages.to_csv(inputs['out_overage_csv'], index = False, header = True)
+        else:
+            inputs['out_ratios_csv'] = os.path.join(out_dir, 'tech_potential_ratios_solar.csv')
+            logger.info('\tModel SOLAR tech potential is within state tech potential limits. See: %(out_ratios_csv)s for details.' % inputs)
+            cols = ['state_abbr',
+                    'bldg_size_class',
+                    'pct_of_tech_potential_capacity',
+                    'pct_of_tech_potential_generation',
+                    'pct_of_tech_potential_area']
+            ratios = model_tech_potential[cols]
+            ratios.to_csv(inputs['out_ratios_csv'], index = False, header = True)
+    
+    return
 
 
 #%%

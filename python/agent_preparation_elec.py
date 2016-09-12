@@ -775,6 +775,7 @@ def merge_all_core_agents(cur, con, schema, sectors, techs):
                             a.azimuth, 
                             a.developable_roof_sqft, 
                             a.pct_of_bldgs_developable,
+                            a.bldg_size_class,
                             -- wind
                             a.i,
                             a.j,
