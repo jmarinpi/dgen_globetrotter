@@ -282,7 +282,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get core agent attributes from postgres
                     agents = mutation.get_core_agent_attributes(con, schema)
                     # filter techs
-                    agents.filter('tech in %s' % techs)
+                    agents = agents.filter('tech in %s' % techs)
       
                     #==============================================================================
                     # LOAD/POPULATION GROWTH               
@@ -334,8 +334,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # CHECK TECH POTENTIAL LIMITS
                     #==============================================================================                                   
-                    mutation.check_tech_potential_limits_wind(agents.dataframe, tech_potential_limits_wind_df, out_dir, is_first_year)
-                    mutation.check_tech_potential_limits_solar(agents.dataframe, tech_potential_limits_solar_df, out_dir, is_first_year)
+                    mutation.check_tech_potential_limits_wind(agents.filter_tech('wind').dataframe, tech_potential_limits_wind_df, out_dir, is_first_year)
+                    mutation.check_tech_potential_limits_solar(agents.filter_tech('solar').dataframe, tech_potential_limits_solar_df, out_dir, is_first_year)
                                 
                     #==============================================================================
                     # GET NORMALIZED LOAD PROFILES
