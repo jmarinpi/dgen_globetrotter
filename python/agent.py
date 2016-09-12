@@ -98,7 +98,7 @@ class Agents(object):
         if in_place == True:
             self.dataframe = dataframe
         else:
-            return Agents(dataframe)        
+            return Agents(dataframe)
 
     def get_agents(self):
         
@@ -216,15 +216,22 @@ class AgentsAlgorithm(object):
         # perform the pre check
         self.__precheck__()
         
-        # split the dataframe up      
-        sub_populations = self.agents.as_dataframes(num_workers)
-        # farm out jobs
-        results = futures.map(self.__do__, sub_populations)
-        # recompile results
-        result_agents = Agents(pd.concat(results, axis = 0, ignore_index = True))
+        # check row count -- if zero, just return the original data
+        row_count = self.agents.dataframe.shape[0]
+        if row_count == 0:
+            result_agents = self.agents
+            warnings.warn('agents object is empty. %s will not be executed.' % self.f.__name__, Warning)
+        else:
+            # split the dataframe up      
+            sub_populations = self.agents.as_dataframes(num_workers)
         
-        # perform post check
-        self.__postcheck__(result_agents)
+            # farm out jobs
+            results = futures.map(self.__do__, sub_populations)
+            # recompile results
+            result_agents = Agents(pd.concat(results, axis = 0, ignore_index = True))
+            
+            # perform post check
+            self.__postcheck__(result_agents)
         
         return result_agents
         

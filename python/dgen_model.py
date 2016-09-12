@@ -317,13 +317,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # SYSTEM SIZING
                     #==============================================================================
                     # size systems
-                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), mutation.size_systems_solar, (system_sizing_targets_df, resource_solar_df)).compute()  
-                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), mutation.size_systems_wind, (system_sizing_targets_df, resource_wind_df)).compute()   
+                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), mutation.size_systems_solar, (system_sizing_targets_df, resource_solar_df)).compute()                     
+                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), mutation.size_systems_wind, (system_sizing_targets_df, resource_wind_df)).compute()
                     # re-combine technologies
                     agents = agents_solar.add_agents(agents_wind)
                     del agents_solar, agents_wind   
                     # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
-                    agents = AgentsAlgorithm(agents, mutation.update_net_metering_fields).compute(1)  
+                    agents = AgentsAlgorithm(agents, mutation.update_net_metering_fields).compute(1)
                                 
                     #==============================================================================
                     # DEVELOPABLE CUSTOMERS/LOAD
