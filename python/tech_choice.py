@@ -123,7 +123,7 @@ def select_financing_and_tech(df, prng, alpha_lkup, sectors, decision_col, choos
         unselected_techs = df_selected.merge(selected_techs, on = ['county_id', 'bin_id', 'sector_abbr', 'tech'], how = 'outer')
         unselected_techs = unselected_techs[unselected_techs.selected_tech.isnull()]
         # rank the remainders by mms
-        best_unselected_tech = unselected_techs.groupby(['county_id', 'bin_id', 'sector_abbr',]).apply(which_max, args = (decision_col, )).reset_index()
+        best_unselected_tech = unselected_techs.groupby(['county_id', 'bin_id', 'sector_abbr',]).apply(which_max, decision_col).reset_index()
         best_unselected_tech.columns = ['county_id', 'bin_id', 'sector_abbr', 'best_alternative']
         best_unselected_tech.drop(['county_id', 'bin_id', 'sector_abbr'], axis = 1, inplace = True)
         df_selected_and_unselected = df_selected.merge(best_unselected_tech, left_on = ['uid'], right_on = ['best_alternative'], how = 'outer')      
