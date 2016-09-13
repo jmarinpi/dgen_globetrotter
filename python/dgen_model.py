@@ -317,8 +317,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # SYSTEM SIZING
                     #==============================================================================
                     # size systems
-                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), mutation.size_systems_solar, (system_sizing_targets_df, resource_solar_df)).compute()                     
-                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), mutation.size_systems_wind, (system_sizing_targets_df, resource_wind_df)).compute()
+                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), mutation.size_systems_solar, (system_sizing_targets_df, resource_solar_df, techs)).compute()                     
+                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), mutation.size_systems_wind, (system_sizing_targets_df, resource_wind_df, techs)).compute()
                     # re-combine technologies
                     agents = agents_solar.add_agents(agents_wind)
                     del agents_solar, agents_wind   
@@ -347,11 +347,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # HOURLY RESOURCE DATA
                     #==============================================================================
                     # get hourly resource
-                    normalized_hourly_resource_solar_df = mutation.get_normalized_hourly_resource_solar(con, schema, sectors)
-                    normalized_hourly_resource_wind_df = mutation.get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents)
+                    normalized_hourly_resource_solar_df = mutation.get_normalized_hourly_resource_solar(con, schema, sectors, techs)
+                    normalized_hourly_resource_wind_df = mutation.get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents, techs)
                     # apply normalized hourly resource profiles
-                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), mutation.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, )).compute()
-                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), mutation.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, )).compute()        
+                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), mutation.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, techs)).compute()
+                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), mutation.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, techs)).compute()        
                     # re-combine technologies
                     agents = agents_solar.add_agents(agents_wind)
                     del agents_solar, agents_wind               
