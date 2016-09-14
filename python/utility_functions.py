@@ -130,7 +130,7 @@ def make_con(connection_string, role = 'diffusion-writers', async = False):
         wait(con)
     else:
         con.commit()
-    
+
     return con, cur
 
 
@@ -179,3 +179,16 @@ def parse_command_args(argv):
         elif opt in ("-y", "year="):
             resume_year = arg
     return init_model, resume_year 
+
+
+def get_epoch_time():
+    
+    epoch_time = time.time()
+    
+    return epoch_time
+    
+def get_formatted_time():
+    
+    formatted_time = time.strftime('%Y%m%d_%H%M%S')  
+    
+    return formatted_time

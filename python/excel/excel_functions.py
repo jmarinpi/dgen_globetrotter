@@ -17,7 +17,6 @@ import warnings
 path = os.path.dirname(os.path.abspath(__file__))
 par_path = os.path.dirname(path)
 sys.path.append(par_path)
-from config import pg_conn_string
 import utility_functions as utilfunc
 
 #==============================================================================
@@ -26,19 +25,12 @@ logger = utilfunc.get_logger()
 #==============================================================================
 
 @decorators.fn_timer(logger = logger, tab_level = 1, prefix = '')
-def load_scenario(xls_file, schema, conn = None):
+def load_scenario(xls_file, schema, con, cur):
     
     logger.info('Loading Input Scenario Worksheet')    
     
     try:
-        # check connection to PG
-        if not conn:
-            close_conn = True
-            conn, cur = utilfunc.make_con(pg_conn_string)
-        else:
-            # make cursor from conn
-            cur = conn.cursor()
-            close_conn = False       
+   
         
         if os.path.exists(xls_file) == False:
             raise ExcelError('The specified input worksheet (%s) does not exist' % xls_file)
@@ -63,18 +55,12 @@ def load_scenario(xls_file, schema, conn = None):
                 fnr.__transpose_values__()
             if melt == True:
                 fnr.__melt__()
-            fnr.to_postgres(conn, cur, schema, table)
-
-        if close_conn:
-            conn.close()          
-
+            fnr.to_postgres(con, cur, schema, table)
+     
 
     except ExcelError, e:
         raise ExcelError(e)          
-        
-    
-    
-
+                
 
 if __name__ == '__main__':
     input_xls = '../../excel/scenario_inputs.xlsm'

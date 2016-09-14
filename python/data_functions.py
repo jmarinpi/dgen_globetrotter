@@ -21,6 +21,7 @@ import decorators
 import utility_functions as utilfunc
 import shutil
 import pssc_mp
+import glob
 
 #==============================================================================
 # Load logger
@@ -55,7 +56,7 @@ def create_tech_subfolders(out_scen_path, techs, out_subfolders, choose_tech):
 def create_scenario_results_folder(input_scenario, scen_name, scenario_names, out_dir, dup_n = 0):
     
     if scen_name in scenario_names:
-        logger.warning("Warning: Scenario name %s is a duplicate. Renaming to %s_%s" % (scen_name, scen_name, dup_n))
+        logger.v("Warning: Scenario name %s is a duplicate. Renaming to %s_%s" % (scen_name, scen_name, dup_n))
         scen_name = "%s_%s" % (scen_name, dup_n)
         dup_n += 1
     scenario_names.append(scen_name)
@@ -69,7 +70,7 @@ def create_scenario_results_folder(input_scenario, scen_name, scenario_names, ou
 
 
 @decorators.fn_timer(logger = logger, tab_level = 1, prefix = '')
-def create_output_schema(pg_conn_string, source_schema = 'diffusion_template', include_data = False):
+def create_output_schema(pg_conn_string, suffix, source_schema = 'diffusion_template', include_data = False):
     
     inputs = locals().copy()
     
@@ -86,13 +87,15 @@ def create_output_schema(pg_conn_string, source_schema = 'diffusion_template', i
         msg = "Specified source_schema (%(source_schema)s) does not exist." % inputs
         raise ValueError(msg)
 
-    cdt = utilfunc.current_datetime()
-    dest_schema = 'diffusion_results_%s' % cdt
+    dest_schema = 'diffusion_results_%s' % suffix
     inputs['dest_schema'] = dest_schema
     
     sql = '''SELECT diffusion_shared.clone_schema('%(source_schema)s', '%(dest_schema)s', 'diffusion-writers', %(include_data)s);''' % inputs
     cur.execute(sql)        
     con.commit()
+    
+    # clear output results tables (this ensures that outputs are empty for each model run)
+    clear_outputs(con, cur, dest_schema)
 
     logger.info('\tOutput schema is: %s' % dest_schema)
    
@@ -1700,3 +1703,36 @@ def calc_value_of_itc(df, itc_options, year):
     return df
 
     
+#%%
+#%%
+def make_output_directory_path(suffix):
+     
+    out_dir = '%s/runs/results_%s' %(os.path.dirname(os.getcwd()), suffix)        
+   
+    return out_dir
+    
+def get_input_scenarios():
+    
+    scenarios = [s for s in glob.glob("../input_scenarios/*.xls*") if not '~$' in s]
+    
+    return scenarios
+    
+def create_model_years(start_year, end_year, increment = 2):
+    
+    model_years = range(start_year, end_year+1, increment)
+    
+    return model_years
+
+def summarize_scenario(scenario_settings, model_settings):
+    
+    # summarize high level secenario settings 
+    logger.info('Scenario Settings:')
+    logger.info('\tScenario Name: %s' % scenario_settings.scen_name)
+    logger.info('\tRegion: %s' % scenario_settings.region)
+    logger.info('\tSectors: %s' % scenario_settings.sectors.values())
+    logger.info('\tTechnologies: %s' % scenario_settings.techs)
+    logger.info('\tYears: %s - %s' % (model_settings.start_year, scenario_settings.end_year))
+    logger.info('\tTech Choice Mode Enabled: %s' % scenario_settings.choose_tech)   
+
+    return         
+                         
