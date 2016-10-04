@@ -36,11 +36,14 @@ import tech_choice_geo
 import settings
 import agent_mutation_elec
 import agent_mutation_geo
+import agent_mutation_ghp
+import agent_mutation_du
 import agent_preparation_elec
 import agent_preparation_geo
 import demand_supply_geo
 import diffusion_functions_elec
-import diffusion_functions_geo
+import diffusion_functions_ghp
+import diffusion_functions_du
 import financial_functions_elec
 import financial_functions_geo
 
@@ -222,7 +225,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # GET BASS DIFFUSION PARAMETERS
                     #==========================================================================================================
-                    bass_params_df = diffusion_functions_geo.get_bass_params_du(con, scenario_settings.schema)
+                    bass_params_df = diffusion_functions_du.get_bass_params_du(con, scenario_settings.schema)
                     
                 elif scenario_settings.tech_mode == 'ghp':
                     # create core agent attributes
@@ -230,7 +233,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                           scenario_settings.sectors, model_settings.pg_procs, model_settings.pg_conn_string, scenario_settings.random_generator_seed, scenario_settings.end_year)
 
                     # get state starting capacities                     
-                    state_starting_capacities_df = agent_mutation_geo.get_state_starting_capacities_ghp(con, scenario_settings.schema)
+                    state_starting_capacities_df = agent_mutation_ghp.get_state_starting_capacities_ghp(con, scenario_settings.schema)
                         
 
     
@@ -497,137 +500,137 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # MAP TO CRB GHP SIMULATIONS
                     #========================================================================================================== 
                     # get mapping lkup table
-                    baseline_lkup_df = agent_mutation_geo.get_ghp_baseline_type_lkup(con, scenario_settings.schema)
+                    baseline_lkup_df = agent_mutation_ghp.get_ghp_baseline_type_lkup(con, scenario_settings.schema)
                     # map agents to baseline system types
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.map_agents_to_ghp_baseline_types, (baseline_lkup_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.map_agents_to_ghp_baseline_types, (baseline_lkup_df, )).compute()
                     # get baseline GHP simulations
-                    baseline_ghp_sims_df = agent_mutation_geo.get_ghp_baseline_simulations(con, scenario_settings.schema)
+                    baseline_ghp_sims_df = agent_mutation_ghp.get_ghp_baseline_simulations(con, scenario_settings.schema)
                     # join baseline GHP simulations
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.join_crb_ghp_simulations, (baseline_ghp_sims_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.join_crb_ghp_simulations, (baseline_ghp_sims_df, )).compute()
                     
                     #==========================================================================================================
                     # MARK MODELLABLE AND UN-MODELLABLE AGENTS
                     #==========================================================================================================                          
                     # mark agents that can't be modeled due to no representative GHP simulations
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.mark_unmodellable_agents).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.mark_unmodellable_agents).compute()
                     
                     #==============================================================================
                     # SYSTEM SIZING
                     #==============================================================================
                     # size systems
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.size_systems_ghp).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.size_systems_ghp).compute()
 
                     #==============================================================================
                     # REPLICATE AGENTS FOR DIFFERENT GHP SYSTEM CONFIGURATIONS
                     #==============================================================================        
                     system_configurations = ['vertical', 'horizontal']                    
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.replicate_agents_by_factor, ('sys_config', system_configurations), row_increase_factor = len(system_configurations)).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.replicate_agents_by_factor, ('sys_config', system_configurations), row_increase_factor = len(system_configurations)).compute()
 
                     #==============================================================================
                     # SITING CONSTRAINTS
                     #==============================================================================
                     # get siting constraints settings
-                    siting_constraints_df = agent_mutation_geo.get_siting_constraints_ghp(con, scenario_settings.schema, year)
+                    siting_constraints_df = agent_mutation_ghp.get_siting_constraints_ghp(con, scenario_settings.schema, year)
                     # apply siting constraints
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_siting_constraints_ghp, (siting_constraints_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_siting_constraints_ghp, (siting_constraints_df, )).compute()
 
                     #==============================================================================
                     # IDENTIFY MARKET ELIGIBLE BUILDINGS
                     #==============================================================================                            
                     # flag the agents that are part of the eligible market for GHP
                     # (i.e., these agents can be developed EVENTUALLY)
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.identify_market_eligible_agents).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.identify_market_eligible_agents).compute()
                     
                     #==============================================================================
                     # IDENTIFY BASS DEPLOYABLE BUILDINGS
                     #==============================================================================                            
                     # flag the agents that are deployable during this model year
                     # (i.e., these are the subset of market eligible agents can be developed NOW)
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.identify_bass_deployable_agents, (model_settings.sunk_costs, )).compute()                                 
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.identify_bass_deployable_agents, (model_settings.sunk_costs, )).compute()                              
 
                     #==============================================================================
                     # DETERMINE GHP-COMPATIBILITY
                     #==============================================================================  
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.determine_ghp_compatibility).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.determine_ghp_compatibility).compute()
                     
                     #==============================================================================
                     # TECHNOLOGY COSTS
                     #==============================================================================
                     # get ghp technology costs
-                    tech_costs_ghp_df = agent_mutation_geo.get_technology_costs_ghp(con, scenario_settings.schema, year)
+                    tech_costs_ghp_df = agent_mutation_ghp.get_technology_costs_ghp(con, scenario_settings.schema, year)
                     # determine whether to apply rest of system GHP costs
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.requires_ghp_rest_of_sysem_costs).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.requires_ghp_rest_of_sysem_costs).compute()
                     # apply ghp technology costs     
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()
                     
                     # get baseline/conventional system costs
-                    tech_costs_baseline_df = agent_mutation_geo.get_technology_costs_baseline(con, scenario_settings.schema, year)
+                    tech_costs_baseline_df = agent_mutation_ghp.get_technology_costs_baseline(con, scenario_settings.schema, year)
                     # apply baseline/conventional system costs
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_tech_costs_baseline, (tech_costs_baseline_df, model_settings.sunk_costs)).compute()                  
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_tech_costs_baseline, (tech_costs_baseline_df, model_settings.sunk_costs)).compute()   
 
                     #==============================================================================
                     # TECHNOLOGY PERFORMANCE IMPROVEMENTS AND DEGRADATION
                     #==============================================================================              
                     # get GHP technology performance improvements
-                    tech_performance_ghp_df = agent_mutation_geo.get_technology_performance_improvements_ghp(con, scenario_settings.schema, year)
+                    tech_performance_ghp_df = agent_mutation_ghp.get_technology_performance_improvements_ghp(con, scenario_settings.schema, year)
                     # apply GHP technology performance improvements
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_technology_performance_ghp, (tech_performance_ghp_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_technology_performance_ghp, (tech_performance_ghp_df, )).compute()
                     # get GHP system degradatation
-                    system_degradation_df = agent_mutation_geo.get_system_degradataion_ghp(con, scenario_settings.schema, year)
+                    system_degradation_df = agent_mutation_ghp.get_system_degradataion_ghp(con, scenario_settings.schema, year)
                     # apply GHP degradation
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_system_degradation_ghp, (system_degradation_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_system_degradation_ghp, (system_degradation_df, )).compute()
                     
                     # get baseline tech performance improvements and degradation
-                    tech_performance_baseline_df = agent_mutation_geo.get_technology_performance_improvements_and_degradation_baseline(con, scenario_settings.schema, year)
+                    tech_performance_baseline_df = agent_mutation_ghp.get_technology_performance_improvements_and_degradation_baseline(con, scenario_settings.schema, year)
                     # apply baseline tech performance improvements and degradation
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_technology_performance_improvements_and_degradation_baseline, (tech_performance_baseline_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_technology_performance_improvements_and_degradation_baseline, (tech_performance_baseline_df, )).compute()
                     
                     #==========================================================================================================
                     # CALCULATE SITE ENERGY CONSUMPTION
                     #==========================================================================================================
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.calculate_site_energy_consumption_ghp).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.calculate_site_energy_consumption_ghp).compute()
                     
                     #==========================================================================================================
                     # DEPRECIATION SCHEDULE       
                     #==========================================================================================================
                     # get depreciation schedule for current year
-                    depreciation_df = agent_mutation_geo.get_depreciation_schedule(con, scenario_settings.schema, year)
+                    depreciation_df = agent_mutation_ghp.get_depreciation_schedule(con, scenario_settings.schema, year)
                     # apply depreciation schedule to agents
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_depreciation_schedule, (depreciation_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_depreciation_schedule, (depreciation_df, )).compute()
                     
                     #==========================================================================================================
                     # LEASING AVAILABILITY
                     #==========================================================================================================               
                     # get leasing availability
-                    leasing_availability_df = agent_mutation_geo.get_leasing_availability(con, scenario_settings.schema, year)
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_leasing_availability, (leasing_availability_df, )).compute()                                        
+                    leasing_availability_df = agent_mutation_ghp.get_leasing_availability(con, scenario_settings.schema, year)
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_leasing_availability, (leasing_availability_df, )).compute()                                        
             
                     #==============================================================================
                     # ENERGY PRICES
                     #==============================================================================
                     # get and apply expected rate escalations
-                    rate_escalations_df = agent_mutation_geo.get_expected_rate_escalations(con, scenario_settings.schema, year)
-                    agents =  AgentsAlgorithm(agents, agent_mutation_geo.apply_expected_rate_escalations, (rate_escalations_df, )).compute()
+                    rate_escalations_df = agent_mutation_ghp.get_expected_rate_escalations(con, scenario_settings.schema, year)
+                    agents =  AgentsAlgorithm(agents, agent_mutation_ghp.apply_expected_rate_escalations, (rate_escalations_df, )).compute()
             
                     #==========================================================================================================
                     # FINANCIAL CALCULATIONS
                     #==========================================================================================================            
                     # replicate agents for business models
-                    agents =  AgentsAlgorithm(agents, agent_mutation_geo.replicate_agents_by_factor, ('business_model', ['host_owned', 'tpo']), row_increase_factor = 2).compute()
+                    agents =  AgentsAlgorithm(agents, agent_mutation_ghp.replicate_agents_by_factor, ('business_model', ['host_owned', 'tpo']), row_increase_factor = 2).compute()
                     # add metric field based on business model                    
-                    agents =  AgentsAlgorithm(agents, agent_mutation_geo.add_metric_field).compute()
+                    agents =  AgentsAlgorithm(agents, agent_mutation_ghp.add_metric_field).compute()
 
                     # apply financial parameters
-                    agents =  AgentsAlgorithm(agents, agent_mutation_geo.apply_financial_parameters, (financial_parameters, )).compute()
+                    agents =  AgentsAlgorithm(agents, agent_mutation_ghp.apply_financial_parameters, (financial_parameters, )).compute()
                     
                     # calculate state incentives
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.calc_state_incentives, (state_incentives_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.calc_state_incentives, (state_incentives_df, )).compute()
 
                     # calculate value of itc
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.calc_value_of_itc, (itc_options, year)).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.calc_value_of_itc, (itc_options, year)).compute()
             
                     # apply incentives cap
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_incentives_cap, (incentives_cap_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_incentives_cap, (incentives_cap_df, )).compute()
                     
                     # calculate raw cashflows for ghp and baseline technologies
                     analysis_period = 30
@@ -664,11 +667,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # CHOOSE FROM SYSTEM CONFIGURATIONS AND BUSINESS MODELS
                     #==========================================================================================================     
                     # clean up the decision var for tech/financing choice
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.sanitize_decision_col, ('max_market_share', 'mms_sanitized')).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.sanitize_decision_col, ('max_market_share', 'mms_sanitized')).compute()
                     # a new temporary id for agent + business model combos
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.create_new_id_column, (['agent_id', 'business_model'], 'temp_id')).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.create_new_id_column, (['agent_id', 'business_model'], 'temp_id')).compute()
                     # mark options to exclude from sys_config and business_model choices
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.mark_excluded_options).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.mark_excluded_options).compute()
                     # select from sys_config choices
                     agents = Agents(tech_choice_geo.probabilistic_choice(agents.dataframe, prng, uid_col = 'temp_id', options_col = 'sys_config', excluded_options_col = 'excluded_option', decision_col = 'mms_sanitized', alpha = 2, always_return_one = True))
                     # select from business_model choices
@@ -679,38 +682,38 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================                     
                     if is_first_year == True:
                         # calculate initial market shares
-                        agents = AgentsAlgorithm(agents, agent_mutation_geo.estimate_initial_market_shares, (state_starting_capacities_df, )).compute()
+                        agents = AgentsAlgorithm(agents, agent_mutation_ghp.estimate_initial_market_shares, (state_starting_capacities_df, )).compute()
                     else:
                         # get last year's results
-                        market_last_year_df = agent_mutation_geo.get_market_last_year(con, scenario_settings.schema)
+                        market_last_year_df = agent_mutation_ghp.get_market_last_year(con, scenario_settings.schema)
                         # apply last year's results to the agents
-                        agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_market_last_year, (market_last_year_df, )).compute()                
+                        agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_market_last_year, (market_last_year_df, )).compute()                
                     
     
                     #==========================================================================================================
                     # BASS DIFFUSION
                     #==========================================================================================================
                     # apply bass p/q/teq params
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_bass_params, (bass_params, )).compute()    
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_bass_params, (bass_params, )).compute()    
                     # calculate the equivalent time that has passed on the newly scaled bass curve
-                    agents = AgentsAlgorithm(agents, diffusion_functions_geo.calc_equiv_time).compute()
+                    agents = AgentsAlgorithm(agents, diffusion_functions_ghp.calc_equiv_time).compute()
                     # set the number of years to advance along bass curve (= teq2)
-                    agents = AgentsAlgorithm(agents, diffusion_functions_geo.set_number_of_years_to_advance, (is_first_year, )).compute()
+                    agents = AgentsAlgorithm(agents, diffusion_functions_ghp.set_number_of_years_to_advance, (is_first_year, )).compute()
                     # calculate new cumulative "adoption fraction" according to bass
-                    agents = AgentsAlgorithm(agents, diffusion_functions_geo.bass_diffusion).compute()
+                    agents = AgentsAlgorithm(agents, diffusion_functions_ghp.bass_diffusion).compute()
                     # apply adoption fraction to MMS to calculate actual diffusion
-                    agents = AgentsAlgorithm(agents, diffusion_functions_geo.calculate_bass_and_diffusion_market_share).compute()
+                    agents = AgentsAlgorithm(agents, diffusion_functions_ghp.calculate_bass_and_diffusion_market_share).compute()
                     # calculate diffusion results metrics
-                    agents = AgentsAlgorithm(agents, diffusion_functions_geo.calculate_diffusion_result_metrics).compute()
+                    agents = AgentsAlgorithm(agents, diffusion_functions_ghp.calculate_diffusion_result_metrics).compute()
                     # extract results for "market last year"
-                    market_last_year_df = diffusion_functions_geo.extract_market_last_year(agents.dataframe)
+                    market_last_year_df = diffusion_functions_ghp.extract_market_last_year(agents.dataframe)
     
                     #==========================================================================================================
                     # WRITE OUTPUTS
                     #==========================================================================================================   
                     # write the incremental results to the database
-                    agent_mutation_geo.write_agent_outputs_ghp(con, cur, scenario_settings.schema, agents.dataframe) 
-                    agent_mutation_geo.write_last_year(con, cur, market_last_year_df, scenario_settings.schema)
+                    agent_mutation_ghp.write_agent_outputs_ghp(con, cur, scenario_settings.schema, agents.dataframe) 
+                    agent_mutation_ghp.write_last_year(con, cur, market_last_year_df, scenario_settings.schema)
 
                     
                 # TODO: get visualizations working and remove this short-circuit
@@ -751,14 +754,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, demand_supply_geo.subtract_previously_subscribed_agents, (previously_subscribed_agents_df, )).compute()
                     
                     # get regional prices of energy
-                    energy_prices_df = agent_mutation_geo.get_regional_energy_prices(con, scenario_settings.schema, year)
+                    energy_prices_df = agent_mutation_du.get_regional_energy_prices(con, scenario_settings.schema, year)
                     # apply regional heating/cooling prices
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_regional_energy_prices, (energy_prices_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_du.apply_regional_energy_prices, (energy_prices_df, )).compute()
                     
                     # get du cost data
-                    end_user_costs_du_df = agent_mutation_geo.get_end_user_costs_du(con, scenario_settings.schema, year)
+                    end_user_costs_du_df = agent_mutation_du.get_end_user_costs_du(con, scenario_settings.schema, year)
                     # apply du cost data
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.apply_end_user_costs_du, (end_user_costs_du_df, )).compute()               
+                    agents = AgentsAlgorithm(agents, agent_mutation_du.apply_end_user_costs_du, (end_user_costs_du_df, )).compute()               
                                  
                     # update system ages
                     agents = AgentsAlgorithm(agents, agent_mutation_geo.update_system_ages, (year, is_first_year, model_settings.sunk_costs)).compute()
@@ -827,44 +830,44 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # BASS DIFFUSION
                     #==============================================================================                    
                     # get previous year market share
-                    existing_market_share_df = diffusion_functions_geo.get_existing_market_share(con, cur, scenario_settings.schema, year)
+                    existing_market_share_df = diffusion_functions_du.get_existing_market_share(con, cur, scenario_settings.schema, year)
                     # calculate total market demand
-                    total_market_demand_mw = diffusion_functions_geo.calculate_total_market_demand(tract_peak_demand_df)
+                    total_market_demand_mw = diffusion_functions_du.calculate_total_market_demand(tract_peak_demand_df)
                     # calculate current max market share
-                    current_mms = diffusion_functions_geo.calculate_current_mms(plant_sizes_market_df, total_market_demand_mw)
+                    current_mms = diffusion_functions_du.calculate_current_mms(plant_sizes_market_df, total_market_demand_mw)
                     # calculate new incremental market share pct
-                    new_market_share_pct = diffusion_functions_geo.calculate_new_incremental_market_share_pct(existing_market_share_df, current_mms, bass_params_df, year)
+                    new_market_share_pct = diffusion_functions_du.calculate_new_incremental_market_share_pct(existing_market_share_df, current_mms, bass_params_df, year)
                     # calculate new incremental market share capacity (mw)
-                    new_incremental_capacity_mw = diffusion_functions_geo.calculate_new_incremental_capacity_mw(new_market_share_pct, total_market_demand_mw)
+                    new_incremental_capacity_mw = diffusion_functions_du.calculate_new_incremental_capacity_mw(new_market_share_pct, total_market_demand_mw)
                     # select plants to be built
-                    plants_to_be_built_df = diffusion_functions_geo.select_plants_to_be_built(plant_sizes_market_df, new_incremental_capacity_mw, scenario_settings.random_generator_seed)
+                    plants_to_be_built_df = diffusion_functions_du.select_plants_to_be_built(plant_sizes_market_df, new_incremental_capacity_mw, scenario_settings.random_generator_seed)
                     # summarize the new cumulative market share (in terms of capacity and pct) based on the selected plants
                     # (note: this will differ a bit from the new_incremental_capacity_mw and new_market_share_pct + existing_market_share_df because it is based on
                     # selected plants, which may not sum perfectly to the theoreticaly incremental additions)
-                    cumulative_market_share_df = diffusion_functions_geo.calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, total_market_demand_mw, year)                    
+                    cumulative_market_share_df = diffusion_functions_du.calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, total_market_demand_mw, year)                    
                     
                     #==============================================================================
                     # TRACKING RESULTS
                     #==============================================================================     
                     # SUMMARY OF MARKET
                     # write/store summary market share outputs
-                    diffusion_functions_geo.write_cumulative_market_share(con, cur, cumulative_market_share_df, scenario_settings.schema)
+                    diffusion_functions_du.write_cumulative_market_share(con, cur, cumulative_market_share_df, scenario_settings.schema)
 
                     # AGENTS
                     # identify the subscribed agents
-                    subscribed_agents_df = diffusion_functions_geo.identify_subscribed_agents(plants_to_be_built_df, demand_curves_df)
+                    subscribed_agents_df = diffusion_functions_du.identify_subscribed_agents(plants_to_be_built_df, demand_curves_df)
                     # append this info to the agents
-                    agents = AgentsAlgorithm(agents, diffusion_functions_geo.mark_subscribed_agents, (subscribed_agents_df, )).compute()
+                    agents = AgentsAlgorithm(agents, diffusion_functions_du.mark_subscribed_agents, (subscribed_agents_df, )).compute()
                     # write agents to database
-                    diffusion_functions_geo.write_agent_outputs(con, cur, agents, scenario_settings.schema)
+                    diffusion_functions_du.write_agent_outputs(con, cur, agents, scenario_settings.schema)
                     
                     # PLANTS
                     # identify the subscribed resources
-                    subscribed_resources_df = diffusion_functions_geo.identify_subscribed_resources(plants_to_be_built_df, supply_curves_df)
+                    subscribed_resources_df = diffusion_functions_du.identify_subscribed_resources(plants_to_be_built_df, supply_curves_df)
                     # append this info to other key information about 
-                    subscribed_resources_with_costs_df = diffusion_functions_geo.mark_subscribed_resources(resources_with_costs_df, subscribed_resources_df)
+                    subscribed_resources_with_costs_df = diffusion_functions_du.mark_subscribed_resources(resources_with_costs_df, subscribed_resources_df)
                     # write results to database                    
-                    diffusion_functions_geo.write_resources_outputs(con, cur, subscribed_resources_with_costs_df, scenario_settings.schema)
+                    diffusion_functions_du.write_resources_outputs(con, cur, subscribed_resources_with_costs_df, scenario_settings.schema)
             
                 # TODO: get visualizations working and remove this short-circuit
                 return 'Simulations Complete'   
