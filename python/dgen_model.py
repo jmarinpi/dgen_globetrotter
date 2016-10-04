@@ -28,10 +28,10 @@ reload(storage_funcs_m)
 # ---------------------------------------------
 import config
 from excel import excel_functions
-import tech_choice
 import reeds_functions as reedsfunc
 import utility_functions as utilfunc
 from agent import Agents, AgentsAlgorithm
+import tech_choice_elec
 import tech_choice_geo
 import settings
 import agent_mutation_elec
@@ -400,7 +400,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     
                     # select from choices for business model and (optionally) technology
-                    df = tech_choice.select_financing_and_tech(df, prng, scenario_settings.sectors, config.tech_choice_decision_var, scenario_settings.choose_tech, scenario_settings.techs, alpha = 2)                 
+                    df = tech_choice_elec.select_financing_and_tech(df, prng, scenario_settings.sectors, config.tech_choice_decision_var, scenario_settings.choose_tech, scenario_settings.techs, alpha = 2)                 
     
                     #==========================================================================================================
                     # MARKET LAST YEAR
