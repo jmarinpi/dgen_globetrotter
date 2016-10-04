@@ -33,8 +33,10 @@ class ModelSettings(object):
         self.agents_per_region = None # type is integer, > 0
         self.sample_pct = None # type is float, <=1, warn if> 0.05 about slow run times
         self.min_agents = None # type is integer, >=0
-        self.pg_procs = None
-        self.local_cores = None
+        self.pg_procs = None # int<=16
+        self.local_cores = None # int < cores on machine
+        self.tech_choice_decision_var = None # one of ['max_market_share', 'npv4', 'npv']
+        self.delete_output_schema = None # bool
 
     def set(self, attr, value):
 
@@ -59,6 +61,8 @@ class ModelSettings(object):
         self.set('local_cores', config.local_cores)
         self.set('pg_procs', config.pg_procs)
         self.set_pg_params(config.pg_params_file)
+        self.set('tech_choice_decision_var', config.tech_choice_decision_var)
+        self.set('delete_output_schema', config.delete_output_schema)
 
 
     def set_pg_params(self, pg_params_file):
@@ -284,6 +288,26 @@ class ModelSettings(object):
             # warn if too large
             if self.pg_procs > 16:
                 warnings.warn("High %s: may saturate the resources of the Postgres server" % property_name)
+                
+        elif property_name == 'tech_choice_decision_var':
+            # check type
+            try:
+                check_type(self.get(property_name), str)
+            except TypeError, e:
+                raise TypeError('Invalid %s: %s' % (property_name, e))      
+                
+            # one of ['max_market_share', 'npv4', 'npv']
+            valid_opts = ['max_market_share', 'npv4', 'npv']
+            if self.tech_choice_decision_var not in valid_opts:
+                raise ValueError('Invalid %s: must be one of %s' % (property_name, valid_opts))
+                
+        elif property_name == 'delete_output_schema':
+            # check type
+            try:
+                check_type(self.get(property_name), bool)
+            except TypeError, e:
+                raise TypeError('Invalid %s: %s' % (property_name, e))           
+        
                 
         else:
             print 'No validation method for property %s exists.' % property_name
