@@ -28,7 +28,7 @@ logger = utilfunc.get_logger()
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
-def calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, is_first_year,
+def calc_diffusion(df, cur, con, techs, choose_tech, sectors, schema, is_first_year,
                    bass_params, override_p_value = None, override_q_value = None, override_teq_yr1_value = None):
 
     ''' Calculates the market share (ms) added in the solve year. Market share must be less
@@ -46,10 +46,10 @@ def calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, is_fi
     logger.info("\t\tCalculating Diffusion")
     
     # set p/q/teq_yr1 params    
-    df  = set_bass_param(df, cfg, con, bass_params, override_p_value, override_q_value, override_teq_yr1_value)
+    df  = set_bass_param(df, con, bass_params, override_p_value, override_q_value, override_teq_yr1_value)
     
     # calc diffusion market share
-    df = calc_diffusion_market_share(df, cfg, con, is_first_year)
+    df = calc_diffusion_market_share(df, con, is_first_year)
     
     # ensure no diffusion for non-selected options
     df['diffusion_market_share'] = df['diffusion_market_share'] * df['selected_option'] 
@@ -93,7 +93,7 @@ def calc_diffusion(df, cur, con, cfg, techs, choose_tech, sectors, schema, is_fi
 #=============================================================================
 
 #  ^^^^ Calculate new diffusion in market segment ^^^^
-def calc_diffusion_market_share(df, cfg, con, is_first_year):
+def calc_diffusion_market_share(df, con, is_first_year):
     ''' Calculate the fraction of overall population that have adopted the 
         technology in the current period. Note that this does not specify the 
         actual new adoption fraction without knowing adoption in the previous period. 
@@ -123,7 +123,7 @@ def calc_diffusion_market_share(df, cfg, con, is_first_year):
 #==============================================================================  
     
 #=============================================================================
-def set_bass_param(df, cfg, con, bass_params, override_p_value, override_q_value, override_teq_yr1_value):
+def set_bass_param(df, con, bass_params, override_p_value, override_q_value, override_teq_yr1_value):
     ''' Set the p & q parameters which define the Bass diffusion curve.
     p is the coefficient of innovation, external influence or advertising effect. 
     q is the coefficient of imitation, internal influence or word-of-mouth effect.
@@ -133,16 +133,7 @@ def set_bass_param(df, cfg, con, bass_params, override_p_value, override_q_value
     '''
       
     # set p and q values
-    if cfg.bass_method == 'sunshot':
-        # set the scaled metric value
-        df['scaled_metric_value'] = np.where(df.metric == 'payback_period', 1 - (df.metric_value/30), np.where(df.metric == 'percent_monthly_bill_savings', df.metric_value/2,np.nan))
-        df['p'] = np.array([0.0015] * df.scaled_metric_value.size);
-        df['q'] = np.where(df['scaled_metric_value'] >= 0.9, 0.5, np.where((df['scaled_metric_value'] >=0.66) & (df['scaled_metric_value'] < 0.9), 0.4, 0.3))
-        df['teq_yr1'] = np.array([2] * df.scaled_metric_value.size);
-        
-    if cfg.bass_method == 'user_input':
-        # NOTE: we haven't calibrated individual states for solar, or anything at all for wind
-        df = pd.merge(df, bass_params, how = 'left', on  = ['state_abbr','sector_abbr', 'tech'])
+    df = pd.merge(df, bass_params, how = 'left', on  = ['state_abbr','sector_abbr', 'tech'])
     
     # if override values were provided for p, q, or teq_yr1, apply them to all agents
     if override_p_value is not None:

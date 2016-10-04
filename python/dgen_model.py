@@ -400,7 +400,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     
                     # select from choices for business model and (optionally) technology
-                    df = tech_choice_elec.select_financing_and_tech(df, prng, scenario_settings.sectors, config.tech_choice_decision_var, scenario_settings.choose_tech, scenario_settings.techs, alpha = 2)                 
+                    df = tech_choice_elec.select_financing_and_tech(df, prng, scenario_settings.sectors, model_settings.tech_choice_decision_var, scenario_settings.choose_tech, scenario_settings.techs, alpha = 2)                 
     
                     #==========================================================================================================
                     # MARKET LAST YEAR
@@ -424,7 +424,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # convert back to dataframe
                     df = agents.dataframe
                     # calculate diffusion based on economics and bass diffusion                   
-                    df, market_last_year = diffusion_functions_elec.calc_diffusion(df, cur, con, config, scenario_settings.techs, model_settings.choose_tech, scenario_settings.sectors, scenario_settings.schema, is_first_year, bass_params) 
+                    df, market_last_year = diffusion_functions_elec.calc_diffusion(df, cur, con, scenario_settings.techs, model_settings.choose_tech, scenario_settings.sectors, scenario_settings.schema, is_first_year, bass_params) 
                     
                     #==========================================================================================================
                     # ESTIMATE TOTAL GENERATION
