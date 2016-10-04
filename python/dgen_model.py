@@ -424,7 +424,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # convert back to dataframe
                     df = agents.dataframe
                     # calculate diffusion based on economics and bass diffusion                   
-                    df, market_last_year = diffusion_functions_elec.calc_diffusion(df, cur, con, scenario_settings.techs, model_settings.choose_tech, scenario_settings.sectors, scenario_settings.schema, is_first_year, bass_params) 
+                    df, market_last_year = diffusion_functions_elec.calc_diffusion(df, cur, con, scenario_settings.techs, scenario_settings.choose_tech, scenario_settings.sectors, scenario_settings.schema, is_first_year, bass_params) 
                     
                     #==========================================================================================================
                     # ESTIMATE TOTAL GENERATION
@@ -439,18 +439,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     datfunc.write_outputs(con, cur, df, scenario_settings.sectors, scenario_settings.schema) 
                     datfunc.write_last_year(con, cur, market_last_year, scenario_settings.schema)
                             
-                    # NEXT STEPS
-                    # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays    
-                            # clustering of time series into prototypes? (e.g., vector quantization) partioning around medoids
-                            # compression/lazy load of arrays ? https://www.wakari.io/sharing/bundle/pjimenezmateo/Numba_and_blz?has_login=False   
-                            # out of memory dataframe -- dask? blz?
-    
-                    # ~~~LONG TERM~~~
-                    # TODO: may need to refactor agents algorithm to avoid pickling all agents to all cores
-                    # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
-                    # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database                
-                    # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
-                    # TODO: remove learning curves from input sheet for wind and solar
     
             elif scenario_settings.tech_mode == 'ghp':
                 dsire_opts = datfunc.get_dsire_settings(con, scenario_settings.schema)
