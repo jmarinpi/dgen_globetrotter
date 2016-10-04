@@ -23,7 +23,7 @@ logger = utilfunc.get_logger()
 #==============================================================================
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def calc_economics(df, schema, market_projections, financial_parameters, rate_growth_df, 
-                   scenario_opts, max_market_share, cur, con,
+                   max_market_share, cur, con,
                    year, dsire_incentives, dsire_opts, state_dsire, srecs, 
                    mode, curtailment_method, itc_options, inflation_rate, incentive_cap, tech_lifetime = 25):
     '''
@@ -97,7 +97,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     df = datfunc.calc_value_of_itc(df, itc_options, year)
 
     # calculate cashflows
-    revenue, costs, cfs, df = calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime)    
+    revenue, costs, cfs, df = calc_cashflows(df, curtailment_method, incentive_cap, tech_lifetime)    
 
     ## Calc metric value here
     df['metric_value_precise'] = calc_metric_value(df, cfs, revenue, costs, tech_lifetime)
@@ -144,7 +144,7 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     
     
 #==============================================================================
-def calc_cashflows(df, scenario_opts, curtailment_method, incentive_cap, tech_lifetime = 25):
+def calc_cashflows(df, curtailment_method, incentive_cap, tech_lifetime = 25):
     """
     Name:   calc_cashflows
     Purpose: Function to calculate revenue and cost cashflows associated with 

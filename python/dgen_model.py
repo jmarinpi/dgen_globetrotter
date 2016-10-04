@@ -394,9 +394,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Calculate economics of adoption for different busines models
                     df = financial_functions_elec.calc_economics(agents.dataframe, scenario_settings.schema, 
                                                market_projections, financial_parameters, rate_growth_df,
-                                               scenario_opts, max_market_share, cur, con, year,
-                                               dsire_incentives, dsire_opts, state_dsire, srecs, mode, 
-                                               curtailment_method, itc_options, inflation_rate, incentives_cap, 25)
+                                               max_market_share, cur, con, year, dsire_incentives, dsire_opts, 
+                                               state_dsire, srecs, mode,curtailment_method, itc_options, 
+                                               inflation_rate, incentives_cap, 25)
                     
                     
                     # select from choices for business model and (optionally) technology
