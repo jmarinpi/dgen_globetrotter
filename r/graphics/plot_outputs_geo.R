@@ -23,19 +23,19 @@ library(gridExtra, quietly = T)
 # setwd('S:/mgleason/DG_Wind/diffusion_repo/python')
 # setwd('/Users/jduckwor/WorkRelated/managed_code/diffusion/python')
 # setwd('/Users/mgleason/NREL_Projects/github/diffusion/python')
-setwd('/Users/kmccabe/Projects/diffusion/python')
+# setwd('/Users/kmccabe/Projects/diffusion/python')
 
 # source('../r/maps/map_functions.R', chdir = T)
 source("../r/maps/r2js/r2js.R")
 source("../r/graphics/output_funcs_geo.R")
 
 
-runpath<-'/Users/kmccabe/Projects/diffusion/runs/'
-scen_name<-'test'
-tech = 'ghp'
-schema = 'diffusion_results_2016_09_12_14h30m17s'
-pg_params_file = 'pg_params_bigde.json'
-file_suffix = 'test'
+# runpath<-'/Users/kmccabe/Projects/diffusion/runs/'
+# scen_name<-'test'
+# tech = 'ghp'
+# schema = 'diffusion_results_2016_09_12_14h30m17s'
+# pg_params_file = 'pg_params_bigde.json'
+# file_suffix = 'test'
 
 # runpath<-'/Users/kmccabe/Projects/diffusion/runs/'
 # scen_name<-'test'
@@ -44,12 +44,12 @@ file_suffix = 'test'
 # pg_params_file = 'pg_params_gis.json'
 # file_suffix = 'test'
 
-# runpath<-commandArgs(T)[1]
-# scen_name<-commandArgs(T)[2]
-# tech = commandArgs(T)[3]
-# schema = commandArgs(T)[4]
-# pg_params_file = commandArgs(T)[5]
-# file_suffix = commandArgs(T)[6]
+runpath<-commandArgs(T)[1]
+scen_name<-commandArgs(T)[2]
+tech = commandArgs(T)[3]
+schema = commandArgs(T)[4]
+pg_params_file = commandArgs(T)[5]
+file_suffix = commandArgs(T)[6]
 
 # get pg connection params
 pg_params = fromJSON(txt = sprintf('../python/%s', pg_params_file))
@@ -98,12 +98,6 @@ knit2html("../r/graphics/plot_outputs_geo.md", output = report_filepath, title =
             stylesheet = "../r/graphics/plot_outputs.css",
             options = c("hard_wrap", "use_xhtml", "base64_images", "toc"),
             quiet = T)
-
-# if(tech=='ghp') {
-#   out<-diffusion_trends(df,runpath,scen_name)
-# } else if(tech=='du') {
-#   out<-diffusion_trends_du(df,df_capacity,runpath,scen_name)
-# }
 
 dbDisconnect(con)
 

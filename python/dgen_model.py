@@ -708,7 +708,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     
                 # TODO: get visualizations working and remove this short-circuit
-                return 'Simulations Complete'  
+                #return 'Simulations Complete'  
     
             elif scenario_settings.tech_mode == 'du':
                 # get initial (year = 2012) agents from postgres

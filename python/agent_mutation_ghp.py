@@ -407,15 +407,27 @@ def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calculate_site_energy_consumption_ghp(dataframe):
     
-    # determine the total amount of natural gas and elec used for space heating and cooling by BASELINE HVAC
-    dataframe['baseline_site_natgas_per_building_kwh'] = (dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'natural gas') + 
-                                                      dataframe['site_space_cool_per_building_in_bin_kwh'] * (dataframe['space_cool_fuel'] == 'natural gas'))
+    # determine the total consumption for space heating and cooling by fuel - BASELINE HVAC
+    dataframe['baseline_site_natgas_per_building_kwh'] = dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'natural gas')
     dataframe['baseline_site_elec_per_building_kwh'] = (dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'electricity') + 
                                                     dataframe['site_space_cool_per_building_in_bin_kwh'] * (dataframe['space_cool_fuel'] == 'electricity'))
-    # determine the total amount of natural gas and elec used for space heating and cooling by GHP
+    dataframe['baseline_site_propane_per_building_kwh'] = dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'propane')
+    dataframe['baseline_site_fuel_oil_per_building_kwh'] = dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'distallate fuel oil')
+    dataframe['baseline_site_dist_hot_water_per_building_kwh'] = dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'district hot water')
+    dataframe['baseline_site_dist_steam_per_building_kwh'] = dataframe['site_space_heat_per_building_in_bin_kwh'] * (dataframe['space_heat_fuel'] == 'district steam')
+    dataframe['baseline_site_dist_chil_water_per_building_kwh'] = dataframe['site_space_cool_per_building_in_bin_kwh'] * (dataframe['space_cool_fuel'] == 'district chilled water')
+                                                    
+    # determine the total consumption for space heating and cooling by fuel - GHP
     # (account for energy savings from CRBS)
     dataframe['ghp_site_natgas_per_building_kwh'] = np.where(dataframe['modellable'] == True, dataframe['baseline_site_natgas_per_building_kwh'] * (1. - dataframe['savings_pct_natural_gas_consumption']), np.nan)
     dataframe['ghp_site_elec_per_building_kwh'] = np.where(dataframe['modellable'] == True, dataframe['baseline_site_elec_per_building_kwh'] * (1. - dataframe['savings_pct_electricity_consumption']), np.nan)
+    # natural gas savings used to model savings of other fossil fuels (propane, fuel oil) and district heating fuels
+    dataframe['ghp_site_propane_per_building_kwh'] = np.where(dataframe['modellable'] == True, dataframe['baseline_site_propane_per_building_kwh'] * (1. - dataframe['savings_pct_natural_gas_consumption']), np.nan)
+    dataframe['ghp_site_fuel_oil_per_building_kwh'] = np.where(dataframe['modellable'] == True, dataframe['baseline_site_fuel_oil_per_building_kwh'] * (1. - dataframe['savings_pct_natural_gas_consumption']), np.nan)
+    dataframe['ghp_site_dist_hot_water_per_building_kwh'] = np.where(dataframe['modellable'] == True, dataframe['baseline_site_dist_hot_water_per_building_kwh'] * (1. - dataframe['savings_pct_natural_gas_consumption']), np.nan)
+    dataframe['ghp_site_dist_steam_per_building_kwh'] = np.where(dataframe['modellable'] == True, dataframe['baseline_site_dist_steam_per_building_kwh'] * (1. - dataframe['savings_pct_natural_gas_consumption']), np.nan)
+    # electricity savings used to model district chilled water savings
+    dataframe['ghp_site_dist_chil_water_per_building_kwh'] = np.where(dataframe['modellable'] == True, dataframe['baseline_site_dist_chil_water_per_building_kwh'] * (1. - dataframe['savings_pct_electricity_consumption']), np.nan)
     
     return dataframe
 

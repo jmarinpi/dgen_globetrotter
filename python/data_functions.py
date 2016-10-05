@@ -319,9 +319,11 @@ def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rs
     else:
         logger.info('\tCompiling Output Report')
     
-    # path to the plot_outputs R script        
-    plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())        
-    
+    # choose plot_outputs R script based on techs      
+	if set(['wind','solar', 'storage']).isdisjoint(set(techs)) == False:
+		plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())
+	else:
+		plot_outputs_path = '%s/r/graphics/plot_outputs_geo.R' % os.path.dirname(os.getcwd())      
     
     for tech in techs:
         out_tech_path = os.path.join(out_scen_path, tech)
@@ -334,6 +336,7 @@ def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rs
             logger.error(messages[1])
         if 'warning' in messages[1].lower():
             logger.warning(messages[1])
+            
 
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def create_tech_choice_report(choose_tech, schema, scen_name, out_scen_path, cur, con, Rscriblock_path, pg_params_file, file_suffix = ''):
