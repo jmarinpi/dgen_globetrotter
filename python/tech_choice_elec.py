@@ -35,7 +35,7 @@ def which_max(group, col):
     return uid
 
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
-def select_financing_and_tech(df, prng, alpha_lkup, sectors, decision_col, choose_tech = False, techs = ['solar', 'wind']):
+def select_financing_and_tech(df, prng, sectors, decision_col, choose_tech = False, techs = ['solar', 'wind'], alpha = 2):
         
     if choose_tech == True:
         msg = "\t\tSelecting Financing Option and Technology"
@@ -59,7 +59,7 @@ def select_financing_and_tech(df, prng, alpha_lkup, sectors, decision_col, choos
         sys.exit(-1)   
     
     df['uid'] = range(0, df.shape[0])
-    df = df.merge(alpha_lkup)
+    df['alpha'] = alpha
   
     if choose_tech == True:
         group_by_cols = ['county_id', 'bin_id', 'sector_abbr']
@@ -153,52 +153,4 @@ def select_financing_and_tech(df, prng, alpha_lkup, sectors, decision_col, choos
     
     return return_df
     
-if __name__ == '__main__': 
-    from config import alpha_lkup
-    from pandas.util.testing import assert_frame_equal
-    
-#    in_df = pd.read_csv('/Users/mgleason/NREL_Projects/github/diffusion/python/test_data.csv')
-#    in_df['leasing_allowed'] = True
 
-    in_df = pd.read_csv('/Users/mgleason/Desktop/df.csv')
-
-    
-    df_solar = in_df[in_df.tech == 'solar'].copy()
-    df_wind = in_df[in_df.tech == 'wind'].copy()
-    
-    prng = np.random.RandomState(1234)
-    b = select_financing_and_tech(in_df, prng, alpha_lkup, choose_tech = False, techs = ['solar', 'wind'])
-    
-    prng = np.random.RandomState(1234)
-    br = select_financing_and_tech(in_df, prng, alpha_lkup, choose_tech = False, techs = ['wind', 'solar'])
-    
-    prng = np.random.RandomState(1234)
-    w = select_financing_and_tech(df_wind, prng, alpha_lkup, choose_tech = False, techs = ['wind'])
-    
-    prng = np.random.RandomState(1234)
-    s = select_financing_and_tech(df_solar, prng, alpha_lkup, choose_tech = False, techs = ['solar'])
-    
-    
-    bw = b[b.tech == 'wind']
-    bs = b[b.tech == 'solar']
-    
-    try:
-        assert_frame_equal(bs.reset_index(drop = True), s.reset_index(drop = True))
-        print True
-    except Exception:
-        print False
-        
-    try:
-        assert_frame_equal(bw.reset_index(drop = True), w.reset_index(drop = True))
-        print True
-    except Exception:
-        print False
-
-
-
-    #np.all(b.reset_index(drop = True) == br.reset_index(drop = True))
-
-#    bs.to_csv('/Users/mgleason/Desktop/bs.csv', index = False)
-#    s.to_csv('/Users/mgleason/Desktop/s.csv', index = False)
-#    w.to_csv('/Users/mgleason/Desktop/w.csv', index = False)
-#    bw.to_csv('/Users/mgleason/Desktop/bw.csv', index = False)

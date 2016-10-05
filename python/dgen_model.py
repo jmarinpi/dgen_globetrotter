@@ -28,10 +28,10 @@ reload(storage_funcs_m)
 # ---------------------------------------------
 import config
 from excel import excel_functions
-import tech_choice
 import reeds_functions as reedsfunc
 import utility_functions as utilfunc
 from agent import Agents, AgentsAlgorithm
+import tech_choice_elec
 import tech_choice_geo
 import settings
 import agent_mutation_elec
@@ -53,7 +53,10 @@ import financial_functions_geo
 #np.seterr(all='raise')
 pd.set_option('mode.chained_assignment', None)
 #==============================================================================
-    
+
+# TODO: delete this line
+sunk_costs = False
+
 
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
@@ -394,13 +397,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Calculate economics of adoption for different busines models
                     df = financial_functions_elec.calc_economics(agents.dataframe, scenario_settings.schema, 
                                                market_projections, financial_parameters, rate_growth_df,
-                                               scenario_opts, max_market_share, cur, con, year,
-                                               dsire_incentives, dsire_opts, state_dsire, srecs, mode, 
-                                               curtailment_method, itc_options, inflation_rate, incentives_cap, 25)
+                                               max_market_share, cur, con, year, dsire_incentives, dsire_opts, 
+                                               state_dsire, srecs, mode,curtailment_method, itc_options, 
+                                               inflation_rate, incentives_cap, 25)
                     
                     
                     # select from choices for business model and (optionally) technology
-                    df = tech_choice.select_financing_and_tech(df, prng, config.alpha_lkup, scenario_settings.sectors, config.tech_choice_decision_var, scenario_settings.choose_tech, scenario_settings.techs)                 
+                    df = tech_choice_elec.select_financing_and_tech(df, prng, scenario_settings.sectors, model_settings.tech_choice_decision_var, scenario_settings.choose_tech, scenario_settings.techs, alpha = 2)                 
     
                     #==========================================================================================================
                     # MARKET LAST YEAR
@@ -424,7 +427,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # convert back to dataframe
                     df = agents.dataframe
                     # calculate diffusion based on economics and bass diffusion                   
-                    df, market_last_year = diffusion_functions_elec.calc_diffusion(df, cur, con, config, scenario_settings.techs, model_settings.choose_tech, scenario_settings.sectors, scenario_settings.schema, is_first_year, bass_params) 
+                    df, market_last_year = diffusion_functions_elec.calc_diffusion(df, cur, con, scenario_settings.techs, scenario_settings.choose_tech, scenario_settings.sectors, scenario_settings.schema, is_first_year, bass_params) 
                     
                     #==========================================================================================================
                     # ESTIMATE TOTAL GENERATION
@@ -439,18 +442,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     datfunc.write_outputs(con, cur, df, scenario_settings.sectors, scenario_settings.schema) 
                     datfunc.write_last_year(con, cur, market_last_year, scenario_settings.schema)
                             
-                    # NEXT STEPS
-                    # TODO: figure out better way to handle memory with regards to hourly generation and consumption arrays    
-                            # clustering of time series into prototypes? (e.g., vector quantization) partioning around medoids
-                            # compression/lazy load of arrays ? https://www.wakari.io/sharing/bundle/pjimenezmateo/Numba_and_blz?has_login=False   
-                            # out of memory dataframe -- dask? blz?
-    
-                    # ~~~LONG TERM~~~
-                    # TODO: may need to refactor agents algorithm to avoid pickling all agents to all cores
-                    # TODO: edit AgentsAlgorithm  -- remove column check during precheck and change postcheck to simply check for the new columns added (MUST be specified by user...)
-                    # TODO: Remove RECS/CBECS as option for rooftop characteristics from input sheet and database                
-                    # TODO: perform final cleanup of data functions to make sure all legacy/deprecated functions are removed and/or moved(?) to the correct module
-                    # TODO: remove learning curves from input sheet for wind and solar
     
             elif scenario_settings.tech_mode == 'ghp':
                 dsire_opts = datfunc.get_dsire_settings(con, scenario_settings.schema)
@@ -492,7 +483,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # HVAC SYSTEM AGES
                     #==============================================================================                        
                     # update system ages
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_system_ages, (year, is_first_year, model_settings.sunk_costs)).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_system_ages, (year, is_first_year, sunk_costs)).compute()
                     # check which agents require new systems (new construction and those whose systems are too old)
                     agents = AgentsAlgorithm(agents, agent_mutation_geo.calc_years_to_replacement).compute()                                
 
@@ -546,7 +537,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================                            
                     # flag the agents that are deployable during this model year
                     # (i.e., these are the subset of market eligible agents can be developed NOW)
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.identify_bass_deployable_agents, (model_settings.sunk_costs, )).compute()                              
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.identify_bass_deployable_agents, (sunk_costs, )).compute()                              
+
 
                     #==============================================================================
                     # DETERMINE GHP-COMPATIBILITY
@@ -566,7 +558,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get baseline/conventional system costs
                     tech_costs_baseline_df = agent_mutation_ghp.get_technology_costs_baseline(con, scenario_settings.schema, year)
                     # apply baseline/conventional system costs
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_tech_costs_baseline, (tech_costs_baseline_df, model_settings.sunk_costs)).compute()   
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_tech_costs_baseline, (tech_costs_baseline_df, sunk_costs)).compute()   
 
                     #==============================================================================
                     # TECHNOLOGY PERFORMANCE IMPROVEMENTS AND DEGRADATION
@@ -764,7 +756,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, agent_mutation_du.apply_end_user_costs_du, (end_user_costs_du_df, )).compute()               
                                  
                     # update system ages
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_system_ages, (year, is_first_year, model_settings.sunk_costs)).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_system_ages, (year, is_first_year, sunk_costs)).compute()
                     # check which agents require new systems (new construction and those whose systems are too old)
                     agents = AgentsAlgorithm(agents, agent_mutation_geo.calc_years_to_replacement).compute()
                     

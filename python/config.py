@@ -9,7 +9,6 @@ import os
 import multiprocessing
 import pandas as pd
 
-
 #==============================================================================
 # these are all variables that we can change, but don't want to expose to non-expert users
 #==============================================================================
@@ -53,33 +52,11 @@ pg_procs = 12
 local_cores = multiprocessing.cpu_count()/2
 
 #==============================================================================
-# Toggle gross fit vs net fit
-#==============================================================================
-# In non-NEM mode, should generation be allowed to offset self-consumption (False), 
-# or directly sold to grid (True)
-gross_fit_mode = False
-
-
-#==============================================================================
-# treat existing HVAC equipment as sunk costs
-#==============================================================================
-sunk_costs = False
-
-#==============================================================================
 # tech_choice decision variable
 #==============================================================================
 tech_choice_decision_var = 'max_market_share'
 # alternative options are: npv4 or npv
 
-
-#==============================================================================
-#  Set up the alpha lookup table used by datfunc.select_financing_and_tech
-#==============================================================================
-alpha_lkup = pd.DataFrame({'tech' : ['solar', 'solar', 'wind', 'wind'],
-                           'business_model' : ['host_owned', 'tpo', 'host_owned', 'tpo'],
-                            'alpha' : [2, 2, 2, 2]
-
-})
 
 #==============================================================================
 #  Should the output schema be deleted after the model run
