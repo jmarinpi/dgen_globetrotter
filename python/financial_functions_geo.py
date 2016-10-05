@@ -52,7 +52,7 @@ def calculate_max_market_share(dataframe, max_market_share):
     
     # Derate the maximum market share for commercial and industrial customers in leased buildings by (1/3)
     # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
-    dataframe['max_market_share'] = np.where(dataframe['owner_occupied'] == True, dataframe['max_market_share']/3, dataframe['max_market_share'])
+    dataframe['max_market_share'] = np.where(dataframe['owner_occupied'] == True, dataframe['max_market_share']/3., dataframe['max_market_share'])
     
     # null values for unmodellable agents
     out_cols = ['metric_value_bounded',

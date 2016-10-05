@@ -56,9 +56,6 @@ import financial_functions_geo
 pd.set_option('mode.chained_assignment', None)
 #==============================================================================
 
-# TODO: delete this line
-sunk_costs = False
-
 
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
@@ -485,7 +482,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # HVAC SYSTEM AGES
                     #==============================================================================                        
                     # update system ages
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_system_ages, (year, is_first_year, sunk_costs)).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_system_ages, (year, is_first_year)).compute()
                     # check which agents require new systems (new construction and those whose systems are too old)
                     agents = AgentsAlgorithm(agents, agent_mutation_geo.calc_years_to_replacement).compute()                                
 
@@ -539,7 +536,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================                            
                     # flag the agents that are deployable during this model year
                     # (i.e., these are the subset of market eligible agents can be developed NOW)
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.identify_bass_deployable_agents, (sunk_costs, )).compute()                              
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.identify_bass_deployable_agents).compute()                              
 
 
                     #==============================================================================
@@ -560,7 +557,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get baseline/conventional system costs
                     tech_costs_baseline_df = agent_mutation_ghp.get_technology_costs_baseline(con, scenario_settings.schema, year)
                     # apply baseline/conventional system costs
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_tech_costs_baseline, (tech_costs_baseline_df, sunk_costs)).compute()   
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_tech_costs_baseline, (tech_costs_baseline_df, )).compute()   
 
                     #==============================================================================
                     # TECHNOLOGY PERFORMANCE IMPROVEMENTS AND DEGRADATION
@@ -758,7 +755,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, agent_mutation_du.apply_end_user_costs_du, (end_user_costs_du_df, )).compute()               
                                  
                     # update system ages
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_system_ages, (year, is_first_year, sunk_costs)).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_system_ages, (year, is_first_year)).compute()
                     # check which agents require new systems (new construction and those whose systems are too old)
                     agents = AgentsAlgorithm(agents, agent_mutation_geo.calc_years_to_replacement).compute()
                     

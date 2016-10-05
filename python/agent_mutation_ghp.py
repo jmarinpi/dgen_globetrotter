@@ -278,7 +278,7 @@ def apply_siting_constraints_ghp(dataframe, siting_constraints_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def identify_bass_deployable_agents(dataframe, sunk_costs):
+def identify_bass_deployable_agents(dataframe):
 
     # deployable customers are those: 
     # (1) with a system that can be sited on the property, 
@@ -379,21 +379,13 @@ def get_technology_costs_baseline(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df, sunk_costs):    
+def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df):    
     
 
     dataframe = pd.merge(dataframe, tech_costs_baseline_df, how = 'left', on = ['sector_abbr'])
 
-    if sunk_costs == True:
-        # installation costs will be zero, except for new construction
-        # O&M are normal
-        dataframe['baseline_equipment_costs_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['ghp_system_size_tons'] * dataframe['hvac_equipment_cost_dollars_per_cooling_ton'], 0.)
-        dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['baseline_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 0.)
-    elif sunk_costs == False:
-        dataframe['baseline_equipment_costs_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['hvac_equipment_cost_dollars_per_cooling_ton']
-        dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['baseline_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 0.)  
-    else:
-        raise ValueError('sunk_costs must be one of: True/False')
+    dataframe['baseline_equipment_costs_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['hvac_equipment_cost_dollars_per_cooling_ton']
+    dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['baseline_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 0.)  
 
     dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_costs_dlrs'] + dataframe['baseline_rest_of_system_cost_dlrs']
     dataframe['baseline_fixed_om_dlrs_per_year'] = dataframe['baseline_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']   

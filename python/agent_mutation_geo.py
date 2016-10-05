@@ -75,7 +75,7 @@ def update_year(dataframe, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def update_system_ages(dataframe, year, is_first_year, sunk_costs):
+def update_system_ages(dataframe, year, is_first_year):
 
     in_cols = list(dataframe.columns)
     
