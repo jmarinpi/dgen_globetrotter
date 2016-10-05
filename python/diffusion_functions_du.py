@@ -21,6 +21,7 @@ import utility_functions as utilfunc
 import decorators
 import psycopg2 as pg
 from cStringIO import StringIO
+import diffusion_functions_geo
 
 #==============================================================================
 # Load logger
@@ -93,6 +94,9 @@ def calculate_current_mms(plant_sizes_market_df, total_market_demand_mw):
     current_mms = total_buildable_plant_capacity_mw/total_market_demand_mw
     
     return current_mms
+
+
+
     
 #%%
 #  ^^^^ Calculate new diffusion in market segment ^^^^
@@ -111,13 +115,13 @@ def calc_diffusion_market_share(df, is_first_year):
     # The relative economic attractiveness controls the p,q values in Bass diffusion
     # Current assumption is that only payback and MBS are being used, that pp is bounded [0-30] and MBS bounded [0-120]
        
-    df = calc_equiv_time(df) # find the 'equivalent time' on the newly scaled diffusion curve
+    df = diffusion_functions_geo.calc_equiv_time(df) # find the 'equivalent time' on the newly scaled diffusion curve
     if is_first_year == True:
         df['teq2'] = df['teq'] + df['teq_yr1']
     else:
         df['teq2'] = df['teq'] + 2 # now step forward two years from the 'new location'
     
-    df = bass_diffusion(df); # calculate the new diffusion by stepping forward 2 years
+    df = diffusion_functions_geo.bass_diffusion(df); # calculate the new diffusion by stepping forward 2 years
 
     df['bass_market_share'] = df['max_market_share'] * df['new_adopt_fraction'] # new market adoption   
     # make sure diffusion doesn't decrease

@@ -44,8 +44,10 @@ import demand_supply_geo
 import diffusion_functions_elec
 import diffusion_functions_ghp
 import diffusion_functions_du
+import diffusion_functions_geo
 import financial_functions_elec
 import financial_functions_geo
+
 
 #==============================================================================
 # raise  numpy and pandas warnings as exceptions
@@ -688,11 +690,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # apply bass p/q/teq params
                     agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_bass_params, (bass_params, )).compute()    
                     # calculate the equivalent time that has passed on the newly scaled bass curve
-                    agents = AgentsAlgorithm(agents, diffusion_functions_ghp.calc_equiv_time).compute()
+                    agents = AgentsAlgorithm(agents, diffusion_functions_geo.calc_equiv_time).compute()
                     # set the number of years to advance along bass curve (= teq2)
                     agents = AgentsAlgorithm(agents, diffusion_functions_ghp.set_number_of_years_to_advance, (is_first_year, )).compute()
                     # calculate new cumulative "adoption fraction" according to bass
-                    agents = AgentsAlgorithm(agents, diffusion_functions_ghp.bass_diffusion).compute()
+                    agents = AgentsAlgorithm(agents, diffusion_functions_geo.bass_diffusion).compute()
                     # apply adoption fraction to MMS to calculate actual diffusion
                     agents = AgentsAlgorithm(agents, diffusion_functions_ghp.calculate_bass_and_diffusion_market_share).compute()
                     # calculate diffusion results metrics
