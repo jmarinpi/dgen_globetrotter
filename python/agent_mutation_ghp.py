@@ -461,7 +461,6 @@ def get_expected_rate_escalations(con, schema, year):
                    array_agg(dlrs_per_kwh order by year) as dlrs_per_kwh
             FROM %(schema)s.aeo_energy_prices_to_model
             WHERE year BETWEEN %(year)s and %(year)s + 29
-                AND fuel_type IN ('natural gas', 'electricity')
             GROUP BY sector_abbr, census_division_abbr, fuel_type;""" % inputs
             
     df = pd.read_sql(sql, con, coerce_float = False)
@@ -475,7 +474,7 @@ def apply_expected_rate_escalations(dataframe, rate_escalations_df):
  
     in_cols = list(dataframe.columns)
     
-    # merge in costs of natural gas and electricity specifically (for GHP)
+    # merge in costs of all fuels (natgas, electricity, propane, fuel oil) for GHP
     ng_prices_df = rate_escalations_df[rate_escalations_df['fuel_type'] == 'natural gas']
     # rename price column
     rename_map = {'dlrs_per_kwh' : 'dlrs_per_kwh_natgas'}
@@ -493,10 +492,28 @@ def apply_expected_rate_escalations(dataframe, rate_escalations_df):
     elec_prices_df.rename(columns = rename_map, inplace = True)
     # join to main dataframe
     join_keys = ['census_division_abbr', 'sector_abbr']
-    dataframe = pd.merge(dataframe, elec_prices_df, how = 'left', on = join_keys)    
+    dataframe = pd.merge(dataframe, elec_prices_df, how = 'left', on = join_keys) 
+    
+    propane_prices_df = rate_escalations_df[rate_escalations_df['fuel_type'] == 'propane']
+    # rename price column
+    rename_map = {'dlrs_per_kwh' : 'dlrs_per_kwh_propane'}
+    # drop fuel_type column
+    propane_prices_df.rename(columns = rename_map, inplace = True)
+    # join to main dataframe
+    join_keys = ['census_division_abbr', 'sector_abbr']
+    dataframe = pd.merge(dataframe, propane_prices_df, how = 'left', on = join_keys) 
+    
+    fuel_oil_prices_df = rate_escalations_df[rate_escalations_df['fuel_type'] == 'distallate fuel oil']
+    # rename price column
+    rename_map = {'dlrs_per_kwh' : 'dlrs_per_kwh_fuel_oil'}
+    # drop fuel_type column
+    fuel_oil_prices_df.rename(columns = rename_map, inplace = True)
+    # join to main dataframe
+    join_keys = ['census_division_abbr', 'sector_abbr']
+    dataframe = pd.merge(dataframe, fuel_oil_prices_df, how = 'left', on = join_keys)    
 
     
-    out_cols = ['dlrs_per_kwh_natgas', 'dlrs_per_kwh_elec']
+    out_cols = ['dlrs_per_kwh_natgas', 'dlrs_per_kwh_elec', 'dlrs_per_kwh_propane', 'dlrs_per_kwh_fuel_oil']
     return_cols = in_cols + out_cols
     dataframe = dataframe[return_cols]
     

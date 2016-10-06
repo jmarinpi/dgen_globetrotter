@@ -68,7 +68,6 @@ def calculate_max_market_share(dataframe, max_market_share):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calculate_cashflows(df, tech, analysis_period = 30):
 
-
     # extract a list of the input columns
     in_cols = df.columns.tolist()
 
@@ -76,8 +75,11 @@ def calculate_cashflows(df, tech, analysis_period = 30):
     incentives_column = '%s_total_value_of_incentives' % tech
     fixed_om_cost_column = '%s_fixed_om_dlrs_per_year' % tech
     system_degradation_column = '%s_ann_system_degradation' % tech
+    
     site_natgas_consumption_column = '%s_site_natgas_per_building_kwh' % tech
     site_elec_consumption_column = '%s_site_elec_per_building_kwh' % tech
+    site_propane_consumption_column = '%s_site_propane_per_building_kwh' % tech
+    site_fuel_oil_consumption_column = '%s_site_fuel_oil_per_building_kwh' % tech
 
     ho_cashflows_column = '%s_ho_cashflows' % tech
     ho_costs_column = '%s_ho_costs' % tech
@@ -186,7 +188,10 @@ def calculate_cashflows(df, tech, analysis_period = 30):
     avoided cost, or no credit. Amount of excess energy is aep * excess_gen_factor + 0.31 * (gen/load - 1) 
     See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail    
     """
-    annual_energy_costs_dlrs = df[site_natgas_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_natgas'].tolist(), dtype = 'float64') + df[site_elec_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_elec'].tolist(), dtype = 'float64')
+    annual_energy_costs_dlrs = (df[site_natgas_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_natgas'].tolist(), dtype = 'float64') + 
+    	df[site_elec_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_elec'].tolist(), dtype = 'float64') + 
+    	df[site_propane_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_propane'].tolist(), dtype = 'float64') + 
+    	df[site_fuel_oil_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_fuel_oil'].tolist(), dtype = 'float64'))
     df[energy_costs_column] = np.mean(annual_energy_costs_dlrs, axis = 1)
 
     # add to the the revenue to account for system degradation.
