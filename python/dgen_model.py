@@ -12,6 +12,7 @@ tests.check_dependencies()
 # import depenencies
 import time
 import os
+import sys
 import pandas as pd
 import psycopg2.extras as pgx
 import numpy as np
@@ -22,7 +23,6 @@ import numpy as np
 # in which each module is used in __main__)
 import data_functions as datfunc
 import storage_functions_mike as storage_funcs_m
-reload(storage_funcs_m)
 #import storage_functions_pieter as storage_funcs_p
 #reload(storage_funcs_p)
 # ---------------------------------------------
@@ -106,8 +106,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         for i, scenario_file in enumerate(model_settings.input_scenarios):
             logger.info('============================================') 
             logger.info('============================================') 
-            logger.info("Running Scenario %s of %s" % (i+1, len(model_settings.input_scenarios)))
-            
+            logger.info("Running Scenario %s of %s" % (i+1, len(model_settings.input_scenarios)))    
             # initialize ScenarioSettings object (this controls settings tha apply only to this specific scenario)
             scenario_settings = settings.ScenarioSettings()
             scenario_settings.set('input_scenario', scenario_file)
@@ -174,7 +173,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 if scenario_settings.tech_mode == 'elec':  
                     # create core agent attributes
-                    agent_preparation_elec.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
+                    if model_settings.mode in ['run', 'setup_develop']:
+                        agent_preparation_elec.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
                                                           scenario_settings.sectors, model_settings.pg_procs, model_settings.pg_conn_string, scenario_settings.random_generator_seed, scenario_settings.end_year)
                 
 
@@ -205,7 +205,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
          
                 elif scenario_settings.tech_mode == 'du':
                     # create core agent attributes
-                    agent_preparation_geo.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
+                    if model_settings.mode in ['run', 'setup_develop']:
+                        agent_preparation_geo.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
                                                           scenario_settings.sectors, model_settings.pg_procs, model_settings.pg_conn_string, scenario_settings.random_generator_seed, scenario_settings.end_year)
 
                     #==========================================================================================================
@@ -231,7 +232,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                 elif scenario_settings.tech_mode == 'ghp':
                     # create core agent attributes
-                    agent_preparation_geo.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
+                    if model_settings.mode in ['run', 'setup_develop']:
+                        agent_preparation_geo.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
                                                           scenario_settings.sectors, model_settings.pg_procs, model_settings.pg_conn_string, scenario_settings.random_generator_seed, scenario_settings.end_year)
 
                     # get state starting capacities                     
@@ -259,9 +261,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     is_first_year = year == model_settings.start_year   
                         
                     # get core agent attributes from postgres
-                    agents = agent_mutation_elec.get_core_agent_attributes(con, scenario_settings.schema)
+                    agents = agent_mutation_elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
                     # filter techs
                     agents = agents.filter('tech in %s' % scenario_settings.techs)
+                    # store canned agents (if in setup_develop mode)
+                    datfunc.setup_canned_agents(model_settings.mode, agents, scenario_settings.tech_mode, 'both')
+                    # update year (this is really only ncessary in develop-mode since canned agents have the wrong year)
+                    agents.dataframe.loc[:, 'year'] = year
       
                     #==============================================================================
                     # LOAD/POPULATION GROWTH               
@@ -449,7 +455,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
                 
                 # get initial (year = 2012) agents from postgres
-                agents_initial = agent_mutation_geo.get_initial_agent_attributes(con, scenario_settings.schema)
+                agents_initial = agent_mutation_geo.get_initial_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.tech_mode, scenario_settings.region)
+                # store canned agents (if in setup_develop mode)
+                datfunc.setup_canned_agents(model_settings.mode, agents_initial, scenario_settings.tech_mode, 'initial')
+                    
                 # set data for "last year" to None (since this will be the first year)
                 agents_last_year_df = None
                 
@@ -459,12 +468,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # is it the first year?
                     is_first_year = year == model_settings.start_year    
  
-                    # update year for the initial agents to the current year
-                    agents_initial = AgentsAlgorithm(agents_initial, agent_mutation_geo.update_year, (year, )).compute()
- 
                     # get new construction agents
-                    agents_new = agent_mutation_geo.get_new_agent_attributes(con, scenario_settings.schema, year)
-
+                    agents_new = agent_mutation_geo.get_new_agent_attributes(con, scenario_settings.schema, year, model_settings.mode, scenario_settings.tech_mode, scenario_settings.region)
+                    # store canned agents (if in setup_develop mode)
+                    datfunc.setup_canned_agents(model_settings.mode, agents_new, scenario_settings.tech_mode, 'new')
+                    
                      # add new agents to the initial agents (this ensures they will be there again next year)
                     agents_initial = agents_initial.add_agents(agents_new)
                     # drop agents_new -- it's no longer needed
@@ -476,7 +484,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents_initial.dataframe['new_construction'] = False
         
                     # drop du agents
-                    agents = agents.filter_tech('ghp')                                        
+                    agents = agents.filter_tech('du')  
+
+                    # update year for the the current year
+                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_year, (year, )).compute()
                     
                     #==============================================================================
                     # HVAC SYSTEM AGES
@@ -712,19 +723,20 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
     
             elif scenario_settings.tech_mode == 'du':
                 # get initial (year = 2012) agents from postgres
-                agents_initial = agent_mutation_geo.get_initial_agent_attributes(con, scenario_settings.schema)                
+                agents_initial = agent_mutation_geo.get_initial_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.tech_mode, scenario_settings.region)     
+                # store canned agents (if in setup_develop mode)
+                datfunc.setup_canned_agents(model_settings.mode, agents_initial, scenario_settings.tech_mode, 'initial')
                 
                 for year in scenario_settings.model_years:
                     logger.info('\tWorking on %s' % year)
                     
                     # is it the first year?
                     is_first_year = year == model_settings.start_year                        
-                    
-                    # update year for the initial agents to the current year
-                    agents_initial = AgentsAlgorithm(agents_initial, agent_mutation_geo.update_year, (year, )).compute()
- 
+                     
                     # get new construction agents
-                    agents_new = agent_mutation_geo.get_new_agent_attributes(con, scenario_settings.schema, year)                   
+                    agents_new = agent_mutation_geo.get_new_agent_attributes(con, scenario_settings.schema, year, model_settings.mode, scenario_settings.tech_mode, scenario_settings.region)
+                    # store canned agents (if in setup_develop mode)
+                    datfunc.setup_canned_agents(model_settings.mode, agents_new, scenario_settings.tech_mode, 'new')
                     
                     # add new agents to the initial agents (this ensures they will be there again next year)
                     agents_initial = agents_initial.add_agents(agents_new)
@@ -737,7 +749,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents_initial.dataframe['new_construction'] = False
         
                     # drop ghp agents
-                    agents = agents.filter_tech('du')                           
+                    agents = agents.filter_tech('du')     
+
+                    # update year for the the current year
+                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_year, (year, )).compute()                      
                     
                     # get previously subscribed agents
                     previously_subscribed_agents_df = demand_supply_geo.get_previously_subscribed_agents(con, scenario_settings.schema)
@@ -903,15 +918,19 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
             datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
-
         if 'logger' not in locals():
             raise
         
     
     finally:
+        if 'con' in locals():
+            con.close()
+        if 'scenario_settings' in locals() and scenario_settings.schema is not None and model_settings.mode == 'setup_develop':
+            # drop the output schema
+            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)        
         if 'logger' in locals():
             utilfunc.shutdown_log(logger)
             utilfunc.code_profiler(model_settings.out_dir)
-    
+
 if __name__ == '__main__':
     main()

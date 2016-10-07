@@ -17,7 +17,7 @@ from agent import Agent, Agents, AgentsAlgorithm
 from cStringIO import StringIO
 import pssc_mp
 import os
-
+import pickle
 
 #%% GLOBAL SETTINGS
 
@@ -285,15 +285,26 @@ def assemble_resource_data():
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_core_agent_attributes(con, schema):
+def get_core_agent_attributes(con, schema, mode, region):
     
     inputs = locals().copy()
-    sql = """SELECT *
-             FROM %(schema)s.agent_core_attributes_all;""" % inputs
     
-    df = pd.read_sql(sql, con, coerce_float = False)
+    if mode in ['run', 'setup_develop']:
+        # get the agents from postgres
+        sql = """SELECT *
+                 FROM %(schema)s.agent_core_attributes_all;""" % inputs
+        
+        df = pd.read_sql(sql, con, coerce_float = False)
+    
+        agents = Agents(df)
+    elif mode == 'develop':
+        # use the canned agents
+        agents = datfunc.get_canned_agents('elec', region, 'both')
 
-    agents = Agents(df)
+    else:
+        raise ValueError("Invalid mode: must be one of ['run', 'setup_develop', 'develop']")
+        
+        
 
     return agents
 

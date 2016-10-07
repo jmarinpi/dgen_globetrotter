@@ -22,6 +22,8 @@ import utility_functions as utilfunc
 import shutil
 import pssc_mp
 import glob
+import pickle
+import sys
 
 #==============================================================================
 # Load logger
@@ -1738,4 +1740,135 @@ def summarize_scenario(scenario_settings, model_settings):
     logger.info('\tTech Choice Mode Enabled: %s' % scenario_settings.choose_tech)   
 
     return         
-                         
+
+
+states_lkup = {  'AK' : 'Alaska',
+                 'AL' : 'Alabama',
+                 'AR' : 'Arkansas',
+                 'AZ' : 'Arizona',
+                 'CA' : 'California',
+                 'CO' : 'Colorado',
+                 'CT' : 'Connecticut',
+                 'DC' : 'District of Columbia',
+                 'DE' : 'Delaware',
+                 'FL' : 'Florida',
+                 'GA' : 'Georgia',
+                 'HI' : 'Hawaii',
+                 'IA' : 'Iowa',
+                 'ID' : 'Idaho',
+                 'IL' : 'Illinois',
+                 'IN' : 'Indiana',
+                 'KS' : 'Kansas',
+                 'KY' : 'Kentucky',
+                 'LA' : 'Louisiana',
+                 'MA' : 'Massachusetts',
+                 'MD' : 'Maryland',
+                 'ME' : 'Maine',
+                 'MI' : 'Michigan',
+                 'MN' : 'Minnesota',
+                 'MO' : 'Missouri',
+                 'MS' : 'Mississippi',
+                 'MT' : 'Montana',
+                 'NC' : 'North Carolina',
+                 'ND' : 'North Dakota',
+                 'NE' : 'Nebraska',
+                 'NH' : 'New Hampshire',
+                 'NJ' : 'New Jersey',
+                 'NM' : 'New Mexico',
+                 'NV' : 'Nevada',
+                 'NY' : 'New York',
+                 'OH' : 'Ohio',
+                 'OK' : 'Oklahoma',
+                 'OR' : 'Oregon',
+                 'PA' : 'Pennsylvania',
+                 'PR' : 'Puerto Rico',
+                 'RI' : 'Rhode Island',
+                 'SC' : 'South Carolina',
+                 'SD' : 'South Dakota',
+                 'TN' : 'Tennessee',
+                 'TX' : 'Texas',
+                 'UT' : 'Utah',
+                 'VA' : 'Virginia',
+                 'VT' : 'Vermont',
+                 'WA' : 'Washington',
+                 'WI' : 'Wisconsin',
+                 'WV' : 'West Virginia',
+                 'WY' : 'Wyoming'
+                }
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def setup_canned_agents(mode, agents, tech_mode, agents_type):
+    
+    # only run if in setup_develop mode
+    if mode == 'setup_develop':
+        # check values for tech_mode
+        valid_opts = ['elec', 'ghp', 'du']
+        if tech_mode not in valid_opts:
+            raise ValueError('Invalid tech_mode: must be one of %s' % valid_opts)        
+    
+        # check values for agents_type
+        valid_opts = ['initial', 'new', 'both']
+        if agents_type not in valid_opts:
+            raise ValueError('Invalid agents_type: must be one of %s' % valid_opts)
+    
+        # set output directory
+        out_directory = './canned_agents/%s' % tech_mode
+    
+        # pickle the agent object    
+        out_agents_filename = 'agents_%s.pkl' % agents_type    
+        pkl = open(os.path.join(out_directory, out_agents_filename), 'wb')
+        pickle.dump(agents, pkl)
+        pkl.close()
+        
+        # don't do this for 'new' agents since it will be done for initial agents
+        if agents_type in ['initial', 'both']:
+            # extract information about the region
+            states = agents.dataframe.state_abbr.unique()
+            if len(states) > 1:
+                region = 'United States'
+            else:
+                region = states_lkup[states[0]]
+            out_region_filename = 'region.pkl'
+            pkl = open(os.path.join(out_directory, out_region_filename), 'wb')
+            pickle.dump(region, pkl)
+            pkl.close()
+            
+            # this is probably not necessary and could be removed
+#            # mark the model end_year
+#            out_region_filename = 'end_year.pkl'
+#            pkl = open(os.path.join(out_directory, out_region_filename), 'wb')
+#            pickle.dump(end_year, pkl)
+#            pkl.close()            
+            
+        if agents_type in ['both', 'new']:
+            msg = "Canned Agents have been generated. Existing model."
+            logger.info(msg)
+            # only purpose of this mode is to create canned_agents -- once that is done, stop the model
+            sys.exit()        
+    else:
+        pass
+        
+    return
+
+#%%
+def get_canned_agents(tech_mode, region, agents_type):
+    # get the agents from canned agents
+    in_agents = './canned_agents/%s/agents_%s.pkl' % (tech_mode, agents_type)
+    if os.path.exists(in_agents) == True:        
+        pkl = open(in_agents, 'rb')
+        agents = pickle.load(pkl)
+        pkl.close()
+    else:
+        raise ValueError("%s does not exist. Change 'mode' in config.py to 'setup_develop' and re-run to create this file." % in_agents)
+
+    # check that scenario region matches canned agent region
+    in_region = './canned_agents/%s/region.pkl' % tech_mode
+    pkl = open(in_region, 'rb')
+    agents_region = pickle.load(pkl)
+    pkl.close()
+    if agents_region <> region:
+        raise ValueError('Region set in scenario inputs does not match region of canned agents. Change input region to %s' % agents_region)
+
+    return agents    
+    

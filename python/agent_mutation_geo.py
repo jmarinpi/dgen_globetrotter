@@ -16,8 +16,10 @@ import data_functions as datfunc
 from agent import Agent, Agents, AgentsAlgorithm
 from cStringIO import StringIO
 import pssc_mp
+import pickle
 # functions borrowed from electricity
 from agent_mutation_elec import get_depreciation_schedule, apply_depreciation_schedule, get_leasing_availability, apply_leasing_availability
+import os
 
 #%% GLOBAL SETTINGS
 
@@ -35,31 +37,50 @@ pg.extensions.register_type(DEC2FLOAT)
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_initial_agent_attributes(con, schema):
+def get_initial_agent_attributes(con, schema, mode, tech_mode, region):
     
     inputs = locals().copy()
-    sql = """SELECT *, FALSE::BOOLEAN AS new_construction
+
+    if mode in ['run', 'setup_develop']:
+        sql = """SELECT *, FALSE::BOOLEAN AS new_construction
              FROM %(schema)s.agent_core_attributes_all
              WHERE year = 2012;""" % inputs
     
-    df = pd.read_sql(sql, con, coerce_float = False)
+        df = pd.read_sql(sql, con, coerce_float = False)
 
-    agents = Agents(df)
+        agents = Agents(df)
+
+    elif mode == 'develop':
+        # use the canned agents
+        agents = datfunc.get_canned_agents(tech_mode, region, 'initial')
 
     return agents
 
+
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_new_agent_attributes(con, schema, year):
+def get_new_agent_attributes(con, schema, year, mode, tech_mode, region):
     
     inputs = locals().copy()
-    sql = """SELECT *, TRUE::BOOLEAN AS new_construction
-             FROM %(schema)s.agent_core_attributes_all
-             WHERE year = %(year)s;""" % inputs
-    
-    df = pd.read_sql(sql, con, coerce_float = False)
 
-    agents = Agents(df)
+    if mode in ['run', 'setup_develop']:
+        sql = """SELECT *, TRUE::BOOLEAN AS new_construction
+                 FROM %(schema)s.agent_core_attributes_all
+                 WHERE year = %(year)s;""" % inputs
+        
+        df = pd.read_sql(sql, con, coerce_float = False)
+    
+        agents = Agents(df)
+
+    elif mode == 'develop':
+        # use the canned agents
+        agents = datfunc.get_canned_agents(tech_mode, region, 'new')
+        
+    else:
+        raise ValueError("Invalid mode: must be one of ['run', 'setup_develop', 'develop']")
+
+
 
     return agents
 
