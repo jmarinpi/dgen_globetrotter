@@ -484,7 +484,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents_initial.dataframe['new_construction'] = False
         
                     # drop du agents
-                    agents = agents.filter_tech('du')  
+                    agents = agents.filter_tech('ghp')  
 
                     # update year for the the current year
                     agents = AgentsAlgorithm(agents, agent_mutation_geo.update_year, (year, )).compute()
