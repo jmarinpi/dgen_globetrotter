@@ -469,7 +469,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     is_first_year = year == model_settings.start_year    
  
                     # get new construction agents
-                    agents_new = agent_mutation_geo.get_new_agent_attributes(con, scenario_settings.schema, year, model_settings.mode, scenario_settings.tech_mode, scenario_settings.region)
+                    agents_new = agent_mutation_geo.get_new_agent_attributes(con, scenario_settings.schema, year, is_first_year, model_settings.mode, scenario_settings.tech_mode, scenario_settings.region)
                     # store canned agents (if in setup_develop mode)
                     datfunc.setup_canned_agents(model_settings.mode, agents_new, scenario_settings.tech_mode, 'new')
                     
@@ -734,7 +734,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     is_first_year = year == model_settings.start_year                        
                      
                     # get new construction agents
-                    agents_new = agent_mutation_geo.get_new_agent_attributes(con, scenario_settings.schema, year, model_settings.mode, scenario_settings.tech_mode, scenario_settings.region)
+                    agents_new = agent_mutation_geo.get_new_agent_attributes(con, scenario_settings.schema, year, is_first_year, model_settings.mode, scenario_settings.tech_mode, scenario_settings.region)
                     # store canned agents (if in setup_develop mode)
                     datfunc.setup_canned_agents(model_settings.mode, agents_new, scenario_settings.tech_mode, 'new')
                     

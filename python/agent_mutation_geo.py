@@ -60,7 +60,7 @@ def get_initial_agent_attributes(con, schema, mode, tech_mode, region):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_new_agent_attributes(con, schema, year, mode, tech_mode, region):
+def get_new_agent_attributes(con, schema, year, is_first_year, mode, tech_mode, region):
     
     inputs = locals().copy()
 
@@ -76,7 +76,12 @@ def get_new_agent_attributes(con, schema, year, mode, tech_mode, region):
     elif mode == 'develop':
         # use the canned agents
         agents = datfunc.get_canned_agents(tech_mode, region, 'new')
-        
+        # in develop mode, "new" agents are only added in the first model year
+        # because we don't save them for all model years
+        # we include the first year to make sure calculations that use new_construction work correctly
+        if is_first_year == False:
+            # drop all agents from the dataframe
+            agents.dataframe = agents.dataframe.drop(agents.dataframe.index, axis = 0)
     else:
         raise ValueError("Invalid mode: must be one of ['run', 'setup_develop', 'develop']")
 
