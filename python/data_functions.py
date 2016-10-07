@@ -1842,7 +1842,7 @@ def setup_canned_agents(mode, agents, tech_mode, agents_type):
 #            pkl.close()            
             
         if agents_type in ['both', 'new']:
-            msg = "Canned Agents have been generated. Existing model."
+            msg = "Canned Agents have been generated. Exiting model."
             logger.info(msg)
             # only purpose of this mode is to create canned_agents -- once that is done, stop the model
             sys.exit()        

@@ -60,7 +60,7 @@ def shutdown_log(logger):
     logging.shutdown()
     for handler in logger.handlers:
         handler.flush()
-        if handler.close:
+        if handler.close and isinstance(handler, logging.StreamHandler):
             handler.close()
         logger.removeHandler(handler)
         

@@ -17,7 +17,7 @@ import pandas as pd
 #   mode 
 # options are: ['run', 'develop', 'setup_develop']
 #==============================================================================
-mode = 'develop'
+mode = 'setup_develop'
 
 #==============================================================================
 #   get postgres connection parameters
