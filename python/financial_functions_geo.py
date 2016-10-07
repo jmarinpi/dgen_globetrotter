@@ -74,12 +74,14 @@ def calculate_cashflows(df, tech, analysis_period = 30):
     installed_cost_column = '%s_installed_costs_dlrs' % tech
     incentives_column = '%s_total_value_of_incentives' % tech
     fixed_om_cost_column = '%s_fixed_om_dlrs_per_year' % tech
-    system_degradation_column = '%s_ann_system_degradation' % tech
     
     site_natgas_consumption_column = '%s_site_natgas_per_building_kwh' % tech
     site_elec_consumption_column = '%s_site_elec_per_building_kwh' % tech
     site_propane_consumption_column = '%s_site_propane_per_building_kwh' % tech
     site_fuel_oil_consumption_column = '%s_site_fuel_oil_per_building_kwh' % tech
+    site_dist_hot_water_consumption_column = '%s_site_dist_hot_water_per_building_kwh' % tech
+    site_dist_steam_consumption_column = '%s_site_dist_steam_per_building_kwh' % tech
+    site_dist_chil_water_consumption_column = '%s_site_dist_chil_water_per_building_kwh' % tech
 
     ho_cashflows_column = '%s_ho_cashflows' % tech
     ho_costs_column = '%s_ho_costs' % tech
@@ -159,7 +161,8 @@ def calculate_cashflows(df, tech, analysis_period = 30):
         
     # Pay the down payment in year zero and loan payments thereafter. The downpayment is added at
     # the end of the cash flow calculations to make the year zero framing simpler
-    down_payment_cost = (-df['net_installed_cost'] * df['down_payment'])[:,np.newaxis] 
+    down_payment_cost = np.zeros(shape)
+    down_payment_cost[:,0] = (-df['net_installed_cost'] * df['down_payment'])
     # for baseline, push costs out into the future based on the expected remaining system liftime (lpad with zeros, truncate beyond analysis period)
     if tech == 'baseline':
         down_payment_cost = pad_array(down_payment_cost, df['years_to_replacement_average'].tolist())
@@ -189,18 +192,13 @@ def calculate_cashflows(df, tech, analysis_period = 30):
     See docs/excess_gen_method/sensitivity_of_excess_gen_to_sizing.R for more detail    
     """
     annual_energy_costs_dlrs = (df[site_natgas_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_natgas'].tolist(), dtype = 'float64') + 
-    	df[site_elec_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_elec'].tolist(), dtype = 'float64') + 
-    	df[site_propane_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_propane'].tolist(), dtype = 'float64') + 
-    	df[site_fuel_oil_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_fuel_oil'].tolist(), dtype = 'float64'))
+        df[site_elec_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_elec'].tolist(), dtype = 'float64') + 
+        df[site_propane_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_propane'].tolist(), dtype = 'float64') + 
+        df[site_fuel_oil_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_fuel_oil'].tolist(), dtype = 'float64') + 
+        df[site_dist_hot_water_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_natgas'].tolist(), dtype = 'float64') +
+        df[site_dist_steam_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_natgas'].tolist(), dtype = 'float64') +
+        df[site_dist_chil_water_consumption_column][:, np.newaxis] * np.array(df['dlrs_per_kwh_elec'].tolist(), dtype = 'float64'))
     df[energy_costs_column] = np.mean(annual_energy_costs_dlrs, axis = 1)
-
-    # add to the the revenue to account for system degradation.
-    system_degradation_factor = np.empty(shape)
-    system_degradation_factor[:, 0] = 1
-    system_degradation_factor[:, 1:]  = 1 + df[system_degradation_column][:, np.newaxis]
-    system_degradation_factor = system_degradation_factor.cumprod(axis = 1)
-    
-    annual_energy_costs_dlrs *= system_degradation_factor
     
     # Since energy expenses are tax deductible for commercial & industrial 
     # entities, the net annual energy costs from a system is reduced by the marginal tax rate
@@ -253,7 +251,11 @@ def calculate_cashflows(df, tech, analysis_period = 30):
     ho_revenue = carbon_tax_revenue + depreciation_revenue + interest_on_loan_pmts_revenue + incentive_revenue
     ho_revenue = np.hstack((np.zeros((len(df), 1)), ho_revenue)) # Add a zero column to revenues to reflect year zero
     ho_costs = -annual_energy_costs_dlrs + annual_loan_pmts + om_cost + replacement_part_costs
-    ho_costs = np.hstack((down_payment_cost, ho_costs)) # Down payment occurs in year zero
+    if tech=='ghp':    
+        ho_costs = np.hstack((down_payment_cost[:,0][:,np.newaxis], ho_costs)) # Down payment for GHP occurs in year zero
+    else:
+        ho_costs += down_payment_cost
+        ho_costs = np.hstack((np.zeros((len(df), 1)), ho_costs)) # Down payment for baseline is left-padded, zero column added for compatibility
     ho_cashflows = ho_revenue + ho_costs
     
 #    # Calculate the avg  and avg pct monthly bill savings (accounting for rate escalations, generation revenue, and average over all years)

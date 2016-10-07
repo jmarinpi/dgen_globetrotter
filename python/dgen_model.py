@@ -636,7 +636,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     # calculate raw cashflows for ghp and baseline technologies
                     analysis_period = 30
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_cashflows, ('ghp', analysis_period)).compute()
+                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_cashflows, ('ghp', analysis_period)).compute()                  
                     agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_cashflows, ('baseline', analysis_period)).compute()
                     
                     # calculate net cashflows for GHP system relative to baseline
