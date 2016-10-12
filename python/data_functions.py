@@ -1816,10 +1816,9 @@ def setup_canned_agents(mode, agents, tech_mode, agents_type):
         out_directory = './canned_agents/%s' % tech_mode
     
         # pickle the agent object    
-        out_agents_filename = 'agents_%s.pkl' % agents_type    
-        pkl = open(os.path.join(out_directory, out_agents_filename), 'wb')
-        pickle.dump(agents, pkl)
-        pkl.close()
+        out_agents_filename = 'agents_%s.pkl' % agents_type
+        out_agents_filepath = os.path.join(out_directory, out_agents_filename)
+        store_pickle(agents, out_agents_filepath)
         
         # don't do this for 'new' agents since it will be done for initial agents
         if agents_type in ['initial', 'both']:
@@ -1830,16 +1829,9 @@ def setup_canned_agents(mode, agents, tech_mode, agents_type):
             else:
                 region = states_lkup[states[0]]
             out_region_filename = 'region.pkl'
-            pkl = open(os.path.join(out_directory, out_region_filename), 'wb')
-            pickle.dump(region, pkl)
-            pkl.close()
-            
-            # this is probably not necessary and could be removed
-#            # mark the model end_year
-#            out_region_filename = 'end_year.pkl'
-#            pkl = open(os.path.join(out_directory, out_region_filename), 'wb')
-#            pickle.dump(end_year, pkl)
-#            pkl.close()            
+            out_region_filepath = os.path.join(out_directory, out_region_filename)
+            store_pickle(region, out_region_filepath)
+     
             
         if agents_type in ['both', 'new']:
             msg = "Canned Agents have been generated. Exiting model."
@@ -1855,20 +1847,31 @@ def setup_canned_agents(mode, agents, tech_mode, agents_type):
 def get_canned_agents(tech_mode, region, agents_type):
     # get the agents from canned agents
     in_agents = './canned_agents/%s/agents_%s.pkl' % (tech_mode, agents_type)
-    if os.path.exists(in_agents) == True:        
-        pkl = open(in_agents, 'rb')
-        agents = pickle.load(pkl)
-        pkl.close()
-    else:
-        raise ValueError("%s does not exist. Change 'mode' in config.py to 'setup_develop' and re-run to create this file." % in_agents)
+    agents = unpickle(in_agents)    
 
     # check that scenario region matches canned agent region
     in_region = './canned_agents/%s/region.pkl' % tech_mode
-    pkl = open(in_region, 'rb')
-    agents_region = pickle.load(pkl)
-    pkl.close()
+    agents_region = unpickle(in_region)    
     if agents_region <> region:
         raise ValueError('Region set in scenario inputs does not match region of canned agents. Change input region to %s' % agents_region)
 
     return agents    
     
+def unpickle(in_file):
+    
+    # confirm that file exists
+    if os.path.exists(in_file) == True:        
+        pkl = open(in_file, 'rb')
+        obj = pickle.load(pkl)
+        pkl.close()
+    else:
+        raise ValueError("%s does not exist. Change 'mode' in config.py to 'setup_develop' and re-run to create this file." % in_file)      
+        
+    return obj
+
+def store_pickle(out_obj, out_file):
+    
+    # pickle the rates df
+    pkl = open(out_file, 'wb')
+    pickle.dump(out_obj, pkl)
+    pkl.close()

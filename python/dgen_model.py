@@ -181,12 +181,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # GET RATE TARIFF LOOKUP TABLE FOR EACH SECTOR                                    
                     #==============================================================================
-                    rates_df = agent_mutation_elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string)
+                    rates_df = agent_mutation_elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string, model_settings.mode)
 
                     #==============================================================================
                     # GET NORMALIZED LOAD PROFILES
                     #==============================================================================
-                    normalized_load_profiles_df = agent_mutation_elec.get_normalized_load_profiles(con, scenario_settings.schema, scenario_settings.sectors)
+                    normalized_load_profiles_df = agent_mutation_elec.get_normalized_load_profiles(con, scenario_settings.schema, scenario_settings.sectors, model_settings.mode)
 
                     # get system sizing targets
                     system_sizing_targets_df = agent_mutation_elec.get_system_sizing_targets(con, scenario_settings.schema)  
@@ -200,8 +200,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # GET TECH POTENTIAL LIMITS
                     #==========================================================================================================    
-                    tech_potential_limits_wind_df = agent_mutation_elec.get_tech_potential_limits_wind(con)
-                    tech_potential_limits_solar_df = agent_mutation_elec.get_tech_potential_limits_solar(con)
+                    # only check this if actually running the model
+                    if model_settings.mode == 'run':
+                        tech_potential_limits_wind_df = agent_mutation_elec.get_tech_potential_limits_wind(con)
+                        tech_potential_limits_solar_df = agent_mutation_elec.get_tech_potential_limits_solar(con)
          
                 elif scenario_settings.tech_mode == 'du':
                     # create core agent attributes
