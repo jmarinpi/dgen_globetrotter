@@ -1,7 +1,7 @@
 ﻿set role 'diffusion-writers';
 
-DROP TABLE IF EXISTS diffusion_geo.ghp_simulations_com CASCADE;
-CREATE TABLE diffusion_geo.ghp_simulations_com
+DROP TABLE IF EXISTS diffusion_geo.ornl_ghp_simulations CASCADE;
+CREATE TABLE diffusion_geo.ornl_ghp_simulations
 (
 	baseline_type integer,
 	tc_val varchar(4),
@@ -43,74 +43,74 @@ CREATE TABLE diffusion_geo.ghp_simulations_com
 	iecc_climate_zone TEXT
 );
 
-\COPY diffusion_geo.ghp_simulations_com FROM '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/ORNL_GHP_CRB_Simulations/ghp_simulation_results/consolidated/ghp_results_2016_09_07.csv' with csv header;
+\COPY diffusion_geo.ornl_ghp_simulations FROM '/Users/kmccabe/dGeo/Data/ORNL_GHP_CRB_Simulations/ghp_simulation_results/consolidated/ghp_results_2016_10_11.csv' with csv header;
 
 -- add primary key on building type, gtc, and city
-ALTER TABLE diffusion_geo.ghp_simulations_com
+ALTER TABLE diffusion_geo.ornl_ghp_simulations
 ADD PRIMARY KEY (baseline_type, iecc_climate_zone, gtc_btu_per_hftF);
 
--- drop the data for tc_2 and 3 for building types 4 -7 
-DELETE FROM diffusion_geo.ghp_simulations_com
-where baseline_type in (4, 5, 6, 7)
+-- drop the data for tc_2 and 3 for building types 4 - 12
+DELETE FROM diffusion_geo.ornl_ghp_simulations
+where baseline_type in (4, 5, 6, 7, 8, 9, 10, 11, 12)
 and tc_val in ('tc_2' , 'tc_3'); -- tc_2 = 25%, tc_3 = 75%
--- 104 rows deleted
+-- 234 rows deleted
 
 
 -- fill in the pct savings values
-UPDATE diffusion_geo.ghp_simulations_com
+UPDATE diffusion_geo.ornl_ghp_simulations
 set savings_pct_electricity_consumption =
 (baseline_electricity_consumption_kwh - gshp_electricity_consumption_kwh)/
 baseline_electricity_consumption_kwh;
 
-UPDATE diffusion_geo.ghp_simulations_com
+UPDATE diffusion_geo.ornl_ghp_simulations
 set savings_pct_natural_gas_consumption =
 COALESCE((baseline_natural_gas_consumption_mbtu - gshp_natural_gas_consumption_mbtu)/
 NULLIF(baseline_natural_gas_consumption_mbtu, 0), 0);
 
-UPDATE diffusion_geo.ghp_simulations_com
+UPDATE diffusion_geo.ornl_ghp_simulations
 set savings_pct_site_energy =
 (baseline_site_energy_mbtu - gshp_site_energy_mbtu)/
 baseline_site_energy_mbtu;
 
-UPDATE diffusion_geo.ghp_simulations_com
+UPDATE diffusion_geo.ornl_ghp_simulations
 set savings_pct_source_energy =
 (baseline_source_energy_mbtu - gshp_source_energy_mbtu)/
 baseline_source_energy_mbtu;
 
-UPDATE diffusion_geo.ghp_simulations_com
+UPDATE diffusion_geo.ornl_ghp_simulations
 set savings_pct_carbon_emissions =
 (baseline_carbon_emissions_mt - gshp_carbon_emissions_mt)/
 baseline_carbon_emissions_mt;
 
-UPDATE diffusion_geo.ghp_simulations_com
+UPDATE diffusion_geo.ornl_ghp_simulations
 set savings_pct_energy_cost =
 (baseline_energy_cost - gshp_energy_cost)/
 baseline_energy_cost;
 	
-UPDATE diffusion_geo.ghp_simulations_com
+UPDATE diffusion_geo.ornl_ghp_simulations
 set savings_pct_peak_electricity_demand =
 (baseline_peak_electricity_demand_kw - gshp_peak_electricity_demand_kw)/
 baseline_peak_electricity_demand_kw;
--- 169 rows
+-- 234 rows
 
 -- check values are reasonable
 select  min(savings_pct_natural_gas_consumption), 
 	avg(savings_pct_natural_gas_consumption),
 	max(savings_pct_natural_gas_consumption)
-FROM diffusion_geo.ghp_simulations_com;
--- -0.00797266514806378132,0.79731407793464913434,1.00000000000000000000
+FROM diffusion_geo.ornl_ghp_simulations;
+-- -0.00797266514806378132,0.63139350073057993035,1.00000000000000000000
 -- seem reasonable, except for the negative?
 
 select  min(savings_pct_electricity_consumption), 
 	avg(savings_pct_electricity_consumption),
 	max(savings_pct_electricity_consumption)
-FROM diffusion_geo.ghp_simulations_com;
--- -5.8816608996539792,-0.16488008974524962066,0.44827450980392156863
+FROM diffusion_geo.ornl_ghp_simulations;
+-- -5.8816608996539792,-0.01275790968795838835,0.78106508875739644970
 -- seem reasonable except for the magnitude of hte negative
 
 -- look into these  more closely:
 select savings_pct_natural_gas_consumption, *
-FROM diffusion_geo.ghp_simulations_com
+FROM diffusion_geo.ornl_ghp_simulations
 where savings_pct_natural_gas_consumption < 0;
 -- hotel in San Diego -- makes sense because (from Xiaobing's FY16Q3 report)
 -- "a smallportion of the baseline HVAC system (i.e., the makeup air system using a gas-fired furnace) was not
@@ -118,11 +118,11 @@ where savings_pct_natural_gas_consumption < 0;
 
 
 select savings_pct_electricity_consumption, iecc_climate_zone, *
-FROM diffusion_geo.ghp_simulations_com
+FROM diffusion_geo.ornl_ghp_simulations
 where savings_pct_electricity_consumption < 0
 order by 1;
 -- these numbers match the original values in Xiaobing's summary, so i think they are okay
 
 -- look at results
 select *
-FROM diffusion_geo.ghp_simulations_com;
+FROM diffusion_geo.ornl_ghp_simulations;

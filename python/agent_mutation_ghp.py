@@ -164,7 +164,7 @@ def get_ghp_baseline_simulations(con, schema):
                    crb_totsqft,
                    cooling_ton_per_sqft, 
                    ghx_length_ft_per_cooling_ton
-          FROM diffusion_geo.ghp_simulations_com;"""
+          FROM diffusion_geo.ornl_ghp_simulations;"""
     
     df = pd.read_sql(sql, con, coerce_float = False)
 
@@ -245,6 +245,7 @@ def size_systems_ghp(dataframe):
     dataframe['ghx_length_ft'] = np.where(dataframe['modellable'] == True, dataframe['ghp_system_size_tons'] * dataframe['ghx_length_ft_per_cooling_ton'], np.nan)
 
     return dataframe
+    
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

@@ -44,3 +44,5 @@ select count(*)
 FROM diffusion_geo.eia_buildings_to_ornl_baseline_lkup
 where provided = True;
 -- 2470 of 3964
+-- 2016-10-11 update:
+-- 2884 of 3964

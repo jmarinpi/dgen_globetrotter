@@ -637,6 +637,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # calculate raw cashflows for ghp and baseline technologies
                     analysis_period = 30
                     agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_cashflows, ('ghp', analysis_period)).compute()                  
+                    #agents = financial_functions_geo.calculate_cashflows(agents, 'ghp', analysis_period)                    
                     agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_cashflows, ('baseline', analysis_period)).compute()
                     
                     # calculate net cashflows for GHP system relative to baseline
@@ -876,7 +877,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     diffusion_functions_du.write_resources_outputs(con, cur, subscribed_resources_with_costs_df, scenario_settings.schema)
             
                 # TODO: get visualizations working and remove this short-circuit
-                return 'Simulations Complete'   
+                # return 'Simulations Complete'   
                 
             #==============================================================================
             #    Outputs & Visualization
