@@ -200,7 +200,7 @@ def map_agents_to_ghp_baseline_types(dataframe, baseline_lkup_df):
 def join_crb_ghp_simulations(dataframe, baseline_ghp_sims_df):
     
     # join on baseline_type and geographic variables (= iecc_cliamte_zone and gtc value)
-    dataframe = pd.merge(dataframe, baseline_ghp_sims_df, how = 'left', on = ['baseline_type', 'iecc_climate_zone', 'gtc_btu_per_hftf'])
+    dataframe = pd.merge(dataframe, baseline_ghp_sims_df, how = 'left', on = ['baseline_type', 'iecc_climate_zone'])
    
     return dataframe
 
@@ -242,9 +242,22 @@ def size_systems_ghp(dataframe):
     dataframe['system_size_kw'] = np.where(dataframe['modellable'] == True, dataframe['ghp_system_size_tons'] * 3.5168525, np.nan)
 
     # next, calculate the ghx length required to provide that capacity
-    dataframe['ghx_length_ft'] = np.where(dataframe['modellable'] == True, dataframe['ghp_system_size_tons'] * dataframe['ghx_length_ft_per_cooling_ton'], np.nan)
+    dataframe['ghx_length_ft'] = np.where(dataframe['modellable'] == True, dataframe['ghp_system_size_tons'] * gtc_to_ghx_length(dataframe['gtc_btu_per_hftf']), np.nan)
 
     return dataframe
+    
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def gtc_to_ghx_length(gtc_val):
+    
+    # TODO: modify this relationship once provided by Xiaobing.
+    # ghx_length_ft_per_cooling_ton = gtc_val * ...
+    
+    # output constant = average value from ORNL sims
+    ghx_length_ft_per_cooling_ton = 329.9464559542199422
+    
+    return ghx_length_ft_per_cooling_ton
     
 
 #%%
@@ -296,16 +309,6 @@ def identify_market_eligible_agents(dataframe):
 
     dataframe['market_eligible'] = (dataframe['viable_sys_config'] == True) & (dataframe['modellable'] == True)
     dataframe['market_eligible_buildings_in_bin'] = np.where(dataframe['market_eligible'] == True, dataframe['buildings_in_bin'], 0.)
-    
-    return dataframe
-
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def determine_ghp_compatibility(dataframe):
-
-    #TODO: revise this to actually account for the existing HVAC system configuration (issue #687)
-    dataframe['is_ghp_compatible'] = np.where(dataframe['modellable'] == True, True, False)
     
     return dataframe
 
@@ -913,7 +916,6 @@ def write_agent_outputs_ghp(con, cur, schema, dataframe):
                 'market_eligible_buildings_in_bin',
                 'bass_deployable',
                 'bass_deployable_buildings_in_bin',
-                'is_ghp_compatible',
                 'requires_ghp_rest_of_system_costs',
                 'heat_exchanger_cost_dollars_per_ft',
                 'heat_pump_cost_dollars_per_cooling_ton',

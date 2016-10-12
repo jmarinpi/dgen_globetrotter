@@ -49,11 +49,10 @@ CREATE TABLE diffusion_geo.ornl_ghp_simulations
 ALTER TABLE diffusion_geo.ornl_ghp_simulations
 ADD PRIMARY KEY (baseline_type, iecc_climate_zone, gtc_btu_per_hftF);
 
--- drop the data for tc_2 and 3 for building types 4 - 12
+-- drop the data for tc_2 and 3 for ALL building types
 DELETE FROM diffusion_geo.ornl_ghp_simulations
-where baseline_type in (4, 5, 6, 7, 8, 9, 10, 11, 12)
-and tc_val in ('tc_2' , 'tc_3'); -- tc_2 = 25%, tc_3 = 75%
--- 234 rows deleted
+where tc_val in ('tc_2' , 'tc_3'); -- tc_2 = 25%, tc_3 = 75%
+-- 312 rows deleted
 
 
 -- fill in the pct savings values
@@ -91,21 +90,21 @@ UPDATE diffusion_geo.ornl_ghp_simulations
 set savings_pct_peak_electricity_demand =
 (baseline_peak_electricity_demand_kw - gshp_peak_electricity_demand_kw)/
 baseline_peak_electricity_demand_kw;
--- 234 rows
+-- 156 rows
 
 -- check values are reasonable
 select  min(savings_pct_natural_gas_consumption), 
 	avg(savings_pct_natural_gas_consumption),
 	max(savings_pct_natural_gas_consumption)
 FROM diffusion_geo.ornl_ghp_simulations;
--- -0.00797266514806378132,0.63139350073057993035,1.00000000000000000000
+-- -0.00797266514806378132,0.59347452814306774296,1.00000000000000000000
 -- seem reasonable, except for the negative?
 
 select  min(savings_pct_electricity_consumption), 
 	avg(savings_pct_electricity_consumption),
 	max(savings_pct_electricity_consumption)
 FROM diffusion_geo.ornl_ghp_simulations;
--- -5.8816608996539792,-0.01275790968795838835,0.78106508875739644970
+-- -5.8816608996539792,-0.10566337986435603221,0.78106508875739644970
 -- seem reasonable except for the magnitude of hte negative
 
 -- look into these  more closely:

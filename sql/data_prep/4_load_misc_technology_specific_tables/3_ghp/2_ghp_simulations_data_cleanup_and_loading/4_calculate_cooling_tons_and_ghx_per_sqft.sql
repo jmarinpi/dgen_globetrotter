@@ -7,11 +7,11 @@ ADD COLUMN ghx_length_ft_per_cooling_ton numeric;
 
 UPDATE diffusion_geo.ornl_ghp_simulations
 set cooling_ton_per_sqft = crb_cooling_capacity_ton/crb_totsqft;
--- 234 rows
+-- 156 rows
 
 UPDATE diffusion_geo.ornl_ghp_simulations
 set ghx_length_ft_per_cooling_ton = crb_ghx_length_ft/crb_cooling_capacity_ton;
--- 234 rows
+-- 156 rows
 
 -- check for nulls
 select *

@@ -21,7 +21,7 @@ UPDATE diffusion_geo.ornl_ghp_simulations a
 set (crb_totsqft, crb_model) = (b.crb_totsqft, b.crb_model)
 from diffusion_geo.crb_building_names_and_sizes b
 where a.baseline_type = b.baseline_type;
--- 234 rows affected
+-- 156 rows affected
 
 -- check result
 select distinct baseline_type, crb_model, crb_totsqft

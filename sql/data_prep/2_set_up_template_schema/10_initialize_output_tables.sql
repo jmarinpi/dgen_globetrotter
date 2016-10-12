@@ -427,7 +427,6 @@ CREATE TABLE diffusion_template.agent_outputs_ghp
 	market_eligible_buildings_in_bin                           numeric,
 	bass_deployable                                            boolean,
 	bass_deployable_buildings_in_bin                           numeric,
-	is_ghp_compatible                                          BOOLEAN,
 	requires_ghp_rest_of_system_costs                          BOOLEAN,
 	heat_exchanger_cost_dollars_per_ft                         numeric,
 	heat_pump_cost_dollars_per_cooling_ton                     numeric,
