@@ -296,7 +296,7 @@ def get_technology_costs_ghp(con, schema, year):
     sql = """SELECT sector_abbr,
                     sys_config,
                     heat_exchanger_cost_dollars_per_ft,
-                    heat_pump_cost_dollars_per_cooling_ton,
+                    ghp_cost_improvement_pct,
                     fixed_om_dollars_per_sf_per_year as ghp_fixed_om_dollars_per_sf_per_year
              FROM %(schema)s.input_ghp_costs
              WHERE year = %(year)s;""" % inputs
@@ -311,7 +311,7 @@ def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):
     dataframe = pd.merge(dataframe, tech_costs_ghp_df, how = 'left', on = ['sector_abbr', 'sys_config'])
     # Installed Costs
     dataframe['ghx_cost_dlrs'] = dataframe['ghx_length_ft'] * dataframe['heat_exchanger_cost_dollars_per_ft']
-    dataframe['ghp_heat_pump_cost_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['heat_pump_cost_dollars_per_cooling_ton']
+    dataframe['ghp_heat_pump_cost_dlrs'] = calc_heat_pump_costs(dataframe['ghp_system_size_tons']) * (1. - dataframe['ghp_cost_improvement_pct'])
     dataframe['ghp_installed_costs_dlrs'] = dataframe['ghx_cost_dlrs'] + dataframe['ghp_heat_pump_cost_dlrs']
     dataframe['ghp_fixed_om_dlrs_per_year'] = dataframe['ghp_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']
      # reset values to NA where the system isn't modellable
@@ -322,6 +322,16 @@ def apply_tech_costs_ghp(dataframe, tech_costs_ghp_df):
     dataframe.loc[dataframe['modellable'] == False, out_cols] = np.nan   
     
     return dataframe
+    
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calc_heat_pump_costs(ghp_system_size_tons):
+    
+    # TODO: update function with cost correlation provided by Xiaobing
+    ghp_heat_pump_costs = 1600.
+    
+    return ghp_heat_pump_costs
 
 
 #%%
@@ -331,8 +341,7 @@ def get_technology_costs_baseline(con, schema, year):
     inputs = locals().copy()
     
     sql = """SELECT sector_abbr,
-                    hvac_equipment_cost_dollars_per_cooling_ton,
-                    rest_of_system_costs_dollars_per_cooling_ton as baseline_rest_of_system_costs_dollars_per_cooling_ton,
+                    hvac_equipment_cost_improvement_pct,
                     fixed_om_dollars_per_sf_per_year as baseline_fixed_om_dollars_per_sf_per_year
              FROM %(schema)s.input_baseline_costs_hvac
              WHERE year = %(year)s;""" % inputs
@@ -347,24 +356,33 @@ def apply_tech_costs_baseline(dataframe, tech_costs_baseline_df):
 
     dataframe = pd.merge(dataframe, tech_costs_baseline_df, how = 'left', on = ['sector_abbr'])
 
-    dataframe['baseline_equipment_costs_dlrs'] = dataframe['ghp_system_size_tons'] * dataframe['hvac_equipment_cost_dollars_per_cooling_ton']
-    dataframe['baseline_rest_of_system_cost_dlrs'] = np.where(dataframe['new_construction'] == True, dataframe['baseline_rest_of_system_costs_dollars_per_cooling_ton'] * dataframe['ghp_system_size_tons'], 0.)  
+    # TODO: change heat capacity input in calc_baseline_equipment_costs from None based on Xiaobing's regression
+#    dataframe['baseline_equipment_costs_dlrs'] = calc_baseline_equipment_costs(dataframe['ghp_system_size_tons'], dataframe['heating_capacity']) * (1. - dataframe['hvac_equipment_cost_improvement_pct'])
+    dataframe['baseline_equipment_costs_dlrs'] = calc_baseline_equipment_costs(dataframe['ghp_system_size_tons'], None) * (1. - dataframe['hvac_equipment_cost_improvement_pct'])
 
-    dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_costs_dlrs'] + dataframe['baseline_rest_of_system_cost_dlrs']
+    dataframe['baseline_installed_costs_dlrs'] = dataframe['baseline_equipment_costs_dlrs']
     dataframe['baseline_fixed_om_dlrs_per_year'] = dataframe['baseline_fixed_om_dollars_per_sf_per_year'] * dataframe['totsqft']   
    
     # reset values to NA where the system isn't modellable
-    out_cols = ['hvac_equipment_cost_dollars_per_cooling_ton',
-                'baseline_rest_of_system_costs_dollars_per_cooling_ton',
+    out_cols = ['hvac_equipment_cost_improvement_pct',
                 'baseline_fixed_om_dollars_per_sf_per_year',
                 'baseline_equipment_costs_dlrs', 
-                'baseline_rest_of_system_cost_dlrs', 
                 'baseline_installed_costs_dlrs', 
                 'baseline_fixed_om_dlrs_per_year']    
     dataframe.loc[dataframe['modellable'] == False, out_cols] = np.nan       
     
     return dataframe
 
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calc_baseline_equipment_costs(system_size_tons, heating_capacity):
+    
+    # TODO: update function with cost correlation provided by Xiaobing
+    baseline_equipment_costs = 3000.
+    
+    return baseline_equipment_costs
+    
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -421,7 +439,7 @@ def get_expected_rate_escalations(con, schema, year):
     sql = """SELECT sector_abbr, 
                    census_division_abbr, 
                    fuel_type, 
-                   array_agg(dlrs_per_kwh order by year) as dlrs_per_kwh
+                   array_agg(dlrs_per_kwh order by year)::DOUBLE PRECISION[] as dlrs_per_kwh
             FROM %(schema)s.aeo_energy_prices_to_model
             WHERE year BETWEEN %(year)s and %(year)s + 29
             GROUP BY sector_abbr, census_division_abbr, fuel_type;""" % inputs
@@ -875,17 +893,15 @@ def write_agent_outputs_ghp(con, cur, schema, dataframe):
                 'bass_deployable',
                 'bass_deployable_buildings_in_bin',
                 'heat_exchanger_cost_dollars_per_ft',
-                'heat_pump_cost_dollars_per_cooling_ton',
+                'ghp_cost_improvement_pct',
                 'ghp_fixed_om_dollars_per_sf_per_year',
                 'ghx_cost_dlrs',
                 'ghp_heat_pump_cost_dlrs',
                 'ghp_installed_costs_dlrs',
                 'ghp_fixed_om_dlrs_per_year',
-                'hvac_equipment_cost_dollars_per_cooling_ton',
-                'baseline_rest_of_system_costs_dollars_per_cooling_ton',
+                'hvac_equipment_cost_improvement_pct',
                 'baseline_fixed_om_dollars_per_sf_per_year',
                 'baseline_equipment_costs_dlrs',
-                'baseline_rest_of_system_cost_dlrs',
                 'baseline_installed_costs_dlrs',
                 'baseline_fixed_om_dlrs_per_year',
                 'ghp_heat_pump_lifetime_yrs',
