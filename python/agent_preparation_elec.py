@@ -379,7 +379,9 @@ def calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, 
     sql = """DROP TABLE IF EXISTS %(schema)s.agent_max_demand_%(sector_abbr)s_%(i_place_holder)s;
             CREATE UNLOGGED TABLE %(schema)s.agent_max_demand_%(sector_abbr)s_%(i_place_holder)s AS
             SELECT a.county_id, a.bin_id, 
-                    ROUND(b.normalized_max_demand_kw_per_kw * a.load_kwh_per_customer_in_bin, 0)::INTEGER AS max_demand_kw
+                    ROUND(b.normalized_max_demand_kw_per_kw * a.load_kwh_per_customer_in_bin, 0)::INTEGER AS
+                    max_demand_kw,
+                    ROUND(a.load_kwh_per_customer_in_bin/12.0, 0)::INTEGER AS avg_monthly_kwh
             FROM %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s a
             LEFT JOIN diffusion_load_profiles.energy_plus_max_normalized_demand b
                 ON a.crb_model = b.crb_model
@@ -641,6 +643,7 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
                     
                     -- load profile
                     c.max_demand_kw,
+                    c.avg_monthly_kwh,
     
                     -- solar siting constraints
                     d.tilt,
@@ -765,6 +768,7 @@ def merge_all_core_agents(cur, con, schema, sectors, techs):
                             a.load_kwh_per_customer_in_bin, 
                             a.load_kwh_in_bin,
                             a.max_demand_kw,
+                            a.avg_monthly_kwh,
                             a.hdf_load_index,
                             a.owner_occupancy_status,
                             -- capital cost regional multiplier
