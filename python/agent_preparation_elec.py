@@ -79,7 +79,7 @@ def p_run(pg_conn_string, sql, county_chunks, pool):
         return
 
 
-#%%
+ #%%
 @decorators.fn_timer(logger = logger, tab_level = 0, prefix = '')
 def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agents, agents_per_region, sectors,
                                             pg_procs, pg_conn_string, seed, end_year):
@@ -95,6 +95,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
     pool = multiprocessing.Pool(processes = pg_procs) 
     
     try:
+        create_agent_id_sequence(schema, con, cur)
         # all in postgres
         for sector_abbr, sector in sectors.iteritems():
             with utilfunc.Timer() as t:
@@ -106,6 +107,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 #==============================================================================
                 # NOTE: each of these functions is dependent on the last, so changes from one must be cascaded to the others
                 sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
+                add_agent_ids(schema, sector_abbr, 'initial', county_chunks, pool, pg_conn_string, con, cur)
                 sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
                 convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
                 calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
@@ -143,7 +145,8 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
         
     finally:
         # close the multiprocessing pool
-        pool.close() 
+        pool.close()
+
 
 
 
@@ -170,7 +173,25 @@ def split_counties(cur, schema, pg_procs):
     
     return county_chunks, pg_procs
 
-    
+
+# %%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def create_agent_id_sequence(schema, con, cur):
+
+    msg = '\tCreating Sequence for Agent IDs'
+    logger.info(msg)
+
+    inputs = locals().copy()
+    # create a sequence that will be used to populate a new primary key across all table partitions
+    # using a sequence ensure ids will be unique across all partitioned tables
+    sql = """DROP SEQUENCE IF EXISTS %(schema)s.agent_id_sequence;
+                CREATE SEQUENCE %(schema)s.agent_id_sequence
+                INCREMENT 1
+                START 1;""" % inputs
+    cur.execute(sql)
+    con.commit()
+
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
@@ -202,8 +223,12 @@ def sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, p
                 GROUP BY a.county_id
             )
                 
-            SELECT a.pgid, a.county_id, ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.pgid) as bin_id
-            FROM a;""" % inputs
+            SELECT  NULL::INTEGER agent_id,
+                a.pgid,
+                a.county_id,
+                ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.pgid) as bin_id
+            FROM a
+            ORDER BY a.county_id, a.pgid;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, pool)
 
     # add primary key
@@ -218,6 +243,30 @@ def sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, p
             USING BTREE(pgid);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, pool)
 
+
+# %%
+@decorators.fn_timer(logger=logger, tab_level=3, prefix='')
+def add_agent_ids(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_string, con, cur):
+    inputs = locals().copy()
+
+    # need to do this sequentially to ensure conssitent application of agent_ids
+    # (if run in parallel, there is no guarantee the order in which each table will be hitting the sequence)
+    for i in range(0, len(chunks)):
+        inputs['i_place_holder'] = i
+        sql = """UPDATE %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s
+                 SET agent_id = nextval('%(schema)s.agent_id_sequence');""" % inputs
+        cur.execute(sql)
+        con.commit()
+
+    # add primary key
+    # (can do this part in parallel)
+
+    # # reset i_place_holder to normal value
+    # inputs['i_place_holder'] = '%(i)s'
+    # # run query
+    # sql = """ALTER TABLE %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s
+    #          ADD PRIMARY KEY (agent_id);""" % inputs
+    # p_run(pg_conn_string, sql, chunks, pool)
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

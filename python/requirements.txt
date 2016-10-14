@@ -12,10 +12,10 @@ json
 logging
 matplotlib
 multiprocessing
-numpy=1.10.1
+numpy
 openpyxl=2.3.2
 os
-pandas=0.16.2
+pandas
 pickle
 psutil
 psycopg2
