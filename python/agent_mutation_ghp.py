@@ -76,7 +76,7 @@ def apply_technology_performance_ghp(dataframe, tech_performance_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_technology_performance_improvements_and_degradation_baseline(con, schema, year):
+def get_technology_performance_improvements_baseline(con, schema, year):
     
     inputs = locals().copy()
     sql = """SELECT sector_abbr, 
@@ -92,7 +92,7 @@ def get_technology_performance_improvements_and_degradation_baseline(con, schema
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_technology_performance_improvements_and_degradation_baseline(dataframe, tech_performance_df):
+def apply_technology_performance_baseline(dataframe, tech_performance_df):
     
     # join on sector and baseline type
     dataframe = pd.merge(dataframe, tech_performance_df, how = 'left', on = ['sector_abbr'])
