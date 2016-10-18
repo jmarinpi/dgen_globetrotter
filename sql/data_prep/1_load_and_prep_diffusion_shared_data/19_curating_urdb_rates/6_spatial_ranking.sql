@@ -113,3 +113,6 @@ add column rank_id serial;
 -- Make a crosswalk/ data dictionary for all the tables I created and what the fields represent
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+# RANKINGS BASED OFF COUNTY GEOM (NOT UTILITY!)
