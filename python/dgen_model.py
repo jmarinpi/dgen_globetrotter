@@ -182,7 +182,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # GET RATE TARIFF LOOKUP TABLE FOR EACH SECTOR                                    
                     #==============================================================================
                     rates_rank_df, rates_json_df = agent_mutation_elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string, model_settings.mode)
-
+                    # TODO --> 2 funcs
                     #==============================================================================
                     # GET NORMALIZED LOAD PROFILES
                     #==============================================================================
@@ -311,6 +311,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     del agents_solar, agents_wind   
                     # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.update_net_metering_fields).compute(1)
+                    #TODO -- Do we want to change these field names?
                                 
                     #==============================================================================
                     # DEVELOPABLE CUSTOMERS/LOAD
@@ -919,8 +920,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.error(e.__str__(), exc_info = True)
         if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
-            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
-            #pass
+            #datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+            pass
         #TODO -- uncomment above
         if 'logger' not in locals():
             raise

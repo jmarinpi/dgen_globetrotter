@@ -106,12 +106,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
     # NOTE: This function creates a lookup table for the agents in each sector, providing
     #       the county_id and bin_id for each agent, along with the rate_id_alias and rate_source.
     #       This information is used in "get_electric_rate_tariffs" to load in the actual rate tariff for each agent.
-    # TODO -- SQL Break Up final Rates table by Sector (3 final array tables + 1 lkup "tidy" table)
-    # TODO -- Add for Tract ID Alias and figure out what rate_source is
-    # TODO -- Add in logic about sector (if sector =  ind, then we first search ind within tract if no then com)
-    # TODO -- Filter for sector, demand range, energy range (energy range is new)
-    # TODO -- Modify so that we only have 2 dfs agent to rate id and rate id to json
-    # TODO -- Modify to drop out the tie breaker. Needs to be part of pieters work
+
     inputs = locals().copy()
        
     if mode == 'develop':
@@ -151,7 +146,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                                     SELECT a.agent_id, a.tract_id_alias, a.max_demand_kw, a.avg_monthly_kwh,
                                         b.rate_id_alias as rate_id_alias,
                                         b.rate_rank as rate_rank,
-                                        b.rate_utility_type,
+                                        b.rank_utility_type,
                                         b.rate_type_tou,
                                         b.max_demand_kw as rate_max_demand_kw,
                                         b.min_demand_kw as rate_min_demand_kw,
@@ -162,10 +157,11 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                                     FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
                                     LEFT JOIN diffusion_shared.tracts_ranked_rates_lkup_20161005 b  --  *******
                                             ON a.tract_id_alias = b.tract_id_alias
-                                            AND a.util_type = b.rate_utility_type
+                                            AND a.util_type = b.rank_utility_type
                                     LEFT JOIN diffusion_shared.urdb3_rate_sam_jsons_20161005 c
                                             ON c.rate_id_alias = b.rate_id_alias
                         ),""" %inputs
+                        #TODO-- Add county and fix rates for county
 
 
             # Add logic for Commercial and Industrial
@@ -221,6 +217,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
 
             sql = sql1 + sql2 + sql3
 
+            #sql = sql1 + 'b as(select * from a) select * from b);'
             cur.execute(sql)
             con.commit()
 
@@ -251,10 +248,10 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
             #     con.commit()
         
             # add primary key to rates lkup table
-            sql = """ALTER TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s
-                     ADD PRIMARY KEY (agent_id);""" % inputs
-            cur.execute(sql)
-            con.commit()
+            # sql = """ALTER TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s
+            #          ADD PRIMARY KEY (agent_id);""" % inputs
+            # cur.execute(sql)
+            # con.commit()
             
             # get the rates
             sql = """SELECT a.*, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr
@@ -275,8 +272,8 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
         datfunc.store_pickle(df, out_file)
 
     # Create two dataframes
-    df_ranks = df[['agent_id', 'rate_id_alias', 'rank','rate_type_tou']]
-    df_json = df[['agent_id', 'sam_json']]
+    df_ranks = df[['agent_id', 'rate_id_alias', 'rate_type_tou']]      #TODO--fix TOU
+    df_json = df[['rate_id_alias', 'sam_json']]
 
     return df_ranks, df_json
 
@@ -308,8 +305,7 @@ def select_electric_rates(dataframe, rates_rank_df, rates_json_df, net_metering_
     dataframe = pd.merge(dataframe, rates_json_df, how='left', on=['agent_id'])
     dataframe = pd.merge(dataframe, net_metering_df, how = 'left',  on = ['state_abbr', 'sector_abbr'])
 
-    # TODO: return 2 dataframes --> 1 for each
-    # TODO: agent_id needs to replace county_id and bin_id with agent_id
+    # TODO: Issue-- I created two seperate dataframes before just to merge them back togther...
                                                             
     return dataframe
 
