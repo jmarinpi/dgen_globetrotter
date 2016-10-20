@@ -32,13 +32,20 @@ where b.sector_abbr = 'com'
 and a.baseline_type is not null
 and a.provided = True;
 -- 966859170784.26 provided so far, 1722450178969.06.44 eventually
+-- 2016-10-11 update:
+-- 1250395831259.91 provided with updated ORNL sims, 1722450178969.06.44 eventually
 -- vs
 select sum(sample_wt * (kbtu_space_heat + kbtu_space_cool))
 from diffusion_shared.cbecs_recs_expanded_combined a
 WHERE a.sector_abbr = 'com';
 -- 2902688529218.28
+
 select 1722450178969.06/2902688529218.; -- 59% covered eventually
 select 966859170784/2902688529218.; -- 33% covered so far
+
+--2016-10-11 update:
+select 1722450178969.06/2902688529218.; -- 59% covered eventually
+select 1250395831259.91/2902688529218.; -- 43% covered so far
 
 -- to see what's not covered:
 -- with a as
@@ -111,13 +118,20 @@ and a.provided = true;
 
 
 -- 3635994524189.14 eventually, 3320713162463.03 provided so far
+-- 2016-10-11 update:
+-- 3635994524189.14 provided so far
 -- vs
 select  sum(sample_wt * (kbtu_space_heat + kbtu_space_cool))
 from diffusion_shared.cbecs_recs_expanded_combined a
 WHERE a.sector_abbr = 'res';
 -- 4870316830087.82 total
+
 select 3635994524189.14/4870316830087.; -- 75% eventually
 select 3320713162463.02/4870316830087.; -- 68% -- so far
+
+-- 2016-10-11 update:
+select 3635994524189.14/4870316830087.; -- 75% eventually
+select 3635994524189.14/4870316830087.; -- 75% -- so far
 -- seems sufficient
 
 -- what's not covered:
