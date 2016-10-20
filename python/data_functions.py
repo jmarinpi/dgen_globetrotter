@@ -322,10 +322,10 @@ def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rs
         logger.info('\tCompiling Output Report')
     
     # choose plot_outputs R script based on techs      
-	if set(['wind','solar', 'storage']).isdisjoint(set(techs)) == False:
-		plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())
-	else:
-		plot_outputs_path = '%s/r/graphics/plot_outputs_geo.R' % os.path.dirname(os.getcwd())      
+    if set(['wind','solar', 'storage']).isdisjoint(set(techs)) == False:
+        plot_outputs_path = '%s/r/graphics/plot_outputs.R' % os.path.dirname(os.getcwd())
+    else:
+        plot_outputs_path = '%s/r/graphics/plot_outputs_geo.R' % os.path.dirname(os.getcwd())      
     
     for tech in techs:
         out_tech_path = os.path.join(out_scen_path, tech)
