@@ -1,6 +1,7 @@
 --------------------------------------------------
 -- Create a temporary sam data table (part 2)
 --------------------------------------------------
+set role 'diffusion-writers';
 	-- * Note, this takes a while (~60 minutes)
 	drop table if exists diffusion_data_shared.urdb_rates_sam_min_max;
 	create table diffusion_data_shared.urdb_rates_sam_min_max as (
@@ -10,6 +11,12 @@
 		get_key(a.json, 'kWh_useage_min') as energy_min, 
 		get_key(a.json, 'kWh_useage_max') as energy_max
 		from diffusion_data_shared.temp_sam_joins a);
+
+	drop table if exists diffusion_data_shared.urdb_rates_sam_min_max_20161005;
+	create table diffusion_data_shared.urdb_rates_sam_min_max_20161005 as (
+		select a.* 
+		from
+		diffusion_data_shared.urdb_rates_sam_min_max
 
 ----------------------------------------------------
 -- Create Union Geometries for each Utility Region

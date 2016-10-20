@@ -776,7 +776,7 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
                  ON a.county_id = e.county_id
                  AND a.bin_id = e.bin_id
             LEFT JOIN %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s f
-                on a.agent_id = f.agent_id""" % inputs
+                on a.agent_id = f.agent_id """ % inputs
     
     # create the template table
     template_inputs = inputs.copy()

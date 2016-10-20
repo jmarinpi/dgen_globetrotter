@@ -51,6 +51,9 @@ CREATE TABLE diffusion_data_shared.tracts_ranked_rates_lkup_20161005
 	rank integer
 );
 
+
+select * from diffusion_data_shared.urdb_rates_geoms_20161005 limit 10
+
 -- Begin Ranking
 SELECT parsel_2('dav-gis','mmooney','mmooney', 'diffusion_data_shared.tract_util_type_all_potential_combos_20161005', 'gid', 
 	'with county as (
