@@ -836,6 +836,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     new_market_share_pct = diffusion_functions_du.calculate_new_incremental_market_share_pct(existing_market_share_df, current_mms, bass_params_df, year)
                     # calculate new incremental market share capacity (mw)
                     new_incremental_capacity_mw = diffusion_functions_du.calculate_new_incremental_capacity_mw(new_market_share_pct, total_market_demand_mw)
+                    
                     # select plants to be built
                     plants_to_be_built_df = diffusion_functions_du.select_plants_to_be_built(plant_sizes_market_df, new_incremental_capacity_mw, scenario_settings.random_generator_seed)
                     # summarize the new cumulative market share (in terms of capacity and pct) based on the selected plants
