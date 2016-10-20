@@ -84,7 +84,7 @@ def get_rate_structures(con, schema):
     inputs = locals().copy()
     
     sql = """
-            	SELECT 'res' as sector_abbr, res_rate_structure as rate_structure
+            SELECT 'res' as sector_abbr, res_rate_structure as rate_structure
         	FROM %(schema)s.input_main_scenario_options
         	UNION
         	SELECT 'com' as sector_abbr, com_rate_structure as rate_structure
@@ -96,7 +96,7 @@ def get_rate_structures(con, schema):
     rate_structures_df = pd.read_sql(sql, con)
     rate_structures = dict(zip(rate_structures_df['sector_abbr'], rate_structures_df['rate_structure']))
     
-    return rate_structures    
+    return rate_structures
 
 
 #%%
@@ -106,13 +106,20 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
     # NOTE: This function creates a lookup table for the agents in each sector, providing
     #       the county_id and bin_id for each agent, along with the rate_id_alias and rate_source.
     #       This information is used in "get_electric_rate_tariffs" to load in the actual rate tariff for each agent.
-
+    # TODO -- SQL Break Up final Rates table by Sector (3 final array tables + 1 lkup "tidy" table)
+    # TODO -- Add for Tract ID Alias and figure out what rate_source is
+    # TODO -- Add in logic about sector (if sector =  ind, then we first search ind within tract if no then com)
+    # TODO -- Filter for sector, demand range, energy range (energy range is new)
+    # TODO -- Add somewhere something about rate types (time of use vs non-timeof use)
+    # TODO -- Modify so that we only have 2 dfs agent to rate id and rate id to json
+    # TODO -- Modify to drop out the tie breaker. Needs to be part of pieters work
     inputs = locals().copy()
        
     if mode == 'develop':
         # set input file
         in_file = './canned_agents/elec/electric_rates.pkl'
         # load it from pickle
+
         df = datfunc.unpickle(in_file)
         
     elif mode in ['run', 'setup_develop']:
@@ -147,6 +154,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                             	FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
                             	LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
                                     	ON a.pgid = b.pgid
+                                    --	TODO: update to include utility and utility type?                 ***********
                         ),
                         b AS
                         (
@@ -154,7 +162,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                                         b.rate_type,
                                         b.pct_of_customers
                                 FROM a 
-                                LEFT JOIN diffusion_shared.urdb_rates_by_state_%(sector_abbr)s b
+                                LEFT JOIN diffusion_shared.urdb_rates_by_state_%(sector_abbr)s b        --  ***********
                                         ON a.rate_id_alias = b.rate_id_alias
                                         AND a.state_abbr = b.state_abbr
                                 WHERE a.max_demand_kw <= b.urdb_demand_max
@@ -176,7 +184,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                         )
                         SELECT d.county_id, d.bin_id,
                                 unnest(diffusion_shared.sample(
-                                                array_agg(d.rate_id_alias ORDER BY d.rate_id_alias), 
+                                                array_agg(d.rate_id_alias ORDER BY d.rate_id_alias),
                                                 1, 
                                               (%(seed)s * d.county_id * d.bin_id), 
                                               False,
@@ -269,11 +277,15 @@ def select_electric_rates(dataframe, rates_df, net_metering_df):
     
     dataframe = pd.merge(dataframe, rates_df, how = 'left', on = ['county_id', 'bin_id', 'sector_abbr'])
     dataframe = pd.merge(dataframe, net_metering_df, how = 'left',  on = ['state_abbr', 'sector_abbr'])
+
+    # TODO: return 2 dataframes --> 1 for each
+    # TODO: agent_id needs to replace county_id and bin_id with agent_id
                                                             
     return dataframe
 
 
 #%%
+# TODO- might need to comment this part out
 def update_rate_json_w_nem_fields(row):
     
     nem_fields = ['ur_enable_net_metering', 'ur_nm_yearend_sell_rate', 'ur_flat_sell_rate']

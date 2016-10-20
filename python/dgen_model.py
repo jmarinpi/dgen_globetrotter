@@ -205,7 +205,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         tech_potential_limits_wind_df = agent_mutation_elec.get_tech_potential_limits_wind(con)
                         tech_potential_limits_solar_df = agent_mutation_elec.get_tech_potential_limits_solar(con)
          
-                elif scenario_settings.tech_mode == 'du':
+                elif scenario_sediffusion_shared.tract_util_type_weights_resttings.tech_mode == 'du':
                     # create core agent attributes
                     if model_settings.mode in ['run', 'setup_develop']:
                         agent_preparation_geo.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
@@ -919,7 +919,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.error(e.__str__(), exc_info = True)
         if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
-            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+            #datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+            pass
+        #TODO -- uncomment above
         if 'logger' not in locals():
             raise
         

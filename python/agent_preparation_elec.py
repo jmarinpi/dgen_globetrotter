@@ -110,6 +110,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 add_agent_ids(schema, sector_abbr, 'initial', county_chunks, pool, pg_conn_string, con, cur)
                 sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
                 convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
+                sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
                 calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
     
                 #==============================================================================
@@ -204,7 +205,7 @@ def sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, p
     inputs['chunk_place_holder'] = '%(county_ids)s'
         
     #==============================================================================
-    #     randomly sample  N blocks from each county 
+    #     randomly sample N blocks from each county
     #==============================================================================    
     # (note: [this may not be true any longer...] some counties will have fewer than N points, in which case, all are returned) 
     sql = """DROP TABLE IF EXISTS %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s;
@@ -225,9 +226,12 @@ def sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, p
                 
             SELECT  NULL::INTEGER agent_id,
                 a.pgid,
+                b.tract_id_alias,
                 a.county_id,
                 ROW_NUMBER() OVER (PARTITION BY a.county_id ORDER BY a.county_id, a.pgid) as bin_id
             FROM a
+            LEFT JOIN diffusion_blocks.block_tract_id_alias b
+            ON a.pgid = b.pgid
             ORDER BY a.county_id, a.pgid;""" % inputs
     p_run(pg_conn_string, sql, county_chunks, pool)
 
@@ -245,6 +249,7 @@ def sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, p
 
 
 # %%
+# TODO -- make sure that this agent_id gets filtered through
 @decorators.fn_timer(logger=logger, tab_level=3, prefix='')
 def add_agent_ids(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_string, con, cur):
     inputs = locals().copy()
@@ -269,6 +274,7 @@ def add_agent_ids(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_str
     # p_run(pg_conn_string, sql, chunks, pool)
 
 #%%
+# an agent belongs to
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
 
@@ -293,7 +299,7 @@ def sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_reg
          CREATE UNLOGGED TABLE %(schema)s.agent_bldgs_%(sector_abbr)s_%(i_place_holder)s AS
          WITH all_bldgs AS
          (
-             SELECT a.county_id, 
+             SELECT  a.county_id,
                      b.bldg_id, b.weight
              FROM diffusion_blocks.county_geoms a
              INNER JOIN %(schema)s.states_to_model c
@@ -363,7 +369,7 @@ def convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agen
             CREATE UNLOGGED TABLE %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s AS
             WITH a as
             (
-                SELECT a.pgid, a.county_id, a.bin_id, 
+                SELECT a.agent_id, a.pgid, a.tract_id_alias, a.county_id, a.bin_id,
                         b.crb_model, b.ann_cons_kwh, 
                         b.weight as eia_weight, 
                        CASE WHEN b.roof_sqft < 5000 THEN 'small'::character varying(6)
@@ -407,8 +413,55 @@ def convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agen
             USING BTREE(pgid);            
             """ % inputs
     p_run(pg_conn_string, sql, county_chunks, pool)
-    
-    
+
+
+# %%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
+    # NOTE: This function uses a random weighted sampling process to determine the agent's utility type.
+    #       The utility type will be used to determine the agent's rates later on in
+    #       agent_mutation_elec.get_electric_rates.
+
+    msg = "\tSampling Utility Type for Each Agent"
+    logger.info(msg)
+
+    inputs = locals().copy()
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['chunk_place_holder'] = '%(county_ids)s'
+
+    #==============================================================================
+    #     Assign each agent to a utility type
+    #==============================================================================
+    sql =  """DROP TABLE IF EXISTS %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s;
+            CREATE  TABLE %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s AS (
+                 WITH sample AS (
+                    SELECT b.agent_id,
+                            unnest(diffusion_shared.sample(
+                                array_agg(a.utility_id ORDER BY a.utility_id), 1,
+                                %(seed)s * b.county_id, True,
+                                array_agg(a.util_type_weight ORDER BY a.utility_id))) as util_id
+                    FROM diffusion_shared.tract_util_type_weights_%(sector_abbr)s a
+                    RIGHT JOIN %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s b
+                    ON a.tract_id_alias = b.tract_id_alias
+                    GROUP BY b.agent_id, b.county_id ),
+                utility_type_unique AS (
+                    SELECT distinct utility_id, utility_type
+                    FROM diffusion_shared.tract_util_type_weights_%(sector_abbr)s )
+                SELECT a.agent_id, b.utility_type
+                FROM sample a
+                LEFT JOIN utility_type_unique b
+                on a.util_id = b.utility_id);""" % inputs
+
+    p_run(pg_conn_string, sql, county_chunks, pool)
+
+    # Add indicies
+    sql = """CREATE INDEX agent_utility_type_%(sector_abbr)s_%(i_place_holder)s_bin_id
+            ON %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s
+            USING BTREE(agent_id); """ % inputs
+
+    p_run(pg_conn_string, sql, county_chunks, pool)
+
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
@@ -672,8 +725,10 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
     inputs['i_place_holder'] = '%(i)s'
     inputs['chunk_place_holder'] = '%(county_ids)s'
 
-    
     sql_part = """SELECT 
+                    -- agent id
+                    a.agent_id,
+
                     -- block location dependent properties
                     b.*,
                     
@@ -689,6 +744,9 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
                     a.customers_in_bin,
                     a.load_kwh_in_bin,
                     a.load_kwh_per_customer_in_bin,
+
+                    -- rate utility_type
+                    f.utility_type as util_type,
                     
                     -- load profile
                     c.max_demand_kw,
@@ -716,7 +774,9 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
                  AND a.bin_id = d.bin_id
             LEFT JOIN %(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s e
                  ON a.county_id = e.county_id
-                 AND a.bin_id = e.bin_id""" % inputs
+                 AND a.bin_id = e.bin_id
+            LEFT JOIN %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s f
+                on a.agent_id = f.agent_id""" % inputs
     
     # create the template table
     template_inputs = inputs.copy()
@@ -738,7 +798,7 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
     
     # add primary key 
     sql =  """ALTER TABLE %(schema)s.agent_core_attributes_%(sector_abbr)s
-              ADD PRIMARY KEY (county_id, bin_id);""" % inputs
+              ADD PRIMARY KEY (agent_id);""" % inputs
     cur.execute(sql)
     con.commit()
 
@@ -772,6 +832,7 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
                             '%(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s',
                             '%(schema)s.agent_bldgs_%(sector_abbr)s_%(i_place_holder)s',    
                             '%(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s',
+                            '%(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s',
                             '%(schema)s.agent_max_demand_%(sector_abbr)s_%(i_place_holder)s',
                             '%(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s',
                             '%(schema)s.agent_rooftops_%(sector_abbr)s_%(i_place_holder)s',
@@ -806,13 +867,16 @@ def merge_all_core_agents(cur, con, schema, sectors, techs):
             inputs['sector_abbr'] = sector_abbr
             inputs['sector'] = sector
             inputs['tech'] = tech
-            sql = """SELECT a.pgid, 
+            sql = """SELECT a.agent_id,
+                            a.pgid,
+                            a.tract_id_alias,
                             a.county_id, 
                             a.bin_id, 
                             a.state_abbr, 
                             a.census_division_abbr, 
                             a.pca_reg, 
-                            a.reeds_reg, 
+                            a.reeds_reg,
+                            a.util_type,
                             a.customers_in_bin, 
                             a.load_kwh_per_customer_in_bin, 
                             a.load_kwh_in_bin,
