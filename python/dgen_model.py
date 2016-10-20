@@ -574,9 +574,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_technology_performance_ghp, (tech_performance_ghp_df, )).compute()
                     
                     # get baseline tech performance improvements and degradation
-                    tech_performance_baseline_df = agent_mutation_ghp.get_technology_performance_improvements_and_degradation_baseline(con, scenario_settings.schema, year)
+                    tech_performance_baseline_df = agent_mutation_ghp.get_technology_performance_improvements_baseline(con, scenario_settings.schema, year)
                     # apply baseline tech performance improvements and degradation
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_technology_performance_improvements_and_degradation_baseline, (tech_performance_baseline_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_technology_performance_baseline, (tech_performance_baseline_df, )).compute()
                     
                     #==========================================================================================================
                     # CALCULATE SITE ENERGY CONSUMPTION
