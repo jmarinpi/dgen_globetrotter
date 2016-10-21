@@ -86,3 +86,10 @@ use_existing_schema = False
 # change this to the schema with existing agents/bill savings that you want to use
 existing_schema_name = 'diffusion_results_2016_01_29_11h31m03s'
 
+
+#==============================================================================
+# TEMPORARY PATCH FOR STORAGE BRANCH            
+# TODO: delete after solar+storage is addded as an option to the excel input sheet
+# Temporary input for solar+storage mode (if true, overrides techs in input sheet to run solar + storage)
+solar_plus_storage_mode = True
+#==============================================================================
