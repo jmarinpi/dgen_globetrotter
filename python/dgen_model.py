@@ -181,11 +181,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # GET RATE RANKS & TARIFF LOOKUP TABLE FOR EACH SECTOR
                     #==============================================================================
-                    # get (ranked) rates for each sector
-                    rates_rank_df = agent_mutation_elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string, model_settings.mode)
+                    # GET RATE TARIFF LOOKUP TABLE FOR EACH SECTOR           
+                    rates_df = agent_mutation_elec.get_sam_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string, model_settings.mode)                
 
-                    # get lkup table with rate jsons
-                    rates_json_df = agent_mutation_elec.get_electric_rates_json(con)
+                    #==============================================================================
+                    # GET RATE RANKS & TARIFF LOOKUP TABLE FOR EACH SECTOR
+                    #==============================================================================                    
+#                    # get (ranked) rates for each sector
+#                    rates_rank_df = agent_mutation_elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string, model_settings.mode)
+#
+#                    # get lkup table with rate jsons
+#                    rates_json_df = agent_mutation_elec.get_electric_rates_json(con)
 
                     #==============================================================================
                     # GET NORMALIZED LOAD PROFILES
@@ -209,7 +215,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         tech_potential_limits_wind_df = agent_mutation_elec.get_tech_potential_limits_wind(con)
                         tech_potential_limits_solar_df = agent_mutation_elec.get_tech_potential_limits_solar(con)
          
-                elif scenario_sediffusion_shared.tract_util_type_weights_resttings.tech_mode == 'du':
+                elif scenario_settings.tech_mode == 'du':
                     # create core agent attributes
                     if model_settings.mode in ['run', 'setup_develop']:
                         agent_preparation_geo.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
@@ -289,7 +295,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get net metering settings
                     net_metering_df = agent_mutation_elec.get_net_metering_settings(con, scenario_settings.schema, year)
                     # select rates, combining with net metering settings
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.select_electric_rates, (rates_rank_df, net_metering_df)).compute(1)
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.select_electric_rates, (rates_df, net_metering_df)).compute(1)
                     
                     #==============================================================================
                     # ANNUAL RESOURCE DATA
@@ -315,7 +321,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     del agents_solar, agents_wind   
                     # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.update_net_metering_fields).compute(1)
-                    #TODO -- Do we want to change these field names?
                                 
                     #==============================================================================
                     # DEVELOPABLE CUSTOMERS/LOAD
@@ -924,8 +929,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.error(e.__str__(), exc_info = True)
         if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
-           # datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
-            pass
+            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
         if 'logger' not in locals():
             raise
         
