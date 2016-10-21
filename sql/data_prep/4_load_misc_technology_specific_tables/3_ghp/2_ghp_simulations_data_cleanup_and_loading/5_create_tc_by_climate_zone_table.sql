@@ -9,7 +9,7 @@ CREATE TABLE diffusion_geo.thermal_conductivity_summary_by_climate_zone_ornl AS
 with a AS
 (
 	select distinct iecc_climate_zone, gtc_btu_per_hftf
-	from diffusion_geo.ghp_simulations_com
+	from diffusion_geo.ornl_ghp_simulations
 ),
 b as
 (

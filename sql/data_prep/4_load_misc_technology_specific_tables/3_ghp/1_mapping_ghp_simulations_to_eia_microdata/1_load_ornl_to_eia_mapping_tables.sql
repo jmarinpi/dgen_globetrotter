@@ -10,7 +10,7 @@ CREATE TABLE diffusion_geo.ornl_simulations_lkup
 	provided boolean
 );
 
-\COPY diffusion_geo.ornl_simulations_lkup FROM '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/ORNL_GHP_CRB_Simulations/lkup_tables/csvs/crb_descriptions.csv' with csv header;
+\COPY diffusion_geo.ornl_simulations_lkup FROM '/Users/kmccabe/dGeo/Data/ORNL_GHP_CRB_Simulations/lkup_tables/csvs/crb_descriptions.csv' with csv header;
 
 ----------------------------------------------------------------------------
 
@@ -25,7 +25,7 @@ CREATE TABLE diffusion_geo.ornl_building_type_lkup
 	typehuq_desc text
 );
 
-\COPY diffusion_geo.ornl_building_type_lkup FROM '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/ORNL_GHP_CRB_Simulations/lkup_tables/csvs/building_type_to_pba_lkup.csv' with csv header;
+\COPY diffusion_geo.ornl_building_type_lkup FROM '/Users/kmccabe/dGeo/Data/ORNL_GHP_CRB_Simulations/lkup_tables/csvs/building_type_to_pba_lkup.csv' with csv header;
 
 ----------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@ CREATE TABLE diffusion_geo.ornl_baseline_heating_lkup
 );
 
 
-\COPY diffusion_geo.ornl_baseline_heating_lkup FROM '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/ORNL_GHP_CRB_Simulations/lkup_tables/csvs/baseline_heating_system_lkup.csv' with csv header;
+\COPY diffusion_geo.ornl_baseline_heating_lkup FROM '/Users/kmccabe/dGeo/Data/ORNL_GHP_CRB_Simulations/lkup_tables/csvs/baseline_heating_system_lkup.csv' with csv header;
 
 ----------------------------------------------------------------------------
 
@@ -54,6 +54,6 @@ CREATE TABLE diffusion_geo.ornl_baseline_cooling_lkup
 	eia_fuel_type text
 );
 
-\COPY diffusion_geo.ornl_baseline_cooling_lkup FROM '/Volumes/Staff/mgleason/dGeo/Data/Source_Data/ORNL_GHP_CRB_Simulations/lkup_tables/csvs/baseline_cooling_system_lkup.csv' with csv header;
+\COPY diffusion_geo.ornl_baseline_cooling_lkup FROM '/Users/kmccabe/dGeo/Data/ORNL_GHP_CRB_Simulations/lkup_tables/csvs/baseline_cooling_system_lkup.csv' with csv header;
 
 ----------------------------------------------------------------------------

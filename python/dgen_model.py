@@ -561,19 +561,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # (i.e., these are the subset of market eligible agents can be developed NOW)
                     agents = AgentsAlgorithm(agents, agent_mutation_ghp.identify_bass_deployable_agents).compute()                              
 
-
-                    #==============================================================================
-                    # DETERMINE GHP-COMPATIBILITY
-                    #==============================================================================  
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.determine_ghp_compatibility).compute()
                     
                     #==============================================================================
                     # TECHNOLOGY COSTS
                     #==============================================================================
                     # get ghp technology costs
                     tech_costs_ghp_df = agent_mutation_ghp.get_technology_costs_ghp(con, scenario_settings.schema, year)
-                    # determine whether to apply rest of system GHP costs
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.requires_ghp_rest_of_sysem_costs).compute()
                     # apply ghp technology costs     
                     agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()
                     
@@ -589,15 +582,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     tech_performance_ghp_df = agent_mutation_ghp.get_technology_performance_improvements_ghp(con, scenario_settings.schema, year)
                     # apply GHP technology performance improvements
                     agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_technology_performance_ghp, (tech_performance_ghp_df, )).compute()
-                    # get GHP system degradatation
-                    system_degradation_df = agent_mutation_ghp.get_system_degradataion_ghp(con, scenario_settings.schema, year)
-                    # apply GHP degradation
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_system_degradation_ghp, (system_degradation_df, )).compute()
                     
                     # get baseline tech performance improvements and degradation
-                    tech_performance_baseline_df = agent_mutation_ghp.get_technology_performance_improvements_and_degradation_baseline(con, scenario_settings.schema, year)
+                    tech_performance_baseline_df = agent_mutation_ghp.get_technology_performance_improvements_baseline(con, scenario_settings.schema, year)
                     # apply baseline tech performance improvements and degradation
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_technology_performance_improvements_and_degradation_baseline, (tech_performance_baseline_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_technology_performance_baseline, (tech_performance_baseline_df, )).compute()
                     
                     #==========================================================================================================
                     # CALCULATE SITE ENERGY CONSUMPTION
@@ -857,6 +846,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     new_market_share_pct = diffusion_functions_du.calculate_new_incremental_market_share_pct(existing_market_share_df, current_mms, bass_params_df, year)
                     # calculate new incremental market share capacity (mw)
                     new_incremental_capacity_mw = diffusion_functions_du.calculate_new_incremental_capacity_mw(new_market_share_pct, total_market_demand_mw)
+                    
                     # select plants to be built
                     plants_to_be_built_df = diffusion_functions_du.select_plants_to_be_built(plant_sizes_market_df, new_incremental_capacity_mw, scenario_settings.random_generator_seed)
                     # summarize the new cumulative market share (in terms of capacity and pct) based on the selected plants
@@ -888,7 +878,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     diffusion_functions_du.write_resources_outputs(con, cur, subscribed_resources_with_costs_df, scenario_settings.schema)
             
                 # TODO: get visualizations working and remove this short-circuit
-                return 'Simulations Complete'   
+                # return 'Simulations Complete'   
                 
             #==============================================================================
             #    Outputs & Visualization

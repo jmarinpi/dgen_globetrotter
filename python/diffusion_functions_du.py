@@ -174,7 +174,8 @@ def select_plants_to_be_built(plant_sizes_market_df, new_incremental_capacity_mw
     # as well as any with zero capacity
     small_enough = plant_sizes_market_df['plant_size_market_mw'] <= new_incremental_capacity_mw
     big_enough = plant_sizes_market_df['plant_size_market_mw'] > 0
-    plants_filtered_df = plant_sizes_market_df[small_enough & big_enough]
+    # filter and sort by tract_id_alias
+    plants_filtered_df = plant_sizes_market_df[small_enough & big_enough].sort('tract_id_alias')
     # check size is greater than zero
     if plants_filtered_df.shape[0] == 0:
         # add the cumulative capacity field

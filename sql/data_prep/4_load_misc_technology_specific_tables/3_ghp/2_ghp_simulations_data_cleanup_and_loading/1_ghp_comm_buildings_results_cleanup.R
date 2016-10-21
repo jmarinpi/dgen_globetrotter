@@ -1,9 +1,9 @@
 library(xlsx)
 library(reshape)
 
-setwd('/Volumes/Staff/mgleason/dGeo/Data/Source_Data/ORNL_GHP_CRB_Simulations/ghp_simulation_results')
+setwd('/Users/kmccabe/dGeo/Data/ORNL_GHP_CRB_Simulations/ghp_simulation_results')
 
-in_xlsx = 'source/Building Comparison GTV (commercial and residential 8-29-2016).xlsx'
+in_xlsx = 'source/Building Comparison GTV (commercial and residential 9-9-2016).xlsx'
 wb = loadWorkbook(in_xlsx)
 sheets = getSheets(wb)
 sheet_names = names(sheets)
@@ -112,7 +112,7 @@ for (col in names(complete_df_no_nas)){
 
 # expected rows
 
-expected_nrows = 3 * 7 * 13
+expected_nrows = 3 * 12 * 13
 if (expected_nrows != nrow(complete_df_no_nas)){
   print("Warning: expected number of rows doesn't match actual number of rows")
 }
