@@ -442,7 +442,7 @@ def sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_reg
                     FROM %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s a
                     LEFT JOIN diffusion_shared.tract_util_type_weights_%(sector_abbr)s b
                         ON a.tract_id_alias = b.tract_id_alias
-                    WHERE b.util_type_weight > 0 --NOTE: these should actually be removed from the lookup table
+                        AND b.util_type_weight > 0 --NOTE: these should actually be removed from the lookup table
                     GROUP BY a.agent_id
                 ),
                 
@@ -474,9 +474,9 @@ def sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_reg
                 )
                 
                 SELECT a.agent_id,
-                       CASE WHEN util_id = 1 THEN 'IOU'
-                            WHEN util_id = 2 THEN 'Coop'
-                            WHEN util_id = 3 THEN 'Muni'
+                       CASE WHEN util_id = 1 THEN 'Investor Owned'
+                            WHEN util_id = 2 THEN 'Cooperative'
+                            WHEN util_id = 3 THEN 'Municipal'
                             WHEN util_id = 4 THEN 'Other'
                        END as utility_type
                 FROM sample a;""" % inputs
@@ -486,8 +486,12 @@ def sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_reg
     # Add primary key
     sql = """ALTER TABLE %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s
             ADD PRIMARY KEY (agent_id);""" % inputs
-
     p_run(pg_conn_string, sql, county_chunks, pool)
+    
+    # add constraint to confirm no null utility types
+    sql = """ALTER TABLE %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s
+             ALTER COLUMN utility_type SET NOT NULL;""" % inputs
+    p_run(pg_conn_string, sql, county_chunks, pool)             
 
 
 #%%

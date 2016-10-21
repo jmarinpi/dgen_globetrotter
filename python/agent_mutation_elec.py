@@ -350,10 +350,9 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                         );"""
 
             sql = sql1 + sql2 + sql3
-
             cur.execute(sql)
             con.commit()
-            
+
             # get the rates
             sql = """SELECT agent_id, rate_id_alias, rate_type_tou, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr
                    FROM  %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s a""" % inputs
