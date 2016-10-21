@@ -924,8 +924,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.error(e.__str__(), exc_info = True)
         if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
-           # datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
-            pass
+            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+           # pass
         if 'logger' not in locals():
             raise
         
