@@ -123,8 +123,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
         inputs['chunk_place_holder'] = '%(county_ids)s'
         #excluded_rates = pd.read_csv('./excluded_rates_ids.csv', header=None)
         #inputs['excluded_rate_ids'] = '(' + ', '.join([str(i[0]) for i in excluded_rates.values]) + ')'
-    
-    
+
         msg = "\tGenerating Electric Rate Tariff Lookup Table for Agents"
         logger.info(msg)
         
@@ -135,7 +134,6 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
         for sector_abbr, sector in sectors.iteritems():
             inputs['sector_abbr'] = sector_abbr
             rate_structure = rate_structures[sector_abbr]
-
 
             #if rate_structure.lower() == 'complex rates':
             sql1 =  """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
@@ -152,16 +150,12 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                                         b.min_demand_kw as rate_min_demand_kw,
                                         b.max_energy_kwh as rate_max_energy_kwh,
                                         b.min_energy_kwh as rate_min_energy_kwh,
-                                        b.sector as rate_sector,
-                                        c.sam_json
+                                        b.sector as rate_sector
                                     FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
                                     LEFT JOIN diffusion_shared.tracts_ranked_rates_lkup_20161005 b  --  *******
                                             ON a.tract_id_alias = b.tract_id_alias
                                             AND a.util_type = b.rank_utility_type
-                                    LEFT JOIN diffusion_shared.urdb3_rate_sam_jsons_20161005 c
-                                            ON c.rate_id_alias = b.rate_id_alias
                         ),""" %inputs
-                        #TODO-- Add county and fix rates for county
 
 
             # Add logic for Commercial and Industrial
@@ -210,14 +204,13 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                                 FROM b
                         )"""
 
-            sql3 = """ SELECT agent_id, rate_id_alias, rank, rate_type_tou, sam_json
+            sql3 = """ SELECT agent_id, rate_id_alias, rank, rate_type_tou
                         FROM c
                         WHERE rank = 1
                         );"""
 
             sql = sql1 + sql2 + sql3
 
-            #sql = sql1 + 'b as(select * from a) select * from b);'
             cur.execute(sql)
             con.commit()
 
@@ -254,13 +247,14 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
             # con.commit()
             
             # get the rates
-            sql = """SELECT a.*, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr
+            sql = """SELECT agent_id, rate_id_alias, rate_type_tou, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr
                    FROM  %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s a""" % inputs
             df_sector = pd.read_sql(sql, con, coerce_float = False)
             df_list.append(df_sector)
             
         # combine the dfs
         df = pd.concat(df_list, axis = 0, ignore_index = True)
+
     else:
         raise ValueError("Invalid mode: must be one of ['run', 'setup_develop', 'develop']")
 
@@ -271,12 +265,18 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
         # create the pickle
         datfunc.store_pickle(df, out_file)
 
-    # Create two dataframes
-    df_ranks = df[['agent_id', 'rate_id_alias', 'rate_type_tou']]      #TODO--fix TOU
-    df_json = df[['rate_id_alias', 'sam_json']]
+    return df
 
-    return df_ranks, df_json
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_electric_rates_json(con):
 
+    sql = """SELECT rate_id_alias, json
+             FROM diffusion_shared.urdb3_rate_sam_jsons_20161005"""
+
+    df = pd.read_sql(sql, con, coerce_float=False)
+
+    return df
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -299,19 +299,15 @@ def get_net_metering_settings(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def select_electric_rates(dataframe, rates_rank_df, rates_json_df, net_metering_df):
+def select_electric_rates(dataframe, rates_rank_df, net_metering_df):
     
     dataframe = pd.merge(dataframe, rates_rank_df, how = 'left', on = ['agent_id'])
-    dataframe = pd.merge(dataframe, rates_json_df, how='left', on=['agent_id'])
     dataframe = pd.merge(dataframe, net_metering_df, how = 'left',  on = ['state_abbr', 'sector_abbr'])
 
-    # TODO: Issue-- I created two seperate dataframes before just to merge them back togther...
-                                                            
     return dataframe
 
 
 #%%
-# TODO- might need to comment this part out
 def update_rate_json_w_nem_fields(row):
     
     nem_fields = ['ur_enable_net_metering', 'ur_nm_yearend_sell_rate', 'ur_flat_sell_rate']

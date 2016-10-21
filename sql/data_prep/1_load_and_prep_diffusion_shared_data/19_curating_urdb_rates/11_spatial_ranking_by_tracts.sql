@@ -52,7 +52,6 @@ CREATE TABLE diffusion_data_shared.tracts_ranked_rates_lkup_20161005
 );
 
 
-select * from diffusion_data_shared.urdb_rates_geoms_20161005 limit 10
 
 -- Begin Ranking
 SELECT parsel_2('dav-gis','mmooney','mmooney', 'diffusion_data_shared.tract_util_type_all_potential_combos_20161005', 'gid', 
@@ -124,9 +123,10 @@ SELECT parsel_2('dav-gis','mmooney','mmooney', 'diffusion_data_shared.tract_util
 	FROM c;',
 	'diffusion_data_shared.tracts_ranked_rates_lkup_20161005', 'aa', 16);
 			
--- Add a Rank ID
-alter table diffusion_data_shared.cnty_ranked_rates_lkup_20161005
-add column rank_id serial;
+-- Add Indices
+select count(*) from diffusion_data_shared.tracts_ranked_rates_lkup_20161005;
+-- total = 32560530
+
 
 -- then I can join on gid to get the rank_utility_type and the tract_id_alias from the tract_to_util_lkup
 -- then I can join on rate_util_reg_gid to get rate or utility related information 

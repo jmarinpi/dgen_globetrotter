@@ -717,8 +717,7 @@ def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, 
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr):
 
-    msg = "\tCombining All Core Agent Attributes"
-    logger.info(msg)
+
     
     
     inputs = locals().copy()    

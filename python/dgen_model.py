@@ -179,10 +179,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
 
                     #==============================================================================
-                    # GET RATE TARIFF LOOKUP TABLE FOR EACH SECTOR                                    
+                    # GET RATE RANKS & TARIFF LOOKUP TABLE FOR EACH SECTOR
                     #==============================================================================
-                    rates_rank_df, rates_json_df = agent_mutation_elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string, model_settings.mode)
-                    # TODO --> 2 funcs
+                    # get (ranked) rates for each sector
+                    rates_rank_df = agent_mutation_elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string, model_settings.mode)
+
+                    # get lkup table with rate jsons
+                    rates_json_df = agent_mutation_elec.get_electric_rates_json(con)
+
                     #==============================================================================
                     # GET NORMALIZED LOAD PROFILES
                     #==============================================================================
@@ -285,7 +289,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get net metering settings
                     net_metering_df = agent_mutation_elec.get_net_metering_settings(con, scenario_settings.schema, year)
                     # select rates, combining with net metering settings
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.select_electric_rates, (rates_rank_df, rates_json_df, net_metering_df)).compute(1)
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.select_electric_rates, (rates_rank_df, net_metering_df)).compute(1)
                     
                     #==============================================================================
                     # ANNUAL RESOURCE DATA
@@ -920,9 +924,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.error(e.__str__(), exc_info = True)
         if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
-            #datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+           # datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
             pass
-        #TODO -- uncomment above
         if 'logger' not in locals():
             raise
         
@@ -932,7 +935,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             con.close()
         if 'scenario_settings' in locals() and scenario_settings.schema is not None and model_settings.mode == 'setup_develop':
             # drop the output schema
-            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)        
+            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
         if 'logger' in locals():
             utilfunc.shutdown_log(logger)
             utilfunc.code_profiler(model_settings.out_dir)
