@@ -302,7 +302,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                 if sector_abbr == 'ind':
                     sector_priority_1 = 'I'
                     sector_priority_2 = 'C'
-                if sector_abbr == 'com':
+                elif sector_abbr == 'com':
                     sector_priority_1 = 'C'
                     sector_priority_2 = 'I'
 
@@ -326,6 +326,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                                 ASC) as rank
                                 FROM b
                         )"""
+            
             elif sector_abbr == 'res':
                 sql2 = """b AS
                         (
@@ -373,6 +374,28 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
         datfunc.store_pickle(df, out_file)
 
     return df
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def check_rate_coverage(dataframe, rates_rank_df, rates_json_df):
+    
+    # check that all agents have at least one rate
+    missing_agents =  list(set(dataframe['agent_id']).difference(set(rates_rank_df['agent_id'])))
+    if len(missing_agents) > 0:
+        raise ValueError('Some agents are missing electric rates, including the following agent_ids: %s' % missing_agents)
+
+    # check that all rate_id_aliases have a nonnull rate json
+    # check for empty dictionary
+    if ({} in rates_json_df['rate_json'].tolist()) == True:
+        raise ValueError('rates_json_df contains empty dictionary objects.')
+    # check for Nones
+    if (None in rates_json_df['rate_json'].tolist()) == True:
+        raise ValueError('rates_json_df contains NoneType objects.')
+    # check for nans
+    if (np.nan in rates_json_df['rate_json'].tolist()) == True:
+        raise ValueError('rates_json_df contains np.nan objects.')
+
+    return
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

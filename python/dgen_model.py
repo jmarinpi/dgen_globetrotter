@@ -530,6 +530,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # update year (this is really only ncessary in develop-mode since canned agents have the wrong year)
                     agents.dataframe.loc[:, 'year'] = year
       
+                    # check rate coverage
+                    agent_mutation_elec.check_rate_coverage(agents.dataframe, rates_rank_df, rates_json_df)
+
+      
                     #==============================================================================
                     # TODO: Pieter -- in the remainder of this section of code, you will need to 
                     #       manually merge together elements from your storage branch and elements
