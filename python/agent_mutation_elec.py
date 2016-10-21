@@ -376,11 +376,25 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_electric_rates_json(con):
+def identify_selected_rate_ids(rates_rank_df):
+    
+    unique_rate_ids = rates_rank_df['rate_id_alias'].unique().tolist()
+    
+    return unique_rate_ids
 
-    sql = """SELECT rate_id_alias, json
-             FROM diffusion_shared.urdb3_rate_sam_jsons_20161005"""
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_electric_rates_json(con, unique_rate_ids):    
 
+    inputs = locals().copy()
+    
+    # reformat the rate list for use in postgres query
+    inputs['rate_id_list'] = utilfunc.pylist_2_pglist(unique_rate_ids)
+    
+    # get (only the required) rate jsons from postgres
+    sql = """SELECT a.rate_id_alias, a.json as rate_json
+             FROM diffusion_shared.urdb3_rate_sam_jsons_20161005 a
+             WHERE a.rate_id_alias in (%(rate_id_list)s);""" % inputs
     df = pd.read_sql(sql, con, coerce_float=False)
 
     return df

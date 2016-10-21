@@ -234,9 +234,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================                    
                     # get (ranked) rates for each sector
                     rates_rank_df = agent_mutation_elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string, model_settings.mode)
-
+                    # find the list of unique rate ids that are included in rates_rank_df
+                    selected_rate_ids = agent_mutation_elec.identify_selected_rate_ids(rates_rank_df)
                     # get lkup table with rate jsons
-                    rates_json_df = agent_mutation_elec.get_electric_rates_json(con)
+                    rates_json_df = agent_mutation_elec.get_electric_rates_json(con, selected_rate_ids)
 
                     #==============================================================================
                     # GET NORMALIZED LOAD PROFILES
