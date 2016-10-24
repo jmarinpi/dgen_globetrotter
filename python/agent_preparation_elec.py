@@ -72,8 +72,8 @@ def p_run(pg_conn_string, sql, county_chunks, pool):
     errors_df = results_df[results_df['status_code'] == 1]
     if errors_df.shape[0] > 0:
         # errors = '\n\n'.join(errors_df['msg']) # if you'd rather print all messages, but usually they will be redundant
-        first_error = errors_df['msg'][0]
-        pool.close() 
+        first_error = errors_df['msg'].tolist()[0]
+        pool.close()
         raise Exception('One or more SQL errors occurred.\n\nFirst error was:\n\n%s' % first_error)
     else:
         return
@@ -433,33 +433,65 @@ def sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_reg
     #     Assign each agent to a utility type
     #==============================================================================
     sql =  """DROP TABLE IF EXISTS %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s;
-            CREATE  TABLE %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s AS (
-                 WITH sample AS (
-                    SELECT b.agent_id,
-                            unnest(diffusion_shared.sample(
-                                array_agg(a.utility_id ORDER BY a.utility_id), 1,
-                                %(seed)s * b.county_id, True,
-                                array_agg(a.util_type_weight ORDER BY a.utility_id))) as util_id
-                    FROM diffusion_shared.tract_util_type_weights_%(sector_abbr)s a
-                    RIGHT JOIN %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s b
-                    ON a.tract_id_alias = b.tract_id_alias
-                    GROUP BY b.agent_id, b.county_id ),
-                utility_type_unique AS (
-                    SELECT distinct utility_id, utility_type
-                    FROM diffusion_shared.tract_util_type_weights_%(sector_abbr)s )
-                SELECT a.agent_id, b.utility_type
-                FROM sample a
-                LEFT JOIN utility_type_unique b
-                on a.util_id = b.utility_id);""" % inputs
+              CREATE  TABLE %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s AS
+              WITH utility_type_options AS 
+                 (
+                    SELECT a.agent_id,
+                           array_agg(b.utility_id ORDER BY b.utility_id) as utility_ids,
+                           array_agg(b.util_type_weight ORDER BY b.utility_id)  as util_type_weights
+                    FROM %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s a
+                    LEFT JOIN diffusion_shared.tract_util_type_weights_%(sector_abbr)s b
+                        ON a.tract_id_alias = b.tract_id_alias
+                        AND b.util_type_weight > 0 --NOTE: these should actually be removed from the lookup table
+                    GROUP BY a.agent_id
+                ),
+                
+                fix_nulls as
+                (
+                     SELECT a.agent_id,
+                            
+                            CASE WHEN utility_ids = ARRAY[NULL::INTEGER] THEN ARRAY[1]
+                            ELSE utility_ids
+                            END AS utility_ids,
+                            
+                            CASE WHEN utility_ids = ARRAY[NULL::INTEGER] THEN ARRAY[1]
+                            ELSE util_type_weights
+                            END AS util_type_weights
+                    
+                    FROM  utility_type_options a
+                ),
+                
+                sample as
+                (
+                    SELECT a.agent_id,
+                             unnest(diffusion_shared.sample(
+                                a.utility_ids, 
+                                1,
+                                %(seed)s * a.agent_id, 
+                                True,
+                                util_type_weights)) as util_id       
+                    FROM fix_nulls a
+                )
+                
+                SELECT a.agent_id,
+                       CASE WHEN util_id = 1 THEN 'Investor Owned'
+                            WHEN util_id = 2 THEN 'Cooperative'
+                            WHEN util_id = 3 THEN 'Municipal'
+                            WHEN util_id = 4 THEN 'Other'
+                       END as utility_type
+                FROM sample a;""" % inputs
 
     p_run(pg_conn_string, sql, county_chunks, pool)
 
-    # Add indicies
-    sql = """CREATE INDEX agent_utility_type_%(sector_abbr)s_%(i_place_holder)s_bin_id
-            ON %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s
-            USING BTREE(agent_id); """ % inputs
-
+    # Add primary key
+    sql = """ALTER TABLE %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s
+            ADD PRIMARY KEY (agent_id);""" % inputs
     p_run(pg_conn_string, sql, county_chunks, pool)
+    
+    # add constraint to confirm no null utility types
+    sql = """ALTER TABLE %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s
+             ALTER COLUMN utility_type SET NOT NULL;""" % inputs
+    p_run(pg_conn_string, sql, county_chunks, pool)             
 
 
 #%%

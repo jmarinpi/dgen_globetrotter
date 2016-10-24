@@ -36,7 +36,8 @@ select  a.pgid,
 	s.climate_zone_cbecs_2003 as climate_zone_cbecs,
 	t.climate_zone as iecc_temperature_zone,
 	t.moisture_regime as iecc_moisture_regime,
-	t.climate_zone::TExT || COALESCE(t.moisture_regime::TEXT,'') as iecc_climate_zone
+	t.climate_zone::TExT || COALESCE(t.moisture_regime::TEXT,'') as iecc_climate_zone,
+	u.utility_type_ind as utility_type
 from diffusion_blocks.blocks_ind a
 LEFT JOIN diffusion_blocks.block_canopy_height b
 	ON a.pgid = b.pgid
@@ -75,7 +76,9 @@ LEFT JOIN diffusion_shared.county_geom s
 	on m.old_county_id = s.county_id
 LEFT JOIN ashrae.county_to_iecc_building_climate_zones_lkup t
 	on m.county_fips = t.county_fips
-	and m.state_fips = t.state_fips;	
+	and m.state_fips = t.state_fips
+LEFT JOIN diffusion_blocks.block_primary_electric_utilities u
+	ON a.pgid = u.pgid;
 -- 945,057 rows
 
 -- row count should be:

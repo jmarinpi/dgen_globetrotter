@@ -38,6 +38,11 @@ class ModelSettings(object):
         self.tech_choice_decision_var = None # one of ['max_market_share', 'npv4', 'npv']
         self.delete_output_schema = None # bool
         self.mode = None # one of ['run', 'develop', 'setup_develop']
+        #==============================================================================
+        # TEMPORARY PATCH FOR STORAGE BRANCH    
+        # TODO: delete solar_plus_storage_mode after solar+storage is addded as optinon to the excel input sheet
+        self.solar_plus_storage_mode = None # boolean (temporary)
+        #==============================================================================
 
     def set(self, attr, value):
 
@@ -65,6 +70,10 @@ class ModelSettings(object):
         self.set('tech_choice_decision_var', config.tech_choice_decision_var)
         self.set('delete_output_schema', config.delete_output_schema)
         self.set('mode', config.mode)
+        #==============================================================================
+        # TEMPORARY PATCH FOR STORAGE BRANCH    
+        self.set('solar_plus_storage_mode', config.solar_plus_storage_mode) # TODO: delete after solar + storage is addded to the excel input sheet
+        #==============================================================================
 
 
     def set_pg_params(self, pg_params_file):
@@ -321,7 +330,18 @@ class ModelSettings(object):
             valid_opts = ['run', 'develop', 'setup_develop']
             if self.mode not in valid_opts:
                 raise ValueError('Invalid %s: must be one of %s' % (property_name, valid_opts))                
-                
+
+        #==============================================================================
+        # TEMPORARY PATCH FOR STORAGE BRANCH        
+        # TODO: delete after solar + storage is addded to the excel input sheet
+        elif property_name == 'solar_plus_storage_mode':
+            # check type
+            try:
+                check_type(self.get(property_name), bool)
+            except TypeError, e:
+                raise TypeError('Invalid %s: %s' % (property_name, e))               
+        #==============================================================================            
+              
         else:
             print 'No validation method for property %s exists.' % property_name
 
@@ -376,9 +396,12 @@ class ScenarioSettings(object):
 
     
     def set_tech_mode(self):
-        
-        if set(['wind','solar', 'storage']).isdisjoint(set(self.techs)) == False:
+
+        if sorted(self.techs) in [['wind'], ['solar'], ['solar', 'wind']]:
             self.set('tech_mode', 'elec')
+        
+        elif sorted(self.techs) == ['solar', 'storage']:
+            self.set('tech_mode', 'solar+storage')
 
         elif self.techs == ['du']:
             self.set('tech_mode', 'du')
@@ -391,7 +414,7 @@ class ScenarioSettings(object):
         
         # check not null
         if self.get(property_name) == None:
-            raise ValueError('%s has not been set')
+            raise ValueError('%s has not been set' % property_name)
     
         if property_name == 'scen_name':
             # check type
@@ -422,8 +445,8 @@ class ScenarioSettings(object):
             if self.choose_tech == True and len(self.techs) < 2:
                 raise ValueError('Invalid %s: Cannot run tech_choice mode with fewer than two technologies' % property_name)
             # cannot run if tech_mode == 'ghp' or 'du'
-            if self.choose_tech == True and self.tech_mode in ('ghp', 'du'):
-                raise ValueError('Invalid %s: Cannot run tech_choice mode with GHP or DU' % property_name)
+            if self.choose_tech == True and self.tech_mode in ('ghp', 'du', 'solar+storage'):
+                raise ValueError('Invalid %s: Cannot run tech_choice mode with GHP, DU, or Solar+Storage' % property_name)
 
 
         elif property_name == 'region':
@@ -470,13 +493,18 @@ class ScenarioSettings(object):
                 warnings.warn('Industrial sector cannot be modeled for geothermal technologies at this time and will be ignored.')
         
         elif property_name == 'techs':
+            try:
+                check_type(self.get(property_name), list)            
+            except TypeError, e:
+                raise TypeError('Invalid %s: %s' % (property_name, e))      
             
             valid_options = [
                                 ['wind'],
                                 ['solar'],
                                 ['du'],
                                 ['ghp'],
-                                ['solar', 'wind']
+                                ['solar', 'wind'],
+                                ['solar', 'storage']
                                ]
             if sorted(self.techs) not in valid_options:
                 raise ValueError("Invalid %s: Cannot currently run that combination of technologies. Valid options are: %s" % (property_name, valid_options))
@@ -519,7 +547,8 @@ class ScenarioSettings(object):
             # check valid options
             valid_options = ['elec',
                              'ghp',
-                             'du']
+                             'du',
+                             'solar+storage']
             if self.tech_mode not in valid_options:
                 raise ValueError('Invalid %s: must be one of %s' % (property_name, valid_options))
 

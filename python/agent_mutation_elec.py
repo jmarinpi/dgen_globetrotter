@@ -98,6 +98,151 @@ def get_rate_structures(con, schema):
     
     return rate_structures
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_sam_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
+
+    # NOTE: This function creates a lookup table for the agents in each sector, providing
+    #       the county_id and bin_id for each agent, along with the rate_id_alias and rate_source.
+    #       This information is used in "get_electric_rate_tariffs" to load in the actual rate tariff for each agent.
+
+    inputs = locals().copy()
+       
+    if mode == 'develop':
+        # set input file
+        in_file = './canned_agents/elec/electric_rates.pkl'
+        # load it from pickle
+        df = datfunc.unpickle(in_file)
+        
+    elif mode in ['run', 'setup_develop']:
+            
+        
+        inputs['i_place_holder'] = '%(i)s'
+        inputs['chunk_place_holder'] = '%(county_ids)s'
+        excluded_rates = pd.read_csv('./excluded_rates_ids.csv', header=None)
+        inputs['excluded_rate_ids'] = '(' + ', '.join([str(i[0]) for i in excluded_rates.values]) + ')'
+    
+    
+        msg = "\tGenerating Electric Rate Tariff Lookup Table for Agents"
+        logger.info(msg)
+        
+        # determine which type of rate to use for each sector
+        rate_structures = get_rate_structures(con, schema)
+        
+        df_list = []
+        for sector_abbr, sector in sectors.iteritems():
+            inputs['sector_abbr'] = sector_abbr
+            rate_structure = rate_structures[sector_abbr]
+    
+            if rate_structure.lower() == 'complex rates':
+        
+                sql = """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
+                        CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS
+                        WITH a AS
+                        (
+                            	SELECT a.county_id, a.bin_id, a.state_abbr, a.max_demand_kw,
+                            		unnest(b.rate_ids) as rate_id_alias,
+                            		unnest(b.rate_ranks) as rate_rank
+                            	FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
+                            	LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
+                                    	ON a.pgid = b.pgid
+                        ),
+                        b AS
+                        (
+                                SELECT a.*,
+                                        b.rate_type,
+                                        b.pct_of_customers
+                                FROM a 
+                                LEFT JOIN diffusion_shared.urdb_rates_by_state_%(sector_abbr)s b
+                                        ON a.rate_id_alias = b.rate_id_alias
+                                        AND a.state_abbr = b.state_abbr
+                                WHERE a.max_demand_kw <= b.urdb_demand_max
+                                      AND a.max_demand_kw >= b.urdb_demand_min
+                                      AND b.rate_id_alias NOT IN %(excluded_rate_ids)s
+                        ),
+                        c as
+                        (
+                            	SELECT *, rank() OVER (PARTITION BY county_id, bin_id ORDER BY rate_rank ASC) as rank
+                            	FROM b
+                        ), 
+                        d as
+                        (
+                            SELECT c.*, COALESCE(c.pct_of_customers, d.%(sector_abbr)s_weight) as rate_type_weight
+                            FROM c 
+                            LEFT JOIN %(schema)s.input_main_market_rate_type_weights d
+                            ON c.rate_type = d.rate_type
+                            WHERE c.rank = 1
+                        )
+                        SELECT d.county_id, d.bin_id,
+                                unnest(diffusion_shared.sample(
+                                                array_agg(d.rate_id_alias ORDER BY d.rate_id_alias), 
+                                                1, 
+                                              (%(seed)s * d.county_id * d.bin_id), 
+                                              False,
+                                              array_agg(d.rate_type_weight ORDER BY d.rate_id_alias))) as rate_id_alias,
+                                'urdb3'::CHARACTER VARYING(5) as rate_source
+                        FROM d
+                        GROUP BY d.county_id, d.bin_id;""" % inputs
+                cur.execute(sql)
+                con.commit()
+        
+            elif rate_structure.lower() == 'flat (annual average)':
+                # flat annual average rate ids are already stored in the demandmax table as county_id
+                # we simply need to duplicate and rename that field to rate_id_alias and specify the rate_source
+                sql = """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
+                         CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS
+                         SELECT a.county_id, a.bin_id 
+                                a.old_county_id as rate_id_alias, 
+                              'aa%(sector_abbr)s'::CHARACTER VARYING(5) as rate_source
+                        FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
+                        WHERE a.county_id in (%(chunk_place_holder)s);""" % inputs
+                cur.execute(sql)
+                con.commit()
+                             
+            elif rate_structure.lower() == 'flat (user-defined)':
+                # user-defined rates are id'ed based on the state_fips, which is already stored in the demandmax table
+                # we simply need to duplicate and rename that field to rate_id_alias and specify the rate_source
+                sql = """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
+                        CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS
+                        SELECT a.county_id, a.bin_id 
+                                a.state_fips::INTEGER as rate_id_alias, 
+                                'ud%(sector_abbr)s'::CHARACTER VARYING(5) as rate_source
+                        FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
+                        WHERE a.county_id in (%(chunk_place_holder)s);""" % inputs
+                cur.execute(sql)
+                con.commit()
+        
+            # add primary key to rates lkup table
+            sql = """ALTER TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s
+                     ADD PRIMARY KEY (county_id, bin_id);""" % inputs
+            cur.execute(sql)
+            con.commit()
+            
+            # get the rates
+            sql = """SELECT a.county_id, a.bin_id, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
+                            b.sam_json as rate_json, a.rate_id_alias, a.rate_source 
+                   FROM  %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s a
+                   LEFT JOIN %(schema)s.all_rate_jsons b 
+                       ON a.rate_id_alias = b.rate_id_alias
+                       AND a.rate_source = b.rate_source;""" % inputs
+            df_sector = pd.read_sql(sql, con, coerce_float = False)
+            df_list.append(df_sector)
+            
+        # combine the dfs
+        df = pd.concat(df_list, axis = 0, ignore_index = True)
+    else:
+        raise ValueError("Invalid mode: must be one of ['run', 'setup_develop', 'develop']")
+
+    # if in setup_develop mode, pickle the df object to disk
+    if mode == 'setup_develop':
+        # set output file name
+        out_file = './canned_agents/elec/electric_rates.pkl'
+        # create the pickle
+        datfunc.store_pickle(df, out_file)
+
+    return df
+
+
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -121,21 +266,15 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
         
         inputs['i_place_holder'] = '%(i)s'
         inputs['chunk_place_holder'] = '%(county_ids)s'
-        #excluded_rates = pd.read_csv('./excluded_rates_ids.csv', header=None)
-        #inputs['excluded_rate_ids'] = '(' + ', '.join([str(i[0]) for i in excluded_rates.values]) + ')'
-
+        
         msg = "\tGenerating Electric Rate Tariff Lookup Table for Agents"
         logger.info(msg)
         
-        # determine which type of rate to use for each sector
-        rate_structures = get_rate_structures(con, schema)
         
         df_list = []
         for sector_abbr, sector in sectors.iteritems():
             inputs['sector_abbr'] = sector_abbr
-            rate_structure = rate_structures[sector_abbr]
 
-            #if rate_structure.lower() == 'complex rates':
             sql1 =  """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
                         CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS (
                             WITH a AS
@@ -163,7 +302,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                 if sector_abbr == 'ind':
                     sector_priority_1 = 'I'
                     sector_priority_2 = 'C'
-                if sector_abbr == 'com':
+                elif sector_abbr == 'com':
                     sector_priority_1 = 'C'
                     sector_priority_2 = 'I'
 
@@ -187,6 +326,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                                 ASC) as rank
                                 FROM b
                         )"""
+            
             elif sector_abbr == 'res':
                 sql2 = """b AS
                         (
@@ -210,42 +350,9 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                         );"""
 
             sql = sql1 + sql2 + sql3
-
             cur.execute(sql)
             con.commit()
 
-            # elif rate_structure.lower() == 'flat (annual average)':
-            #     # flat annual average rate ids are already stored in the demandmax table as county_id
-            #     # we simply need to duplicate and rename that field to rate_id_alias and specify the rate_source
-            #     sql = """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
-            #              CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS
-            #              SELECT a.county_id, a.bin_id
-            #                     a.old_county_id as rate_id_alias,
-            #                   'aa%(sector_abbr)s'::CHARACTER VARYING(5) as rate_source
-            #             FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
-            #             WHERE a.county_id in (%(chunk_place_holder)s);""" % inputs
-            #     cur.execute(sql)
-            #     con.commit()
-            #
-            # elif rate_structure.lower() == 'flat (user-defined)':
-            #     # user-defined rates are id'ed based on the state_fips, which is already stored in the demandmax table
-            #     # we simply need to duplicate and rename that field to rate_id_alias and specify the rate_source
-            #     sql = """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
-            #             CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS
-            #             SELECT a.county_id, a.bin_id
-            #                     a.state_fips::INTEGER as rate_id_alias,
-            #                     'ud%(sector_abbr)s'::CHARACTER VARYING(5) as rate_source
-            #             FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
-            #             WHERE a.county_id in (%(chunk_place_holder)s);""" % inputs
-            #     cur.execute(sql)
-            #     con.commit()
-        
-            # add primary key to rates lkup table
-            # sql = """ALTER TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s
-            #          ADD PRIMARY KEY (agent_id);""" % inputs
-            # cur.execute(sql)
-            # con.commit()
-            
             # get the rates
             sql = """SELECT agent_id, rate_id_alias, rate_type_tou, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr
                    FROM  %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s a""" % inputs
@@ -269,11 +376,47 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_electric_rates_json(con):
+def check_rate_coverage(dataframe, rates_rank_df, rates_json_df):
+    
+    # check that all agents have at least one rate
+    missing_agents =  list(set(dataframe['agent_id']).difference(set(rates_rank_df['agent_id'])))
+    if len(missing_agents) > 0:
+        raise ValueError('Some agents are missing electric rates, including the following agent_ids: %s' % missing_agents)
 
-    sql = """SELECT rate_id_alias, json
-             FROM diffusion_shared.urdb3_rate_sam_jsons_20161005"""
+    # check that all rate_id_aliases have a nonnull rate json
+    # check for empty dictionary
+    if ({} in rates_json_df['rate_json'].tolist()) == True:
+        raise ValueError('rates_json_df contains empty dictionary objects.')
+    # check for Nones
+    if (None in rates_json_df['rate_json'].tolist()) == True:
+        raise ValueError('rates_json_df contains NoneType objects.')
+    # check for nans
+    if (np.nan in rates_json_df['rate_json'].tolist()) == True:
+        raise ValueError('rates_json_df contains np.nan objects.')
 
+    return
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def identify_selected_rate_ids(rates_rank_df):
+    
+    unique_rate_ids = rates_rank_df['rate_id_alias'].unique().tolist()
+    
+    return unique_rate_ids
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def get_electric_rates_json(con, unique_rate_ids):    
+
+    inputs = locals().copy()
+    
+    # reformat the rate list for use in postgres query
+    inputs['rate_id_list'] = utilfunc.pylist_2_pglist(unique_rate_ids)
+    
+    # get (only the required) rate jsons from postgres
+    sql = """SELECT a.rate_id_alias, a.json as rate_json
+             FROM diffusion_shared.urdb3_rate_sam_jsons_20161005 a
+             WHERE a.rate_id_alias in (%(rate_id_list)s);""" % inputs
     df = pd.read_sql(sql, con, coerce_float=False)
 
     return df
@@ -299,9 +442,9 @@ def get_net_metering_settings(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def select_electric_rates(dataframe, rates_rank_df, net_metering_df):
+def select_electric_rates(dataframe, rates_df, net_metering_df):
     
-    dataframe = pd.merge(dataframe, rates_rank_df, how = 'left', on = ['agent_id'])
+    dataframe = pd.merge(dataframe, rates_df, how = 'left', on = ['county_id', 'bin_id', 'sector_abbr'])
     dataframe = pd.merge(dataframe, net_metering_df, how = 'left',  on = ['state_abbr', 'sector_abbr'])
 
     return dataframe
