@@ -3,6 +3,7 @@
 	-- use centroid of the track to identify which region it belongs to
 		-- using centroid of track because it will make joins easier downstream
 	-- ca_tract_id | utility_eia_id | utility_reg_gid
+--------------------------------------------------------------------------------------------------------------------------------------
 
 ------------------------------------------------
 -- 1. Create Lkup table with eia_ids and gids

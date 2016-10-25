@@ -5,6 +5,9 @@
 	-- I started with 2014
 	-- then looked at 2013, but it didn't add much to the number of missing customer counts, so i didnt end up using 2013
 	-- then I looked at 2011 and it helped fill most of the missing gaps
+
+-- Goal: determine the customer count per utility.
+	-- we will later use these numbers to disaggregate utility customers to tracts
 --------------------------------------------------------------------------------------------------------------------------------------
 
 

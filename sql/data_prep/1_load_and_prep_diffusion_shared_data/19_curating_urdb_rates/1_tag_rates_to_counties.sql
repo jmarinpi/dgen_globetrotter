@@ -1,5 +1,23 @@
+-- *****************************************************
+-- Important Notes on Tagging Rates to Counties
+-- *****************************************************
+-- All Rates are associated with a Utility (EIA ID) which can be tagged to a county using EIA's Utility to County Mapping
+-- Not all Utilities can be tagged this way, however most can.
+
+-- We are using Counties are the utility territory boundary
+	-- Pros/Cons: Lose precision but gain accuracy
+	-- Ventyx boundaries often have many errors (e.g. entire metropolitan areas were not covered)
+	-- Ventyx IDs do not match up with the EIA IDS, so it saves us a lot of headache with trying to match them up
+
+-- This process is cannot necessarily be streamlined. For those that do not match up with the EIA-to-county-mapping, we will need to use 
+-- the ventyx boundaries (using a levenstein fuzzy join on the utility name) to pair the rates to specific ventyx geoms and then from ventyx
+-- geoms to intersecting counties.
+
 -- Before running this code, you need to run the tariff_generator.py to populate the table with urdb rates
 	-- note, the py code with generate the rate_id_alias
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
 
 --------------------------------------------------------------------------------
 -- 1. Join eia_id to counties (using the eia to county mapping table)

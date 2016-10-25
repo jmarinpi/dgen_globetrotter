@@ -1,13 +1,12 @@
 -- *****************************************************
 -- Important Notes on Nearest Neighbor
 -- *****************************************************
--- we know that we are missing 31
+-- We know that we are missing 31
 -- Nearest neighbor performed on two seperate "objects":
 	-- 1. nearest neighbor for those utilities where we were missing counts for a specific sector (but where we have the counts for their other sectors)
 	-- 2. nearest neighbor for those utilities that never matched up with the 861 tables
 -- Nearest neighbor:
 	-- we took the average customer counts for all utilies of the same type and sector within the same state and within 50-miles of the utility in question
-
 
 --------------------------------------------------------------------------------------------------------------------------------------
 

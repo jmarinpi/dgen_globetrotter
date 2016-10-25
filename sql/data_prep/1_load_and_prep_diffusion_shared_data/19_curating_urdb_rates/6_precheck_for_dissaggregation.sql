@@ -1,11 +1,14 @@
-#2. Develop Blocks to utility + utility type probabilities
-	Disagregate known utility customer counts to blocks
-		- County to utility (not utility type) weighting schemes
-		- based on number customers/ bldg count and known population
+-- Run some checks before dissaggregating
+
+--  The utilmate goal is to Develop tracts to utility + utility type probabilities
+	-- Disagregate known utility customer counts to tracts
+		-- County to utility (not utility type) weighting schemes
+		-- based on number customers/ bldg count and known population
 
 	-- Known utility customer counts:
 		-- from Galen's county to eia_id mapping table (eia.eia_861_2013_county_utility_rates)
 		-- first check to make sure that all eia_ids are accounted for
+--------------------------------------------------------------------------------------------------------------------------------------
 
 -----------------------------------------------------
 -- Check to make sure all eia_ids are accounted for:

@@ -1,9 +1,14 @@
+-- *****************************************************
+-- Important Notes on Disaggregation
+-- *****************************************************
 -- Unknown -> The distribution of customers within a utility territory
 -- Known --> the distribution of agents (by tract)
 
 -- ** Big Picture Solution **:
 --	* We need to use the distribution of # of agents (by tract) to figure out the distribution of customers within a utility
 
+-- Check for Null Values 
+	-- we will need to perform another NN if we find nulls
 --------------------------------------------------------------------------------------------------------------------------------------
 
 ------------------------------------------------
@@ -77,7 +82,7 @@ create index tract_bldg_counts_county_fips on diffusion_data_shared.tract_bldg_c
 				from diffusion_data_shared.utils_with_customer_counts_20161005 a
 				left join diffusion_blocks.county_geoms b
 				on a.state_abbr = b.state_abbr
-				where sector = 'R' -- **
+				where a.sector = 'R' -- **
 				),
 			-- 2. Identify which Utilies belong to which Tract
 			utility_tracts as 
@@ -118,7 +123,7 @@ create index tract_bldg_counts_county_fips on diffusion_data_shared.tract_bldg_c
 						)
 					select * from tracts
 					),
-				-- 2.B. Identify tracts for subregion utilities:
+				-- 2.B. Identify tracts for subregion utilities (CA ONlY):
 				ca_utility_tracts as 
 					(
 						-- 2.A.1. identify the counties using the CA sub region tracts to util tagging
@@ -617,16 +622,13 @@ create index tract_bldg_counts_county_fips on diffusion_data_shared.tract_bldg_c
 	alter table diffusion_data_shared.tract_util_type_weight_ind
 	owner to "diffusion-writers";
 
--- Change the Null Values Back to O
-	-- Note-- nulls were created so we didn't have an error when dividing by 0
-	update diffusion_data_shared.tract_util_type_weight_res
-	set util_type_weight = 0 where util_type_weight is null;
-
-	update diffusion_data_shared.tract_util_type_weight_com
-	set util_type_weight = 0 where util_type_weight is null;
-
-	update diffusion_data_shared.tract_util_type_weight_ind
-	set util_type_weight = 0 where util_type_weight is null;
+-- Drop Null Values
+	delete from diffusion_data_shared.tract_util_type_weight_res
+	where util_type_weight is null;
+	delete from diffusion_data_shared.tract_util_type_weight_com
+	where util_type_weight is null;
+	delete from diffusion_data_shared.tract_util_type_weight_ind
+	where util_type_weight is null;
 
 -- Update Type utility names to short hand
 	update diffusion_data_shared.tract_util_type_weight_res
@@ -652,15 +654,19 @@ create index tract_bldg_counts_county_fips on diffusion_data_shared.tract_bldg_c
 		end;
 
 
+--------------------------------------------------------------------------------------------------------------------------------------
+diffusion_shared.tract_util_type_weights_
 
 --------------------------------------------------------------------------------------------------------------------------------------
 ---- QAQC
 --	select count(*) from diffusion_data_shared.tract_util_type_weight_com
 --	-- COM = 111,860
+
 --	select count(*) from diffusion_data_shared.tract_util_type_weight_res
 --	-- RES = 102,332
+
 --	select count(*) from diffusion_data_shared.tract_util_type_weight_ind
---	-- IND = 75098
+--	-- IND = 75,098
 --	--
 
 --	-- Does it make sense that there are more commercial than residential?--
@@ -710,3 +716,60 @@ create index tract_bldg_counts_county_fips on diffusion_data_shared.tract_bldg_c
 --	-- Check the total number of tracts by sector (there shouldnt be more than 4, for each utility type)
 --		with a as (select tract_id_alias, sector, count(*) as cnt from diffusion_data_shared.temp_qaqc
 --		group by tract_id_alias, sector) select * from a where cnt > 4
+
+
+--------------------------------------------------------------------------------------------------------------------------------------
+-- QAQC Part 2:
+
+--	-- A.Count the number of tracts by Sector to see if we have the full coverage of tracts for all sectors
+--			with com as (
+--				with b as (
+--					select a.pgid, b.tract_fips, b.state_fips, b.county_fips
+--					from diffusion_blocks.blocks_com a
+--					left join diffusion_blocks.block_geoms b
+--					on a.pgid = b.pgid)
+--				select count (distinct a.tract_id_alias) from 
+--				diffusion_blocks.tract_geoms a
+--				right join b
+--				on a.state_fips = b.state_fips and a.county_fips = b.county_fips and a.tract_fips = b.tract_fips),
+--			ind as (
+--				with b as (
+--					select a.pgid, b.tract_fips, b.state_fips, b.county_fips
+--					from diffusion_blocks.blocks_ind a
+--					left join diffusion_blocks.block_geoms b
+--					on a.pgid = b.pgid)
+--				select count (distinct a.tract_id_alias) from 
+--				diffusion_blocks.tract_geoms a
+--				right join b
+--				on a.state_fips = b.state_fips and a.county_fips = b.county_fips and a.tract_fips = b.tract_fips),	
+--			res as (
+--				with b as (
+--					select a.pgid, b.tract_fips, b.state_fips, b.county_fips
+--					from diffusion_blocks.blocks_res a
+--					left join diffusion_blocks.block_geoms b
+--					on a.pgid = b.pgid)
+--				select count (distinct a.tract_id_alias) from 
+--				diffusion_blocks.tract_geoms a
+--				right join b
+--				on a.state_fips = b.state_fips and a.county_fips = b.county_fips and a.tract_fips = b.tract_fips)
+--			select a.count as com, b.count as ind, c.count as res
+--			from com a, ind b, res c
+--		-- Result (total number of tracts)
+--			--  com  |  ind  |  res  
+--			-- -------+-------+-------
+--			-- 72587 | 70796 | 72205--
+
+--	-- B. Count the total number of tracts we got after disaggregating
+--		with com as (
+--			select count(distinct tract_id_alias) from diffusion_data_shared.tract_util_type_weight_com),
+--		ind as (
+--			select count(distinct tract_id_alias) from diffusion_data_shared.tract_util_type_weight_ind),
+--		res as (
+--			select count(distinct tract_id_alias) from diffusion_data_shared.tract_util_type_weight_res)
+--		select a.count as com, b.count as ind, c.count as res
+--		from com a, ind b, res c
+--			--  com  |  ind  |  res  
+--			-- -------+-------+-------
+--			-- 69964 | 56226 | 69214
+
+sel

@@ -1,3 +1,9 @@
+-- This code parses up the geometries of a CA utility pased on whether the rate belongs to the full utility geometry (no climate zone) 
+-- or whether the rate is a climate zone specific rate and therefore belongs to a parsed up zonal geometry
+-- see 3_account_for_ca_climate_zones.sql notes for more information
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
 --------------------------------------------------
 -- Create a temporary sam data table (part 2)
 --------------------------------------------------

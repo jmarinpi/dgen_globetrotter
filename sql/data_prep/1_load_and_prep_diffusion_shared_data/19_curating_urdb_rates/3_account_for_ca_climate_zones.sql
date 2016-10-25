@@ -1,5 +1,13 @@
--- Need to account for climate zones in CA because rates are based off of these zones
+-- *****************************************************
+-- Important Notes on Accounting for CA Climate Zones
+-- *****************************************************
+-- In CA, climate zones dictate utility rates. Therefore, we need to parse up utility boundaries based on climate zones
+-- At the same time, some rates (e.g. commercial rates) are the same across all climate zones (for a given county), so we need to make sure
+-- that depending on the rate, we are using the correct utility geometry (zonal geometry or full geometry)
 
+-- we created a utility_reg_gid field to work with these irregularities
+
+--------------------------------------------------------------------------------------------------------------------------------------
 
 --------------------------------------------------------
 -- CLIMATE ZONES
