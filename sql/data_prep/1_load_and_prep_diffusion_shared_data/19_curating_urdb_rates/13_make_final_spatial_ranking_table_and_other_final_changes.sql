@@ -9,7 +9,7 @@ drop table if exists diffusion_data_shared.tract_ranked_rates_final_20161005;
 create table diffusion_data_shared.tract_ranked_rates_final_20161005 as (
 	select 
 		a.tract_id_alias, 
-		c.utility_type as rank_utility_type,
+		a.utility_type as rank_utility_type,
 		--a.rank_id, 
 		b.rank, 
 		c.util_reg_gid, 
@@ -75,6 +75,10 @@ create table diffusion_shared.tracts_ranked_rates_lkup_20161005 as (
 		on a.rate_id_alias = b.rate_id_alias
 	);
 
+create index tract_ranked_rates_20161005_tract_id_alias on diffusion_shared.tracts_ranked_rates_lkup_20161005 using btree(tract_id_alias);
+create index tract_ranked_rates_20161005_rate_id_alias on diffusion_shared.tracts_ranked_rates_lkup_20161005 using btree(rate_id_alias);
+create index tract_ranked_rates_20161005_sector on diffusion_shared.tracts_ranked_rates_sector using btree(sector_abbr);
+create index tract_ranked_rates_20161005_rank_utility_type on diffusion_shared.tracts_ranked_rates_sector using btree(rank_utility_type);
 
 alter table diffusion_shared.urdb3_rate_sam_jsons_20161005
 rename column sam_json to json;
