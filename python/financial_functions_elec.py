@@ -19,6 +19,74 @@ logger = utilfunc.get_logger()
 #==============================================================================
 
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
+def calc_metric_value_storage(dataframe):
+    '''
+    Calculates the economic value of adoption given the metric chosen. Residential buyers
+    use simple payback, non-residential buyers use time-to-double, leasers use monthly bill savings
+    
+        IN:
+            df    
+        
+        OUT:
+            metric_value - pd series - series of values given the business_model and sector
+    '''
+    
+    cfs = np.vstack(dataframe['cash_flow']).astype(np.float)    
+    
+    # calculate payback period
+    tech_lifetime = np.shape(cfs)[1] - 1
+    payback = calc_payback_vectorized(cfs, tech_lifetime)
+    # calculate time to double
+    ttd = calc_ttd(cfs)
+
+    metric_value = np.where((dataframe.sector_abbr == 'ind') | (dataframe.sector_abbr == 'com'),ttd,payback)
+
+    dataframe['metric_value'] = metric_value
+
+    return dataframe
+    
+#%%
+
+
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
+def calc_max_market_share(dataframe, max_market_share_df):
+    
+    # For storage, I am just writing this for host-owned systems. No TPO.
+    dataframe['business_model'] = 'host_owned'
+    dataframe['metric'] = 'payback_period'
+    
+    # Convert metric value to integer as a primary key, then bound within max market share ranges
+    max_payback = max_market_share_df[max_market_share_df.metric == 'payback_period'].metric_value.max()
+    min_payback = max_market_share_df[max_market_share_df.metric == 'payback_period'].metric_value.min()
+    max_mbs = max_market_share_df[max_market_share_df.metric == 'percent_monthly_bill_savings'].metric_value.max()
+    min_mbs = max_market_share_df[max_market_share_df.metric == 'percent_monthly_bill_savings'].metric_value.min()
+    
+    # copy the metric valeus to a new column to store an edited version
+    metric_value_bounded = dataframe['metric_value'].values.copy()
+    
+    # where the metric value exceeds the corresponding max market curve bounds, set the value to the corresponding bound
+    metric_value_bounded[np.where((dataframe.metric == 'payback_period') & (dataframe['metric_value'] < min_payback))] = min_payback
+    metric_value_bounded[np.where((dataframe.metric == 'payback_period') & (dataframe['metric_value'] > max_payback))] = max_payback    
+    metric_value_bounded[np.where((dataframe.metric == 'percent_monthly_bill_savings') & (dataframe['metric_value'] < min_mbs))] = min_mbs
+    metric_value_bounded[np.where((dataframe.metric == 'percent_monthly_bill_savings') & (dataframe['metric_value'] > max_mbs))] = max_mbs
+    dataframe['metric_value_bounded'] = metric_value_bounded
+
+    # scale and round to nearest int    
+    dataframe['metric_value_as_factor'] = (dataframe['metric_value_bounded'] * 100).round().astype('int')
+    # add a scaled key to the max_market_share dataframe too
+    max_market_share_df['metric_value_as_factor'] = (max_market_share_df['metric_value'] * 100).round().astype('int')
+
+    # Join the max_market_share table and dataframe in order to select the ultimate mms based on the metric value. 
+    dataframe = pd.merge(dataframe, max_market_share_df, how = 'left', on = ['sector_abbr', 'metric','metric_value_as_factor','business_model'])
+    
+    # Derate the maximum market share for commercial and industrial customers in leased buildings by (1/3)
+    # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
+    dataframe['max_market_share'] = np.where(dataframe.owner_occupancy_status == 2, dataframe['max_market_share']/3,dataframe['max_market_share'])
+    
+    return dataframe
+
 
 #==============================================================================
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')

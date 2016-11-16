@@ -27,13 +27,14 @@ model_path = os.path.dirname(os.path.abspath(__file__))
 
 # set the name of the pg_params_file
 #pg_params_file = 'pg_params.json'
-pg_params_file = 'pg_params_gis.json'
+#pg_params_file = 'pg_params_gis.json'
 #pg_params_file = 'pg_params_bigde.json'
+pg_params_file = 'pg_params_atlas.json'
 
 #==============================================================================
 #   set the number of customer bins to model in each county
 #==============================================================================
-agents_per_region = 10
+agents_per_region = 1
 sample_pct = 0.02
 min_agents = 3
 

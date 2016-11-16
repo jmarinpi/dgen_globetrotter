@@ -29,3 +29,6 @@ excel/~$scenario_inputs_solar.xlsm
 
 # ignore PyCharm files
 .idea/
+
+# ignore a common format for outputing agent dataframes during debugging (e.g., df_2014.csv)
+df_*.*

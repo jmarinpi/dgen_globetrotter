@@ -34,6 +34,33 @@ pg.extensions.register_type(DEC2FLOAT)
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_financial_params(dataframe, financial_params_df, itc_options, tech_costs_solar_df):
+    # This is just a catch-all for attaching financial parameters for now,
+    # these should be broken apart as the S+S module evolves
+    # TODO: split these apart and bring in actual schedules
+
+    # reduce to just host owned for S+S
+    fin_df_ho = financial_params_df[financial_params_df['business_model']=='host_owned']
+    
+    dataframe = dataframe.merge(fin_df_ho, how='left', on=['year', 'tech', 'sector_abbr'])
+    dataframe = dataframe.merge(itc_options[['itc_fraction', 'year', 'tech', 'sector_abbr']], how='left', on=['year', 'tech', 'sector_abbr'])
+    dataframe = dataframe.merge(tech_costs_solar_df[['installed_costs_dollars_per_kw', 'fixed_om_dollars_per_kw_per_yr', 'tech', 'sector_abbr']], how='left', on=['tech', 'sector_abbr'])
+    dataframe['batt_cost_per_kW'] = 10.0
+    dataframe['batt_cost_per_kWh'] = 5.0
+    dataframe['batt_om'] = 0 # just a placeholder...
+    dataframe['analysis_years'] = 25
+    dataframe['batt_replace_yr'] = 10
+    dataframe['deprec_sched_index'] = int(1)
+    dataframe['inflation'] = 0.025 # probably would rather not have this included as a column
+    dataframe['pv_cf_profile_index'] = 0 # placeholder...
+    dataframe['gcr'] = 0.7
+    dataframe['pv_power_density_sqft'] = 0.01486 # placeholder... this should be looked up via schedule
+    
+    return dataframe
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_load_growth(con, schema, year):
     
     inputs = locals().copy()
@@ -73,6 +100,18 @@ def calculate_developable_customers_and_load(dataframe):
                                                         np.where(dataframe['system_size_kw'] == 0, 
                                                                  0,
                                                                  dataframe['load_kwh_in_bin']))    
+                                                            
+    return dataframe
+    
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calculate_developable_customers_and_load_storage(dataframe):
+    # Because methods of keeping track of system sizes diverged, 
+    
+    dataframe['developable_customers_in_bin'] = dataframe['pct_of_bldgs_developable'] * dataframe['customers_in_bin']
+                                                        
+    dataframe['developable_load_kwh_in_bin'] = dataframe['pct_of_bldgs_developable'] * dataframe['load_kwh_in_bin']
                                                             
     return dataframe
              
@@ -412,6 +451,7 @@ def get_electric_rates_json(con, unique_rate_ids):
     
     # reformat the rate list for use in postgres query
     inputs['rate_id_list'] = utilfunc.pylist_2_pglist(unique_rate_ids)
+    inputs['rate_id_list'] = inputs['rate_id_list'].replace("L", "")
     
     # get (only the required) rate jsons from postgres
     sql = """SELECT a.rate_id_alias, a.json as rate_json
@@ -1513,6 +1553,61 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
     # isolate the return columns
     return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value', 
                    'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_share_last_year', 'market_value_last_year']
+    out_cols = in_cols + return_cols
+    dataframe = dataframe[out_cols]
+    
+    return dataframe
+    
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_df):
+    
+    # record input columns
+    in_cols = list(dataframe.columns)
+    
+    # find the total number of customers in each state (by technology and sector)
+    state_total_developable_customers = dataframe[['state_abbr', 'sector_abbr', 'tech','developable_customers_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
+    state_total_agents = dataframe[['state_abbr', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(['state_abbr', 'sector_abbr', 'tech']).count().reset_index()
+    # rename the final columns
+    state_total_developable_customers.columns = state_total_developable_customers.columns.str.replace('developable_customers_in_bin', 'developable_customers_in_state')
+    state_total_agents.columns = state_total_agents.columns.str.replace('developable_customers_in_bin','agent_count')
+    # merge together
+    state_denominators = pd.merge(state_total_developable_customers, state_total_agents, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
+    
+
+        
+    
+    # merge back to the main dataframe
+    dataframe = pd.merge(dataframe, state_denominators, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
+    
+    # merge in the state starting capacities
+    dataframe = pd.merge(dataframe, state_starting_capacities_df, how = 'left', on = ['tech', 'state_abbr', 'sector_abbr'])
+
+    # determine the portion of initial load and systems that should be allocated to each agent
+    # (when there are no developable agnets in the state, simply apportion evenly to all agents)
+    dataframe['portion_of_state'] = np.where(dataframe['developable_customers_in_state'] > 0, 
+                                             dataframe['developable_customers_in_bin']/dataframe['developable_customers_in_state'], 
+                                             1./dataframe['agent_count'])
+    # apply the agent's portion to the total to calculate starting capacity and systems                                         
+    dataframe['number_of_adopters_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['systems_count'], 6)
+    dataframe['pv_kw_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['capacity_mw'], 6) * 1000.
+    dataframe['batt_kw_last_year'] = 0.0
+    dataframe['batt_kwh_last_year'] = 0.0
+
+    dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0, 
+                                                 0, 
+                                                 np.round(dataframe['number_of_adopters_last_year']/dataframe['developable_customers_in_bin'], 6))
+
+    # reproduce these columns as "initial" columns too
+    dataframe['initial_number_of_adopters'] = dataframe['number_of_adopters_last_year']
+    dataframe['initial_capacity_mw'] = dataframe['pv_kw_last_year']  /1000.  
+    dataframe['initial_market_share'] = dataframe['market_share_last_year']
+    dataframe['initial_market_value'] = 0
+    
+    # isolate the return columns
+    return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value', 
+                   'number_of_adopters_last_year', 'pv_kw_last_year', 'batt_kw_last_year', 'batt_kwh_last_year', 'market_share_last_year']
     out_cols = in_cols + return_cols
     dataframe = dataframe[out_cols]
     

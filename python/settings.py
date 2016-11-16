@@ -93,8 +93,8 @@ class ModelSettings(object):
         for rp in Rscript_paths:   
             if os.path.exists(rp):
                     self.Rscript_path = rp
-            if self.Rscript_path == None:
-                raise ValueError('No Rscript Path found: Add a new path to Rscripts_path in config.py')
+        if self.Rscript_path == None:
+            raise ValueError('No Rscript Path found: Add a new path to Rscripts_path in config.py')
 
 
     def validate_property(self, property_name):

@@ -28,6 +28,78 @@ logger = utilfunc.get_logger()
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
+def calc_diffusion_storage(df, cur, con, techs, choose_tech, sectors, schema, is_first_year,
+                   bass_params, override_p_value = None, override_q_value = None, override_teq_yr1_value = None):
+
+    ''' Calculates the market share (ms) added in the solve year. Market share must be less
+        than max market share (mms) except initial ms is greater than the calculated mms.
+        For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
+        decrease if economics deterioriate. Using the calculated 
+        market share, relevant quantities are updated.
+
+        IN: df - pd dataframe - Main dataframe
+        
+        OUT: df - pd dataframe - Main dataframe
+            market_last_year - pd dataframe - market to inform diffusion in next year
+    '''
+    
+    logger.info("\t\tCalculating Diffusion")
+    
+    # set p/q/teq_yr1 params    
+    df  = set_bass_param(df, con, bass_params, override_p_value, override_q_value, override_teq_yr1_value)
+    
+    # calc diffusion market share
+    df = calc_diffusion_market_share(df, con, is_first_year)
+    
+    # ensure no diffusion for non-selected options
+    df['diffusion_market_share'] = df['diffusion_market_share'] * df['selected_option'] 
+    
+    # market share floor is based on last year's market share
+    df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
+
+    # if in tech choice mode, ensure that total market share doesn't exceed 1   
+    if choose_tech == True:
+        # extract out the rows for unselected technologies
+        market_share_cap = df[df['selected_option'] == False][['county_id', 'bin_id', 'sector_abbr', 'market_share']].groupby(['county_id', 'bin_id', 'sector_abbr']).sum().reset_index()
+        # determine how much market share is allowable based on 1 - the MS of the unselected techs
+        market_share_cap['market_share_cap'] = 1 - market_share_cap['market_share']
+        # drop the market share column
+        market_share_cap.drop('market_share', inplace = True, axis = 1)
+        # merge to df
+        df = pd.merge(df, market_share_cap, how = 'left', on = ['county_id', 'bin_id', 'sector_abbr'])
+        # cap the market share (for the selected option only)
+        df['market_share'] = np.where(df['selected_option'] == True, np.minimum(df['market_share'], df['market_share_cap']), df['market_share'])
+        # drop the market share cap field
+        df.drop('market_share_cap', inplace = True, axis = 1)
+   
+    # calculate the "new" market share (old - current)
+    df['new_market_share'] = df['market_share'] - df['market_share_last_year']
+
+    # cap the new_market_share where the market share exceeds the max market share
+    df['new_market_share'] = np.where(df['market_share'] > df['max_market_share'], 0, df['new_market_share'])
+
+    # calculate new adopters, capacity and market value            
+    df['new_adopters'] = np.where(df['system_built'] == True, df['new_market_share'] * df['developable_customers_in_bin'], 0)
+    df['new_pv_kw'] = df['new_adopters'] * df['pv_kw']
+    df['new_batt_kw'] = df['new_adopters'] * df['batt_kw']
+    df['new_batt_kwh'] = df['new_adopters'] * df['batt_kwh']
+
+    # then add these values to values from last year to get cumulative values:
+    df['number_of_adopters'] = df['number_of_adopters_last_year'] + df['new_adopters']
+    df['pv_kw_cum'] = df['pv_kw_last_year'] + df['new_pv_kw']
+    df['batt_kw_cum'] = df['batt_kw_last_year'] + df['new_batt_kw']
+    df['batt_kwh_cum'] = df['batt_kwh_last_year'] + df['new_batt_kwh']
+
+
+    market_last_year = df[['county_id','bin_id', 'sector_abbr', 'tech', 'market_share', 'max_market_share','number_of_adopters', 'pv_kw_cum', 'batt_kw_cum', 'batt_kwh_cum', 'initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share']] # Update dataframe for next solve year
+    market_last_year.columns = ['county_id', 'bin_id', 'sector_abbr', 'tech', 'market_share_last_year', 'max_market_share_last_year','number_of_adopters_last_year', 'pv_kw_last_year', 'batt_kw_last_year', 'batt_kwh_last_year', 'initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share']
+
+    return df, market_last_year
+
+
+#=============================================================================
+# ^^^^  Diffusion Calculator  ^^^^
+@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def calc_diffusion(df, cur, con, techs, choose_tech, sectors, schema, is_first_year,
                    bass_params, override_p_value = None, override_q_value = None, override_teq_yr1_value = None):
 
