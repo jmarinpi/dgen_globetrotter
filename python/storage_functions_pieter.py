@@ -46,9 +46,8 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
 
     deprec_sch = np.array(deprec_sch_df.loc[agent['deprec_sched_index'], 'deprec'])
     pv_cf_profile = np.array(pv_cf_profile_df.loc[agent['pv_cf_profile_index'], 'generation_hourly'])/1e6 # Is this correct? The 1e6?
-    agent['naep'] = float(np.sum(pv_cf_profile))
+    agent['naep'] = float(np.sum(pv_cf_profile))    
     agent['max_pv_size'] = np.min([agent['load_kwh_per_customer_in_bin']/agent['naep'], agent['developable_roof_sqft']*agent['pv_power_density_sqft']*agent['gcr']])
-    
 
     print "starting a sizing..."
     d_inc_n = 20    
@@ -94,13 +93,13 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
                 
     cf_results_est = fFuncs.cashflow_constructor(est_bill_savings, 
                  system_sizes[:,0], 
-                 agent['installed_costs_dollars_per_kw'], 
+                 agent['pv_cost_per_kw'], 
                  0, #inverter price, assuming it is wrapped into initial and O&M costs
                  agent['fixed_om_dollars_per_kw_per_yr'],
                  system_sizes[:,1]*3,
                  system_sizes[:,1], 
-                 agent['batt_cost_per_kW'], 
-                 agent['batt_cost_per_kWh'], 
+                 agent['batt_cost_per_kw'], 
+                 agent['batt_cost_per_kwh'], 
                  batt_chg_frac,
                  agent['batt_replace_yr'],
                  agent['batt_om'],
@@ -134,13 +133,13 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
     
     cf_results_opt = fFuncs.cashflow_constructor(opt_bill_savings, 
                  opt_pv_size, 
-                 agent['installed_costs_dollars_per_kw'], 
+                 agent['pv_cost_per_kw'], 
                  0, #inverter price, assuming it is wrapped into initial and O&M costs
                  agent['fixed_om_dollars_per_kw_per_yr'],
                  opt_batt_power*3,
                  opt_batt_power, 
-                 agent['batt_cost_per_kW'], 
-                 agent['batt_cost_per_kWh'], 
+                 agent['batt_cost_per_kw'], 
+                 agent['batt_cost_per_kwh'], 
                  batt_chg_frac,
                  agent['batt_replace_yr'],
                  agent['batt_om'],

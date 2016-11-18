@@ -259,7 +259,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     # get state starting capacities
                     state_starting_capacities_df = agent_mutation_elec.get_state_starting_capacities(con, scenario_settings.schema)
-                
+                    
+                    # get schedule of battery costs - ingesting 
+                    tech_cost_storage_schedules_df = pd.read_csv('storage_cost_schedules.csv', index_col='year')
+                    
                     #==========================================================================================================
                     # GET TECH POTENTIAL LIMITS
                     #==========================================================================================================    
@@ -564,9 +567,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get net metering settings
                     net_metering_df = agent_mutation_elec.get_net_metering_settings(con, scenario_settings.schema, year)
 
-#                    # select rates, combining with net metering settings
-#                    agents = AgentsAlgorithm(agents, agent_mutation_elec.select_electric_rates, (rates_df, net_metering_df)).compute(1)
-                    
                     #==============================================================================
                     # ANNUAL RESOURCE DATA
                     #==============================================================================       
@@ -580,18 +580,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     resource_solar_df = agent_mutation_elec.apply_technology_performance_solar(resource_solar_df, tech_performance_solar_df)
                     resource_wind_df = agent_mutation_elec.apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df)     
                                     
-#                    #==============================================================================
-#                    # SYSTEM SIZING
-#                    #==============================================================================
-#                    # size systems
-#                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), agent_mutation_elec.size_systems_solar, (system_sizing_targets_df, resource_solar_df, scenario_settings.techs)).compute()                     
-#                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), agent_mutation_elec.size_systems_wind, (system_sizing_targets_df, resource_wind_df, scenario_settings.techs)).compute()
-#                    # re-combine technologies
-#                    agents = agents_solar.add_agents(agents_wind)
-#                    del agents_solar, agents_wind   
-#                    # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
-#                    agents = AgentsAlgorithm(agents, agent_mutation_elec.update_net_metering_fields).compute(1)
-                                                             
 #                    #==============================================================================
 #                    # CHECK TECH POTENTIAL LIMITS
 #                    #==============================================================================                                   
@@ -612,35 +600,24 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     normalized_hourly_resource_wind_df = agent_mutation_elec.get_normalized_hourly_resource_wind(con, scenario_settings.schema, scenario_settings.sectors, cur, agents, scenario_settings.techs)
                     # apply normalized hourly resource profiles
 #                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), agent_mutation_elec.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, scenario_settings.techs)).compute()
-#                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), agent_mutation_elec.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, scenario_settings.techs)).compute()        
-#                    # re-combine technologies
-#                    agents = agents_solar.add_agents(agents_wind)
-#                    del agents_solar, agents_wind               
+#                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), agent_mutation_elec.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, scenario_settings.techs)).compute()                   
+                    
+                    #==============================================================================
+                    # SET BATTERY REPLACEMENT YEAR
+                    #==============================================================================
+                    # get technology costs
+                    batt_replacement_yr = 10.0
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_batt_replace_schedule, (batt_replacement_yr, )).compute()
                     
                     #==============================================================================
                     # TECHNOLOGY COSTS
                     #==============================================================================
                     # get technology costs
                     tech_costs_solar_df = agent_mutation_elec.get_technology_costs_solar(con, scenario_settings.schema, year)
-                    tech_costs_wind_df = agent_mutation_elec.get_technology_costs_wind(con, scenario_settings.schema, year)
                     # apply technology costs     
-#                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), agent_mutation_elec.apply_tech_costs_solar, (tech_costs_solar_df, )).compute()
-#                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), agent_mutation_elec.apply_tech_costs_wind, (tech_costs_wind_df, )).compute()
-#                    # re-combine technologies
-#                    agents = agents_solar.add_agents(agents_wind)
-#                    del agents_solar, agents_wind
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_costs_solar_storage, (tech_costs_solar_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_costs_storage, (tech_cost_storage_schedules_df, year, batt_replacement_yr, 'low')).compute()
      
-#                    #==========================================================================================================
-#                    # CALCULATE BILL SAVINGS
-#                    #==========================================================================================================
-#                    # bill savings are a function of: 
-#                     # (1) hacked NEM calculations
-#                    agents = AgentsAlgorithm(agents, agent_mutation_elec.calculate_excess_generation_and_update_nem_settings).compute()
-#                     # (2) actual SAM calculations
-#                    agents = AgentsAlgorithm(agents, agent_mutation_elec.calculate_electric_bills_sam, (model_settings.local_cores, )).compute(1)
-#                    # drop the hourly datasets
-#                    agents.drop_attributes(['generation_hourly', 'consumption_hourly'], in_place = True)
-                    
                     #==========================================================================================================
                     # DEPRECIATION SCHEDULE       
                     #==========================================================================================================
@@ -717,11 +694,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     # calculate diffusion based on economics and bass diffusion                   
                     df, market_last_year_df = diffusion_functions_elec.calc_diffusion_storage(df, cur, con, scenario_settings.techs, scenario_settings.choose_tech, scenario_settings.sectors, scenario_settings.schema, is_first_year, bass_params) 
-                    df.to_csv('df_%s.csv' % year)
-                    #==========================================================================================================
-                    # ESTIMATE TOTAL GENERATION
-                    #==========================================================================================================      
-#                    df = AgentsAlgorithm(Agents(df), agent_mutation_elec.estimate_total_generation).compute().dataframe
                 
                     #==========================================================================================================
                     # WRITE OUTPUTS
@@ -730,7 +702,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # write the incremental results to the database
 #                    datfunc.write_outputs(con, cur, df, scenario_settings.sectors, scenario_settings.schema) 
 #                    datfunc.write_last_year(con, cur, market_last_year, scenario_settings.schema)
-                                                 
+                
+                    #==========================================================================================================
+                    # WRITE OUTPUTS AS PICKELS FOR POST-PROCESSING
+                    #========================================================================================================== 
+                    df.to_pickle('agent_df_pickles/df_%s.pkl' % year)
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 ############################ GHP ##############################################
     

@@ -34,6 +34,36 @@ pg.extensions.register_type(DEC2FLOAT)
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, batt_replacement_yr, scenario='mid'):        
+    # TODO: Formalize an assumption about the (additional) decrease in costs
+    #       during replacement. Represents that replacement would likely cost
+    #       less than a full new installation that year.
+
+    replacement_cost_fraction = 0.75 # Completely arbitrary. Good luck.    
+    
+    dataframe['batt_cost_per_kw'] = tech_cost_storage_schedules_df.loc[year, 'batt_kw_cost_%s' % scenario]
+    dataframe['batt_cost_per_kwh'] = tech_cost_storage_schedules_df.loc[year, 'batt_kwh_cost_%s' % scenario]
+    dataframe['batt_replace_cost_per_kw'] = tech_cost_storage_schedules_df.loc[year+batt_replacement_yr, 'batt_kw_cost_%s' % scenario] * replacement_cost_fraction
+    dataframe['batt_replace_cost_per_kwh'] = tech_cost_storage_schedules_df.loc[year+batt_replacement_yr, 'batt_kwh_cost_%s' % scenario] * replacement_cost_fraction
+    dataframe['batt_om'] = 0 # just a placeholder...
+
+    
+    return dataframe
+
+
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_batt_replace_schedule(dataframe, replacement_yr):
+    # TODO: Replace a fixed schedule with a dynamic one based on cycle counts
+
+    dataframe['batt_replace_yr'] = replacement_yr
+    
+    return dataframe
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_financial_params(dataframe, financial_params_df, itc_options, tech_costs_solar_df):
     # This is just a catch-all for attaching financial parameters for now,
     # these should be broken apart as the S+S module evolves
@@ -44,12 +74,8 @@ def apply_financial_params(dataframe, financial_params_df, itc_options, tech_cos
     
     dataframe = dataframe.merge(fin_df_ho, how='left', on=['year', 'tech', 'sector_abbr'])
     dataframe = dataframe.merge(itc_options[['itc_fraction', 'year', 'tech', 'sector_abbr']], how='left', on=['year', 'tech', 'sector_abbr'])
-    dataframe = dataframe.merge(tech_costs_solar_df[['installed_costs_dollars_per_kw', 'fixed_om_dollars_per_kw_per_yr', 'tech', 'sector_abbr']], how='left', on=['tech', 'sector_abbr'])
-    dataframe['batt_cost_per_kW'] = 10.0
-    dataframe['batt_cost_per_kWh'] = 5.0
-    dataframe['batt_om'] = 0 # just a placeholder...
+#    dataframe = dataframe.merge(tech_costs_solar_df[['installed_costs_dollars_per_kw', 'fixed_om_dollars_per_kw_per_yr', 'tech', 'sector_abbr']], how='left', on=['tech', 'sector_abbr'])
     dataframe['analysis_years'] = 25
-    dataframe['batt_replace_yr'] = 10
     dataframe['deprec_sched_index'] = int(1)
     dataframe['inflation'] = 0.025 # probably would rather not have this included as a column
     dataframe['pv_cf_profile_index'] = 0 # placeholder...
@@ -1266,7 +1292,35 @@ def apply_tech_costs_solar(dataframe, tech_costs_df):
 
     dataframe = dataframe[out_cols]
 
-    return dataframe                                                
+    return dataframe     
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_tech_costs_solar_storage(dataframe, pv_costs_df):    
+    # For the storage branch I am removing the 'size adjustment factor', since
+    # we don't know the size a priori anymore. If we want to bring a schedule
+    # back, it would need to go into the financial calculations    
+    
+    
+    # record the columns in the input dataframe
+    in_cols = list(dataframe.columns)
+    # join the data
+    dataframe = pd.merge(dataframe, pv_costs_df, how = 'left', on = ['tech', 'sector_abbr'])
+    
+    # rename, because we have more technologies now, and 'dollars' isn't necessary
+    dataframe['inverter_cost_per_kw'] = dataframe['inverter_cost_dollars_per_kw']
+    dataframe['pv_cost_per_kw'] = dataframe['installed_costs_dollars_per_kw']
+    
+    # apply the capital cost multipliers and size adjustment factor
+    dataframe['inverter_cost_per_kw'] = (dataframe['inverter_cost_per_kw'] * dataframe['cap_cost_multiplier'])
+    dataframe['pv_cost_per_kw'] = (dataframe['pv_cost_per_kw'] * dataframe['cap_cost_multiplier'])                                                    
+    # identify the new columns to return
+    return_cols = ['inverter_cost_per_kw', 'pv_cost_per_kw', 'fixed_om_dollars_per_kw_per_yr', 'variable_om_dollars_per_kwh']    
+    out_cols = in_cols + return_cols
+
+    dataframe = dataframe[out_cols]
+
+    return dataframe                                            
 
 
 #%%
