@@ -568,18 +568,38 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     net_metering_df = agent_mutation_elec.get_net_metering_settings(con, scenario_settings.schema, year)
 
                     #==============================================================================
-                    # ANNUAL RESOURCE DATA
+                    # TECHNOLOGY PERFORMANCE
                     #==============================================================================       
-                    # get annual resource data
-                    resource_solar_df = agent_mutation_elec.get_annual_resource_solar(con, scenario_settings.schema, scenario_settings.sectors)
-                    resource_wind_df = agent_mutation_elec.get_annual_resource_wind(con, scenario_settings.schema, year, scenario_settings.sectors)
                     # get technology performance data
                     tech_performance_solar_df = agent_mutation_elec.get_technology_performance_solar(con, scenario_settings.schema, year)
                     tech_performance_wind_df = agent_mutation_elec.get_technology_performance_wind(con, scenario_settings.schema, year)
-                    # apply technology performance to annual resource data
-                    resource_solar_df = agent_mutation_elec.apply_technology_performance_solar(resource_solar_df, tech_performance_solar_df)
-                    resource_wind_df = agent_mutation_elec.apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df)     
-                                    
+                    # apply technology performance data
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_performance_solar, (tech_performance_solar_df, )).compute()
+                   
+                   
+                    #==============================================================================
+                    # GROUND COVERAGE RATIO
+                    #==============================================================================       
+                    # apply assumption about solar's ground coverage ratio (gcr)
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_gcr, ()).compute()
+
+
+                    #==============================================================================
+                    # RESOURCE DATA
+                    #==============================================================================       
+                    # get annual resource data
+                    # TODO: It would be better to tie this into the hourly resource profile
+#                    resource_solar_df = agent_mutation_elec.get_annual_resource_solar(con, scenario_settings.schema, scenario_settings.sectors)
+#                    resource_wind_df = agent_mutation_elec.get_annual_resource_wind(con, scenario_settings.schema, year, scenario_settings.sectors)
+
+                    # get hourly resource
+                    # These are passed into the system sizer
+                    normalized_hourly_resource_solar_df = agent_mutation_elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
+                    normalized_hourly_resource_wind_df = agent_mutation_elec.get_normalized_hourly_resource_wind(con, scenario_settings.schema, scenario_settings.sectors, cur, agents, scenario_settings.techs)
+                    
+                    # apply the index that corresponds to the agent's solar resource
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_normalized_hourly_resource_index_solar, (normalized_hourly_resource_solar_df, scenario_settings.techs)).compute()
+
 #                    #==============================================================================
 #                    # CHECK TECH POTENTIAL LIMITS
 #                    #==============================================================================                                   
@@ -593,19 +613,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.scale_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
                    
                     #==============================================================================
-                    # HOURLY RESOURCE DATA
-                    #==============================================================================
-                    # get hourly resource
-                    normalized_hourly_resource_solar_df = agent_mutation_elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
-                    normalized_hourly_resource_wind_df = agent_mutation_elec.get_normalized_hourly_resource_wind(con, scenario_settings.schema, scenario_settings.sectors, cur, agents, scenario_settings.techs)
-                    # apply normalized hourly resource profiles
-#                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'), agent_mutation_elec.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, scenario_settings.techs)).compute()
-#                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'), agent_mutation_elec.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, scenario_settings.techs)).compute()                   
-                    
-                    #==============================================================================
                     # SET BATTERY REPLACEMENT YEAR
                     #==============================================================================
-                    # get technology costs
                     batt_replacement_yr = 10.0
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_batt_replace_schedule, (batt_replacement_yr, )).compute()
                     
@@ -624,7 +633,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get depreciation schedule for current year
                     depreciation_df = agent_mutation_elec.get_depreciation_schedule(con, scenario_settings.schema, year)
                     # apply depreciation schedule to agents
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_depreciation_schedule, (depreciation_df, )).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_depreciation_schedule_index, (depreciation_df, )).compute()
                     
                     #==========================================================================================================
                     # SYSTEM DEGRADATION                
@@ -1164,7 +1173,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.error(e.__str__(), exc_info = True)
         if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
-            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+#            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+            pass
         if 'logger' not in locals():
             raise
         

@@ -44,12 +44,11 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
     tariff.d_flat_prices = np.zeros([1, 12]) + tariff.d_flat_prices[0,0]
 
 
-    deprec_sch = np.array(deprec_sch_df.loc[agent['deprec_sched_index'], 'deprec'])
-    pv_cf_profile = np.array(pv_cf_profile_df.loc[agent['pv_cf_profile_index'], 'generation_hourly'])/1e6 # Is this correct? The 1e6?
+    deprec_sch = np.array(deprec_sch_df.loc[agent['depreciation_sch_index'], 'deprec'])
+    pv_cf_profile = np.array(pv_cf_profile_df.loc[agent['resource_index_solar'], 'generation_hourly'])/1e6 # Is this correct? The 1e6?
     agent['naep'] = float(np.sum(pv_cf_profile))    
-    agent['max_pv_size'] = np.min([agent['load_kwh_per_customer_in_bin']/agent['naep'], agent['developable_roof_sqft']*agent['pv_power_density_sqft']*agent['gcr']])
+    agent['max_pv_size'] = np.min([agent['load_kwh_per_customer_in_bin']/agent['naep'], agent['developable_roof_sqft']*agent['pv_density_w_per_sqft']*1000.0*agent['gcr']])
 
-    print "starting a sizing..."
     d_inc_n = 20    
     DP_inc = 12
     pv_inc = 3

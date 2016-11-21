@@ -31,6 +31,49 @@ DEC2FLOAT = pg.extensions.new_type(
     lambda value, curs: float(value) if value is not None else None)
 pg.extensions.register_type(DEC2FLOAT)
 
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_normalized_hourly_resource_index_solar(dataframe, hourly_resource_df, techs):
+
+    if 'solar' in techs:    
+        # record the columns in the input dataframe
+        in_cols = list(dataframe.columns)  
+        
+        # create a column that has the index value for each solar resource
+        hourly_resource_i_df = hourly_resource_df[['sector_abbr', 'tech', 'county_id', 'bin_id']]       
+        hourly_resource_i_df['resource_index_solar'] = hourly_resource_i_df.index
+        
+        # join the index that corresponds to the agent's solar resource to the agent dataframe
+        dataframe = pd.merge(dataframe, hourly_resource_i_df, how = 'left', on = ['sector_abbr', 'tech', 'county_id', 'bin_id'])
+   
+        # subset to only the desired output columns
+        out_cols = in_cols + ['resource_index_solar']
+        dataframe = dataframe[out_cols]    
+#    else:
+#        out_cols = {'resource_index_solar' : 'object'}
+#        for col, dtype in out_cols.iteritems():
+#            dataframe[col] = pd.Series([], dtype = dtype)
+    
+    return dataframe
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_gcr(dataframe):
+    # apply assumption about PV's ground coverage ratio (gcr)
+    # Assuming that all flat roofs actually have tilted arrays, spaced at 0.7
+    # GCR to avoid excessive self-shading. All tilted roofs have panels flush
+    # with the roof. 
+    dataframe['gcr'] = np.where(dataframe['tilt'] == 0, 0.7, 1.0)
+    
+    return dataframe
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_tech_performance_solar(dataframe, tech_performance_solar_df):
+    
+    dataframe = pd.merge(dataframe, tech_performance_solar_df[['tech', 'pv_density_w_per_sqft']], how = 'left', on = ['tech'])
+    
+    return dataframe
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -49,6 +92,17 @@ def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, ba
 
     
     return dataframe
+    
+    
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_depreciation_schedule_index(dataframe, depreciation_df):
+    
+    depreciation_df['depreciation_sch_index'] = depreciation_df.index
+    
+    dataframe = pd.merge(dataframe, depreciation_df[['tech', 'depreciation_sch_index']], how = 'left', on = ['tech'])
+    
+    return dataframe 
 
 
 
@@ -70,17 +124,17 @@ def apply_financial_params(dataframe, financial_params_df, itc_options, tech_cos
     # TODO: split these apart and bring in actual schedules
 
     # reduce to just host owned for S+S
-    fin_df_ho = financial_params_df[financial_params_df['business_model']=='host_owned']
-    
+    fin_df_ho = financial_params_df[financial_params_df['business_model']=='host_owned']    
     dataframe = dataframe.merge(fin_df_ho, how='left', on=['year', 'tech', 'sector_abbr'])
+    
+    # apply itc level
     dataframe = dataframe.merge(itc_options[['itc_fraction', 'year', 'tech', 'sector_abbr']], how='left', on=['year', 'tech', 'sector_abbr'])
-#    dataframe = dataframe.merge(tech_costs_solar_df[['installed_costs_dollars_per_kw', 'fixed_om_dollars_per_kw_per_yr', 'tech', 'sector_abbr']], how='left', on=['tech', 'sector_abbr'])
+
+    # 
     dataframe['analysis_years'] = 25
     dataframe['deprec_sched_index'] = int(1)
     dataframe['inflation'] = 0.025 # probably would rather not have this included as a column
-    dataframe['pv_cf_profile_index'] = 0 # placeholder...
-    dataframe['gcr'] = 0.7
-    dataframe['pv_power_density_sqft'] = 0.01486 # placeholder... this should be looked up via schedule
+
     
     return dataframe
 
@@ -712,13 +766,14 @@ def get_annual_resource_solar(con, schema, sectors):
     
     
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_technology_performance_solar(resource_solar_df, tech_performance_solar_df):
-    
-    resource_solar_df = pd.merge(resource_solar_df, tech_performance_solar_df, how = 'left', on = ['tech'])
-    resource_solar_df['naep'] = resource_solar_df['naep'] * resource_solar_df['pv_efficiency_improvement_factor']
-    
-    return resource_solar_df
+# Depreciated by Pieter 11/21/16
+#@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+#def apply_technology_performance_solar(resource_solar_df, tech_performance_solar_df):
+#    
+#    resource_solar_df = pd.merge(resource_solar_df, tech_performance_solar_df, how = 'left', on = ['tech'])
+#    resource_solar_df['naep'] = resource_solar_df['naep'] * resource_solar_df['pv_efficiency_improvement_factor']
+#    
+#    return resource_solar_df
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
