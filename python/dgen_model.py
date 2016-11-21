@@ -1184,7 +1184,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             con.close()
         if 'scenario_settings' in locals() and scenario_settings.schema is not None and model_settings.mode == 'setup_develop':
             # drop the output schema
-            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+            # datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+            pass
         if 'logger' in locals():
             utilfunc.shutdown_log(logger)
             utilfunc.code_profiler(model_settings.out_dir)
