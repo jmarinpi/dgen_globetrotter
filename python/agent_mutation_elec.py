@@ -1042,7 +1042,7 @@ def scale_array_sum(row, array_col, scale_col):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def scale_normalized_load_profiles(dataframe, load_df):
+def apply_normalized_load_profiles(dataframe, load_df):
     
     # record the columns in the input dataframe
     in_cols = list(dataframe.columns)

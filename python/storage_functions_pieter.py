@@ -16,8 +16,8 @@ from agent import Agent, Agents, AgentsAlgorithm
 from cStringIO import StringIO
 
 # Import from support function repo
-import sys
-sys.path.append('C:/users/pgagnon/desktop/support_functions/python')
+#import sys
+#sys.path.append('C:/users/pgagnon/desktop/support_functions/python')
 import dispatch_functions as dFuncs
 import tariff_functions as tFuncs
 import financial_functions as fFuncs
@@ -32,17 +32,41 @@ logger = utilfunc.get_logger()
 
 def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df):
 
+    # Extract load profile
+    load_profile = agent['consumption_hourly']
+
+    # Create export tariff object
     export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
-#    rate_id = rates_rank_df[rates_rank_df['agent_id']==agent['agent_id']].loc[0, 'rate_id_alias'] # placeholder rate selection, until weighted selection can be implemented
-    rate_id = np.array(rates_rank_df[rates_rank_df['agent_id']==agent['agent_id']]['rate_id_alias'])[0] # placeholder rate selection, until weighted selection can be implemented
+
+    # Filter for list of tariffs available to this agent
+    agent_rate_list = rates_rank_df[rates_rank_df['agent_id']==agent['agent_id']]
+
+    # drop duplicate tariffs - temporary fix uptil Meghan's update comes through
+    agent_rate_list = agent_rate_list.drop_duplicates()  
+    
+    if len(agent_rate_list > 1):
+        # determine which of the tariffs has the cheapest cost of electricity without a system
+        agent_rate_list['bills'] = None
+        for index in agent_rate_list.index:
+            rate_id = agent_rate_list.loc[index, 'rate_id_alias']            
+            tariff_dict = rates_json_df.loc[rate_id, 'rate_json']
+            tariff = tFuncs.Tariff(dict_obj=tariff_dict)
+            # TODO: remove this once tariffs are reloaded
+            # temp fix because rate jsons were built incorrectly. 
+            tariff.d_flat_levels = np.zeros([1, 12]) + tariff.d_flat_levels[0,0]
+            tariff.d_flat_prices = np.zeros([1, 12]) + tariff.d_flat_prices[0,0]
+    
+            bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
+            agent_rate_list.loc[index, 'bills'] = bill
+
+    # Select the tariff that had the cheapest electricity. Note that there is
+    # currently no rate switching, if it would be cheaper once a system is 
+    # installed. This is currently for computational reasons.
+    rate_id = agent_rate_list.loc[agent_rate_list['bills'].idxmin(), 'rate_id_alias']
     tariff_dict = rates_json_df.loc[rate_id, 'rate_json']
     tariff = tFuncs.Tariff(dict_obj=tariff_dict)
-    
-    # TODO: remove this once tariffs are reloaded
-    # temp fix because rate jsons were built incorrectly. 
     tariff.d_flat_levels = np.zeros([1, 12]) + tariff.d_flat_levels[0,0]
     tariff.d_flat_prices = np.zeros([1, 12]) + tariff.d_flat_prices[0,0]
-
 
     deprec_sch = np.array(deprec_sch_df.loc[agent['depreciation_sch_index'], 'deprec'])
     pv_cf_profile = np.array(pv_cf_profile_df.loc[agent['resource_index_solar'], 'generation_hourly'])/1e6 # Is this correct? The 1e6?
@@ -53,7 +77,6 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
     DP_inc = 12
     pv_inc = 3
     batt_inc = 3
-    load_profile = agent['consumption_hourly']
     pv_sizes = np.linspace(0, agent['max_pv_size'], pv_inc)
     batt_powers = np.linspace(0, np.array(agent['max_demand_kw']) * 0.2, batt_inc)
     original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
@@ -99,6 +122,8 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
                  system_sizes[:,1], 
                  agent['batt_cost_per_kw'], 
                  agent['batt_cost_per_kwh'], 
+                 agent['batt_replace_cost_per_kw'],
+                 agent['batt_replace_cost_per_kwh'],
                  batt_chg_frac,
                  agent['batt_replace_yr'],
                  agent['batt_om'],
@@ -139,6 +164,8 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
                  opt_batt_power, 
                  agent['batt_cost_per_kw'], 
                  agent['batt_cost_per_kwh'], 
+                 agent['batt_replace_cost_per_kw'],
+                 agent['batt_replace_cost_per_kwh'],
                  batt_chg_frac,
                  agent['batt_replace_yr'],
                  agent['batt_om'],

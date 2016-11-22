@@ -49,6 +49,11 @@ start_year = 2014
 Rscript_paths = ['/usr/bin/Rscript','C:/Users/mgleason/Documents/R/R-3.0.2/bin/Rscript.exe','C:/Program Files/R/R-3.0.2/bin/Rscript.exe','C:/Program Files/R/R-3.0.3/bin/Rscript.exe', 'C:/Users/bsigrin/Documents/R/R-3.1.1/bin/Rscript.exe', 'C:/Users/pgagnon/Documents/R/R-3.2.2/bin/Rscript.exe']
 
 #==============================================================================
+#   Path to support functions repo will vary by user
+#==============================================================================
+support_repo_paths = ['C:/users/pgagnon/desktop/support_functions/python']
+
+#==============================================================================
 #   set number of parallel processes to run postgres queries (this is ignored if parallelize = F)
 #==============================================================================
 pg_procs = 12

@@ -22,7 +22,6 @@ import numpy as np
 # (I think the order needs to follow the order 
 # in which each module is used in __main__)
 import data_functions as datfunc
-import storage_functions_mike as sFuncs_m
 import storage_functions_pieter as sFuncs_p
 # ---------------------------------------------
 import config
@@ -67,6 +66,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         
         # add the config to model settings
         model_settings.add_config(config)
+        # set support repo path
+        model_settings.set_support_repo_path(config.support_repo_paths)
         # set Rscript path
         model_settings.set_Rscript_path(config.Rscript_paths)
         # set the model starting time (in seconds since epoch)
@@ -534,24 +535,60 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 srecs = datfunc.get_srecs(cur, con, scenario_settings.schema, scenario_settings.techs, model_settings.pg_conn_string, dsire_opts)
                 state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)            
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
+
+                #==============================================================================
+                # GENERATE AGENT OBJECT WITH CORE IMMUTABLE ATTRIBUTES               
+                #==============================================================================
+                # get core agent attributes from postgres
+                agents_base = agent_mutation_elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
+                # filter techs
+                agents_base = agents_base.filter('tech in %s' % scenario_settings.techs)
+                # store canned agents (if in setup_develop mode)
+                datfunc.setup_canned_agents(model_settings.mode, agents_base, scenario_settings.tech_mode, 'both')
+                # check rate coverage
+                agent_mutation_elec.check_rate_coverage(agents_base.dataframe, rates_rank_df, rates_json_df)
+                # apply assumption about solar's ground coverage ratio (gcr)
+                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_gcr, ()).compute()  
+                
+                #==============================================================================
+                # RESOURCE DATA
+                #==============================================================================       
+                # get hourly resource
+                normalized_hourly_resource_solar_df = agent_mutation_elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
+#                normalized_hourly_resource_wind_df = agent_mutation_elec.get_normalized_hourly_resource_wind(con, scenario_settings.schema, scenario_settings.sectors, cur, agents_base, scenario_settings.techs)
+                # apply the index that corresponds to the agent's solar resource
+                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_normalized_hourly_resource_index_solar, (normalized_hourly_resource_solar_df, scenario_settings.techs)).compute()
+                
+                #==============================================================================
+                # SET BATTERY REPLACEMENT YEAR
+                #==============================================================================
+                batt_replacement_yr = 10.0
+                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_batt_replace_schedule, (batt_replacement_yr, )).compute()
+                                    
+                #==============================================================================
+                # LOAD PROFILES
+                #==============================================================================
+                # apply normalized load profiles
+                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
+                                   
+                #==========================================================================================================
+                # SYSTEM DEGRADATION                
+                #==========================================================================================================
+                # apply system degradation to agents
+                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_system_degradation, (system_degradation_df, )).compute()
+                    
+                    
                 for year in scenario_settings.model_years:
                     logger.info('\tWorking on %s' % year)
+
+                    # copy the core agent object                    
+                    agents = agents_base
 
                     # is it the first model year?
                     is_first_year = year == model_settings.start_year   
                         
-                    # get core agent attributes from postgres
-                    agents = agent_mutation_elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
-                    # filter techs
-                    agents = agents.filter('tech in %s' % scenario_settings.techs)
-                    # store canned agents (if in setup_develop mode)
-                    datfunc.setup_canned_agents(model_settings.mode, agents, scenario_settings.tech_mode, 'both')
                     # update year (this is really only ncessary in develop-mode since canned agents have the wrong year)
                     agents.dataframe.loc[:, 'year'] = year
-      
-                    # check rate coverage
-                    agent_mutation_elec.check_rate_coverage(agents.dataframe, rates_rank_df, rates_json_df)
-
       
                     #==============================================================================
                     # LOAD/POPULATION GROWTH               
@@ -576,48 +613,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # apply technology performance data
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_performance_solar, (tech_performance_solar_df, )).compute()
                    
-                   
-                    #==============================================================================
-                    # GROUND COVERAGE RATIO
-                    #==============================================================================       
-                    # apply assumption about solar's ground coverage ratio (gcr)
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_gcr, ()).compute()
-
-
-                    #==============================================================================
-                    # RESOURCE DATA
-                    #==============================================================================       
-                    # get annual resource data
-                    # TODO: It would be better to tie this into the hourly resource profile
-#                    resource_solar_df = agent_mutation_elec.get_annual_resource_solar(con, scenario_settings.schema, scenario_settings.sectors)
-#                    resource_wind_df = agent_mutation_elec.get_annual_resource_wind(con, scenario_settings.schema, year, scenario_settings.sectors)
-
-                    # get hourly resource
-                    # These are passed into the system sizer
-                    normalized_hourly_resource_solar_df = agent_mutation_elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
-                    normalized_hourly_resource_wind_df = agent_mutation_elec.get_normalized_hourly_resource_wind(con, scenario_settings.schema, scenario_settings.sectors, cur, agents, scenario_settings.techs)
-                    
-                    # apply the index that corresponds to the agent's solar resource
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_normalized_hourly_resource_index_solar, (normalized_hourly_resource_solar_df, scenario_settings.techs)).compute()
-
 #                    #==============================================================================
 #                    # CHECK TECH POTENTIAL LIMITS
 #                    #==============================================================================                                   
 #                    agent_mutation_elec.check_tech_potential_limits_wind(agents.filter_tech('wind').dataframe, tech_potential_limits_wind_df, model_settings.out_dir, is_first_year)
 #                    agent_mutation_elec.check_tech_potential_limits_solar(agents.filter_tech('solar').dataframe, tech_potential_limits_solar_df, model_settings.out_dir, is_first_year)
 #                                
-                    #==============================================================================
-                    # GET NORMALIZED LOAD PROFILES
-                    #==============================================================================
-                    # apply normalized load profiles
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.scale_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
-                   
-                    #==============================================================================
-                    # SET BATTERY REPLACEMENT YEAR
-                    #==============================================================================
-                    batt_replacement_yr = 10.0
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_batt_replace_schedule, (batt_replacement_yr, )).compute()
-                    
                     #==============================================================================
                     # TECHNOLOGY COSTS
                     #==============================================================================
@@ -635,12 +636,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # apply depreciation schedule to agents
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_depreciation_schedule_index, (depreciation_df, )).compute()
                     
-                    #==========================================================================================================
-                    # SYSTEM DEGRADATION                
-                    #==========================================================================================================
-                    # apply system degradation to agents
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_system_degradation, (system_degradation_df, )).compute()
-                    
+
                     #==========================================================================================================
                     # CARBON INTENSITIES
                     #==========================================================================================================               
@@ -652,7 +648,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # Apply Financial Parameters
                     #==========================================================================================================               
-                    # Temp catch-all... these should be broken apart...
+                    # Financial assumptions and ITC fraction
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_financial_params, (financial_parameters, itc_options, tech_costs_solar_df)).compute()                
     
                     #==========================================================================================================
@@ -713,7 +709,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 #                    datfunc.write_last_year(con, cur, market_last_year, scenario_settings.schema)
                 
                     #==========================================================================================================
-                    # WRITE OUTPUTS AS PICKELS FOR POST-PROCESSING
+                    # WRITE OUTPUTS AS PICKLES FOR POST-PROCESSING
                     #========================================================================================================== 
                     df.to_pickle('agent_df_pickles/df_%s.pkl' % year)
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
@@ -1173,8 +1169,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.error(e.__str__(), exc_info = True)
         if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
-#            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
-            pass
+            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
         if 'logger' not in locals():
             raise
         
@@ -1184,8 +1179,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             con.close()
         if 'scenario_settings' in locals() and scenario_settings.schema is not None and model_settings.mode == 'setup_develop':
             # drop the output schema
-            # datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
-            pass
+            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
         if 'logger' in locals():
             utilfunc.shutdown_log(logger)
             utilfunc.code_profiler(model_settings.out_dir)
