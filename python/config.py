@@ -8,6 +8,7 @@ Created on Wed Mar 26 13:01:56 2014
 import os
 import multiprocessing
 import pandas as pd
+import sys
 
 #==============================================================================
 # these are all variables that we can change, but don't want to expose to non-expert users
@@ -52,7 +53,8 @@ Rscript_paths = ['/usr/bin/Rscript','C:/Users/mgleason/Documents/R/R-3.0.2/bin/R
 #   Path to support functions repo will vary by user
 #==============================================================================
 support_repo_paths = ['C:/users/pgagnon/desktop/support_functions/python']
-
+for path in support_repo_paths:
+    sys.path.append(path)
 #==============================================================================
 #   set number of parallel processes to run postgres queries (this is ignored if parallelize = F)
 #==============================================================================

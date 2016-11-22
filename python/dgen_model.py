@@ -16,6 +16,7 @@ import sys
 import pandas as pd
 import psycopg2.extras as pgx
 import numpy as np
+import config
 # ---------------------------------------------
 # order of the next 3 needs to be maintained
 # otherwise the logger may not work correctly
@@ -24,7 +25,6 @@ import numpy as np
 import data_functions as datfunc
 import storage_functions_pieter as sFuncs_p
 # ---------------------------------------------
-import config
 from excel import excel_functions
 import reeds_functions as reedsfunc
 import utility_functions as utilfunc
@@ -63,11 +63,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         #==============================================================================
         # initialize Model Settings object (this controls settings that apply to all scenarios to be executed)
         model_settings = settings.ModelSettings()
+
+        # import support repo
+        model_settings.set_support_repo_path(config.support_repo_paths)
         
         # add the config to model settings
         model_settings.add_config(config)
-        # set support repo path
-        model_settings.set_support_repo_path(config.support_repo_paths)
         # set Rscript path
         model_settings.set_Rscript_path(config.Rscript_paths)
         # set the model starting time (in seconds since epoch)
