@@ -536,7 +536,7 @@ def get_electric_rates_json(con, unique_rate_ids):
     # get (only the required) rate jsons from postgres
     sql = """SELECT a.rate_id_alias, b.rate_name, a.json as rate_json
              FROM diffusion_shared.urdb3_rate_sam_jsons_20161005 a
-             LEFT JOIN urdb_rates.urdb3_verified_rates_sam_data_20161005 b
+             LEFT JOIN diffusion_shared.urdb3_data_20161005 b
              ON a.rate_id_alias = b.rate_id_alias
              WHERE a.rate_id_alias in (%(rate_id_list)s);""" % inputs
     df = pd.read_sql(sql, con, coerce_float=False)
