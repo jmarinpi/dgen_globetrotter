@@ -560,7 +560,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==============================================================================
                 # SET BATTERY REPLACEMENT YEAR
                 #==============================================================================
-                batt_replacement_yr = 10.0
+                batt_replacement_yr = int(10.0)
                 agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_batt_replace_schedule, (batt_replacement_yr, )).compute()
                                     
                 #==============================================================================
