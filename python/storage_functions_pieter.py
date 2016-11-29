@@ -55,6 +55,7 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
             # temp fix because rate jsons were built incorrectly. 
             tariff.d_flat_levels = np.zeros([1, 12]) + tariff.d_flat_levels[0,0]
             tariff.d_flat_prices = np.zeros([1, 12]) + tariff.d_flat_prices[0,0]
+            tariff.coincident_peak_exists = False
     
             bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
             agent_rate_list.loc[index, 'bills'] = bill
@@ -67,6 +68,7 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
     tariff = tFuncs.Tariff(dict_obj=tariff_dict)
     tariff.d_flat_levels = np.zeros([1, 12]) + tariff.d_flat_levels[0,0]
     tariff.d_flat_prices = np.zeros([1, 12]) + tariff.d_flat_prices[0,0]
+    tariff.coincident_peak_exists = False
 
     deprec_sch = np.array(deprec_sch_df.loc[agent['depreciation_sch_index'], 'deprec'])
     pv_cf_profile = np.array(pv_cf_profile_df.loc[agent['resource_index_solar'], 'generation_hourly'])/1e6 # Is this correct? The 1e6?
@@ -104,7 +106,7 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
                 
         batt.set_cap_and_power(batt_power*3.0, batt_power)    
 
-        estimated_results = dFuncs.determine_optimal_dispatch(load_and_pv_profile, batt, tariff, export_tariff, estimator_params=estimator_params, estimated=True, d_inc_n=d_inc_n)
+        estimated_results = dFuncs.determine_optimal_dispatch(load_profile, pv_size*pv_cf_profile, batt, tariff, export_tariff, estimator_params=estimator_params, estimated=True, d_inc_n=d_inc_n)
         system_df.loc[i, 'est_bills'] = estimated_results['bill_under_dispatch']   
         
     est_bill_savings = np.zeros([n_sys, agent['analysis_years']+1])
@@ -112,32 +114,19 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
     system_df['est_bill_savings'] = (original_bill - np.array(system_df['est_bills'])).reshape([n_sys, 1]) 
     
     batt_chg_frac = 1.0 # just a placeholder...
-                
+    
     cf_results_est = fFuncs.cashflow_constructor(est_bill_savings, 
-                 system_sizes[:,0], 
-                 agent['pv_cost_per_kw'], 
-                 0, #inverter price, assuming it is wrapped into initial and O&M costs
-                 agent['fixed_om_dollars_per_kw_per_yr'],
-                 system_sizes[:,1]*3,
-                 system_sizes[:,1], 
-                 agent['batt_cost_per_kw'], 
-                 agent['batt_cost_per_kwh'], 
-                 agent['batt_replace_cost_per_kw'],
-                 agent['batt_replace_cost_per_kwh'],
-                 batt_chg_frac,
-                 agent['batt_replace_yr'],
-                 agent['batt_om'],
-                 agent['sector'],
-                 agent['itc_fraction'],
-                 deprec_sch, 
-                 agent['tax_rate'], # fed tax rate
-                 0, # state tax rate
-                 agent['discount_rate'], # real discount
-                 agent['down_payment'], 
-                 agent['analysis_years'],
-                 agent['inflation'], 
-                 agent['loan_rate'],
-                 agent['loan_term_yrs'])
+                         system_sizes[:,0], agent['pv_cost_per_kw'], 0, agent['fixed_om_dollars_per_kw_per_yr'],
+                         system_sizes[:,1]*3, system_sizes[:,1], 
+                         agent['batt_cost_per_kw'], agent['batt_cost_per_kwh'], 
+                         agent['batt_replace_cost_per_kw'], agent['batt_replace_cost_per_kwh'],
+                         batt_chg_frac,
+                         agent['batt_replace_yr'], agent['batt_om'],
+                         agent['sector'], agent['itc_fraction'], deprec_sch, 
+                         agent['tax_rate'], 0, agent['discount_rate'],  
+                         agent['analysis_years'], agent['inflation'], 
+                         agent['down_payment'], agent['loan_rate'], agent['loan_term_yrs'])
+                
                                                       
     system_df['npv'] = cf_results_est['npv']
     print system_df
@@ -150,36 +139,22 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
     batt.set_cap_and_power(opt_batt_cap, opt_batt_power)    
     print "opt pv and batt:", opt_pv_size, opt_batt_power
     load_and_pv_profile = load_profile - opt_pv_size*pv_cf_profile
-    accurate_results = dFuncs.determine_optimal_dispatch(load_and_pv_profile, batt, tariff, export_tariff, estimated=False, d_inc_n=d_inc_n, DP_inc=DP_inc)
+    accurate_results = dFuncs.determine_optimal_dispatch(load_profile, opt_pv_size*pv_cf_profile, batt, tariff, export_tariff, estimated=False, d_inc_n=d_inc_n, DP_inc=DP_inc)
     opt_bill = accurate_results['bill_under_dispatch']   
     opt_bill_savings = np.zeros([1, agent['analysis_years']+1])
     opt_bill_savings[:, 1:] = (original_bill - opt_bill)
     
     cf_results_opt = fFuncs.cashflow_constructor(opt_bill_savings, 
-                 opt_pv_size, 
-                 agent['pv_cost_per_kw'], 
-                 0, #inverter price, assuming it is wrapped into initial and O&M costs
-                 agent['fixed_om_dollars_per_kw_per_yr'],
-                 opt_batt_power*3,
-                 opt_batt_power, 
-                 agent['batt_cost_per_kw'], 
-                 agent['batt_cost_per_kwh'], 
-                 agent['batt_replace_cost_per_kw'],
-                 agent['batt_replace_cost_per_kwh'],
-                 batt_chg_frac,
-                 agent['batt_replace_yr'],
-                 agent['batt_om'],
-                 agent['sector'],
-                 agent['itc_fraction'],
-                 deprec_sch, 
-                 agent['tax_rate'], # fed tax rate
-                 0, # state tax rate
-                 agent['discount_rate'], # real discount
-                 agent['down_payment'], 
-                 agent['analysis_years'],
-                 agent['inflation'], 
-                 agent['loan_rate'],
-                 agent['loan_term_yrs'])   
+                     opt_pv_size, agent['pv_cost_per_kw'], 0, agent['fixed_om_dollars_per_kw_per_yr'],
+                     opt_batt_power*3, opt_batt_power, 
+                     agent['batt_cost_per_kw'], agent['batt_cost_per_kwh'], 
+                     agent['batt_replace_cost_per_kw'], agent['batt_replace_cost_per_kwh'],
+                     batt_chg_frac,
+                     agent['batt_replace_yr'], agent['batt_om'],
+                     agent['sector'], agent['itc_fraction'], deprec_sch, 
+                     agent['tax_rate'], 0, agent['discount_rate'],  
+                     agent['analysis_years'], agent['inflation'], 
+                     agent['down_payment'], agent['loan_rate'], agent['loan_term_yrs']) 
                
     agent['pv_kw'] = opt_pv_size
     agent['batt_kw'] = opt_batt_power

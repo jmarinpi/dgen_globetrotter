@@ -63,9 +63,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         #==============================================================================
         # initialize Model Settings object (this controls settings that apply to all scenarios to be executed)
         model_settings = settings.ModelSettings()
-
-        # import support repo
-        model_settings.set_support_repo_path(config.support_repo_paths)
         
         # add the config to model settings
         model_settings.add_config(config)

@@ -55,6 +55,7 @@ Rscript_paths = ['/usr/bin/Rscript','C:/Users/mgleason/Documents/R/R-3.0.2/bin/R
 support_repo_paths = ['C:/users/pgagnon/desktop/support_functions/python']
 for path in support_repo_paths:
     sys.path.append(path)
+    
 #==============================================================================
 #   set number of parallel processes to run postgres queries (this is ignored if parallelize = F)
 #==============================================================================

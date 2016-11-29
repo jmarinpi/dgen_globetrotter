@@ -96,16 +96,6 @@ class ModelSettings(object):
                     self.Rscript_path = rp
         if self.Rscript_path == None:
             raise ValueError('No Rscript Path found: Add a new path to Rscripts_path in config.py')
-            
-    def set_support_repo_path(self, support_repo_paths):
-        
-        for path in support_repo_paths:   
-            if os.path.exists(path):
-                    self.support_repo_path = path
-                    sys.path.append(path)
-        if self.support_repo_path == None:
-            raise ValueError('No valid path for support function repo found: Add a new path to support_repo_paths in config.py')
-
 
     def validate_property(self, property_name):
         
