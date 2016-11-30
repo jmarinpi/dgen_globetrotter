@@ -244,6 +244,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get lkup table with rate jsons
                     rates_json_df = agent_mutation_elec.get_electric_rates_json(con, selected_rate_ids)
                     rates_json_df = rates_json_df.set_index('rate_id_alias')
+                    
 
                     #==============================================================================
                     # GET NORMALIZED LOAD PROFILES
@@ -543,6 +544,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 agents_base = agents_base.filter('tech in %s' % scenario_settings.techs)
                 # store canned agents (if in setup_develop mode)
                 datfunc.setup_canned_agents(model_settings.mode, agents_base, scenario_settings.tech_mode, 'both')
+                
+                # temporary patch until we get DC tariffs into the model
+                df = agents_base.dataframe
+                dc_agents = df[df['state_abbr']=='DC']
+                for agent in dc_agents['agent_id']:
+                    rates_rank_df.loc[len(rates_rank_df)+1] = [agent, np.array(rates_rank_df['rate_id_alias'])[0], False, 'com']
+                
+                
                 # check rate coverage
                 agent_mutation_elec.check_rate_coverage(agents_base.dataframe, rates_rank_df, rates_json_df)
                 # apply assumption about solar's ground coverage ratio (gcr)

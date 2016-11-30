@@ -31,7 +31,11 @@ logger = utilfunc.get_logger()
 #%%
 
 def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df):
-
+    
+    print "Agent ID:", agent['agent_id']
+    if agent['agent_id']==945:
+        print "full stop"
+        
     # Extract load profile
     load_profile = agent['consumption_hourly']
 
@@ -48,18 +52,22 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
         # determine which of the tariffs has the cheapest cost of electricity without a system
         agent_rate_list['bills'] = None
         for index in agent_rate_list.index:
-            rate_id = agent_rate_list.loc[index, 'rate_id_alias']            
-            tariff_dict = rates_json_df.loc[rate_id, 'rate_json']
-            tariff = tFuncs.Tariff(dict_obj=tariff_dict)
-            # TODO: remove this once tariffs are reloaded
-            # temp fix because rate jsons were built incorrectly. 
-            tariff.d_flat_levels = np.zeros([1, 12]) + tariff.d_flat_levels[0,0]
-            tariff.d_flat_prices = np.zeros([1, 12]) + tariff.d_flat_prices[0,0]
-            tariff.coincident_peak_exists = False
-    
-            bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
-            agent_rate_list.loc[index, 'bills'] = bill
+            rate_id = agent_rate_list.loc[index, 'rate_id_alias']   
+            if np.any(rate_id==np.array([4097, 4531, 5274])):
+                agent_rate_list.loc[index, 'bills'] = 9999999999                
 
+            else:
+                tariff_dict = rates_json_df.loc[rate_id, 'rate_json']
+                tariff = tFuncs.Tariff(dict_obj=tariff_dict)
+                # TODO: remove this once tariffs are reloaded
+                # temp fix because rate jsons were built incorrectly, and skipping 
+                # a set of tariffs that will eventually be removed
+                tariff.d_flat_levels = np.zeros([1, 12]) + tariff.d_flat_levels[0,0]
+                tariff.d_flat_prices = np.zeros([1, 12]) + tariff.d_flat_prices[0,0]
+                tariff.coincident_peak_exists = False
+                bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
+                agent_rate_list.loc[index, 'bills'] = bill
+                
     # Select the tariff that had the cheapest electricity. Note that there is
     # currently no rate switching, if it would be cheaper once a system is 
     # installed. This is currently for computational reasons.
@@ -100,7 +108,6 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
     for i in system_df.index:    
         pv_size = system_df['pv'][i].copy()
         batt_power = system_df['batt'][i].copy()
-        print pv_size, batt_power
         load_and_pv_profile = load_profile - pv_size*pv_cf_profile
         estimator_params = dFuncs.calc_estimator_params(load_and_pv_profile, tariff, export_tariff, batt.eta_charge, batt.eta_discharge)
                 
@@ -129,7 +136,6 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
                 
                                                       
     system_df['npv'] = cf_results_est['npv']
-    print system_df
     
     index_of_max_npv = system_df['npv'].idxmax()
     
@@ -137,7 +143,6 @@ def system_size_and_bill_calc(agent, e_escalation_sch, deprec_sch_df, pv_cf_prof
     opt_batt_power = system_df['batt'][index_of_max_npv].copy()
     opt_batt_cap = opt_batt_power*3.0
     batt.set_cap_and_power(opt_batt_cap, opt_batt_power)    
-    print "opt pv and batt:", opt_pv_size, opt_batt_power
     load_and_pv_profile = load_profile - opt_pv_size*pv_cf_profile
     accurate_results = dFuncs.determine_optimal_dispatch(load_profile, opt_pv_size*pv_cf_profile, batt, tariff, export_tariff, estimated=False, d_inc_n=d_inc_n, DP_inc=DP_inc)
     opt_bill = accurate_results['bill_under_dispatch']   
