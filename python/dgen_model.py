@@ -12,18 +12,17 @@ tests.check_dependencies()
 # import depenencies
 import time
 import os
-import sys
 import pandas as pd
 import psycopg2.extras as pgx
 import numpy as np
 import config
+import storage_functions as sFuncs
 # ---------------------------------------------
 # order of the next 3 needs to be maintained
 # otherwise the logger may not work correctly
 # (I think the order needs to follow the order 
 # in which each module is used in __main__)
 import data_functions as datfunc
-import storage_functions_pieter as sFuncs_p
 # ---------------------------------------------
 from excel import excel_functions
 import reeds_functions as reedsfunc
@@ -554,8 +553,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 # check rate coverage
                 agent_mutation_elec.check_rate_coverage(agents_base.dataframe, rates_rank_df, rates_json_df)
-                # apply assumption about solar's ground coverage ratio (gcr)
-                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_gcr, ()).compute()  
                 
                 #==============================================================================
                 # RESOURCE DATA
@@ -586,6 +583,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     
                 for year in scenario_settings.model_years:
+                    
                     logger.info('\tWorking on %s' % year)
 
                     # copy the core agent object                    
@@ -606,10 +604,21 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_load_growth, (load_growth_df,)).compute(1)              
                     
                     #==============================================================================
-                    # RATES         
+                    # TARIFFS FOR EXPORTED GENERATION (NET METERING)       
                     #==============================================================================                
                     # get net metering settings
                     net_metering_df = agent_mutation_elec.get_net_metering_settings(con, scenario_settings.schema, year)
+                    # apply export generation tariff settings
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_export_generation_tariffs, (net_metering_df, )).compute()
+    
+    
+                    #==============================================================================
+                    # ELECTRICITY PRICE MULTIPLIER AND ESCALATION     
+                    #==============================================================================                
+                    # Apply each agent's electricity price (real terms relative)
+                    # to 2016, and calculate their assumption about price changes.
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_elec_price_multiplier_and_escalator, (year, rate_growth_df)).compute()
+                 
 
                     #==============================================================================
                     # TECHNOLOGY PERFORMANCE
@@ -653,7 +662,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_carbon_intensities, (carbon_intensities_df, )).compute()                
     
                     #==========================================================================================================
-                    # Apply Financial Parameters
+                    # FINANCIAL PARAMETERS
                     #==========================================================================================================               
                     # Financial assumptions and ITC fraction
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_financial_params, (financial_parameters, itc_options, tech_costs_solar_df)).compute()                
@@ -661,7 +670,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # Size S+S system and calculate electric bills
                     #==========================================================================================================               
-                    agents = AgentsAlgorithm(agents, sFuncs_p.system_size_driver, (rate_growth_df, depreciation_df, normalized_hourly_resource_solar_df, rates_rank_df, rates_json_df)).compute()                
+                    agents = AgentsAlgorithm(agents, sFuncs.system_size_driver, (rate_growth_df, depreciation_df, normalized_hourly_resource_solar_df, rates_rank_df, rates_json_df)).compute()                
                    
                    
                     #==============================================================================
@@ -675,10 +684,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, financial_functions_elec.calc_max_market_share, (max_market_share, )).compute(1)                            
 
                       
-#                    #==============================================================================
-#                    # DEVELOPABLE CUSTOMERS/LOAD
-#                    #==============================================================================                            
-#                    # determine "developable" population
+                    #==============================================================================
+                    # DEVELOPABLE CUSTOMERS/LOAD
+                    #==============================================================================                            
+                    # determine "developable" population
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.calculate_developable_customers_and_load_storage).compute(1)                            
                                                        
                     
