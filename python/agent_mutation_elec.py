@@ -1679,11 +1679,11 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
                                              dataframe['developable_customers_in_bin']/dataframe['developable_customers_in_state'], 
                                              1./dataframe['agent_count'])
     # apply the agent's portion to the total to calculate starting capacity and systems                                         
-    dataframe['number_of_adopters_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['systems_count'], 6)
-    dataframe['installed_capacity_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['capacity_mw'], 6) * 1000.
+    dataframe['number_of_adopters_last_year'] = dataframe['portion_of_state'] * dataframe['systems_count']
+    dataframe['installed_capacity_last_year'] = dataframe['portion_of_state'] * dataframe['capacity_mw'] * 1000.0
     dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0, 
                                                  0, 
-                                                 np.round(dataframe['number_of_adopters_last_year']/dataframe['developable_customers_in_bin'], 6))
+                                                 dataframe['number_of_adopters_last_year']/dataframe['developable_customers_in_bin'])
     dataframe['market_value_last_year'] = dataframe['installed_costs_dollars_per_kw'] * dataframe['installed_capacity_last_year']
 
     # reproduce these columns as "initial" columns too
@@ -1732,14 +1732,14 @@ def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_
                                              dataframe['developable_customers_in_bin']/dataframe['developable_customers_in_state'], 
                                              1./dataframe['agent_count'])
     # apply the agent's portion to the total to calculate starting capacity and systems                                         
-    dataframe['number_of_adopters_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['systems_count'], 6)
-    dataframe['pv_kw_last_year'] = np.round(dataframe['portion_of_state'] * dataframe['capacity_mw'], 6) * 1000.
+    dataframe['number_of_adopters_last_year'] = dataframe['portion_of_state'] * dataframe['systems_count']
+    dataframe['pv_kw_last_year'] = dataframe['portion_of_state'] * dataframe['capacity_mw'] * 1000.0
     dataframe['batt_kw_last_year'] = 0.0
     dataframe['batt_kwh_last_year'] = 0.0
 
     dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0, 
                                                  0, 
-                                                 np.round(dataframe['number_of_adopters_last_year']/dataframe['developable_customers_in_bin'], 6))
+                                                 dataframe['number_of_adopters_last_year']/dataframe['developable_customers_in_bin'])
 
     # reproduce these columns as "initial" columns too
     dataframe['initial_number_of_adopters'] = dataframe['number_of_adopters_last_year']
