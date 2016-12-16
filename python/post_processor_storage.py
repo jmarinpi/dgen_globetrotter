@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 
 
-agent_df_dir = 'agent_df_pickles'
+agent_df_dir = 'agent_df_pickles_de'
 
 years = np.arange(2014,2051,2)
 
@@ -47,12 +47,12 @@ plt.figure(0)
 plt.plot(results_df.index+1, results_df['pv_kw_cum']/1000, results_df.index+1, results_df['batt_kwh_cum']/1000)
 plt.grid(True)
 
-plt.figure(1)
-plt.plot(results_df.index+1, results_df['pv_kw_cum']/1000)
-plt.plot(results_df.index+1, results_df['pv_kw_cum_res']/1000)
-plt.plot(results_df.index+1, results_df['pv_kw_cum_com']/1000)
-plt.plot(results_df.index+1, results_df['pv_kw_cum_ind']/1000)
-plt.legend(['total', 'res', 'com', 'ind'])
-plt.grid(True)
+#plt.figure(1)
+#plt.plot(results_df.index+1, results_df['pv_kw_cum']/1000)
+#plt.plot(results_df.index+1, results_df['pv_kw_cum_res']/1000)
+#plt.plot(results_df.index+1, results_df['pv_kw_cum_com']/1000)
+#plt.plot(results_df.index+1, results_df['pv_kw_cum_ind']/1000)
+#plt.legend(['total', 'res', 'com', 'ind'])
+#plt.grid(True)
 
 

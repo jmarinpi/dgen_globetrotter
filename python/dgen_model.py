@@ -261,7 +261,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     # get schedule of battery costs - ingesting 
                     tech_cost_storage_schedules_df = pd.read_csv('storage_cost_schedules.csv', index_col='year')
-                    
+
                     #==========================================================================================================
                     # GET TECH POTENTIAL LIMITS
                     #==========================================================================================================    
@@ -670,7 +670,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # Size S+S system and calculate electric bills
                     #==========================================================================================================               
-                    agents = AgentsAlgorithm(agents, sFuncs.system_size_driver, (rate_growth_df, depreciation_df, normalized_hourly_resource_solar_df, rates_rank_df, rates_json_df)).compute()                
+                    agents = AgentsAlgorithm(agents, sFuncs.system_size_driver, (depreciation_df, normalized_hourly_resource_solar_df, rates_rank_df, rates_json_df)).compute()                
                    
                    
                     #==============================================================================
