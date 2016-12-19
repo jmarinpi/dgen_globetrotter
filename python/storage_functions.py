@@ -21,7 +21,6 @@ logger = utilfunc.get_logger()
 #==============================================================================
 
 #%%
-
 def system_size_and_bill_calc_simple(agent, deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df):
     
     # Temporary list of rates to ignore
