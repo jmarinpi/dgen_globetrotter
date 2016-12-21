@@ -670,7 +670,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # Size S+S system and calculate electric bills
                     #==========================================================================================================               
-                    agents = AgentsAlgorithm(agents, sFuncs.system_size_driver, (depreciation_df, normalized_hourly_resource_solar_df, rates_rank_df, rates_json_df)).compute()                
+                    agents = AgentsAlgorithm(agents, sFuncs.system_size_driver, (depreciation_df, normalized_hourly_resource_solar_df, rates_rank_df, rates_json_df, model_settings.local_cores)).compute()                
                    
                    
                     #==============================================================================

@@ -20,9 +20,9 @@ import matplotlib.pyplot as plt
 
 
 
-agent_df_dir = 'agent_df_pickles_de'
+agent_df_dir = 'agent_df_pickles_national_lowcost'
 
-years = np.arange(2014,2051,2)
+years = np.arange(2014,2027,2)
 
 
 sectors = ['res', 'com', 'ind']
