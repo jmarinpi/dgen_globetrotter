@@ -33,9 +33,8 @@ def calc_metric_value_storage(dataframe):
             metric_value - pd series - series of values given the business_model and sector
     '''
     
-    # temp trying to get rid of hanging breakpoint
-    if True:
-        cfs = np.vstack(dataframe['cash_flow']).astype(np.float)    
+
+    cfs = np.vstack(dataframe['cash_flow']).astype(np.float)    
     
     # calculate payback period
     tech_lifetime = np.shape(cfs)[1] - 1

@@ -513,15 +513,18 @@ def system_size_and_bill_calc_optimal_dict(agent_dict, deprec_sch_df, pv_cf_prof
     agent_dict['npv'] = cf_results_opt['npv'][0]
     agent_dict['cash_flow'] = cf_results_opt['cf']
     
-    if opt_pv_size != 0 or opt_batt_cap != 0: agent_dict['system_built'] = True
-    else: agent_dict['system_built'] = False
+    if opt_pv_size != 0 or opt_batt_cap != 0: system_built_bool = True
+    else: system_built_bool = False
     
     print "ID:", agent_dict['agent_id'], ", opt PV:", opt_pv_size, np.round(opt_pv_size/agent_dict['max_pv_size'],2), ", opt batt kW:", opt_batt_power, np.round(opt_batt_power/opt_pv_size,2) 
     
     results_dict = {'agent_id':agent_dict['agent_id'],
                     'pv_kw':opt_pv_size,
                     'batt_kw':opt_batt_power,
-                    'batt_kwh':opt_batt_cap}
+                    'batt_kwh':opt_batt_cap,
+                    'npv':cf_results_opt['npv'][0],
+                    'cash_flow':cf_results_opt['cf'],
+                    'system_built':system_built_bool}
              
     return results_dict
     
@@ -529,8 +532,15 @@ def system_size_and_bill_calc_optimal_dict(agent_dict, deprec_sch_df, pv_cf_prof
 #%%
 def system_size_driver(agent_df, deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()-1):  
     
+    
+    
+    tStart = time.time()    
+    agent_df = agent_df.apply(system_size_and_bill_calc_optimal, axis=1, args=(deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df))
+    t_old = time.time() - tStart
+    
+    
     n_workers = 4
-    tStart = time.time()
+    
     agent_dict = agent_df.T.to_dict()
 #    deprec_sch_dict = deprec_sch_df.T.to_dict()
 #    pv_cf_profile_dict = pv_cf_profile_df.T.to_dict()
@@ -542,20 +552,18 @@ def system_size_driver(agent_df, deprec_sch_df, pv_cf_profile_df, rates_rank_df,
         
     future_list = list()
     
+    tStart = time.time()
     with EXECUTOR(max_workers=n_workers) as executor:
         for key in agent_dict:
             future_list.append(executor.submit(system_size_and_bill_calc_optimal_dict, agent_dict[key], deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df))
+    t_mp = time.time() - tStart
     
     results_df = pd.DataFrame([f.result() for f in future_list])
 
     agent_df = pd.merge(agent_df, results_df, how='left', on=['agent_id'])
     
-    t_mp = time.time() - tStart
     
-    tStart = time.time()    
-    agent_df = agent_df.apply(system_size_and_bill_calc_optimal, axis=1, args=(deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df))
-    t_old = time.time() - tStart
-    print "Time Delta:", t_mp - t_old, ". Time mp:", t_mp, ". Time old:", t_old
+    print "Time Delta:", t_mp - t_old, ". Time mp:", t_mp, ". Time old:", t_old    
 
     return agent_df
     
