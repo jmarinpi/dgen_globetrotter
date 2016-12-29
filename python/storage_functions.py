@@ -530,53 +530,37 @@ def system_size_and_bill_calc_optimal_dict(agent_dict, deprec_sch, pv_cf_profile
 #%%
 def system_size_driver(agent_df, deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()-1):  
     
+#    t_apply_start = time.time()    
+#    agent_df_old = agent_df.apply(system_size_and_bill_calc_optimal, axis=1, args=(deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df))
+#    t_apply_end = time.time()
+#    t_apply = t_apply_end - t_apply_start
     
-    
-    t_apply_start = time.time()    
-    agent_df_old = agent_df.apply(system_size_and_bill_calc_optimal, axis=1, args=(deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df))
-    t_apply_end = time.time()
-    t_apply = t_apply_end - t_apply_start
-    
-    n_workers = 4
+#    n_workers = 4
     
     agent_dict = agent_df.T.to_dict()
     deprec_sch_dict = deprec_sch_df.T.to_dict()
     pv_cf_profile_dict = pv_cf_profile_df.T.to_dict()
 #    rates_rank_dict = rates_rank_df.T.to_dict()
     
-    if 'nix' not in os.name:
+    if 'ix' not in os.name:
         EXECUTOR = futures.ThreadPoolExecutor
     else:
         EXECUTOR = futures.ProcessPoolExecutor
         
     future_list = list()
     
-    t_mp_Start = time.time()
     with EXECUTOR(max_workers=n_workers) as executor:
-        for key in agent_dict:
-#            # Filter for list of tariffs available to this agent
-#            agent_rate_list = rates_rank_df[rates_rank_df['agent_id']==agent_dict[key]['agent_id']].drop_duplicates() 
-#            # drop duplicate tariffs - temporary fix uptil Meghan's update comes through
-#            agent_rate_list = agent_rate_list.drop_duplicates() 
-            
+        for key in agent_dict:            
             future_list.append(executor.submit(system_size_and_bill_calc_optimal_dict, agent_dict[key],
                                                np.array(deprec_sch_dict[agent_dict[key]['depreciation_sch_index']]['deprec']),
                                                np.array(pv_cf_profile_dict[agent_dict[key]['resource_index_solar']]['generation_hourly'])/1e6, 
                                                rates_rank_df,
                                                rates_json_df))
-    t_mp_end = time.time()
-    t_mp = t_mp_end - t_mp_Start
     
     results_df = pd.DataFrame([f.result() for f in future_list])
 
     agent_df = pd.merge(agent_df, results_df, how='left', on=['agent_id'])
-    
-    
-    print "Time Delta:", t_mp - t_apply, ". Time mp:", t_mp, ". Time old:", t_apply    
-#    print "time mp", t_mp
 
     return agent_df
     
-    
-#rates_rank_df[rates_rank_df['agent_id']==agent_dict[key]['agent_id']].drop_duplicates()
-    
+        
