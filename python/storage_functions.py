@@ -523,7 +523,7 @@ def system_size_and_bill_calc_optimal_dict(agent_dict, deprec_sch_df, pv_cf_prof
                     'batt_kw':opt_batt_power,
                     'batt_kwh':opt_batt_cap,
                     'npv':cf_results_opt['npv'][0],
-                    'cash_flow':cf_results_opt['cf'],
+                    'cash_flow':cf_results_opt['cf'][0,:],
                     'system_built':system_built_bool}
              
     return results_dict
@@ -534,12 +534,12 @@ def system_size_driver(agent_df, deprec_sch_df, pv_cf_profile_df, rates_rank_df,
     
     
     
-    tStart = time.time()    
-    agent_df = agent_df.apply(system_size_and_bill_calc_optimal, axis=1, args=(deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df))
-    t_old = time.time() - tStart
+    t_apply_start = time.time()    
+    agent_df_old = agent_df.apply(system_size_and_bill_calc_optimal, axis=1, args=(deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df))
+    t_apply_end = time.time()
+    t_apply = t_apply_end - t_apply_start
     
-    
-    n_workers = 4
+#    n_workers = 4
     
     agent_dict = agent_df.T.to_dict()
 #    deprec_sch_dict = deprec_sch_df.T.to_dict()
@@ -552,18 +552,20 @@ def system_size_driver(agent_df, deprec_sch_df, pv_cf_profile_df, rates_rank_df,
         
     future_list = list()
     
-    tStart = time.time()
+    t_mp_Start = time.time()
     with EXECUTOR(max_workers=n_workers) as executor:
         for key in agent_dict:
             future_list.append(executor.submit(system_size_and_bill_calc_optimal_dict, agent_dict[key], deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df))
-    t_mp = time.time() - tStart
+    t_mp_end = time.time()
+    t_mp = t_mp_end - t_mp_Start
     
     results_df = pd.DataFrame([f.result() for f in future_list])
 
     agent_df = pd.merge(agent_df, results_df, how='left', on=['agent_id'])
     
     
-    print "Time Delta:", t_mp - t_old, ". Time mp:", t_mp, ". Time old:", t_old    
+    print "Time Delta:", t_mp - t_apply, ". Time mp:", t_mp, ". Time old:", t_apply    
+#    print "time mp", t_mp
 
     return agent_df
     
