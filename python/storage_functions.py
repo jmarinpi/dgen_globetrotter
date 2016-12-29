@@ -346,7 +346,7 @@ def system_size_and_bill_calc_optimal(agent, deprec_sch_df, pv_cf_profile_df, ra
     return agent
     
 #%%
-def system_size_and_bill_calc_optimal_dict(agent_dict, deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df):
+def system_size_and_bill_calc_optimal_dict(agent_dict, deprec_sch, pv_cf_profile, rates_rank_df, rates_json_df):
         
     # Temporary list of rates to ignore
     # TODO remove this when tariffs are updated
@@ -356,8 +356,8 @@ def system_size_and_bill_calc_optimal_dict(agent_dict, deprec_sch_df, pv_cf_prof
     load_profile = agent_dict['consumption_hourly']
 
     # Create export tariff object
-    export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
-
+    export_tariff = tFuncs.Export_Tariff(full_retail_nem=True) 
+    
     # Filter for list of tariffs available to this agent
     agent_rate_list = rates_rank_df[rates_rank_df['agent_id']==agent_dict['agent_id']]
 
@@ -396,8 +396,6 @@ def system_size_and_bill_calc_optimal_dict(agent_dict, deprec_sch_df, pv_cf_prof
     tariff.d_flat_prices = np.zeros([1, 12]) + tariff.d_flat_prices[0,0]
     tariff.coincident_peak_exists = False
 
-    deprec_sch = np.array(deprec_sch_df.loc[agent_dict['depreciation_sch_index'], 'deprec'])
-    pv_cf_profile = np.array(pv_cf_profile_df.loc[agent_dict['resource_index_solar'], 'generation_hourly'])/1e6 # Is this correct? The 1e6?
     agent_dict['naep'] = float(np.sum(pv_cf_profile))    
     agent_dict['max_pv_size'] = np.min([agent_dict['load_kwh_per_customer_in_bin']/agent_dict['naep'], agent_dict['developable_roof_sqft']*agent_dict['pv_density_w_per_sqft']/1000.0])
 
@@ -539,11 +537,12 @@ def system_size_driver(agent_df, deprec_sch_df, pv_cf_profile_df, rates_rank_df,
     t_apply_end = time.time()
     t_apply = t_apply_end - t_apply_start
     
-#    n_workers = 4
+    n_workers = 4
     
     agent_dict = agent_df.T.to_dict()
-#    deprec_sch_dict = deprec_sch_df.T.to_dict()
-#    pv_cf_profile_dict = pv_cf_profile_df.T.to_dict()
+    deprec_sch_dict = deprec_sch_df.T.to_dict()
+    pv_cf_profile_dict = pv_cf_profile_df.T.to_dict()
+#    rates_rank_dict = rates_rank_df.T.to_dict()
     
     if 'nix' not in os.name:
         EXECUTOR = futures.ThreadPoolExecutor
@@ -555,7 +554,16 @@ def system_size_driver(agent_df, deprec_sch_df, pv_cf_profile_df, rates_rank_df,
     t_mp_Start = time.time()
     with EXECUTOR(max_workers=n_workers) as executor:
         for key in agent_dict:
-            future_list.append(executor.submit(system_size_and_bill_calc_optimal_dict, agent_dict[key], deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df))
+#            # Filter for list of tariffs available to this agent
+#            agent_rate_list = rates_rank_df[rates_rank_df['agent_id']==agent_dict[key]['agent_id']].drop_duplicates() 
+#            # drop duplicate tariffs - temporary fix uptil Meghan's update comes through
+#            agent_rate_list = agent_rate_list.drop_duplicates() 
+            
+            future_list.append(executor.submit(system_size_and_bill_calc_optimal_dict, agent_dict[key],
+                                               np.array(deprec_sch_dict[agent_dict[key]['depreciation_sch_index']]['deprec']),
+                                               np.array(pv_cf_profile_dict[agent_dict[key]['resource_index_solar']]['generation_hourly'])/1e6, 
+                                               rates_rank_df,
+                                               rates_json_df))
     t_mp_end = time.time()
     t_mp = t_mp_end - t_mp_Start
     
@@ -570,6 +578,5 @@ def system_size_driver(agent_df, deprec_sch_df, pv_cf_profile_df, rates_rank_df,
     return agent_df
     
     
-    
-
+#rates_rank_df[rates_rank_df['agent_id']==agent_dict[key]['agent_id']].drop_duplicates()
     
