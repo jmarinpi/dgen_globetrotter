@@ -346,7 +346,7 @@ def system_size_and_bill_calc_optimal(agent, deprec_sch_df, pv_cf_profile_df, ra
     return agent
     
 #%%
-def system_size_and_bill_calc_optimal_dict(agent_dict, deprec_sch, pv_cf_profile, rates_rank_df, rates_json_df):
+def system_size_and_bill_calc_optimal_dict(agent_dict, deprec_sch, pv_cf_profile, agent_rate_list, rates_json_df):
         
     # Temporary list of rates to ignore
     # TODO remove this when tariffs are updated
@@ -358,11 +358,11 @@ def system_size_and_bill_calc_optimal_dict(agent_dict, deprec_sch, pv_cf_profile
     # Create export tariff object
     export_tariff = tFuncs.Export_Tariff(full_retail_nem=True) 
     
-    # Filter for list of tariffs available to this agent
-    agent_rate_list = rates_rank_df[rates_rank_df['agent_id']==agent_dict['agent_id']]
-
-    # drop duplicate tariffs - temporary fix uptil Meghan's update comes through
-    agent_rate_list = agent_rate_list.drop_duplicates()  
+#    # Filter for list of tariffs available to this agent
+#    agent_rate_list = rates_rank_df[rates_rank_df['agent_id']==agent_dict['agent_id']]
+#
+#    # drop duplicate tariffs - temporary fix uptil Meghan's update comes through
+#    agent_rate_list = agent_rate_list.drop_duplicates()  
     
     if len(agent_rate_list > 1):
         # determine which of the tariffs has the cheapest cost of electricity without a system
@@ -550,12 +550,18 @@ def system_size_driver(agent_df, deprec_sch_df, pv_cf_profile_df, rates_rank_df,
     future_list = list()
     
     with EXECUTOR(max_workers=n_workers) as executor:
-        for key in agent_dict:            
+        for key in agent_dict:    
+        
+            # Filter for list of tariffs available to this agent
+            agent_rate_list = rates_rank_df[rates_rank_df['agent_id']==agent_dict[key]['agent_id']].drop_duplicates()
+#            agent_rate_list = np.array(agent_rate_list['rate_id_alias'])
+            agent_rate_jsons = rates_json_df[rates_json_df.index.isin(np.array(agent_rate_list['rate_id_alias']))]
+            
             future_list.append(executor.submit(system_size_and_bill_calc_optimal_dict, agent_dict[key],
                                                np.array(deprec_sch_dict[agent_dict[key]['depreciation_sch_index']]['deprec']),
                                                np.array(pv_cf_profile_dict[agent_dict[key]['resource_index_solar']]['generation_hourly'])/1e6, 
-                                               rates_rank_df,
-                                               rates_json_df))
+                                               agent_rate_list,
+                                               agent_rate_jsons))
     
     results_df = pd.DataFrame([f.result() for f in future_list])
 

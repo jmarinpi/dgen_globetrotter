@@ -54,6 +54,8 @@ def calc_metric_value_storage(dataframe):
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def calc_max_market_share(dataframe, max_market_share_df):
     
+    in_cols = list(dataframe.columns)
+    
     # For storage, I am just writing this for host-owned systems. No TPO.
     dataframe['business_model'] = 'host_owned'
     dataframe['metric'] = 'payback_period'
@@ -80,13 +82,15 @@ def calc_max_market_share(dataframe, max_market_share_df):
     max_market_share_df['metric_value_as_factor'] = (max_market_share_df['metric_value'] * 100).round().astype('int')
 
     # Join the max_market_share table and dataframe in order to select the ultimate mms based on the metric value. 
-    dataframe = pd.merge(dataframe, max_market_share_df, how = 'left', on = ['sector_abbr', 'metric','metric_value_as_factor','business_model'])
+    dataframe = pd.merge(dataframe, max_market_share_df[['sector_abbr', 'max_market_share', 'metric', 'metric_value_as_factor', 'business_model']], how = 'left', on = ['sector_abbr', 'metric','metric_value_as_factor','business_model'])
     
-    # Derate the maximum market share for commercial and industrial customers in leased buildings by (1/3)
+    # Derate the maximum market share for commercial and industrial customers in leased buildings by (2/3)
     # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
     dataframe['max_market_share'] = np.where(dataframe.owner_occupancy_status == 2, dataframe['max_market_share']/3,dataframe['max_market_share'])
     
-    return dataframe
+    out_cols = in_cols + ['max_market_share', 'metric']    
+    
+    return dataframe[out_cols]
 
 
 #==============================================================================
