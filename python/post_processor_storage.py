@@ -54,7 +54,7 @@ plt.plot(results_df.index+1, results_df['pv_kw_cum']/1e6, results_df.index+1, re
 plt.grid(True)
 plt.ylabel('GWdc')
 plt.legend(['PV', 'Storage'])
-plt.axis([2015, 2050, 0, 300])
+plt.axis([2015, 2050, 0, np.max(results_df['pv_kw_cum']/1e6*1.2)])
 
 #%%
 plt.figure(1)

@@ -708,8 +708,9 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, pv_cf_pro
     #=========================================================================#
     # Select system size and business model for this agent
     #=========================================================================# 
-    
-    index_of_best_fin_perform_ho = system_df['metric_value_ho'].idxmin()
+    index_of_best_fin_perform_ho = system_df['npv'].idxmax()
+
+#    index_of_best_fin_perform_ho = system_df['metric_value_ho'].idxmin()
 #    index_of_best_fin_perform_tpo = system_df['metric_value_tpo'].idxmax()
 #    
 #    mms_of_best_ho_system = interp
