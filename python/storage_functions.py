@@ -684,16 +684,16 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
     # Record NPV, just for reference
     system_df['npv'] = cf_results_est['npv']
     
-    # Host-Owned metric calculation
-    if agent_dict['sector'] == 'res':
-        # calculate payback period
-        tech_lifetime = np.shape(est_bill_savings)[1] - 1
-        payback = fFuncs_dGen.calc_payback_vectorized(cf_results_est['cf'], tech_lifetime)
-        system_df['metric_value_ho'] = payback
-    else:
-        # calculate time to double
-        ttd = fFuncs_dGen.calc_ttd(cf_results_est['cf'])
-        system_df['metric_value_ho'] = ttd
+#    # Host-Owned metric calculation
+#    if agent_dict['sector'] == 'res':
+#        # calculate payback period
+#        tech_lifetime = np.shape(est_bill_savings)[1] - 1
+#        payback = fFuncs_dGen.calc_payback_vectorized(cf_results_est['cf'], tech_lifetime)
+#        system_df['metric_value_ho'] = payback
+#    else:
+#        # calculate time to double
+#        ttd = fFuncs_dGen.calc_ttd(cf_results_est['cf'])
+#        system_df['metric_value_ho'] = ttd
     
     # TPO metric calculation
     # This is just a placeholder calculation - missing many things, like O&M
