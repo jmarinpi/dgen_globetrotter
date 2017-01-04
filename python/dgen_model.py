@@ -45,6 +45,12 @@ import diffusion_functions_geo
 import financial_functions_elec
 import financial_functions_geo
 
+# Import from support function repo
+#import dispatch_functions as dFuncs
+#import tariff_functions as tFuncs
+#import financial_functions as fFuncs
+import general_functions as gFuncs
+
 
 #==============================================================================
 # raise  numpy and pandas warnings as exceptions
@@ -251,6 +257,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     normalized_load_profiles_df = agent_mutation_elec.get_normalized_load_profiles(con, scenario_settings.schema, scenario_settings.sectors, model_settings.mode)
 
                     # get system sizing targets
+                    # TODO remove
                     system_sizing_targets_df = agent_mutation_elec.get_system_sizing_targets(con, scenario_settings.schema)  
 
                     # get annual system degradation
@@ -269,6 +276,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     if model_settings.mode == 'run':
                         tech_potential_limits_solar_df = agent_mutation_elec.get_tech_potential_limits_solar(con)
                   
+
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 ############################ DU Setup #########################################
@@ -545,14 +553,35 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 datfunc.setup_canned_agents(model_settings.mode, agents_base, scenario_settings.tech_mode, 'both')
                 
                 # temporary patch until we get DC tariffs into the model
+                # TODO remove
                 df = agents_base.dataframe
                 dc_agents = df[df['state_abbr']=='DC']
                 for agent in dc_agents['agent_id']:
                     rates_rank_df.loc[len(rates_rank_df)+1] = [agent, np.array(rates_rank_df['rate_id_alias'])[0], False, 'com']
                 
-                
                 # check rate coverage
                 agent_mutation_elec.check_rate_coverage(agents_base.dataframe, rates_rank_df, rates_json_df)
+                
+                #==========================================================================================================
+                # Set up dataframe to record aggregated storage dispatch trajectories
+                #==========================================================================================================    
+                pca_reg_list = np.unique(np.array(agents_base.dataframe['pca_reg']))
+                
+                year_and_reg_set = gFuncs.cartesian([pca_reg_list, scenario_settings.model_years])                
+                
+                storage_dispatch_df_col_list = list(['pca_reg', 'year'])
+                hour_list = list()
+                for hour in np.arange(1,8761):
+                    hour_list = hour_list + ['H%s' % hour]
+                storage_dispatch_df_col_list = storage_dispatch_df_col_list + hour_list
+
+                # storage_dispatch_df_year is just the dispatches for agents who adopted that year.
+                # storage_dispatch_df is the total dispatches for all adopters up to that point
+                storage_dispatch_df_new_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
+                storage_dispatch_df_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
+
+#                storage_dispatch_df_year[['pca_reg', 'year']] = year_and_reg_set
+#                storage_dispatch_df_all_adopters[['pca_reg', 'year']] = year_and_reg_set
                 
                 #==============================================================================
                 # RESOURCE DATA
@@ -662,7 +691,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_carbon_intensities, (carbon_intensities_df, )).compute()                
     
                     #==========================================================================================================
-                    # FINANCIAL PARAMETERS
+                    # Apply host-owned financial parameters
                     #==========================================================================================================               
                     # Financial assumptions and ITC fraction
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_financial_params, (financial_parameters, itc_options, tech_costs_solar_df)).compute()                
@@ -674,8 +703,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                    
                    
                     #==============================================================================
-                    # Calculate Metric Values
+                    # Business model performance and selection
                     #============================================================================== 
+                    # Calculate the financial performance of both the HO and TPO business models, and 
+                    # select one based on logit function.
                     agents = AgentsAlgorithm(agents, financial_functions_elec.calc_metric_value_storage, ()).compute(1)                            
                    
                     #==============================================================================
@@ -710,12 +741,40 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # convert back to dataframe
                     df = agents.dataframe
                     
-                    # I am assuming this is a competition metric. Not sure how to deal with it.
+#                    # I am assuming this is a competition metric.
+                    # TODO: dig in and delete this, since it isn't being used anymore
                     df['selected_option'] = True                    
                     
                     # calculate diffusion based on economics and bass diffusion                   
                     df, market_last_year_df = diffusion_functions_elec.calc_diffusion_storage(df, cur, con, scenario_settings.techs, scenario_settings.choose_tech, scenario_settings.sectors, scenario_settings.schema, is_first_year, bass_params) 
-                
+
+                    #==========================================================================================================
+                    # Aggregate storage dispatch trajectories
+                    #==========================================================================================================   
+                    # TODO: rewrite this using agents class, once above is handled
+                    agent_dispatches = df[['agent_id', 'pca_reg', 'batt_dispatch_profile', 'new_adopters']]
+                    total_dispatches = np.vstack(df['batt_dispatch_profile']).astype(np.float) * np.array(df['new_adopters']).reshape(len(df), 1)
+                    total_dispatches_df = pd.DataFrame(total_dispatches, columns = hour_list)
+                    total_dispatches_df['pca_reg'] = df['pca_reg'] #TODO improve this so it is robust against reorder
+                    total_dispatches_df['year'] = year
+                    
+#                    total_dispatches_tidy = pd.melt(total_dispatches_df, id_vars='pca_reg', value_vars=hour_list, var_name="hour", value_name="dispatch")
+#                    total_dispatches_tidy['year'] = year
+                    
+                    storage_dispatch_df_new_adopters = storage_dispatch_df_new_adopters.append(total_dispatches_df)
+                    
+                    deg_scalars = np.tile(np.array(0.982**(storage_dispatch_df_new_adopters['year']-2014)).reshape(len(storage_dispatch_df_new_adopters),1), 8760)
+                    dispatches_with_deg = storage_dispatch_df_new_adopters[hour_list].multiply(deg_scalars)
+                    dispatches_with_deg['pca_reg'] = storage_dispatch_df_new_adopters['pca_reg']
+                    
+                    storage_dispatch_df_all_adopters_year = dispatches_with_deg.groupby(by='pca_reg').sum()
+                    storage_dispatch_df_all_adopters_year['pca_reg'] = storage_dispatch_df_all_adopters_year.index
+#                    storage_dispatch_df_all_adopters_year = storage_dispatch_df_all_adopters_year.reset_index
+                    storage_dispatch_df_all_adopters_year['year'] = year
+                    
+                    storage_dispatch_df_all_adopters = storage_dispatch_df_all_adopters.append(storage_dispatch_df_all_adopters_year)
+                    storage_dispatch_df_all_adopters.to_csv('agent_df_pickles/dispatch_df_%s.csv' % year)
+                    
                     #==========================================================================================================
                     # WRITE OUTPUTS
                     #==========================================================================================================   

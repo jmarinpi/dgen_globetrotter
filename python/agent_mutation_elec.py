@@ -150,11 +150,9 @@ def apply_batt_replace_schedule(dataframe, replacement_yr):
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_financial_params(dataframe, financial_params_df, itc_options, tech_costs_solar_df):
-    # This is just a catch-all for attaching financial parameters for now,
-    # these should be broken apart as the S+S module evolves
-    # TODO: split these apart and bring in actual schedules
 
-    # reduce to just host owned for S+S
+
+    # Only apply host-owned parameters at this point
     fin_df_ho = financial_params_df[financial_params_df['business_model']=='host_owned']    
     dataframe = dataframe.merge(fin_df_ho, how='left', on=['year', 'tech', 'sector_abbr'])
     

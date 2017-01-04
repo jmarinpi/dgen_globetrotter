@@ -607,7 +607,7 @@ def calc_payback(cfs,revenue,costs,tech_lifetime):
     return np.array(out).round(decimals =1) # must be rounded to nearest 0.1 to join with max_market_share
     
 def calc_payback_vectorized(cfs, tech_lifetime):
-    '''payback calculator ### VECTORIZE THIS ###
+    '''
     IN: cfs - numpy array - project cash flows ($/yr)
     OUT: pp - numpy array - interpolated payback period (years)
     '''
@@ -631,7 +631,6 @@ def calc_payback_vectorized(cfs, tech_lifetime):
     
     # round to nearest 0.1 to join with max_market_share
     pp_final = np.array(pp_precise).round(decimals =1)
-    
     
     return pp_final
     
