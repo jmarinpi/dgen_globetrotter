@@ -56,6 +56,27 @@ def apply_normalized_hourly_resource_index_solar(dataframe, hourly_resource_df, 
     
     return dataframe
     
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_solar_capacity_factor_profile(dataframe, hourly_resource_df):
+
+    # record the columns in the input dataframe
+    in_cols = list(dataframe.columns)  
+    
+    # create a column that has the index value for each solar resource
+#    hourly_resource_i_df = hourly_resource_df[['sector_abbr', 'tech', 'county_id', 'bin_id']]       
+#    hourly_resource_i_df['resource_index_solar'] = hourly_resource_i_df.index
+    
+    # join the index that corresponds to the agent's solar resource to the agent dataframe
+    dataframe = pd.merge(dataframe, hourly_resource_df, how = 'left', on = ['sector_abbr', 'tech', 'county_id', 'bin_id'])
+    dataframe['solar_cf_profile'] = dataframe['generation_hourly']
+    
+    # subset to only the desired output columns
+    out_cols = in_cols + ['solar_cf_profile']
+    dataframe = dataframe[out_cols]    
+    
+    return dataframe
+    
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

@@ -528,7 +528,7 @@ logger = utilfunc.get_logger()
 #    return results_dict
     
 #%%
-def calc_system_size_and_financial_performance(agent_dict, deprec_sch, pv_cf_profile, agent_rate_list, rates_json_df):
+def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rate_list, rates_json_df):
     '''
     Purpose: This function accepts the characteristics of a single agent and
             evaluates the financial performance of a set of solar+storage
@@ -551,11 +551,13 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, pv_cf_pro
     DP_inc_acc = 12
 
     # Extract load profile
-    load_profile = agent_dict['consumption_hourly']    
+    load_profile = np.array(agent_dict['consumption_hourly'])    
 
     # Create export tariff object
     export_tariff = tFuncs.Export_Tariff(full_retail_nem=True) 
 
+    # Misc. calculations
+    pv_cf_profile = np.array(agent_dict['solar_cf_profile']) / 1e6
     agent_dict['naep'] = float(np.sum(pv_cf_profile))    
     agent_dict['max_pv_size'] = np.min([agent_dict['load_kwh_per_customer_in_bin']/agent_dict['naep'], agent_dict['developable_roof_sqft']*agent_dict['pv_density_w_per_sqft']/1000.0])
 
@@ -785,19 +787,12 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, pv_cf_pro
     return results_dict
     
 #%%
-def system_size_driver(agent_df, deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()-1):  
+def system_size_driver(agent_df, deprec_sch_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()-1):  
     
-#    t_apply_start = time.time()    
 #    agent_df_old = agent_df.apply(system_size_and_bill_calc_optimal, axis=1, args=(deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df))
-#    t_apply_end = time.time()
-#    t_apply = t_apply_end - t_apply_start
-    
-#    n_workers = 4
-    
+
     agent_dict = agent_df.T.to_dict()
     deprec_sch_dict = deprec_sch_df.T.to_dict()
-    pv_cf_profile_dict = pv_cf_profile_df.T.to_dict()
-#    rates_rank_dict = rates_rank_df.T.to_dict()
     
     if 'ix' not in os.name:
         EXECUTOR = futures.ThreadPoolExecutor
@@ -816,7 +811,6 @@ def system_size_driver(agent_df, deprec_sch_df, pv_cf_profile_df, rates_rank_df,
             future_list.append(executor.submit(calc_system_size_and_financial_performance, 
                                                agent_dict[key],
                                                np.array(deprec_sch_dict[agent_dict[key]['depreciation_sch_index']]['deprec']),
-                                               np.array(pv_cf_profile_dict[agent_dict[key]['resource_index_solar']]['generation_hourly'])/1e6, 
                                                agent_rate_list,
                                                agent_rate_jsons))
     

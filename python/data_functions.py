@@ -1123,8 +1123,8 @@ def write_last_year(con, cur, market_last_year, schema):
     s = StringIO()
     # write the data to the stringIO
     out_cols = ['county_id', 'bin_id', 'tech', 'sector_abbr',
-                'market_share_last_year', 'max_market_share_last_year', 'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_value_last_year', 
-                'initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value'
+                'market_share_last_year', 'max_market_share_last_year', 'number_of_adopters_last_year', 'pv_kw_last_year', 'batt_kw_last_year', 'batt_kwh_last_year', 
+                'initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share'
                 ]
     market_last_year[out_cols].to_csv(s, index = False, header = False)
     # seek back to the beginning of the stringIO file

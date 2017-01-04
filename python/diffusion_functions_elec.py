@@ -28,8 +28,8 @@ logger = utilfunc.get_logger()
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
-def calc_diffusion_storage(df, cur, con, techs, choose_tech, sectors, schema, is_first_year,
-                   bass_params, override_p_value = None, override_q_value = None, override_teq_yr1_value = None):
+def calc_diffusion_storage(df, is_first_year, bass_params, 
+                           override_p_value = None, override_q_value = None, override_teq_yr1_value = None):
 
     ''' Calculates the market share (ms) added in the solve year. Market share must be less
         than max market share (mms) except initial ms is greater than the calculated mms.
@@ -46,31 +46,13 @@ def calc_diffusion_storage(df, cur, con, techs, choose_tech, sectors, schema, is
     logger.info("\t\tCalculating Diffusion")
     
     # set p/q/teq_yr1 params    
-    df  = set_bass_param(df, con, bass_params, override_p_value, override_q_value, override_teq_yr1_value)
+    df  = set_bass_param(df, bass_params, override_p_value, override_q_value, override_teq_yr1_value)
     
     # calc diffusion market share
-    df = calc_diffusion_market_share(df, con, is_first_year)
-    
-    # ensure no diffusion for non-selected options
-    df['diffusion_market_share'] = df['diffusion_market_share'] * df['selected_option'] 
+    df = calc_diffusion_market_share(df, is_first_year)
     
     # market share floor is based on last year's market share
     df['market_share'] = np.maximum(df['diffusion_market_share'], df['market_share_last_year'])
-
-    # if in tech choice mode, ensure that total market share doesn't exceed 1   
-    if choose_tech == True:
-        # extract out the rows for unselected technologies
-        market_share_cap = df[df['selected_option'] == False][['county_id', 'bin_id', 'sector_abbr', 'market_share']].groupby(['county_id', 'bin_id', 'sector_abbr']).sum().reset_index()
-        # determine how much market share is allowable based on 1 - the MS of the unselected techs
-        market_share_cap['market_share_cap'] = 1 - market_share_cap['market_share']
-        # drop the market share column
-        market_share_cap.drop('market_share', inplace = True, axis = 1)
-        # merge to df
-        df = pd.merge(df, market_share_cap, how = 'left', on = ['county_id', 'bin_id', 'sector_abbr'])
-        # cap the market share (for the selected option only)
-        df['market_share'] = np.where(df['selected_option'] == True, np.minimum(df['market_share'], df['market_share_cap']), df['market_share'])
-        # drop the market share cap field
-        df.drop('market_share_cap', inplace = True, axis = 1)
    
     # calculate the "new" market share (old - current)
     df['new_market_share'] = df['market_share'] - df['market_share_last_year']
@@ -118,10 +100,10 @@ def calc_diffusion(df, cur, con, techs, choose_tech, sectors, schema, is_first_y
     logger.info("\t\tCalculating Diffusion")
     
     # set p/q/teq_yr1 params    
-    df  = set_bass_param(df, con, bass_params, override_p_value, override_q_value, override_teq_yr1_value)
+    df  = set_bass_param(df, bass_params, override_p_value, override_q_value, override_teq_yr1_value)
     
     # calc diffusion market share
-    df = calc_diffusion_market_share(df, con, is_first_year)
+    df = calc_diffusion_market_share(df, is_first_year)
     
     # ensure no diffusion for non-selected options
     df['diffusion_market_share'] = df['diffusion_market_share'] * df['selected_option'] 
@@ -165,7 +147,7 @@ def calc_diffusion(df, cur, con, techs, choose_tech, sectors, schema, is_first_y
 #=============================================================================
 
 #  ^^^^ Calculate new diffusion in market segment ^^^^
-def calc_diffusion_market_share(df, con, is_first_year):
+def calc_diffusion_market_share(df, is_first_year):
     ''' Calculate the fraction of overall population that have adopted the 
         technology in the current period. Note that this does not specify the 
         actual new adoption fraction without knowing adoption in the previous period. 
@@ -195,7 +177,7 @@ def calc_diffusion_market_share(df, con, is_first_year):
 #==============================================================================  
     
 #=============================================================================
-def set_bass_param(df, con, bass_params, override_p_value, override_q_value, override_teq_yr1_value):
+def set_bass_param(df, bass_params, override_p_value, override_q_value, override_teq_yr1_value):
     ''' Set the p & q parameters which define the Bass diffusion curve.
     p is the coefficient of innovation, external influence or advertising effect. 
     q is the coefficient of imitation, internal influence or word-of-mouth effect.

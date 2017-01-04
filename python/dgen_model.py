@@ -573,12 +573,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 hour_list = list()
                 for hour in np.arange(1,8761):
                     hour_list = hour_list + ['H%s' % hour]
+                hour_list = list(np.arange(1,8761))
                 storage_dispatch_df_col_list = storage_dispatch_df_col_list + hour_list
 
                 # storage_dispatch_df_year is just the dispatches for agents who adopted that year.
                 # storage_dispatch_df is the total dispatches for all adopters up to that point
                 storage_dispatch_df_new_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
                 storage_dispatch_df_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
+                
+                generation_new_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
+                generation_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
+                solar_cf_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
 
 #                storage_dispatch_df_year[['pca_reg', 'year']] = year_and_reg_set
 #                storage_dispatch_df_all_adopters[['pca_reg', 'year']] = year_and_reg_set
@@ -588,9 +593,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==============================================================================       
                 # get hourly resource
                 normalized_hourly_resource_solar_df = agent_mutation_elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
+                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_solar_capacity_factor_profile, (normalized_hourly_resource_solar_df, )).compute()
+
 #                normalized_hourly_resource_wind_df = agent_mutation_elec.get_normalized_hourly_resource_wind(con, scenario_settings.schema, scenario_settings.sectors, cur, agents_base, scenario_settings.techs)
                 # apply the index that corresponds to the agent's solar resource
-                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_normalized_hourly_resource_index_solar, (normalized_hourly_resource_solar_df, scenario_settings.techs)).compute()
+#                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_normalized_hourly_resource_index_solar, (normalized_hourly_resource_solar_df, scenario_settings.techs)).compute()
                 
                 #==============================================================================
                 # SET BATTERY REPLACEMENT YEAR
@@ -699,27 +706,27 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # Size S+S system and calculate electric bills
                     #==========================================================================================================               
-                    agents = AgentsAlgorithm(agents, sFuncs.system_size_driver, (depreciation_df, normalized_hourly_resource_solar_df, rates_rank_df, rates_json_df, model_settings.local_cores)).compute()                
+                    agents = AgentsAlgorithm(agents, sFuncs.system_size_driver, (depreciation_df, rates_rank_df, rates_json_df, model_settings.local_cores)).compute()                
                    
                    
                     #==============================================================================
-                    # Business model performance and selection
+                    # Calculate Metric Values
                     #============================================================================== 
-                    # Calculate the financial performance of both the HO and TPO business models, and 
-                    # select one based on logit function.
-                    agents = AgentsAlgorithm(agents, financial_functions_elec.calc_metric_value_storage, ()).compute(1)                            
+                    # Calculate the financial performance of the S+S systems (payback period
+                    # for res, time-to-double for C&I)
+                    agents = AgentsAlgorithm(agents, financial_functions_elec.calc_metric_value_storage, ()).compute()                            
                    
                     #==============================================================================
                     # Calculate Maximum Market Share
                     #============================================================================== 
-                    agents = AgentsAlgorithm(agents, financial_functions_elec.calc_max_market_share, (max_market_share, )).compute(1)                            
+                    agents = AgentsAlgorithm(agents, financial_functions_elec.calc_max_market_share, (max_market_share, )).compute()                            
 
                       
                     #==============================================================================
                     # DEVELOPABLE CUSTOMERS/LOAD
                     #==============================================================================                            
                     # determine "developable" population
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.calculate_developable_customers_and_load_storage).compute(1)                            
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.calculate_developable_customers_and_load_storage).compute()                            
                                                        
                     
                     #==========================================================================================================
@@ -746,20 +753,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     df['selected_option'] = True                    
                     
                     # calculate diffusion based on economics and bass diffusion                   
-                    df, market_last_year_df = diffusion_functions_elec.calc_diffusion_storage(df, cur, con, scenario_settings.techs, scenario_settings.choose_tech, scenario_settings.sectors, scenario_settings.schema, is_first_year, bass_params) 
+                    df, market_last_year_df = diffusion_functions_elec.calc_diffusion_storage(df, is_first_year, bass_params) 
 
                     #==========================================================================================================
                     # Aggregate storage dispatch trajectories
                     #==========================================================================================================   
                     # TODO: rewrite this using agents class, once above is handled
-                    agent_dispatches = df[['agent_id', 'pca_reg', 'batt_dispatch_profile', 'new_adopters']]
                     total_dispatches = np.vstack(df['batt_dispatch_profile']).astype(np.float) * np.array(df['new_adopters']).reshape(len(df), 1)
                     total_dispatches_df = pd.DataFrame(total_dispatches, columns = hour_list)
                     total_dispatches_df['pca_reg'] = df['pca_reg'] #TODO improve this so it is robust against reorder
                     total_dispatches_df['year'] = year
-                    
-#                    total_dispatches_tidy = pd.melt(total_dispatches_df, id_vars='pca_reg', value_vars=hour_list, var_name="hour", value_name="dispatch")
-#                    total_dispatches_tidy['year'] = year
                     
                     storage_dispatch_df_new_adopters = storage_dispatch_df_new_adopters.append(total_dispatches_df)
                     
@@ -773,20 +776,64 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     storage_dispatch_df_all_adopters_year['year'] = year
                     
                     storage_dispatch_df_all_adopters = storage_dispatch_df_all_adopters.append(storage_dispatch_df_all_adopters_year)
-                    storage_dispatch_df_all_adopters.to_csv('agent_df_pickles/dispatch_df_%s.csv' % year)
+                    storage_dispatch_df_all_adopters = storage_dispatch_df_all_adopters[['pca_reg', 'year'] + hour_list]
+                    storage_dispatch_df_all_adopters.to_csv(out_scen_path + '/dispatch_by_pca_and_year.csv') 
+                    
+                    #==========================================================================================================
+                    # Aggregate PV capacity factors
+                    #==========================================================================================================   
+                    # TODO: rewrite this using agents class, once above is handled
+#                    agent_capacities = df[['pca_reg', 'resource_index_solar', 'new_pv_kw']]
+                    if is_first_year:
+                        agent_generation = np.vstack(df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(df['pv_kw_cum']).reshape(len(df), 1)
+                    else:
+                        agent_generation = np.vstack(df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(df['new_pv_kw']).reshape(len(df), 1)
+
+                    agent_generation = pd.DataFrame(agent_generation, columns = hour_list)
+                    agent_generation['pca_reg'] = df['pca_reg'] #TODO improve this so it is robust against reorder
+                    agent_generation['year'] = year
+                    
+                    agent_cum_capacities = df[[ 'pca_reg', 'pv_kw_cum']]
+                    pca_reg_cum_capacities = agent_cum_capacities.groupby(by='pca_reg').sum()
+                    pca_reg_cum_capacities['pca_reg'] = pca_reg_cum_capacities.index
+                    
+                    generation_new_adopters = generation_new_adopters.append(agent_generation)
+                    
+                    deg_scalars = np.tile(np.array(0.995**(generation_new_adopters['year']-2014)).reshape(len(generation_new_adopters),1), 8760)
+                    generation_with_deg = generation_new_adopters[hour_list].multiply(deg_scalars)
+                    generation_with_deg['pca_reg'] = generation_new_adopters['pca_reg']
+                    
+                    generation_all_adopters_year = generation_with_deg.groupby(by='pca_reg').sum()
+                    generation_all_adopters_year['pca_reg'] = generation_all_adopters_year.index
+                    generation_all_adopters_year['year'] = year
+                    
+                    solar_cf_all_adopters_year = generation_all_adopters_year
+                    solar_cf_all_adopters_year = pd.merge(generation_all_adopters_year, pca_reg_cum_capacities, on='pca_reg')
+                    solar_cf_all_adopters_year[hour_list] = solar_cf_all_adopters_year[hour_list] / np.array(solar_cf_all_adopters_year['pv_kw_cum'])                    
+
+                    solar_cf_all_adopters = solar_cf_all_adopters.append(solar_cf_all_adopters_year)
+                    solar_cf_all_adopters = solar_cf_all_adopters[['pca_reg', 'year'] + hour_list]
+                    solar_cf_all_adopters.to_csv(out_scen_path + '/pv_cf_by_pca_and_year.csv', index=False)                     
+
+                    generation_all_adopters = generation_all_adopters.append(generation_all_adopters_year)
+                    generation_all_adopters = generation_all_adopters[['pca_reg', 'year'] + hour_list]
+                    generation_all_adopters.to_csv(out_scen_path + '/pv_generation_by_pca_and_year.csv', index=False)                     
                     
                     #==========================================================================================================
                     # WRITE OUTPUTS
                     #==========================================================================================================   
                     # TODO: rewrite this section to use agents class
                     # write the incremental results to the database
-#                    datfunc.write_outputs(con, cur, df, scenario_settings.sectors, scenario_settings.schema) 
-#                    datfunc.write_last_year(con, cur, market_last_year, scenario_settings.schema)
+                    datfunc.write_outputs(con, cur, df, scenario_settings.sectors, scenario_settings.schema) 
+#                    datfunc.write_last_year(con, cur, market_last_year_df, scenario_settings.schema)
                 
                     #==========================================================================================================
                     # WRITE OUTPUTS AS PICKLES FOR POST-PROCESSING
                     #========================================================================================================== 
-                    df.to_pickle('agent_df_pickles/df_%s.pkl' % year)
+                    if is_first_year:
+                        df.to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
+                    else:
+                        df.drop(['consumption_hourly', 'solar_cf_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
                     
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 ############################ GHP ##############################################
