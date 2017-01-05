@@ -553,18 +553,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 datfunc.setup_canned_agents(model_settings.mode, agents_base, scenario_settings.tech_mode, 'both')
                 
                 # temporary patch until we get DC tariffs into the model
-<<<<<<< HEAD
                 # df = agents_base.dataframe
                 # dc_agents = df[df['state_abbr']=='DC']
                 # for agent in dc_agents['agent_id']:
                 #     rates_rank_df.loc[len(rates_rank_df)+1] = [agent, np.array(rates_rank_df['rate_id_alias'])[0], False, 'com']
-=======
-                # TODO remove
-                df = agents_base.dataframe
-                dc_agents = df[df['state_abbr']=='DC']
-                for agent in dc_agents['agent_id']:
-                    rates_rank_df.loc[len(rates_rank_df)+1] = [agent, np.array(rates_rank_df['rate_id_alias'])[0], False, 'com']
->>>>>>> 437ba8f11b686f69e7567190597a4ac67d8e2e48
                 
                 # check rate coverage
                 agent_mutation_elec.check_rate_coverage(agents_base.dataframe, rates_rank_df, rates_json_df)
@@ -716,14 +708,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
     
                     #==========================================================================================================
                     # Size S+S system and calculate electric bills
-<<<<<<< HEAD
                     #==========================================================================================================
-                    agents = AgentsAlgorithm(agents, sFuncs.system_size_driver, (depreciation_df, normalized_hourly_resource_solar_df, rates_rank_df, rates_json_df, model_settings.local_cores)).compute()                
-=======
-                    #==========================================================================================================               
                     agents = AgentsAlgorithm(agents, sFuncs.system_size_driver, (depreciation_df, rates_rank_df, rates_json_df, model_settings.local_cores)).compute()                
->>>>>>> 437ba8f11b686f69e7567190597a4ac67d8e2e48
-                   
+                  
                    
                     #==============================================================================
                     # Calculate Metric Values

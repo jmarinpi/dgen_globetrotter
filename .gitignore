@@ -32,3 +32,6 @@ excel/~$scenario_inputs_solar.xlsm
 
 # ignore a common format for outputing agent dataframes during debugging (e.g., df_2014.csv)
 df_*.*
+
+# Ignore pg_param files
+python/pg_params*.json
