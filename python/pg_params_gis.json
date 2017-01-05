@@ -1,0 +1,12 @@
+{	
+	"dbname": "dav-gis",
+ 
+		"host": "gispgdb.nrel.gov",
+	 
+	"port": "5432",
+	
+	"password": "mmooney",
+	 
+	"user": "mmooney"
+
+}

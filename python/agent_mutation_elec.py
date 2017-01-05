@@ -56,6 +56,27 @@ def apply_normalized_hourly_resource_index_solar(dataframe, hourly_resource_df, 
     
     return dataframe
     
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_solar_capacity_factor_profile(dataframe, hourly_resource_df):
+
+    # record the columns in the input dataframe
+    in_cols = list(dataframe.columns)  
+    
+    # create a column that has the index value for each solar resource
+#    hourly_resource_i_df = hourly_resource_df[['sector_abbr', 'tech', 'county_id', 'bin_id']]       
+#    hourly_resource_i_df['resource_index_solar'] = hourly_resource_i_df.index
+    
+    # join the index that corresponds to the agent's solar resource to the agent dataframe
+    dataframe = pd.merge(dataframe, hourly_resource_df, how = 'left', on = ['sector_abbr', 'tech', 'county_id', 'bin_id'])
+    dataframe['solar_cf_profile'] = dataframe['generation_hourly']
+    
+    # subset to only the desired output columns
+    out_cols = in_cols + ['solar_cf_profile']
+    dataframe = dataframe[out_cols]    
+    
+    return dataframe
+    
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -150,11 +171,9 @@ def apply_batt_replace_schedule(dataframe, replacement_yr):
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_financial_params(dataframe, financial_params_df, itc_options, tech_costs_solar_df):
-    # This is just a catch-all for attaching financial parameters for now,
-    # these should be broken apart as the S+S module evolves
-    # TODO: split these apart and bring in actual schedules
 
-    # reduce to just host owned for S+S
+
+    # Only apply host-owned parameters at this point
     fin_df_ho = financial_params_df[financial_params_df['business_model']=='host_owned']    
     dataframe = dataframe.merge(fin_df_ho, how='left', on=['year', 'tech', 'sector_abbr'])
     
@@ -1718,8 +1737,6 @@ def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_
     state_total_agents.columns = state_total_agents.columns.str.replace('developable_customers_in_bin','agent_count')
     # merge together
     state_denominators = pd.merge(state_total_developable_customers, state_total_agents, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
-    
-
         
     
     # merge back to the main dataframe
@@ -1748,10 +1765,13 @@ def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_
     dataframe['initial_capacity_mw'] = dataframe['pv_kw_last_year']  /1000.  
     dataframe['initial_market_share'] = dataframe['market_share_last_year']
     dataframe['initial_market_value'] = 0
-    
+            
     # isolate the return columns
     return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value', 
                    'number_of_adopters_last_year', 'pv_kw_last_year', 'batt_kw_last_year', 'batt_kwh_last_year', 'market_share_last_year']
+
+    dataframe[return_cols] = dataframe[return_cols].fillna(0)
+
     out_cols = in_cols + return_cols
     dataframe = dataframe[out_cols]
     
