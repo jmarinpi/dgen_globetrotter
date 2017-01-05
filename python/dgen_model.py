@@ -750,7 +750,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
 #                    # I am assuming this is a competition metric.
                     # TODO: dig in and delete this, since it isn't being used anymore
-                    df['selected_option'] = True                    
+#                    df['selected_option'] = True                    
                     
                     # calculate diffusion based on economics and bass diffusion                   
                     df, market_last_year_df = diffusion_functions_elec.calc_diffusion_storage(df, is_first_year, bass_params) 
@@ -809,8 +809,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     solar_cf_all_adopters_year = generation_all_adopters_year
                     solar_cf_all_adopters_year = pd.merge(generation_all_adopters_year, pca_reg_cum_capacities, on='pca_reg')
-                    solar_cf_all_adopters_year[hour_list] = solar_cf_all_adopters_year[hour_list] / np.array(solar_cf_all_adopters_year['pv_kw_cum'])                    
-
+                    solar_cf_all_adopters_year[hour_list] = np.array(solar_cf_all_adopters_year[hour_list]) / np.array(solar_cf_all_adopters_year['pv_kw_cum']).reshape(len(solar_cf_all_adopters_year),1)        
+                    solar_cf_all_adopters_year = solar_cf_all_adopters_year.fillna(0)
+                    
                     solar_cf_all_adopters = solar_cf_all_adopters.append(solar_cf_all_adopters_year)
                     solar_cf_all_adopters = solar_cf_all_adopters[['pca_reg', 'year'] + hour_list]
                     solar_cf_all_adopters.to_csv(out_scen_path + '/pv_cf_by_pca_and_year.csv', index=False)                     

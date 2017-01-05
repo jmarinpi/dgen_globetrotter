@@ -1735,8 +1735,6 @@ def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_
     state_total_agents.columns = state_total_agents.columns.str.replace('developable_customers_in_bin','agent_count')
     # merge together
     state_denominators = pd.merge(state_total_developable_customers, state_total_agents, how = 'left', on = ['state_abbr', 'sector_abbr', 'tech'])
-    
-
         
     
     # merge back to the main dataframe
@@ -1765,10 +1763,13 @@ def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_
     dataframe['initial_capacity_mw'] = dataframe['pv_kw_last_year']  /1000.  
     dataframe['initial_market_share'] = dataframe['market_share_last_year']
     dataframe['initial_market_value'] = 0
-    
+            
     # isolate the return columns
     return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value', 
                    'number_of_adopters_last_year', 'pv_kw_last_year', 'batt_kw_last_year', 'batt_kwh_last_year', 'market_share_last_year']
+
+    dataframe[return_cols] = dataframe[return_cols].fillna(0)
+
     out_cols = in_cols + return_cols
     dataframe = dataframe[out_cols]
     

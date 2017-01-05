@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 
 
-agent_df_dir = 'agent_df_pickles_ca_with_deg'
+agent_df_dir = 'agent_df_pickles_national_lowcost'
 
 years = np.arange(2014,2051,2)
 
@@ -56,27 +56,27 @@ plt.ylabel('GWdc')
 plt.legend(['PV', 'Storage'])
 plt.axis([2015, 2050, 0, np.max(results_df['pv_kw_cum']/1e6*1.2)])
 
-##%%
-#plt.figure(1)
-#ratio = results_df['batt_kw_ann'] / results_df['pv_kw_ann']
-#plt.plot(results_df.index+1, ratio)
-#plt.grid(True)
-##%%
-#plt.figure(2)
-#plt.plot(results_df.index+1, results_df['pv_kw_cum']/1000)
-#plt.plot(results_df.index+1, results_df['pv_kw_cum_res']/1000)
-#plt.plot(results_df.index+1, results_df['pv_kw_cum_com']/1000)
-#plt.plot(results_df.index+1, results_df['pv_kw_cum_ind']/1000)
-#plt.legend(['total', 'res', 'com', 'ind'])
-#plt.grid(True)
-#
-##%%
-#plt.figure(3)
-#plt.plot(results_df.index+1, results_df['batt_kwh_cum']/1000)
-#plt.plot(results_df.index+1, results_df['batt_kwh_cum_res']/1000)
-#plt.plot(results_df.index+1, results_df['batt_kwh_cum_com']/1000)
-#plt.plot(results_df.index+1, results_df['batt_kwh_cum_ind']/1000)
-#plt.legend(['total', 'res', 'com', 'ind'])
-#plt.grid(True)
+#%%
+plt.figure(1)
+ratio = results_df['batt_kw_ann'] / results_df['pv_kw_ann']
+plt.plot(results_df.index+1, ratio)
+plt.grid(True)
+#%%
+plt.figure(2)
+plt.plot(results_df.index+1, results_df['pv_kw_cum']/1000)
+plt.plot(results_df.index+1, results_df['pv_kw_cum_res']/1000)
+plt.plot(results_df.index+1, results_df['pv_kw_cum_com']/1000)
+plt.plot(results_df.index+1, results_df['pv_kw_cum_ind']/1000)
+plt.legend(['total', 'res', 'com', 'ind'])
+plt.grid(True)
+
+#%%
+plt.figure(3)
+plt.plot(results_df.index+1, results_df['batt_kwh_cum']/1000)
+plt.plot(results_df.index+1, results_df['batt_kwh_cum_res']/1000)
+plt.plot(results_df.index+1, results_df['batt_kwh_cum_com']/1000)
+plt.plot(results_df.index+1, results_df['batt_kwh_cum_ind']/1000)
+plt.legend(['total', 'res', 'com', 'ind'])
+plt.grid(True)
 
 
