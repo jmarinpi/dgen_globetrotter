@@ -525,7 +525,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
             con.commit()
 
             # get the rates
-            sql = """SELECT agent_id, eia_id, rate_id_alias, rate_type_tou, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr
+            sql = """SELECT agent_id, rate_id_alias, rate_type_tou, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr
                    FROM  %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s a""" % inputs
             df_sector = pd.read_sql(sql, con, coerce_float = False)
             df_list.append(df_sector)
