@@ -95,4 +95,30 @@ owner to "diffusion-writers";
 alter table diffusion_shared.urdb3_rate_sam_jsons_20170103
 add primary key (rate_id_alias);
 
+
+
+
+-- Add county id
+alter table diffusion_shared.cnty_util_type_weights_com
+add column county_id bigint;
+update diffusion_shared.cnty_util_type_weights_com a
+set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips)
+
+alter table diffusion_shared.cnty_util_type_weights_res
+add column county_id bigint;
+update diffusion_shared.cnty_util_type_weights_res a
+set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips)
+
+alter table diffusion_shared.cnty_util_type_weights_ind
+add column county_id bigint;
+update diffusion_shared.cnty_util_type_weights_ind a
+set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips)
+
+alter table diffusion_shared.cntys_ranked_rates_lkup_20170103
+add column county_id bigint;
+update diffusion_shared.cntys_ranked_rates_lkup_20170103 a
+set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips)
+
+
+
 -- TODO -- rename the same_min_max_2 table and document py code in 4_ sql

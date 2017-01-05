@@ -255,6 +255,7 @@ def get_sam_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode
     # NOTE: This function creates a lookup table for the agents in each sector, providing
     #       the county_id and bin_id for each agent, along with the rate_id_alias and rate_source.
     #       This information is used in "get_electric_rate_tariffs" to load in the actual rate tariff for each agent.
+    # Note -- this is not used in storage
 
     inputs = locals().copy()
        
@@ -430,9 +431,10 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                             WITH a AS
                             (
                                 -- Unnest Rates t
-                                    SELECT a.agent_id, a.tract_id_alias, a.max_demand_kw, a.avg_monthly_kwh,
+                                    SELECT a.agent_id, a.tract_id_alias, a.county_id, a.max_demand_kw, a.avg_monthly_kwh,
                                         b.rate_id_alias as rate_id_alias,
                                         b.rate_rank as rate_rank,
+                                        b.eia_id,
                                         b.rank_utility_type,
                                         b.rate_type_tou,
                                         b.max_demand_kw as rate_max_demand_kw,
@@ -441,8 +443,8 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                                         b.min_energy_kwh as rate_min_energy_kwh,
                                         b.sector as rate_sector
                                     FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
-                                    LEFT JOIN diffusion_shared.tracts_ranked_rates_lkup_20161005 b  --  *******
-                                            ON a.tract_id_alias = b.tract_id_alias
+                                    LEFT JOIN diffusion_shared.cntys_ranked_rates_lkup_20170103 b  --  *******
+                                            ON a.county_id = b.county_id
                                             AND a.util_type = b.rank_utility_type
                         ),""" %inputs
 
@@ -494,7 +496,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                                 FROM b
                         )"""
 
-            sql3 = """ SELECT agent_id, rate_id_alias, rank, rate_type_tou
+            sql3 = """ SELECT agent_id, eia_id, rate_id_alias, rank, rate_type_tou
                         FROM c
                         WHERE rank = 1
                         );"""
@@ -504,7 +506,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
             con.commit()
 
             # get the rates
-            sql = """SELECT agent_id, rate_id_alias, rate_type_tou, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr
+            sql = """SELECT agent_id, eia_id, rate_id_alias, rate_type_tou, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr
                    FROM  %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s a""" % inputs
             df_sector = pd.read_sql(sql, con, coerce_float = False)
             df_list.append(df_sector)
@@ -565,10 +567,10 @@ def get_electric_rates_json(con, unique_rate_ids):
     inputs['rate_id_list'] = inputs['rate_id_list'].replace("L", "")
     
     # get (only the required) rate jsons from postgres
-    sql = """SELECT a.rate_id_alias, b.rate_name, a.json as rate_json
-             FROM diffusion_shared.urdb3_rate_sam_jsons_20161005 a
-             LEFT JOIN diffusion_shared.urdb3_data_20161005 b
-             ON a.rate_id_alias = b.rate_id_alias
+    sql = """SELECT a.rate_id_alias, a.rate_name, a.eia_id, a.json as rate_json
+             FROM diffusion_shared.urdb3_rate_sam_jsons_20170103 a
+             --LEFT JOIN diffusion_shared.urdb3_rate_sam_jsons_20170103 b
+             --ON a.rate_id_alias = b.rate_id_alias
              WHERE a.rate_id_alias in (%(rate_id_list)s);""" % inputs
     df = pd.read_sql(sql, con, coerce_float=False)
 

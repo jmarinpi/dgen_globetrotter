@@ -208,9 +208,11 @@ class FancyNamedRange(object):
             out_df = self.data_frame[columns].T
         else:
             out_df = self.data_frame[columns]
-            
-        out_df.to_csv(s, delimiter = ',', index = index, header = header)
-        
+
+        try:
+            out_df.to_csv(s, delimiter = ',', index = index, header = header)
+        except:
+            out_df.to_csv(s, index=index, header=header)
         s.seek(0)
         
         return s

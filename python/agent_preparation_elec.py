@@ -440,8 +440,8 @@ def sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_reg
                            array_agg(b.utility_id ORDER BY b.utility_id) as utility_ids,
                            array_agg(b.util_type_weight ORDER BY b.utility_id)  as util_type_weights
                     FROM %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s a
-                    LEFT JOIN diffusion_shared.tract_util_type_weights_%(sector_abbr)s b
-                        ON a.tract_id_alias = b.tract_id_alias
+                    LEFT JOIN diffusion_shared.cnty_util_type_weights_%(sector_abbr)s b
+                        ON a.county_id = b.county_id
                         AND b.util_type_weight > 0 --NOTE: these should actually be removed from the lookup table   **
                     GROUP BY a.agent_id
                 ),
@@ -480,7 +480,7 @@ def sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_reg
                             WHEN util_id = 4 THEN 'Other'
                        END as utility_type
                 FROM sample a;""" % inputs
-     #TODO--fix nulls
+    #TODO--fix nulls
     #TODO -change utility names to shorthand
     p_run(pg_conn_string, sql, county_chunks, pool)
 
