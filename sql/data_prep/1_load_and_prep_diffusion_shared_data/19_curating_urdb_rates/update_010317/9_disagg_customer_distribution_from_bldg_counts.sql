@@ -860,24 +860,3 @@ diffusion_shared.tract_util_type_weights_
 	where util_type_weight is null;
 
 -- Update Type utility names to short hand
-	update diffusion_data_shared.cnty_util_type_weight_res
-	set utility_type = case 
-		when utility_type = 'Investor Owned' then 'IOU'
-		when utility_type = 'Other' then 'Other'
-		when utility_type = 'Municipal' then 'Muni'
-		when utility_type = 'Cooperative' then 'Coop'
-		end;
-	update diffusion_data_shared.cnty_util_type_weight_com
-	set utility_type = case 
-		when utility_type = 'Investor Owned' then 'IOU'
-		when utility_type = 'Other' then 'Other'
-		when utility_type = 'Municipal' then 'Muni'
-		when utility_type = 'Cooperative' then 'Coop'
-		end;
-	update diffusion_data_shared.cnty_util_type_weight_ind
-	set utility_type = case 
-		when utility_type = 'Investor Owned' then 'IOU'
-		when utility_type = 'Other' then 'Other'
-		when utility_type = 'Municipal' then 'Muni'
-		when utility_type = 'Cooperative' then 'Coop'
-		end;

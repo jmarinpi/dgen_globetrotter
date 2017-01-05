@@ -515,7 +515,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                                 FROM b
                         )"""
 
-            sql3 = """ SELECT agent_id, eia_id, rate_id_alias, rank, rate_type_tou
+            sql3 = """ SELECT agent_id, rate_id_alias, rank, rate_type_tou
                         FROM c
                         WHERE rank = 1
                         );"""
