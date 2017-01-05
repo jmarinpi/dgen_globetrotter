@@ -119,6 +119,8 @@ add column county_id bigint;
 update diffusion_shared.cntys_ranked_rates_lkup_20170103 a
 set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips)
 
-
+-- Add eia_id to json
+update diffusion_shared.urdb3_rate_sam_jsons_20170103
+set json = (trim( trailing '}' from json::text) || ', "eia_id":' ||eia_id||'}')::json
 
 -- TODO -- rename the same_min_max_2 table and document py code in 4_ sql
