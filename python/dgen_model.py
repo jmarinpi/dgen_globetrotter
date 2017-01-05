@@ -586,6 +586,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 solar_cf_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
                 
                 pca_reg_cum_capacities = pd.DataFrame(index=pca_reg_list)
+                pca_reg_cum_batt_kw = pd.DataFrame(index=pca_reg_list)
+                pca_reg_cum_batt_kwh = pd.DataFrame(index=pca_reg_list)
 
 #                storage_dispatch_df_year[['pca_reg', 'year']] = year_and_reg_set
 #                storage_dispatch_df_all_adopters[['pca_reg', 'year']] = year_and_reg_set
@@ -827,9 +829,20 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # TODO: rewrite this using agents class, once above is handled
                     
                     pca_reg_cum_capacities[year] = pca_reg_cum_capacities_year['pv_kw_cum']
-
                     pca_reg_cum_capacities.to_csv(out_scen_path + '/pv_capacity_by_pca_and_year.csv', index_label='pca_reg')                     
                     
+                    agent_cum_batt_kw = df[[ 'pca_reg', 'batt_kw_cum']]
+                    agent_cum_batt_kwh = df[[ 'pca_reg', 'batt_kwh_cum']]
+
+                    pca_reg_cum_batt_kw_year = agent_cum_batt_kw.groupby(by='pca_reg').sum()
+                    pca_reg_cum_batt_kwh_year = agent_cum_batt_kwh.groupby(by='pca_reg').sum()
+                    
+                    pca_reg_cum_batt_kw[year] = pca_reg_cum_batt_kw_year['batt_kw_cum']
+                    pca_reg_cum_batt_kw.to_csv(out_scen_path + '/batt_kw_by_pca_and_year.csv', index_label='pca_reg')                     
+                    
+                    pca_reg_cum_batt_kwh[year] = pca_reg_cum_batt_kwh_year['batt_kwh_cum']
+                    pca_reg_cum_batt_kwh.to_csv(out_scen_path + '/batt_kwh_by_pca_and_year.csv', index_label='pca_reg') 
+
                     #==========================================================================================================
                     # WRITE OUTPUTS
                     #==========================================================================================================   
@@ -1277,7 +1290,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             datfunc.index_output_table(con, cur, scenario_settings.schema)
             
             # write reeds mode outputs to csvs in case they're needed
-            reedsfunc.write_reeds_offline_mode_data(scenario_settings.schema, con, scenario_settings.techs, out_scen_path)
+            # these functions have been superceded by midstream processing
+#            reedsfunc.write_reeds_offline_mode_data(scenario_settings.schema, con, scenario_settings.techs, out_scen_path)
             
             # create output html report                
             datfunc.create_scenario_report(scenario_settings.techs, scenario_settings.schema, scenario_settings.scen_name, out_scen_path, cur, con, model_settings.Rscript_path, model_settings.pg_params_file)
