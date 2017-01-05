@@ -584,6 +584,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 generation_new_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
                 generation_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
                 solar_cf_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
+                
+                pca_reg_cum_capacities = pd.DataFrame(index=pca_reg_list)
 
 #                storage_dispatch_df_year[['pca_reg', 'year']] = year_and_reg_set
 #                storage_dispatch_df_all_adopters[['pca_reg', 'year']] = year_and_reg_set
@@ -783,7 +785,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Aggregate PV capacity factors
                     #==========================================================================================================   
                     # TODO: rewrite this using agents class, once above is handled
-#                    agent_capacities = df[['pca_reg', 'resource_index_solar', 'new_pv_kw']]
                     if is_first_year:
                         agent_generation = np.vstack(df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(df['pv_kw_cum']).reshape(len(df), 1)
                     else:
@@ -794,8 +795,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agent_generation['year'] = year
                     
                     agent_cum_capacities = df[[ 'pca_reg', 'pv_kw_cum']]
-                    pca_reg_cum_capacities = agent_cum_capacities.groupby(by='pca_reg').sum()
-                    pca_reg_cum_capacities['pca_reg'] = pca_reg_cum_capacities.index
+                    pca_reg_cum_capacities_year = agent_cum_capacities.groupby(by='pca_reg').sum()
+                    pca_reg_cum_capacities_year['pca_reg'] = pca_reg_cum_capacities_year.index
                     
                     generation_new_adopters = generation_new_adopters.append(agent_generation)
                     
@@ -808,7 +809,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     generation_all_adopters_year['year'] = year
                     
                     solar_cf_all_adopters_year = generation_all_adopters_year
-                    solar_cf_all_adopters_year = pd.merge(generation_all_adopters_year, pca_reg_cum_capacities, on='pca_reg')
+                    solar_cf_all_adopters_year = pd.merge(generation_all_adopters_year, pca_reg_cum_capacities_year, on='pca_reg')
                     solar_cf_all_adopters_year[hour_list] = np.array(solar_cf_all_adopters_year[hour_list]) / np.array(solar_cf_all_adopters_year['pv_kw_cum']).reshape(len(solar_cf_all_adopters_year),1)        
                     solar_cf_all_adopters_year = solar_cf_all_adopters_year.fillna(0)
                     
@@ -819,6 +820,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     generation_all_adopters = generation_all_adopters.append(generation_all_adopters_year)
                     generation_all_adopters = generation_all_adopters[['pca_reg', 'year'] + hour_list]
                     generation_all_adopters.to_csv(out_scen_path + '/pv_generation_by_pca_and_year.csv', index=False)                     
+                    
+                    #==========================================================================================================
+                    # Aggregate PV capacity by reeds region
+                    #==========================================================================================================   
+                    # TODO: rewrite this using agents class, once above is handled
+                    
+                    pca_reg_cum_capacities[year] = pca_reg_cum_capacities_year['pv_kw_cum']
+
+                    pca_reg_cum_capacities.to_csv(out_scen_path + '/pv_capacity_by_pca_and_year.csv', index_label='pca_reg')                     
                     
                     #==========================================================================================================
                     # WRITE OUTPUTS
