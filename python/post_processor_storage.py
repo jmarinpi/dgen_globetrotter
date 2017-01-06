@@ -20,9 +20,10 @@ import matplotlib.pyplot as plt
 
 
 
-agent_df_dir = 'agent_df_pickles'
+agent_df_dir = 'c:/users/pgagnon/desktop/diffusion/runs'
+run_name = '/results_20170105_170609'
 
-years = np.arange(2014,2017,2)
+years = np.arange(2014,2041,2)
 
 
 sectors = ['res', 'com', 'ind']
@@ -32,7 +33,7 @@ results_df = pd.DataFrame(index=years, columns=cols)
 
 for year in years:
     print year
-    df_year = pd.read_pickle('%s/agent_df_%s.pkl' % (agent_df_dir, year))
+    df_year = pd.read_pickle('%s/agent_df_%s.pkl' % (agent_df_dir+run_name+'/BAU', year))
     results_df.loc[year, 'pv_kw_cum'] = np.sum(df_year['pv_kw_cum'])
     results_df.loc[year, 'batt_kwh_cum'] = np.sum(df_year['batt_kwh_cum'])
     results_df.loc[year, 'pv_kw_ann'] = np.sum(df_year['new_pv_kw'])

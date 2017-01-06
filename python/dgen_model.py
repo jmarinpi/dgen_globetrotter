@@ -551,18 +551,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 agents_base = agents_base.filter('tech in %s' % scenario_settings.techs)
                 # store canned agents (if in setup_develop mode)
                 datfunc.setup_canned_agents(model_settings.mode, agents_base, scenario_settings.tech_mode, 'both')
-                
-                # temporary patch until we get DC tariffs into the model
-                # df = agents_base.dataframe
-                # dc_agents = df[df['state_abbr']=='DC']
-                # for agent in dc_agents['agent_id']:
-                #     rates_rank_df.loc[len(rates_rank_df)+1] = [agent, np.array(rates_rank_df['rate_id_alias'])[0], False, 'com']
-                
+                 
                 # check rate coverage
                 agent_mutation_elec.check_rate_coverage(agents_base.dataframe, rates_rank_df, rates_json_df)
-                
                 #==========================================================================================================
-                # Set up dataframe to record aggregated storage dispatch trajectories
+                # Set up dataframe to record aggregated results
                 #==========================================================================================================    
                 pca_reg_list = np.unique(np.array(agents_base.dataframe['pca_reg']))
                 
@@ -584,12 +577,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 generation_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
                 solar_cf_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
                 
-                pca_reg_cum_capacities = pd.DataFrame(index=pca_reg_list)
+                pca_reg_cum_pv_kw = pd.DataFrame(index=pca_reg_list)
                 pca_reg_cum_batt_kw = pd.DataFrame(index=pca_reg_list)
                 pca_reg_cum_batt_kwh = pd.DataFrame(index=pca_reg_list)
-
-#                storage_dispatch_df_year[['pca_reg', 'year']] = year_and_reg_set
-#                storage_dispatch_df_all_adopters[['pca_reg', 'year']] = year_and_reg_set
                 
                 #==============================================================================
                 # RESOURCE DATA
@@ -599,9 +589,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_solar_capacity_factor_profile, (normalized_hourly_resource_solar_df, )).compute()
 
 #                normalized_hourly_resource_wind_df = agent_mutation_elec.get_normalized_hourly_resource_wind(con, scenario_settings.schema, scenario_settings.sectors, cur, agents_base, scenario_settings.techs)
-                # apply the index that corresponds to the agent's solar resource
-#                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_normalized_hourly_resource_index_solar, (normalized_hourly_resource_solar_df, scenario_settings.techs)).compute()
-                
+
                 #==============================================================================
                 # SET BATTERY REPLACEMENT YEAR
                 #==============================================================================
@@ -775,13 +763,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     storage_dispatch_df_all_adopters_year = dispatches_with_deg.groupby(by='pca_reg').sum()
                     storage_dispatch_df_all_adopters_year['pca_reg'] = storage_dispatch_df_all_adopters_year.index
-#                    storage_dispatch_df_all_adopters_year = storage_dispatch_df_all_adopters_year.reset_index
                     storage_dispatch_df_all_adopters_year['year'] = year
                     
                     storage_dispatch_df_all_adopters = storage_dispatch_df_all_adopters.append(storage_dispatch_df_all_adopters_year)
                     storage_dispatch_df_all_adopters = storage_dispatch_df_all_adopters[['pca_reg', 'year'] + hour_list]
-                    storage_dispatch_df_all_adopters.to_csv(out_scen_path + '/dispatch_by_pca_and_year.csv') 
-                    
+                    storage_dispatch_df_all_adopters.to_csv(out_scen_path + '/dispatch_by_pca_and_year_wide.csv') 
+                    storage_dispatch_df_all_adopters_tidy = pd.melt(storage_dispatch_df_all_adopters, id_vars=['pca_reg', 'year'], value_vars=hour_list, var_name='hour', value_name='dispatch_delta_kw')
+                    storage_dispatch_df_all_adopters_tidy.to_csv(out_scen_path + '/dispatch_by_pca_and_year.csv') 
+
+
                     #==========================================================================================================
                     # Aggregate PV capacity factors
                     #==========================================================================================================   
@@ -796,8 +786,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agent_generation['year'] = year
                     
                     agent_cum_capacities = df[[ 'pca_reg', 'pv_kw_cum']]
-                    pca_reg_cum_capacities_year = agent_cum_capacities.groupby(by='pca_reg').sum()
-                    pca_reg_cum_capacities_year['pca_reg'] = pca_reg_cum_capacities_year.index
+                    pca_reg_cum_pv_kw_year = agent_cum_capacities.groupby(by='pca_reg').sum()
+                    pca_reg_cum_pv_kw_year['pca_reg'] = pca_reg_cum_pv_kw_year.index
                     
                     generation_new_adopters = generation_new_adopters.append(agent_generation)
                     
@@ -810,25 +800,27 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     generation_all_adopters_year['year'] = year
                     
                     solar_cf_all_adopters_year = generation_all_adopters_year
-                    solar_cf_all_adopters_year = pd.merge(generation_all_adopters_year, pca_reg_cum_capacities_year, on='pca_reg')
+                    solar_cf_all_adopters_year = pd.merge(generation_all_adopters_year, pca_reg_cum_pv_kw_year, on='pca_reg')
                     solar_cf_all_adopters_year[hour_list] = np.array(solar_cf_all_adopters_year[hour_list]) / np.array(solar_cf_all_adopters_year['pv_kw_cum']).reshape(len(solar_cf_all_adopters_year),1)        
                     solar_cf_all_adopters_year = solar_cf_all_adopters_year.fillna(0)
                     
                     solar_cf_all_adopters = solar_cf_all_adopters.append(solar_cf_all_adopters_year)
                     solar_cf_all_adopters = solar_cf_all_adopters[['pca_reg', 'year'] + hour_list]
-                    solar_cf_all_adopters.to_csv(out_scen_path + '/pv_cf_by_pca_and_year.csv', index=False)                     
+                    solar_cf_all_adopters.to_csv(out_scen_path + '/dpv_cf_by_pca_and_year_wide.csv', index=False)  
+                    solar_cf_all_adopters_tidy = pd.melt(solar_cf_all_adopters, id_vars=['pca_reg', 'year'], value_vars=hour_list, var_name='hour', value_name='dpv_capacity_factor')
+                    solar_cf_all_adopters_tidy.to_csv(out_scen_path + '/dpv_cf_by_pca_and_year.csv') 
 
-                    generation_all_adopters = generation_all_adopters.append(generation_all_adopters_year)
-                    generation_all_adopters = generation_all_adopters[['pca_reg', 'year'] + hour_list]
-                    generation_all_adopters.to_csv(out_scen_path + '/pv_generation_by_pca_and_year.csv', index=False)                     
+#                    generation_all_adopters = generation_all_adopters.append(generation_all_adopters_year)
+#                    generation_all_adopters = generation_all_adopters[['pca_reg', 'year'] + hour_list]
+#                    generation_all_adopters.to_csv(out_scen_path + '/pv_generation_by_pca_and_year.csv', index=False)                     
                     
                     #==========================================================================================================
                     # Aggregate PV capacity by reeds region
                     #==========================================================================================================   
                     # TODO: rewrite this using agents class, once above is handled
                     
-                    pca_reg_cum_capacities[year] = pca_reg_cum_capacities_year['pv_kw_cum']
-                    pca_reg_cum_capacities.to_csv(out_scen_path + '/pv_capacity_by_pca_and_year.csv', index_label='pca_reg')                     
+                    pca_reg_cum_pv_kw[year] = pca_reg_cum_pv_kw_year['pv_kw_cum']
+                    pca_reg_cum_pv_kw.to_csv(out_scen_path + '/pv_kw_by_pca_and_year.csv', index_label='pca_reg')                     
                     
                     agent_cum_batt_kw = df[[ 'pca_reg', 'batt_kw_cum']]
                     agent_cum_batt_kwh = df[[ 'pca_reg', 'batt_kwh_cum']]

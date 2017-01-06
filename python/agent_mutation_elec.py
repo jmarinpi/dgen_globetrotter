@@ -549,10 +549,22 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def check_rate_coverage(dataframe, rates_rank_df, rates_json_df):
     
-    # check that all agents have at least one rate
+    # assign a tariff to agents that are missing one
+    # TODO: remove this once tariff selection process is fail-proof
     missing_agents =  list(set(dataframe['agent_id']).difference(set(rates_rank_df['agent_id'])))
     if len(missing_agents) > 0:
+        for missing_agent_id in missing_agents:
+            agent_row = dataframe[dataframe['agent_id']==missing_agent_id][['agent_id', 'sector_abbr']]
+            agent_row['rate_id_alias'] = rates_rank_df.loc[0, 'rate_id_alias']
+            agent_row['rate_type_tou'] = rates_rank_df.loc[0, 'rate_type_tou']
+            rates_rank_df = rates_rank_df.append(agent_row)
+            
+
+    # check that all agents have at least one rate
+    missing_agents =  list(set(dataframe['agent_id']).difference(set(rates_rank_df['agent_id'])))
+    if len(missing_agents) > 0:            
         raise ValueError('Some agents are missing electric rates, including the following agent_ids: %s' % missing_agents)
+
 
     # check that all rate_id_aliases have a nonnull rate json
     # check for empty dictionary

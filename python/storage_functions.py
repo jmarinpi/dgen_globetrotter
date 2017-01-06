@@ -241,51 +241,26 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
     #=========================================================================#
     # Tariff selection
     #=========================================================================#
-    # Temporary list of rates to ignore
-    # TODO remove this when tariffs are updated
-    tariffs_to_ignore = np.array([3956, 3962, 3963, 3964])  
+    # Temporary list of rates to ignore 
 
     if len(agent_rate_list > 1):
         # determine which of the tariffs has the cheapest cost of electricity without a system
         agent_rate_list['bills'] = None
         for index in agent_rate_list.index:
-            rate_id = agent_rate_list.loc[index, 'rate_id_alias'] 
-            tariff_dict = rates_json_df.loc[rate_id, 'rate_json']
+            tariff_id = agent_rate_list.loc[index, 'rate_id_alias'] 
+            tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
             tariff = tFuncs.Tariff(dict_obj=tariff_dict)
-            
-            #if np.any(rate_id==np.array([4097, 4531, 5274])):
-            if tariff.e_n == 0 or np.any(rate_id==tariffs_to_ignore):       
-                print "ignored tariff:", rate_id
-                agent_rate_list.loc[index, 'bills'] = 9999999999                
-            else:
-                # TODO: remove this once tariffs are reloaded
-                # temp fix because rate jsons were built incorrectly, and skipping 
-                # a set of tariffs that will eventually be removed
-                tariff.d_flat_levels = np.zeros([1, 12]) + tariff.d_flat_levels[0,0]
-                tariff.d_flat_prices = np.zeros([1, 12]) + tariff.d_flat_prices[0,0]
-                tariff.coincident_peak_exists = False
-                bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
-                agent_rate_list.loc[index, 'bills'] = bill    
+            bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
+            agent_rate_list.loc[index, 'bills'] = bill    
     
     # Select the tariff that had the cheapest electricity. Note that there is
     # currently no rate switching, if it would be cheaper once a system is 
     # installed. This is currently for computational reasons.
-    rate_id = agent_rate_list.loc[agent_rate_list['bills'].idxmin(), 'rate_id_alias']
-    tariff_dict = rates_json_df.loc[rate_id, 'rate_json']
+    tariff_id = agent_rate_list.loc[agent_rate_list['bills'].idxmin(), 'rate_id_alias']
+    tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
     tariff = tFuncs.Tariff(dict_obj=tariff_dict)
-    tariff.d_flat_levels = np.zeros([1, 12]) + tariff.d_flat_levels[0,0]
-    tariff.d_flat_prices = np.zeros([1, 12]) + tariff.d_flat_prices[0,0]
-    tariff.coincident_peak_exists = False
 
     original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
-    
-    # Recalculate the e_max_difference
-    # TODO: remove once tariffs are reloaded    
-    e_12by24_max_prices_wkday = tariff.e_prices_no_tier[tariff.e_wkday_12by24]
-    e_12by24_max_prices_wkend = tariff.e_prices_no_tier[tariff.e_wkend_12by24]
-    e_max_price_differential_wkday = np.max(e_12by24_max_prices_wkday, 1) - np.min(e_12by24_max_prices_wkday, 1)
-    e_max_price_differential_wkend = np.max(e_12by24_max_prices_wkend, 1) - np.min(e_12by24_max_prices_wkend, 1)
-    tariff.e_max_difference = np.max([e_max_price_differential_wkday, e_max_price_differential_wkend])
     
     #=========================================================================#
     # Estimate bill savings revenue from a set of solar+storage system sizes
@@ -456,7 +431,8 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
                     'npv':cf_results_opt['npv'][0],
                     'cash_flow':cf_results_opt['cf'][0,:],
                     'system_built':system_built_bool,
-                    'batt_dispatch_profile':accurate_results['batt_dispatch_profile']}
+                    'batt_dispatch_profile':accurate_results['batt_dispatch_profile'],
+                    'tariff_id':tariff_id}
              
     return results_dict
     
