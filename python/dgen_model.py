@@ -767,9 +767,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     storage_dispatch_df_all_adopters = storage_dispatch_df_all_adopters.append(storage_dispatch_df_all_adopters_year)
                     storage_dispatch_df_all_adopters = storage_dispatch_df_all_adopters[['pca_reg', 'year'] + hour_list]
-                    storage_dispatch_df_all_adopters.to_csv(out_scen_path + '/dispatch_by_pca_and_year_wide.csv') 
+                    if year==scenario_settings.model_years[-1]: storage_dispatch_df_all_adopters.to_csv(out_scen_path + '/dispatch_by_pca_and_year_wide.csv') 
                     storage_dispatch_df_all_adopters_tidy = pd.melt(storage_dispatch_df_all_adopters, id_vars=['pca_reg', 'year'], value_vars=hour_list, var_name='hour', value_name='dispatch_delta_kw')
-                    storage_dispatch_df_all_adopters_tidy.to_csv(out_scen_path + '/dispatch_by_pca_and_year.csv') 
+                    if year==scenario_settings.model_years[-1]:storage_dispatch_df_all_adopters_tidy.to_csv(out_scen_path + '/dispatch_by_pca_and_year.csv') 
 
 
                     #==========================================================================================================
@@ -806,9 +806,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     solar_cf_all_adopters = solar_cf_all_adopters.append(solar_cf_all_adopters_year)
                     solar_cf_all_adopters = solar_cf_all_adopters[['pca_reg', 'year'] + hour_list]
-                    solar_cf_all_adopters.to_csv(out_scen_path + '/dpv_cf_by_pca_and_year_wide.csv', index=False)  
+                    if year==scenario_settings.model_years[-1]:solar_cf_all_adopters.to_csv(out_scen_path + '/dpv_cf_by_pca_and_year_wide.csv', index=False)  
                     solar_cf_all_adopters_tidy = pd.melt(solar_cf_all_adopters, id_vars=['pca_reg', 'year'], value_vars=hour_list, var_name='hour', value_name='dpv_capacity_factor')
-                    solar_cf_all_adopters_tidy.to_csv(out_scen_path + '/dpv_cf_by_pca_and_year.csv') 
+                    if year==scenario_settings.model_years[-1]:solar_cf_all_adopters_tidy.to_csv(out_scen_path + '/dpv_cf_by_pca_and_year.csv') 
 
 #                    generation_all_adopters = generation_all_adopters.append(generation_all_adopters_year)
 #                    generation_all_adopters = generation_all_adopters[['pca_reg', 'year'] + hour_list]
@@ -820,7 +820,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # TODO: rewrite this using agents class, once above is handled
                     
                     pca_reg_cum_pv_kw[year] = pca_reg_cum_pv_kw_year['pv_kw_cum']
-                    pca_reg_cum_pv_kw.to_csv(out_scen_path + '/pv_kw_by_pca_and_year.csv', index_label='pca_reg')                     
+                    pca_reg_cum_pv_kw.to_csv(out_scen_path + '/dpv_kw_by_pca_and_year.csv', index_label='pca_reg')                     
                     
                     agent_cum_batt_kw = df[[ 'pca_reg', 'batt_kw_cum']]
                     agent_cum_batt_kwh = df[[ 'pca_reg', 'batt_kwh_cum']]

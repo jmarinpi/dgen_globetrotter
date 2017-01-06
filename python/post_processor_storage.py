@@ -21,9 +21,9 @@ import matplotlib.pyplot as plt
 
 
 agent_df_dir = 'c:/users/pgagnon/desktop/diffusion/runs'
-run_name = '/results_20170105_170609'
+run_name = '/results_20170106_122800'
 
-years = np.arange(2014,2041,2)
+years = np.arange(2014,2025,2)
 
 
 sectors = ['res', 'com', 'ind']
@@ -55,12 +55,14 @@ plt.plot(results_df.index+1, results_df['pv_kw_cum']/1e6, results_df.index+1, re
 plt.grid(True)
 plt.ylabel('GWdc')
 plt.legend(['PV', 'Storage'])
+plt.title('pv and storage adoption')
 plt.axis([2015, 2050, 0, np.max(results_df['pv_kw_cum']/1e6*1.2)])
 
 #%%
 plt.figure(1)
 ratio = results_df['batt_kw_ann'] / results_df['pv_kw_ann']
 plt.plot(results_df.index+1, ratio)
+plt.title('annual ratio of batt_kw/pv_kw')
 plt.grid(True)
 #%%
 plt.figure(2)
@@ -68,6 +70,7 @@ plt.plot(results_df.index+1, results_df['pv_kw_cum']/1000)
 plt.plot(results_df.index+1, results_df['pv_kw_cum_res']/1000)
 plt.plot(results_df.index+1, results_df['pv_kw_cum_com']/1000)
 plt.plot(results_df.index+1, results_df['pv_kw_cum_ind']/1000)
+plt.title('sector breakdown of pv adoption')
 plt.legend(['total', 'res', 'com', 'ind'])
 plt.grid(True)
 
@@ -77,6 +80,7 @@ plt.plot(results_df.index+1, results_df['batt_kwh_cum']/1000)
 plt.plot(results_df.index+1, results_df['batt_kwh_cum_res']/1000)
 plt.plot(results_df.index+1, results_df['batt_kwh_cum_com']/1000)
 plt.plot(results_df.index+1, results_df['batt_kwh_cum_ind']/1000)
+plt.title('sector breakdown of battery adoption')
 plt.legend(['total', 'res', 'com', 'ind'])
 plt.grid(True)
 
