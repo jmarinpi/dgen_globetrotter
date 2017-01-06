@@ -555,8 +555,8 @@ def check_rate_coverage(dataframe, rates_rank_df, rates_json_df):
     if len(missing_agents) > 0:
         for missing_agent_id in missing_agents:
             agent_row = dataframe[dataframe['agent_id']==missing_agent_id][['agent_id', 'sector_abbr']]
-            agent_row['rate_id_alias'] = rates_rank_df.loc[0, 'rate_id_alias']
-            agent_row['rate_type_tou'] = rates_rank_df.loc[0, 'rate_type_tou']
+            agent_row['rate_id_alias'] = np.array(rates_rank_df.loc[0, 'rate_id_alias'])
+            agent_row['rate_type_tou'] = np.array(rates_rank_df.loc[0, 'rate_type_tou'])
             rates_rank_df = rates_rank_df.append(agent_row)
             
 
@@ -577,7 +577,7 @@ def check_rate_coverage(dataframe, rates_rank_df, rates_json_df):
     if (np.nan in rates_json_df['rate_json'].tolist()) == True:
         raise ValueError('rates_json_df contains np.nan objects.')
 
-    return
+    return rates_rank_df
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

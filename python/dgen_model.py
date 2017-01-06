@@ -553,7 +553,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 datfunc.setup_canned_agents(model_settings.mode, agents_base, scenario_settings.tech_mode, 'both')
                  
                 # check rate coverage
-                agent_mutation_elec.check_rate_coverage(agents_base.dataframe, rates_rank_df, rates_json_df)
+                rates_rank_df = agent_mutation_elec.check_rate_coverage(agents_base.dataframe, rates_rank_df, rates_json_df)
                 #==========================================================================================================
                 # Set up dataframe to record aggregated results
                 #==========================================================================================================    

@@ -241,11 +241,9 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
     #=========================================================================#
     # Tariff selection
     #=========================================================================#
-    # Temporary list of rates to ignore 
-
+    agent_rate_list['bills'] = 0.0
     if len(agent_rate_list > 1):
         # determine which of the tariffs has the cheapest cost of electricity without a system
-        agent_rate_list['bills'] = None
         for index in agent_rate_list.index:
             tariff_id = agent_rate_list.loc[index, 'rate_id_alias'] 
             tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
@@ -457,6 +455,9 @@ def system_size_driver(agent_df, deprec_sch_df, rates_rank_df, rates_json_df, n_
             # Filter for list of tariffs available to this agent
             agent_rate_list = rates_rank_df[rates_rank_df['agent_id']==agent_dict[key]['agent_id']].drop_duplicates()
             agent_rate_jsons = rates_json_df[rates_json_df.index.isin(np.array(agent_rate_list['rate_id_alias']))]
+#            if len(agent_rate_list)<1: 
+#                print "agent rate list is zero length"
+#                print agent_dict[key]
             
             future_list.append(executor.submit(calc_system_size_and_financial_performance, 
                                                agent_dict[key],
