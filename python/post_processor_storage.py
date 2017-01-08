@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 agent_df_dir = 'c:/users/pgagnon/desktop/diffusion/runs'
 run_name = '/results_20170106_122800'
 
-years = np.arange(2014,2025,2)
+years = np.arange(2014,2039,2)
 
 
 sectors = ['res', 'com', 'ind']
@@ -70,17 +70,17 @@ plt.plot(results_df.index+1, results_df['pv_kw_cum']/1000)
 plt.plot(results_df.index+1, results_df['pv_kw_cum_res']/1000)
 plt.plot(results_df.index+1, results_df['pv_kw_cum_com']/1000)
 plt.plot(results_df.index+1, results_df['pv_kw_cum_ind']/1000)
-plt.title('sector breakdown of pv adoption')
+plt.title('sector breakdown of MW of pv adoption')
 plt.legend(['total', 'res', 'com', 'ind'])
 plt.grid(True)
 
 #%%
 plt.figure(3)
-plt.plot(results_df.index+1, results_df['batt_kwh_cum']/1000)
-plt.plot(results_df.index+1, results_df['batt_kwh_cum_res']/1000)
-plt.plot(results_df.index+1, results_df['batt_kwh_cum_com']/1000)
-plt.plot(results_df.index+1, results_df['batt_kwh_cum_ind']/1000)
-plt.title('sector breakdown of battery adoption')
+plt.plot(results_df.index+1, results_df['batt_kw_cum']/1000)
+plt.plot(results_df.index+1, results_df['batt_kw_cum_res']/1000)
+plt.plot(results_df.index+1, results_df['batt_kw_cum_com']/1000)
+plt.plot(results_df.index+1, results_df['batt_kw_cum_ind']/1000)
+plt.title('sector breakdown of MW of battery adoption')
 plt.legend(['total', 'res', 'com', 'ind'])
 plt.grid(True)
 
