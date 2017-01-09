@@ -18,7 +18,7 @@ import sys
 #   mode 
 # options are: ['run', 'develop', 'setup_develop']
 #==============================================================================
-mode = 'setup_develop'#'run'
+mode = 'run'
 
 #==============================================================================
 #   get postgres connection parameters
