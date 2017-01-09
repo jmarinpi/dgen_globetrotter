@@ -52,6 +52,9 @@ CREATE TABLE diffusion_data_shared.cntys_ranked_rates_lkup_20170103
 );
 
 
+update diffusion_data_shared.urdb_rates_attrs_lkup_20170103
+set utility_type = 'Investor Owned'
+where eia_id = '15270';
 
 -- Begin Ranking
 SELECT parsel_2('dav-gis','mmooney','mmooney', 'diffusion_data_shared.cnty_util_type_all_potential_combos_20170103', 'gid', 

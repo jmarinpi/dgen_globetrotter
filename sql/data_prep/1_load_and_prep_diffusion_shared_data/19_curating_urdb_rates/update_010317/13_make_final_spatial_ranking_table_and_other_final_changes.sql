@@ -6,7 +6,7 @@ alter table diffusion_data_shared.urdb_rates_attrs_lkup_20170103
 owner to "diffusion-writers";
 
 
-set role "diffusion-writers";
+set role "diffusion-writers"; 
 drop table if exists diffusion_data_shared.cnty_ranked_rates_final_20170103;
 create table diffusion_data_shared.cnty_ranked_rates_final_20170103 as (
 	select 
@@ -30,10 +30,12 @@ create table diffusion_data_shared.cnty_ranked_rates_final_20170103 as (
 	--left join diffusion_data_shared.cnty_to_util_type_lkup b
 	left join diffusion_data_shared.cntys_ranked_rates_lkup_20170103 b --*
 	on a.gid = b.gid
-	left join diffusion_data_shared.urdb_rates_attrs_lkup_20170103 c
+	left join diffusion_data_shared.urdb_rates_attrs_lkup_20170103 c -- ***************
 	on b.rate_util_reg_gid = c.rate_util_reg_gid
 	);
 
+-- Check to make sure DC is accounted for
+select * from diffusion_data_shared.urdb_rates_attrs_lkup_20170103 where eia_id = '15270';
 
 -- Alter table name I randomly made for testing purposes (table has rate type info) 
 	-- Run python code(13A_parse_rate_type_from_json.py) first to excnty rate type json (its 100x faster in py)
@@ -100,29 +102,36 @@ add primary key (rate_id_alias);
 
 -- Add county id
 alter table diffusion_shared.cnty_util_type_weights_com
+set owner to "diffusion-writers";
+alter table diffusion_shared.cnty_util_type_weights_com
 add column county_id bigint;
 update diffusion_shared.cnty_util_type_weights_com a
-set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips)
+set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips);
 
+alter table diffusion_shared.cnty_util_type_weights_res
+set owner to "diffusion-writers";
 alter table diffusion_shared.cnty_util_type_weights_res
 add column county_id bigint;
 update diffusion_shared.cnty_util_type_weights_res a
-set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips)
+set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips);
 
+alter table diffusion_shared.cnty_util_type_weights_res
+set owner to "diffusion-writers";
 alter table diffusion_shared.cnty_util_type_weights_ind
 add column county_id bigint;
 update diffusion_shared.cnty_util_type_weights_ind a
-set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips)
+set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips);
 
+alter table diffusion_shared.cntys_ranked_rates_lkup_20170103
+set owner to "diffusion-writers";
 alter table diffusion_shared.cntys_ranked_rates_lkup_20170103
 add column county_id bigint;
 update diffusion_shared.cntys_ranked_rates_lkup_20170103 a
-set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips)
+set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a.state_fips = b.state_fips and a.county_fips = b.county_fips);
 
 -- Add eia_id to json
 update diffusion_shared.urdb3_rate_sam_jsons_20170103
 set json = (trim( trailing '}' from json::text) || ', "eia_id": "' ||eia_id||'"}')::json
 
-diffusion_shared.cnty_util_type_weights_com
 
 -- TODO -- rename the same_min_max_2 table and document py code in 4_ sql

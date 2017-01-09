@@ -129,3 +129,9 @@ drop table if exists diffusion_data_shared.temp_utils_missing_customer_counts_20
 -- Change owner
 alter table diffusion_data_shared.utils_with_customer_counts_20170103
 owner to "diffusion-writers";
+
+-- Fix utility type issue for DC Rates
+update diffusion_data_shared.utils_with_customer_counts_20170103 
+set utility_type = 'Investor Owned'
+where eia_id = '15270';
+	-- Note -- in the future, we will need to find another way to join utility_type to the table rather than using the previous version of the rates table because if there are new utilities, then we run into this issue

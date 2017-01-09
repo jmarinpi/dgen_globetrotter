@@ -25,7 +25,7 @@ create table diffusion_shared.cnty_util_type_weights_res as (
 
 
 
-set role 'diffusion-writers';
+--set role 'diffusion-writers';
 drop table if exists diffusion_shared.cnty_util_type_weights_com;
 create table diffusion_shared.cnty_util_type_weights_com as (
 	select 
@@ -47,7 +47,7 @@ create table diffusion_shared.cnty_util_type_weights_com as (
 	from diffusion_data_shared.cnty_util_type_weight_missing_cntys_nn
 	where sector = 'C');
 
-set role 'diffusion-writers';
+--set role 'diffusion-writers';
 drop table if exists diffusion_shared.cnty_util_type_weights_ind;
 create table diffusion_shared.cnty_util_type_weights_ind as (
 	select 

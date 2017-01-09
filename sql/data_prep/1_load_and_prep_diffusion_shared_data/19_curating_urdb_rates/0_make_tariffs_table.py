@@ -10,6 +10,10 @@ import codecs
 import json
 import datetime
 
+
+## Note this uses tarrif_functions.py in Pieter Gagnon's storage_functions repo
+
+
 #%%
 class Tariff:
     """
