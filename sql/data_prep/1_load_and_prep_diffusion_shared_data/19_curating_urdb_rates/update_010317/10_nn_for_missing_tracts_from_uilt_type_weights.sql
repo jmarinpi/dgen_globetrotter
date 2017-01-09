@@ -19,7 +19,7 @@
 -- 1. Identify which sector cntys were not assigned to a utility
 	-- Create a table to store these cntys and sector labels
 
-	set role 'diffusion-writers';
+	--set role 'diffusion-writers';
 	drop table if exists diffusion_data_shared.cnty_util_type_weight_missing_cntys;
 	create table diffusion_data_shared.cnty_util_type_weight_missing_cntys as (
 	--Commercial
@@ -88,7 +88,7 @@
 -- 
 
 
-set role 'diffusion-writers';
+--set role 'diffusion-writers';
 drop table if exists diffusion_data_shared.cnty_util_type_weight_missing_cntys_nn;
 create table diffusion_data_shared.cnty_util_type_weight_missing_cntys_nn as (
 with com as (

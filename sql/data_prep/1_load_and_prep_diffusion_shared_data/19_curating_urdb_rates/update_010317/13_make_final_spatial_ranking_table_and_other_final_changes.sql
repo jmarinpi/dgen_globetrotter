@@ -121,6 +121,8 @@ set county_id = (select b.county_id from diffusion_blocks.county_geoms b where a
 
 -- Add eia_id to json
 update diffusion_shared.urdb3_rate_sam_jsons_20170103
-set json = (trim( trailing '}' from json::text) || ', "eia_id":' ||eia_id||'}')::json
+set json = (trim( trailing '}' from json::text) || ', "eia_id": "' ||eia_id||'"}')::json
+
+diffusion_shared.cnty_util_type_weights_com
 
 -- TODO -- rename the same_min_max_2 table and document py code in 4_ sql
