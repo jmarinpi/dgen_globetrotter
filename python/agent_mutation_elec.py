@@ -453,7 +453,6 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
                                     SELECT a.agent_id, a.tract_id_alias, a.county_id, a.max_demand_kw, a.avg_monthly_kwh,
                                         b.rate_id_alias as rate_id_alias,
                                         b.rate_rank as rate_rank,
-                                        b.eia_id,
                                         b.rank_utility_type,
                                         b.rate_type_tou,
                                         b.max_demand_kw as rate_max_demand_kw,
