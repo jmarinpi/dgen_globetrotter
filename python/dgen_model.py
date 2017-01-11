@@ -809,7 +809,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     solar_cf_all_adopters = solar_cf_all_adopters.append(solar_cf_all_adopters_year)
                     solar_cf_all_adopters = solar_cf_all_adopters[['pca_reg', 'year'] + hour_list]
-                    if year==scenario_settings.model_years[-1]:solar_cf_all_adopters.to_csv(out_scen_path + '/dpv_cf_by_pca_and_year_wide.csv', index=False)  
+                    if year==scenario_settings.model_years[-1]:solar_cf_all_adopters.to_csv(out_scen_path + '/dpv_cf_by_pca_and_year.csv', index=False)  
 
                     # TODO: delete these if passing to ReEDS works fine by 2/17
 #                    solar_cf_all_adopters_tidy = pd.melt(solar_cf_all_adopters, id_vars=['pca_reg', 'year'], value_vars=hour_list, var_name='hour', value_name='dpv_capacity_factor')

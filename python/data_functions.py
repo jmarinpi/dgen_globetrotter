@@ -58,7 +58,7 @@ def create_tech_subfolders(out_scen_path, techs, out_subfolders, choose_tech):
 def create_scenario_results_folder(input_scenario, scen_name, scenario_names, out_dir, dup_n = 0):
     
     if scen_name in scenario_names:
-        logger.v("Warning: Scenario name %s is a duplicate. Renaming to %s_%s" % (scen_name, scen_name, dup_n))
+        logger.info("Warning: Scenario name %s is a duplicate. Renaming to %s_%s" % (scen_name, scen_name, dup_n))
         scen_name = "%s_%s" % (scen_name, dup_n)
         dup_n += 1
     scenario_names.append(scen_name)

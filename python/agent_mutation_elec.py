@@ -129,17 +129,36 @@ def apply_tech_performance_solar(dataframe, tech_performance_solar_df):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, batt_replacement_yr, scenario='mid'):        
+def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, batt_replacement_yr, scenario):        
     # TODO: Formalize an assumption about the (additional) decrease in costs
     #       during replacement. Represents that replacement would likely cost
     #       less than a full new installation that year.
 
-    replacement_cost_fraction = 0.75 # Completely arbitrary. Good luck.    
+    replacement_cost_fraction = 0.75 # Completely arbitrary. Good luck.   
     
-    dataframe['batt_cost_per_kw'] = tech_cost_storage_schedules_df.loc[year, 'batt_kw_cost_%s' % scenario]
-    dataframe['batt_cost_per_kwh'] = tech_cost_storage_schedules_df.loc[year, 'batt_kwh_cost_%s' % scenario]
-    dataframe['batt_replace_cost_per_kw'] = tech_cost_storage_schedules_df.loc[year+batt_replacement_yr, 'batt_kw_cost_%s' % scenario] * replacement_cost_fraction
-    dataframe['batt_replace_cost_per_kwh'] = tech_cost_storage_schedules_df.loc[year+batt_replacement_yr, 'batt_kwh_cost_%s' % scenario] * replacement_cost_fraction
+    res_starting_cost_per_kw = 2869.0
+    res_starting_cost_per_kwh = 896.0
+    nonres_starting_cost_per_kw = 1600.0
+    nonres_starting_cost_per_kwh = 500.0
+    
+    storage_ratio_kw = tech_cost_storage_schedules_df.loc[year, 'batt_kw_cost_%s_ratio' % scenario]
+    storage_ratio_kwh = tech_cost_storage_schedules_df.loc[year, 'batt_kwh_cost_%s_ratio' % scenario]
+    res_cost_per_kw = res_starting_cost_per_kw * storage_ratio_kw
+    res_cost_per_kwh = res_starting_cost_per_kwh * storage_ratio_kwh
+    nonres_cost_per_kw = nonres_starting_cost_per_kw * storage_ratio_kw
+    nonres_cost_per_kwh = nonres_starting_cost_per_kwh * storage_ratio_kwh
+    
+    storage_ratio_kw_replace = tech_cost_storage_schedules_df.loc[year+10, 'batt_kw_cost_%s_ratio' % scenario]
+    storage_ratio_kwh_replace = tech_cost_storage_schedules_df.loc[year+10, 'batt_kwh_cost_%s_ratio' % scenario]
+    res_cost_per_kw_replace = res_starting_cost_per_kw * storage_ratio_kw_replace
+    res_cost_per_kwh_replace = res_starting_cost_per_kwh * storage_ratio_kwh_replace
+    nonres_cost_per_kw_replace = nonres_starting_cost_per_kw * storage_ratio_kw_replace
+    nonres_cost_per_kwh_replace = nonres_starting_cost_per_kwh * storage_ratio_kwh_replace
+    
+    dataframe['batt_cost_per_kw'] = np.where(dataframe['sector_abbr']=='res', res_cost_per_kw, nonres_cost_per_kw)
+    dataframe['batt_cost_per_kwh'] = np.where(dataframe['sector_abbr']=='res', res_cost_per_kwh, nonres_cost_per_kwh)
+    dataframe['batt_replace_cost_per_kw'] = np.where(dataframe['sector_abbr']=='res', res_cost_per_kw_replace, nonres_cost_per_kw_replace) * replacement_cost_fraction
+    dataframe['batt_replace_cost_per_kwh'] = np.where(dataframe['sector_abbr']=='res', res_cost_per_kwh_replace, nonres_cost_per_kwh_replace) * replacement_cost_fraction
     dataframe['batt_om'] = 0 # just a placeholder...
 
     
@@ -1426,6 +1445,10 @@ def apply_tech_costs_solar_storage(dataframe, pv_costs_df):
     in_cols = list(dataframe.columns)
     # join the data
     dataframe = pd.merge(dataframe, pv_costs_df, how = 'left', on = ['tech', 'sector_abbr'])
+    
+    # Placeholder for PV O&M, because it doesn't seem to be ingesting from database
+    # TODO: fix this
+    dataframe['fixed_om_dollars_per_kw_per_yr'] = 5.0
     
     # rename, because we have more technologies now, and 'dollars' isn't necessary
     dataframe['inverter_cost_per_kw'] = dataframe['inverter_cost_dollars_per_kw']
