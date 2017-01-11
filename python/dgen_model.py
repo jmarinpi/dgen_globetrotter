@@ -828,9 +828,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     pca_reg_cum_pv_mw.to_csv(out_scen_path + '/dpv_MW_by_pca_and_year.csv', index_label='pca_reg')                     
                     
                     agent_cum_batt_mw = df[[ 'pca_reg', 'batt_kw_cum']]
-                    agent_cum_batt_mw['batt_kw_cum'] = agent_cum_batt_mw['batt_kw_cum'] / 1000.0
+                    agent_cum_batt_mw['batt_mw_cum'] = agent_cum_batt_mw['batt_kw_cum'] / 1000.0
                     agent_cum_batt_mwh = df[[ 'pca_reg', 'batt_kwh_cum']]
-                    agent_cum_batt_mwh['batt_kwh_cum'] = agent_cum_batt_mwh['batt_kwh_cum'] / 1000.0
+                    agent_cum_batt_mwh['batt_mwh_cum'] = agent_cum_batt_mwh['batt_kwh_cum'] / 1000.0
 
                     pca_reg_cum_batt_mw_year = agent_cum_batt_mw.groupby(by='pca_reg').sum()
                     pca_reg_cum_batt_mwh_year = agent_cum_batt_mwh.groupby(by='pca_reg').sum()
