@@ -247,6 +247,8 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
         for index in agent_rate_list.index:
             tariff_id = agent_rate_list.loc[index, 'rate_id_alias'] 
             tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
+            # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
+            if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = tariff_dict['e_levels'] * 30.0
             tariff = tFuncs.Tariff(dict_obj=tariff_dict)
             bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
             agent_rate_list.loc[index, 'bills'] = bill    
@@ -256,6 +258,8 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
     # installed. This is currently for computational reasons.
     tariff_id = agent_rate_list.loc[agent_rate_list['bills'].idxmin(), 'rate_id_alias']
     tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
+    # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
+    if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = tariff_dict['e_levels'] * 30.0
     tariff = tFuncs.Tariff(dict_obj=tariff_dict)
 
     original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
