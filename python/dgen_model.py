@@ -277,52 +277,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         tech_potential_limits_solar_df = agent_mutation_elec.get_tech_potential_limits_solar(con)
                   
 
-
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
-############################ DU Setup #########################################
-
-                elif scenario_settings.tech_mode == 'du':
-                    # create core agent attributes
-                    if model_settings.mode in ['run', 'setup_develop']:
-                        agent_preparation_geo.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
-                                                          scenario_settings.sectors, model_settings.pg_procs, model_settings.pg_conn_string, scenario_settings.random_generator_seed, scenario_settings.end_year)
-
-                    #==========================================================================================================
-                    # CALCULATE TRACT AGGREGATE THERMAL LOAD PROFILE
-                    #==========================================================================================================                                    
-                    # calculate tract demand profiles
-                    demand_supply_geo.calculate_tract_demand_profiles(con, cur, scenario_settings.schema, model_settings.pg_procs, model_settings.pg_conn_string)                        
-                    
-                    #==========================================================================================================
-                    # GET TRACT DISTRIBUTION NEWORK SIZES 
-                    #==========================================================================================================                        
-                    distribution_df = demand_supply_geo.get_distribution_network_data(con, scenario_settings.schema)
-
-                    #==========================================================================================================
-                    # SETUP RESOURCE DATA
-                    #==========================================================================================================
-                    demand_supply_geo.setup_resource_data(cur, con, scenario_settings.schema, scenario_settings.random_generator_seed, model_settings.pg_procs, model_settings.pg_conn_string)
-                    
-                    #==========================================================================================================
-                    # GET BASS DIFFUSION PARAMETERS
-                    #==========================================================================================================
-                    bass_params_df = diffusion_functions_du.get_bass_params_du(con, scenario_settings.schema)
-                    
-                elif scenario_settings.tech_mode == 'ghp':
-                    # create core agent attributes
-                    if model_settings.mode in ['run', 'setup_develop']:
-                        agent_preparation_geo.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
-                                                          scenario_settings.sectors, model_settings.pg_procs, model_settings.pg_conn_string, scenario_settings.random_generator_seed, scenario_settings.end_year)
-
-                    # get state starting capacities                     
-                    state_starting_capacities_df = agent_mutation_ghp.get_state_starting_capacities_ghp(con, scenario_settings.schema)
-                        
-
-    
-            #==========================================================================================================
-            # MODEL TECHNOLOGY DEPLOYMENT    
-            #==========================================================================================================
-    
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 ############################ Elec Deployment ##################################    
     
@@ -551,17 +505,20 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 agents_base = agents_base.filter('tech in %s' % scenario_settings.techs)
                 # store canned agents (if in setup_develop mode)
                 datfunc.setup_canned_agents(model_settings.mode, agents_base, scenario_settings.tech_mode, 'both')
+                # change pca_reg to ba TODO: remove pca_reg in original agent definition
+                agents_base.dataframe['ba'] = agents_base.dataframe['pca_reg']
+                agents_base.dataframe.drop(['pca_reg'], axis=1)
                  
                 # check rate coverage
                 rates_rank_df = agent_mutation_elec.check_rate_coverage(agents_base.dataframe, rates_rank_df, rates_json_df)
                 #==========================================================================================================
-                # Set up dataframe to record aggregated results
+                # Set up dataframes to record aggregated results
                 #==========================================================================================================    
-                pca_reg_list = np.unique(np.array(agents_base.dataframe['pca_reg']))
+                ba_list = np.unique(np.array(agents_base.dataframe['ba']))
                 
-                year_and_reg_set = gFuncs.cartesian([pca_reg_list, scenario_settings.model_years])                
+                year_and_reg_set = gFuncs.cartesian([ba_list, scenario_settings.model_years])                
                 
-                storage_dispatch_df_col_list = list(['pca_reg', 'year'])
+                storage_dispatch_df_col_list = list(['ba', 'year'])
                 hour_list = list()
                 for hour in np.arange(1,8761):
                     hour_list = hour_list + ['H%s' % hour]
@@ -570,16 +527,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 # storage_dispatch_df_year is just the dispatches for agents who adopted that year.
                 # storage_dispatch_df is the total dispatches for all adopters up to that point
-                storage_dispatch_df_new_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
-                storage_dispatch_df_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
+                dispatch_by_ba_and_year = pd.DataFrame(columns = storage_dispatch_df_col_list)
+                dispatch_by_ba_and_year = pd.DataFrame(columns = storage_dispatch_df_col_list)
                 
                 generation_new_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
                 generation_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
-                solar_cf_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
                 
-                pca_reg_cum_pv_mw = pd.DataFrame(index=pca_reg_list)
-                pca_reg_cum_batt_mw = pd.DataFrame(index=pca_reg_list)
-                pca_reg_cum_batt_mwh = pd.DataFrame(index=pca_reg_list)
+                ba_cum_pv_mw = pd.DataFrame(index=ba_list)
+                ba_cum_batt_mw = pd.DataFrame(index=ba_list)
+                ba_cum_batt_mwh = pd.DataFrame(index=ba_list)
                 
                 #==============================================================================
                 # RESOURCE DATA
@@ -587,8 +543,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # get hourly resource
                 normalized_hourly_resource_solar_df = agent_mutation_elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
                 agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_solar_capacity_factor_profile, (normalized_hourly_resource_solar_df, )).compute()
-
-#                normalized_hourly_resource_wind_df = agent_mutation_elec.get_normalized_hourly_resource_wind(con, scenario_settings.schema, scenario_settings.sectors, cur, agents_base, scenario_settings.techs)
 
                 #==============================================================================
                 # SET BATTERY REPLACEMENT YEAR
@@ -652,7 +606,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================       
                     # get technology performance data
                     tech_performance_solar_df = agent_mutation_elec.get_technology_performance_solar(con, scenario_settings.schema, year)
-                    tech_performance_wind_df = agent_mutation_elec.get_technology_performance_wind(con, scenario_settings.schema, year)
                     # apply technology performance data
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_performance_solar, (tech_performance_solar_df, )).compute()
                    
@@ -739,107 +692,67 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # convert back to dataframe
                     df = agents.dataframe
                     
-#                    # I am assuming this is a competition metric.
-                    # TODO: dig in and delete this, since it isn't being used anymore
-#                    df['selected_option'] = True                    
-                    
                     # calculate diffusion based on economics and bass diffusion                   
                     df, market_last_year_df = diffusion_functions_elec.calc_diffusion_storage(df, is_first_year, bass_params) 
 
                     #==========================================================================================================
-                    # Aggregate storage dispatch trajectories
+                    # Write storage dispatch trajectories, to be used for capacity factor aggregations later
                     #==========================================================================================================   
                     # TODO: rewrite this using agents class, once above is handled
                     # Dispatch trajectories are in MW
                     total_dispatches = np.vstack(df['batt_dispatch_profile']).astype(np.float) * np.array(df['new_adopters']).reshape(len(df), 1) / 1000.0
                     total_dispatches_df = pd.DataFrame(total_dispatches, columns = hour_list)
-                    total_dispatches_df['pca_reg'] = df['pca_reg'] #TODO improve this so it is robust against reorder
-                    total_dispatches_df['year'] = year
-                    
-                    storage_dispatch_df_new_adopters = storage_dispatch_df_new_adopters.append(total_dispatches_df)
-                    
-                    deg_scalars = np.tile(np.array(0.982**(storage_dispatch_df_new_adopters['year']-2014)).reshape(len(storage_dispatch_df_new_adopters),1), 8760)
-                    dispatches_with_deg = storage_dispatch_df_new_adopters[hour_list].multiply(deg_scalars)
-                    dispatches_with_deg['pca_reg'] = storage_dispatch_df_new_adopters['pca_reg']
-                    
-                    storage_dispatch_df_all_adopters_year = dispatches_with_deg.groupby(by='pca_reg').sum()
-                    storage_dispatch_df_all_adopters_year['pca_reg'] = storage_dispatch_df_all_adopters_year.index
-                    storage_dispatch_df_all_adopters_year['year'] = year
-                    
-                    storage_dispatch_df_all_adopters = storage_dispatch_df_all_adopters.append(storage_dispatch_df_all_adopters_year)
-                    storage_dispatch_df_all_adopters = storage_dispatch_df_all_adopters[['pca_reg', 'year'] + hour_list]
-                    if year==scenario_settings.model_years[-1]: storage_dispatch_df_all_adopters.to_csv(out_scen_path + '/dispatch_by_pca_and_year_MW.csv') 
+                    total_dispatches_df['ba'] = df['ba'] #TODO improve this so it is robust against reorder
 
-                    # TODO: delete if passing to ReEDS works fine by 2/17
-#                    storage_dispatch_df_all_adopters_tidy = pd.melt(storage_dispatch_df_all_adopters, id_vars=['pca_reg', 'year'], value_vars=hour_list, var_name='hour', value_name='dispatch_delta_kw')
-#                    if year==scenario_settings.model_years[-1]:storage_dispatch_df_all_adopters_tidy.to_csv(out_scen_path + '/dispatch_by_pca_and_year.csv') 
-
+                    total_ba_dispatches_df = total_dispatches_df.groupby(by='ba').sum()
+                    total_ba_dispatches_df['year'] = year
+                    
+                    total_ba_dispatches_df.index.names = ['ba']
+                    total_ba_dispatches_df['ba'] = total_ba_dispatches_df.index.values
+                    total_ba_dispatches_df.to_pickle(out_scen_path + '/total_ba_dispatches_df_%s.pkl' % year)
+                    
 
                     #==========================================================================================================
-                    # Aggregate PV capacity factors
+                    # Write PV generation profiles, to be used for capacity factor aggregations later
                     #==========================================================================================================   
                     # TODO: rewrite this using agents class, once above is handled
                     if is_first_year:
-                        agent_generation = np.vstack(df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(df['pv_kw_cum']).reshape(len(df), 1)
+                        pv_gen_new_adopters = np.vstack(df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(df['pv_kw_cum']).reshape(len(df), 1)
                     else:
-                        agent_generation = np.vstack(df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(df['new_pv_kw']).reshape(len(df), 1)
+                        pv_gen_new_adopters = np.vstack(df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(df['new_pv_kw']).reshape(len(df), 1)
 
-                    agent_generation = pd.DataFrame(agent_generation, columns = hour_list)
-                    agent_generation['pca_reg'] = df['pca_reg'] #TODO improve this so it is robust against reorder
-                    agent_generation['year'] = year
+                    pv_gen_new_adopters = pd.DataFrame(pv_gen_new_adopters, columns = hour_list)
+                    pv_gen_new_adopters['ba'] = df['ba'] #TODO improve this so it is robust against reorder
+                    pv_gen_new_adopters = pv_gen_new_adopters.groupby(by='ba').sum()
+                    pv_gen_new_adopters['year'] = year
                     
-                    agent_cum_capacities = df[[ 'pca_reg', 'pv_kw_cum']]
-                    pca_reg_cum_pv_kw_year = agent_cum_capacities.groupby(by='pca_reg').sum()
-                    pca_reg_cum_pv_kw_year['pca_reg'] = pca_reg_cum_pv_kw_year.index
-                    
-                    generation_new_adopters = generation_new_adopters.append(agent_generation)
-                    
-                    deg_scalars = np.tile(np.array(0.995**(generation_new_adopters['year']-2014)).reshape(len(generation_new_adopters),1), 8760)
-                    generation_with_deg = generation_new_adopters[hour_list].multiply(deg_scalars)
-                    generation_with_deg['pca_reg'] = generation_new_adopters['pca_reg']
-                    
-                    generation_all_adopters_year = generation_with_deg.groupby(by='pca_reg').sum()
-                    generation_all_adopters_year['pca_reg'] = generation_all_adopters_year.index
-                    generation_all_adopters_year['year'] = year
-                    
-                    solar_cf_all_adopters_year = generation_all_adopters_year
-                    solar_cf_all_adopters_year = pd.merge(generation_all_adopters_year, pca_reg_cum_pv_kw_year, on='pca_reg')
-                    solar_cf_all_adopters_year[hour_list] = np.array(solar_cf_all_adopters_year[hour_list]) / np.array(solar_cf_all_adopters_year['pv_kw_cum']).reshape(len(solar_cf_all_adopters_year),1)        
-                    solar_cf_all_adopters_year = solar_cf_all_adopters_year.fillna(0)
-                    
-                    solar_cf_all_adopters = solar_cf_all_adopters.append(solar_cf_all_adopters_year)
-                    solar_cf_all_adopters = solar_cf_all_adopters[['pca_reg', 'year'] + hour_list]
-                    if year==scenario_settings.model_years[-1]:solar_cf_all_adopters.to_csv(out_scen_path + '/dpv_cf_by_pca_and_year.csv', index=False)  
-
-                    # TODO: delete these if passing to ReEDS works fine by 2/17
-#                    solar_cf_all_adopters_tidy = pd.melt(solar_cf_all_adopters, id_vars=['pca_reg', 'year'], value_vars=hour_list, var_name='hour', value_name='dpv_capacity_factor')
-#                    if year==scenario_settings.model_years[-1]:solar_cf_all_adopters_tidy.to_csv(out_scen_path + '/dpv_cf_by_pca_and_year.csv') 
-
-#                    generation_all_adopters = generation_all_adopters.append(generation_all_adopters_year)
-#                    generation_all_adopters = generation_all_adopters[['pca_reg', 'year'] + hour_list]
-#                    generation_all_adopters.to_csv(out_scen_path + '/pv_generation_by_pca_and_year.csv', index=False)                     
+                    pv_gen_new_adopters.index.names = ['ba']
+                    pv_gen_new_adopters['ba'] = pv_gen_new_adopters.index.values
+                    pv_gen_new_adopters.to_pickle(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
                     
                     #==========================================================================================================
-                    # Aggregate PV capacity by reeds region
+                    # Aggregate PV and Batt capacity by reeds region
                     #==========================================================================================================   
                     # TODO: rewrite this using agents class, once above is handled
+                    agent_cum_capacities = df[[ 'ba', 'pv_kw_cum']]
+                    ba_cum_pv_kw_year = agent_cum_capacities.groupby(by='ba').sum()
+                    ba_cum_pv_kw_year['ba'] = ba_cum_pv_kw_year.index
+                    ba_cum_pv_mw[year] = ba_cum_pv_kw_year['pv_kw_cum'] / 1000.0
+                    ba_cum_pv_mw.to_csv(out_scen_path + '/dpv_MW_by_pca_and_year.csv', index_label='ba')                     
                     
-                    pca_reg_cum_pv_mw[year] = pca_reg_cum_pv_kw_year['pv_kw_cum'] / 1000.0
-                    pca_reg_cum_pv_mw.to_csv(out_scen_path + '/dpv_MW_by_pca_and_year.csv', index_label='pca_reg')                     
-                    
-                    agent_cum_batt_mw = df[[ 'pca_reg', 'batt_kw_cum']]
+                    agent_cum_batt_mw = df[[ 'ba', 'batt_kw_cum']]
                     agent_cum_batt_mw['batt_mw_cum'] = agent_cum_batt_mw['batt_kw_cum'] / 1000.0
-                    agent_cum_batt_mwh = df[[ 'pca_reg', 'batt_kwh_cum']]
+                    agent_cum_batt_mwh = df[[ 'ba', 'batt_kwh_cum']]
                     agent_cum_batt_mwh['batt_mwh_cum'] = agent_cum_batt_mwh['batt_kwh_cum'] / 1000.0
 
-                    pca_reg_cum_batt_mw_year = agent_cum_batt_mw.groupby(by='pca_reg').sum()
-                    pca_reg_cum_batt_mwh_year = agent_cum_batt_mwh.groupby(by='pca_reg').sum()
+                    ba_cum_batt_mw_year = agent_cum_batt_mw.groupby(by='ba').sum()
+                    ba_cum_batt_mwh_year = agent_cum_batt_mwh.groupby(by='ba').sum()
                     
-                    pca_reg_cum_batt_mw[year] = pca_reg_cum_batt_mw_year['batt_mw_cum']
-                    pca_reg_cum_batt_mw.to_csv(out_scen_path + '/batt_MW_by_pca_and_year.csv', index_label='pca_reg')                     
+                    ba_cum_batt_mw[year] = ba_cum_batt_mw_year['batt_mw_cum']
+                    ba_cum_batt_mw.to_csv(out_scen_path + '/batt_MW_by_pca_and_year.csv', index_label='ba')                     
                     
-                    pca_reg_cum_batt_mwh[year] = pca_reg_cum_batt_mwh_year['batt_mwh_cum']
-                    pca_reg_cum_batt_mwh.to_csv(out_scen_path + '/batt_MWh_by_pca_and_year.csv', index_label='pca_reg') 
+                    ba_cum_batt_mwh[year] = ba_cum_batt_mwh_year['batt_mwh_cum']
+                    ba_cum_batt_mwh.to_csv(out_scen_path + '/batt_MWh_by_pca_and_year.csv', index_label='ba') 
 
                     #==========================================================================================================
                     # WRITE OUTPUTS
@@ -856,424 +769,79 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         df.to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
                     else:
                         df.drop(['consumption_hourly', 'solar_cf_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
-                    
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
-############################ GHP ##############################################
-    
-            elif scenario_settings.tech_mode == 'ghp':
-                dsire_opts = datfunc.get_dsire_settings(con, scenario_settings.schema)
-                incentives_cap_df = datfunc.get_incentives_cap(con, scenario_settings.schema)
-                state_incentives_df = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, ['geo'], dsire_opts)
-                itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
+
+                #==============================================================================
+                # Summarize solar+storage results for ReEDS
+                #==============================================================================
+#                ts_map_tidy = pd.read_csv('timeslice_map_tidy.csv')
+#                ts_list = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7', 'H8', 'H9', 'H10', 'H11', 'H12', 'H13', 'H14', 'H15', 'H16', 'H17']
+#                ts_dispatch_all_years = pd.DataFrame()
                 
-                # get initial (year = 2012) agents from postgres
-                agents_initial = agent_mutation_geo.get_initial_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.tech_mode, scenario_settings.region)
-                # store canned agents (if in setup_develop mode)
-                datfunc.setup_canned_agents(model_settings.mode, agents_initial, scenario_settings.tech_mode, 'initial')
-                    
-                # set data for "last year" to None (since this will be the first year)
-                agents_last_year_df = None
+                # Dispatch trajectories are in MW
+                year = scenario_settings.model_years[0]
+                dispatch_new_adopters = pd.read_pickle(out_scen_path + '/total_ba_dispatches_df_%s.pkl' % year)
+                dispatch_previous_adopters = dispatch_new_adopters.copy()
                 
-                for year in scenario_settings.model_years:
-                    logger.info('\tWorking on %s' % year)
-                    
-                    # is it the first year?
-                    is_first_year = year == model_settings.start_year    
- 
-                    # get new construction agents
-                    agents_new = agent_mutation_geo.get_new_agent_attributes(con, scenario_settings.schema, year, is_first_year, model_settings.mode, scenario_settings.tech_mode, scenario_settings.region)
-                    # store canned agents (if in setup_develop mode)
-                    datfunc.setup_canned_agents(model_settings.mode, agents_new, scenario_settings.tech_mode, 'new')
-                    
-                     # add new agents to the initial agents (this ensures they will be there again next year)
-                    agents_initial = agents_initial.add_agents(agents_new)
-                    # drop agents_new -- it's no longer needed
-                    del agents_new
-                    
-                    # copy agents_initial (which will be preserved unmutated -- i.e., as-is -- for next year) to agents (which will be mutated for the current year)
-                    agents = agents_initial.copy()
-                    # change new construction to false for all agents in agents_initial (this ensures that next year they will be treated appropriately)
-                    agents_initial.dataframe['new_construction'] = False
-        
-                    # drop du agents
-                    agents = agents.filter_tech('ghp')  
+                dispatch_by_ba_and_year = dispatch_by_ba_and_year.append(dispatch_new_adopters)
 
-                    # update year for the the current year
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_year, (year, )).compute()
-                    
-                    #==============================================================================
-                    # HVAC SYSTEM AGES
-                    #==============================================================================                        
-                    # update system ages
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_system_ages, (year, is_first_year)).compute()
-                    # check which agents require new systems (new construction and those whose systems are too old)
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.calc_years_to_replacement).compute()                                
+                # aggregate into timeslices for reeds
+#                dispatch_year_tidy = dispatch_previous_adopters.copy()
+#                dispatch_year_tidy = dispatch_year_tidy.transpose()
+#                dispatch_year_tidy['hour'] = [int(numeric_string) for numeric_string in dispatch_year_tidy.index.values]
+#                dispatch_year_tidy = pd.melt(dispatch_year_tidy, id_vars='hour', value_vars=ba_list, var_name="ba", value_name="dispatch")
+#                ts_and_dispatch_tidy = pd.merge(ts_map_tidy, dispatch_year_tidy, how='left', on=['hour', 'ba'])
+#                ts_and_dispatch_tidy_ts = ts_and_dispatch_tidy[['ba', 'dispatch', 'ts']].groupby(['ba', 'ts']).mean().reset_index()                
+#                ts_dispatch_wide = ts_and_dispatch_tidy_ts.pivot(index='ba', columns='ts', values='dispatch')
+#                ts_dispatch_wide['year'] = year
+#                ts_dispatch_wide['ba'] = ts_dispatch_wide.index.values
+#                ts_dispatch_all_years = pd.concat([ts_dispatch_all_years, ts_dispatch_wide], ignore_index=True)  
 
-                    #==========================================================================================================
-                    # MAP TO CRB GHP SIMULATIONS
-                    #========================================================================================================== 
-                    # get mapping lkup table
-                    baseline_lkup_df = agent_mutation_ghp.get_ghp_baseline_type_lkup(con, scenario_settings.schema)
-                    # map agents to baseline system types
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.map_agents_to_ghp_baseline_types, (baseline_lkup_df, )).compute()
-                    # get baseline GHP simulations
-                    baseline_ghp_sims_df = agent_mutation_ghp.get_ghp_baseline_simulations(con, scenario_settings.schema)
-                    # join baseline GHP simulations
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.join_crb_ghp_simulations, (baseline_ghp_sims_df, )).compute()
-                    
-                    #==========================================================================================================
-                    # MARK MODELLABLE AND UN-MODELLABLE AGENTS
-                    #==========================================================================================================                          
-                    # mark agents that can't be modeled due to no representative GHP simulations
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.mark_unmodellable_agents).compute()
-                    
-                    #==============================================================================
-                    # SYSTEM SIZING
-                    #==============================================================================
-                    # size systems
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.size_systems_ghp).compute()
+                # degrade systems one year                
+                dispatch_previous_adopters[hour_list] = dispatch_new_adopters[hour_list] * 0.982
 
-                    #==============================================================================
-                    # REPLICATE AGENTS FOR DIFFERENT GHP SYSTEM CONFIGURATIONS
-                    #==============================================================================        
-                    system_configurations = ['vertical', 'horizontal']                    
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.replicate_agents_by_factor, ('sys_config', system_configurations), row_increase_factor = len(system_configurations)).compute()
+                for year in scenario_settings.model_years[1:]:
+                    dispatch_new_adopters = pd.read_pickle(out_scen_path + '/total_ba_dispatches_df_%s.pkl' % year)
+                    os.remove(out_scen_path + '/total_ba_dispatches_df_%s.pkl' % year)
+                    dispatch_previous_adopters[hour_list] = dispatch_new_adopters[hour_list] + dispatch_previous_adopters[hour_list]
+                    dispatch_previous_adopters['year'] = year
+                    dispatch_by_ba_and_year = dispatch_by_ba_and_year.append(dispatch_previous_adopters)
+                    dispatch_previous_adopters[hour_list] = dispatch_previous_adopters[hour_list] * 0.982
+                    
+                dispatch_by_ba_and_year = dispatch_by_ba_and_year[['ba', 'year'] + hour_list]
+                dispatch_by_ba_and_year.round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW.csv') 
+#                ts_dispatch_all_years[['ba', 'year']+ts_list].round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW_ts.csv', index=False)
 
-                    #==============================================================================
-                    # SITING CONSTRAINTS
-                    #==============================================================================
-                    # get siting constraints settings
-                    siting_constraints_df = agent_mutation_ghp.get_siting_constraints_ghp(con, scenario_settings.schema, year)
-                    # apply siting constraints
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_siting_constraints_ghp, (siting_constraints_df, )).compute()
 
-                    #==============================================================================
-                    # IDENTIFY MARKET ELIGIBLE BUILDINGS
-                    #==============================================================================                            
-                    # flag the agents that are part of the eligible market for GHP
-                    # (i.e., these agents can be developed EVENTUALLY)
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.identify_market_eligible_agents).compute()
-                    
-                    #==============================================================================
-                    # IDENTIFY BASS DEPLOYABLE BUILDINGS
-                    #==============================================================================                            
-                    # flag the agents that are deployable during this model year
-                    # (i.e., these are the subset of market eligible agents can be developed NOW)
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.identify_bass_deployable_agents).compute()                              
+                # PV capacity factors
+                pv_gen_by_ba_and_year = pd.DataFrame(index=ba_list, columns=[['ba', 'year'] + hour_list])
+                pv_cf_by_ba_and_year = pd.DataFrame(columns = storage_dispatch_df_col_list)
 
-                    
-                    #==============================================================================
-                    # TECHNOLOGY COSTS
-                    #==============================================================================
-                    # get ghp technology costs
-                    tech_costs_ghp_df = agent_mutation_ghp.get_technology_costs_ghp(con, scenario_settings.schema, year)
-                    # apply ghp technology costs     
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_tech_costs_ghp, (tech_costs_ghp_df, )).compute()
-                    
-                    # get baseline/conventional system costs
-                    tech_costs_baseline_df = agent_mutation_ghp.get_technology_costs_baseline(con, scenario_settings.schema, year)
-                    # apply baseline/conventional system costs
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_tech_costs_baseline, (tech_costs_baseline_df, )).compute()   
-
-                    #==============================================================================
-                    # TECHNOLOGY PERFORMANCE IMPROVEMENTS AND DEGRADATION
-                    #==============================================================================              
-                    # get GHP technology performance improvements
-                    tech_performance_ghp_df = agent_mutation_ghp.get_technology_performance_improvements_ghp(con, scenario_settings.schema, year)
-                    # apply GHP technology performance improvements
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_technology_performance_ghp, (tech_performance_ghp_df, )).compute()
-                    
-                    # get baseline tech performance improvements and degradation
-                    tech_performance_baseline_df = agent_mutation_ghp.get_technology_performance_improvements_baseline(con, scenario_settings.schema, year)
-                    # apply baseline tech performance improvements and degradation
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_technology_performance_baseline, (tech_performance_baseline_df, )).compute()
-                    
-                    #==========================================================================================================
-                    # CALCULATE SITE ENERGY CONSUMPTION
-                    #==========================================================================================================
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.calculate_site_energy_consumption_ghp).compute()
-                    
-                    #==========================================================================================================
-                    # DEPRECIATION SCHEDULE       
-                    #==========================================================================================================
-                    # get depreciation schedule for current year
-                    depreciation_df = agent_mutation_ghp.get_depreciation_schedule(con, scenario_settings.schema, year)
-                    # apply depreciation schedule to agents
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_depreciation_schedule, (depreciation_df, )).compute()
-                    
-                    #==========================================================================================================
-                    # LEASING AVAILABILITY
-                    #==========================================================================================================               
-                    # get leasing availability
-                    leasing_availability_df = agent_mutation_ghp.get_leasing_availability(con, scenario_settings.schema, year)
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_leasing_availability, (leasing_availability_df, )).compute()                                        
-            
-                    #==============================================================================
-                    # ENERGY PRICES
-                    #==============================================================================
-                    # get and apply expected rate escalations
-                    rate_escalations_df = agent_mutation_ghp.get_expected_rate_escalations(con, scenario_settings.schema, year)
-                    agents =  AgentsAlgorithm(agents, agent_mutation_ghp.apply_expected_rate_escalations, (rate_escalations_df, )).compute()
-            
-                    #==========================================================================================================
-                    # FINANCIAL CALCULATIONS
-                    #==========================================================================================================            
-                    # replicate agents for business models
-                    agents =  AgentsAlgorithm(agents, agent_mutation_ghp.replicate_agents_by_factor, ('business_model', ['host_owned', 'tpo']), row_increase_factor = 2).compute()
-                    # add metric field based on business model                    
-                    agents =  AgentsAlgorithm(agents, agent_mutation_ghp.add_metric_field).compute()
-
-                    # apply financial parameters
-                    agents =  AgentsAlgorithm(agents, agent_mutation_ghp.apply_financial_parameters, (financial_parameters, )).compute()
-                    
-                    # calculate state incentives
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.calc_state_incentives, (state_incentives_df, )).compute()
-
-                    # calculate value of itc
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.calc_value_of_itc, (itc_options, year)).compute()
-            
-                    # apply incentives cap
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_incentives_cap, (incentives_cap_df, )).compute()
-                    
-                    # calculate raw cashflows for ghp and baseline technologies
-                    analysis_period = 30
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_cashflows, ('ghp', analysis_period)).compute()                  
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_cashflows, ('baseline', analysis_period)).compute()
-                    
-                    # calculate net cashflows for GHP system relative to baseline
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_net_cashflows_host_owned).compute()
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_net_cashflows_third_party_owned).compute()
-
-                    # calculate monthly bill savings
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_monthly_bill_savings).compute()
-                    # calculate payback
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_payback, ('net_cashflows_ho', analysis_period)).compute()
-                    # calculate ttd
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_ttd, ('net_cashflows_ho', )).compute()
-                    # assign metric value precise
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.assign_metric_value_precise).compute()
-                    # calculate NPV (assuming different discount rates)
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_npv, ('net_cashflows_ho', 0.04, 'npv4')).compute()
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_npv, ('net_cashflows_ho', 'discount_rate', 'npv_agent')).compute()
-                    # normalize npv values
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.normalize_value, ('npv4', 'ghp_system_size_tons', 'npv4_per_ton')).compute()
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.normalize_value, ('npv_agent', 'ghp_system_size_tons', 'npv_agent_per_ton')).compute()
-                    # join inflation rate info (needed for lcoe calcs)
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.assign_value, (inflation_rate, 'inflation_rate')).compute()
-                    # calculate LCOE
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_lcoe).compute()  # TODO: revise this function
-
-                    #  assign max market share
-                    agents = AgentsAlgorithm(agents, financial_functions_geo.calculate_max_market_share, (max_market_share, )).compute()
-                    
-                    #==========================================================================================================
-                    # CHOOSE FROM SYSTEM CONFIGURATIONS AND BUSINESS MODELS
-                    #==========================================================================================================     
-                    # clean up the decision var for tech/financing choice
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.sanitize_decision_col, ('max_market_share', 'mms_sanitized')).compute()
-                    # a new temporary id for agent + business model combos
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.create_new_id_column, (['agent_id', 'business_model'], 'temp_id')).compute()
-                    # mark options to exclude from sys_config and business_model choices
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.mark_excluded_options).compute()
-                    # select from sys_config choices
-                    agents = Agents(tech_choice_geo.probabilistic_choice(agents.dataframe, prng, uid_col = 'temp_id', options_col = 'sys_config', excluded_options_col = 'excluded_option', decision_col = 'mms_sanitized', alpha = 2, always_return_one = True))
-                    # select from business_model choices
-                    agents = Agents(tech_choice_geo.probabilistic_choice(agents.dataframe, prng, uid_col = 'agent_id', options_col = 'business_model', excluded_options_col = 'excluded_option', decision_col = 'mms_sanitized', alpha = 2, always_return_one = True))    
-
-                    #==========================================================================================================
-                    # MARKET LAST YEAR
-                    #==========================================================================================================                     
-                    if is_first_year == True:
-                        # calculate initial market shares
-                        agents = AgentsAlgorithm(agents, agent_mutation_ghp.estimate_initial_market_shares, (state_starting_capacities_df, )).compute()
-                    else:
-                        # get last year's results
-                        market_last_year_df = agent_mutation_ghp.get_market_last_year(con, scenario_settings.schema)
-                        # apply last year's results to the agents
-                        agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_market_last_year, (market_last_year_df, )).compute()                
-                    
-    
-                    #==========================================================================================================
-                    # BASS DIFFUSION
-                    #==========================================================================================================
-                    # apply bass p/q/teq params
-                    agents = AgentsAlgorithm(agents, agent_mutation_ghp.apply_bass_params, (bass_params, )).compute()    
-                    # calculate the equivalent time that has passed on the newly scaled bass curve
-                    agents = AgentsAlgorithm(agents, diffusion_functions_geo.calc_equiv_time).compute()
-                    # set the number of years to advance along bass curve (= teq2)
-                    agents = AgentsAlgorithm(agents, diffusion_functions_ghp.set_number_of_years_to_advance, (is_first_year, )).compute()
-                    # calculate new cumulative "adoption fraction" according to bass
-                    agents = AgentsAlgorithm(agents, diffusion_functions_geo.bass_diffusion).compute()
-                    # apply adoption fraction to MMS to calculate actual diffusion
-                    agents = AgentsAlgorithm(agents, diffusion_functions_ghp.calculate_bass_and_diffusion_market_share).compute()
-                    # calculate diffusion results metrics
-                    agents = AgentsAlgorithm(agents, diffusion_functions_ghp.calculate_diffusion_result_metrics).compute()
-                    # extract results for "market last year"
-                    market_last_year_df = diffusion_functions_ghp.extract_market_last_year(agents.dataframe)
-    
-                    #==========================================================================================================
-                    # WRITE OUTPUTS
-                    #==========================================================================================================   
-                    # write the incremental results to the database
-                    agent_mutation_ghp.write_agent_outputs_ghp(con, cur, scenario_settings.schema, agents.dataframe) 
-                    agent_mutation_ghp.write_last_year(con, cur, market_last_year_df, scenario_settings.schema)
-
-    
-            elif scenario_settings.tech_mode == 'du':
-                # get initial (year = 2012) agents from postgres
-                agents_initial = agent_mutation_geo.get_initial_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.tech_mode, scenario_settings.region)     
-                # store canned agents (if in setup_develop mode)
-                datfunc.setup_canned_agents(model_settings.mode, agents_initial, scenario_settings.tech_mode, 'initial')
+                year = scenario_settings.model_years[0]
+                pv_gen_new_adopters = pd.read_pickle(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
+                pv_gen_previous_adopters = pv_gen_new_adopters.copy()
+                pv_gen_previous_adopters[hour_list] = pv_gen_new_adopters[hour_list] * 0.995
                 
-                for year in scenario_settings.model_years:
-                    logger.info('\tWorking on %s' % year)
-                    
-                    # is it the first year?
-                    is_first_year = year == model_settings.start_year                        
-                     
-                    # get new construction agents
-                    agents_new = agent_mutation_geo.get_new_agent_attributes(con, scenario_settings.schema, year, is_first_year, model_settings.mode, scenario_settings.tech_mode, scenario_settings.region)
-                    # store canned agents (if in setup_develop mode)
-                    datfunc.setup_canned_agents(model_settings.mode, agents_new, scenario_settings.tech_mode, 'new')
-                    
-                    # add new agents to the initial agents (this ensures they will be there again next year)
-                    agents_initial = agents_initial.add_agents(agents_new)
-                    # drop agents_new -- it's no longer needed
-                    del agents_new                    
-                    
-                    # copy agents_initial (which will be preserved unmutated -- i.e., as-is -- for next year) to agents (which will be mutated for the current year)
-                    agents = agents_initial.copy()
-                    # change new construction to false for all agents in agents_initial (this ensures that next year they will be treated appropriately)
-                    agents_initial.dataframe['new_construction'] = False
-        
-                    # drop ghp agents
-                    agents = agents.filter_tech('du')     
+                pv_cf_by_ba_and_year_year = pv_gen_new_adopters[hour_list].divide(ba_cum_pv_mw[year]*1000.0, 'index')
+                pv_cf_by_ba_and_year_year['year'] = year
+                pv_cf_by_ba_and_year = pv_cf_by_ba_and_year.append(pv_cf_by_ba_and_year_year)
 
-                    # update year for the the current year
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_year, (year, )).compute()                      
+                for year in scenario_settings.model_years[1:]:
+                    # Import than delete this year's generation profiles
+                    pv_gen_new_adopters = pd.read_pickle(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
+                    os.remove(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
                     
-                    # get previously subscribed agents
-                    previously_subscribed_agents_df = demand_supply_geo.get_previously_subscribed_agents(con, scenario_settings.schema)
-                    # subtract previously subscribed agents
-                    agents = AgentsAlgorithm(agents, demand_supply_geo.subtract_previously_subscribed_agents, (previously_subscribed_agents_df, )).compute()
+                    # Total generation is old+new, where degradation was already applied to old capacity
+                    pv_gen_previous_adopters[hour_list] = pv_gen_new_adopters[hour_list] + pv_gen_previous_adopters[hour_list]
                     
-                    # get regional prices of energy
-                    energy_prices_df = agent_mutation_du.get_regional_energy_prices(con, scenario_settings.schema, year)
-                    # apply regional heating/cooling prices
-                    agents = AgentsAlgorithm(agents, agent_mutation_du.apply_regional_energy_prices, (energy_prices_df, )).compute()
+                    # Convert generation into capacity factor by diving by total capacity
+                    pv_cf_by_ba_and_year_year = pv_gen_previous_adopters[hour_list].divide(ba_cum_pv_mw[year]*1000.0, 'index')
+                    pv_cf_by_ba_and_year_year['year'] = year
+                    pv_cf_by_ba_and_year = pv_cf_by_ba_and_year.append(pv_cf_by_ba_and_year_year)
+                    pv_gen_previous_adopters[hour_list] = pv_gen_previous_adopters[hour_list] * 0.995
                     
-                    # get du cost data
-                    end_user_costs_du_df = agent_mutation_du.get_end_user_costs_du(con, scenario_settings.schema, year)
-                    # apply du cost data
-                    agents = AgentsAlgorithm(agents, agent_mutation_du.apply_end_user_costs_du, (end_user_costs_du_df, )).compute()               
-                                 
-                    # update system ages
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.update_system_ages, (year, is_first_year)).compute()
-                    # check which agents require new systems (new construction and those whose systems are too old)
-                    agents = AgentsAlgorithm(agents, agent_mutation_geo.calc_years_to_replacement).compute()
-                    
-                    #==============================================================================
-                    # BUILD SUPPLY CURVES FOR EACH TRACT
-                    #==============================================================================
-                    # get tract demand profiles
-                    tract_demand_profiles_df = demand_supply_geo.get_tract_demand_profiles(con, scenario_settings.schema, year)    
-                    # calculate tract peak demand
-                    tract_peak_demand_df = demand_supply_geo.calculate_tract_peak_demand(tract_demand_profiles_df)                    
-                    # calculate distribution demand density
-                    demand_density_df = demand_supply_geo.calculate_distribution_demand_density(tract_peak_demand_df, distribution_df)
+                pv_cf_by_ba_and_year = pv_cf_by_ba_and_year[['ba', 'year'] + hour_list]
+                pv_cf_by_ba_and_year.round(3).to_csv(out_scen_path + '/dpv_cf_by_pca_and_year.csv') 
 
-                    # get resources
-                    resource_df = demand_supply_geo.get_resource_data(con, scenario_settings.schema, year)
-                    # get previously subscribed wellsets
-                    previously_subscribed_wellsets_df = demand_supply_geo.get_previously_subscribed_wellsets(con, scenario_settings.schema)
-                    # subtract previously subscribed wellsets
-                    resource_df = demand_supply_geo.subtract_previously_subscribed_wellsets(resource_df, previously_subscribed_wellsets_df)
-
-                    # get natural gas prics
-                    ng_prices_df = demand_supply_geo.get_natural_gas_prices(con, scenario_settings.schema, year)
-                    # get the du cost data
-                    costs_and_performance_df = demand_supply_geo.get_plant_cost_and_performance_data(con, scenario_settings.schema, year)
-                    reservoir_factors_df = demand_supply_geo.get_reservoir_factors(con, scenario_settings.schema, year)
-                    # get the plant finance data
-                    plant_finances_df = demand_supply_geo.get_plant_finance_data(con, scenario_settings.schema, year)
-                    plant_construction_factor_df = demand_supply_geo.get_plant_construction_factor_data(con, scenario_settings.schema, year)
-                    # NOTE: This isn't currently used, instead, we use a fixed value
-                    plant_construction_finance_factor = 1.106
-                    # TODO: change the input for plant construction factor
-                    plant_depreciation_df = demand_supply_geo.get_plant_depreciation_data(con, scenario_settings.schema, year)                    
-                    # calculate the plant and boiler capacity factors
-                    capacity_factors_df = demand_supply_geo.calculate_plant_and_boiler_capacity_factors(tract_peak_demand_df, costs_and_performance_df, tract_demand_profiles_df, year)
-                    # apply the plant cost data
-                    resources_with_costs_df = demand_supply_geo.apply_cost_and_performance_data(resource_df, costs_and_performance_df, reservoir_factors_df, plant_finances_df, demand_density_df,  capacity_factors_df, ng_prices_df)
-                    
-                    #==============================================================================
-                    # SUPPLY AND DEMAND CALCULATIONS
-                    #============================================================================== 
-                    # CALCULATE AGENT LCOE
-                    plant_lifetime = plant_finances_df.plant_lifetime_yrs.tolist()[0]
-                    agents = AgentsAlgorithm(agents, demand_supply_geo.calc_agent_lcoe, (plant_lifetime, )).compute()
-                    # CONVERT INTO DEMAND CURVES
-                    demand_curves_df = demand_supply_geo.lcoe_to_demand_curve(agents.dataframe.copy())
-                    
-                    # CALCULATE PLANT LCOE
-                    resources_with_costs_df = demand_supply_geo.calc_plant_lcoe(resources_with_costs_df, plant_depreciation_df, plant_construction_finance_factor)                                                                                     
-                    # CONVERT INTO SUPPLY CURVES
-                    supply_curves_df = demand_supply_geo.lcoe_to_supply_curve(resources_with_costs_df)
-                    
-                    #==============================================================================
-                    # CALCULATE PLANT SIZES BASED ON ECONOMIC POTENTIAL
-                    #==============================================================================   
-                    plant_sizes_economic_df = demand_supply_geo.intersect_supply_demand_curves(demand_curves_df, supply_curves_df)
-                                          
-                    #==============================================================================
-                    # CALCULATE PLANT SIZES BASED ON MARKET POTENTIAL
-                    #==============================================================================                    
-                    plant_sizes_market_df = demand_supply_geo.calc_plant_sizes_market(demand_curves_df, supply_curves_df, plant_sizes_economic_df) # TODO: replace with actual function
-                    
-                    #==============================================================================
-                    # BASS DIFFUSION
-                    #==============================================================================                    
-                    # get previous year market share
-                    existing_market_share_df = diffusion_functions_du.get_existing_market_share(con, cur, scenario_settings.schema, year)
-                    # calculate total market demand
-                    total_market_demand_mw = diffusion_functions_du.calculate_total_market_demand(tract_peak_demand_df)
-                    # calculate current max market share
-                    current_mms = diffusion_functions_du.calculate_current_mms(plant_sizes_market_df, total_market_demand_mw)
-                    # calculate new incremental market share pct
-                    new_market_share_pct = diffusion_functions_du.calculate_new_incremental_market_share_pct(existing_market_share_df, current_mms, bass_params_df, year)
-                    # calculate new incremental market share capacity (mw)
-                    new_incremental_capacity_mw = diffusion_functions_du.calculate_new_incremental_capacity_mw(new_market_share_pct, total_market_demand_mw)
-                    
-                    # select plants to be built
-                    plants_to_be_built_df = diffusion_functions_du.select_plants_to_be_built(plant_sizes_market_df, new_incremental_capacity_mw, scenario_settings.random_generator_seed)
-                    # summarize the new cumulative market share (in terms of capacity and pct) based on the selected plants
-                    # (note: this will differ a bit from the new_incremental_capacity_mw and new_market_share_pct + existing_market_share_df because it is based on
-                    # selected plants, which may not sum perfectly to the theoreticaly incremental additions)
-                    cumulative_market_share_df = diffusion_functions_du.calculate_new_cumulative_market_share(existing_market_share_df, plants_to_be_built_df, total_market_demand_mw, year)                    
-                    
-                    #==============================================================================
-                    # TRACKING RESULTS
-                    #==============================================================================     
-                    # SUMMARY OF MARKET
-                    # write/store summary market share outputs
-                    diffusion_functions_du.write_cumulative_market_share(con, cur, cumulative_market_share_df, scenario_settings.schema)
-
-                    # AGENTS
-                    # identify the subscribed agents
-                    subscribed_agents_df = diffusion_functions_du.identify_subscribed_agents(plants_to_be_built_df, demand_curves_df)
-                    # append this info to the agents
-                    agents = AgentsAlgorithm(agents, diffusion_functions_du.mark_subscribed_agents, (subscribed_agents_df, )).compute()
-                    # write agents to database
-                    diffusion_functions_du.write_agent_outputs(con, cur, agents, scenario_settings.schema)
-                    
-                    # PLANTS
-                    # identify the subscribed resources
-                    subscribed_resources_df = diffusion_functions_du.identify_subscribed_resources(plants_to_be_built_df, supply_curves_df)
-                    # append this info to other key information about 
-                    subscribed_resources_with_costs_df = diffusion_functions_du.mark_subscribed_resources(resources_with_costs_df, subscribed_resources_df)
-                    # write results to database                    
-                    diffusion_functions_du.write_resources_outputs(con, cur, subscribed_resources_with_costs_df, scenario_settings.schema)
-            
 
             #==============================================================================
             #    Outputs & Visualization

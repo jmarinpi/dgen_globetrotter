@@ -298,10 +298,14 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
         batt.set_cap_and_power(batt_power*3.0, batt_power)  
         batt.set_cycle_deg(1500) #Setting degradation to 86%, which is the weighted "average" capacity over a 10 year period, where weight of degradation is discounted at 8% annually
 
-        estimator_params = dFuncs.calc_estimator_params(load_and_pv_profile, tariff, export_tariff, batt.eta_charge, batt.eta_discharge)
-
-        estimated_results = dFuncs.determine_optimal_dispatch(load_profile, pv_size*pv_cf_profile, batt, tariff, export_tariff, estimator_params=estimator_params, estimated=True, DP_inc=DP_inc_est, d_inc_n=d_inc_n_est, estimate_demand_levels=True)
-        system_df.loc[i, 'est_bills'] = estimated_results['bill_under_dispatch']   
+        if batt_power > 0:
+            estimator_params = dFuncs.calc_estimator_params(load_and_pv_profile, tariff, export_tariff, batt.eta_charge, batt.eta_discharge)
+    
+            estimated_results = dFuncs.determine_optimal_dispatch(load_profile, pv_size*pv_cf_profile, batt, tariff, export_tariff, estimator_params=estimator_params, estimated=True, DP_inc=DP_inc_est, d_inc_n=d_inc_n_est, estimate_demand_levels=True)
+            system_df.loc[i, 'est_bills'] = estimated_results['bill_under_dispatch']  
+        else:
+            bill_with_PV, _ = tFuncs.bill_calculator(load_and_pv_profile, tariff, export_tariff)
+            system_df.loc[i, 'est_bills'] = bill_with_PV
     
     # Calculate bill savings cash flow
     # elec_price_multiplier is the scalar increase in the cost of electricity since 2016, when the tariffs were curated
@@ -324,55 +328,19 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
                          np.array(system_df['pv']), agent_dict['pv_cost_per_kw'], 0, agent_dict['fixed_om_dollars_per_kw_per_yr'],
                          np.array(system_df['batt'])*3, np.array(system_df['batt']), 
                          agent_dict['batt_cost_per_kw'], agent_dict['batt_cost_per_kwh'], 
-                         agent_dict['batt_replace_cost_per_kw'], agent_dict['batt_replace_cost_per_kwh'],
+                         agent_dict['batt_om_per_kw'], agent_dict['batt_om_per_kwh'],
                          batt_chg_frac,
-                         agent_dict['batt_replace_yr'], agent_dict['batt_om'],
                          agent_dict['sector'], agent_dict['itc_fraction'], deprec_sch, 
                          agent_dict['tax_rate'], 0, agent_dict['discount_rate'],  
                          agent_dict['analysis_years'], agent_dict['inflation'], 
                          agent_dict['down_payment'], agent_dict['loan_rate'], agent_dict['loan_term_yrs'])
                     
-    # Record NPV, just for reference
     system_df['npv'] = cf_results_est['npv']
-    
-#    # Host-Owned metric calculation
-#    if agent_dict['sector'] == 'res':
-#        # calculate payback period
-#        tech_lifetime = np.shape(est_bill_savings)[1] - 1
-#        payback = fFuncs_dGen.calc_payback_vectorized(cf_results_est['cf'], tech_lifetime)
-#        system_df['metric_value_ho'] = payback
-#    else:
-#        # calculate time to double
-#        ttd = fFuncs_dGen.calc_ttd(cf_results_est['cf'])
-#        system_df['metric_value_ho'] = ttd
-    
-    # TPO metric calculation
-    # This is just a placeholder calculation - missing many things, like O&M
-    # TODO: itc value is set for the agent, which can differ from TPO value
-#    rate_of_return = 0.1
-#    lease_term = 20
-#    installed_cost = agent_dict['pv_cost_per_kw']*system_df['pv'] + agent_dict['batt_cost_per_kw']*system_df['batt'] + agent_dict['batt_cost_per_kwh']*system_df['batt']*3
-#    value_of_itc = agent_dict['itc_fraction']*installed_cost
-#    net_installed_cost = installed_cost - value_of_itc
-#    annual_payment = net_installed_cost * ((rate_of_return*(1 + rate_of_return)**lease_term) / ( (1+rate_of_return)**lease_term - 1))
-#    system_df['annual_tpo_payments'] = annual_payment
-#    system_df['avg_annual_bill_savings_tpo'] = avg_est_bill_savings - annual_payment
-#    system_df['avg_percent_bill_savings_tpo'] = system_df['avg_annual_bill_savings_tpo'] / (original_bill * agent_dict['elec_price_multiplier'])
-#    system_df['metric_value_tpo']
-    
-    
+   
     #=========================================================================#
     # Select system size and business model for this agent
     #=========================================================================# 
     index_of_best_fin_perform_ho = system_df['npv'].idxmax()
-
-#    index_of_best_fin_perform_ho = system_df['metric_value_ho'].idxmin()
-#    index_of_best_fin_perform_tpo = system_df['metric_value_tpo'].idxmax()
-#    
-#    mms_of_best_ho_system = interp
-#    mms_of_best_tpo_system = interp
-    
-    #logit
 
     opt_pv_size = system_df['pv'][index_of_best_fin_perform_ho].copy()
     opt_batt_power = system_df['batt'][index_of_best_fin_perform_ho].copy()
@@ -403,9 +371,8 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
                      opt_pv_size, agent_dict['pv_cost_per_kw'], 0, agent_dict['fixed_om_dollars_per_kw_per_yr'],
                      opt_batt_power*3, opt_batt_power, 
                      agent_dict['batt_cost_per_kw'], agent_dict['batt_cost_per_kwh'], 
-                     agent_dict['batt_replace_cost_per_kw'], agent_dict['batt_replace_cost_per_kwh'],
+                     agent_dict['batt_om_per_kw'], agent_dict['batt_om_per_kwh'],
                      batt_chg_frac,
-                     agent_dict['batt_replace_yr'], agent_dict['batt_om'],
                      agent_dict['sector'], agent_dict['itc_fraction'], deprec_sch, 
                      agent_dict['tax_rate'], 0, agent_dict['discount_rate'],  
                      agent_dict['analysis_years'], agent_dict['inflation'], 

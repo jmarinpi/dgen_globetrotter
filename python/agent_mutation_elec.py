@@ -130,11 +130,6 @@ def apply_tech_performance_solar(dataframe, tech_performance_solar_df):
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, batt_replacement_yr, scenario):        
-    # TODO: Formalize an assumption about the (additional) decrease in costs
-    #       during replacement. Represents that replacement would likely cost
-    #       less than a full new installation that year.
-
-    replacement_cost_fraction = 0.75 # Completely arbitrary. Good luck.   
     
     res_starting_cost_per_kw = 2869.0
     res_starting_cost_per_kwh = 896.0
@@ -155,12 +150,23 @@ def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, ba
     nonres_cost_per_kw_replace = nonres_starting_cost_per_kw * storage_ratio_kw_replace
     nonres_cost_per_kwh_replace = nonres_starting_cost_per_kwh * storage_ratio_kwh_replace
     
+    # Calculate the present value of the replacements
+    replace_discount = 0.08 # Use a different discount rate to represent the discounting of the third party doing the replacing
+    res_kw_replace_present_value = res_cost_per_kw_replace / (1.0+replace_discount)**batt_replacement_yr
+    res_kwh_replace_present_value = res_cost_per_kwh_replace / (1.0+replace_discount)**batt_replacement_yr
+    nonres_kw_replace_present_value = nonres_cost_per_kw_replace / (1.0+replace_discount)**batt_replacement_yr
+    nonres_kwh_replace_present_value = nonres_cost_per_kwh_replace / (1.0+replace_discount)**batt_replacement_yr
+
+    # Calculate the level of annual payments whose present value equals the present value of a replacement
+    res_om_per_kw = res_kw_replace_present_value * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
+    res_om_per_kwh = res_kwh_replace_present_value * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
+    nonres_om_per_kw = nonres_kw_replace_present_value * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
+    nonres_om_per_kwh = nonres_kwh_replace_present_value * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
+    
     dataframe['batt_cost_per_kw'] = np.where(dataframe['sector_abbr']=='res', res_cost_per_kw, nonres_cost_per_kw)
     dataframe['batt_cost_per_kwh'] = np.where(dataframe['sector_abbr']=='res', res_cost_per_kwh, nonres_cost_per_kwh)
-    dataframe['batt_replace_cost_per_kw'] = np.where(dataframe['sector_abbr']=='res', res_cost_per_kw_replace, nonres_cost_per_kw_replace) * replacement_cost_fraction
-    dataframe['batt_replace_cost_per_kwh'] = np.where(dataframe['sector_abbr']=='res', res_cost_per_kwh_replace, nonres_cost_per_kwh_replace) * replacement_cost_fraction
-    dataframe['batt_om'] = 0 # just a placeholder...
-
+    dataframe['batt_om_per_kw'] = np.where(dataframe['sector_abbr']=='res', res_om_per_kw, nonres_om_per_kw)
+    dataframe['batt_om_per_kwh'] = np.where(dataframe['sector_abbr']=='res', res_om_per_kwh, nonres_om_per_kwh)
     
     return dataframe
     
@@ -1454,9 +1460,10 @@ def apply_tech_costs_solar_storage(dataframe, pv_costs_df):
     dataframe['inverter_cost_per_kw'] = dataframe['inverter_cost_dollars_per_kw']
     dataframe['pv_cost_per_kw'] = dataframe['installed_costs_dollars_per_kw']
     
-    # apply the capital cost multipliers and size adjustment factor
+    # apply the capital cost multipliers
     dataframe['inverter_cost_per_kw'] = (dataframe['inverter_cost_per_kw'] * dataframe['cap_cost_multiplier'])
-    dataframe['pv_cost_per_kw'] = (dataframe['pv_cost_per_kw'] * dataframe['cap_cost_multiplier'])                                                    
+    dataframe['pv_cost_per_kw'] = (dataframe['pv_cost_per_kw'] * dataframe['cap_cost_multiplier'])  
+                                                  
     # identify the new columns to return
     return_cols = ['inverter_cost_per_kw', 'pv_cost_per_kw', 'fixed_om_dollars_per_kw_per_yr', 'variable_om_dollars_per_kwh']    
     out_cols = in_cols + return_cols
