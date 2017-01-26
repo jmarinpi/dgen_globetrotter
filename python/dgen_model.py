@@ -738,7 +738,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     ba_cum_pv_kw_year = agent_cum_capacities.groupby(by='ba').sum()
                     ba_cum_pv_kw_year['ba'] = ba_cum_pv_kw_year.index
                     ba_cum_pv_mw[year] = ba_cum_pv_kw_year['pv_kw_cum'] / 1000.0
-                    ba_cum_pv_mw.to_csv(out_scen_path + '/dpv_MW_by_pca_and_year.csv', index_label='ba')                     
+                    ba_cum_pv_mw.to_csv(out_scen_path + '/dpv_MW_by_ba_and_year.csv', index_label='ba')                     
                     
                     agent_cum_batt_mw = df[[ 'ba', 'batt_kw_cum']]
                     agent_cum_batt_mw['batt_mw_cum'] = agent_cum_batt_mw['batt_kw_cum'] / 1000.0
@@ -749,10 +749,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     ba_cum_batt_mwh_year = agent_cum_batt_mwh.groupby(by='ba').sum()
                     
                     ba_cum_batt_mw[year] = ba_cum_batt_mw_year['batt_mw_cum']
-                    ba_cum_batt_mw.to_csv(out_scen_path + '/batt_MW_by_pca_and_year.csv', index_label='ba')                     
+                    ba_cum_batt_mw.to_csv(out_scen_path + '/batt_MW_by_ba_and_year.csv', index_label='ba')                     
                     
                     ba_cum_batt_mwh[year] = ba_cum_batt_mwh_year['batt_mwh_cum']
-                    ba_cum_batt_mwh.to_csv(out_scen_path + '/batt_MWh_by_pca_and_year.csv', index_label='ba') 
+                    ba_cum_batt_mwh.to_csv(out_scen_path + '/batt_MWh_by_ba_and_year.csv', index_label='ba') 
 
                     #==========================================================================================================
                     # WRITE OUTPUTS
@@ -840,7 +840,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     pv_gen_previous_adopters[hour_list] = pv_gen_previous_adopters[hour_list] * 0.995
                     
                 pv_cf_by_ba_and_year = pv_cf_by_ba_and_year[['ba', 'year'] + hour_list]
-                pv_cf_by_ba_and_year.round(3).to_csv(out_scen_path + '/dpv_cf_by_pca_and_year.csv') 
+                pv_cf_by_ba_and_year.round(3).to_csv(out_scen_path + '/dpv_cf_by_ba_and_year.csv') 
 
 
             #==============================================================================
