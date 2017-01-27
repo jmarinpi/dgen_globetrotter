@@ -712,6 +712,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     total_ba_dispatches_df.index.names = ['ba']
                     total_ba_dispatches_df['ba'] = total_ba_dispatches_df.index.values
                     total_ba_dispatches_df.to_pickle(out_scen_path + '/total_ba_dispatches_df_%s.pkl' % year)
+                    del(total_dispatches)
+                    del(total_dispatches_df)
                     
 
                     #==========================================================================================================
@@ -731,6 +733,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     pv_gen_new_adopters.index.names = ['ba']
                     pv_gen_new_adopters['ba'] = pv_gen_new_adopters.index.values
                     pv_gen_new_adopters.to_pickle(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
+                    del(pv_gen_new_adopters)
                     
                     #==========================================================================================================
                     # Aggregate PV and Batt capacity by reeds region
