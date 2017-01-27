@@ -500,21 +500,21 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # GENERATE AGENT OBJECT WITH CORE IMMUTABLE ATTRIBUTES               
                 #==============================================================================
                 # get core agent attributes from postgres
-                agents_base = agent_mutation_elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
+                agents = agent_mutation_elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
                 # filter techs
-                agents_base = agents_base.filter('tech in %s' % scenario_settings.techs)
+                agents = agents.filter('tech in %s' % scenario_settings.techs)
                 # store canned agents (if in setup_develop mode)
-                datfunc.setup_canned_agents(model_settings.mode, agents_base, scenario_settings.tech_mode, 'both')
+                datfunc.setup_canned_agents(model_settings.mode, agents, scenario_settings.tech_mode, 'both')
                 # change pca_reg to ba TODO: remove pca_reg in original agent definition
-                agents_base.dataframe['ba'] = agents_base.dataframe['pca_reg']
-                agents_base.dataframe.drop(['pca_reg'], axis=1)
+                agents.dataframe['ba'] = agents.dataframe['pca_reg']
+                agents.dataframe.drop(['pca_reg'], axis=1)
                  
                 # check rate coverage
-                rates_rank_df = agent_mutation_elec.check_rate_coverage(agents_base.dataframe, rates_rank_df, rates_json_df)
+                rates_rank_df = agent_mutation_elec.check_rate_coverage(agents.dataframe, rates_rank_df, rates_json_df)
                 #==========================================================================================================
                 # Set up dataframes to record aggregated results
                 #==========================================================================================================    
-                ba_list = np.unique(np.array(agents_base.dataframe['ba']))
+                ba_list = np.unique(np.array(agents.dataframe['ba']))
                 
                 year_and_reg_set = gFuncs.cartesian([ba_list, scenario_settings.model_years])                
                 
@@ -542,33 +542,38 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==============================================================================       
                 # get hourly resource
                 normalized_hourly_resource_solar_df = agent_mutation_elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
-                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_solar_capacity_factor_profile, (normalized_hourly_resource_solar_df, )).compute()
+                agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_solar_capacity_factor_profile, (normalized_hourly_resource_solar_df, )).compute()
 
                 #==============================================================================
                 # SET BATTERY REPLACEMENT YEAR
                 #==============================================================================
                 batt_replacement_yr = int(10.0)
-                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_batt_replace_schedule, (batt_replacement_yr, )).compute()
+                agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_batt_replace_schedule, (batt_replacement_yr, )).compute()
                                     
                 #==============================================================================
                 # LOAD PROFILES
                 #==============================================================================
                 # apply normalized load profiles
-                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
+                agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
                                    
                 #==========================================================================================================
                 # SYSTEM DEGRADATION                
                 #==========================================================================================================
                 # apply system degradation to agents
-                agents_base = AgentsAlgorithm(agents_base, agent_mutation_elec.apply_system_degradation, (system_degradation_df, )).compute()
+                agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_system_degradation, (system_degradation_df, )).compute()
                     
+                    
+                #==========================================================================================================
+                # WRITE BASE AGENT_DF TO DISK              
+                #==========================================================================================================
+                agents.dataframe.to_pickle(out_scen_path + '/agent_df_base.pkl') 
                     
                 for year in scenario_settings.model_years:
                     
                     logger.info('\tWorking on %s' % year)
 
                     # copy the core agent object                    
-                    agents = agents_base
+                    agents.dataframe = pd.read_pickle(out_scen_path + '/agent_df_base.pkl')
 
                     # is it the first model year?
                     is_first_year = year == model_settings.start_year   
@@ -738,7 +743,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     ba_cum_pv_kw_year = agent_cum_capacities.groupby(by='ba').sum()
                     ba_cum_pv_kw_year['ba'] = ba_cum_pv_kw_year.index
                     ba_cum_pv_mw[year] = ba_cum_pv_kw_year['pv_kw_cum'] / 1000.0
-                    ba_cum_pv_mw.to_csv(out_scen_path + '/dpv_MW_by_ba_and_year.csv', index_label='ba')                     
+                    ba_cum_pv_mw.round(3).to_csv(out_scen_path + '/dpv_MW_by_ba_and_year.csv', index_label='ba')                     
                     
                     agent_cum_batt_mw = df[[ 'ba', 'batt_kw_cum']]
                     agent_cum_batt_mw['batt_mw_cum'] = agent_cum_batt_mw['batt_kw_cum'] / 1000.0
@@ -749,10 +754,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     ba_cum_batt_mwh_year = agent_cum_batt_mwh.groupby(by='ba').sum()
                     
                     ba_cum_batt_mw[year] = ba_cum_batt_mw_year['batt_mw_cum']
-                    ba_cum_batt_mw.to_csv(out_scen_path + '/batt_MW_by_ba_and_year.csv', index_label='ba')                     
+                    ba_cum_batt_mw.round(3).to_csv(out_scen_path + '/batt_MW_by_ba_and_year.csv', index_label='ba')                     
                     
                     ba_cum_batt_mwh[year] = ba_cum_batt_mwh_year['batt_mwh_cum']
-                    ba_cum_batt_mwh.to_csv(out_scen_path + '/batt_MWh_by_ba_and_year.csv', index_label='ba') 
+                    ba_cum_batt_mwh.round(3).to_csv(out_scen_path + '/batt_MWh_by_ba_and_year.csv', index_label='ba') 
 
                     #==========================================================================================================
                     # WRITE OUTPUTS

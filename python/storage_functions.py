@@ -408,8 +408,6 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
 #%%
 def system_size_driver(agent_df, deprec_sch_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()-1):  
     
-#    agent_df_old = agent_df.apply(system_size_and_bill_calc_optimal, axis=1, args=(deprec_sch_df, pv_cf_profile_df, rates_rank_df, rates_json_df))
-
     agent_dict = agent_df.T.to_dict()
     deprec_sch_dict = deprec_sch_df.T.to_dict()
     
