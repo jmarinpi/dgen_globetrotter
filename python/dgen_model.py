@@ -543,7 +543,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # get hourly resource
                 normalized_hourly_resource_solar_df = agent_mutation_elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
                 agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_solar_capacity_factor_profile, (normalized_hourly_resource_solar_df, )).compute()
-
+                del(normalized_hourly_resource_solar_df)
+                
                 #==============================================================================
                 # SET BATTERY REPLACEMENT YEAR
                 #==============================================================================
@@ -555,7 +556,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==============================================================================
                 # apply normalized load profiles
                 agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
-                                   
+                del(normalized_load_profiles_df)
                 #==========================================================================================================
                 # SYSTEM DEGRADATION                
                 #==========================================================================================================
@@ -692,22 +693,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                         
                     #==========================================================================================================
                     # BASS DIFFUSION
-                    #==========================================================================================================   
-                    # TODO: rewrite this section to use agents class
-                    # convert back to dataframe
-                    df = agents.dataframe
-                    
+                    #==========================================================================================================                      
                     # calculate diffusion based on economics and bass diffusion                   
-                    df, market_last_year_df = diffusion_functions_elec.calc_diffusion_storage(df, is_first_year, bass_params) 
+                    agents.dataframe, market_last_year_df = diffusion_functions_elec.calc_diffusion_storage(agents.dataframe, is_first_year, bass_params) 
 
                     #==========================================================================================================
                     # Write storage dispatch trajectories, to be used for capacity factor aggregations later
                     #==========================================================================================================   
                     # TODO: rewrite this using agents class, once above is handled
                     # Dispatch trajectories are in MW
-                    total_dispatches = np.vstack(df['batt_dispatch_profile']).astype(np.float) * np.array(df['new_adopters']).reshape(len(df), 1) / 1000.0
+                    total_dispatches = np.vstack(agents.dataframe['batt_dispatch_profile']).astype(np.float) * np.array(agents.dataframe['new_adopters']).reshape(len(agents.dataframe), 1) / 1000.0
                     total_dispatches_df = pd.DataFrame(total_dispatches, columns = hour_list)
-                    total_dispatches_df['ba'] = df['ba'] #TODO improve this so it is robust against reorder
+                    total_dispatches_df['ba'] = agents.dataframe['ba'] #TODO improve this so it is robust against reorder
 
                     total_ba_dispatches_df = total_dispatches_df.groupby(by='ba').sum()
                     total_ba_dispatches_df['year'] = year
@@ -722,12 +719,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================   
                     # TODO: rewrite this using agents class, once above is handled
                     if is_first_year:
-                        pv_gen_new_adopters = np.vstack(df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(df['pv_kw_cum']).reshape(len(df), 1)
+                        pv_gen_new_adopters = np.vstack(agents.dataframe['solar_cf_profile']).astype(np.float) / 1e6 * np.array(agents.dataframe['pv_kw_cum']).reshape(len(agents.dataframe), 1)
                     else:
-                        pv_gen_new_adopters = np.vstack(df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(df['new_pv_kw']).reshape(len(df), 1)
+                        pv_gen_new_adopters = np.vstack(agents.dataframe['solar_cf_profile']).astype(np.float) / 1e6 * np.array(agents.dataframe['new_pv_kw']).reshape(len(agents.dataframe), 1)
 
                     pv_gen_new_adopters = pd.DataFrame(pv_gen_new_adopters, columns = hour_list)
-                    pv_gen_new_adopters['ba'] = df['ba'] #TODO improve this so it is robust against reorder
+                    pv_gen_new_adopters['ba'] = agents.dataframe['ba'] #TODO improve this so it is robust against reorder
                     pv_gen_new_adopters = pv_gen_new_adopters.groupby(by='ba').sum()
                     pv_gen_new_adopters['year'] = year
                     
@@ -739,15 +736,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Aggregate PV and Batt capacity by reeds region
                     #==========================================================================================================   
                     # TODO: rewrite this using agents class, once above is handled
-                    agent_cum_capacities = df[[ 'ba', 'pv_kw_cum']]
+                    agent_cum_capacities = agents.dataframe[[ 'ba', 'pv_kw_cum']]
                     ba_cum_pv_kw_year = agent_cum_capacities.groupby(by='ba').sum()
                     ba_cum_pv_kw_year['ba'] = ba_cum_pv_kw_year.index
                     ba_cum_pv_mw[year] = ba_cum_pv_kw_year['pv_kw_cum'] / 1000.0
                     ba_cum_pv_mw.round(3).to_csv(out_scen_path + '/dpv_MW_by_ba_and_year.csv', index_label='ba')                     
                     
-                    agent_cum_batt_mw = df[[ 'ba', 'batt_kw_cum']]
+                    agent_cum_batt_mw = agents.dataframe[[ 'ba', 'batt_kw_cum']]
                     agent_cum_batt_mw['batt_mw_cum'] = agent_cum_batt_mw['batt_kw_cum'] / 1000.0
-                    agent_cum_batt_mwh = df[[ 'ba', 'batt_kwh_cum']]
+                    agent_cum_batt_mwh = agents.dataframe[[ 'ba', 'batt_kwh_cum']]
                     agent_cum_batt_mwh['batt_mwh_cum'] = agent_cum_batt_mwh['batt_kwh_cum'] / 1000.0
 
                     ba_cum_batt_mw_year = agent_cum_batt_mw.groupby(by='ba').sum()
@@ -764,16 +761,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================   
                     # TODO: rewrite this section to use agents class
                     # write the incremental results to the database
-                    datfunc.write_outputs(con, cur, df, scenario_settings.sectors, scenario_settings.schema) 
+                    datfunc.write_outputs(con, cur, agents.dataframe, scenario_settings.sectors, scenario_settings.schema) 
 #                    datfunc.write_last_year(con, cur, market_last_year_df, scenario_settings.schema)
                 
                     #==========================================================================================================
                     # WRITE OUTPUTS AS PICKLES FOR POST-PROCESSING
                     #========================================================================================================== 
-                    if is_first_year:
-                        df.to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
-                    else:
-                        df.drop(['consumption_hourly', 'solar_cf_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
+                    agents.dataframe.drop(['consumption_hourly', 'solar_cf_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
                 #==============================================================================
                 # Summarize solar+storage results for ReEDS
