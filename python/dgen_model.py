@@ -686,8 +686,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         # calculate initial market shares
                         agents = AgentsAlgorithm(agents, agent_mutation_elec.estimate_initial_market_shares_storage, (state_starting_capacities_df, )).compute()
                     else:
-                        # get last year's results
-#                        market_last_year_df = agent_mutation_elec.get_market_last_year(con, scenario_settings.schema)
                         # apply last year's results to the agents
                         agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_market_last_year, (market_last_year_df, )).compute()                
                                         
