@@ -109,6 +109,29 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, rate_growth_df):
 
     return dataframe   
     
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def apply_elec_price_multiplier_and_escalator_simple(dataframe, year, rate_growth_df):
+    '''
+    Obtain a single scalar multiplier for each agent, that is the cost of 
+    electricity relative to 2016 (when the tariffs were curated).
+    Also calculate the average increase in the price of electricity over the
+    past ten years, which will be the escalator that they use to project
+    electricity changes in their bill calculations.
+    
+    Note that many customers will not differentiate between real and nomianl,
+    and therefore many would overestimate the real escalation of electriicty
+    prices. 
+    '''    
+    
+    rate_growth_df['elec_price_multiplier'] = rate_growth_df[str(year)]
+    
+    rate_growth_df['elec_price_escalator'] = (rate_growth_df[str(year)] / rate_growth_df['2010'])**(1.0/(year-2010)) - 1.0
+
+    dataframe = pd.merge(dataframe, rate_growth_df[['census_division_abbr', 'elec_price_multiplier', 'elec_price_escalator']], how = 'left', on = ['census_division_abbr'])    
+
+    return dataframe 
+    
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

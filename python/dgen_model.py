@@ -568,6 +568,21 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # WRITE BASE AGENT_DF TO DISK              
                 #==========================================================================================================
                 agents.dataframe.to_pickle(out_scen_path + '/agent_df_base.pkl') 
+                
+                #==============================================================
+                # Ingest rate_growth_df from csv - temporary hack to get ReEDS price trajectories in
+                # TODO: remove
+                rate_growth_df = pd.read_pickle('rate_growth_dfs/rate_growth_%s.pkl' % scenario_settings.scen_name)
+                #==============================================================
+                
+                #==============================================================
+                # Set which battery cost scenario - temp for sunshot 2030
+                # TODO: remove
+                if 'lsc' in scenario_settings.scen_name:
+                    battery_cost_scenario = 'low'
+                else:
+                    battery_cost_scenario = 'high'
+                #==============================================================
                     
                 for year in scenario_settings.model_years:
                     
@@ -604,7 +619,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================                
                     # Apply each agent's electricity price (real terms relative)
                     # to 2016, and calculate their assumption about price changes.
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_elec_price_multiplier_and_escalator, (year, rate_growth_df)).compute()
+                    # TODO: remove the simple, since it was just for sunshot 2030
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_elec_price_multiplier_and_escalator_simple, (year, rate_growth_df)).compute()
                  
 
                     #==============================================================================
@@ -628,7 +644,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     tech_costs_solar_df = agent_mutation_elec.get_technology_costs_solar(con, scenario_settings.schema, year)
                     # apply technology costs     
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_costs_solar_storage, (tech_costs_solar_df, )).compute()
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_costs_storage, (tech_cost_storage_schedules_df, year, batt_replacement_yr, 'low')).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_costs_storage, (tech_cost_storage_schedules_df, year, batt_replacement_yr, battery_cost_scenario)).compute()
      
                     #==========================================================================================================
                     # DEPRECIATION SCHEDULE       
@@ -762,7 +778,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================   
                     # TODO: rewrite this section to use agents class
                     # write the incremental results to the database
-                    datfunc.write_outputs(con, cur, agents.dataframe, scenario_settings.sectors, scenario_settings.schema) 
+#                    datfunc.write_outputs(con, cur, agents.dataframe, scenario_settings.sectors, scenario_settings.schema) 
 #                    datfunc.write_last_year(con, cur, market_last_year_df, scenario_settings.schema)
                 
                     #==========================================================================================================

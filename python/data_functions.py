@@ -1541,7 +1541,7 @@ def get_rate_escalations(con, schema):
     inputs = locals().copy()
     
     sql = """SELECT census_division_abbr, lower(sector) as sector_abbr, 
-                    array_agg(escalation_factor order by year asc) as rate_escalations
+                    array_agg(escalation_factor order by year asc)::DOUBLE PRECISION[] as rate_escalations
             FROM %(schema)s.rate_escalations_to_model
             GROUP BY census_division_abbr, sector""" % inputs
     rate_escalations = pd.read_sql(sql, con, coerce_float = False)
