@@ -569,11 +569,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 agents.dataframe.to_pickle(out_scen_path + '/agent_df_base.pkl') 
                 
-                #==============================================================
-                # Ingest rate_growth_df from csv - temporary hack to get ReEDS price trajectories in
-                # TODO: remove
-                rate_growth_df = pd.read_pickle('rate_growth_dfs/rate_growth_%s.pkl' % scenario_settings.scen_name)
-                #==============================================================
                 
                 #==============================================================
                 # Set which battery cost scenario - temp for sunshot 2030
