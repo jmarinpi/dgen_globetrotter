@@ -110,6 +110,8 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, rate_growth_df):
     return dataframe   
     
 #%%
+# This can be deleted after the SunShot 2030 work is completed. The rate 
+# escalation function should be reexamined. 
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_elec_price_multiplier_and_escalator_simple(dataframe, year, rate_growth_df):
     '''

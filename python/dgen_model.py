@@ -615,7 +615,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply each agent's electricity price (real terms relative)
                     # to 2016, and calculate their assumption about price changes.
                     # TODO: remove the simple, since it was just for sunshot 2030
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_elec_price_multiplier_and_escalator_simple, (year, rate_growth_df)).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_elec_price_multiplier_and_escalator, (year, rate_growth_df)).compute()
                  
 
                     #==============================================================================
