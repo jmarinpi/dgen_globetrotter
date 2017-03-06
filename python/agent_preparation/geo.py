@@ -24,57 +24,6 @@ DEC2FLOAT = pg.extensions.new_type(
     lambda value, curs: float(value) if value is not None else None)
 pg.extensions.register_type(DEC2FLOAT)
 
-
-#%%
-def p_execute(pg_conn_string, sql):
-    try:
-        # create cursor and connection
-        con, cur = utilfunc.make_con(pg_conn_string)  
-        # execute query
-        cur.execute(sql)
-        # commit changes
-        con.commit()
-        # close cursor and connection
-        con.close()
-        cur.close()
-        
-        return (0, None)
-        
-    except Exception, e:       
-        return (1, e.__str__())
-
-
-#%%
-def p_run(pg_conn_string, sql, chunks, pool):
-           
-    num_workers = pool._processes
-    result_list = []
-    for i in xrange(num_workers):
-
-        place_holders = {'i': i, 'ids': utilfunc.pylist_2_pglist(chunks[i])}
-        isql = sql % place_holders
-        
-        res = pool.apply_async(p_execute, args = (pg_conn_string, isql))
-        result_list.append(res)    
-    
-    # get results as they are returned
-    result_returns = []
-    for i, result in enumerate(result_list):        
-        result_return = result.get()     
-        result_returns.append(result_return)    
-    
-    results_df = pd.DataFrame(result_returns, columns = ['status_code', 'msg'])
-    # find whether there are any errors
-    errors_df = results_df[results_df['status_code'] == 1]
-    if errors_df.shape[0] > 0:
-        # errors = '\n\n'.join(errors_df['msg']) # if you'd rather print all messages, but usually they will be redundant
-        first_error = errors_df['msg'].tolist()[0]
-        pool.close() 
-        raise Exception('One or more SQL errors occurred.\n\nFirst error was:\n\n%s' % first_error)
-    else:
-        return
-
-
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 0, prefix = '')
 def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agents, agents_per_region, sectors,
@@ -252,25 +201,6 @@ def calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr, ch
     sql = """ALTER TABLE %(schema)s.new_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (tract_id_alias, year);""" % inputs
     p_run(pg_conn_string, sql, chunks, pool)      
-
-
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def create_agent_id_sequence(schema, con, cur):
-    
-    msg = '\tCreating Sequence for Agent IDs'    
-    logger.info(msg)
-    
-    
-    inputs = locals().copy()
-     # create a sequence that will be used to populate a new primary key across all table partitions
-    # using a sequence ensure ids will be unique across all partitioned tables
-    sql = """DROP SEQUENCE IF EXISTS %(schema)s.agent_id_sequence;
-            CREATE SEQUENCE %(schema)s.agent_id_sequence
-            INCREMENT 1
-            START 1;""" % inputs
-    cur.execute(sql)
-    con.commit()   
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
