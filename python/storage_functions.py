@@ -103,6 +103,13 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
         batt_powers = np.linspace(0, np.array(agent_dict['max_demand_kw']) * 0.2, batt_inc)
     else:
         batt_powers = np.zeros(1)
+        
+    # Calculate the estimation parameters for each PV size
+    est_params_df = pd.DataFrame(index=pv_sizes)
+    est_params_df['estimator_params'] = 'temp'
+    for pv_size in pv_sizes:
+        load_and_pv_profile = load_profile - pv_size*pv_cf_profile
+        est_params_df.set_value(pv_size, 'estimator_params', dFuncs.calc_estimator_params(load_and_pv_profile, tariff, export_tariff, batt.eta_charge, batt.eta_discharge))
     
     # Create df with all combinations of solar+storage sizes
     system_df = pd.DataFrame(gFuncs.cartesian([pv_sizes, batt_powers]), columns=['pv', 'batt'])
@@ -124,8 +131,7 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
         batt.set_cycle_deg(1500) #Setting degradation to 86%, which is the weighted "average" capacity over a 10 year period, where weight of degradation is discounted at 8% annually
 
         if batt_power > 0:
-            estimator_params = dFuncs.calc_estimator_params(load_and_pv_profile, tariff, export_tariff, batt.eta_charge, batt.eta_discharge)
-    
+            estimator_params = est_params_df.loc[system_df['pv'][i].copy(), 'estimator_params']
             estimated_results = dFuncs.determine_optimal_dispatch(load_profile, pv_size*pv_cf_profile, batt, tariff, export_tariff, estimator_params=estimator_params, estimated=True, DP_inc=DP_inc_est, d_inc_n=d_inc_n_est, estimate_demand_levels=True)
             system_df.loc[i, 'est_bills'] = estimated_results['bill_under_dispatch']  
         else:
@@ -147,7 +153,7 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
     batt_chg_frac = np.where(system_df['pv'] >= system_df['batt']*4.0, 1.0, 0)
                 
     #=========================================================================#
-    # Determine financial performance of each system size for both HO and TPO
+    # Determine financial performance of each system size
     #=========================================================================#  
     cf_results_est = fFuncs.cashflow_constructor(est_bill_savings, 
                          np.array(system_df['pv']), agent_dict['pv_cost_per_kw'], agent_dict['fixed_om_dollars_per_kw_per_yr'],
