@@ -5,18 +5,11 @@ Created on Thu May 26 11:29:02 2016
 @author: mgleason
 """
 import psycopg2 as pg
-import numpy as np
 import pandas as pd
 import decorators
 import utility_functions as utilfunc
-import multiprocessing
-import traceback
-import data_functions as datfunc
-from agent import Agent, Agents, AgentsAlgorithm
-from cStringIO import StringIO
-import pssc_mp
 
-# %% GLOBAL SETTINGS
+# GLOBAL SETTINGS
 
 # load logger
 logger = utilfunc.get_logger()
@@ -30,7 +23,6 @@ DEC2FLOAT = pg.extensions.new_type(
 pg.extensions.register_type(DEC2FLOAT)
 
 
-# %%
 def p_execute(pg_conn_string, sql):
     try:
         # create cursor and connection
@@ -45,19 +37,18 @@ def p_execute(pg_conn_string, sql):
 
         return (0, None)
 
-    except Exception, e:
+    except Exception as e:
         return (1, e.__str__())
 
 
-# %%
 def p_run(pg_conn_string, sql, county_chunks, pool):
 
     num_workers = pool._processes
     result_list = []
     for i in xrange(num_workers):
-
+        county_id = utilfunc.pylist_2_pglist(county_chunks[i])
         place_holders = {'i': i,
-                         'county_ids': utilfunc.pylist_2_pglist(county_chunks[i])}
+                         'county_ids': county_id}
         isql = sql % place_holders
 
         res = pool.apply_async(p_execute, args=(pg_conn_string, isql))
@@ -77,8 +68,8 @@ def p_run(pg_conn_string, sql, county_chunks, pool):
         # messages, but usually they will be redundant
         first_error = errors_df['msg'].tolist()[0]
         pool.close()
-        raise Exception(
-            'One or more SQL errors occurred.\n\nFirst error was:\n\n%s' % first_error)
+        raise Exception('One or more SQL errors occurred.\n\nFirst error \
+was:\n\n{:}'.format(first_error))
     else:
         return
 
@@ -90,7 +81,8 @@ def create_agent_id_sequence(schema, con, cur):
     logger.info(msg)
 
     inputs = locals().copy()
-    # create a sequence that will be used to populate a new primary key across all table partitions
+    # create a sequence that will be used to populate a new primary key across
+    # all table partitions
     # using a sequence ensure ids will be unique across all partitioned tables
     sql = """DROP SEQUENCE IF EXISTS %(schema)s.agent_id_sequence;
                 CREATE SEQUENCE %(schema)s.agent_id_sequence
