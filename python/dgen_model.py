@@ -500,7 +500,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # GENERATE AGENT OBJECT WITH CORE IMMUTABLE ATTRIBUTES               
                 #==============================================================================
                 # get core agent attributes from postgres
-                agents = agent_mutation_elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
+                df = agent_mutation_elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
+
                 # filter techs
                 agents = agents.filter('tech in %s' % scenario_settings.techs)
                 # store canned agents (if in setup_develop mode)
