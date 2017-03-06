@@ -226,8 +226,7 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
                     'cash_flow':cf_results_opt['cf'][0,:],
                     'system_built':system_built_bool,
                     'batt_dispatch_profile':accurate_results['batt_dispatch_profile'],
-                    'tariff_id':tariff_id,
-                    'tariff_name':tariff.name}
+                    'tariff_id':tariff_id}
              
     return results_dict
     
