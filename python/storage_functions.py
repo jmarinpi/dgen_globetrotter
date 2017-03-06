@@ -150,7 +150,7 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
     # Determine financial performance of each system size for both HO and TPO
     #=========================================================================#  
     cf_results_est = fFuncs.cashflow_constructor(est_bill_savings, 
-                         np.array(system_df['pv']), agent_dict['pv_cost_per_kw'], 0, agent_dict['fixed_om_dollars_per_kw_per_yr'],
+                         np.array(system_df['pv']), agent_dict['pv_cost_per_kw'], agent_dict['fixed_om_dollars_per_kw_per_yr'],
                          np.array(system_df['batt'])*3, np.array(system_df['batt']), 
                          agent_dict['batt_cost_per_kw'], agent_dict['batt_cost_per_kwh'], 
                          agent_dict['batt_om_per_kw'], agent_dict['batt_om_per_kwh'],
@@ -193,7 +193,7 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
         batt_chg_frac = 0.0
 
     cf_results_opt = fFuncs.cashflow_constructor(opt_bill_savings, 
-                     opt_pv_size, agent_dict['pv_cost_per_kw'], 0, agent_dict['fixed_om_dollars_per_kw_per_yr'],
+                     opt_pv_size, agent_dict['pv_cost_per_kw'], agent_dict['fixed_om_dollars_per_kw_per_yr'],
                      opt_batt_power*3, opt_batt_power, 
                      agent_dict['batt_cost_per_kw'], agent_dict['batt_cost_per_kwh'], 
                      agent_dict['batt_om_per_kw'], agent_dict['batt_om_per_kwh'],
