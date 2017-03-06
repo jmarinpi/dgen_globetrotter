@@ -81,3 +81,20 @@ def p_run(pg_conn_string, sql, county_chunks, pool):
             'One or more SQL errors occurred.\n\nFirst error was:\n\n%s' % first_error)
     else:
         return
+
+
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def create_agent_id_sequence(schema, con, cur):
+
+    msg = '\tCreating Sequence for Agent IDs'
+    logger.info(msg)
+
+    inputs = locals().copy()
+    # create a sequence that will be used to populate a new primary key across all table partitions
+    # using a sequence ensure ids will be unique across all partitioned tables
+    sql = """DROP SEQUENCE IF EXISTS %(schema)s.agent_id_sequence;
+                CREATE SEQUENCE %(schema)s.agent_id_sequence
+                INCREMENT 1
+                START 1;""" % inputs
+    cur.execute(sql)
+    con.commit()
