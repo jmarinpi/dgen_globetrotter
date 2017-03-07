@@ -399,9 +399,6 @@ class ScenarioSettings(object):
 
         if sorted(self.techs) in [['wind'], ['solar'], ['solar', 'wind']]:
             self.set('tech_mode', 'elec')
-        
-        elif sorted(self.techs) == ['solar', 'storage']:
-            self.set('tech_mode', 'solar+storage')
 
         elif self.techs == ['du']:
             self.set('tech_mode', 'du')
@@ -502,9 +499,7 @@ class ScenarioSettings(object):
                                 ['wind'],
                                 ['solar'],
                                 ['du'],
-                                ['ghp'],
-                                ['solar', 'wind'],
-                                ['solar', 'storage']
+                                ['ghp']
                                ]
             if sorted(self.techs) not in valid_options:
                 raise ValueError("Invalid %s: Cannot currently run that combination of technologies. Valid options are: %s" % (property_name, valid_options))
