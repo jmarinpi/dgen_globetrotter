@@ -31,7 +31,7 @@ from agent import Agents, AgentsAlgorithm
 import tech_choice_elec
 import tech_choice_geo
 import settings
-import  agent_mutation
+import agent_mutation
 import agent_preparation
 import demand_supply_geo
 import diffusion_functions_elec
@@ -65,27 +65,21 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         # initialize Model Settings object (this controls settings that apply to all scenarios to be executed)
         model_settings = settings.ModelSettings()
 
-        # add the config to model settings
+        # add the config to model settings; set Rscript path, model starting time, and output directory based on run time 
         model_settings.add_config(config)
-        # set Rscript path
         model_settings.set_Rscript_path(config.Rscript_paths)
-        # set the model starting time (in seconds since epoch)
         model_settings.set('model_init', utilfunc.get_epoch_time())
-        # get current date/time (formatted)
         model_settings.set('cdate', utilfunc.get_formatted_time())
-        # set output directory
         model_settings.set('out_dir', datfunc.make_output_directory_path(model_settings.cdate))
+        model_settings.set('git_hash', utilfunc.get_git_hash())
+        model_settings.set('input_scenarios', datfunc.get_input_scenarios())
 
         # make output directory
         os.makedirs(model_settings.out_dir)
-        # create the logger
-        logger = utilfunc.get_logger(os.path.join(model_settings.out_dir, 'dg_model.log'))
 
-        # get the git hash and also log to output file
-        model_settings.set('git_hash', utilfunc.get_git_hash())
+        # create the logger and stamp with git has
+        logger = utilfunc.get_logger(os.path.join(model_settings.out_dir, 'dg_model.log'))
         logger.info("Model version is git commit %s" % model_settings.git_hash)
-        # find the input excel spreadsheets
-        model_settings.set('input_scenarios', datfunc.get_input_scenarios())
 
         # connect to Postgres and configure connection
         con, cur = utilfunc.make_con(model_settings.pg_conn_string)
@@ -111,7 +105,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             scenario_settings.set('input_scenario', scenario_file)
 
             logger.info("-------------Preparing Database-------------")
-            # create the output schema
+            #==============================================================================
+            # DEFINE SCENARIO SETTINGS
+            #==============================================================================
             try:
                 if model_settings.use_existing_schema == True:
                     # create a schema from the existing schema of interest
@@ -137,8 +133,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # TEMPORARY PATCH FOR STORAGE BRANCH
             # TODO: remove this once storage has been added to the input excel sheet
             # if in storage_model, override input techs with ["solar", "storage"]
-            if model_settings.solar_plus_storage_mode == True:
-                scenario_settings.set('techs', ['solar', 'storage'])
+            #if model_settings.solar_plus_storage_mode == True:
+            #    scenario_settings.set('techs', ['solar', 'storage'])
             #==============================================================================
 
             # set tech_mode
@@ -178,60 +174,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # CREATE AGENTS
                 #==========================================================================================================
                 logger.info("--------------Creating Agents---------------")
+                #==============================================================================
+                # CREATE AGENTS
+                #==============================================================================
 
-
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
-############################ Elec Setup #######################################
-
-                if scenario_settings.tech_mode == 'elec':
+                if scenario_settings.techs in [['wind'], ['solar']]:
                     # create core agent attributes
                     if model_settings.mode in ['run', 'setup_develop']:
-                        agent_preparation.elec.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
-                                                          scenario_settings.sectors, model_settings.pg_procs, model_settings.pg_conn_string, scenario_settings.random_generator_seed, scenario_settings.end_year)
-
-
-                    #==============================================================================
-                    # GET RATE RANKS & TARIFF LOOKUP TABLE FOR EACH SECTOR
-                    #==============================================================================
-                    # GET RATE TARIFF LOOKUP TABLE FOR EACH SECTOR
-                    rates_df =  agent_mutation.elec.get_sam_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string, model_settings.mode)
-
-                    #==============================================================================
-                    # GET NORMALIZED LOAD PROFILES
-                    #==============================================================================
-                    normalized_load_profiles_df =  agent_mutation.elec.get_normalized_load_profiles(con, scenario_settings.schema, scenario_settings.sectors, model_settings.mode)
-
-                    # get system sizing targets
-                    system_sizing_targets_df =  agent_mutation.elec.get_system_sizing_targets(con, scenario_settings.schema)
-
-                    # get annual system degradation
-                    system_degradation_df =  agent_mutation.elec.get_system_degradation(con, scenario_settings.schema)
-
-                    # get state starting capacities
-                    state_starting_capacities_df =  agent_mutation.elec.get_state_starting_capacities(con, scenario_settings.schema)
-
-                    #==========================================================================================================
-                    # GET TECH POTENTIAL LIMITS
-                    #==========================================================================================================
-                    # only check this if actually running the model
-                    if model_settings.mode == 'run':
-                        tech_potential_limits_wind_df =  agent_mutation.elec.get_tech_potential_limits_wind(con)
-                        tech_potential_limits_solar_df =  agent_mutation.elec.get_tech_potential_limits_solar(con)
-
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
-############################ S+S Setup ########################################
-
-                elif scenario_settings.tech_mode == 'solar+storage':
-                    # create core agent attributes
-                    if model_settings.mode in ['run', 'setup_develop']:
-                        #==============================================================================
-                        # TEMPORARY PATCH FOR STORAGE BRANCH
-                        # override scenario_settings.techs (which is currently = ['solar', 'storage'])
-                        # to be set to ['solar'] only. this is necessary because many subsequent functinos
-                        # aren't yet set up (and may never actually need) to deal with 'storage' as a technology
-                        scenario_settings.set('techs', ['solar'])
-                        #==============================================================================
-
                         agent_preparation.elec.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
                                                           scenario_settings.sectors, model_settings.pg_procs, model_settings.pg_conn_string, scenario_settings.random_generator_seed, scenario_settings.end_year)
 
@@ -245,7 +194,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get lkup table with rate jsons
                     rates_json_df =  agent_mutation.elec.get_electric_rates_json(con, selected_rate_ids)
                     rates_json_df = rates_json_df.set_index('rate_id_alias')
-
 
                     #==============================================================================
                     # GET NORMALIZED LOAD PROFILES
@@ -262,16 +210,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get state starting capacities
                     state_starting_capacities_df =  agent_mutation.elec.get_state_starting_capacities(con, scenario_settings.schema)
 
-                    # get schedule of battery costs - ingesting
-                    tech_cost_storage_schedules_df = pd.read_csv('storage_cost_schedules.csv', index_col='year')
-
                     #==========================================================================================================
                     # GET TECH POTENTIAL LIMITS
                     #==========================================================================================================
                     # only check this if actually running the model
                     if model_settings.mode == 'run':
+                        tech_potential_limits_wind_df =  agent_mutation.elec.get_tech_potential_limits_wind(con)
                         tech_potential_limits_solar_df =  agent_mutation.elec.get_tech_potential_limits_solar(con)
 
+                if scenario_settings.techs in [['ghp'], ['du']]:
+                    logger.error("GHP and DU not yet supported")
+                    break
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 ############################ Elec Deployment ##################################

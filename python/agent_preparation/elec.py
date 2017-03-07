@@ -15,7 +15,7 @@ import data_functions as datfunc
 from agent import Agent, Agents, AgentsAlgorithm
 from cStringIO import StringIO
 import pssc_mp
-from agents_preparation import p_run, create_agent_id_sequence
+from agent_preparation import p_run, create_agent_id_sequence
 
 #%% GLOBAL SETTINGS
 

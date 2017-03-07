@@ -9,7 +9,7 @@ import numpy as np
 import decorators
 import utility_functions as utilfunc
 import multiprocessing
-from agents_preparation import p_run, create_agent_id_sequence
+from agent_preparation import p_run, create_agent_id_sequence
 
 # GLOBAL SETTINGS
 
