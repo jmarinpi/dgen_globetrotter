@@ -167,16 +167,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # create psuedo-rangom number generator (not used until tech/finance choice function)
             prng = np.random.RandomState(scenario_settings.random_generator_seed)
 
-            # THIS IS WHERE THINGS CHANGE FOR WIND + SOLAR VS DU VS GHP
-
             if model_settings.use_existing_schema == False:
                 #==========================================================================================================
                 # CREATE AGENTS
                 #==========================================================================================================
                 logger.info("--------------Creating Agents---------------")
-                #==============================================================================
-                # CREATE AGENTS
-                #==============================================================================
 
                 if scenario_settings.techs in [['wind'], ['solar']]:
                     # create core agent attributes
@@ -200,10 +195,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     normalized_load_profiles_df =  agent_mutation.elec.get_normalized_load_profiles(con, scenario_settings.schema, scenario_settings.sectors, model_settings.mode)
 
-                    # get system sizing targets
-                    # TODO remove
-                    system_sizing_targets_df =  agent_mutation.elec.get_system_sizing_targets(con, scenario_settings.schema)
-
                     # get annual system degradation
                     system_degradation_df =  agent_mutation.elec.get_system_degradation(con, scenario_settings.schema)
 
@@ -222,216 +213,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     logger.error("GHP and DU not yet supported")
                     break
 
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
-############################ Elec Deployment ##################################
+            #==============================================================================
+            # TECHNOLOGY DEPLOYMENT
+            #==============================================================================
 
-            logger.info("---------Modeling Annual Deployment---------")
-            if scenario_settings.tech_mode == 'elec':
-                # get dsire incentives, srecs, and itc inputs
-                # TODO: move these to agent mutation
-                dsire_opts = datfunc.get_dsire_settings(con, scenario_settings.schema)
-                incentives_cap = datfunc.get_incentives_cap(con, scenario_settings.schema)
-                dsire_incentives = datfunc.get_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, scenario_settings.sectors, model_settings.pg_conn_string, dsire_opts)
-                srecs = datfunc.get_srecs(cur, con, scenario_settings.schema, scenario_settings.techs, model_settings.pg_conn_string, dsire_opts)
-                state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
-                itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
-                for year in scenario_settings.model_years:
-                    logger.info('\tWorking on %s' % year)
-
-                    # is it the first model year?
-                    is_first_year = year == model_settings.start_year
-
-                    # get core agent attributes from postgres
-                    agents =  agent_mutation.elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
-                    # filter techs
-                    agents = agents.filter('tech in %s' % scenario_settings.techs)
-                    # store canned agents (if in setup_develop mode)
-                    datfunc.setup_canned_agents(model_settings.mode, agents, scenario_settings.tech_mode, 'both')
-                    # update year (this is really only ncessary in develop-mode since canned agents have the wrong year)
-                    agents.dataframe.loc[:, 'year'] = year
-
-                    #==============================================================================
-                    # LOAD/POPULATION GROWTH
-                    #==============================================================================
-                    # get load growth
-                    load_growth_df =  agent_mutation.elec.get_load_growth(con, scenario_settings.schema, year)
-                    # apply load growth
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_load_growth, (load_growth_df,)).compute(1)
-
-                    #==============================================================================
-                    # RATES
-                    #==============================================================================
-                    # get net metering settings
-                    net_metering_df =  agent_mutation.elec.get_net_metering_settings(con, scenario_settings.schema, year)
-                    # select rates, combining with net metering settings
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.select_electric_rates, (rates_df, net_metering_df)).compute(1)
-
-                    #==============================================================================
-                    # ANNUAL RESOURCE DATA
-                    #==============================================================================
-                    # get annual resource data
-                    resource_solar_df =  agent_mutation.elec.get_annual_resource_solar(con, scenario_settings.schema, scenario_settings.sectors)
-                    resource_wind_df =  agent_mutation.elec.get_annual_resource_wind(con, scenario_settings.schema, year, scenario_settings.sectors)
-                    # get technology performance data
-                    tech_performance_solar_df =  agent_mutation.elec.get_technology_performance_solar(con, scenario_settings.schema, year)
-                    tech_performance_wind_df =  agent_mutation.elec.get_technology_performance_wind(con, scenario_settings.schema, year)
-                    # apply technology performance to annual resource data
-                    resource_solar_df =  agent_mutation.elec.apply_technology_performance_solar(resource_solar_df, tech_performance_solar_df)
-                    resource_wind_df =  agent_mutation.elec.apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df)
-
-                    #==============================================================================
-                    # SYSTEM SIZING
-                    #==============================================================================
-                    # size systems
-                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'),  agent_mutation.elec.size_systems_solar, (system_sizing_targets_df, resource_solar_df, scenario_settings.techs)).compute()
-                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'),  agent_mutation.elec.size_systems_wind, (system_sizing_targets_df, resource_wind_df, scenario_settings.techs)).compute()
-                    # re-combine technologies
-                    agents = agents_solar.add_agents(agents_wind)
-                    del agents_solar, agents_wind
-                    # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.update_net_metering_fields).compute(1)
-
-                    #==============================================================================
-                    # DEVELOPABLE CUSTOMERS/LOAD
-                    #==============================================================================
-                    # determine "developable" population
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.calculate_developable_customers_and_load).compute(1)
-
-                    #==============================================================================
-                    # CHECK TECH POTENTIAL LIMITS
-                    #==============================================================================
-                    agent_mutation.elec.check_tech_potential_limits_wind(agents.filter_tech('wind').dataframe, tech_potential_limits_wind_df, model_settings.out_dir, is_first_year)
-                    agent_mutation.elec.check_tech_potential_limits_solar(agents.filter_tech('solar').dataframe, tech_potential_limits_solar_df, model_settings.out_dir, is_first_year)
-
-                    #==============================================================================
-                    # GET NORMALIZED LOAD PROFILES
-                    #==============================================================================
-                    # apply normalized load profiles
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.scale_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
-
-                    #==============================================================================
-                    # HOURLY RESOURCE DATA
-                    #==============================================================================
-                    # get hourly resource
-                    normalized_hourly_resource_solar_df =  agent_mutation.elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
-                    normalized_hourly_resource_wind_df =  agent_mutation.elec.get_normalized_hourly_resource_wind(con, scenario_settings.schema, scenario_settings.sectors, cur, agents, scenario_settings.techs)
-                    # apply normalized hourly resource profiles
-                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'),  agent_mutation.elec.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, scenario_settings.techs)).compute()
-                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'),  agent_mutation.elec.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, scenario_settings.techs)).compute()
-                    # re-combine technologies
-                    agents = agents_solar.add_agents(agents_wind)
-                    del agents_solar, agents_wind
-
-                    #==============================================================================
-                    # TECHNOLOGY COSTS
-                    #==============================================================================
-                    # get technology costs
-                    tech_costs_solar_df =  agent_mutation.elec.get_technology_costs_solar(con, scenario_settings.schema, year)
-                    tech_costs_wind_df =  agent_mutation.elec.get_technology_costs_wind(con, scenario_settings.schema, year)
-                    # apply technology costs
-                    agents_solar = AgentsAlgorithm(agents.filter_tech('solar'),  agent_mutation.elec.apply_tech_costs_solar, (tech_costs_solar_df, )).compute()
-                    agents_wind = AgentsAlgorithm(agents.filter_tech('wind'),  agent_mutation.elec.apply_tech_costs_wind, (tech_costs_wind_df, )).compute()
-                    # re-combine technologies
-                    agents = agents_solar.add_agents(agents_wind)
-                    del agents_solar, agents_wind
-
-                    #==========================================================================================================
-                    # CALCULATE BILL SAVINGS
-                    #==========================================================================================================
-                    # bill savings are a function of:
-                     # (1) hacked NEM calculations
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.calculate_excess_generation_and_update_nem_settings).compute()
-                     # (2) actual SAM calculations
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.calculate_electric_bills_sam, (model_settings.local_cores, )).compute(1)
-                    # drop the hourly datasets
-                    agents.drop_attributes(['generation_hourly', 'consumption_hourly'], in_place = True)
-
-                    #==========================================================================================================
-                    # DEPRECIATION SCHEDULE
-                    #==========================================================================================================
-                    # get depreciation schedule for current year
-                    depreciation_df =  agent_mutation.elec.get_depreciation_schedule(con, scenario_settings.schema, year)
-                    # apply depreciation schedule to agents
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_depreciation_schedule, (depreciation_df, )).compute()
-
-                    #==========================================================================================================
-                    # SYSTEM DEGRADATION
-                    #==========================================================================================================
-                    # apply system degradation to agents
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_system_degradation, (system_degradation_df, )).compute()
-
-                    #==========================================================================================================
-                    # CARBON INTENSITIES
-                    #==========================================================================================================
-                    # get carbon intensities
-                    carbon_intensities_df =  agent_mutation.elec.get_carbon_intensities(con, scenario_settings.schema, year)
-                    # apply carbon intensities
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_carbon_intensities, (carbon_intensities_df, )).compute()
-
-                    #==========================================================================================================
-                    # LEASING AVAILABILITY
-                    #==========================================================================================================
-                    # get leasing availability
-                    leasing_availability_df =  agent_mutation.elec.get_leasing_availability(con, scenario_settings.schema, year)
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_leasing_availability, (leasing_availability_df, )).compute()
-
-                    # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
-                    agents.dataframe['curtailment_rate'] = 0
-                    agents.dataframe['ReEDS_elec_price_mult'] = 1
-                    curtailment_method = 'net'
-
-                    # Calculate economics of adoption for different busines models
-                    df = financial_functions_elec.calc_economics(agents.dataframe, scenario_settings.schema,
-                                               market_projections, financial_parameters, rate_growth_df,
-                                               max_market_share, cur, con, year, dsire_incentives, dsire_opts,
-                                               state_dsire, srecs, mode,curtailment_method, itc_options,
-                                               inflation_rate, incentives_cap, 25)
-
-
-                    # select from choices for business model and (optionally) technology
-                    df = tech_choice_elec.select_financing_and_tech(df, prng, scenario_settings.sectors, model_settings.tech_choice_decision_var, scenario_settings.choose_tech, scenario_settings.techs, alpha = 2)
-
-                    #==========================================================================================================
-                    # MARKET LAST YEAR
-                    #==========================================================================================================
-                    # convert back to agents
-                    agents = Agents(df)
-                    if is_first_year == True:
-                        # calculate initial market shares
-                        agents = AgentsAlgorithm(agents,  agent_mutation.elec.estimate_initial_market_shares, (state_starting_capacities_df, )).compute()
-                    else:
-                        # get last year's results
-                        market_last_year_df =  agent_mutation.elec.get_market_last_year(con, scenario_settings.schema)
-                        # apply last year's results to the agents
-                        agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_market_last_year, (market_last_year_df, )).compute()
-
-
-                    #==========================================================================================================
-                    # BASS DIFFUSION
-                    #==========================================================================================================
-                    # TODO: rewrite this section to use agents class
-                    # convert back to dataframe
-                    df = agents.dataframe
-                    # calculate diffusion based on economics and bass diffusion
-                    df, market_last_year = diffusion_functions_elec.calc_diffusion(df, cur, con, scenario_settings.techs, scenario_settings.choose_tech, scenario_settings.sectors, scenario_settings.schema, is_first_year, bass_params)
-
-                    #==========================================================================================================
-                    # ESTIMATE TOTAL GENERATION
-                    #==========================================================================================================
-                    df = AgentsAlgorithm(Agents(df),  agent_mutation.elec.estimate_total_generation).compute().dataframe
-
-                    #==========================================================================================================
-                    # WRITE OUTPUTS
-                    #==========================================================================================================
-                    # TODO: rewrite this section to use agents class
-                    # write the incremental results to the database
-                    datfunc.write_outputs(con, cur, df, scenario_settings.sectors, scenario_settings.schema)
-                    datfunc.write_last_year(con, cur, market_last_year, scenario_settings.schema)
-
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
-############################ S+S Deployment ###################################
-
-            elif scenario_settings.tech_mode == 'solar+storage':
+            if scenario_settings.techs == ['solar']:
                 # get dsire incentives, srecs, and itc inputs
                 # TODO: move these to agent mutation
                 dsire_opts = datfunc.get_dsire_settings(con, scenario_settings.schema)
@@ -509,21 +295,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # apply system degradation to agents
                 agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_system_degradation, (system_degradation_df, )).compute()
 
-
                 #==========================================================================================================
                 # WRITE BASE AGENT_DF TO DISK
                 #==========================================================================================================
                 agents.dataframe.to_pickle(out_scen_path + '/agent_df_base.pkl')
-
-
-                #==============================================================
-                # Set which battery cost scenario - temp for sunshot 2030
-                # TODO: remove
-                if 'lsc' in scenario_settings.scen_name:
-                    battery_cost_scenario = 'low'
-                else:
-                    battery_cost_scenario = 'high'
-                #==============================================================
 
                 for year in scenario_settings.model_years:
 
@@ -554,7 +329,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # apply export generation tariff settings
                     agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_export_generation_tariffs, (net_metering_df, )).compute()
 
-
                     #==============================================================================
                     # ELECTRICITY PRICE MULTIPLIER AND ESCALATION
                     #==============================================================================
@@ -562,7 +336,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # to 2016, and calculate their assumption about price changes.
                     # TODO: remove the simple, since it was just for sunshot 2030
                     agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_elec_price_multiplier_and_escalator, (year, rate_growth_df)).compute()
-
 
                     #==============================================================================
                     # TECHNOLOGY PERFORMANCE
@@ -572,12 +345,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # apply technology performance data
                     agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_tech_performance_solar, (tech_performance_solar_df, )).compute()
 
-#                    #==============================================================================
-#                    # CHECK TECH POTENTIAL LIMITS
-#                    #==============================================================================
-#                     agent_mutation.elec.check_tech_potential_limits_wind(agents.filter_tech('wind').dataframe, tech_potential_limits_wind_df, model_settings.out_dir, is_first_year)
-#                     agent_mutation.elec.check_tech_potential_limits_solar(agents.filter_tech('solar').dataframe, tech_potential_limits_solar_df, model_settings.out_dir, is_first_year)
-#
                     #==============================================================================
                     # TECHNOLOGY COSTS
                     #==============================================================================
@@ -594,7 +361,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     depreciation_df =  agent_mutation.elec.get_depreciation_schedule(con, scenario_settings.schema, year)
                     # apply depreciation schedule to agents
                     agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_depreciation_schedule_index, (depreciation_df, )).compute()
-
 
                     #==========================================================================================================
                     # CARBON INTENSITIES
@@ -615,12 +381,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     agents = AgentsAlgorithm(agents, sFuncs.system_size_driver, (depreciation_df, rates_rank_df, rates_json_df, model_settings.local_cores)).compute()
 
-
                     #==============================================================================
                     # Calculate Metric Values
                     #==============================================================================
-                    # Calculate the financial performance of the S+S systems (payback period
-                    # for res, time-to-double for C&I)
+                    # Calculate the financial performance of the S+S systems (payback period for res, time-to-double for C&I)
                     agents = AgentsAlgorithm(agents, financial_functions_elec.calc_metric_value_storage, ()).compute()
 
                     #==============================================================================
@@ -628,13 +392,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     agents = AgentsAlgorithm(agents, financial_functions_elec.calc_max_market_share, (max_market_share, )).compute()
 
-
                     #==============================================================================
                     # DEVELOPABLE CUSTOMERS/LOAD
                     #==============================================================================
                     # determine "developable" population
                     agents = AgentsAlgorithm(agents,  agent_mutation.elec.calculate_developable_customers_and_load_storage).compute()
-
 
                     #==========================================================================================================
                     # MARKET LAST YEAR
@@ -728,11 +490,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents.dataframe.drop(['consumption_hourly', 'solar_cf_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
                 #==============================================================================
-                # Summarize solar+storage results for ReEDS
+                # Summarize results for ReEDS
                 #==============================================================================
-#                ts_map_tidy = pd.read_csv('timeslice_map_tidy.csv')
-#                ts_list = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7', 'H8', 'H9', 'H10', 'H11', 'H12', 'H13', 'H14', 'H15', 'H16', 'H17']
-#                ts_dispatch_all_years = pd.DataFrame()
 
                 # Dispatch trajectories are in MW
                 year = scenario_settings.model_years[0]
@@ -741,17 +500,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 dispatch_by_ba_and_year = dispatch_by_ba_and_year.append(dispatch_new_adopters)
 
-                # aggregate into timeslices for reeds
-#                dispatch_year_tidy = dispatch_previous_adopters.copy()
-#                dispatch_year_tidy = dispatch_year_tidy.transpose()
-#                dispatch_year_tidy['hour'] = [int(numeric_string) for numeric_string in dispatch_year_tidy.index.values]
-#                dispatch_year_tidy = pd.melt(dispatch_year_tidy, id_vars='hour', value_vars=ba_list, var_name="ba", value_name="dispatch")
-#                ts_and_dispatch_tidy = pd.merge(ts_map_tidy, dispatch_year_tidy, how='left', on=['hour', 'ba'])
-#                ts_and_dispatch_tidy_ts = ts_and_dispatch_tidy[['ba', 'dispatch', 'ts']].groupby(['ba', 'ts']).mean().reset_index()
-#                ts_dispatch_wide = ts_and_dispatch_tidy_ts.pivot(index='ba', columns='ts', values='dispatch')
-#                ts_dispatch_wide['year'] = year
-#                ts_dispatch_wide['ba'] = ts_dispatch_wide.index.values
-#                ts_dispatch_all_years = pd.concat([ts_dispatch_all_years, ts_dispatch_wide], ignore_index=True)
+                # TODO:? aggregate into timeslices for reeds
+
 
                 # degrade systems one year
                 dispatch_previous_adopters[hour_list] = dispatch_new_adopters[hour_list] * 0.982
@@ -766,8 +516,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 dispatch_by_ba_and_year = dispatch_by_ba_and_year[['ba', 'year'] + hour_list]
                 dispatch_by_ba_and_year.round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW.csv')
-#                ts_dispatch_all_years[['ba', 'year']+ts_list].round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW_ts.csv', index=False)
-
 
                 # PV capacity factors
                 pv_gen_by_ba_and_year = pd.DataFrame(index=ba_list, columns=[['ba', 'year'] + hour_list])
@@ -798,6 +546,226 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 pv_cf_by_ba_and_year = pv_cf_by_ba_and_year[['ba', 'year'] + hour_list]
                 pv_cf_by_ba_and_year.round(3).to_csv(out_scen_path + '/dpv_cf_by_ba_and_year.csv')
+
+            elif scenario_settings.techs == ['ghp']:
+                logger.info("---------Modeling Annual Deployment For GHP---------")
+                logger.error('GHP not supported in this branch')
+                break
+            elif scenario_settings.techs == ['du']:
+                logger.info("---------Modeling Annual Deployment For DU---------")
+                logger.error('DU not supported in this branch')
+                break
+            elif scenario_settings.techs == ['wind']:    
+                logger.info("---------Modeling Annual Deployment For GHP---------")
+                logger.error('GHP not supported in this branch')
+                break
+
+            # if scenario_settings.tech_mode == 'elec':
+            #     # get dsire incentives, srecs, and itc inputs
+            #     # TODO: move these to agent mutation
+            #     dsire_opts = datfunc.get_dsire_settings(con, scenario_settings.schema)
+            #     incentives_cap = datfunc.get_incentives_cap(con, scenario_settings.schema)
+            #     dsire_incentives = datfunc.get_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, scenario_settings.sectors, model_settings.pg_conn_string, dsire_opts)
+            #     srecs = datfunc.get_srecs(cur, con, scenario_settings.schema, scenario_settings.techs, model_settings.pg_conn_string, dsire_opts)
+            #     state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
+            #     itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
+            #     for year in scenario_settings.model_years:
+            #         logger.info('\tWorking on %s' % year)
+
+            #         # is it the first model year?
+            #         is_first_year = year == model_settings.start_year
+
+            #         # get core agent attributes from postgres
+            #         agents =  agent_mutation.elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
+            #         # filter techs
+            #         agents = agents.filter('tech in %s' % scenario_settings.techs)
+            #         # store canned agents (if in setup_develop mode)
+            #         datfunc.setup_canned_agents(model_settings.mode, agents, scenario_settings.tech_mode, 'both')
+            #         # update year (this is really only ncessary in develop-mode since canned agents have the wrong year)
+            #         agents.dataframe.loc[:, 'year'] = year
+
+            #         #==============================================================================
+            #         # LOAD/POPULATION GROWTH
+            #         #==============================================================================
+            #         # get load growth
+            #         load_growth_df =  agent_mutation.elec.get_load_growth(con, scenario_settings.schema, year)
+            #         # apply load growth
+            #         agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_load_growth, (load_growth_df,)).compute(1)
+
+            #         #==============================================================================
+            #         # RATES
+            #         #==============================================================================
+            #         # get net metering settings
+            #         net_metering_df =  agent_mutation.elec.get_net_metering_settings(con, scenario_settings.schema, year)
+            #         # select rates, combining with net metering settings
+            #         agents = AgentsAlgorithm(agents,  agent_mutation.elec.select_electric_rates, (rates_df, net_metering_df)).compute(1)
+
+            #         #==============================================================================
+            #         # ANNUAL RESOURCE DATA
+            #         #==============================================================================
+            #         # get annual resource data
+            #         resource_solar_df =  agent_mutation.elec.get_annual_resource_solar(con, scenario_settings.schema, scenario_settings.sectors)
+            #         resource_wind_df =  agent_mutation.elec.get_annual_resource_wind(con, scenario_settings.schema, year, scenario_settings.sectors)
+            #         # get technology performance data
+            #         tech_performance_solar_df =  agent_mutation.elec.get_technology_performance_solar(con, scenario_settings.schema, year)
+            #         tech_performance_wind_df =  agent_mutation.elec.get_technology_performance_wind(con, scenario_settings.schema, year)
+            #         # apply technology performance to annual resource data
+            #         resource_solar_df =  agent_mutation.elec.apply_technology_performance_solar(resource_solar_df, tech_performance_solar_df)
+            #         resource_wind_df =  agent_mutation.elec.apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df)
+
+            #         #==============================================================================
+            #         # SYSTEM SIZING
+            #         #==============================================================================
+            #         # size systems
+            #         agents_solar = AgentsAlgorithm(agents.filter_tech('solar'),  agent_mutation.elec.size_systems_solar, (system_sizing_targets_df, resource_solar_df, scenario_settings.techs)).compute()
+            #         agents_wind = AgentsAlgorithm(agents.filter_tech('wind'),  agent_mutation.elec.size_systems_wind, (system_sizing_targets_df, resource_wind_df, scenario_settings.techs)).compute()
+            #         # re-combine technologies
+            #         agents = agents_solar.add_agents(agents_wind)
+            #         del agents_solar, agents_wind
+            #         # update net metering fields after system sizing (because of changes to ur_enable_net_metering)
+            #         agents = AgentsAlgorithm(agents,  agent_mutation.elec.update_net_metering_fields).compute(1)
+
+            #         #==============================================================================
+            #         # DEVELOPABLE CUSTOMERS/LOAD
+            #         #==============================================================================
+            #         # determine "developable" population
+            #         agents = AgentsAlgorithm(agents,  agent_mutation.elec.calculate_developable_customers_and_load).compute(1)
+
+            #         #==============================================================================
+            #         # CHECK TECH POTENTIAL LIMITS
+            #         #==============================================================================
+            #         agent_mutation.elec.check_tech_potential_limits_wind(agents.filter_tech('wind').dataframe, tech_potential_limits_wind_df, model_settings.out_dir, is_first_year)
+            #         agent_mutation.elec.check_tech_potential_limits_solar(agents.filter_tech('solar').dataframe, tech_potential_limits_solar_df, model_settings.out_dir, is_first_year)
+
+            #         #==============================================================================
+            #         # GET NORMALIZED LOAD PROFILES
+            #         #==============================================================================
+            #         # apply normalized load profiles
+            #         agents = AgentsAlgorithm(agents,  agent_mutation.elec.scale_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
+
+            #         #==============================================================================
+            #         # HOURLY RESOURCE DATA
+            #         #==============================================================================
+            #         # get hourly resource
+            #         normalized_hourly_resource_solar_df =  agent_mutation.elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
+            #         normalized_hourly_resource_wind_df =  agent_mutation.elec.get_normalized_hourly_resource_wind(con, scenario_settings.schema, scenario_settings.sectors, cur, agents, scenario_settings.techs)
+            #         # apply normalized hourly resource profiles
+            #         agents_solar = AgentsAlgorithm(agents.filter_tech('solar'),  agent_mutation.elec.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, scenario_settings.techs)).compute()
+            #         agents_wind = AgentsAlgorithm(agents.filter_tech('wind'),  agent_mutation.elec.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, scenario_settings.techs)).compute()
+            #         # re-combine technologies
+            #         agents = agents_solar.add_agents(agents_wind)
+            #         del agents_solar, agents_wind
+
+            #         #==============================================================================
+            #         # TECHNOLOGY COSTS
+            #         #==============================================================================
+            #         # get technology costs
+            #         tech_costs_solar_df =  agent_mutation.elec.get_technology_costs_solar(con, scenario_settings.schema, year)
+            #         tech_costs_wind_df =  agent_mutation.elec.get_technology_costs_wind(con, scenario_settings.schema, year)
+            #         # apply technology costs
+            #         agents_solar = AgentsAlgorithm(agents.filter_tech('solar'),  agent_mutation.elec.apply_tech_costs_solar, (tech_costs_solar_df, )).compute()
+            #         agents_wind = AgentsAlgorithm(agents.filter_tech('wind'),  agent_mutation.elec.apply_tech_costs_wind, (tech_costs_wind_df, )).compute()
+            #         # re-combine technologies
+            #         agents = agents_solar.add_agents(agents_wind)
+            #         del agents_solar, agents_wind
+
+            #         #==========================================================================================================
+            #         # CALCULATE BILL SAVINGS
+            #         #==========================================================================================================
+            #         # bill savings are a function of:
+            #          # (1) hacked NEM calculations
+            #         agents = AgentsAlgorithm(agents,  agent_mutation.elec.calculate_excess_generation_and_update_nem_settings).compute()
+            #          # (2) actual SAM calculations
+            #         agents = AgentsAlgorithm(agents,  agent_mutation.elec.calculate_electric_bills_sam, (model_settings.local_cores, )).compute(1)
+            #         # drop the hourly datasets
+            #         agents.drop_attributes(['generation_hourly', 'consumption_hourly'], in_place = True)
+
+            #         #==========================================================================================================
+            #         # DEPRECIATION SCHEDULE
+            #         #==========================================================================================================
+            #         # get depreciation schedule for current year
+            #         depreciation_df =  agent_mutation.elec.get_depreciation_schedule(con, scenario_settings.schema, year)
+            #         # apply depreciation schedule to agents
+            #         agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_depreciation_schedule, (depreciation_df, )).compute()
+
+            #         #==========================================================================================================
+            #         # SYSTEM DEGRADATION
+            #         #==========================================================================================================
+            #         # apply system degradation to agents
+            #         agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_system_degradation, (system_degradation_df, )).compute()
+
+            #         #==========================================================================================================
+            #         # CARBON INTENSITIES
+            #         #==========================================================================================================
+            #         # get carbon intensities
+            #         carbon_intensities_df =  agent_mutation.elec.get_carbon_intensities(con, scenario_settings.schema, year)
+            #         # apply carbon intensities
+            #         agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_carbon_intensities, (carbon_intensities_df, )).compute()
+
+            #         #==========================================================================================================
+            #         # LEASING AVAILABILITY
+            #         #==========================================================================================================
+            #         # get leasing availability
+            #         leasing_availability_df =  agent_mutation.elec.get_leasing_availability(con, scenario_settings.schema, year)
+            #         agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_leasing_availability, (leasing_availability_df, )).compute()
+
+            #         # When not in ReEDS mode set default (and non-impacting) values for the ReEDS parameters
+            #         agents.dataframe['curtailment_rate'] = 0
+            #         agents.dataframe['ReEDS_elec_price_mult'] = 1
+            #         curtailment_method = 'net'
+
+            #         # Calculate economics of adoption for different busines models
+            #         df = financial_functions_elec.calc_economics(agents.dataframe, scenario_settings.schema,
+            #                                    market_projections, financial_parameters, rate_growth_df,
+            #                                    max_market_share, cur, con, year, dsire_incentives, dsire_opts,
+            #                                    state_dsire, srecs, mode,curtailment_method, itc_options,
+            #                                    inflation_rate, incentives_cap, 25)
+
+
+            #         # select from choices for business model and (optionally) technology
+            #         df = tech_choice_elec.select_financing_and_tech(df, prng, scenario_settings.sectors, model_settings.tech_choice_decision_var, scenario_settings.choose_tech, scenario_settings.techs, alpha = 2)
+
+            #         #==========================================================================================================
+            #         # MARKET LAST YEAR
+            #         #==========================================================================================================
+            #         # convert back to agents
+            #         agents = Agents(df)
+            #         if is_first_year == True:
+            #             # calculate initial market shares
+            #             agents = AgentsAlgorithm(agents,  agent_mutation.elec.estimate_initial_market_shares, (state_starting_capacities_df, )).compute()
+            #         else:
+            #             # get last year's results
+            #             market_last_year_df =  agent_mutation.elec.get_market_last_year(con, scenario_settings.schema)
+            #             # apply last year's results to the agents
+            #             agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_market_last_year, (market_last_year_df, )).compute()
+
+
+            #         #==========================================================================================================
+            #         # BASS DIFFUSION
+            #         #==========================================================================================================
+            #         # TODO: rewrite this section to use agents class
+            #         # convert back to dataframe
+            #         df = agents.dataframe
+            #         # calculate diffusion based on economics and bass diffusion
+            #         df, market_last_year = diffusion_functions_elec.calc_diffusion(df, cur, con, scenario_settings.techs, scenario_settings.choose_tech, scenario_settings.sectors, scenario_settings.schema, is_first_year, bass_params)
+
+            #         #==========================================================================================================
+            #         # ESTIMATE TOTAL GENERATION
+            #         #==========================================================================================================
+            #         df = AgentsAlgorithm(Agents(df),  agent_mutation.elec.estimate_total_generation).compute().dataframe
+
+            #         #==========================================================================================================
+            #         # WRITE OUTPUTS
+            #         #==========================================================================================================
+            #         # TODO: rewrite this section to use agents class
+            #         # write the incremental results to the database
+            #         datfunc.write_outputs(con, cur, df, scenario_settings.sectors, scenario_settings.schema)
+            #         datfunc.write_last_year(con, cur, market_last_year, scenario_settings.schema)
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+############################ S+S Deployment ###################################
+
+            
 
 
             #==============================================================================
