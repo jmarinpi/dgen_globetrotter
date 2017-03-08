@@ -135,6 +135,7 @@ class Agents(object):
         results_df : 'pd.Dataframe'
             Dataframe of agents after application of func
         """
+
         if cores is None:
             apply_func = partial(func, **kwargs)
             results_df = self.dataframe.apply(apply_func, axis=1)
@@ -158,6 +159,36 @@ class Agents(object):
         else:
             return results_df
 
+    def compute_by_frame(self, func, cores=None, in_place=False, **kwargs):
+        """
+        Apply function to agents using agent.dataframe
+        Parameters
+        ----------
+        func : 'function'
+            Function to be applied to agent.dataframe
+            Must take a pd.DataFrame as the arguement
+        cores : 'int'
+            Number of cores to use for computation
+        in_place : 'bool'
+            If true, set self.dataframe = results of compute
+            else return results of compute
+        **kwargs
+            Any additional kwargs for func
+
+        Returns
+        -------
+        results_df : 'pd.Dataframe'
+            Dataframe of agents after application of func
+        """
+
+        results_df = func(self.dataframe, **kwargs)
+
+        if in_place:
+            self.dataframe = results_df
+            self.update_agent_attrs
+        else:
+            return results_df
+            
     def to_pickle(self, file_name):
         """
         Save agents to pickle file

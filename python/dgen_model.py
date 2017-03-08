@@ -27,7 +27,8 @@ import data_functions as datfunc
 from excel import excel_functions
 import reeds_functions as reedsfunc
 import utility_functions as utilfunc
-from agent import Agents, AgentsAlgorithm
+#from agent import Agents, AgentsAlgorithm
+from agents import Agents, Solar_Agents
 import tech_choice_elec
 import tech_choice_geo
 import settings
@@ -129,14 +130,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # read in high level scenario settings
             scenario_settings.set('techs', datfunc.get_technologies(con, scenario_settings.schema))
 
-            #==============================================================================
-            # TEMPORARY PATCH FOR STORAGE BRANCH
-            # TODO: remove this once storage has been added to the input excel sheet
-            # if in storage_model, override input techs with ["solar", "storage"]
-            #if model_settings.solar_plus_storage_mode == True:
-            #    scenario_settings.set('techs', ['solar', 'storage'])
-            #==============================================================================
-
             # set tech_mode
             scenario_settings.set_tech_mode()
             scenario_settings.set('sectors', datfunc.get_sectors(cur, scenario_settings.schema))
@@ -152,6 +145,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             out_scen_path, scenario_names, dup_n = datfunc.create_scenario_results_folder(scenario_settings.input_scenario, scenario_settings.scen_name, scenario_names, model_settings.out_dir, dup_n)
             # get other datasets needed for the model run
             logger.info('Getting various scenario parameters')
+
             with utilfunc.Timer() as t:
                 max_market_share = datfunc.get_max_market_share(con, scenario_settings.schema)
                 market_projections = datfunc.get_market_projections(con, scenario_settings.schema)
@@ -209,9 +203,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         tech_potential_limits_wind_df =  agent_mutation.elec.get_tech_potential_limits_wind(con)
                         tech_potential_limits_solar_df =  agent_mutation.elec.get_tech_potential_limits_solar(con)
 
-                if scenario_settings.techs in [['ghp'], ['du']]:
+                    agents_df =  agent_mutation.elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
+                    agents = Agents(agents_df)
+
+                elif scenario_settings.techs in [['ghp'], ['du']]:
                     logger.error("GHP and DU not yet supported")
                     break
+                    # TODO: agents_df =  agent_mutation.geo.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
+                    # TODO: agents = Agents(agents_df)
 
             #==============================================================================
             # TECHNOLOGY DEPLOYMENT
@@ -228,13 +227,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
 
                 #==============================================================================
-                # GENERATE AGENT OBJECT WITH CORE IMMUTABLE ATTRIBUTES
+                # GENERATE SOLAR AGENT OBJECT - INHEIRIT FROM AGENTS
                 #==============================================================================
-                # get core agent attributes from postgres
-                df =  agent_mutation.elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
 
-                # filter techs
-                agents = agents.filter('tech in %s' % scenario_settings.techs)
+                # Generate solar agent
+                solar_agents = Solar_Agents(agents_df = agents.dataframe, scenario_df = pd.DataFrame())
+                logger.info('did it2')
+                break
                 # store canned agents (if in setup_develop mode)
                 datfunc.setup_canned_agents(model_settings.mode, agents, scenario_settings.tech_mode, 'both')
                 # change pca_reg to ba TODO: remove pca_reg in original agent definition
