@@ -220,7 +220,7 @@ def apply_batt_replace_schedule(dataframe, replacement_yr):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_financial_params(dataframe, financial_params_df, itc_options, tech_costs_solar_df):
+def apply_financial_params(dataframe, financial_params_df, itc_options, inflation_rate):
 
 
     # Only apply host-owned parameters at this point
@@ -232,8 +232,7 @@ def apply_financial_params(dataframe, financial_params_df, itc_options, tech_cos
 
     # 
     dataframe['analysis_years'] = 25
-    dataframe['deprec_sched_index'] = int(1)
-    dataframe['inflation'] = 0.025 # probably would rather not have this included as a column
+    dataframe['inflation'] = inflation_rate # probably would rather not have this included as a column
 
     
     return dataframe

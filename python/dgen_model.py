@@ -662,7 +662,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply host-owned financial parameters
                     #==========================================================================================================               
                     # Financial assumptions and ITC fraction
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_financial_params, (financial_parameters, itc_options, tech_costs_solar_df)).compute()                
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_financial_params, (financial_parameters, itc_options, inflation_rate)).compute()                
     
                     #==========================================================================================================
                     # Size S+S system and calculate electric bills
