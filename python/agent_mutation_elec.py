@@ -1440,8 +1440,42 @@ def get_technology_costs_wind(con, schema, year):
     df = pd.read_sql(sql, con, coerce_float = False)
 
     return df
-    
-    
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')    
+def get_storage_costs(con, schema, year):
+
+    inputs = locals().copy()
+
+    sql = """SELECT a.year,
+            a.sector_abbr,
+            a.scenario,
+            a.batt_kwh_cost,
+            a.batt_kw_cost
+            FROM %(schema)s.input_storage_cost_projections_to_model a           
+            WHERE a.year = %(year)s;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df  
+
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')    
+def get_battery_roundtrip_efficiency(con, schema, year):
+
+    inputs = locals().copy()
+
+    sql = """SELECT a.year,
+            substring(lower(a.sector), 1, 3) as sector_abbr,
+            a.battery_roundtrip_efficiency
+            FROM %(schema)s.input_battery_roundtrip_efficiency a           
+            WHERE a.year = %(year)s;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df 
+
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_tech_costs_solar(dataframe, tech_costs_df):    

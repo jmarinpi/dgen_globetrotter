@@ -140,6 +140,29 @@ from unnest(array[
 	]);
 ------------------------------------------------------------------------
 
+
+------------------------------------------------------------------------
+-- storage cost scenarios
+DROP TABLE IF EXISTS diffusion_config.sceninp_storage_cost_projections;
+CREATE TABLE diffusion_config.sceninp_storage_cost_projections
+(
+  val text unique not null
+);
+
+delete from diffusion_config.sceninp_storage_cost_projections;
+
+INSERT INTO diffusion_config.sceninp_storage_cost_projections
+select *
+from unnest(array[
+		'Low',
+		'Medium',
+		'High',
+		'User Defined'
+	]);
+------------------------------------------------------------------------
+
+
+
 ------------------------------------------------------------------------
 -- solar rooftop data sources
 DROP TABLE IF EXISTS diffusion_config.sceninp_rooftop_data_source;

@@ -1576,6 +1576,32 @@ def get_annual_inflation(con,schema):
     df = pd.read_sql(sql, con)
     return df.values[0][0] # Just want the inflation as a float (for now)
 
+def get_battery_replacement_year(con,schema):
+    '''
+    Get battery replacement year
+    
+    IN: con - connection to server, schema
+    OUT: Float value of battery replacement year
+    '''  
+    inputs = locals().copy() 
+    sql = '''SELECT batt_replacement_year
+             FROM %(schema)s.input_battery_replacement_parameters;''' % inputs
+    df = pd.read_sql(sql, con)
+    return df.values[0][0] # Just want the year as a integer (for now)
+
+def get_replacement_cost_fraction(con,schema):
+    '''
+    Get replacement cost fraction value
+    
+    IN: con - connection to server, schema
+    OUT: Float value of battery replacement year
+    '''  
+    inputs = locals().copy() 
+    sql = '''SELECT batt_replacement_cost_fraction
+             FROM %(schema)s.input_battery_replacement_parameters;''' % inputs
+    df = pd.read_sql(sql, con)
+    return df.values[0][0] # Just want the replacement cost fraction as a float (for now)
+
 def fill_jagged_array(vals,lens, cols):
     '''
     Create a 'jagged' array filling each row with a value of variable length.

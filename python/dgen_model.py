@@ -266,8 +266,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get state starting capacities
                     state_starting_capacities_df = agent_mutation_elec.get_state_starting_capacities(con, scenario_settings.schema)
                     
-                    # get schedule of battery costs - ingesting 
-                    tech_cost_storage_schedules_df = pd.read_csv('storage_cost_schedules.csv', index_col='year')
+                    #tech_cost_storage_schedules_df = pd.read_csv('storage_cost_schedules.csv', index_col='year')
 
                     #==========================================================================================================
                     # GET TECH POTENTIAL LIMITS
@@ -546,9 +545,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 del(normalized_hourly_resource_solar_df)
                 
                 #==============================================================================
-                # SET BATTERY REPLACEMENT YEAR
+                # GET BATTERY REPLACEMENT YEAR AND REPLACEMENT COST FRACTION VALUES
                 #==============================================================================
-                batt_replacement_yr = int(10.0)
+                #batt_replacement_yr = int(10.0)
+                batt_replacement_yr = datfunc.get_battery_replacement_year(con, scenario_settings.schema)
+                batt_replacement_cost_fraction = datfunc.get_replacement_cost_fraction(con, scenario_settings.schema)
                 agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_batt_replace_schedule, (batt_replacement_yr, )).compute()
                                     
                 #==============================================================================
@@ -637,9 +638,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # get technology costs
                     tech_costs_solar_df = agent_mutation_elec.get_technology_costs_solar(con, scenario_settings.schema, year)
+                    # get storage costs
+                    tech_costs_storage_df = agent_mutation_elec.get_storage_costs(con, scenario_settings.schema, year)
+                    # get battery round-trip efficiency values
+                    battery_roundtrip_efficiency = agent_mutation_elec.get_battery_roundtrip_efficiency(con, scenario_settings.schema, year)
+
                     # apply technology costs     
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_costs_solar_storage, (tech_costs_solar_df, )).compute()
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_costs_storage, (tech_cost_storage_schedules_df, year, batt_replacement_yr, battery_cost_scenario)).compute()
+                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_costs_storage, (tech_costs_storage_df, year, batt_replacement_yr, battery_cost_scenario)).compute()
      
                     #==========================================================================================================
                     # DEPRECIATION SCHEDULE       
