@@ -22,6 +22,7 @@ CREATE TABLE diffusion_template.input_main_scenario_options
 	res_max_market_curve text NOT NULL,
 	com_max_market_curve text NOT NULL,
 	ind_max_market_curve text NOT NULL,
+	storage_cost_projections text NOT NULL,
 	carbon_price text NOT NULL,
 	new_building_growth_scenario text not null,
 	regional_heating_fuel_cost_trajectories text not null,
@@ -60,6 +61,9 @@ CREATE TABLE diffusion_template.input_main_scenario_options
 	-- markets (i.e., sectors)
 	CONSTRAINT input_main_scenario_options_markets_fkey FOREIGN KEY (markets)
 		REFERENCES diffusion_config.sceninp_markets (val) MATCH SIMPLE,
+	-- storage cost projections
+	CONSTRAINT input_main_scenario_options_storage_cost_projections_fkey FOREIGN KEY (storage_cost_projections)
+		REFERENCES diffusion_config.sceninp_storage_cost_projections (val) MATCH SIMPLE,
 	-- region
 	CONSTRAINT input_main_scenario_options_region_fkey FOREIGN KEY (region)
 		REFERENCES diffusion_config.sceninp_region (val) MATCH SIMPLE
