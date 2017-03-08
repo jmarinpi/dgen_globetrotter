@@ -10,14 +10,9 @@ import pandas as pd
 import decorators
 import utility_functions as utilfunc
 import multiprocessing
-import traceback
-import data_functions as datfunc
-from agent import Agent, Agents, AgentsAlgorithm
-from cStringIO import StringIO
-import pssc_mp
 from agent_preparation import p_run, create_agent_id_sequence
 
-#%% GLOBAL SETTINGS
+# GLOBAL SETTINGS
 
 # load logger
 logger = utilfunc.get_logger()

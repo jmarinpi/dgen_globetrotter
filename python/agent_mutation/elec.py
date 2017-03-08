@@ -13,12 +13,14 @@ import utility_functions as utilfunc
 import multiprocessing
 import traceback
 import data_functions as datfunc
-from agent import Agent, Agents, AgentsAlgorithm
 from cStringIO import StringIO
 import pssc_mp
 import os
 import pickle
-from agent_mutation import get_depreciation_schedule, apply_depreciation_schedule, get_leasing_availability, apply_leasing_availability
+from agent_mutation import (get_depreciation_schedule,
+                            apply_depreciation_schedule,
+                            get_leasing_availability,
+                            apply_leasing_availability)
 
 # GLOBAL SETTINGS
 

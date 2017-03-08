@@ -7,7 +7,7 @@ National Renewable Energy Lab
 
 # before doing anything, check model dependencies
 import tests
-tests.check_dependencies()
+# tests.check_dependencies()
 
 # import depenencies
 import time
@@ -16,7 +16,7 @@ import pandas as pd
 import psycopg2.extras as pgx
 import numpy as np
 import config
-import storage_functions as sFuncs
+#import storage_functions as sFuncs
 # ---------------------------------------------
 # order of the next 3 needs to be maintained
 # otherwise the logger may not work correctly
@@ -34,7 +34,7 @@ import tech_choice_geo
 import settings
 import agent_mutation
 import agent_preparation
-import demand_supply_geo
+#import demand_supply_geo
 import diffusion_functions_elec
 import diffusion_functions_ghp
 import diffusion_functions_du
@@ -46,7 +46,7 @@ import financial_functions_geo
 #import dispatch_functions as dFuncs
 #import tariff_functions as tFuncs
 #import financial_functions as fFuncs
-import general_functions as gFuncs
+#import general_functions as gFuncs
 
 
 #==============================================================================
@@ -64,31 +64,19 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         # SET UP THE MODEL TO RUN
         #==============================================================================
         # initialize Model Settings object (this controls settings that apply to all scenarios to be executed)
-        model_settings = settings.ModelSettings()
-
-        # add the config to model settings; set Rscript path, model starting time, and output directory based on run time 
-        model_settings.add_config(config)
-        model_settings.set_Rscript_path(config.Rscript_paths)
-        model_settings.set('model_init', utilfunc.get_epoch_time())
-        model_settings.set('cdate', utilfunc.get_formatted_time())
-        model_settings.set('out_dir', datfunc.make_output_directory_path(model_settings.cdate))
-        model_settings.set('git_hash', utilfunc.get_git_hash())
-        model_settings.set('input_scenarios', datfunc.get_input_scenarios())
+        model_settings = settings.initialize_model_settings()
 
         # make output directory
         os.makedirs(model_settings.out_dir)
-
         # create the logger and stamp with git has
         logger = utilfunc.get_logger(os.path.join(model_settings.out_dir, 'dg_model.log'))
         logger.info("Model version is git commit %s" % model_settings.git_hash)
 
         # connect to Postgres and configure connection
         con, cur = utilfunc.make_con(model_settings.pg_conn_string)
-        pgx.register_hstore(con) # register access to hstore in postgres
-        logger.info("Connected to Postgres with the following params:\n%s" % model_settings.pg_params_log)
-
-        # validate all model settings
-        model_settings.validate()
+        pgx.register_hstore(con)  # register access to hstore in postgres
+        logger.info("Connected to Postgres with the following params:\n%s" %
+                    model_settings.pg_params_log)
 
         #==============================================================================
         # LOOP OVER SCENARIOS
@@ -102,41 +90,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('============================================')
             logger.info("Running Scenario %s of %s" % (i+1, len(model_settings.input_scenarios)))
             # initialize ScenarioSettings object (this controls settings tha apply only to this specific scenario)
-            scenario_settings = settings.ScenarioSettings()
-            scenario_settings.set('input_scenario', scenario_file)
-
-            logger.info("-------------Preparing Database-------------")
-            #==============================================================================
-            # DEFINE SCENARIO SETTINGS
-            #==============================================================================
-            try:
-                if model_settings.use_existing_schema == True:
-                    # create a schema from the existing schema of interest
-                    new_schema = datfunc.create_output_schema(model_settings.pg_conn_string, model_settings.cdate, source_schema = model_settings.existing_schema_name, include_data = True)
-                else:
-                    # create an empty schema from diffusion_template
-                    new_schema = datfunc.create_output_schema(model_settings.pg_conn_string, model_settings.cdate, source_schema = 'diffusion_template', include_data = False)
-            except Exception, e:
-                raise Exception('\tCreation of output schema failed with the following error: %s' % e)
-            # set the schema
-            scenario_settings.set('schema', new_schema)
-
-            # load Input Scenario to the new schema
-            try:
-                excel_functions.load_scenario(scenario_settings.input_scenario, scenario_settings.schema, con, cur)
-            except Exception, e:
-                raise Exception('\tLoading failed with the following error: %s' % e)
-
-            # read in high level scenario settings
-            scenario_settings.set('techs', datfunc.get_technologies(con, scenario_settings.schema))
-
-            # set tech_mode
-            scenario_settings.set_tech_mode()
-            scenario_settings.set('sectors', datfunc.get_sectors(cur, scenario_settings.schema))
-            scenario_settings.add_scenario_options(datfunc.get_scenario_options(cur, scenario_settings.schema))
-            scenario_settings.set('model_years', datfunc.create_model_years(model_settings.start_year, scenario_settings.end_year))
-            # validate scenario settings
-            scenario_settings.validate()
+            scenario_settings = settings.initialize_scenario_settings(scenario_file,
+                                                          model_settings,
+                                                          con, cur)
 
             # summarize high level secenario settings
             datfunc.summarize_scenario(scenario_settings, model_settings)
@@ -238,7 +194,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 normalized_hourly_resource_solar_df =  agent_mutation.elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
                 solar_agents.compute_by_frame(agent_mutation.elec.apply_solar_capacity_factor_profile, hourly_resource_df = normalized_hourly_resource_solar_df, in_place = True)
                 # !!\
-                
+
                 logger.error('Break here')
                 break
                 # store canned agents (if in setup_develop mode)
@@ -562,7 +518,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info("---------Modeling Annual Deployment For DU---------")
                 logger.error('DU not supported in this branch')
                 break
-            elif scenario_settings.techs == ['wind']:    
+            elif scenario_settings.techs == ['wind']:
                 logger.info("---------Modeling Annual Deployment For GHP---------")
                 logger.error('GHP not supported in this branch')
                 break
@@ -772,7 +728,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 ############################ S+S Deployment ###################################
 
-            
+
 
 
             #==============================================================================
