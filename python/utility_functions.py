@@ -81,7 +81,7 @@ def code_profiler(out_dir):
     time = [float(x) for x in time]
 
     profile = pd.DataFrame({'process': process, 'time': time})
-    profile = profile.sort('time', ascending=False)
+    profile = profile.sort_values('time', ascending=False)
     profile.to_csv(out_dir + '/code_profiler.csv')
 
 

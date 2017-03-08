@@ -159,7 +159,7 @@ class Agents(object):
         else:
             return results_df
 
-    def on_frame(self, func, in_place=False, *args, **kwargs):
+    def on_frame(self, func, func_args=None, in_place=True, **kwargs):
         """
         Apply function to agents using agent.df
         Parameters
@@ -167,11 +167,11 @@ class Agents(object):
         func : 'function'
             Function to be applied to agent.df
             Must take a pd.df as the arguement
+        func_args : 'object'
+            args for func
         in_place : 'bool'
             If true, set self.df = results of compute
             else return results of compute
-        *args
-            Any args for func
         **kwargs
             Any kwargs for func
 
@@ -180,8 +180,12 @@ class Agents(object):
         results_df : 'pd.df'
             Dataframe of agents after application of func
         """
-
-        results_df = func(self.df, *args, **kwargs)
+        if func_args is None:
+            results_df = func(self.df, **kwargs)
+        elif isinstance(func_args, list):
+            results_df = func(self.df, *func_args, **kwargs)
+        else:
+            results_df = func(self.df,func_args, **kwargs)
 
         if in_place:
             self.df = results_df

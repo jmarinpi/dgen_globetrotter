@@ -7,7 +7,7 @@ National Renewable Energy Lab
 
 # before doing anything, check model dependencies
 import tests
-# tests.check_dependencies()
+tests.check_dependencies()
 
 # import depenencies
 import time
@@ -161,7 +161,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # get the core attribute and declare the agents
                     agents_df =  agent_mutation.elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
-                    agents = Agents(agents_df)
+                    solar_agents = Agents(agents_df)
+
+                    #==============================================================================
+                    # LOAD PROFILES
+                    #==============================================================================
+                    # apply normalized load profiles
+                    func = agent_mutation.elec.apply_normalized_load_profiles
+                    solar_agents.on_frame(func, normalized_load_profiles_df)
 
                 elif scenario_settings.techs in [['ghp'], ['du']]:
                     logger.error("GHP and DU not yet supported")
@@ -246,12 +253,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 batt_replacement_yr = int(10.0)
                 agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_batt_replace_schedule, (batt_replacement_yr, )).compute()
 
-                #==============================================================================
-                # LOAD PROFILES
-                #==============================================================================
-                # apply normalized load profiles
-                agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
-                del(normalized_load_profiles_df)
                 #==========================================================================================================
                 # SYSTEM DEGRADATION
                 #==========================================================================================================
