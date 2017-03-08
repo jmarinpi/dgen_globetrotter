@@ -181,7 +181,7 @@ class Agents(object):
             Dataframe of agents after application of func
         """
 
-        results_df = func(self.df, **kwargs)
+        results_df = func(self.df, *args, **kwargs)
 
         if in_place:
             self.df = results_df
