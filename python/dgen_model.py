@@ -203,6 +203,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         tech_potential_limits_wind_df =  agent_mutation.elec.get_tech_potential_limits_wind(con)
                         tech_potential_limits_solar_df =  agent_mutation.elec.get_tech_potential_limits_solar(con)
 
+                    # get the core attribute and declare the agents
                     agents_df =  agent_mutation.elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
                     agents = Agents(agents_df)
 
@@ -232,13 +233,19 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 # Generate solar agent
                 solar_agents = Solar_Agents(agents_df = agents.dataframe, scenario_df = pd.DataFrame())
-                logger.info('did it2')
+
+                # !! Example of using compute_by_frame
+                normalized_hourly_resource_solar_df =  agent_mutation.elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
+                solar_agents.compute_by_frame(agent_mutation.elec.apply_solar_capacity_factor_profile, hourly_resource_df = normalized_hourly_resource_solar_df, in_place = True)
+                # !!\
+                
+                logger.error('Break here')
                 break
                 # store canned agents (if in setup_develop mode)
-                datfunc.setup_canned_agents(model_settings.mode, agents, scenario_settings.tech_mode, 'both')
+                #TODO!: FIX THIS datfunc.setup_canned_agents(model_settings.mode, agents, scenario_settings.tech_mode, 'both')
                 # change pca_reg to ba TODO: remove pca_reg in original agent definition
-                agents.dataframe['ba'] = agents.dataframe['pca_reg']
-                agents.dataframe.drop(['pca_reg'], axis=1)
+                #TODO!: FIX THIS agents.dataframe['ba'] = agents.dataframe['pca_reg']
+                #TODO!: FIX THIS agents.dataframe.drop(['pca_reg'], axis=1)
 
                 # check rate coverage
                 rates_rank_df =  agent_mutation.elec.check_rate_coverage(agents.dataframe, rates_rank_df, rates_json_df)
@@ -275,7 +282,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 normalized_hourly_resource_solar_df =  agent_mutation.elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
                 agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_solar_capacity_factor_profile, (normalized_hourly_resource_solar_df, )).compute()
                 del(normalized_hourly_resource_solar_df)
-
+                logger.error('Break here')
+                break
                 #==============================================================================
                 # SET BATTERY REPLACEMENT YEAR
                 #==============================================================================
