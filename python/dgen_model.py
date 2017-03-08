@@ -564,6 +564,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # apply system degradation to agents
                 agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_system_degradation, (system_degradation_df, )).compute()
                     
+                #==========================================================================================================
+                # SELECT TARIFFS                
+                #==========================================================================================================
+                # apply system degradation to agents
+                agents = AgentsAlgorithm(agents, agent_mutation_elec.select_tariff_driver, (rates_rank_df,rates_json_df, )).compute()
+                    
                     
                 #==========================================================================================================
                 # WRITE BASE AGENT_DF TO DISK              

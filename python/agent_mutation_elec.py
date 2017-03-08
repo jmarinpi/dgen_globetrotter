@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import decorators
 import utility_functions as utilfunc
-import multiprocessing
 import traceback
 import data_functions as datfunc
 from agent import Agent, Agents, AgentsAlgorithm
@@ -18,6 +17,11 @@ from cStringIO import StringIO
 import pssc_mp
 import os
 import pickle
+import multiprocessing as mp
+from concurrent import futures
+
+# Import from support function repo
+import tariff_functions as tFuncs
 
 #%% GLOBAL SETTINGS
 
@@ -30,6 +34,81 @@ DEC2FLOAT = pg.extensions.new_type(
     'DEC2FLOAT',
     lambda value, curs: float(value) if value is not None else None)
 pg.extensions.register_type(DEC2FLOAT)
+
+#%%
+def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):  
+    
+    agent_dict = agent_df.T.to_dict()
+    
+    if 'ix' not in os.name:
+        EXECUTOR = futures.ThreadPoolExecutor
+    else:
+        EXECUTOR = futures.ProcessPoolExecutor
+        
+    future_list = list()
+    
+    with EXECUTOR(max_workers=n_workers) as executor:
+        for key in agent_dict:    
+        
+            # Filter for list of tariffs available to this agent
+            agent_rate_list = rates_rank_df[rates_rank_df['agent_id']==agent_dict[key]['agent_id']].drop_duplicates()
+            agent_rate_jsons = rates_json_df[rates_json_df.index.isin(np.array(agent_rate_list['rate_id_alias']))]
+            
+            future_list.append(executor.submit(select_tariff, 
+                                               agent_dict[key],
+                                               agent_rate_list,
+                                               agent_rate_jsons))
+    
+    results_df = pd.DataFrame([f.result() for f in future_list])
+
+    agent_df = pd.merge(agent_df, results_df, how='left', on=['agent_id'])
+
+    return agent_df
+
+#%%
+def select_tariff(agent_dict, agent_rate_list, rates_json_df):
+    '''
+    Questions:
+    -if I don't need all the columns in agent_dict, is there a better way?
+    -something other than dict?
+    
+    '''
+
+    # Extract load profile
+    load_profile = np.array(agent_dict['consumption_hourly'])    
+
+    # Create export tariff object
+    export_tariff = tFuncs.Export_Tariff(full_retail_nem=True) 
+
+    #=========================================================================#
+    # Tariff selection
+    #=========================================================================#
+    agent_rate_list['bills'] = 0.0
+    if len(agent_rate_list > 1):
+        # determine which of the tariffs has the cheapest cost of electricity without a system
+        for index in agent_rate_list.index:
+            tariff_id = agent_rate_list.loc[index, 'rate_id_alias'] 
+            tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
+            # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
+            if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
+            tariff = tFuncs.Tariff(dict_obj=tariff_dict)
+            bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
+            agent_rate_list.loc[index, 'bills'] = bill    
+    
+    # Select the tariff that had the cheapest electricity. Note that there is
+    # currently no rate switching, if it would be cheaper once a system is 
+    # installed. This is currently for computational reasons.
+    tariff_id = agent_rate_list.loc[agent_rate_list['bills'].idxmin(), 'rate_id_alias']
+    tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
+    # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
+    if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
+    tariff = tFuncs.Tariff(dict_obj=tariff_dict)
+
+    results_dict = {'agent_id':agent_dict['agent_id'],
+                    'tariff_dict':tariff_dict,
+                    'tariff_id':tariff_id}
+             
+    return results_dict
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -153,48 +232,65 @@ def apply_tech_performance_solar(dataframe, tech_performance_solar_df):
     return dataframe
 
 #%%
+#@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+#def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, batt_replacement_yr, scenario):        
+#    
+#    res_starting_cost_per_kw = 2869.0
+#    res_starting_cost_per_kwh = 896.0
+#    nonres_starting_cost_per_kw = 1600.0
+#    nonres_starting_cost_per_kwh = 500.0
+#    
+#    storage_ratio_kw = tech_cost_storage_schedules_df.loc[year, 'batt_kw_cost_%s_ratio' % scenario]
+#    storage_ratio_kwh = tech_cost_storage_schedules_df.loc[year, 'batt_kwh_cost_%s_ratio' % scenario]
+#    res_cost_per_kw = res_starting_cost_per_kw * storage_ratio_kw
+#    res_cost_per_kwh = res_starting_cost_per_kwh * storage_ratio_kwh
+#    nonres_cost_per_kw = nonres_starting_cost_per_kw * storage_ratio_kw
+#    nonres_cost_per_kwh = nonres_starting_cost_per_kwh * storage_ratio_kwh
+#    
+#    storage_ratio_kw_replace = tech_cost_storage_schedules_df.loc[year+10, 'batt_kw_cost_%s_ratio' % scenario]
+#    storage_ratio_kwh_replace = tech_cost_storage_schedules_df.loc[year+10, 'batt_kwh_cost_%s_ratio' % scenario]
+#    res_cost_per_kw_replace = res_starting_cost_per_kw * storage_ratio_kw_replace
+#    res_cost_per_kwh_replace = res_starting_cost_per_kwh * storage_ratio_kwh_replace
+#    nonres_cost_per_kw_replace = nonres_starting_cost_per_kw * storage_ratio_kw_replace
+#    nonres_cost_per_kwh_replace = nonres_starting_cost_per_kwh * storage_ratio_kwh_replace
+#    
+#    # Calculate the present value of the replacements
+#    replace_discount = 0.08 # Use a different discount rate to represent the discounting of the third party doing the replacing
+#    res_kw_replace_present_value = res_cost_per_kw_replace / (1.0+replace_discount)**batt_replacement_yr
+#    res_kwh_replace_present_value = res_cost_per_kwh_replace / (1.0+replace_discount)**batt_replacement_yr
+#    nonres_kw_replace_present_value = nonres_cost_per_kw_replace / (1.0+replace_discount)**batt_replacement_yr
+#    nonres_kwh_replace_present_value = nonres_cost_per_kwh_replace / (1.0+replace_discount)**batt_replacement_yr
+#
+#    # Calculate the level of annual payments whose present value equals the present value of a replacement
+#    res_om_per_kw = res_kw_replace_present_value * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
+#    res_om_per_kwh = res_kwh_replace_present_value * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
+#    nonres_om_per_kw = nonres_kw_replace_present_value * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
+#    nonres_om_per_kwh = nonres_kwh_replace_present_value * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
+#    
+#    dataframe['batt_cost_per_kw'] = np.where(dataframe['sector_abbr']=='res', res_cost_per_kw, nonres_cost_per_kw)
+#    dataframe['batt_cost_per_kwh'] = np.where(dataframe['sector_abbr']=='res', res_cost_per_kwh, nonres_cost_per_kwh)
+#    dataframe['batt_om_per_kw'] = np.where(dataframe['sector_abbr']=='res', res_om_per_kw, nonres_om_per_kw)
+#    dataframe['batt_om_per_kwh'] = np.where(dataframe['sector_abbr']=='res', res_om_per_kwh, nonres_om_per_kwh)
+#    
+#    return dataframe
+    
+#%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, batt_replacement_yr, scenario):        
+def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, batt_replacement_yr, scenario):
     
-    res_starting_cost_per_kw = 2869.0
-    res_starting_cost_per_kwh = 896.0
-    nonres_starting_cost_per_kw = 1600.0
-    nonres_starting_cost_per_kwh = 500.0
     
-    storage_ratio_kw = tech_cost_storage_schedules_df.loc[year, 'batt_kw_cost_%s_ratio' % scenario]
-    storage_ratio_kwh = tech_cost_storage_schedules_df.loc[year, 'batt_kwh_cost_%s_ratio' % scenario]
-    res_cost_per_kw = res_starting_cost_per_kw * storage_ratio_kw
-    res_cost_per_kwh = res_starting_cost_per_kwh * storage_ratio_kwh
-    nonres_cost_per_kw = nonres_starting_cost_per_kw * storage_ratio_kw
-    nonres_cost_per_kwh = nonres_starting_cost_per_kwh * storage_ratio_kwh
-    
-    storage_ratio_kw_replace = tech_cost_storage_schedules_df.loc[year+10, 'batt_kw_cost_%s_ratio' % scenario]
-    storage_ratio_kwh_replace = tech_cost_storage_schedules_df.loc[year+10, 'batt_kwh_cost_%s_ratio' % scenario]
-    res_cost_per_kw_replace = res_starting_cost_per_kw * storage_ratio_kw_replace
-    res_cost_per_kwh_replace = res_starting_cost_per_kwh * storage_ratio_kwh_replace
-    nonres_cost_per_kw_replace = nonres_starting_cost_per_kw * storage_ratio_kw_replace
-    nonres_cost_per_kwh_replace = nonres_starting_cost_per_kwh * storage_ratio_kwh_replace
-    
-    # Calculate the present value of the replacements
-    replace_discount = 0.08 # Use a different discount rate to represent the discounting of the third party doing the replacing
-    res_kw_replace_present_value = res_cost_per_kw_replace / (1.0+replace_discount)**batt_replacement_yr
-    res_kwh_replace_present_value = res_cost_per_kwh_replace / (1.0+replace_discount)**batt_replacement_yr
-    nonres_kw_replace_present_value = nonres_cost_per_kw_replace / (1.0+replace_discount)**batt_replacement_yr
-    nonres_kwh_replace_present_value = nonres_cost_per_kwh_replace / (1.0+replace_discount)**batt_replacement_yr
+    dataframe = pd.merge(dataframe, tech_cost_storage_schedules_df[['batt_kwh_cost', 'batt_kw_cost', 'sector_abbr']], how = 'left', on = ['sector_abbr'])
 
-    # Calculate the level of annual payments whose present value equals the present value of a replacement
-    res_om_per_kw = res_kw_replace_present_value * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
-    res_om_per_kwh = res_kwh_replace_present_value * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
-    nonres_om_per_kw = nonres_kw_replace_present_value * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
-    nonres_om_per_kwh = nonres_kwh_replace_present_value * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
+    # TODO: these are just placeholders, the replacement should be calculated here
+    dataframe['batt_om_per_kw'] = 0
+    dataframe['batt_om_per_kwh'] = 0
+
+    # TODO: also a placeholder, wrong names should be fixed in db if we go that route
+    dataframe['batt_cost_per_kw'] = dataframe['batt_kw_cost']
+    dataframe['batt_cost_per_kwh'] = dataframe['batt_kwh_cost']
     
-    dataframe['batt_cost_per_kw'] = np.where(dataframe['sector_abbr']=='res', res_cost_per_kw, nonres_cost_per_kw)
-    dataframe['batt_cost_per_kwh'] = np.where(dataframe['sector_abbr']=='res', res_cost_per_kwh, nonres_cost_per_kwh)
-    dataframe['batt_om_per_kw'] = np.where(dataframe['sector_abbr']=='res', res_om_per_kw, nonres_om_per_kw)
-    dataframe['batt_om_per_kwh'] = np.where(dataframe['sector_abbr']=='res', res_om_per_kwh, nonres_om_per_kwh)
     
-    return dataframe
-    
+    return dataframe 
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')

@@ -27,7 +27,7 @@ logger = utilfunc.get_logger()
 
     
 #%%
-def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rate_list, rates_json_df):
+def calc_system_size_and_financial_performance(agent_dict, deprec_sch):
     '''
     Purpose: This function accepts the characteristics of a single agent and
             evaluates the financial performance of a set of solar+storage
@@ -63,28 +63,7 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
     # Create battery object
     batt = dFuncs.Battery()
 
-    #=========================================================================#
-    # Tariff selection
-    #=========================================================================#
-    agent_rate_list['bills'] = 0.0
-    if len(agent_rate_list > 1):
-        # determine which of the tariffs has the cheapest cost of electricity without a system
-        for index in agent_rate_list.index:
-            tariff_id = agent_rate_list.loc[index, 'rate_id_alias'] 
-            tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
-            # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
-            if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
-            tariff = tFuncs.Tariff(dict_obj=tariff_dict)
-            bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
-            agent_rate_list.loc[index, 'bills'] = bill    
-    
-    # Select the tariff that had the cheapest electricity. Note that there is
-    # currently no rate switching, if it would be cheaper once a system is 
-    # installed. This is currently for computational reasons.
-    tariff_id = agent_rate_list.loc[agent_rate_list['bills'].idxmin(), 'rate_id_alias']
-    tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
-    # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
-    if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
+    tariff_dict = agent_dict['tariff_dict']
     tariff = tFuncs.Tariff(dict_obj=tariff_dict)
 
     original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
@@ -231,8 +210,7 @@ def calc_system_size_and_financial_performance(agent_dict, deprec_sch, agent_rat
                     'npv':cf_results_opt['npv'][0],
                     'cash_flow':cf_results_opt['cf'][0,:],
                     'system_built':system_built_bool,
-                    'batt_dispatch_profile':accurate_results['batt_dispatch_profile'],
-                    'tariff_id':tariff_id}
+                    'batt_dispatch_profile':accurate_results['batt_dispatch_profile']}
              
     return results_dict
     
@@ -252,18 +230,10 @@ def system_size_driver(agent_df, deprec_sch_df, rates_rank_df, rates_json_df, n_
     with EXECUTOR(max_workers=n_workers) as executor:
         for key in agent_dict:    
         
-            # Filter for list of tariffs available to this agent
-            agent_rate_list = rates_rank_df[rates_rank_df['agent_id']==agent_dict[key]['agent_id']].drop_duplicates()
-            agent_rate_jsons = rates_json_df[rates_json_df.index.isin(np.array(agent_rate_list['rate_id_alias']))]
-#            if len(agent_rate_list)<1: 
-#                print "agent rate list is zero length"
-#                print agent_dict[key]
             
             future_list.append(executor.submit(calc_system_size_and_financial_performance, 
                                                agent_dict[key],
-                                               np.array(deprec_sch_dict[agent_dict[key]['depreciation_sch_index']]['deprec']),
-                                               agent_rate_list,
-                                               agent_rate_jsons))
+                                               np.array(deprec_sch_dict[agent_dict[key]['depreciation_sch_index']]['deprec'])))
     
     results_df = pd.DataFrame([f.result() for f in future_list])
 
