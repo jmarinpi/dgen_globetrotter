@@ -161,9 +161,11 @@ def apply_solar_capacity_factor_profile(dataframe, hourly_resource_df):
 
     # join the index that corresponds to the agent's solar resource to the
     # agent dataframe
+    dataframe = dataframe.reset_index()
     dataframe = pd.merge(dataframe, hourly_resource_df, how='left', on=[
                          'sector_abbr', 'tech', 'county_id', 'bin_id'])
     dataframe['solar_cf_profile'] = dataframe['generation_hourly']
+    dataframe = dataframe.set_index('agent_id')
 
     # subset to only the desired output columns
     out_cols = in_cols + ['solar_cf_profile']
@@ -246,8 +248,10 @@ def apply_elec_price_multiplier_and_escalator_simple(dataframe, year, rate_growt
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_export_generation_tariffs(dataframe, net_metering_df):
 
+    dataframe = dataframe.reset_index()
     dataframe = pd.merge(dataframe, net_metering_df[
                          ['state_abbr', 'sector_abbr', 'nem_system_size_limit_kw']], how='left', on=['state_abbr', 'sector_abbr'])
+    dataframe = dataframe.set_index('agent_id')
 
     return dataframe
 

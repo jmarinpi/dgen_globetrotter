@@ -138,32 +138,22 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info("--------------Creating Agents---------------")
 
                 if scenario_settings.techs in [['wind'], ['solar']]:
-                    # create core agent attributes
-                    if model_settings.mode in ['run', 'setup_develop']:
-                        agent_preparation.elec.generate_core_agent_attributes(cur, con, scenario_settings.techs, scenario_settings.schema, model_settings.sample_pct, model_settings.min_agents, model_settings.agents_per_region,
-                                                          scenario_settings.sectors, model_settings.pg_procs, model_settings.pg_conn_string, scenario_settings.random_generator_seed, scenario_settings.end_year)
+                    # Initialize solar agents:
+                    agents_df = agent_mutation.init_solar_agents(model_settings,
+                                                                 scenario_settings,
+                                                                 cur, con)
+                    break
 
-                    #==============================================================================
+                    # =========================================================
                     # GET RATE RANKS & TARIFF LOOKUP TABLE FOR EACH SECTOR
-                    #==============================================================================
+                    # =========================================================
                     # get (ranked) rates for each sector
-                    rates_rank_df =  agent_mutation.elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string, model_settings.mode)
+                    rates_rank_df =  agent_mutation.elec.get_electric_rates(cur, con, schema, sectors, random_generator_seed, pg_conn_string, model_settings.mode)
                     # find the list of unique rate ids that are included in rates_rank_df
                     selected_rate_ids =  agent_mutation.elec.identify_selected_rate_ids(rates_rank_df)
                     # get lkup table with rate jsons
                     rates_json_df =  agent_mutation.elec.get_electric_rates_json(con, selected_rate_ids)
                     rates_json_df = rates_json_df.set_index('rate_id_alias')
-
-                    #==============================================================================
-                    # GET NORMALIZED LOAD PROFILES
-                    #==============================================================================
-                    normalized_load_profiles_df =  agent_mutation.elec.get_normalized_load_profiles(con, scenario_settings.schema, scenario_settings.sectors, model_settings.mode)
-
-                    # get annual system degradation
-                    system_degradation_df =  agent_mutation.elec.get_system_degradation(con, scenario_settings.schema)
-
-                    # get state starting capacities
-                    state_starting_capacities_df =  agent_mutation.elec.get_state_starting_capacities(con, scenario_settings.schema)
 
                     #==========================================================================================================
                     # GET TECH POTENTIAL LIMITS
@@ -173,16 +163,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         tech_potential_limits_wind_df =  agent_mutation.elec.get_tech_potential_limits_wind(con)
                         tech_potential_limits_solar_df =  agent_mutation.elec.get_tech_potential_limits_solar(con)
 
-                    # get the core attribute and declare the agents
-                    agents_df =  agent_mutation.elec.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
-                    solar_agents = Agents(agents_df)
-
-                    #==============================================================================
-                    # LOAD PROFILES
-                    #==============================================================================
-                    # apply normalized load profiles
-                    func = agent_mutation.elec.apply_normalized_load_profiles
-                    solar_agents.on_frame(func, normalized_load_profiles_df)
 
                 elif scenario_settings.techs in [['ghp'], ['du']]:
                     logger.error("GHP and DU not yet supported")
@@ -251,26 +231,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 ba_cum_batt_mwh = pd.DataFrame(index=ba_list)
 
                 #==============================================================================
-                # RESOURCE DATA
-                #==============================================================================
-                # get hourly resource
-                normalized_hourly_resource_solar_df =  agent_mutation.elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
-                agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_solar_capacity_factor_profile, (normalized_hourly_resource_solar_df, )).compute()
-                del(normalized_hourly_resource_solar_df)
-
-                #==============================================================================
                 # GET BATTERY REPLACEMENT YEAR AND REPLACEMENT COST FRACTION VALUES
                 #==============================================================================
                 batt_replacement_yr = datfunc.get_battery_replacement_year(con, scenario_settings.schema)
                 batt_replacement_cost_fraction = datfunc.get_replacement_cost_fraction(con, scenario_settings.schema)
                 agents = AgentsAlgorithm(agents, agent_mutation.elec.apply_batt_replace_schedule, (batt_replacement_yr, )).compute()
 
-                #==============================================================================
-                # LOAD PROFILES
-                #==============================================================================
-                # apply normalized load profiles
-                agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_normalized_load_profiles, (normalized_load_profiles_df, )).compute()
-                del(normalized_load_profiles_df)
                 #==========================================================================================================
                 # SYSTEM DEGRADATION
                 #==========================================================================================================
@@ -306,6 +272,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # TARIFFS FOR EXPORTED GENERATION (NET METERING)
                     #==============================================================================
+                    # !!!! Already done for the first year in init_solar_agents!!!!
                     # get net metering settings
                     net_metering_df =  agent_mutation.elec.get_net_metering_settings(con, scenario_settings.schema, year)
                     # apply export generation tariff settings
