@@ -26,6 +26,7 @@ DEC2FLOAT = pg.extensions.new_type(
 pg.extensions.register_type(DEC2FLOAT)
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=0, prefix='')
 def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agents, agents_per_region, sectors,
                                    pg_procs, pg_conn_string, seed, end_year):
@@ -107,6 +108,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
         pool.close()
 
 
+#%%
 def split_counties(cur, schema, pg_procs):
     # create a dictionary out of the input arguments -- this is used through
     # sql queries
@@ -130,6 +132,7 @@ def split_counties(cur, schema, pg_procs):
     return county_chunks, pg_procs
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
 
@@ -183,6 +186,7 @@ def sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, p
     p_run(pg_conn_string, sql, county_chunks, pool)
 
 
+#%%
 # TODO -- make sure that this agent_id gets filtered through
 @decorators.fn_timer(logger=logger, tab_level=3, prefix='')
 def add_agent_ids(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_string, con, cur):
@@ -208,6 +212,7 @@ def add_agent_ids(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_str
     # p_run(pg_conn_string, sql, chunks, pool)
 
 
+#%%
 # an agent belongs to
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
@@ -274,6 +279,7 @@ def sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_reg
     p_run(pg_conn_string, sql, county_chunks, pool)
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string, step=3):
 
@@ -342,6 +348,7 @@ def convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agen
     p_run(pg_conn_string, sql, county_chunks, pool)
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
     # NOTE: This function uses a random weighted sampling process to determine the agent's utility type.
@@ -421,6 +428,7 @@ def sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_reg
     p_run(pg_conn_string, sql, county_chunks, pool)
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
 
@@ -452,6 +460,7 @@ def calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, 
     p_run(pg_conn_string, sql, county_chunks, pool)
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, schema, sector_abbr, seed):
 
@@ -568,6 +577,7 @@ def simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, sche
     p_run(pg_conn_string, sql, county_chunks, pool)
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, schema, sector_abbr):
 
@@ -607,6 +617,7 @@ def determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, sch
     p_run(pg_conn_string, sql, county_chunks, pool)
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, schema, sector_abbr):
 
@@ -656,6 +667,7 @@ def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, 
     con.commit()
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr):
 
@@ -753,6 +765,7 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
     con.commit()
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, cur, con, pool):
 
@@ -788,6 +801,7 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
                 con.commit()
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def merge_all_core_agents(cur, con, schema, sectors, techs):
 

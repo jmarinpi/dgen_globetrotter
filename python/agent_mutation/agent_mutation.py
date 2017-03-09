@@ -13,6 +13,7 @@ import utility_functions as utilfunc
 logger = utilfunc.get_logger()
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_depreciation_schedule(con, schema, year):
     ''' Pull depreciation schedule from dB
@@ -33,6 +34,7 @@ def get_depreciation_schedule(con, schema, year):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_depreciation_schedule(dataframe, depreciation_df):
 
@@ -41,6 +43,7 @@ def apply_depreciation_schedule(dataframe, depreciation_df):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_leasing_availability(con, schema, year):
 
@@ -54,6 +57,7 @@ def get_leasing_availability(con, schema, year):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_leasing_availability(dataframe, leasing_availability_df):
 

@@ -2705,24 +2705,24 @@ def get_technologies(con, schema):
         raise ValueError("No technologies were selected to be run in the input sheet.")
 
     return techs
-    
-def get_scenario_options(cur, schema, pg_params):
-    ''' Pull scenario options and log the user running the scenario from dB
-    '''
-    inputs = locals().copy()
-    inputs['user'] = str(pg_params.get("user"))
 
-    # log username to identify the user running the particular scenario
-    sql = '''ALTER TABLE %(schema)s.input_main_scenario_options ADD COLUMN scenario_user text;
-            UPDATE %(schema)s.input_main_scenario_options SET scenario_user = '%(user)s' WHERE scenario_name IS NOT NULL''' % inputs
-    cur.execute(sql)
-
-    sql = '''SELECT * 
-             FROM %(schema)s.input_main_scenario_options;''' % inputs
-    cur.execute(sql)
-
-    results = cur.fetchall()[0]
-    return results
+# def get_scenario_options(cur, schema, pg_params):
+#     ''' Pull scenario options and log the user running the scenario from dB
+#     '''
+#     inputs = locals().copy()
+#     inputs['user'] = str(pg_params.get("user"))
+#
+#     # log username to identify the user running the particular scenario
+#     sql = '''ALTER TABLE %(schema)s.input_main_scenario_options ADD COLUMN scenario_user text;
+#             UPDATE %(schema)s.input_main_scenario_options SET scenario_user = '%(user)s' WHERE scenario_name IS NOT NULL''' % inputs
+#     cur.execute(sql)
+#
+#     sql = '''SELECT *
+#              FROM %(schema)s.input_main_scenario_options;''' % inputs
+#     cur.execute(sql)
+#
+#     results = cur.fetchall()[0]
+#     return results
 
 def cleanup_incentives(df, dsire_opts):
 
@@ -3583,11 +3583,11 @@ def get_annual_inflation(con,schema):
 def get_battery_replacement_year(con,schema):
     '''
     Get battery replacement year
-    
+
     IN: con - connection to server, schema
     OUT: Float value of battery replacement year
-    '''  
-    inputs = locals().copy() 
+    '''
+    inputs = locals().copy()
     sql = '''SELECT batt_replacement_year
              FROM %(schema)s.input_battery_replacement_parameters;''' % inputs
     df = pd.read_sql(sql, con)
@@ -3596,11 +3596,11 @@ def get_battery_replacement_year(con,schema):
 def get_replacement_cost_fraction(con,schema):
     '''
     Get replacement cost fraction value
-    
+
     IN: con - connection to server, schema
     OUT: Float value of battery replacement year
-    '''  
-    inputs = locals().copy() 
+    '''
+    inputs = locals().copy()
     sql = '''SELECT batt_replacement_cost_fraction
              FROM %(schema)s.input_battery_replacement_parameters;''' % inputs
     df = pd.read_sql(sql, con)

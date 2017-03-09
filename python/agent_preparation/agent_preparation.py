@@ -23,6 +23,7 @@ DEC2FLOAT = pg.extensions.new_type(
 pg.extensions.register_type(DEC2FLOAT)
 
 
+#%%
 def p_execute(pg_conn_string, sql):
     try:
         # create cursor and connection
@@ -41,6 +42,7 @@ def p_execute(pg_conn_string, sql):
         return (1, e.__str__())
 
 
+#%%
 def p_run(pg_conn_string, sql, county_chunks, pool):
 
     num_workers = pool._processes
@@ -74,6 +76,7 @@ was:\n\n{:}'.format(first_error))
         return
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def create_agent_id_sequence(schema, con, cur):
 

@@ -581,7 +581,7 @@ def check_type(obj, expected_type):
             type(obj), expected_type))
 
 
-def initialize_model_settings():
+def init_model_settings():
     # initialize Model Settings object (this controls settings that apply to
     # all scenarios to be executed)
     model_settings = ModelSettings()
@@ -602,7 +602,7 @@ def initialize_model_settings():
     return model_settings
 
 
-def initialize_scenario_settings(scenario_file, model_settings, con, cur):
+def init_scenario_settings(scenario_file, model_settings, con, cur):
     scenario_settings = ScenarioSettings()
     scenario_settings.set('input_scenario', scenario_file)
 

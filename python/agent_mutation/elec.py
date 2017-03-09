@@ -20,8 +20,9 @@ import multiprocessing as mp
 from concurrent import futures
 
 # Import from support function repo
+import sys
+sys.path.append('/srv/data/home/mrossol/Support_Functions')
 import tariff_functions as tFuncs
-=======
 from agent_mutation import (get_depreciation_schedule,
                             apply_depreciation_schedule,
                             get_leasing_availability,
@@ -40,7 +41,7 @@ DEC2FLOAT = pg.extensions.new_type(
     lambda value, curs: float(value) if value is not None else None)
 pg.extensions.register_type(DEC2FLOAT)
 
-#%%
+
 def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):
 
     agent_dict = agent_df.T.to_dict()
@@ -115,10 +116,8 @@ def select_tariff(agent_dict, agent_rate_list, rates_json_df):
 
     return results_dict
 
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-=======
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_normalized_hourly_resource_index_solar(dataframe, hourly_resource_df, techs):
 
@@ -148,7 +147,7 @@ def apply_normalized_hourly_resource_index_solar(dataframe, hourly_resource_df, 
     return dataframe
 
 
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+#%%
 def apply_solar_capacity_factor_profile(dataframe, hourly_resource_df):
 
     # record the columns in the input dataframe
@@ -171,6 +170,7 @@ def apply_solar_capacity_factor_profile(dataframe, hourly_resource_df):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_elec_price_multiplier_and_escalator(dataframe, year, rate_growth_df):
     '''
@@ -214,6 +214,7 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, rate_growth_df):
 # escalation function should be reexamined.
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_elec_price_multiplier_and_escalator_simple(dataframe, year, rate_growth_df):
     '''
@@ -239,6 +240,7 @@ def apply_elec_price_multiplier_and_escalator_simple(dataframe, year, rate_growt
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_export_generation_tariffs(dataframe, net_metering_df):
 
@@ -248,6 +250,7 @@ def apply_export_generation_tariffs(dataframe, net_metering_df):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_tech_performance_solar(dataframe, tech_performance_solar_df):
 
@@ -255,6 +258,7 @@ def apply_tech_performance_solar(dataframe, tech_performance_solar_df):
                          ['tech', 'pv_density_w_per_sqft']], how='left', on=['tech'])
 
     return dataframe
+
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -273,6 +277,7 @@ def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, ba
 
 
     return dataframe
+
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
@@ -341,6 +346,7 @@ def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, ba
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_depreciation_schedule_index(dataframe, depreciation_df):
 
@@ -351,6 +357,7 @@ def apply_depreciation_schedule_index(dataframe, depreciation_df):
 
     return dataframe
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_batt_replace_schedule(dataframe, replacement_yr):
     # TODO: Replace a fixed schedule with a dynamic one based on cycle counts
@@ -359,6 +366,8 @@ def apply_batt_replace_schedule(dataframe, replacement_yr):
 
     return dataframe
 
+
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_financial_params(dataframe, financial_params_df, itc_options, tech_costs_solar_df):
 
@@ -379,6 +388,7 @@ def apply_financial_params(dataframe, financial_params_df, itc_options, tech_cos
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_load_growth(con, schema, year):
 
@@ -393,6 +403,7 @@ def get_load_growth(con, schema, year):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_load_growth(dataframe, load_growth_df):
 
@@ -406,6 +417,7 @@ def apply_load_growth(dataframe, load_growth_df):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def calculate_developable_customers_and_load(dataframe):
 
@@ -426,6 +438,7 @@ def calculate_developable_customers_and_load(dataframe):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def calculate_developable_customers_and_load_storage(dataframe):
     # Because methods of keeping track of system sizes diverged,
@@ -439,6 +452,7 @@ def calculate_developable_customers_and_load_storage(dataframe):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_rate_structures(con, schema):
 
@@ -461,6 +475,7 @@ def get_rate_structures(con, schema):
     return rate_structures
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_sam_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
 
@@ -608,6 +623,7 @@ def get_sam_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
 
@@ -739,44 +755,46 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def check_rate_coverage(dataframe, rates_rank_df, rates_json_df):
 
     # assign a tariff to agents that are missing one
     # TODO: remove this once tariff selection process is fail-proof
-    missing_agents = list(set(dataframe['agent_id']).difference(
-        set(rates_rank_df['agent_id'])))
+    agent_ids = set(dataframe.index)
+    rate_agent_ids = set(rates_rank_df.index)
+    missing_agents = list(agent_ids.difference(rate_agent_ids))
+
     if len(missing_agents) > 0:
         for missing_agent_id in missing_agents:
-            agent_row = dataframe[dataframe['agent_id'] ==
-                                  missing_agent_id][['agent_id', 'sector_abbr']]
+            agent_row = dataframe.loc[missing_agent_id]['sector_abbr']
             agent_row['rate_id_alias'] = np.array(
                 rates_rank_df.loc[0, 'rate_id_alias'])
             agent_row['rate_type_tou'] = np.array(
                 rates_rank_df.loc[0, 'rate_type_tou'])
             rates_rank_df = rates_rank_df.append(agent_row)
 
-    # check that all agents have at least one rate
-    missing_agents = list(set(dataframe['agent_id']).difference(
-        set(rates_rank_df['agent_id'])))
+    missing_agents = list(set(dataframe.index).difference(
+        set(rates_rank_df.index)))
     if len(missing_agents) > 0:
-        raise ValueError(
-            'Some agents are missing electric rates, including the following agent_ids: %s' % missing_agents)
+        raise ValueError('Some agents are missing electric rates, \
+including the following agent_ids: {:}'.format(missing_agents))
 
     # check that all rate_id_aliases have a nonnull rate json
     # check for empty dictionary
-    if ({} in rates_json_df['rate_json'].tolist()) == True:
+    if ({} in rates_json_df['rate_json'].tolist()):
         raise ValueError('rates_json_df contains empty dictionary objects.')
     # check for Nones
-    if (None in rates_json_df['rate_json'].tolist()) == True:
+    if (None in rates_json_df['rate_json'].tolist()):
         raise ValueError('rates_json_df contains NoneType objects.')
     # check for nans
-    if (np.nan in rates_json_df['rate_json'].tolist()) == True:
+    if (np.nan in rates_json_df['rate_json'].tolist()):
         raise ValueError('rates_json_df contains np.nan objects.')
 
     return rates_rank_df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def identify_selected_rate_ids(rates_rank_df):
 
@@ -785,6 +803,7 @@ def identify_selected_rate_ids(rates_rank_df):
     return unique_rate_ids
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_electric_rates_json(con, unique_rate_ids):
 
@@ -805,6 +824,7 @@ def get_electric_rates_json(con, unique_rate_ids):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_net_metering_settings(con, schema, year):
 
@@ -823,6 +843,7 @@ def get_net_metering_settings(con, schema, year):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def select_electric_rates(dataframe, rates_df, net_metering_df):
 
@@ -834,6 +855,7 @@ def select_electric_rates(dataframe, rates_df, net_metering_df):
     return dataframe
 
 
+#%%
 def update_rate_json_w_nem_fields(row):
 
     nem_fields = ['ur_enable_net_metering',
@@ -844,6 +866,7 @@ def update_rate_json_w_nem_fields(row):
     return row
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def update_net_metering_fields(dataframe):
 
@@ -852,6 +875,7 @@ def update_net_metering_fields(dataframe):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def assemble_resource_data():
 
@@ -864,6 +888,7 @@ def assemble_resource_data():
     # pct_developable --> pct_of_bldgs_developable
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_core_agent_attributes(con, schema, mode, region):
 
@@ -883,6 +908,7 @@ def get_core_agent_attributes(con, schema, mode, region):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_system_sizing_targets(con, schema):
 
@@ -911,6 +937,7 @@ def get_system_sizing_targets(con, schema):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_technology_performance_solar(con, schema, year):
 
@@ -928,6 +955,7 @@ def get_technology_performance_solar(con, schema, year):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_technology_performance_wind(con, schema, year):
 
@@ -950,6 +978,7 @@ def get_technology_performance_wind(con, schema, year):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_annual_resource_wind(con, schema, year, sectors):
 
@@ -995,6 +1024,7 @@ def get_annual_resource_wind(con, schema, year, sectors):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_annual_resource_solar(con, schema, sectors):
 
@@ -1030,6 +1060,7 @@ def get_annual_resource_solar(con, schema, sectors):
 #    return resource_solar_df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df):
 
@@ -1041,6 +1072,7 @@ def apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df
     return resource_wind_df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def size_systems_wind(dataframe, system_sizing_targets_df, resource_df, techs):
 
@@ -1179,6 +1211,7 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df, techs):
     return dataframe_sized
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def size_systems_solar(dataframe, system_sizing_targets_df, resource_df, techs, default_panel_size_sqft=17.5):
 
@@ -1273,6 +1306,7 @@ def size_systems_solar(dataframe, system_sizing_targets_df, resource_df, techs, 
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_normalized_load_profiles(con, schema, sectors, mode):
 
@@ -1301,6 +1335,7 @@ def get_normalized_load_profiles(con, schema, sectors, mode):
 
         df = pd.concat(df_list, axis=0, ignore_index=True)
         df = df.set_index('agent_id')
+        df = df[['consumption_hourly', 'scale_offset']]
 
     else:
         raise ValueError(
@@ -1313,9 +1348,10 @@ def get_normalized_load_profiles(con, schema, sectors, mode):
         # create the pickle
         datfunc.store_pickle(df, out_file)
 
-    return df[['consumption_hourly', 'scale_offset']]
+    return df
 
 
+#%%
 def scale_array_precision(row, array_col, prec_offset_col):
 
     row[array_col] = np.array(
@@ -1324,6 +1360,7 @@ def scale_array_precision(row, array_col, prec_offset_col):
     return row
 
 
+#%%
 def scale_array_sum(row, array_col, scale_col):
 
     hourly_array = np.array(row[array_col], dtype='float64')
@@ -1333,6 +1370,7 @@ def scale_array_sum(row, array_col, scale_col):
     return row
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_normalized_load_profiles(dataframe, load_df):
 
@@ -1355,6 +1393,7 @@ def apply_normalized_load_profiles(dataframe, load_df):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_normalized_hourly_resource_solar(con, schema, sectors, techs):
 
@@ -1395,6 +1434,7 @@ def get_normalized_hourly_resource_solar(con, schema, sectors, techs):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents, techs):
 
@@ -1523,6 +1563,7 @@ def get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents, techs
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_normalized_hourly_resource_solar(dataframe, hourly_resource_df, techs):
 
@@ -1551,6 +1592,7 @@ def apply_normalized_hourly_resource_solar(dataframe, hourly_resource_df, techs)
     return dataframe
 
 
+#%%
 def interpolate_array(row, array_1_col, array_2_col, interp_factor_col, out_col):
 
     if row[interp_factor_col] <> 0:
@@ -1563,6 +1605,7 @@ def interpolate_array(row, array_1_col, array_2_col, interp_factor_col, out_col)
     return row
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_normalized_hourly_resource_wind(dataframe, hourly_resource_df, techs):
 
@@ -1596,6 +1639,7 @@ def apply_normalized_hourly_resource_wind(dataframe, hourly_resource_df, techs):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_technology_costs_solar(con, schema, year):
 
@@ -1619,6 +1663,7 @@ def get_technology_costs_solar(con, schema, year):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_technology_costs_wind(con, schema, year):
 
@@ -1636,6 +1681,7 @@ def get_technology_costs_wind(con, schema, year):
 
     return df
 
+
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_storage_costs(con, schema, year):
@@ -1652,6 +1698,7 @@ def get_storage_costs(con, schema, year):
     df = pd.read_sql(sql, con, coerce_float = False)
 
     return df
+
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -1693,6 +1740,7 @@ def apply_tech_costs_solar(dataframe, tech_costs_df):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_tech_costs_solar_storage(dataframe, pv_costs_df):
     # For the storage branch I am removing the 'size adjustment factor', since
@@ -1731,6 +1779,7 @@ def apply_tech_costs_solar_storage(dataframe, pv_costs_df):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_tech_costs_wind(dataframe, tech_costs_df):
 
@@ -1764,6 +1813,7 @@ def apply_tech_costs_wind(dataframe, tech_costs_df):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def calculate_excess_generation_and_update_nem_settings(dataframe, gross_fit_mode=False):
     ''' Function to calculate percent of excess generation given 8760-lists of
@@ -1830,6 +1880,7 @@ def calculate_excess_generation_and_update_nem_settings(dataframe, gross_fit_mod
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def calculate_electric_bills_sam(dataframe, n_workers):
 
@@ -1865,6 +1916,7 @@ def calculate_electric_bills_sam(dataframe, n_workers):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_system_degradation(con, schema):
     '''Return the annual system degradation rate as float.
@@ -1879,6 +1931,7 @@ def get_system_degradation(con, schema):
     return system_degradation_df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_system_degradation(dataframe, system_degradation_df):
 
@@ -1888,6 +1941,7 @@ def apply_system_degradation(dataframe, system_degradation_df):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_carbon_intensities(con, schema, year):
     ''' Pull depreciation schedule from dB
@@ -1906,6 +1960,7 @@ def get_carbon_intensities(con, schema, year):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_carbon_intensities(dataframe, carbon_intensities_df):
 
@@ -1915,6 +1970,7 @@ def apply_carbon_intensities(dataframe, carbon_intensities_df):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_state_starting_capacities(con, schema):
 
@@ -1927,6 +1983,7 @@ def get_state_starting_capacities(con, schema):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_df):
 
@@ -1996,6 +2053,7 @@ def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_df):
 
@@ -2063,6 +2121,7 @@ def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_market_last_year(con, schema):
 
@@ -2075,6 +2134,7 @@ def get_market_last_year(con, schema):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_market_last_year(dataframe, market_last_year_df):
 
@@ -2084,6 +2144,7 @@ def apply_market_last_year(dataframe, market_last_year_df):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def estimate_total_generation(dataframe):
 
@@ -2093,6 +2154,7 @@ def estimate_total_generation(dataframe):
     return dataframe
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_tech_potential_limits_wind(con):
 
@@ -2108,6 +2170,7 @@ def get_tech_potential_limits_wind(con):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def check_tech_potential_limits_wind(dataframe, tech_potential_limits_wind_df, out_dir, is_first_year):
 
@@ -2168,6 +2231,7 @@ def check_tech_potential_limits_wind(dataframe, tech_potential_limits_wind_df, o
     return
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_tech_potential_limits_solar(con):
 
@@ -2185,6 +2249,7 @@ def get_tech_potential_limits_solar(con):
     return df
 
 
+#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def check_tech_potential_limits_solar(dataframe, tech_potential_limits_solar_df, out_dir, is_first_year):
 
@@ -2247,6 +2312,7 @@ def check_tech_potential_limits_solar(dataframe, tech_potential_limits_solar_df,
     return
 
 
+#%%
 def check_agent_count():
   # TODO: add in a check that agent_core_attributes_ table has the correct number of rows
         # this should be called every time get_agents() is run
