@@ -520,8 +520,45 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.error('DU not supported in this branch')
                 break
             elif scenario_settings.techs == ['wind']:
-                logger.info("---------Modeling Annual Deployment For GHP---------")
-                logger.error('GHP not supported in this branch')
+                # TODO!: Remove hardcoded year
+                logger.info("---------Modeling Annual Deployment For Wind---------")
+                wind_agents = Agents(agents_df)
+
+                dsire_opts = datfunc.get_dsire_settings(con, scenario_settings.schema)
+                incentives_cap = datfunc.get_incentives_cap(con, scenario_settings.schema)
+                dsire_incentives = datfunc.get_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, scenario_settings.sectors, model_settings.pg_conn_string, dsire_opts)
+                srecs = datfunc.get_srecs(cur, con, scenario_settings.schema, scenario_settings.techs, model_settings.pg_conn_string, dsire_opts)
+                state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
+                itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
+                #==============================================================================
+                # ANNUAL RESOURCE DATA
+                #============================================================================== 
+                year = 2016      
+                # get annual resource data
+                resource_wind_df = agent_mutation.elec.get_annual_resource_wind(con, scenario_settings.schema, year, scenario_settings.sectors)
+                # get technology performance data
+                tech_performance_wind_df = agent_mutation.elec.get_technology_performance_wind(con, scenario_settings.schema, year)
+                # apply technology performance to annual resource data
+                resource_wind_df = agent_mutation.elec.apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df)     
+                resource_wind_df.to_csv('rwdf.csv')
+                # TODO!: This is not working #check rate coverage
+                #func = agent_mutation.elec.check_rate_coverage
+                #wind_agents.on_frame(func, [rates_rank_df, rates_json_df])
+                # get hourly resource
+
+                #normalized_hourly_resource_solar_df =  agent_mutation.elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
+                #normalized_hourly_resource_wind_df =  agent_mutation.elec.get_normalized_hourly_resource_wind(con, scenario_settings.schema, scenario_settings.sectors, cur, agents, scenario_settings.techs)
+                # apply normalized hourly resource profiles
+                #agents_solar = AgentsAlgorithm(agents.filter_tech('solar'),  agent_mutation.elec.apply_normalized_hourly_resource_solar, (normalized_hourly_resource_solar_df, scenario_settings.techs)).compute()
+                #agents_wind = AgentsAlgorithm(agents.filter_tech('wind'),  agent_mutation.elec.apply_normalized_hourly_resource_wind, (normalized_hourly_resource_wind_df, scenario_settings.techs)).compute()
+                # re-combine technologies
+                #agents = agents_solar.add_agents(agents_wind)
+                #del agents_solar, agents_wind
+                normalized_hourly_resource_solar_df.to_csv('nhrs.csv')
+
+                
+                wind_agents.df.to_csv('wind_agents_df.csv')
+                logger.error('Wind not supported in this branch')
                 break
 
             # if scenario_settings.tech_mode == 'elec':
