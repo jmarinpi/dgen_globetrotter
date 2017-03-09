@@ -15,7 +15,7 @@ import data_functions as datfunc
 from agent import Agent, Agents, AgentsAlgorithm
 from cStringIO import StringIO
 import pssc_mp
-import agent_preparation_geo as agent_prep
+import agent_preparation.geo as agent_prep
 
 #%% GLOBAL SETTINGS
 

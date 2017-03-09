@@ -75,8 +75,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         # connect to Postgres and configure connection
         con, cur = utilfunc.make_con(model_settings.pg_conn_string)
         pgx.register_hstore(con)  # register access to hstore in postgres
-        logger.info("Connected to Postgres with the following params:\n{:}"
-                    .forma(model_settings.pg_params_log))
+        logger.info("Connected to Postgres with the following params:\n{:}".format(model_settings.pg_params_log))
 
         # =====================================================================
         # LOOP OVER SCENARIOS
@@ -88,9 +87,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         for i, scenario_file in enumerate(model_settings.input_scenarios):
             logger.info('============================================')
             logger.info('============================================')
-            logger.info("Running Scenario {i} of {n}"
-                        .format(i=i + 1,
-                                n=len(model_settings.input_scenarios)))
+            logger.info("Running Scenario {i} of {n}".format(i=i + 1,n=len(model_settings.input_scenarios)))
             # initialize ScenarioSettings object
             # (this controls settings tha apply only to this specific scenario)
             scenario_settings = settings.init_scenario_settings(scenario_file,
