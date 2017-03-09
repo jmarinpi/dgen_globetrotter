@@ -148,7 +148,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # set tech_mode
             scenario_settings.set_tech_mode()        
             scenario_settings.set('sectors', datfunc.get_sectors(cur, scenario_settings.schema))
-            scenario_settings.add_scenario_options(datfunc.get_scenario_options(cur, scenario_settings.schema))
+            scenario_settings.add_scenario_options(datfunc.get_scenario_options(cur, scenario_settings.schema, model_settings.pg_params))
             scenario_settings.set('model_years', datfunc.create_model_years(model_settings.start_year, scenario_settings.end_year))
             # validate scenario settings
             scenario_settings.validate()
