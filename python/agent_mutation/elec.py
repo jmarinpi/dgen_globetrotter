@@ -42,6 +42,7 @@ DEC2FLOAT = pg.extensions.new_type(
 pg.extensions.register_type(DEC2FLOAT)
 
 
+#%%
 def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):
 
     agent_dict = agent_df.T.to_dict()
@@ -70,6 +71,7 @@ def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cp
     agent_df = pd.merge(agent_df, results_df, how='left', on=['agent_id'])
 
     return agent_df
+
 
 #%%
 def select_tariff(agent_dict, agent_rate_list, rates_json_df):
@@ -766,12 +768,13 @@ def check_rate_coverage(dataframe, rates_rank_df, rates_json_df):
     missing_agents = list(agent_ids.difference(rate_agent_ids))
 
     if len(missing_agents) > 0:
+        print(missing_agents)
         for missing_agent_id in missing_agents:
             agent_row = dataframe.loc[missing_agent_id]['sector_abbr']
             agent_row['rate_id_alias'] = np.array(
-                rates_rank_df.loc[0, 'rate_id_alias'])
+                rates_rank_df.ix[0, 'rate_id_alias'])
             agent_row['rate_type_tou'] = np.array(
-                rates_rank_df.loc[0, 'rate_type_tou'])
+                rates_rank_df.ix[0, 'rate_type_tou'])
             rates_rank_df = rates_rank_df.append(agent_row)
 
     missing_agents = list(set(dataframe.index).difference(
@@ -2014,74 +2017,6 @@ def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_
     dataframe = pd.merge(dataframe, state_starting_capacities_df, how='left',
                          on=['tech', 'state_abbr', 'sector_abbr'])
     dataframe = dataframe.set_index('agent_id')
-
-    # determine the portion of initial load and systems that should be allocated to each agent
-    # (when there are no developable agnets in the state, simply apportion evenly to all agents)
-    dataframe['portion_of_state'] = np.where(dataframe['developable_customers_in_state'] > 0,
-                                             dataframe[
-                                                 'developable_customers_in_bin'] / dataframe['developable_customers_in_state'],
-                                             1. / dataframe['agent_count'])
-    # apply the agent's portion to the total to calculate starting capacity
-    # and systems
-    dataframe['number_of_adopters_last_year'] = dataframe[
-        'portion_of_state'] * dataframe['systems_count']
-    dataframe['pv_kw_last_year'] = dataframe[
-        'portion_of_state'] * dataframe['capacity_mw'] * 1000.0
-    dataframe['batt_kw_last_year'] = 0.0
-    dataframe['batt_kwh_last_year'] = 0.0
-
-    dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0,
-                                                   0,
-                                                   dataframe['number_of_adopters_last_year'] / dataframe['developable_customers_in_bin'])
-
-    # reproduce these columns as "initial" columns too
-    dataframe['initial_number_of_adopters'] = dataframe[
-        'number_of_adopters_last_year']
-    dataframe['initial_capacity_mw'] = dataframe['pv_kw_last_year'] / 1000.
-    dataframe['initial_market_share'] = dataframe['market_share_last_year']
-    dataframe['initial_market_value'] = 0
-
-    # isolate the return columns
-    return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value',
-                   'number_of_adopters_last_year', 'pv_kw_last_year', 'batt_kw_last_year', 'batt_kwh_last_year', 'market_share_last_year']
-
-    dataframe[return_cols] = dataframe[return_cols].fillna(0)
-
-    out_cols = in_cols + return_cols
-    dataframe = dataframe[out_cols]
-
-    return dataframe
-
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_df):
-
-    # record input columns
-    in_cols = list(dataframe.columns)
-
-    # find the total number of customers in each state (by technology and
-    # sector)
-    state_total_developable_customers = dataframe[['state_abbr', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
-        ['state_abbr', 'sector_abbr', 'tech']).sum().reset_index()
-    state_total_agents = dataframe[['state_abbr', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
-        ['state_abbr', 'sector_abbr', 'tech']).count().reset_index()
-    # rename the final columns
-    state_total_developable_customers.columns = state_total_developable_customers.columns.str.replace(
-        'developable_customers_in_bin', 'developable_customers_in_state')
-    state_total_agents.columns = state_total_agents.columns.str.replace(
-        'developable_customers_in_bin', 'agent_count')
-    # merge together
-    state_denominators = pd.merge(state_total_developable_customers, state_total_agents, how='left', on=[
-                                  'state_abbr', 'sector_abbr', 'tech'])
-
-    # merge back to the main dataframe
-    dataframe = pd.merge(dataframe, state_denominators, how='left', on=[
-                         'state_abbr', 'sector_abbr', 'tech'])
-
-    # merge in the state starting capacities
-    dataframe = pd.merge(dataframe, state_starting_capacities_df, how='left', on=[
-                         'tech', 'state_abbr', 'sector_abbr'])
 
     # determine the portion of initial load and systems that should be allocated to each agent
     # (when there are no developable agnets in the state, simply apportion evenly to all agents)
