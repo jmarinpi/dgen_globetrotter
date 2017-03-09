@@ -15,7 +15,7 @@ import sys
 #==============================================================================
 
 #==============================================================================
-#   mode 
+#   mode
 # options are: ['run', 'develop', 'setup_develop']
 #==============================================================================
 mode = 'run'
@@ -55,10 +55,11 @@ Rscript_paths = ['/usr/bin/Rscript','C:/Users/mgleason/Documents/R/R-3.0.2/bin/R
 support_repo_paths = ['C:/users/pgagnon/desktop/support_functions/python',
                       '/Users/mmooney/Documents/github/support_functions/python',
                       '/srv/data/home/pgagnon/support_functions/python',
-                      'C:/Users/pdas/Documents/GitHub/support_functions/python/']
+                      'C:/Users/pdas/Documents/GitHub/support_functions/python/',
+                      'support_functions/python']
 for path in support_repo_paths:
     sys.path.append(path)
-    
+
 #==============================================================================
 #   set number of parallel processes to run postgres queries (this is ignored if parallelize = F)
 #==============================================================================
@@ -85,7 +86,7 @@ delete_output_schema = True
 #  Do you want to use an existing schema?
 
 #  Warning: Using an existing schema will skip the following steps:
-#   1) generation of agents, 
+#   1) generation of agents,
 #   2) bill savings calculations
 #   3) evaluation of agent tech potential against tech potential caps
 # Because some scenario inputs are embedded in agents and bill savings calcs,
@@ -97,11 +98,3 @@ delete_output_schema = True
 use_existing_schema = False
 # change this to the schema with existing agents/bill savings that you want to use
 existing_schema_name = 'diffusion_results_2016_01_29_11h31m03s'
-
-
-#==============================================================================
-# TEMPORARY PATCH FOR STORAGE BRANCH            
-# TODO: delete after solar+storage is addded as an option to the excel input sheet
-# Temporary input for solar+storage mode (if true, overrides techs in input sheet to run solar + storage)
-solar_plus_storage_mode = True
-#==============================================================================
