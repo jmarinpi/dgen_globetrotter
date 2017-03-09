@@ -139,21 +139,30 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                 if scenario_settings.techs in [['wind'], ['solar']]:
                     # Initialize solar agents:
-                    agents_df = agent_mutation.init_solar_agents(model_settings,
-                                                                 scenario_settings,
-                                                                 cur, con)
+                    solar_agents_df = agent_mutation.init_solar_agents(model_settings,
+                                                                       scenario_settings,
+                                                                       cur, con)
+                    # =========================================================
+                    # GENERATE  AGENT OBJECT from agents_df
+                    # =========================================================
+                    solar_agents = Agents(solar_agents_df)
+
                     break
 
                     # =========================================================
                     # GET RATE RANKS & TARIFF LOOKUP TABLE FOR EACH SECTOR
                     # =========================================================
                     # get (ranked) rates for each sector
-                    rates_rank_df =  agent_mutation.elec.get_electric_rates(cur, con, schema, sectors, random_generator_seed, pg_conn_string, model_settings.mode)
+                    rates_rank_df =  agent_mutation.elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string, model_settings.mode)
                     # find the list of unique rate ids that are included in rates_rank_df
                     selected_rate_ids =  agent_mutation.elec.identify_selected_rate_ids(rates_rank_df)
                     # get lkup table with rate jsons
                     rates_json_df =  agent_mutation.elec.get_electric_rates_json(con, selected_rate_ids)
                     rates_json_df = rates_json_df.set_index('rate_id_alias')
+
+                    # !!!Example Use of on_frame w/ in_place = False!!!!!
+                    func = agent_mutation.elec.check_rate_coverage
+                    rates_rank_df = solar_agents.on_frame(func, [rates_rank_df,rates_json_df], in_place=False)
 
                     #==========================================================================================================
                     # GET TECH POTENTIAL LIMITS
@@ -184,26 +193,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
 
-                #==============================================================================
-                # GENERATE SOLAR AGENT OBJECT - INHEIRIT FROM AGENTS
-                #==============================================================================
-
-                # Generate solar agent
-                solar_agents = Solar_Agents(agents_df = agents.dataframe, scenario_df = pd.DataFrame())
-
-                # !! Example of using compute_by_frame
-                normalized_hourly_resource_solar_df =  agent_mutation.elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
-                solar_agents.compute_by_frame(agent_mutation.elec.apply_solar_capacity_factor_profile, hourly_resource_df = normalized_hourly_resource_solar_df, in_place = True)
-                # !!\
-
                 # store canned agents (if in setup_develop mode)
                 #TODO!: FIX THIS datfunc.setup_canned_agents(model_settings.mode, agents, scenario_settings.tech_mode, 'both')
                 # change pca_reg to ba TODO: remove pca_reg in original agent definition
                 #TODO!: FIX THIS agents.dataframe['ba'] = agents.dataframe['pca_reg']
                 #TODO!: FIX THIS agents.dataframe.drop(['pca_reg'], axis=1)
 
-                # check rate coverage
-                rates_rank_df =  agent_mutation.elec.check_rate_coverage(agents.dataframe, rates_rank_df, rates_json_df)
                 #==========================================================================================================
                 # Set up dataframes to record aggregated results
                 #==========================================================================================================
