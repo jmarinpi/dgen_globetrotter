@@ -41,29 +41,29 @@ DEC2FLOAT = pg.extensions.new_type(
 pg.extensions.register_type(DEC2FLOAT)
 
 #%%
-def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):  
-    
+def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):
+
     agent_dict = agent_df.T.to_dict()
-    
+
     if 'ix' not in os.name:
         EXECUTOR = futures.ThreadPoolExecutor
     else:
         EXECUTOR = futures.ProcessPoolExecutor
-        
+
     future_list = list()
-    
+
     with EXECUTOR(max_workers=n_workers) as executor:
-        for key in agent_dict:    
-        
+        for key in agent_dict:
+
             # Filter for list of tariffs available to this agent
             agent_rate_list = rates_rank_df[rates_rank_df['agent_id']==agent_dict[key]['agent_id']].drop_duplicates()
             agent_rate_jsons = rates_json_df[rates_json_df.index.isin(np.array(agent_rate_list['rate_id_alias']))]
-            
-            future_list.append(executor.submit(select_tariff, 
+
+            future_list.append(executor.submit(select_tariff,
                                                agent_dict[key],
                                                agent_rate_list,
                                                agent_rate_jsons))
-    
+
     results_df = pd.DataFrame([f.result() for f in future_list])
 
     agent_df = pd.merge(agent_df, results_df, how='left', on=['agent_id'])
@@ -76,14 +76,14 @@ def select_tariff(agent_dict, agent_rate_list, rates_json_df):
     Questions:
     -if I don't need all the columns in agent_dict, is there a better way?
     -something other than dict?
-    
+
     '''
 
     # Extract load profile
-    load_profile = np.array(agent_dict['consumption_hourly'])    
+    load_profile = np.array(agent_dict['consumption_hourly'])
 
     # Create export tariff object
-    export_tariff = tFuncs.Export_Tariff(full_retail_nem=True) 
+    export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
 
     #=========================================================================#
     # Tariff selection
@@ -92,16 +92,16 @@ def select_tariff(agent_dict, agent_rate_list, rates_json_df):
     if len(agent_rate_list > 1):
         # determine which of the tariffs has the cheapest cost of electricity without a system
         for index in agent_rate_list.index:
-            tariff_id = agent_rate_list.loc[index, 'rate_id_alias'] 
+            tariff_id = agent_rate_list.loc[index, 'rate_id_alias']
             tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
             # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
             if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
             tariff = tFuncs.Tariff(dict_obj=tariff_dict)
             bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
-            agent_rate_list.loc[index, 'bills'] = bill    
-    
+            agent_rate_list.loc[index, 'bills'] = bill
+
     # Select the tariff that had the cheapest electricity. Note that there is
-    # currently no rate switching, if it would be cheaper once a system is 
+    # currently no rate switching, if it would be cheaper once a system is
     # installed. This is currently for computational reasons.
     tariff_id = agent_rate_list.loc[agent_rate_list['bills'].idxmin(), 'rate_id_alias']
     tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
@@ -112,7 +112,7 @@ def select_tariff(agent_dict, agent_rate_list, rates_json_df):
     results_dict = {'agent_id':agent_dict['agent_id'],
                     'tariff_dict':tariff_dict,
                     'tariff_id':tariff_id}
-             
+
     return results_dict
 
 #%%
@@ -259,8 +259,8 @@ def apply_tech_performance_solar(dataframe, tech_performance_solar_df):
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, batt_replacement_yr, scenario):
-    
-    
+
+
     dataframe = pd.merge(dataframe, tech_cost_storage_schedules_df[['batt_kwh_cost', 'batt_kw_cost', 'sector_abbr']], how = 'left', on = ['sector_abbr'])
 
     # TODO: these are just placeholders, the replacement should be calculated here
@@ -270,10 +270,10 @@ def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, ba
     # TODO: also a placeholder, wrong names should be fixed in db if we go that route
     dataframe['batt_cost_per_kw'] = dataframe['batt_kw_cost']
     dataframe['batt_cost_per_kwh'] = dataframe['batt_kwh_cost']
-    
-    
-    return dataframe 
-    
+
+
+    return dataframe
+
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, batt_replacement_yr, scenario):
@@ -723,6 +723,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
 
         # combine the dfs
         df = pd.concat(df_list, axis=0, ignore_index=True)
+        df = df.set_index('agent_id')
 
     else:
         raise ValueError(
@@ -1287,7 +1288,7 @@ def get_normalized_load_profiles(con, schema, sectors, mode):
         df_list = []
         for sector_abbr, sector in sectors.iteritems():
             inputs['sector_abbr'] = sector_abbr
-            sql = """SELECT '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
+            sql = """SELECT a.agent_id, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
                             a.county_id, a.bin_id,
                             b.nkwh as consumption_hourly,
                             1e8 as scale_offset
@@ -1299,6 +1300,7 @@ def get_normalized_load_profiles(con, schema, sectors, mode):
             df_list.append(df_sector)
 
         df = pd.concat(df_list, axis=0, ignore_index=True)
+        df = df.set_index('agent_id')
 
     else:
         raise ValueError(
@@ -1311,7 +1313,7 @@ def get_normalized_load_profiles(con, schema, sectors, mode):
         # create the pickle
         datfunc.store_pickle(df, out_file)
 
-    return df
+    return df[['consumption_hourly', 'scale_offset']]
 
 
 def scale_array_precision(row, array_col, prec_offset_col):
@@ -1337,8 +1339,7 @@ def apply_normalized_load_profiles(dataframe, load_df):
     # record the columns in the input dataframe
     in_cols = list(dataframe.columns)
     # join the dataframe and load_df
-    dataframe = pd.merge(dataframe, load_df, how='left', on=[
-                         'county_id', 'bin_id', 'sector_abbr'])
+    dataframe = dataframe.join(load_df, how='left')
     # apply the scale offset to convert values to float with correct precision
     dataframe = dataframe.apply(scale_array_precision, axis=1, args=(
         'consumption_hourly', 'scale_offset'))
@@ -1636,7 +1637,7 @@ def get_technology_costs_wind(con, schema, year):
     return df
 
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')    
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_storage_costs(con, schema, year):
 
     inputs = locals().copy()
@@ -1646,14 +1647,14 @@ def get_storage_costs(con, schema, year):
             a.scenario,
             a.batt_kwh_cost,
             a.batt_kw_cost
-            FROM %(schema)s.input_storage_cost_projections_to_model a           
+            FROM %(schema)s.input_storage_cost_projections_to_model a
             WHERE a.year = %(year)s;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
 
-    return df  
+    return df
 
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')    
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def get_battery_roundtrip_efficiency(con, schema, year):
 
     inputs = locals().copy()
@@ -1661,11 +1662,11 @@ def get_battery_roundtrip_efficiency(con, schema, year):
     sql = """SELECT a.year,
             substring(lower(a.sector), 1, 3) as sector_abbr,
             a.battery_roundtrip_efficiency
-            FROM %(schema)s.input_battery_roundtrip_efficiency a           
+            FROM %(schema)s.input_battery_roundtrip_efficiency a
             WHERE a.year = %(year)s;""" % inputs
     df = pd.read_sql(sql, con, coerce_float = False)
 
-    return df 
+    return df
 
 
 #%%
@@ -1927,7 +1928,7 @@ def get_state_starting_capacities(con, schema):
 
 
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
+def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_df):
 
     # record input columns
     in_cols = list(dataframe.columns)
@@ -1948,12 +1949,14 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
                                   'state_abbr', 'sector_abbr', 'tech'])
 
     # merge back to the main dataframe
+    dataframe = dataframe.reset_index()
     dataframe = pd.merge(dataframe, state_denominators, how='left', on=[
                          'state_abbr', 'sector_abbr', 'tech'])
 
     # merge in the state starting capacities
-    dataframe = pd.merge(dataframe, state_starting_capacities_df, how='left', on=[
-                         'tech', 'state_abbr', 'sector_abbr'])
+    dataframe = pd.merge(dataframe, state_starting_capacities_df, how='left',
+                         on=['tech', 'state_abbr', 'sector_abbr'])
+    dataframe = dataframe.set_index('agent_id')
 
     # determine the portion of initial load and systems that should be allocated to each agent
     # (when there are no developable agnets in the state, simply apportion evenly to all agents)
@@ -1965,25 +1968,28 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
     # and systems
     dataframe['number_of_adopters_last_year'] = dataframe[
         'portion_of_state'] * dataframe['systems_count']
-    dataframe['installed_capacity_last_year'] = dataframe[
+    dataframe['pv_kw_last_year'] = dataframe[
         'portion_of_state'] * dataframe['capacity_mw'] * 1000.0
+    dataframe['batt_kw_last_year'] = 0.0
+    dataframe['batt_kwh_last_year'] = 0.0
+
     dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0,
                                                    0,
                                                    dataframe['number_of_adopters_last_year'] / dataframe['developable_customers_in_bin'])
-    dataframe['market_value_last_year'] = dataframe[
-        'installed_costs_dollars_per_kw'] * dataframe['installed_capacity_last_year']
 
     # reproduce these columns as "initial" columns too
     dataframe['initial_number_of_adopters'] = dataframe[
         'number_of_adopters_last_year']
-    dataframe['initial_capacity_mw'] = dataframe[
-        'installed_capacity_last_year'] / 1000.
+    dataframe['initial_capacity_mw'] = dataframe['pv_kw_last_year'] / 1000.
     dataframe['initial_market_share'] = dataframe['market_share_last_year']
-    dataframe['initial_market_value'] = dataframe['market_value_last_year']
+    dataframe['initial_market_value'] = 0
 
     # isolate the return columns
     return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value',
-                   'number_of_adopters_last_year', 'installed_capacity_last_year', 'market_share_last_year', 'market_value_last_year']
+                   'number_of_adopters_last_year', 'pv_kw_last_year', 'batt_kw_last_year', 'batt_kwh_last_year', 'market_share_last_year']
+
+    dataframe[return_cols] = dataframe[return_cols].fillna(0)
+
     out_cols = in_cols + return_cols
     dataframe = dataframe[out_cols]
 

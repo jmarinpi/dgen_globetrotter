@@ -57,52 +57,69 @@ pd.set_option('mode.chained_assignment', None)
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
     try:
-        #==============================================================================
+        # =====================================================================
         # SET UP THE MODEL TO RUN
-        #==============================================================================
-        # initialize Model Settings object (this controls settings that apply to all scenarios to be executed)
-        model_settings = settings.initialize_model_settings()
+        # =====================================================================
+        # initialize Model Settings object
+        # (this controls settings that apply to all scenarios to be executed)
+        model_settings = settings.init_model_settings()
 
         # make output directory
         os.makedirs(model_settings.out_dir)
         # create the logger and stamp with git has
-        logger = utilfunc.get_logger(os.path.join(model_settings.out_dir, 'dg_model.log'))
-        logger.info("Model version is git commit %s" % model_settings.git_hash)
+        logger = utilfunc.get_logger(os.path.join(model_settings.out_dir,
+                                                  'dg_model.log'))
+        logger.info("Model version is git commit {:}"
+                    .format(model_settings.git_hash))
 
         # connect to Postgres and configure connection
         con, cur = utilfunc.make_con(model_settings.pg_conn_string)
         pgx.register_hstore(con)  # register access to hstore in postgres
-        logger.info("Connected to Postgres with the following params:\n%s" %
-                    model_settings.pg_params_log)
+        logger.info("Connected to Postgres with the following params:\n{:}"
+                    .forma(model_settings.pg_params_log))
 
-        #==============================================================================
+        # =====================================================================
         # LOOP OVER SCENARIOS
-        #==============================================================================
+        # =====================================================================
         # variables used to track outputs
         scenario_names = []
         dup_n = 1
-        out_subfolders = {'wind' : [], 'solar' : [], 'ghp': [], 'du': []}
+        out_subfolders = {'wind': [], 'solar': [], 'ghp': [], 'du': []}
         for i, scenario_file in enumerate(model_settings.input_scenarios):
             logger.info('============================================')
             logger.info('============================================')
-            logger.info("Running Scenario %s of %s" % (i+1, len(model_settings.input_scenarios)))
-            # initialize ScenarioSettings object (this controls settings tha apply only to this specific scenario)
-            scenario_settings = settings.initialize_scenario_settings(scenario_file,
-                                                          model_settings,
-                                                          con, cur)
+            logger.info("Running Scenario {i} of {n}"
+                        .format(i=i + 1,
+                                n=len(model_settings.input_scenarios)))
+            # initialize ScenarioSettings object
+            # (this controls settings tha apply only to this specific scenario)
+            scenario_settings = settings.init_scenario_settings(scenario_file,
+                                                                model_settings,
+                                                                con, cur)
 
             # summarize high level secenario settings
             datfunc.summarize_scenario(scenario_settings, model_settings)
 
             # create output folder for this scenario
-            out_scen_path, scenario_names, dup_n = datfunc.create_scenario_results_folder(scenario_settings.input_scenario, scenario_settings.scen_name, scenario_names, model_settings.out_dir, dup_n)
+            input_scenario = scenario_settings.input_scenario
+            scen_name = scenario_settings.scen_name
+            out_dir = model_settings.out_dir
+            (out_scen_path,
+             scenario_names,
+             dup_n) = datfunc.create_scenario_results_folder(input_scenario,
+                                                             scen_name,
+                                                             scenario_names,
+                                                             out_dir, dup_n)
             # get other datasets needed for the model run
             logger.info('Getting various scenario parameters')
 
             with utilfunc.Timer() as t:
-                max_market_share = datfunc.get_max_market_share(con, scenario_settings.schema)
-                market_projections = datfunc.get_market_projections(con, scenario_settings.schema)
-                load_growth_scenario = scenario_settings.load_growth_scenario.lower() # get financial variables
+                schema = scenario_settings.schema
+                max_market_share = datfunc.get_max_market_share(con, schema)
+                market_projections = datfunc.get_market_projections(con,
+                                                                    schema)
+                # get financial variables
+                load_growth_scenario = scenario_settings.load_growth_scenario.lower()
                 # these are technology specific, set up in tidy form with a "tech" field
                 financial_parameters = datfunc.get_financial_parameters(con, scenario_settings.schema)
                 inflation_rate = datfunc.get_annual_inflation(con, scenario_settings.schema)
@@ -240,14 +257,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 normalized_hourly_resource_solar_df =  agent_mutation.elec.get_normalized_hourly_resource_solar(con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.techs)
                 agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_solar_capacity_factor_profile, (normalized_hourly_resource_solar_df, )).compute()
                 del(normalized_hourly_resource_solar_df)
-                
+
                 #==============================================================================
                 # GET BATTERY REPLACEMENT YEAR AND REPLACEMENT COST FRACTION VALUES
                 #==============================================================================
                 batt_replacement_yr = datfunc.get_battery_replacement_year(con, scenario_settings.schema)
                 batt_replacement_cost_fraction = datfunc.get_replacement_cost_fraction(con, scenario_settings.schema)
                 agents = AgentsAlgorithm(agents, agent_mutation.elec.apply_batt_replace_schedule, (batt_replacement_yr, )).compute()
-                                    
+
                 #==============================================================================
                 # LOAD PROFILES
                 #==============================================================================
@@ -293,11 +310,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     net_metering_df =  agent_mutation.elec.get_net_metering_settings(con, scenario_settings.schema, year)
                     # apply export generation tariff settings
                     agents = AgentsAlgorithm(agents, agent_mutation.elec.apply_export_generation_tariffs, (net_metering_df, )).compute()
-    
-    
+
+
                     #==============================================================================
-                    # ELECTRICITY PRICE MULTIPLIER AND ESCALATION     
-                    #==============================================================================                
+                    # ELECTRICITY PRICE MULTIPLIER AND ESCALATION
+                    #==============================================================================
                     # Apply each agent's electricity price (real terms relative)
                     # to 2016, and calculate their assumption about price changes.
                     # TODO: remove the simple, since it was just for sunshot 2030
@@ -310,13 +327,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     tech_performance_solar_df =  agent_mutation.elec.get_technology_performance_solar(con, scenario_settings.schema, year)
                     # apply technology performance data
                     agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_performance_solar, (tech_performance_solar_df, )).compute()
-                   
+
 #                    #==============================================================================
 #                    # CHECK TECH POTENTIAL LIMITS
-#                    #==============================================================================                                   
+#                    #==============================================================================
 #                    agent_mutation_elec.check_tech_potential_limits_wind(agents.filter_tech('wind').dataframe, tech_potential_limits_wind_df, model_settings.out_dir, is_first_year)
 #                    agent_mutation_elec.check_tech_potential_limits_solar(agents.filter_tech('solar').dataframe, tech_potential_limits_solar_df, model_settings.out_dir, is_first_year)
-#                                
+#
                     #==============================================================================
                     # TECHNOLOGY COSTS
                     #==============================================================================
@@ -327,10 +344,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get battery round-trip efficiency values
                     battery_roundtrip_efficiency = agent_mutation.elec.get_battery_roundtrip_efficiency(con, scenario_settings.schema, year)
 
-                    # apply technology costs     
+                    # apply technology costs
                     agents = AgentsAlgorithm(agents, agent_mutation.elec.apply_tech_costs_solar_storage, (tech_costs_solar_df, )).compute()
                     agents = AgentsAlgorithm(agents, agent_mutation.elec.apply_tech_costs_storage, (tech_costs_storage_df, year, batt_replacement_yr, battery_cost_scenario)).compute()
-     
+
                     #==========================================================================================================
                     # DEPRECIATION SCHEDULE
                     #==========================================================================================================
@@ -349,10 +366,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     #==========================================================================================================
                     # Apply host-owned financial parameters
-                    #==========================================================================================================               
+                    #==========================================================================================================
                     # Financial assumptions and ITC fraction
-                    agents = AgentsAlgorithm(agents, agent_mutation.elec.apply_financial_params, (financial_parameters, itc_options, inflation_rate)).compute()                
-    
+                    agents = AgentsAlgorithm(agents, agent_mutation.elec.apply_financial_params, (financial_parameters, itc_options, inflation_rate)).compute()
+
                     #==========================================================================================================
                     # Size S+S system and calculate electric bills
                     #==========================================================================================================
@@ -360,11 +377,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     #==============================================================================
                     # Calculate Metric Values
-                    #============================================================================== 
+                    #==============================================================================
                     # Calculate the financial performance of the S+S systems (payback period
                     # for res, time-to-double for C&I)
-                    agents = AgentsAlgorithm(agents, financial_functions_elec.calc_metric_value_storage, ()).compute()                            
-                   
+                    agents = AgentsAlgorithm(agents, financial_functions_elec.calc_metric_value_storage, ()).compute()
+
                     #==============================================================================
                     # Calculate Maximum Market Share
                     #==============================================================================
@@ -378,23 +395,23 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     #==========================================================================================================
                     # MARKET LAST YEAR
-                    #==========================================================================================================                  
+                    #==========================================================================================================
                     if is_first_year == True:
                         # calculate initial market shares
                         agents = AgentsAlgorithm(agents,  agent_mutation.elec.estimate_initial_market_shares_storage, (state_starting_capacities_df, )).compute()
                     else:
                         # apply last year's results to the agents
-                        agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_market_last_year, (market_last_year_df, )).compute()                
-                                        
+                        agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_market_last_year, (market_last_year_df, )).compute()
+
                     #==========================================================================================================
                     # BASS DIFFUSION
-                    #==========================================================================================================                      
-                    # calculate diffusion based on economics and bass diffusion                   
-                    agents.dataframe, market_last_year_df = diffusion_functions_elec.calc_diffusion_storage(agents.dataframe, is_first_year, bass_params) 
+                    #==========================================================================================================
+                    # calculate diffusion based on economics and bass diffusion
+                    agents.dataframe, market_last_year_df = diffusion_functions_elec.calc_diffusion_storage(agents.dataframe, is_first_year, bass_params)
 
                     #==========================================================================================================
                     # Write storage dispatch trajectories, to be used for capacity factor aggregations later
-                    #==========================================================================================================   
+                    #==========================================================================================================
                     # TODO: rewrite this using agents class, once above is handled
                     # Dispatch trajectories are in MW
                     total_dispatches = np.vstack(agents.dataframe['batt_dispatch_profile']).astype(np.float) * np.array(agents.dataframe['new_adopters']).reshape(len(agents.dataframe), 1) / 1000.0
@@ -403,17 +420,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     total_ba_dispatches_df = total_dispatches_df.groupby(by='ba').sum()
                     total_ba_dispatches_df['year'] = year
-                    
+
                     total_ba_dispatches_df.index.names = ['ba']
                     total_ba_dispatches_df['ba'] = total_ba_dispatches_df.index.values
                     total_ba_dispatches_df.to_pickle(out_scen_path + '/total_ba_dispatches_df_%s.pkl' % year)
                     del(total_dispatches)
                     del(total_dispatches_df)
-                    
+
 
                     #==========================================================================================================
                     # Write PV generation profiles, to be used for capacity factor aggregations later
-                    #==========================================================================================================   
+                    #==========================================================================================================
                     # TODO: rewrite this using agents class, once above is handled
                     if is_first_year:
                         pv_gen_new_adopters = np.vstack(agents.dataframe['solar_cf_profile']).astype(np.float) / 1e6 * np.array(agents.dataframe['pv_kw_cum']).reshape(len(agents.dataframe), 1)
@@ -424,22 +441,22 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     pv_gen_new_adopters['ba'] = agents.dataframe['ba'] #TODO improve this so it is robust against reorder
                     pv_gen_new_adopters = pv_gen_new_adopters.groupby(by='ba').sum()
                     pv_gen_new_adopters['year'] = year
-                    
+
                     pv_gen_new_adopters.index.names = ['ba']
                     pv_gen_new_adopters['ba'] = pv_gen_new_adopters.index.values
                     pv_gen_new_adopters.to_pickle(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
                     del(pv_gen_new_adopters)
-                    
+
                     #==========================================================================================================
                     # Aggregate PV and Batt capacity by reeds region
-                    #==========================================================================================================   
+                    #==========================================================================================================
                     # TODO: rewrite this using agents class, once above is handled
                     agent_cum_capacities = agents.dataframe[[ 'ba', 'pv_kw_cum']]
                     ba_cum_pv_kw_year = agent_cum_capacities.groupby(by='ba').sum()
                     ba_cum_pv_kw_year['ba'] = ba_cum_pv_kw_year.index
                     ba_cum_pv_mw[year] = ba_cum_pv_kw_year['pv_kw_cum'] / 1000.0
-                    ba_cum_pv_mw.round(3).to_csv(out_scen_path + '/dpv_MW_by_ba_and_year.csv', index_label='ba')                     
-                    
+                    ba_cum_pv_mw.round(3).to_csv(out_scen_path + '/dpv_MW_by_ba_and_year.csv', index_label='ba')
+
                     agent_cum_batt_mw = agents.dataframe[[ 'ba', 'batt_kw_cum']]
                     agent_cum_batt_mw['batt_mw_cum'] = agent_cum_batt_mw['batt_kw_cum'] / 1000.0
                     agent_cum_batt_mwh = agents.dataframe[[ 'ba', 'batt_kwh_cum']]
@@ -447,24 +464,24 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     ba_cum_batt_mw_year = agent_cum_batt_mw.groupby(by='ba').sum()
                     ba_cum_batt_mwh_year = agent_cum_batt_mwh.groupby(by='ba').sum()
-                    
+
                     ba_cum_batt_mw[year] = ba_cum_batt_mw_year['batt_mw_cum']
-                    ba_cum_batt_mw.round(3).to_csv(out_scen_path + '/batt_MW_by_ba_and_year.csv', index_label='ba')                     
-                    
+                    ba_cum_batt_mw.round(3).to_csv(out_scen_path + '/batt_MW_by_ba_and_year.csv', index_label='ba')
+
                     ba_cum_batt_mwh[year] = ba_cum_batt_mwh_year['batt_mwh_cum']
-                    ba_cum_batt_mwh.round(3).to_csv(out_scen_path + '/batt_MWh_by_ba_and_year.csv', index_label='ba') 
+                    ba_cum_batt_mwh.round(3).to_csv(out_scen_path + '/batt_MWh_by_ba_and_year.csv', index_label='ba')
 
                     #==========================================================================================================
                     # WRITE OUTPUTS
-                    #==========================================================================================================   
+                    #==========================================================================================================
                     # TODO: rewrite this section to use agents class
                     # write the incremental results to the database
-#                    datfunc.write_outputs(con, cur, agents.dataframe, scenario_settings.sectors, scenario_settings.schema) 
+#                    datfunc.write_outputs(con, cur, agents.dataframe, scenario_settings.sectors, scenario_settings.schema)
 #                    datfunc.write_last_year(con, cur, market_last_year_df, scenario_settings.schema)
-                
+
                     #==========================================================================================================
                     # WRITE OUTPUTS AS PICKLES FOR POST-PROCESSING
-                    #========================================================================================================== 
+                    #==========================================================================================================
                     agents.dataframe.drop(['consumption_hourly', 'solar_cf_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
                 #==============================================================================
@@ -473,12 +490,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 #                ts_map_tidy = pd.read_csv('timeslice_map_tidy.csv')
 #                ts_list = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7', 'H8', 'H9', 'H10', 'H11', 'H12', 'H13', 'H14', 'H15', 'H16', 'H17']
 #                ts_dispatch_all_years = pd.DataFrame()
-                
+
                 # Dispatch trajectories are in MW
                 year = scenario_settings.model_years[0]
                 dispatch_new_adopters = pd.read_pickle(out_scen_path + '/total_ba_dispatches_df_%s.pkl' % year)
                 dispatch_previous_adopters = dispatch_new_adopters.copy()
-                
+
                 dispatch_by_ba_and_year = dispatch_by_ba_and_year.append(dispatch_new_adopters)
 
                 # aggregate into timeslices for reeds
@@ -487,13 +504,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 #                dispatch_year_tidy['hour'] = [int(numeric_string) for numeric_string in dispatch_year_tidy.index.values]
 #                dispatch_year_tidy = pd.melt(dispatch_year_tidy, id_vars='hour', value_vars=ba_list, var_name="ba", value_name="dispatch")
 #                ts_and_dispatch_tidy = pd.merge(ts_map_tidy, dispatch_year_tidy, how='left', on=['hour', 'ba'])
-#                ts_and_dispatch_tidy_ts = ts_and_dispatch_tidy[['ba', 'dispatch', 'ts']].groupby(['ba', 'ts']).mean().reset_index()                
+#                ts_and_dispatch_tidy_ts = ts_and_dispatch_tidy[['ba', 'dispatch', 'ts']].groupby(['ba', 'ts']).mean().reset_index()
 #                ts_dispatch_wide = ts_and_dispatch_tidy_ts.pivot(index='ba', columns='ts', values='dispatch')
 #                ts_dispatch_wide['year'] = year
 #                ts_dispatch_wide['ba'] = ts_dispatch_wide.index.values
-#                ts_dispatch_all_years = pd.concat([ts_dispatch_all_years, ts_dispatch_wide], ignore_index=True)  
+#                ts_dispatch_all_years = pd.concat([ts_dispatch_all_years, ts_dispatch_wide], ignore_index=True)
 
-                # degrade systems one year                
+                # degrade systems one year
                 dispatch_previous_adopters[hour_list] = dispatch_new_adopters[hour_list] * 0.982
 
                 for year in scenario_settings.model_years[1:]:
@@ -503,9 +520,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     dispatch_previous_adopters['year'] = year
                     dispatch_by_ba_and_year = dispatch_by_ba_and_year.append(dispatch_previous_adopters)
                     dispatch_previous_adopters[hour_list] = dispatch_previous_adopters[hour_list] * 0.982
-                    
+
                 dispatch_by_ba_and_year = dispatch_by_ba_and_year[['ba', 'year'] + hour_list]
-                dispatch_by_ba_and_year.round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW.csv') 
+                dispatch_by_ba_and_year.round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW.csv')
 #                ts_dispatch_all_years[['ba', 'year']+ts_list].round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW_ts.csv', index=False)
 
 
@@ -517,7 +534,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 pv_gen_new_adopters = pd.read_pickle(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
                 pv_gen_previous_adopters = pv_gen_new_adopters.copy()
                 pv_gen_previous_adopters[hour_list] = pv_gen_new_adopters[hour_list] * 0.995
-                
+
                 pv_cf_by_ba_and_year_year = pv_gen_new_adopters[hour_list].divide(ba_cum_pv_mw[year]*1000.0, 'index')
                 pv_cf_by_ba_and_year_year['year'] = year
                 pv_cf_by_ba_and_year = pv_cf_by_ba_and_year.append(pv_cf_by_ba_and_year_year)
@@ -526,18 +543,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Import than delete this year's generation profiles
                     pv_gen_new_adopters = pd.read_pickle(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
                     os.remove(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
-                    
+
                     # Total generation is old+new, where degradation was already applied to old capacity
                     pv_gen_previous_adopters[hour_list] = pv_gen_new_adopters[hour_list] + pv_gen_previous_adopters[hour_list]
-                    
+
                     # Convert generation into capacity factor by diving by total capacity
                     pv_cf_by_ba_and_year_year = pv_gen_previous_adopters[hour_list].divide(ba_cum_pv_mw[year]*1000.0, 'index')
                     pv_cf_by_ba_and_year_year['year'] = year
                     pv_cf_by_ba_and_year = pv_cf_by_ba_and_year.append(pv_cf_by_ba_and_year_year)
                     pv_gen_previous_adopters[hour_list] = pv_gen_previous_adopters[hour_list] * 0.995
-                    
+
                 pv_cf_by_ba_and_year = pv_cf_by_ba_and_year[['ba', 'year'] + hour_list]
-                pv_cf_by_ba_and_year.round(3).to_csv(out_scen_path + '/dpv_cf_by_ba_and_year.csv') 
+                pv_cf_by_ba_and_year.round(3).to_csv(out_scen_path + '/dpv_cf_by_ba_and_year.csv')
 
             elif scenario_settings.techs == ['wind']:
                 logger.error('Wind not yet supported')
@@ -553,35 +570,35 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==============================================================================
             logger.info("---------Saving Model Results---------")
             out_subfolders = datfunc.create_tech_subfolders(out_scen_path, scenario_settings.techs, out_subfolders, scenario_settings.choose_tech)
-            
-            # copy outputs to csv     
+
+            # copy outputs to csv
             datfunc.copy_outputs_to_csv(scenario_settings.techs, scenario_settings.schema, out_scen_path, cur, con)
 
             # add indices to postgres output table
             datfunc.index_output_table(con, cur, scenario_settings.schema)
-            
+
             # write reeds mode outputs to csvs in case they're needed
             # these functions have been superceded by midstream processing
 #            reedsfunc.write_reeds_offline_mode_data(scenario_settings.schema, con, scenario_settings.techs, out_scen_path)
-            
-            # create output html report                
+
+            # create output html report
             datfunc.create_scenario_report(scenario_settings.techs, scenario_settings.schema, scenario_settings.scen_name, out_scen_path, cur, con, model_settings.Rscript_path, model_settings.pg_params_file)
-            
+
             # create tech choice report (if applicable)
             datfunc.create_tech_choice_report(scenario_settings.choose_tech, scenario_settings.schema, scenario_settings.scen_name, out_scen_path, cur, con, model_settings.Rscript_path, model_settings.pg_params_file)
-            
+
             # after all techs have been processed:
             #####################################################################
             # drop the new scenario_settings.schema
             datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, model_settings.delete_output_schema)
             #####################################################################
-            
+
             logger.info("-------------Model Run Complete-------------")
             logger.info('Completed in: %.1f seconds' % (time.time() - model_settings.model_init))
-                            
+
 
     except Exception, e:
-        # close the connection (need to do this before dropping schema or query will hang)      
+        # close the connection (need to do this before dropping schema or query will hang)
         if 'con' in locals():
             con.close()
         if 'logger' in locals():
@@ -591,8 +608,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
         if 'logger' not in locals():
             raise
-        
-    
+
+
     finally:
         if 'con' in locals():
             con.close()

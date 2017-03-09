@@ -91,7 +91,7 @@ class Agents(object):
 
         self.update_attrs
 
-    def add_attrs(self, df, on=None):
+    def add_attrs(self, attr_df, on=None):
         """
         Add attributes to agents
         Parameters
@@ -109,9 +109,11 @@ class Agents(object):
             Updated attribute types
         """
         if on is None:
-            self.df = self.df.join(df, how='left')
+            self.df = self.df.join(attr_df, how='left')
         else:
-            self.df = pd.merge(self.df, df, how='left', on=on)
+            self.df = self.df.reset_index()
+            self.df = pd.merge(self.df, attr_df, how='left', on=on)
+            self.df = self.df.set_index('agent_id')
         self.update_attrs
 
     def on_row(self, func, cores=None, in_place=True, **kwargs):
@@ -185,7 +187,7 @@ class Agents(object):
         elif isinstance(func_args, list):
             results_df = func(self.df, *func_args, **kwargs)
         else:
-            results_df = func(self.df,func_args, **kwargs)
+            results_df = func(self.df, func_args, **kwargs)
 
         if in_place:
             self.df = results_df
