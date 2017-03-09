@@ -517,24 +517,24 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 
                 year_and_reg_set = gFuncs.cartesian([ba_list, scenario_settings.model_years])                
                 
-                storage_dispatch_df_col_list = list(['ba', 'year'])
+                col_list_8760 = list(['ba', 'year'])
                 hour_list = list()
                 for hour in np.arange(1,8761):
                     hour_list = hour_list + ['H%s' % hour]
                 hour_list = list(np.arange(1,8761))
-                storage_dispatch_df_col_list = storage_dispatch_df_col_list + hour_list
-
-                # storage_dispatch_df_year is just the dispatches for agents who adopted that year.
-                # storage_dispatch_df is the total dispatches for all adopters up to that point
-                dispatch_by_ba_and_year = pd.DataFrame(columns = storage_dispatch_df_col_list)
-                dispatch_by_ba_and_year = pd.DataFrame(columns = storage_dispatch_df_col_list)
+                col_list_8760 = col_list_8760 + hour_list
                 
-                generation_new_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
-                generation_all_adopters = pd.DataFrame(columns = storage_dispatch_df_col_list)
-                
+                # PV and batt capacities
                 ba_cum_pv_mw = pd.DataFrame(index=ba_list)
                 ba_cum_batt_mw = pd.DataFrame(index=ba_list)
                 ba_cum_batt_mwh = pd.DataFrame(index=ba_list)
+                
+                # PV capacity factors
+                pv_gen_by_ba_and_year = pd.DataFrame(index=ba_list, columns=[['ba', 'year'] + hour_list])
+                pv_cf_by_ba_and_year = pd.DataFrame(columns = col_list_8760)
+
+                # Battery dispatches
+                dispatch_by_ba_and_year = pd.DataFrame(columns = col_list_8760)
                 
                 #==============================================================================
                 # RESOURCE DATA
@@ -718,44 +718,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # calculate diffusion based on economics and bass diffusion                   
                     agents.dataframe, market_last_year_df = diffusion_functions_elec.calc_diffusion_storage(agents.dataframe, is_first_year, bass_params) 
 
-                    #==========================================================================================================
-                    # Write storage dispatch trajectories, to be used for capacity factor aggregations later
-                    #==========================================================================================================   
-                    # TODO: rewrite this using agents class, once above is handled
-                    # Dispatch trajectories are in MW
-                    total_dispatches = np.vstack(agents.dataframe['batt_dispatch_profile']).astype(np.float) * np.array(agents.dataframe['new_adopters']).reshape(len(agents.dataframe), 1) / 1000.0
-                    total_dispatches_df = pd.DataFrame(total_dispatches, columns = hour_list)
-                    total_dispatches_df['ba'] = agents.dataframe['ba'] #TODO improve this so it is robust against reorder
 
-                    total_ba_dispatches_df = total_dispatches_df.groupby(by='ba').sum()
-                    total_ba_dispatches_df['year'] = year
-                    
-                    total_ba_dispatches_df.index.names = ['ba']
-                    total_ba_dispatches_df['ba'] = total_ba_dispatches_df.index.values
-                    total_ba_dispatches_df.to_pickle(out_scen_path + '/total_ba_dispatches_df_%s.pkl' % year)
-                    del(total_dispatches)
-                    del(total_dispatches_df)
-                    
-
-                    #==========================================================================================================
-                    # Write PV generation profiles, to be used for capacity factor aggregations later
-                    #==========================================================================================================   
-                    # TODO: rewrite this using agents class, once above is handled
-                    if is_first_year:
-                        pv_gen_new_adopters = np.vstack(agents.dataframe['solar_cf_profile']).astype(np.float) / 1e6 * np.array(agents.dataframe['pv_kw_cum']).reshape(len(agents.dataframe), 1)
-                    else:
-                        pv_gen_new_adopters = np.vstack(agents.dataframe['solar_cf_profile']).astype(np.float) / 1e6 * np.array(agents.dataframe['new_pv_kw']).reshape(len(agents.dataframe), 1)
-
-                    pv_gen_new_adopters = pd.DataFrame(pv_gen_new_adopters, columns = hour_list)
-                    pv_gen_new_adopters['ba'] = agents.dataframe['ba'] #TODO improve this so it is robust against reorder
-                    pv_gen_new_adopters = pv_gen_new_adopters.groupby(by='ba').sum()
-                    pv_gen_new_adopters['year'] = year
-                    
-                    pv_gen_new_adopters.index.names = ['ba']
-                    pv_gen_new_adopters['ba'] = pv_gen_new_adopters.index.values
-                    pv_gen_new_adopters.to_pickle(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
-                    del(pv_gen_new_adopters)
-                    
                     #==========================================================================================================
                     # Aggregate PV and Batt capacity by reeds region
                     #==========================================================================================================   
@@ -779,6 +742,87 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     ba_cum_batt_mwh[year] = ba_cum_batt_mwh_year['batt_mwh_cum']
                     ba_cum_batt_mwh.round(3).to_csv(out_scen_path + '/batt_MWh_by_ba_and_year.csv', index_label='ba') 
+                    
+
+                    #==========================================================================================================
+                    # Aggregate storage dispatch trajectories
+                    #==========================================================================================================   
+                    # Dispatch trajectories are in MW
+                    dispatch_new_adopters = np.vstack(agents.dataframe['batt_dispatch_profile']).astype(np.float) * np.array(agents.dataframe['new_adopters']).reshape(len(agents.dataframe), 1) / 1000.0
+                    dispatch_new_adopters_df = pd.DataFrame(dispatch_new_adopters, columns = hour_list)
+                    dispatch_new_adopters_df['ba'] = agents.dataframe['ba'] #TODO improve this so it is robust against reorder
+
+                    dispatch_new_adopters_by_ba_df = dispatch_new_adopters_df.groupby(by='ba').sum()
+                    dispatch_new_adopters_by_ba_df['year'] = year
+                    
+                    dispatch_new_adopters_by_ba_df.index.names = ['ba']
+                    dispatch_new_adopters_by_ba_df['ba'] = dispatch_new_adopters_by_ba_df.index.values
+                    
+                    # TODO: calculate this via batt lifetime or explicit
+                    rate_of_batt_deg = 0.982             
+                    
+                    ## Aggregate
+                    if is_first_year == True:
+                        dispatch_all_adopters = dispatch_new_adopters_by_ba_df.copy()        
+                    else:
+                        dispatch_all_adopters[hour_list] = dispatch_all_adopters[hour_list] + dispatch_new_adopters_by_ba_df[hour_list]
+
+                    dispatch_all_adopters['year'] = year
+                    dispatch_by_ba_and_year = dispatch_by_ba_and_year.append(dispatch_all_adopters)
+                        
+                    # Degrade systems by one year
+                    dispatch_all_adopters[hour_list] = dispatch_all_adopters[hour_list] * rate_of_batt_deg**2
+                    
+                    # This should be moved out of the yearly loop, keeping it here for now
+                    # TODO
+                    if year==scenario_settings.model_years[-1]:
+                        dispatch_by_ba_and_year = dispatch_by_ba_and_year[['ba', 'year'] + hour_list] # reorder the columns
+                        dispatch_by_ba_and_year.round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW.csv')
+                    
+
+                    #==========================================================================================================
+                    # Aggregate PV generation profiles and calculate capacity factor profiles
+                    #==========================================================================================================   
+                    # TODO: rewrite this using agents class, once above is handled
+                    if is_first_year:
+                        pv_gen_new_adopters = np.vstack(agents.dataframe['solar_cf_profile']).astype(np.float) / 1e6 * np.array(agents.dataframe['pv_kw_cum']).reshape(len(agents.dataframe), 1)
+                    else:
+                        pv_gen_new_adopters = np.vstack(agents.dataframe['solar_cf_profile']).astype(np.float) / 1e6 * np.array(agents.dataframe['new_pv_kw']).reshape(len(agents.dataframe), 1)
+
+                    pv_gen_new_adopters = pd.DataFrame(pv_gen_new_adopters, columns = hour_list)
+                    pv_gen_new_adopters['ba'] = agents.dataframe['ba'] #TODO improve this so it is robust against reorder
+                    pv_gen_new_adopters = pv_gen_new_adopters.groupby(by='ba').sum()
+                    pv_gen_new_adopters['year'] = year
+                    
+                    pv_gen_new_adopters.index.names = ['ba']
+                    pv_gen_new_adopters['ba'] = pv_gen_new_adopters.index.values
+                    
+                    # TODO: this should draw from the input sheet
+                    pv_deg_rate = 0.995 
+                    
+                    # Aggregate
+                    if is_first_year:
+                        pv_gen_all_adopters = pv_gen_new_adopters.copy()
+                    else:
+                        # Total generation is old+new, where degradation was already applied to old capacity
+                        pv_gen_all_adopters[hour_list] = pv_gen_new_adopters[hour_list] + pv_gen_all_adopters[hour_list]
+                        
+                    # Convert generation into capacity factor by diving by total capacity
+                    pv_cf_by_ba_and_year_single_year = pv_gen_all_adopters[hour_list].divide(ba_cum_pv_mw[year]*1000.0, 'index')
+                    pv_cf_by_ba_and_year_single_year['year'] = year
+                    pv_cf_by_ba_and_year = pv_cf_by_ba_and_year.append(pv_cf_by_ba_and_year_single_year)
+                    
+                    # Degrade existing capacity by one year
+                    pv_gen_all_adopters[hour_list] = pv_gen_all_adopters[hour_list] * pv_deg_rate**2
+                    
+                    # This should be moved out of the yearly loop, keeping it here for now
+                    # TODO
+                    if year==scenario_settings.model_years[-1]:
+                        pv_cf_by_ba_and_year = pv_cf_by_ba_and_year[['ba', 'year'] + hour_list]
+                        pv_cf_by_ba_and_year.round(3).to_csv(out_scen_path + '/dpv_cf_by_ba_and_year.csv')                     
+
+
+                    
 
                     #==========================================================================================================
                     # WRITE OUTPUTS
@@ -793,77 +837,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #========================================================================================================== 
                     agents.dataframe.drop(['consumption_hourly', 'solar_cf_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
-                #==============================================================================
-                # Summarize solar+storage results for ReEDS
-                #==============================================================================
-#                ts_map_tidy = pd.read_csv('timeslice_map_tidy.csv')
-#                ts_list = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7', 'H8', 'H9', 'H10', 'H11', 'H12', 'H13', 'H14', 'H15', 'H16', 'H17']
-#                ts_dispatch_all_years = pd.DataFrame()
-                
-                # Dispatch trajectories are in MW
-                year = scenario_settings.model_years[0]
-                dispatch_new_adopters = pd.read_pickle(out_scen_path + '/total_ba_dispatches_df_%s.pkl' % year)
-                dispatch_previous_adopters = dispatch_new_adopters.copy()
-                
-                dispatch_by_ba_and_year = dispatch_by_ba_and_year.append(dispatch_new_adopters)
-
-                # aggregate into timeslices for reeds
-#                dispatch_year_tidy = dispatch_previous_adopters.copy()
-#                dispatch_year_tidy = dispatch_year_tidy.transpose()
-#                dispatch_year_tidy['hour'] = [int(numeric_string) for numeric_string in dispatch_year_tidy.index.values]
-#                dispatch_year_tidy = pd.melt(dispatch_year_tidy, id_vars='hour', value_vars=ba_list, var_name="ba", value_name="dispatch")
-#                ts_and_dispatch_tidy = pd.merge(ts_map_tidy, dispatch_year_tidy, how='left', on=['hour', 'ba'])
-#                ts_and_dispatch_tidy_ts = ts_and_dispatch_tidy[['ba', 'dispatch', 'ts']].groupby(['ba', 'ts']).mean().reset_index()                
-#                ts_dispatch_wide = ts_and_dispatch_tidy_ts.pivot(index='ba', columns='ts', values='dispatch')
-#                ts_dispatch_wide['year'] = year
-#                ts_dispatch_wide['ba'] = ts_dispatch_wide.index.values
-#                ts_dispatch_all_years = pd.concat([ts_dispatch_all_years, ts_dispatch_wide], ignore_index=True)  
-
-                # degrade systems one year                
-                dispatch_previous_adopters[hour_list] = dispatch_new_adopters[hour_list] * 0.982
-
-                for year in scenario_settings.model_years[1:]:
-                    dispatch_new_adopters = pd.read_pickle(out_scen_path + '/total_ba_dispatches_df_%s.pkl' % year)
-                    os.remove(out_scen_path + '/total_ba_dispatches_df_%s.pkl' % year)
-                    dispatch_previous_adopters[hour_list] = dispatch_new_adopters[hour_list] + dispatch_previous_adopters[hour_list]
-                    dispatch_previous_adopters['year'] = year
-                    dispatch_by_ba_and_year = dispatch_by_ba_and_year.append(dispatch_previous_adopters)
-                    dispatch_previous_adopters[hour_list] = dispatch_previous_adopters[hour_list] * 0.982
-                    
-                dispatch_by_ba_and_year = dispatch_by_ba_and_year[['ba', 'year'] + hour_list]
-                dispatch_by_ba_and_year.round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW.csv') 
-#                ts_dispatch_all_years[['ba', 'year']+ts_list].round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW_ts.csv', index=False)
-
-
-                # PV capacity factors
-                pv_gen_by_ba_and_year = pd.DataFrame(index=ba_list, columns=[['ba', 'year'] + hour_list])
-                pv_cf_by_ba_and_year = pd.DataFrame(columns = storage_dispatch_df_col_list)
-
-                year = scenario_settings.model_years[0]
-                pv_gen_new_adopters = pd.read_pickle(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
-                pv_gen_previous_adopters = pv_gen_new_adopters.copy()
-                pv_gen_previous_adopters[hour_list] = pv_gen_new_adopters[hour_list] * 0.995
-                
-                pv_cf_by_ba_and_year_year = pv_gen_new_adopters[hour_list].divide(ba_cum_pv_mw[year]*1000.0, 'index')
-                pv_cf_by_ba_and_year_year['year'] = year
-                pv_cf_by_ba_and_year = pv_cf_by_ba_and_year.append(pv_cf_by_ba_and_year_year)
-
-                for year in scenario_settings.model_years[1:]:
-                    # Import than delete this year's generation profiles
-                    pv_gen_new_adopters = pd.read_pickle(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
-                    os.remove(out_scen_path + '/pv_gen_new_adopters_%s.pkl' % year)
-                    
-                    # Total generation is old+new, where degradation was already applied to old capacity
-                    pv_gen_previous_adopters[hour_list] = pv_gen_new_adopters[hour_list] + pv_gen_previous_adopters[hour_list]
-                    
-                    # Convert generation into capacity factor by diving by total capacity
-                    pv_cf_by_ba_and_year_year = pv_gen_previous_adopters[hour_list].divide(ba_cum_pv_mw[year]*1000.0, 'index')
-                    pv_cf_by_ba_and_year_year['year'] = year
-                    pv_cf_by_ba_and_year = pv_cf_by_ba_and_year.append(pv_cf_by_ba_and_year_year)
-                    pv_gen_previous_adopters[hour_list] = pv_gen_previous_adopters[hour_list] * 0.995
-                    
-                pv_cf_by_ba_and_year = pv_cf_by_ba_and_year[['ba', 'year'] + hour_list]
-                pv_cf_by_ba_and_year.round(3).to_csv(out_scen_path + '/dpv_cf_by_ba_and_year.csv') 
 
 
             #==============================================================================
