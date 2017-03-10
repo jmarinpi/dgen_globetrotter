@@ -67,7 +67,12 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     rates_json_df =  elec.get_electric_rates_json(con, selected_rate_ids)
     rates_json_df = rates_json_df.set_index('rate_id_alias')
 
-    # check that every 
-    rates_rank_df = agents_df.on_frame(elec.check_rate_coverage, [rates_rank_df,rates_json_df], in_place=False)
+    # check that every agent has a tariff, assign one to them if they don't
+    rates_rank_df = elec.check_rate_coverage(agents_df, rates_rank_df, rates_json_df)
+    
+    # =========================================================================
+    # AGENT TARIFF SELECTION
+    # =========================================================================
+    agents_df = elec.select_tariff_driver(agents_df, rates_rank_df, rates_json_df, model_settings.local_cores)
 
     return agents_df

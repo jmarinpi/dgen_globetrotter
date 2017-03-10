@@ -592,8 +592,7 @@ def init_model_settings():
     model_settings.set_Rscript_path(config.Rscript_paths)
     model_settings.set('model_init', utilfunc.get_epoch_time())
     model_settings.set('cdate', utilfunc.get_formatted_time())
-    model_settings.set(
-        'out_dir', datfunc.make_output_directory_path(model_settings.cdate))
+    model_settings.set('out_dir', datfunc.make_output_directory_path(model_settings.cdate))
     model_settings.set('git_hash', utilfunc.get_git_hash())
     model_settings.set('input_scenarios', datfunc.get_input_scenarios())
     # validate all model settings

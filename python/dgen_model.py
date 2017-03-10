@@ -66,11 +66,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
         # make output directory
         os.makedirs(model_settings.out_dir)
-        # create the logger and stamp with git has
-        logger = utilfunc.get_logger(os.path.join(model_settings.out_dir,
-                                                  'dg_model.log'))
-        logger.info("Model version is git commit {:}"
-                    .format(model_settings.git_hash))
+        # create the logger and stamp with git hash
+        logger = utilfunc.get_logger(os.path.join(model_settings.out_dir, 'dg_model.log'))
+        logger.info("Model version is git commit {:}".format(model_settings.git_hash))
 
         # connect to Postgres and configure connection
         con, cur = utilfunc.make_con(model_settings.pg_conn_string)
@@ -90,9 +88,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info("Running Scenario {i} of {n}".format(i=i + 1,n=len(model_settings.input_scenarios)))
             # initialize ScenarioSettings object
             # (this controls settings tha apply only to this specific scenario)
-            scenario_settings = settings.init_scenario_settings(scenario_file,
-                                                                model_settings,
-                                                                con, cur)
+            scenario_settings = settings.init_scenario_settings(scenario_file, model_settings, con, cur)
 
             # summarize high level secenario settings
             datfunc.summarize_scenario(scenario_settings, model_settings)
@@ -101,10 +97,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             input_scenario = scenario_settings.input_scenario
             scen_name = scenario_settings.scen_name
             out_dir = model_settings.out_dir
-            (out_scen_path,
-             scenario_names,
-             dup_n) = datfunc.create_scenario_results_folder(input_scenario,
-                                                             scen_name,
+            (out_scen_path, scenario_names, dup_n) = datfunc.create_scenario_results_folder(input_scenario, scen_name,
                                                              scenario_names,
                                                              out_dir, dup_n)
             # get other datasets needed for the model run

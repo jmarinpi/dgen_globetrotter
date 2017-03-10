@@ -45,6 +45,8 @@ pg.extensions.register_type(DEC2FLOAT)
 #%%
 def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):
 
+    agent_df['agent_id'] = agent_df.index
+
     agent_dict = agent_df.T.to_dict()
 
     if 'ix' not in os.name:
@@ -58,7 +60,7 @@ def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cp
         for key in agent_dict:
 
             # Filter for list of tariffs available to this agent
-            agent_rate_list = rates_rank_df[rates_rank_df['agent_id']==agent_dict[key]['agent_id']].drop_duplicates()
+            agent_rate_list = rates_rank_df[rates_rank_df.index==key].drop_duplicates()
             agent_rate_jsons = rates_json_df[rates_json_df.index.isin(np.array(agent_rate_list['rate_id_alias']))]
 
             future_list.append(executor.submit(select_tariff,
@@ -68,6 +70,7 @@ def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cp
 
     results_df = pd.DataFrame([f.result() for f in future_list])
 
+    
     agent_df = pd.merge(agent_df, results_df, how='left', on=['agent_id'])
 
     return agent_df
