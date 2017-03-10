@@ -217,7 +217,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
                 #==========================================================================================================
-                pv_deg_traj_df = iFuncs.ingest_pv_degradation_trajectories(model_settings)
+                pv_deg_traj = iFuncs.ingest_pv_degradation_trajectories(model_settings)
                 
 
                 for year in scenario_settings.model_years:
@@ -244,18 +244,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # SYSTEM DEGRADATION
                     #==========================================================================================================
                     # apply system degradation to agents
-                    solar_agents.on_frame(agent_mutation.elec.apply_pv_deg, (pv_deg_traj_df))
+                    solar_agents.on_frame(agent_mutation.elec.apply_pv_deg, (pv_deg_traj))
 
 
                     #==============================================================================
                     # TARIFFS FOR EXPORTED GENERATION (NET METERING)
                     #==============================================================================
-                    # !!!! Already done for the first year in init_solar_agents!!!!
                     # get net metering settings
                     net_metering_df =  agent_mutation.elec.get_net_metering_settings(con, scenario_settings.schema, year)
                     # apply export generation tariff settings
-                    agents = AgentsAlgorithm(agents, agent_mutation.elec.apply_export_generation_tariffs, (net_metering_df, )).compute()
-
+                    solar_agents.on_frame(agent_mutation.elec.apply_export_generation_params, (net_metering_df))
 
                     #==============================================================================
                     # ELECTRICITY PRICE MULTIPLIER AND ESCALATION

@@ -235,7 +235,7 @@ def apply_elec_price_multiplier_and_escalator_simple(dataframe, year, rate_growt
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_export_generation_tariffs(dataframe, net_metering_df):
+def apply_export_tariff_params(dataframe, net_metering_df):
 
     dataframe = dataframe.reset_index()
     dataframe = pd.merge(dataframe, net_metering_df[

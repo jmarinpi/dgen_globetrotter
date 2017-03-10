@@ -47,14 +47,6 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     solar_resource_df = elec.get_normalized_hourly_resource_solar(con, schema, sectors, techs)
     agents_df = elec.apply_solar_capacity_factor_profile(agents_df, solar_resource_df)
 
-    # =========================================================================
-    # EXPORTED GENERATION (NET METERING) SIZE LIMITS AND CREDIT
-    # =========================================================================
-    # get net metering system size limits and export prices
-    year = scenario_settings.model_years[0]
-    net_metering_df = elec.get_net_metering_settings(con, schema, year)
-    # apply export generation tariff parameters
-    agents_df = elec.apply_export_generation_tariffs(agents_df, net_metering_df)
 
     # =========================================================
     # GET RATE RANKS & TARIFF LOOKUP TABLE FOR EACH SECTOR
