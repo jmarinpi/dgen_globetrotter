@@ -101,7 +101,8 @@ def select_tariff(agent_dict, agent_rate_list, rates_json_df):
             tariff_id = agent_rate_list.loc[index, 'rate_id_alias']
             tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
             # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
-            if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
+            if 'energy_rate_unit' in tariff_dict:
+                if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
             tariff = tFuncs.Tariff(dict_obj=tariff_dict)
             bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
             agent_rate_list.loc[index, 'bills'] = bill
@@ -112,7 +113,8 @@ def select_tariff(agent_dict, agent_rate_list, rates_json_df):
     tariff_id = agent_rate_list.loc[agent_rate_list['bills'].idxmin(), 'rate_id_alias']
     tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
     # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
-    if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
+    if 'energy_rate_unit' in tariff_dict:
+        if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
     tariff = tFuncs.Tariff(dict_obj=tariff_dict)
 
     results_dict = {'agent_id':agent_dict['agent_id'],
