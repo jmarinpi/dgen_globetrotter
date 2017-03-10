@@ -17,7 +17,7 @@ import pssc_mp
 import os
 import pickle
 import multiprocessing as mp
-from concurrent import futures
+import concurrent.futures as concur_f
 
 # Import from support function repo
 import sys
@@ -47,46 +47,37 @@ def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cp
 
     agent_df['agent_id'] = agent_df.index
 
-    agent_dict = agent_df.T.to_dict()
-
     if 'ix' not in os.name:
-        EXECUTOR = futures.ThreadPoolExecutor
+        EXECUTOR = concur_f.ThreadPoolExecutor
     else:
-        EXECUTOR = futures.ProcessPoolExecutor
+        EXECUTOR = concur_f.ProcessPoolExecutor
 
-    future_list = list()
-
+    futures = []
     with EXECUTOR(max_workers=n_workers) as executor:
-        for key in agent_dict:
+        for agent_id, agent in agent_df.iterrows():
+#        for key in agent_dict:
 
             # Filter for list of tariffs available to this agent
-            agent_rate_list = rates_rank_df[rates_rank_df.index==key].drop_duplicates()
+#            agent_rate_list = rates_rank_df[rates_rank_df.index==key].drop_duplicates()
+#            agent_rate_jsons = rates_json_df[rates_json_df.index.isin(np.array(agent_rate_list['rate_id_alias']))]
+            agent_rate_list = rates_rank_df.loc[agent_id].drop_duplicates()
             agent_rate_jsons = rates_json_df[rates_json_df.index.isin(np.array(agent_rate_list['rate_id_alias']))]
 
-            future_list.append(executor.submit(select_tariff,
-                                               agent_dict[key],
-                                               agent_rate_list,
-                                               agent_rate_jsons))
+            futures.append(executor.submit(select_tariff, agent, agent_rate_jsons))
 
-    results_df = pd.DataFrame([f.result() for f in future_list])
+        results = [future.result() for future in futures]
 
+    agent_df = pd.concat(results, axis=1).T
+    agent_df.index.name = 'agent_id'
     
-    agent_df = pd.merge(agent_df, results_df, how='left', on=['agent_id'])
-
     return agent_df
 
 
 #%%
-def select_tariff(agent_dict, agent_rate_list, rates_json_df):
-    '''
-    Questions:
-    -if I don't need all the columns in agent_dict, is there a better way?
-    -something other than dict?
-
-    '''
+def select_tariff(agent, rates_json_df):
 
     # Extract load profile
-    load_profile = np.array(agent_dict['consumption_hourly'])
+    load_profile = np.array(agent['consumption_hourly'])
 
     # Create export tariff object
     export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
@@ -94,34 +85,33 @@ def select_tariff(agent_dict, agent_rate_list, rates_json_df):
     #=========================================================================#
     # Tariff selection
     #=========================================================================#
-    agent_rate_list['bills'] = 0.0
-    if len(agent_rate_list > 1):
+    rates_json_df['bills'] = 0.0    
+    if len(rates_json_df > 1):
         # determine which of the tariffs has the cheapest cost of electricity without a system
-        for index in agent_rate_list.index:
-            tariff_id = agent_rate_list.loc[index, 'rate_id_alias']
-            tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
+        for index in rates_json_df.index:
+            tariff_dict = rates_json_df.loc[index, 'rate_json']
             # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
             if 'energy_rate_unit' in tariff_dict:
                 if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
             tariff = tFuncs.Tariff(dict_obj=tariff_dict)
             bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
-            agent_rate_list.loc[index, 'bills'] = bill
+            rates_json_df.loc[index, 'bills'] = bill
 
     # Select the tariff that had the cheapest electricity. Note that there is
     # currently no rate switching, if it would be cheaper once a system is
     # installed. This is currently for computational reasons.
-    tariff_id = agent_rate_list.loc[agent_rate_list['bills'].idxmin(), 'rate_id_alias']
+    rates_json_df['tariff_ids'] = rates_json_df.index
+    tariff_id = rates_json_df.loc[rates_json_df['bills'].idxmin(), 'tariff_ids']
     tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
     # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
     if 'energy_rate_unit' in tariff_dict:
         if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
     tariff = tFuncs.Tariff(dict_obj=tariff_dict)
 
-    results_dict = {'agent_id':agent_dict['agent_id'],
-                    'tariff_dict':tariff_dict,
-                    'tariff_id':tariff_id}
+    agent['tariff_dict'] = tariff_dict
+    agent['tariff_id'] = tariff_id
 
-    return results_dict
+    return agent
 
 
 #%%
