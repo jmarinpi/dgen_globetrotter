@@ -48,13 +48,26 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     agents_df = elec.apply_solar_capacity_factor_profile(agents_df, solar_resource_df)
 
     # =========================================================================
-    # TARIFFS FOR EXPORTED GENERATION (NET METERING)
+    # EXPORTED GENERATION (NET METERING) SIZE LIMITS AND CREDIT
     # =========================================================================
-    # get net metering settings
+    # get net metering system size limits and export prices
     year = scenario_settings.model_years[0]
-    # get net metering settings (core)
     net_metering_df = elec.get_net_metering_settings(con, schema, year)
-    # apply export generation tariff settings
+    # apply export generation tariff parameters
     agents_df = elec.apply_export_generation_tariffs(agents_df, net_metering_df)
+
+    # =========================================================
+    # GET RATE RANKS & TARIFF LOOKUP TABLE FOR EACH SECTOR
+    # =========================================================
+    # get (ranked) rates for each sector
+    rates_rank_df =  elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string, model_settings.mode)
+    # find the list of unique rate ids that are included in rates_rank_df
+    selected_rate_ids =  elec.identify_selected_rate_ids(rates_rank_df)
+    # get lkup table with rate jsons
+    rates_json_df =  elec.get_electric_rates_json(con, selected_rate_ids)
+    rates_json_df = rates_json_df.set_index('rate_id_alias')
+
+    # check that every 
+    rates_rank_df = agents_df.on_frame(elec.check_rate_coverage, [rates_rank_df,rates_json_df], in_place=False)
 
     return agents_df
