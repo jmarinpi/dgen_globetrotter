@@ -128,11 +128,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info("--------------Creating Agents---------------")
 
                 if scenario_settings.techs in [['wind'], ['solar']]:
-                    # Initialize solar agents:
+                    # =========================================================
+                    # Initialize agents
+                    # =========================================================
                     solar_agents_df = agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con)
-                    # =========================================================
-                    # GENERATE  AGENT OBJECT from agents_df
-                    # =========================================================
                     solar_agents = Agents(solar_agents_df)
 
 
