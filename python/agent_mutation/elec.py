@@ -44,8 +44,8 @@ pg.extensions.register_type(DEC2FLOAT)
 
 #%%
 def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):
-
-    agent_df['agent_id'] = agent_df.index
+    # This is not needed
+    # agent_df['agent_id'] = agent_df.index
 
     if 'ix' not in os.name:
         EXECUTOR = concur_f.ThreadPoolExecutor
@@ -69,7 +69,7 @@ def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cp
 
     agent_df = pd.concat(results, axis=1).T
     agent_df.index.name = 'agent_id'
-    
+
     return agent_df
 
 
@@ -85,7 +85,7 @@ def select_tariff(agent, rates_json_df):
     #=========================================================================#
     # Tariff selection
     #=========================================================================#
-    rates_json_df['bills'] = 0.0    
+    rates_json_df['bills'] = 0.0
     if len(rates_json_df > 1):
         # determine which of the tariffs has the cheapest cost of electricity without a system
         for index in rates_json_df.index:
