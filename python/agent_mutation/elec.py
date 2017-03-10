@@ -44,8 +44,6 @@ pg.extensions.register_type(DEC2FLOAT)
 
 #%%
 def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):
-    # This is not needed
-    # agent_df['agent_id'] = agent_df.index
 
     if 'ix' not in os.name:
         EXECUTOR = concur_f.ThreadPoolExecutor
@@ -55,11 +53,7 @@ def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cp
     futures = []
     with EXECUTOR(max_workers=n_workers) as executor:
         for agent_id, agent in agent_df.iterrows():
-#        for key in agent_dict:
-
             # Filter for list of tariffs available to this agent
-#            agent_rate_list = rates_rank_df[rates_rank_df.index==key].drop_duplicates()
-#            agent_rate_jsons = rates_json_df[rates_json_df.index.isin(np.array(agent_rate_list['rate_id_alias']))]
             agent_rate_list = rates_rank_df.loc[agent_id].drop_duplicates()
             agent_rate_jsons = rates_json_df[rates_json_df.index.isin(np.array(agent_rate_list['rate_id_alias']))]
 
@@ -408,12 +402,13 @@ def get_load_growth(con, schema, year):
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_load_growth(dataframe, load_growth_df):
 
-    dataframe = pd.merge(dataframe, load_growth_df, how='left', on=[
-                         'sector_abbr', 'census_division_abbr'])
-    dataframe['customers_in_bin'] = dataframe[
-        'customers_in_bin'] * dataframe['load_multiplier']
-    dataframe['load_kwh_in_bin'] = dataframe[
-        'load_kwh_in_bin'] * dataframe['load_multiplier']
+    dataframe = dataframe.reset_index()
+
+    dataframe = pd.merge(dataframe, load_growth_df, how='left', on=['sector_abbr', 'census_division_abbr'])
+    dataframe['customers_in_bin'] = dataframe['customers_in_bin'] * dataframe['load_multiplier']
+    dataframe['load_kwh_in_bin'] = dataframe['load_kwh_in_bin'] * dataframe['load_multiplier']
+    
+    dataframe = dataframe.set_index('agent_id')
 
     return dataframe
 
@@ -1935,10 +1930,13 @@ def get_system_degradation(con, schema):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_system_degradation(dataframe, system_degradation_df):
+def apply_pv_deg(dataframe, pv_deg_traj_df):
 
-    dataframe = pd.merge(dataframe, system_degradation_df,
-                         how='left', on=['tech'])
+    dataframe = dataframe.reset_index()
+
+    dataframe = pd.merge(dataframe, pv_deg_traj_df, how='left', on=['year', 'sector_abbr'])
+                         
+    dataframe = dataframe.set_index('agent_id')
 
     return dataframe
 

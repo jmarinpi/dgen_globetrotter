@@ -31,13 +31,14 @@ import tech_choice_geo
 import settings
 import agent_mutation
 import agent_preparation
-import demand_supply_geo
+#import demand_supply_geo
 import diffusion_functions_elec
 import diffusion_functions_ghp
 import diffusion_functions_du
 import diffusion_functions_geo
 import financial_functions_elec
 import financial_functions_geo
+import input_data_functions as iFuncs
 
 # Import from support function repo
 #import dispatch_functions as dFuncs
@@ -98,8 +99,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             scen_name = scenario_settings.scen_name
             out_dir = model_settings.out_dir
             (out_scen_path, scenario_names, dup_n) = datfunc.create_scenario_results_folder(input_scenario, scen_name,
-                                                             scenario_names,
-                                                             out_dir, dup_n)
+                                                             scenario_names, out_dir, dup_n)
             # get other datasets needed for the model run
             logger.info('Getting various scenario parameters')
 
@@ -164,16 +164,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
 
-                # store canned agents (if in setup_develop mode)
-                #TODO!: FIX THIS datfunc.setup_canned_agents(model_settings.mode, agents, scenario_settings.tech_mode, 'both')
-                # change pca_reg to ba TODO: remove pca_reg in original agent definition
-                #TODO!: FIX THIS agents.dataframe['ba'] = agents.dataframe['pca_reg']
-                #TODO!: FIX THIS agents.dataframe.drop(['pca_reg'], axis=1)
+                # change pca_reg to ba 
+                # TODO: ba should be defined in original agent definition, not pca
+                solar_agents.df['ba'] = solar_agents.df['pca_reg']
+                solar_agents.df.drop(['pca_reg'], axis=1)
 
                 #==========================================================================================================
                 # Set up dataframes to record aggregated results
                 #==========================================================================================================    
-                ba_list = np.unique(np.array(agents.dataframe['ba']))
+                ba_list = np.unique(np.array(solar_agents.df['ba']))
                 
                 year_and_reg_set = gFuncs.cartesian([ba_list, scenario_settings.model_years])                
                 
@@ -201,31 +200,37 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==============================================================================
                 batt_replacement_yr = datfunc.get_battery_replacement_year(con, scenario_settings.schema)
                 batt_replacement_cost_fraction = datfunc.get_replacement_cost_fraction(con, scenario_settings.schema)
-                agents = AgentsAlgorithm(agents, agent_mutation.elec.apply_batt_replace_schedule, (batt_replacement_yr, )).compute()
-
-                #==========================================================================================================
-                # SYSTEM DEGRADATION
-                #==========================================================================================================
-                # apply system degradation to agents
-                agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_system_degradation, (system_degradation_df, )).compute()
+                solar_agents.on_frame(agent_mutation.elec.apply_batt_replace_schedule, (batt_replacement_yr))
 
                 #==========================================================================================================
                 # WRITE BASE AGENT_DF TO DISK
                 #==========================================================================================================
-                agents.dataframe.to_pickle(out_scen_path + '/agent_df_base.pkl')
+                solar_agents.df.to_pickle(out_scen_path + '/agent_df_base.pkl')
+                
+                
+                #==========================================================================================================
+                # declare input data file names - this is temporary until input sheet is updated
+                #==========================================================================================================
+                model_settings.storage_cost_file_name = 'storage_cost_schedule_FY17_mid.csv'                
+                model_settings.pv_deg_file_name = 'constant_half_percent.csv'                
+                
+                #==========================================================================================================
+                # INGEST SCENARIO ENVIRONMENTAL VARIABLES
+                #==========================================================================================================
+                pv_deg_traj_df = iFuncs.ingest_pv_degradation_trajectories(model_settings)
+                
 
                 for year in scenario_settings.model_years:
 
                     logger.info('\tWorking on %s' % year)
 
-                    # copy the core agent object
-                    agents.dataframe = pd.read_pickle(out_scen_path + '/agent_df_base.pkl')
+                    # copy the core agent object and set their year
+                    solar_agents = Agents(pd.read_pickle(out_scen_path + '/agent_df_base.pkl'))
+                    solar_agents.df['year'] = year
 
                     # is it the first model year?
                     is_first_year = year == model_settings.start_year
 
-                    # update year (this is really only ncessary in develop-mode since canned agents have the wrong year)
-                    agents.dataframe.loc[:, 'year'] = year
 
                     #==============================================================================
                     # LOAD/POPULATION GROWTH
@@ -233,7 +238,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get load growth
                     load_growth_df =  agent_mutation.elec.get_load_growth(con, scenario_settings.schema, year)
                     # apply load growth
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_load_growth, (load_growth_df,)).compute(1)
+                    solar_agents.on_frame(agent_mutation.elec.apply_load_growth, (load_growth_df))
+
+                    #==========================================================================================================
+                    # SYSTEM DEGRADATION
+                    #==========================================================================================================
+                    # apply system degradation to agents
+                    solar_agents.on_frame(agent_mutation.elec.apply_pv_deg, (pv_deg_traj_df))
+
 
                     #==============================================================================
                     # TARIFFS FOR EXPORTED GENERATION (NET METERING)
@@ -452,7 +464,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 #                    datfunc.write_last_year(con, cur, market_last_year_df, scenario_settings.schema)
 
                     #==========================================================================================================
-                    # WRITE OUTPUTS AS PICKLES FOR POST-PROCESSING
+                    # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING
                     #==========================================================================================================
                     agents.dataframe.drop(['consumption_hourly', 'solar_cf_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
