@@ -26,6 +26,12 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     agents_df = elec.get_core_agent_attributes(con, schema,
                                                model_settings.mode,
                                                scenario_settings.region)
+                                               
+    # change pca_reg to ba 
+    # TODO: ba should be defined in original agent definition, not as pca
+    agents_df['ba'] = agents_df['pca_reg']
+    agents_df.drop(['pca_reg'], axis=1)                             
+                             
     # =========================================================================
     # GET NORMALIZED LOAD PROFILES
     # =========================================================================

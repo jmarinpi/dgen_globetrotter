@@ -56,3 +56,40 @@ def ingest_pv_degradation_trajectories(model_settings):
     pv_deg_traj_df = pd.concat([res_df, com_df, ind_df], ignore_index=True)
 
     return pv_deg_traj_df
+    
+#%%
+def ingest_elec_price_trajectories(model_settings):
+    
+    elec_price_traj = pd.read_csv(os.path.join(model_settings.input_data_dir, 'elec_prices', model_settings.elec_price_file_name))
+
+    base_year_prices = elec_price_traj[elec_price_traj['year']==2016]
+    
+    base_year_prices.rename(columns={'elec_price_res':'res_base',
+                                     'elec_price_com':'com_base',
+                                     'elec_price_ind':'ind_base'}, inplace=True)
+    
+    elec_price_change_traj = pd.merge(elec_price_traj, base_year_prices[['res_base', 'com_base', 'ind_base', 'census_division_abbr']], on='census_division_abbr')
+
+    elec_price_change_traj['elec_price_change_res'] = elec_price_change_traj['elec_price_res'] / elec_price_change_traj['res_base']
+    elec_price_change_traj['elec_price_change_com'] = elec_price_change_traj['elec_price_com'] / elec_price_change_traj['com_base']
+    elec_price_change_traj['elec_price_change_ind'] = elec_price_change_traj['elec_price_ind'] / elec_price_change_traj['ind_base']
+
+    # Melt by sector
+    res_df = pd.DataFrame(elec_price_change_traj['year'])
+    res_df = elec_price_change_traj[['year', 'elec_price_change_res', 'census_division_abbr']]
+    res_df.rename(columns={'elec_price_change_res':'elec_price_change'}, inplace=True)
+    res_df['sector_abbr'] = 'res'
+    
+    com_df = pd.DataFrame(elec_price_change_traj['year'])
+    com_df = elec_price_change_traj[['year', 'elec_price_change_com', 'census_division_abbr']]
+    com_df.rename(columns={'elec_price_change_com':'elec_price_change'}, inplace=True)
+    com_df['sector_abbr'] = 'com'
+    
+    ind_df = pd.DataFrame(elec_price_change_traj['year'])
+    ind_df = elec_price_change_traj[['year', 'elec_price_change_ind', 'census_division_abbr']]
+    ind_df.rename(columns={'elec_price_change_ind':'elec_price_change'}, inplace=True)
+    ind_df['sector_abbr'] = 'ind'
+    
+    elec_price_change_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)
+
+    return elec_price_change_traj

@@ -88,7 +88,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('============================================')
             logger.info("Running Scenario {i} of {n}".format(i=i + 1,n=len(model_settings.input_scenarios)))
             # initialize ScenarioSettings object
-            # (this controls settings tha apply only to this specific scenario)
+            # (this controls settings that apply only to this specific scenario)
             scenario_settings = settings.init_scenario_settings(scenario_file, model_settings, con, cur)
 
             # summarize high level secenario settings
@@ -213,12 +213,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 model_settings.storage_cost_file_name = 'storage_cost_schedule_FY17_mid.csv'                
                 model_settings.pv_deg_file_name = 'constant_half_percent.csv'                
-                
+                model_settings.elec_price_file_name = 'AEO2016_Reference_case.csv'                
+
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
                 #==========================================================================================================
                 pv_deg_traj = iFuncs.ingest_pv_degradation_trajectories(model_settings)
-                
+                elec_price_change_traj = iFuncs.ingest_elec_price_trajectories(model_settings)
 
                 for year in scenario_settings.model_years:
 
@@ -253,7 +254,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get net metering settings
                     net_metering_df =  agent_mutation.elec.get_net_metering_settings(con, scenario_settings.schema, year)
                     # apply export generation tariff settings
-                    solar_agents.on_frame(agent_mutation.elec.apply_export_generation_params, (net_metering_df))
+                    solar_agents.on_frame(agent_mutation.elec.apply_export_tariff_params, (net_metering_df))
 
                     #==============================================================================
                     # ELECTRICITY PRICE MULTIPLIER AND ESCALATION
@@ -261,7 +262,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply each agent's electricity price (real terms relative)
                     # to 2016, and calculate their assumption about price changes.
                     # TODO: remove the simple, since it was just for sunshot 2030
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_elec_price_multiplier_and_escalator, (year, rate_growth_df)).compute()
+                    solar_agents.on_frame(agent_mutation.elec.apply_elec_price_multiplier_and_escalator, [year, elec_price_change_traj])
 
                     #==============================================================================
                     # TECHNOLOGY PERFORMANCE
