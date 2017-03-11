@@ -187,11 +187,11 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
     else:
         first_year = np.min(elec_price_change_traj['year'])
         missing_years = first_year - horizon_year
-        elec_price_escalator_df['historical'] = elec_price_change_traj[elec_price_change_traj['year']==first_year]['elec_price_change']*0.98**missing_years
+        elec_price_escalator_df['historical'] = elec_price_change_traj[elec_price_change_traj['year']==first_year]['elec_price_multiplier']*0.98**missing_years
     
-    elec_price_escalator_df['elec_price_escalator'] = (elec_price_escalator_df['elec_price_change'] / elec_price_escalator_df['historical'])**(1.0/10) - 1.0
+    elec_price_escalator_df['elec_price_escalator'] = (elec_price_escalator_df['elec_price_multiplier'] / elec_price_escalator_df['historical'])**(1.0/10) - 1.0
 
-    dataframe = pd.merge(dataframe, elec_price_multiplier[['elec_price_change', 'sector_abbr', 'census_division_abbr']], how='left', on=['sector_abbr', 'census_division_abbr'])
+    dataframe = pd.merge(dataframe, elec_price_multiplier[['elec_price_multiplier', 'sector_abbr', 'census_division_abbr']], how='left', on=['sector_abbr', 'census_division_abbr'])
     dataframe = pd.merge(dataframe, elec_price_escalator_df[['sector_abbr', 'census_division_abbr', 'elec_price_escalator']],
                          how='left', on=['sector_abbr', 'census_division_abbr'])
 
@@ -379,22 +379,19 @@ def apply_batt_replace_schedule(dataframe, replacement_yr):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_financial_params(dataframe, financial_params_df, itc_options, tech_costs_solar_df):
+def apply_financial_params(dataframe, financing_terms, itc_options, inflation_rate):
 
-    # Only apply host-owned parameters at this point
-    fin_df_ho = financial_params_df[
-        financial_params_df['business_model'] == 'host_owned']
-    dataframe = dataframe.merge(fin_df_ho, how='left', on=[
-                                'year', 'tech', 'sector_abbr'])
+    dataframe = dataframe.reset_index()
 
-    # apply itc level
-    dataframe = dataframe.merge(itc_options[['itc_fraction', 'year', 'tech', 'sector_abbr']], how='left', on=[
-                                'year', 'tech', 'sector_abbr'])
+    dataframe = dataframe.merge(financing_terms, how='left', on=['year', 'sector_abbr'])
 
-    #
-    dataframe['analysis_years'] = 25
-    dataframe['inflation'] = inflation_rate # probably would rather not have this included as a column
-    dataframe['deprec_sched_index'] = int(1)
+    dataframe = dataframe.merge(itc_options[['itc_fraction', 'year', 'tech', 'sector_abbr']], 
+                                how='left', on=['year', 'tech', 'sector_abbr'])
+
+    dataframe['inflation'] = inflation_rate
+    
+    dataframe = dataframe.set_index('agent_id')
+    
     return dataframe
 
 
@@ -1915,10 +1912,13 @@ def get_carbon_intensities(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_carbon_intensities(dataframe, carbon_intensities_df):
+def apply_carbon_intensities(dataframe, carbon_intensities):
 
-    dataframe = pd.merge(dataframe, carbon_intensities_df,
-                         how='left', on=['state_abbr'])
+    dataframe = dataframe.reset_index()
+
+    dataframe = pd.merge(dataframe, carbon_intensities, how='left', on=['state_abbr', 'year'])
+
+    dataframe = dataframe.set_index('agent_id')
 
     return dataframe
 

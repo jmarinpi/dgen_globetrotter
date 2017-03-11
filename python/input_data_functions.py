@@ -112,17 +112,17 @@ def ingest_elec_price_trajectories(model_settings):
     # Melt by sector
     res_df = pd.DataFrame(elec_price_change_traj['year'])
     res_df = elec_price_change_traj[['year', 'elec_price_change_res', 'census_division_abbr']]
-    res_df.rename(columns={'elec_price_change_res':'elec_price_change'}, inplace=True)
+    res_df.rename(columns={'elec_price_change_res':'elec_price_multiplier'}, inplace=True)
     res_df['sector_abbr'] = 'res'
     
     com_df = pd.DataFrame(elec_price_change_traj['year'])
     com_df = elec_price_change_traj[['year', 'elec_price_change_com', 'census_division_abbr']]
-    com_df.rename(columns={'elec_price_change_com':'elec_price_change'}, inplace=True)
+    com_df.rename(columns={'elec_price_change_com':'elec_price_multiplier'}, inplace=True)
     com_df['sector_abbr'] = 'com'
     
     ind_df = pd.DataFrame(elec_price_change_traj['year'])
     ind_df = elec_price_change_traj[['year', 'elec_price_change_ind', 'census_division_abbr']]
-    ind_df.rename(columns={'elec_price_change_ind':'elec_price_change'}, inplace=True)
+    ind_df.rename(columns={'elec_price_change_ind':'elec_price_multiplier'}, inplace=True)
     ind_df['sector_abbr'] = 'ind'
     
     elec_price_change_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)
@@ -181,9 +181,47 @@ def ingest_carbon_intensities(model_settings):
     carbon_intensities = pd.read_csv(os.path.join(model_settings.input_data_dir, 'carbon_intensities', model_settings.carbon_file_name))
     
     years = np.arange(2014, 2051, 2)    
-    years = ['2014', '2016']
     years = [str(year) for year in years]
     
     carbon_intensities_tidy = pd.melt(carbon_intensities, id_vars='state_abbr', value_vars=years, var_name='year', value_name='grid_carbon_tco2_per_kwh')
 
     return carbon_intensities_tidy
+    
+#%%
+def ingest_financing_terms(model_settings):
+    
+    financing_terms = pd.read_csv(os.path.join(model_settings.input_data_dir, 'financing_terms', model_settings.financing_file_name))
+    
+    res_df = pd.DataFrame(financing_terms['year'])
+    res_df = financing_terms[['year', 'economic_lifetime_res', 'loan_term_res', 'loan_rate_res', 'down_payment_res', 'real_discount_res', 'tax_rate_res']]
+    res_df.rename(columns={'economic_lifetime_res':'economic_lifetime', 
+                           'loan_term_res':'loan_term', 
+                           'loan_rate_res':'loan_rate', 
+                           'down_payment_res':'down_payment', 
+                           'real_discount_res':'real_discount', 
+                           'tax_rate_res':'tax_rate'}, inplace=True)
+    res_df['sector_abbr'] = 'res'
+    
+    com_df = pd.DataFrame(financing_terms['year'])
+    com_df = financing_terms[['year', 'economic_lifetime_nonres', 'loan_term_nonres', 'loan_rate_nonres', 'down_payment_nonres', 'real_discount_nonres', 'tax_rate_nonres']]
+    com_df.rename(columns={'economic_lifetime_nonres':'economic_lifetime', 
+                           'loan_term_nonres':'loan_term', 
+                           'loan_rate_nonres':'loan_rate', 
+                           'down_payment_nonres':'down_payment', 
+                           'real_discount_nonres':'real_discount', 
+                           'tax_rate_nonres':'tax_rate'}, inplace=True)
+    com_df['sector_abbr'] = 'com'
+    
+    ind_df = pd.DataFrame(financing_terms['year'])
+    ind_df = financing_terms[['year', 'economic_lifetime_nonres', 'loan_term_nonres', 'loan_rate_nonres', 'down_payment_nonres', 'real_discount_nonres', 'tax_rate_nonres']]
+    ind_df.rename(columns={'economic_lifetime_nonres':'economic_lifetime', 
+                           'loan_term_nonres':'loan_term', 
+                           'loan_rate_nonres':'loan_rate', 
+                           'down_payment_nonres':'down_payment', 
+                           'real_discount_nonres':'real_discount', 
+                           'tax_rate_nonres':'tax_rate'}, inplace=True)
+    ind_df['sector_abbr'] = 'ind'
+    
+    financing_terms = pd.concat([res_df, com_df, ind_df], ignore_index=True)
+
+    return financing_terms

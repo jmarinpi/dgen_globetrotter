@@ -214,6 +214,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 model_settings.batt_price_file_name = 'batt_prices_FY17_mid.csv' 
                 model_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
                 model_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
+                model_settings.financing_file_name = 'financing_SS_FY17.csv'
 
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
@@ -225,6 +226,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 batt_price_traj = iFuncs.ingest_batt_price_trajectories(model_settings)
                 deprec_sch = iFuncs.ingest_depreciation_schedules(model_settings)
                 carbon_intensities = iFuncs.ingest_carbon_intensities(model_settings)
+                financing_terms = iFuncs.ingest_financing_terms(model_settings)
 
                 for year in scenario_settings.model_years:
 
@@ -294,21 +296,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # CARBON INTENSITIES
                     #==========================================================================================================
-                    # get carbon intensities
-                    carbon_intensities_df =  agent_mutation.elec.get_carbon_intensities(con, scenario_settings.schema, year)
-                    # apply carbon intensities
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_carbon_intensities, (carbon_intensities_df, )).compute()
+                    solar_agents.on_frame(agent_mutation.elec.apply_carbon_intensities, carbon_intensities)
 
                     #==========================================================================================================
                     # Apply host-owned financial parameters
                     #==========================================================================================================
                     # Financial assumptions and ITC fraction
-                    agents = AgentsAlgorithm(agents, agent_mutation.elec.apply_financial_params, (financial_parameters, itc_options, inflation_rate)).compute()
+                    solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
 
                     #==========================================================================================================
                     # Size S+S system and calculate electric bills
                     #==========================================================================================================
-                    agents = AgentsAlgorithm(agents, sFuncs.system_size_driver, (depreciation_df, rates_rank_df, rates_json_df, model_settings.local_cores)).compute()
+                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, model_settings.local_cores)
 
                     #==============================================================================
                     # Calculate Metric Values
