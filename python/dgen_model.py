@@ -164,11 +164,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
 
-                # change pca_reg to ba 
-                # TODO: ba should be defined in original agent definition, not pca
-                solar_agents.df['ba'] = solar_agents.df['pca_reg']
-                solar_agents.df.drop(['pca_reg'], axis=1)
-
                 #==========================================================================================================
                 # Set up dataframes to record aggregated results
                 #==========================================================================================================    
@@ -214,12 +209,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 model_settings.storage_cost_file_name = 'storage_cost_schedule_FY17_mid.csv'                
                 model_settings.pv_deg_file_name = 'constant_half_percent.csv'                
                 model_settings.elec_price_file_name = 'AEO2016_Reference_case.csv'                
+                model_settings.pv_power_density_file_name = 'pv_power_default.csv'                
 
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
                 #==========================================================================================================
                 pv_deg_traj = iFuncs.ingest_pv_degradation_trajectories(model_settings)
                 elec_price_change_traj = iFuncs.ingest_elec_price_trajectories(model_settings)
+                pv_power_traj = iFuncs.ingest_pv_power_density_trajectories(model_settings)
 
                 for year in scenario_settings.model_years:
 
@@ -261,22 +258,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # Apply each agent's electricity price (real terms relative)
                     # to 2016, and calculate their assumption about price changes.
-                    # TODO: remove the simple, since it was just for sunshot 2030
                     solar_agents.on_frame(agent_mutation.elec.apply_elec_price_multiplier_and_escalator, [year, elec_price_change_traj])
 
                     #==============================================================================
                     # TECHNOLOGY PERFORMANCE
                     #==============================================================================
-                    # get technology performance data
-                    tech_performance_solar_df =  agent_mutation.elec.get_technology_performance_solar(con, scenario_settings.schema, year)
                     # apply technology performance data
-                    agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_tech_performance_solar, (tech_performance_solar_df, )).compute()
-
-#                    #==============================================================================
-#                    # CHECK TECH POTENTIAL LIMITS
-#                    #==============================================================================
-#                    agent_mutation_elec.check_tech_potential_limits_wind(agents.filter_tech('wind').dataframe, tech_potential_limits_wind_df, model_settings.out_dir, is_first_year)
-#                    agent_mutation_elec.check_tech_potential_limits_solar(agents.filter_tech('solar').dataframe, tech_potential_limits_solar_df, model_settings.out_dir, is_first_year)
+                    solar_agents.on_frame(agent_mutation.elec.apply_solar_power_density, pv_power_traj)
 #
                     #==============================================================================
                     # TECHNOLOGY COSTS

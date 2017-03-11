@@ -30,7 +30,14 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     # change pca_reg to ba 
     # TODO: ba should be defined in original agent definition, not as pca
     agents_df['ba'] = agents_df['pca_reg']
-    agents_df.drop(['pca_reg'], axis=1)                             
+    agents_df.drop(['pca_reg'], axis=1)             
+
+
+#    #==============================================================================
+#    # CHECK TECH POTENTIAL LIMITS
+#    #==============================================================================
+    # This should happen somewhere after agent generation. It would probably be
+    # best to check # of buildings and roof area, instead of pv tech potential.                
                              
     # =========================================================================
     # GET NORMALIZED LOAD PROFILES

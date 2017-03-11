@@ -93,3 +93,28 @@ def ingest_elec_price_trajectories(model_settings):
     elec_price_change_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)
 
     return elec_price_change_traj
+    
+    
+#%%
+def ingest_pv_power_density_trajectories(model_settings):
+    
+    pv_power_traj = pd.read_csv(os.path.join(model_settings.input_data_dir, 'pv_power_density', model_settings.pv_power_density_file_name))
+    
+    res_df = pd.DataFrame(pv_power_traj['year'])
+    res_df = pv_power_traj[['year', 'res']]
+    res_df.rename(columns={'res':'pv_power_density_w_per_sqft'}, inplace=True)
+    res_df['sector_abbr'] = 'res'
+    
+    com_df = pd.DataFrame(pv_power_traj['year'])
+    com_df = pv_power_traj[['year', 'com']]
+    com_df.rename(columns={'com':'pv_power_density_w_per_sqft'}, inplace=True)
+    com_df['sector_abbr'] = 'com'
+    
+    ind_df = pd.DataFrame(pv_power_traj['year'])
+    ind_df = pv_power_traj[['year', 'ind']]
+    ind_df.rename(columns={'ind':'pv_power_density_w_per_sqft'}, inplace=True)
+    ind_df['sector_abbr'] = 'ind'
+    
+    pv_power_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)
+
+    return pv_power_traj

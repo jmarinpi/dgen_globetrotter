@@ -192,7 +192,7 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
     
     elec_price_escalator_df['elec_price_escalator'] = (elec_price_escalator_df['elec_price_change'] / elec_price_escalator_df['historical'])**(1.0/10) - 1.0
 
-    dataframe = pd.merge(dataframe, elec_price_multiplier, how='left', on=['sector_abbr', 'census_division_abbr'])
+    dataframe = pd.merge(dataframe, elec_price_multiplier[['elec_price_change', 'sector_abbr', 'census_division_abbr']], how='left', on=['sector_abbr', 'census_division_abbr'])
     dataframe = pd.merge(dataframe, elec_price_escalator_df[['sector_abbr', 'census_division_abbr', 'elec_price_escalator']],
                          how='left', on=['sector_abbr', 'census_division_abbr'])
 
@@ -200,75 +200,6 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
 
     return dataframe
     
-#%%
-#@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-#def apply_elec_price_multiplier_and_escalator(dataframe, year, rate_growth_df):
-#    '''
-#    Obtain a single scalar multiplier for each agent, that is the cost of
-#    electricity relative to 2016 (when the tariffs were curated).
-#    Also calculate the average increase in the price of electricity over the
-#    past ten years, which will be the escalator that they use to project
-#    electricity changes in their bill calculations.
-#
-#    Note that many customers will not differentiate between real and nomianl,
-#    and therefore many would overestimate the real escalation of electriicty
-#    prices.
-#    '''
-#
-#    # Extract the projected electricity prices, add on historical prices to the
-#    # beginning. Just a placeholder of 2% CAGR. (Actual was ~1% real, ~3% nominal)
-#    # TODO: Add the historical prices into the database
-#    projected_elec_price_multiplier_array = np.array(
-#        rate_growth_df['rate_escalations'].tolist(), dtype='float64')
-#    historical_elec_price_multiplier_array = np.array(
-#        [0.905, 0.914, 0.923, 0.933, 0.942, 0.951, 0.961, 0.971, 0.980, 0.990])
-#    elec_price_multiplier_array = np.zeros([27, np.shape(projected_elec_price_multiplier_array)[
-#                                           1] + len(historical_elec_price_multiplier_array)])
-#    elec_price_multiplier_array[:, :len(
-#        historical_elec_price_multiplier_array)] = historical_elec_price_multiplier_array
-#    elec_price_multiplier_array[:, len(
-#        historical_elec_price_multiplier_array):] = projected_elec_price_multiplier_array
-#
-#    year_i = year - 2014 + len(historical_elec_price_multiplier_array)
-#    rate_growth_df.loc[
-#        :, 'elec_price_multiplier'] = elec_price_multiplier_array[:, year_i]
-#    rate_growth_df.loc[:, 'elec_price_escalator'] = (elec_price_multiplier_array[
-#                                                     :, year_i] / elec_price_multiplier_array[:, year_i - 10])**(1.0 / 10) - 1.0
-#    dataframe = pd.merge(dataframe, rate_growth_df[['census_division_abbr', 'sector_abbr', 'elec_price_multiplier',
-#                                                    'elec_price_escalator']], how='left', on=['sector_abbr', 'census_division_abbr'])
-#
-#    return dataframe
-
-
-# This can be deleted after the SunShot 2030 work is completed. The rate
-# escalation function should be reexamined.
-
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_elec_price_multiplier_and_escalator_simple(dataframe, year, rate_growth_df):
-    '''
-    Obtain a single scalar multiplier for each agent, that is the cost of
-    electricity relative to 2016 (when the tariffs were curated).
-    Also calculate the average increase in the price of electricity over the
-    past ten years, which will be the escalator that they use to project
-    electricity changes in their bill calculations.
-
-    Note that many customers will not differentiate between real and nomianl,
-    and therefore many would overestimate the real escalation of electriicty
-    prices.
-    '''
-
-    rate_growth_df['elec_price_multiplier'] = rate_growth_df[str(year)]
-
-    rate_growth_df['elec_price_escalator'] = (rate_growth_df[str(
-        year)] / rate_growth_df['2010'])**(1.0 / (year - 2010)) - 1.0
-
-    dataframe = pd.merge(dataframe, rate_growth_df[
-                         ['census_division_abbr', 'elec_price_multiplier', 'elec_price_escalator']], how='left', on=['census_division_abbr'])
-
-    return dataframe
-
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
@@ -284,10 +215,15 @@ def apply_export_tariff_params(dataframe, net_metering_df):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_tech_performance_solar(dataframe, tech_performance_solar_df):
+def apply_solar_power_density(dataframe, pv_power_traj):
 
-    dataframe = pd.merge(dataframe, tech_performance_solar_df[
-                         ['tech', 'pv_density_w_per_sqft']], how='left', on=['tech'])
+    dataframe = dataframe.reset_index()
+
+    dataframe = pd.merge(dataframe, pv_power_traj[['sector_abbr', 'pv_power_density_w_per_sqft', 'year']],
+                         how='left', on=['sector_abbr', 'year'])
+                         
+    dataframe = dataframe.set_index('agent_id')
+
 
     return dataframe
 
