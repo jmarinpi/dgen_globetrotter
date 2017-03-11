@@ -24,7 +24,6 @@ import sys
 sys.path.append('/srv/data/home/mrossol/Support_Functions')
 import tariff_functions as tFuncs
 from agent_mutation import (get_depreciation_schedule,
-                            apply_depreciation_schedule,
                             get_leasing_availability,
                             apply_leasing_availability)
 
@@ -226,23 +225,66 @@ def apply_solar_power_density(dataframe, pv_power_traj):
 
 
     return dataframe
+    
 
+#%%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def apply_depreciation_schedule(dataframe, deprec_sch):
+
+    dataframe = dataframe.reset_index()
+
+    dataframe = pd.merge(dataframe, deprec_sch[['sector_abbr', 'deprec_sch', 'year']],
+                         how='left', on=['sector_abbr', 'year'])
+                         
+    dataframe = dataframe.set_index('agent_id')
+
+
+    return dataframe
+    
+#%%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def apply_pv_prices(dataframe, pv_price_traj):
+
+    dataframe = dataframe.reset_index()
+
+    # join the data
+    dataframe = pd.merge(dataframe, pv_price_traj, how='left', on=['sector_abbr', 'year'])
+
+    # apply the capital cost multipliers
+    dataframe['pv_price_per_kw'] = (dataframe['pv_price_per_kw'] * dataframe['cap_cost_multiplier'])
+
+    dataframe = dataframe.set_index('agent_id')
+
+    return dataframe
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def apply_tech_costs_storage(dataframe, tech_cost_storage_schedules_df, year, batt_replacement_yr, scenario):
+def apply_batt_prices(dataframe, batt_price_traj, year, batt_replace_yr, batt_replace_frac_kw, batt_replace_frac_kwh):
 
+    dataframe = dataframe.reset_index()
 
-    dataframe = pd.merge(dataframe, tech_cost_storage_schedules_df[['batt_kwh_cost', 'batt_kw_cost', 'sector_abbr']], how = 'left', on = ['sector_abbr'])
+    # Merge on prices
+    dataframe = pd.merge(dataframe, batt_price_traj[['batt_price_per_kwh', 'batt_price_per_kw', 'sector_abbr', 'year']], 
+                         how = 'left', on = ['sector_abbr', 'year'])
+                         
+    # Add replacement cost payments to base O&M 
+    storage_replace_values = batt_price_traj[batt_price_traj['year']==year+batt_replace_yr]
+    storage_replace_values['kw_replace_price'] = storage_replace_values['batt_price_per_kw'] * batt_replace_frac_kw
+    storage_replace_values['kwh_replace_price'] = storage_replace_values['batt_price_per_kwh'] * batt_replace_frac_kwh
+    
+    # Calculate the present value of the replacements
+    replace_discount = 0.08 # Use a different discount rate to represent the discounting of the third party doing the replacing
+    replace_fraction = 1 / (1.0+replace_discount)**batt_replace_yr
+    storage_replace_values['kw_replace_present'] = storage_replace_values['kw_replace_price'] * replace_fraction
+    storage_replace_values['kwh_replace_present'] = storage_replace_values['kwh_replace_price'] * replace_fraction
 
-    # TODO: these are just placeholders, the replacement should be calculated here
-    dataframe['batt_om_per_kw'] = 0
-    dataframe['batt_om_per_kwh'] = 0
+    # Calculate the level of annual payments whose present value equals the present value of a replacement
+    storage_replace_values['batt_om_per_kw'] += storage_replace_values['kw_replace_present'] * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
+    storage_replace_values['batt_om_per_kwh'] += storage_replace_values['kwh_replace_present'] * (replace_discount*(1+replace_discount)**20) / ((1+replace_discount)**20 - 1)
 
-    # TODO: also a placeholder, wrong names should be fixed in db if we go that route
-    dataframe['batt_cost_per_kw'] = dataframe['batt_kw_cost']
-    dataframe['batt_cost_per_kwh'] = dataframe['batt_kwh_cost']
-
+    dataframe = pd.merge(dataframe, storage_replace_values[['sector_abbr', 'batt_om_per_kwh', 'batt_om_per_kw']], how='left', on=['sector_abbr'])
+    
+    dataframe = dataframe.set_index('agent_id')
 
     return dataframe
 
@@ -1685,68 +1727,6 @@ def get_battery_roundtrip_efficiency(con, schema, year):
 
     return df
 
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_tech_costs_solar(dataframe, tech_costs_df):
-
-    # record the columns in the input dataframe
-    in_cols = list(dataframe.columns)
-    # join the data
-    dataframe = pd.merge(dataframe, tech_costs_df,
-                         how='left', on=['tech', 'sector_abbr'])
-    # apply the capital cost multipliers and size adjustment factor
-    dataframe['inverter_cost_dollars_per_kw'] = (dataframe['inverter_cost_dollars_per_kw'] * dataframe['cap_cost_multiplier'] *
-                                                 (1 - (dataframe['pv_size_adjustment_factor'] * (dataframe['pv_base_size_kw'] - dataframe['system_size_kw']))))
-    dataframe['installed_costs_dollars_per_kw'] = (dataframe['installed_costs_dollars_per_kw'] * dataframe['cap_cost_multiplier'] *
-                                                   (1 - (dataframe['pv_size_adjustment_factor'] * (dataframe['pv_base_size_kw'] - dataframe['system_size_kw']))))
-    # identify the new columns to return
-    return_cols = ['inverter_cost_dollars_per_kw', 'installed_costs_dollars_per_kw',
-                   'fixed_om_dollars_per_kw_per_yr', 'variable_om_dollars_per_kwh']
-    out_cols = in_cols + return_cols
-
-    dataframe = dataframe[out_cols]
-
-    return dataframe
-
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_tech_costs_solar_storage(dataframe, pv_costs_df):
-    # For the storage branch I am removing the 'size adjustment factor', since
-    # we don't know the size a priori anymore. If we want to bring a schedule
-    # back, it would need to go into the financial calculations
-
-    # record the columns in the input dataframe
-    in_cols = list(dataframe.columns)
-    # join the data
-    dataframe = pd.merge(dataframe, pv_costs_df,
-                         how='left', on=['tech', 'sector_abbr'])
-
-    # Placeholder for PV O&M, because it doesn't seem to be ingesting from database
-    # TODO: fix this
-    dataframe['fixed_om_dollars_per_kw_per_yr'] = 5.0
-
-    # rename, because we have more technologies now, and 'dollars' isn't
-    # necessary
-    dataframe['inverter_cost_per_kw'] = dataframe[
-        'inverter_cost_dollars_per_kw']
-    dataframe['pv_cost_per_kw'] = dataframe['installed_costs_dollars_per_kw']
-
-    # apply the capital cost multipliers
-    dataframe['inverter_cost_per_kw'] = (
-        dataframe['inverter_cost_per_kw'] * dataframe['cap_cost_multiplier'])
-    dataframe['pv_cost_per_kw'] = (
-        dataframe['pv_cost_per_kw'] * dataframe['cap_cost_multiplier'])
-
-    # identify the new columns to return
-    return_cols = ['inverter_cost_per_kw', 'pv_cost_per_kw',
-                   'fixed_om_dollars_per_kw_per_yr', 'variable_om_dollars_per_kwh']
-    out_cols = in_cols + return_cols
-
-    dataframe = dataframe[out_cols]
-
-    return dataframe
 
 
 #%%

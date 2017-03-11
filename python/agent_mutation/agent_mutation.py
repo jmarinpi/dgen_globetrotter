@@ -36,15 +36,6 @@ def get_depreciation_schedule(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_depreciation_schedule(dataframe, depreciation_df):
-
-    dataframe = pd.merge(dataframe, depreciation_df, how='left', on=['tech'])
-
-    return dataframe
-
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_leasing_availability(con, schema, year):
 
     inputs = locals().copy()

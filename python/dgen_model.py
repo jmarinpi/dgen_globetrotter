@@ -210,6 +210,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 model_settings.pv_deg_file_name = 'constant_half_percent.csv'                
                 model_settings.elec_price_file_name = 'AEO2016_Reference_case.csv'                
                 model_settings.pv_power_density_file_name = 'pv_power_default.csv'                
+                model_settings.pv_price_file_name = 'pv_price_atb16_mid.csv'                
+                model_settings.batt_price_file_name = 'batt_prices_FY17_mid.csv' 
+                model_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
+                model_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
 
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
@@ -217,6 +221,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 pv_deg_traj = iFuncs.ingest_pv_degradation_trajectories(model_settings)
                 elec_price_change_traj = iFuncs.ingest_elec_price_trajectories(model_settings)
                 pv_power_traj = iFuncs.ingest_pv_power_density_trajectories(model_settings)
+                pv_price_traj = iFuncs.ingest_pv_price_trajectories(model_settings)
+                batt_price_traj = iFuncs.ingest_batt_price_trajectories(model_settings)
+                deprec_sch = iFuncs.ingest_depreciation_schedules(model_settings)
+                carbon_intensities = iFuncs.ingest_carbon_intensities(model_settings)
 
                 for year in scenario_settings.model_years:
 
@@ -269,24 +277,19 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==============================================================================
                     # TECHNOLOGY COSTS
                     #==============================================================================
-                    # get technology costs
-                    tech_costs_solar_df = agent_mutation.elec.get_technology_costs_solar(con, scenario_settings.schema, year)
-                    # get storage costs
-                    tech_costs_storage_df = agent_mutation.elec.get_storage_costs(con, scenario_settings.schema, year)
                     # get battery round-trip efficiency values
                     battery_roundtrip_efficiency = agent_mutation.elec.get_battery_roundtrip_efficiency(con, scenario_settings.schema, year)
-
-                    # apply technology costs
-                    agents = AgentsAlgorithm(agents, agent_mutation.elec.apply_tech_costs_solar_storage, (tech_costs_solar_df, )).compute()
-                    agents = AgentsAlgorithm(agents, agent_mutation.elec.apply_tech_costs_storage, (tech_costs_storage_df, year, batt_replacement_yr, battery_cost_scenario)).compute()
+                    
+                    batt_replace_frac_kw = 0.75 #placeholder
+                    batt_replace_frac_kwh = 0.75 #placeholder
+                    solar_agents.on_frame(agent_mutation.elec.apply_pv_prices, pv_price_traj)
+                    solar_agents.on_frame(agent_mutation.elec.apply_batt_prices, [batt_price_traj, year, batt_replacement_yr, batt_replace_frac_kw, batt_replace_frac_kwh])
 
                     #==========================================================================================================
                     # DEPRECIATION SCHEDULE
                     #==========================================================================================================
-                    # get depreciation schedule for current year
-                    depreciation_df =  agent_mutation.elec.get_depreciation_schedule(con, scenario_settings.schema, year)
                     # apply depreciation schedule to agents
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.apply_depreciation_schedule_index, (depreciation_df, )).compute()
+                    solar_agents.on_frame(agent_mutation.elec.apply_depreciation_schedule, deprec_sch)
 
                     #==========================================================================================================
                     # CARBON INTENSITIES
