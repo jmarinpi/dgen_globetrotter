@@ -154,6 +154,8 @@ class Agents(object):
 
                 results = [future.result() for future in futures]
             results_df = pd.concat(results, axis=1).T
+            results_df.index.name = 'agent_id'
+
 
         if in_place:
             self.df = results_df

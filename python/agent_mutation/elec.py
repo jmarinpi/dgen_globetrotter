@@ -177,7 +177,7 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
     '''
     dataframe = dataframe.reset_index()
 
-    elec_price_multiplier = elec_price_change_traj[elec_price_change_traj['year']==year]
+    elec_price_multiplier = elec_price_change_traj[elec_price_change_traj['year']==year].reset_index()
 
     horizon_year = year-10
 
@@ -186,8 +186,9 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
         elec_price_escalator_df['historical'] = elec_price_change_traj[elec_price_change_traj['year']==horizon_year]
     else:
         first_year = np.min(elec_price_change_traj['year'])
+        first_year_df = elec_price_change_traj[elec_price_change_traj['year']==first_year].reset_index()
         missing_years = first_year - horizon_year
-        elec_price_escalator_df['historical'] = elec_price_change_traj[elec_price_change_traj['year']==first_year]['elec_price_multiplier']*0.98**missing_years
+        elec_price_escalator_df['historical'] = first_year_df['elec_price_multiplier']*0.98**missing_years
     
     elec_price_escalator_df['elec_price_escalator'] = (elec_price_escalator_df['elec_price_multiplier'] / elec_price_escalator_df['historical'])**(1.0/10) - 1.0
 
@@ -429,33 +430,13 @@ def apply_load_growth(dataframe, load_growth_df):
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def calculate_developable_customers_and_load(dataframe):
 
-    dataframe['developable_customers_in_bin'] = np.where(dataframe['tech'] == 'solar',
-                                                         dataframe[
-                                                             'pct_of_bldgs_developable'] * dataframe['customers_in_bin'],
-                                                         np.where(dataframe['system_size_kw'] == 0,
-                                                                  0,
-                                                                  dataframe['customers_in_bin']))
+    dataframe = dataframe.reset_index()
 
-    dataframe['developable_load_kwh_in_bin'] = np.where(dataframe['tech'] == 'solar',
-                                                        dataframe[
-                                                            'pct_of_bldgs_developable'] * dataframe['load_kwh_in_bin'],
-                                                        np.where(dataframe['system_size_kw'] == 0,
-                                                                 0,
-                                                                 dataframe['load_kwh_in_bin']))
+    dataframe['developable_customers_in_bin'] = dataframe['pct_of_bldgs_developable'] * dataframe['customers_in_bin']
 
-    return dataframe
+    dataframe['developable_load_kwh_in_bin'] = dataframe['pct_of_bldgs_developable'] * dataframe['load_kwh_in_bin']
 
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def calculate_developable_customers_and_load_storage(dataframe):
-    # Because methods of keeping track of system sizes diverged,
-
-    dataframe['developable_customers_in_bin'] = dataframe[
-        'pct_of_bldgs_developable'] * dataframe['customers_in_bin']
-
-    dataframe['developable_load_kwh_in_bin'] = dataframe[
-        'pct_of_bldgs_developable'] * dataframe['load_kwh_in_bin']
+    dataframe = dataframe.set_index('agent_id')
 
     return dataframe
 
@@ -1938,10 +1919,11 @@ def get_state_starting_capacities(con, schema):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_df):
+def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
 
     # record input columns
     in_cols = list(dataframe.columns)
+    dataframe = dataframe.reset_index()
 
     # find the total number of customers in each state (by technology and
     # sector)
@@ -1959,14 +1941,12 @@ def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_
                                   'state_abbr', 'sector_abbr', 'tech'])
 
     # merge back to the main dataframe
-    dataframe = dataframe.reset_index()
     dataframe = pd.merge(dataframe, state_denominators, how='left', on=[
                          'state_abbr', 'sector_abbr', 'tech'])
 
     # merge in the state starting capacities
     dataframe = pd.merge(dataframe, state_starting_capacities_df, how='left',
                          on=['tech', 'state_abbr', 'sector_abbr'])
-    dataframe = dataframe.set_index('agent_id')
 
     # determine the portion of initial load and systems that should be allocated to each agent
     # (when there are no developable agnets in the state, simply apportion evenly to all agents)
@@ -2001,9 +1981,9 @@ def estimate_initial_market_shares_storage(dataframe, state_starting_capacities_
     dataframe[return_cols] = dataframe[return_cols].fillna(0)
 
     out_cols = in_cols + return_cols
-    dataframe = dataframe[out_cols]
+    dataframe = dataframe.set_index('agent_id')
 
-    return dataframe
+    return dataframe[out_cols]
 
 
 #%%
@@ -2023,8 +2003,12 @@ def get_market_last_year(con, schema):
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_market_last_year(dataframe, market_last_year_df):
 
+    dataframe = dataframe.reset_index()
+
     dataframe = pd.merge(dataframe, market_last_year_df, how='left', on=[
                          'county_id', 'bin_id', 'tech', 'sector_abbr'])
+
+    dataframe = dataframe.set_index('agent_id')
 
     return dataframe
 

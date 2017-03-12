@@ -28,7 +28,7 @@ logger = utilfunc.get_logger()
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
-def calc_diffusion_storage(df, is_first_year, bass_params, 
+def calc_diffusion_solar(df, is_first_year, bass_params, 
                            override_p_value = None, override_q_value = None, override_teq_yr1_value = None):
 
     ''' Calculates the market share (ms) added in the solve year. Market share must be less
@@ -45,8 +45,10 @@ def calc_diffusion_storage(df, is_first_year, bass_params,
     
     logger.info("\t\tCalculating Diffusion")
     
+    bass_params = bass_params[bass_params['tech']=='solar']    
+    
     # set p/q/teq_yr1 params    
-    df  = set_bass_param(df, bass_params, override_p_value, override_q_value, override_teq_yr1_value)
+    df = pd.merge(df, bass_params[['state_abbr', 'p', 'q', 'teq_yr1', 'sector_abbr']], how = 'left', on  = ['state_abbr','sector_abbr'])
     
     # calc diffusion market share
     df = calc_diffusion_market_share(df, is_first_year)
@@ -61,7 +63,7 @@ def calc_diffusion_storage(df, is_first_year, bass_params,
     df['new_market_share'] = np.where(df['market_share'] > df['max_market_share'], 0, df['new_market_share'])
 
     # calculate new adopters, capacity and market value            
-    df['new_adopters'] = np.where(df['system_built'] == True, df['new_market_share'] * df['developable_customers_in_bin'], 0)
+    df['new_adopters'] = df['new_market_share'] * df['developable_customers_in_bin']
     df['new_pv_kw'] = df['new_adopters'] * df['pv_kw']
     df['new_batt_kw'] = df['new_adopters'] * df['batt_kw']
     df['new_batt_kwh'] = df['new_adopters'] * df['batt_kwh']
@@ -170,7 +172,7 @@ def calc_diffusion_market_share(df, is_first_year):
     
     df = bass_diffusion(df); # calculate the new diffusion by stepping forward 2 years
 
-    df['bass_market_share'] = df.max_market_share * df.new_adopt_fraction; # new market adoption    
+    df['bass_market_share'] = df.max_market_share * df.new_adopt_fraction # new market adoption    
     df['diffusion_market_share'] = np.where(df.market_share_last_year > df.bass_market_share, df.market_share_last_year, df.bass_market_share)
     
     return df
@@ -217,8 +219,8 @@ def bass_diffusion(df):
         OUT: new_adopt_fraction - numpy array - fraction of overall population 
                                                 that will adopt the technology
     '''
-    df['f'] = np.e**(-1*(df['p'] + df['q']) * df['teq2']); 
-    df['new_adopt_fraction'] = (1-df['f']) / (1 + (df['q']/df['p'])*df['f']); # Bass Diffusion - cumulative adoption
+    df['f'] = np.e**(-1*(df['p'] + df['q']) * df['teq2'])
+    df['new_adopt_fraction'] = (1-df['f']) / (1 + (df['q']/df['p'])*df['f']) # Bass Diffusion - cumulative adoption
     return df
     
 #=============================================================================
@@ -238,8 +240,10 @@ def calc_equiv_time(df):
     
     df['mms_fix_zeros'] = np.where(df['max_market_share'] == 0, 1e-9, df['max_market_share'])
     df['ratio'] = np.where(df['market_share_last_year'] > df['mms_fix_zeros'], 0, df['market_share_last_year']/df['mms_fix_zeros'])
+
+    df['ratio'] = pd.to_numeric(df['ratio'])
    #ratio=msly/mms;  # ratio of adoption at present to adoption at terminal period
-    df['teq'] = np.log( ( 1 - df['ratio']) / (1 + df['ratio']*(df['q']/df['p']))) / (-1*(df['p']+df['q'])); # solve for equivalent time
+    df['teq'] = np.log((1 - df['ratio']) / (1 + df['ratio']*(df['q']/df['p']))) / (-1*(df['p']+df['q'])) # solve for equivalent time
     return df
     
 #=============================================================================

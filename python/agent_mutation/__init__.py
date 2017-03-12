@@ -46,13 +46,6 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
                                                               model_settings.mode)
     agents_df = elec.apply_normalized_load_profiles(agents_df, norm_load_profiles_df)
 
-    # Add depolyable agents
-    agents_df = elec.calculate_developable_customers_and_load_storage(agents_df)
-
-    state_starting_capacities_df = elec.get_state_starting_capacities(con, schema)
-    agents_df = elec.estimate_initial_market_shares_storage(agents_df,
-                                                            state_starting_capacities_df)
-
     # =========================================================================
     # RESOURCE DATA
     # =========================================================================

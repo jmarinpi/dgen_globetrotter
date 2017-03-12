@@ -21,7 +21,7 @@ logger = utilfunc.get_logger()
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
-def calc_metric_value_storage(dataframe):
+def calc_financial_performance(dataframe):
     '''
     Calculates the economic value of adoption given the metric chosen. Residential buyers
     use simple payback, non-residential buyers use time-to-double, leasers use monthly bill savings
@@ -33,6 +33,7 @@ def calc_metric_value_storage(dataframe):
             metric_value - pd series - series of values given the business_model and sector
     '''
     
+    dataframe = dataframe.reset_index()
 
     cfs = np.vstack(dataframe['cash_flow']).astype(np.float)    
     
@@ -42,9 +43,11 @@ def calc_metric_value_storage(dataframe):
     # calculate time to double
     ttd = calc_ttd(cfs)
 
-    metric_value = np.where((dataframe.sector_abbr == 'ind') | (dataframe.sector_abbr == 'com'),ttd,payback)
+    metric_value = np.where(dataframe['sector_abbr']=='res', payback, ttd)
 
     dataframe['metric_value'] = metric_value
+    
+    dataframe = dataframe.set_index('agent_id')
 
     return dataframe
     
@@ -53,10 +56,10 @@ def calc_metric_value_storage(dataframe):
 
 @decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
 def calc_max_market_share(dataframe, max_market_share_df):
-    
+
     in_cols = list(dataframe.columns)
+    dataframe = dataframe.reset_index()
     
-    # For storage, I am just writing this for host-owned systems. No TPO.
     dataframe['business_model'] = 'host_owned'
     dataframe['metric'] = 'payback_period'
     
@@ -89,7 +92,8 @@ def calc_max_market_share(dataframe, max_market_share_df):
     dataframe['max_market_share'] = np.where(dataframe.owner_occupancy_status == 2, dataframe['max_market_share']/3,dataframe['max_market_share'])
     
     out_cols = in_cols + ['max_market_share', 'metric']    
-    
+    dataframe = dataframe.set_index('agent_id')
+
     return dataframe[out_cols]
 
 

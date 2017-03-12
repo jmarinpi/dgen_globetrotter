@@ -192,8 +192,9 @@ def calc_system_size_and_financial_performance(agent):
     agent['batt_kwh'] = opt_batt_cap
     agent['npv'] = cf_results_opt['npv'][0]
     agent['cash_flow'] = cf_results_opt['cf']
+    agent['batt_dispatch_profile'] = accurate_results['batt_dispatch_profile']
     
-    print "Opt PV:", opt_pv_size, np.round(opt_pv_size/agent['max_pv_size'],2), ", opt batt kW:", opt_batt_power, np.round(opt_batt_power/opt_pv_size,2) 
+#    print "Opt PV:", opt_pv_size, np.round(opt_pv_size/agent['max_pv_size'],2), ", opt batt kW:", opt_batt_power, np.round(opt_batt_power/opt_pv_size,2) 
 
     return agent
     

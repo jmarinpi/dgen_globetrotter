@@ -210,11 +210,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 model_settings.pv_deg_file_name = 'constant_half_percent.csv'                
                 model_settings.elec_price_file_name = 'AEO2016_Reference_case.csv'                
                 model_settings.pv_power_density_file_name = 'pv_power_default.csv'                
-                model_settings.pv_price_file_name = 'pv_price_atb16_mid.csv'                
+                model_settings.pv_price_file_name = 'pv_price_atb16_mid.csv' #pv_price_atb16_mid, pv_price_experimental
                 model_settings.batt_price_file_name = 'batt_prices_FY17_mid.csv' 
                 model_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
                 model_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
-                model_settings.financing_file_name = 'financing_SS_FY17.csv'
+                model_settings.financing_file_name = 'financing_SS_FY17.csv' #financing_SS_FY17, financing_experimental
 
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
@@ -239,123 +239,73 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # is it the first model year?
                     is_first_year = year == model_settings.start_year
 
-
-                    #==============================================================================
-                    # LOAD/POPULATION GROWTH
-                    #==============================================================================
-                    # get load growth
+                    # get and apply load growth
                     load_growth_df =  agent_mutation.elec.get_load_growth(con, scenario_settings.schema, year)
-                    # apply load growth
                     solar_agents.on_frame(agent_mutation.elec.apply_load_growth, (load_growth_df))
 
-                    #==========================================================================================================
-                    # SYSTEM DEGRADATION
-                    #==========================================================================================================
-                    # apply system degradation to agents
-                    solar_agents.on_frame(agent_mutation.elec.apply_pv_deg, (pv_deg_traj))
-
-
-                    #==============================================================================
-                    # TARIFFS FOR EXPORTED GENERATION (NET METERING)
-                    #==============================================================================
-                    # get net metering settings
+                    # Get and apply net metering parameters
                     net_metering_df =  agent_mutation.elec.get_net_metering_settings(con, scenario_settings.schema, year)
-                    # apply export generation tariff settings
                     solar_agents.on_frame(agent_mutation.elec.apply_export_tariff_params, (net_metering_df))
 
-                    #==============================================================================
-                    # ELECTRICITY PRICE MULTIPLIER AND ESCALATION
-                    #==============================================================================
-                    # Apply each agent's electricity price (real terms relative)
-                    # to 2016, and calculate their assumption about price changes.
+                    # Apply each agent's electricity price change and assumption about increases
                     solar_agents.on_frame(agent_mutation.elec.apply_elec_price_multiplier_and_escalator, [year, elec_price_change_traj])
 
-                    #==============================================================================
-                    # TECHNOLOGY PERFORMANCE
-                    #==============================================================================
-                    # apply technology performance data
-                    solar_agents.on_frame(agent_mutation.elec.apply_solar_power_density, pv_power_traj)
-#
-                    #==============================================================================
-                    # TECHNOLOGY COSTS
-                    #==============================================================================
-                    # get battery round-trip efficiency values
+                    # Apply technology performance
                     battery_roundtrip_efficiency = agent_mutation.elec.get_battery_roundtrip_efficiency(con, scenario_settings.schema, year)
-                    
+                    solar_agents.on_frame(agent_mutation.elec.apply_solar_power_density, pv_power_traj)
+                    solar_agents.on_frame(agent_mutation.elec.apply_pv_deg, (pv_deg_traj))
+
+                    # Apply technology prices                    
                     batt_replace_frac_kw = 0.75 #placeholder
                     batt_replace_frac_kwh = 0.75 #placeholder
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_prices, pv_price_traj)
                     solar_agents.on_frame(agent_mutation.elec.apply_batt_prices, [batt_price_traj, year, batt_replacement_yr, batt_replace_frac_kw, batt_replace_frac_kwh])
 
-                    #==========================================================================================================
-                    # DEPRECIATION SCHEDULE
-                    #==========================================================================================================
-                    # apply depreciation schedule to agents
+                    # Apply depreciation schedule
                     solar_agents.on_frame(agent_mutation.elec.apply_depreciation_schedule, deprec_sch)
 
-                    #==========================================================================================================
-                    # CARBON INTENSITIES
-                    #==========================================================================================================
+                    # Apply carbon intensities
                     solar_agents.on_frame(agent_mutation.elec.apply_carbon_intensities, carbon_intensities)
 
-                    #==========================================================================================================
                     # Apply host-owned financial parameters
-                    #==========================================================================================================
-                    # Financial assumptions and ITC fraction
                     solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
 
-                    #==========================================================================================================
                     # Size S+S system and calculate electric bills
-                    #==========================================================================================================
-                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, model_settings.local_cores)
+                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, cores=None)
 
-                    #==============================================================================
-                    # Calculate Metric Values
-                    #==============================================================================
-                    # Calculate the financial performance of the S+S systems (payback period
-                    # for res, time-to-double for C&I)
-                    agents = AgentsAlgorithm(agents, financial_functions_elec.calc_metric_value_storage, ()).compute()
+                    # Calculate the financial performance of the S+S systems 
+                    solar_agents.on_frame(financial_functions_elec.calc_financial_performance)
 
-                    #==============================================================================
                     # Calculate Maximum Market Share
-                    #==============================================================================
-                    agents = AgentsAlgorithm(agents, financial_functions_elec.calc_max_market_share, (max_market_share, )).compute()
+                    solar_agents.on_frame(financial_functions_elec.calc_max_market_share, max_market_share)
 
-                    #==============================================================================
-                    # DEVELOPABLE CUSTOMERS/LOAD
-                    #==============================================================================
                     # determine "developable" population
-                    agents = AgentsAlgorithm(agents,  agent_mutation.elec.calculate_developable_customers_and_load_storage).compute()
+                    solar_agents.on_frame(agent_mutation.elec.calculate_developable_customers_and_load)
 
-                    #==========================================================================================================
-                    # MARKET LAST YEAR
-                    #==========================================================================================================
+                    # Apply market_last_year
                     if is_first_year == True:
-                        # calculate initial market shares
-                        agents = AgentsAlgorithm(agents,  agent_mutation.elec.estimate_initial_market_shares_storage, (state_starting_capacities_df, )).compute()
+                        state_starting_capacities_df = agent_mutation.elec.get_state_starting_capacities(con, schema)
+                        solar_agents.on_frame(agent_mutation.elec.estimate_initial_market_shares, state_starting_capacities_df)
+                        market_last_year_df = None
                     else:
-                        # apply last year's results to the agents
-                        agents = AgentsAlgorithm(agents, agent_mutation_elec.apply_market_last_year, (market_last_year_df, )).compute()
+                        solar_agents.on_frame(agent_mutation.elec.apply_market_last_year, market_last_year_df)
 
-                    #==========================================================================================================
-                    # BASS DIFFUSION
-                    #==========================================================================================================
-                    # calculate diffusion based on economics and bass diffusion
-                    agents.dataframe, market_last_year_df = diffusion_functions_elec.calc_diffusion_storage(agents.dataframe, is_first_year, bass_params)
+                    # Calculate diffusion based on economics and bass diffusion
+                    solar_agents.df, market_last_year_df = diffusion_functions_elec.calc_diffusion_solar(solar_agents.df, is_first_year, bass_params)
 
                     #==========================================================================================================
                     # Aggregate PV and Batt capacity by reeds region
                     #==========================================================================================================   
-                    # TODO: rewrite this using agents class, once above is handled
-                    agent_cum_capacities = agents.dataframe[[ 'ba', 'pv_kw_cum']]
+#                     TODO: rewrite this using agents class, once above is handled
+                    agent_cum_capacities = solar_agents.df[[ 'ba', 'pv_kw_cum']]
                     ba_cum_pv_kw_year = agent_cum_capacities.groupby(by='ba').sum()
                     ba_cum_pv_kw_year['ba'] = ba_cum_pv_kw_year.index
                     ba_cum_pv_mw[year] = ba_cum_pv_kw_year['pv_kw_cum'] / 1000.0
                     ba_cum_pv_mw.round(3).to_csv(out_scen_path + '/dpv_MW_by_ba_and_year.csv', index_label='ba')                     
                     
-                    agent_cum_batt_mw = agents.dataframe[[ 'ba', 'batt_kw_cum']]
+                    agent_cum_batt_mw = solar_agents.df[[ 'ba', 'batt_kw_cum']]
                     agent_cum_batt_mw['batt_mw_cum'] = agent_cum_batt_mw['batt_kw_cum'] / 1000.0
-                    agent_cum_batt_mwh = agents.dataframe[[ 'ba', 'batt_kwh_cum']]
+                    agent_cum_batt_mwh = solar_agents.df[[ 'ba', 'batt_kwh_cum']]
                     agent_cum_batt_mwh['batt_mwh_cum'] = agent_cum_batt_mwh['batt_kwh_cum'] / 1000.0
 
                     ba_cum_batt_mw_year = agent_cum_batt_mw.groupby(by='ba').sum()
@@ -372,9 +322,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Aggregate storage dispatch trajectories
                     #==========================================================================================================   
                     # Dispatch trajectories are in MW
-                    dispatch_new_adopters = np.vstack(agents.dataframe['batt_dispatch_profile']).astype(np.float) * np.array(agents.dataframe['new_adopters']).reshape(len(agents.dataframe), 1) / 1000.0
+                    dispatch_new_adopters = np.vstack(solar_agents.df['batt_dispatch_profile']).astype(np.float) * np.array(solar_agents.df['new_adopters']).reshape(len(solar_agents.df), 1) / 1000.0
                     dispatch_new_adopters_df = pd.DataFrame(dispatch_new_adopters, columns = hour_list)
-                    dispatch_new_adopters_df['ba'] = agents.dataframe['ba'] #TODO improve this so it is robust against reorder
+                    dispatch_new_adopters_df['ba'] = solar_agents.df['ba'] #TODO improve this so it is robust against reorder
 
                     dispatch_new_adopters_by_ba_df = dispatch_new_adopters_df.groupby(by='ba').sum()
                     dispatch_new_adopters_by_ba_df['year'] = year
@@ -409,12 +359,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================   
                     # TODO: rewrite this using agents class, once above is handled
                     if is_first_year:
-                        pv_gen_new_adopters = np.vstack(agents.dataframe['solar_cf_profile']).astype(np.float) / 1e6 * np.array(agents.dataframe['pv_kw_cum']).reshape(len(agents.dataframe), 1)
+                        pv_gen_new_adopters = np.vstack(solar_agents.df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(solar_agents.df['pv_kw_cum']).reshape(len(solar_agents.df), 1)
                     else:
-                        pv_gen_new_adopters = np.vstack(agents.dataframe['solar_cf_profile']).astype(np.float) / 1e6 * np.array(agents.dataframe['new_pv_kw']).reshape(len(agents.dataframe), 1)
+                        pv_gen_new_adopters = np.vstack(solar_agents.df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(solar_agents.df['new_pv_kw']).reshape(len(solar_agents.df), 1)
 
                     pv_gen_new_adopters = pd.DataFrame(pv_gen_new_adopters, columns = hour_list)
-                    pv_gen_new_adopters['ba'] = agents.dataframe['ba'] #TODO improve this so it is robust against reorder
+                    pv_gen_new_adopters['ba'] = solar_agents.df['ba'] #TODO improve this so it is robust against reorder
                     pv_gen_new_adopters = pv_gen_new_adopters.groupby(by='ba').sum()
                     pv_gen_new_adopters['year'] = year
                     
@@ -449,13 +399,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # TODO: rewrite this section to use agents class
                     # write the incremental results to the database
-#                    datfunc.write_outputs(con, cur, agents.dataframe, scenario_settings.sectors, scenario_settings.schema)
+#                    datfunc.write_outputs(con, cur, solar_agents.df, scenario_settings.sectors, scenario_settings.schema)
 #                    datfunc.write_last_year(con, cur, market_last_year_df, scenario_settings.schema)
 
                     #==========================================================================================================
                     # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING
                     #==========================================================================================================
-                    agents.dataframe.drop(['consumption_hourly', 'solar_cf_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
+                    write_annual_agents = True
+                    if write_annual_agents==True:                    
+                        solar_agents.df.drop(['consumption_hourly', 'solar_cf_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
 
             elif scenario_settings.techs == ['wind']:
