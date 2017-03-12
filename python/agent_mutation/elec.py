@@ -54,8 +54,11 @@ def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cp
         for agent_id, agent in agent_df.iterrows():
             # Filter for list of tariffs available to this agent
             agent_rate_list = rates_rank_df.loc[agent_id].drop_duplicates()
-            agent_rate_jsons = rates_json_df[rates_json_df.index.isin(np.array(agent_rate_list['rate_id_alias']))]
-
+            if np.isscalar(agent_rate_list['rate_id_alias']):
+                rate_list = [agent_rate_list['rate_id_alias']]
+            else:
+                rate_list = agent_rate_list['rate_id_alias']
+            agent_rate_jsons = rates_json_df[rates_json_df.index.isin(rate_list)]
             futures.append(executor.submit(select_tariff, agent, agent_rate_jsons))
 
         results = [future.result() for future in futures]
@@ -758,17 +761,13 @@ def check_rate_coverage(dataframe, rates_rank_df, rates_json_df):
         print(missing_agents)
         for missing_agent_id in missing_agents:
             agent_row = dataframe.loc[missing_agent_id]['sector_abbr']
-            agent_row['rate_id_alias'] = np.array(
-                rates_rank_df.ix[0, 'rate_id_alias'])
-            agent_row['rate_type_tou'] = np.array(
-                rates_rank_df.ix[0, 'rate_type_tou'])
+            agent_row['rate_id_alias'] = np.array(rates_rank_df.ix[0, 'rate_id_alias'])
+            agent_row['rate_type_tou'] = np.array(rates_rank_df.ix[0, 'rate_type_tou'])
             rates_rank_df = rates_rank_df.append(agent_row)
 
-    missing_agents = list(set(dataframe.index).difference(
-        set(rates_rank_df.index)))
+    missing_agents = list(set(dataframe.index).difference(set(rates_rank_df.index)))
     if len(missing_agents) > 0:
-        raise ValueError('Some agents are missing electric rates, \
-including the following agent_ids: {:}'.format(missing_agents))
+        raise ValueError('Some agents are missing electric rates, including the following agent_ids: {:}'.format(missing_agents))
 
     # check that all rate_id_aliases have a nonnull rate json
     # check for empty dictionary
