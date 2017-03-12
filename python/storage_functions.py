@@ -26,6 +26,7 @@ logger = utilfunc.get_logger()
 #==============================================================================
 
 #%%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def calc_system_size_and_financial_performance(agent):
     '''
     Purpose: This function accepts the characteristics of a single agent and

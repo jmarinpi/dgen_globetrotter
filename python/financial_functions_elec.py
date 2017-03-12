@@ -20,7 +20,7 @@ logger = utilfunc.get_logger()
 
 
 #%%
-@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calc_financial_performance(dataframe):
     '''
     Calculates the economic value of adoption given the metric chosen. Residential buyers
@@ -54,7 +54,7 @@ def calc_financial_performance(dataframe):
 #%%
 
 
-@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calc_max_market_share(dataframe, max_market_share_df):
 
     in_cols = list(dataframe.columns)
