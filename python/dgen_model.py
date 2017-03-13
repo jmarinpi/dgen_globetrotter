@@ -283,7 +283,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # determine "developable" population
                     solar_agents.on_frame(agent_mutation.elec.calculate_developable_customers_and_load)
-
+                    solar_agents.df.to_pickle('agent_df.pkl')
                     # Apply market_last_year
                     if is_first_year == True:
                         state_starting_capacities_df = agent_mutation.elec.get_state_starting_capacities(con, schema)

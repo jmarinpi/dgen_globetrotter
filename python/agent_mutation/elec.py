@@ -439,6 +439,10 @@ def calculate_developable_customers_and_load(dataframe):
 
     dataframe['developable_load_kwh_in_bin'] = dataframe['pct_of_bldgs_developable'] * dataframe['load_kwh_in_bin']
 
+    # There was a problem where an agent was being generated that had no customers in the bin, but load in the bin
+    # This is a temporary patch to get the model to run in this scenario
+    dataframe['developable_customers_in_bin'] = np.where(dataframe['developable_customers_in_bin']==0, 1, dataframe['developable_customers_in_bin'])
+
     dataframe = dataframe.set_index('agent_id')
 
     return dataframe
