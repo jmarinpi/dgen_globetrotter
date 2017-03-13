@@ -1955,27 +1955,23 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
                                              1. / dataframe['agent_count'])
     # apply the agent's portion to the total to calculate starting capacity
     # and systems
-    dataframe['number_of_adopters_last_year'] = dataframe[
-        'portion_of_state'] * dataframe['systems_count']
-    dataframe['pv_kw_last_year'] = dataframe[
-        'portion_of_state'] * dataframe['capacity_mw'] * 1000.0
-    dataframe['batt_kw_last_year'] = 0.0
-    dataframe['batt_kwh_last_year'] = 0.0
+    dataframe['number_of_adopters_last_year'] = dataframe['portion_of_state'] * dataframe['systems_count']
+    dataframe['pv_kw_cum_last_year'] = dataframe['portion_of_state'] * dataframe['capacity_mw'] * 1000.0
+    dataframe['batt_kw_cum_last_year'] = 0.0
+    dataframe['batt_kwh_cum_last_year'] = 0.0
 
-    dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0,
-                                                   0,
+    dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0, 0,
                                                    dataframe['number_of_adopters_last_year'] / dataframe['developable_customers_in_bin'])
 
     # reproduce these columns as "initial" columns too
-    dataframe['initial_number_of_adopters'] = dataframe[
-        'number_of_adopters_last_year']
-    dataframe['initial_capacity_mw'] = dataframe['pv_kw_last_year'] / 1000.
+    dataframe['initial_number_of_adopters'] = dataframe['number_of_adopters_last_year']
+    dataframe['initial_capacity_mw'] = dataframe['pv_kw_cum_last_year'] / 1000.
     dataframe['initial_market_share'] = dataframe['market_share_last_year']
     dataframe['initial_market_value'] = 0
 
     # isolate the return columns
     return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value',
-                   'number_of_adopters_last_year', 'pv_kw_last_year', 'batt_kw_last_year', 'batt_kwh_last_year', 'market_share_last_year']
+                   'number_of_adopters_last_year', 'pv_kw_cum_last_year', 'batt_kw_cum_last_year', 'batt_kwh_cum_last_year', 'market_share_last_year']
 
     dataframe[return_cols] = dataframe[return_cols].fillna(0)
 
@@ -2002,12 +1998,11 @@ def get_market_last_year(con, schema):
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_market_last_year(dataframe, market_last_year_df):
 
-    dataframe = dataframe.reset_index()
+#    dataframe = dataframe.reset_index()
 
-    dataframe = pd.merge(dataframe, market_last_year_df, how='left', on=[
-                         'county_id', 'bin_id', 'tech', 'sector_abbr'])
+    dataframe = dataframe.join(market_last_year_df)
 
-    dataframe = dataframe.set_index('agent_id')
+#    dataframe = dataframe.set_index('agent_id')
 
     return dataframe
 

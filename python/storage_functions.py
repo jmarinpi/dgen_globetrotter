@@ -71,7 +71,7 @@ def calc_system_size_and_financial_performance(agent):
     # Set PV sizes to evaluate
     pv_inc = 3
     pv_sizes = np.linspace(0, agent['max_pv_size']*0.95, pv_inc)
-    pv_sizes = np.array([agent['max_pv_size']*0.95])
+
     # Set battery sizes to evaluate
     # Only evaluate a battery if there are demand charges, TOU energy charges, or no NEM
     batt_inc = 3
@@ -193,7 +193,7 @@ def calc_system_size_and_financial_performance(agent):
     agent['batt_kw'] = opt_batt_power
     agent['batt_kwh'] = opt_batt_cap
     agent['npv'] = cf_results_opt['npv'][0]
-    agent['cash_flow'] = cf_results_opt['cf']
+    agent['cash_flow'] = cf_results_opt['cf'][0]
     agent['batt_dispatch_profile'] = accurate_results['batt_dispatch_profile']
     
 #    print "Opt PV:", opt_pv_size, np.round(opt_pv_size/agent['max_pv_size'],2), ", opt batt kW:", opt_batt_power, np.round(opt_batt_power/opt_pv_size,2) 

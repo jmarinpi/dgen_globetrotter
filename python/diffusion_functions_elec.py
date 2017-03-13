@@ -44,7 +44,7 @@ def calc_diffusion_solar(df, is_first_year, bass_params,
     '''
     
     logger.info("\t\tCalculating Diffusion")
-    
+    df = df.reset_index()
     bass_params = bass_params[bass_params['tech']=='solar']    
     
     # set p/q/teq_yr1 params    
@@ -70,13 +70,20 @@ def calc_diffusion_solar(df, is_first_year, bass_params,
 
     # then add these values to values from last year to get cumulative values:
     df['number_of_adopters'] = df['number_of_adopters_last_year'] + df['new_adopters']
-    df['pv_kw_cum'] = df['pv_kw_last_year'] + df['new_pv_kw']
-    df['batt_kw_cum'] = df['batt_kw_last_year'] + df['new_batt_kw']
-    df['batt_kwh_cum'] = df['batt_kwh_last_year'] + df['new_batt_kwh']
+    df['pv_kw_cum'] = df['pv_kw_cum_last_year'] + df['new_pv_kw']
+    df['batt_kw_cum'] = df['batt_kw_cum_last_year'] + df['new_batt_kw']
+    df['batt_kwh_cum'] = df['batt_kwh_cum_last_year'] + df['new_batt_kwh']
 
+    df = df.set_index('agent_id')
+    market_last_year = df[['market_share', 'max_market_share', 'number_of_adopters', 
+                           'pv_kw_cum', 'batt_kw_cum', 'batt_kwh_cum']]
 
-    market_last_year = df[['county_id','bin_id', 'sector_abbr', 'tech', 'market_share', 'max_market_share','number_of_adopters', 'pv_kw_cum', 'batt_kw_cum', 'batt_kwh_cum', 'initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share']] # Update dataframe for next solve year
-    market_last_year.columns = ['county_id', 'bin_id', 'sector_abbr', 'tech', 'market_share_last_year', 'max_market_share_last_year','number_of_adopters_last_year', 'pv_kw_last_year', 'batt_kw_last_year', 'batt_kwh_last_year', 'initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share']
+    market_last_year.rename(columns={'market_share':'market_share_last_year', 
+                               'max_market_share':'max_market_share_last_year',
+                               'number_of_adopters':'number_of_adopters_last_year',
+                               'pv_kw_cum':'pv_kw_cum_last_year',
+                               'batt_kw_cum':'batt_kw_cum_last_year',
+                               'batt_kwh_cum':'batt_kwh_cum_last_year'}, inplace=True)
 
     return df, market_last_year
 
@@ -240,8 +247,6 @@ def calc_equiv_time(df):
     
     df['mms_fix_zeros'] = np.where(df['max_market_share'] == 0, 1e-9, df['max_market_share'])
     df['ratio'] = np.where(df['market_share_last_year'] > df['mms_fix_zeros'], 0, df['market_share_last_year']/df['mms_fix_zeros'])
-
-    df['ratio'] = pd.to_numeric(df['ratio'])
    #ratio=msly/mms;  # ratio of adoption at present to adoption at terminal period
     df['teq'] = np.log((1 - df['ratio']) / (1 + df['ratio']*(df['q']/df['p']))) / (-1*(df['p']+df['q'])) # solve for equivalent time
     return df

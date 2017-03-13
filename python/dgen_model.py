@@ -294,7 +294,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Calculate diffusion based on economics and bass diffusion
                     solar_agents.df, market_last_year_df = diffusion_functions_elec.calc_diffusion_solar(solar_agents.df, is_first_year, bass_params)
-
+                    
                     #==========================================================================================================
                     # Aggregate PV and Batt capacity by reeds region
                     #==========================================================================================================   
