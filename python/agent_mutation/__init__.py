@@ -26,11 +26,18 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     agents_df = elec.get_core_agent_attributes(con, schema,
                                                model_settings.mode,
                                                scenario_settings.region)
-                                               
-    # change pca_reg to ba 
-    # TODO: ba should be defined in original agent definition, not as pca
+ 
+    #==============================================================================
+    # Drop some unused columns - TODO: remove these from agent gen
+    #==============================================================================
+    agents_df.drop(['util_type'], axis=1, inplace=True)             
+    agents_df.drop(['sector'], axis=1, inplace=True)             
+                                              
+    #==============================================================================
+    # Rename 'pca_reg' to 'ba', to align with the same change in ReEDS's - TODO: fix this in initial agent gen
+    #==============================================================================
     agents_df['ba'] = agents_df['pca_reg']
-    agents_df.drop(['pca_reg'], axis=1)             
+    agents_df.drop(['pca_reg'], axis=1, inplace=True)             
 
 
 #    #==============================================================================
