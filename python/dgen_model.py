@@ -130,17 +130,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # =========================================================
                     # Initialize agents
                     # =========================================================
-                    solar_agents_df = agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con)
-                    solar_agents = Agents(solar_agents_df)
+                    solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
 
 
                     #==========================================================================================================
                     # GET TECH POTENTIAL LIMITS
                     #==========================================================================================================
-                    # only check this if actually running the model
-                    if model_settings.mode == 'run':
-                        tech_potential_limits_wind_df =  agent_mutation.elec.get_tech_potential_limits_wind(con)
-                        tech_potential_limits_solar_df =  agent_mutation.elec.get_tech_potential_limits_solar(con)
+                    tech_potential_limits_wind_df =  agent_mutation.elec.get_tech_potential_limits_wind(con)
+                    tech_potential_limits_solar_df =  agent_mutation.elec.get_tech_potential_limits_solar(con)
 
 
                 elif scenario_settings.techs in [['ghp'], ['du']]:
@@ -464,7 +461,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
     finally:
         if 'con' in locals():
             con.close()
-        if 'scenario_settings' in locals() and scenario_settings.schema is not None and model_settings.mode == 'setup_develop':
+        if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
             datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
         if 'logger' in locals():

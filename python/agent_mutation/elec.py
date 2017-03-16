@@ -621,7 +621,7 @@ def get_sam_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
+def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string):
 
     # NOTE: This function creates a lookup table for the agents in each sector, providing
     #       the county_id and bin_id for each agent, along with the rate_id_alias and rate_source.
@@ -630,123 +630,103 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string, mode):
 
     inputs = locals().copy()
 
-    if mode == 'develop':
-        # set input file
-        in_file = './canned_agents/elec/electric_rates.pkl'
-        # load it from pickle
+    inputs['i_place_holder'] = '%(i)s'
+    inputs['chunk_place_holder'] = '%(county_ids)s'
 
-        df = datfunc.unpickle(in_file)
+    msg = "\tGenerating Electric Rate Tariff Lookup Table for Agents"
+    logger.info(msg)
 
-    elif mode in ['run', 'setup_develop']:
+    df_list = []
+    for sector_abbr, sector in sectors.iteritems():
+        inputs['sector_abbr'] = sector_abbr
 
-        inputs['i_place_holder'] = '%(i)s'
-        inputs['chunk_place_holder'] = '%(county_ids)s'
-
-        msg = "\tGenerating Electric Rate Tariff Lookup Table for Agents"
-        logger.info(msg)
-
-        df_list = []
-        for sector_abbr, sector in sectors.iteritems():
-            inputs['sector_abbr'] = sector_abbr
-
-            sql1 =  """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
-                        CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS (
-                            WITH a AS
-                            (
-                                -- Unnest Rates t
-                                    SELECT a.agent_id, a.tract_id_alias, a.county_id, a.max_demand_kw, a.avg_monthly_kwh,
-                                        b.rate_id_alias as rate_id_alias,
-                                        b.rate_rank as rate_rank,
-                                        b.rank_utility_type,
-                                        b.rate_type_tou,
-                                        b.max_demand_kw as rate_max_demand_kw,
-                                        b.min_demand_kw as rate_min_demand_kw,
-                                        b.max_energy_kwh as rate_max_energy_kwh,
-                                        b.min_energy_kwh as rate_min_energy_kwh,
-                                        b.sector as rate_sector
-                                    FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
-                                    LEFT JOIN diffusion_shared.cntys_ranked_rates_lkup_20170103 b  --  *******
-                                            ON a.county_id = b.county_id
-                                            AND a.util_type = b.rank_utility_type
-                        ),""" % inputs
-
-            # Add logic for Commercial and Industrial
-            if sector_abbr != 'res':
-                if sector_abbr == 'ind':
-                    sector_priority_1 = 'I'
-                    sector_priority_2 = 'C'
-                elif sector_abbr == 'com':
-                    sector_priority_1 = 'C'
-                    sector_priority_2 = 'I'
-
-                # Select Appropriate Rates and Rank the Ranked Rates based on
-                # Sector
-                sql2 = """b AS
+        sql1 =  """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
+                    CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS (
+                        WITH a AS
                         (
-                            SELECT a.*,
-                                (CASE WHEN rate_sector = '%(sector_priority_1)s' THEN 1
-                                    WHEN rate_sector = '%(sector_priority_2)s' THEN 2 END)::int as sector_rank
+                            -- Unnest Rates t
+                                SELECT a.agent_id, a.tract_id_alias, a.county_id, a.max_demand_kw, a.avg_monthly_kwh,
+                                    b.rate_id_alias as rate_id_alias,
+                                    b.rate_rank as rate_rank,
+                                    b.rank_utility_type,
+                                    b.rate_type_tou,
+                                    b.max_demand_kw as rate_max_demand_kw,
+                                    b.min_demand_kw as rate_min_demand_kw,
+                                    b.max_energy_kwh as rate_max_energy_kwh,
+                                    b.min_energy_kwh as rate_min_energy_kwh,
+                                    b.sector as rate_sector
+                                FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
+                                LEFT JOIN diffusion_shared.cntys_ranked_rates_lkup_20170103 b  --  *******
+                                        ON a.county_id = b.county_id
+                                        AND a.util_type = b.rank_utility_type
+                    ),""" % inputs
 
-                            FROM a
-                            WHERE rate_sector != 'R'
-                                AND ((a.max_demand_kw <= a.rate_max_demand_kw)
-                                      AND (a.max_demand_kw >= a.rate_min_demand_kw))
-                                AND ((a.avg_monthly_kwh <= a.rate_max_energy_kwh)
-                                      AND (a.avg_monthly_kwh >= a.rate_min_energy_kwh))
-                        ),
-                        c as
-                        (
-                                SELECT *, rank() OVER (PARTITION BY agent_id ORDER BY rate_rank ASC, sector_rank
-                                ASC) as rank
-                                FROM b
-                        )"""
+        # Add logic for Commercial and Industrial
+        if sector_abbr != 'res':
+            if sector_abbr == 'ind':
+                sector_priority_1 = 'I'
+                sector_priority_2 = 'C'
+            elif sector_abbr == 'com':
+                sector_priority_1 = 'C'
+                sector_priority_2 = 'I'
 
-            elif sector_abbr == 'res':
-                sql2 = """b AS
-                        (
-                            SELECT a.*
-                            FROM a
-                            WHERE rate_sector = 'R'
-                                AND ((a.max_demand_kw <= a.rate_max_demand_kw)
-                                      AND (a.max_demand_kw >= a.rate_min_demand_kw))
-                                AND ((a.avg_monthly_kwh <= a.rate_max_energy_kwh)
-                                      AND (a.avg_monthly_kwh >= a.rate_min_energy_kwh))
-                        ),
-                        c as
-                        (
-                                SELECT *, rank() OVER (PARTITION BY agent_id ORDER BY rate_rank ASC) as rank
-                                FROM b
-                        )"""
+            # Select Appropriate Rates and Rank the Ranked Rates based on
+            # Sector
+            sql2 = """b AS
+                    (
+                        SELECT a.*,
+                            (CASE WHEN rate_sector = '%(sector_priority_1)s' THEN 1
+                                WHEN rate_sector = '%(sector_priority_2)s' THEN 2 END)::int as sector_rank
 
-            sql3 = """ SELECT agent_id, rate_id_alias, rank, rate_type_tou
-                        FROM c
-                        WHERE rank = 1
-                        );"""
+                        FROM a
+                        WHERE rate_sector != 'R'
+                            AND ((a.max_demand_kw <= a.rate_max_demand_kw)
+                                  AND (a.max_demand_kw >= a.rate_min_demand_kw))
+                            AND ((a.avg_monthly_kwh <= a.rate_max_energy_kwh)
+                                  AND (a.avg_monthly_kwh >= a.rate_min_energy_kwh))
+                    ),
+                    c as
+                    (
+                            SELECT *, rank() OVER (PARTITION BY agent_id ORDER BY rate_rank ASC, sector_rank
+                            ASC) as rank
+                            FROM b
+                    )"""
 
-            sql = sql1 + sql2 + sql3
-            cur.execute(sql)
-            con.commit()
+        elif sector_abbr == 'res':
+            sql2 = """b AS
+                    (
+                        SELECT a.*
+                        FROM a
+                        WHERE rate_sector = 'R'
+                            AND ((a.max_demand_kw <= a.rate_max_demand_kw)
+                                  AND (a.max_demand_kw >= a.rate_min_demand_kw))
+                            AND ((a.avg_monthly_kwh <= a.rate_max_energy_kwh)
+                                  AND (a.avg_monthly_kwh >= a.rate_min_energy_kwh))
+                    ),
+                    c as
+                    (
+                            SELECT *, rank() OVER (PARTITION BY agent_id ORDER BY rate_rank ASC) as rank
+                            FROM b
+                    )"""
 
-            # get the rates
-            sql = """SELECT agent_id, rate_id_alias, rate_type_tou, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr
-                   FROM  %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s a""" % inputs
-            df_sector = pd.read_sql(sql, con, coerce_float=False)
-            df_list.append(df_sector)
+        sql3 = """ SELECT agent_id, rate_id_alias, rank, rate_type_tou
+                    FROM c
+                    WHERE rank = 1
+                    );"""
 
-        # combine the dfs
-        df = pd.concat(df_list, axis=0, ignore_index=True)
-        df = df.set_index('agent_id')
+        sql = sql1 + sql2 + sql3
+        cur.execute(sql)
+        con.commit()
 
-    else:
-        raise ValueError(
-            "Invalid mode: must be one of ['run', 'setup_develop', 'develop']")
+        # get the rates
+        sql = """SELECT agent_id, rate_id_alias, rate_type_tou, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr
+               FROM  %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s a""" % inputs
+        df_sector = pd.read_sql(sql, con, coerce_float=False)
+        df_list.append(df_sector)
 
-    # if in setup_develop mode, pickle the df object to disk
-    if mode == 'setup_develop':
-        # set output file name
-        out_file = './canned_agents/elec/electric_rates.pkl'
-        # create the pickle
-        datfunc.store_pickle(df, out_file)
+    # combine the dfs
+    df = pd.concat(df_list, axis=0, ignore_index=True)
+    df = df.set_index('agent_id')
 
     return df
 
@@ -883,20 +863,17 @@ def assemble_resource_data():
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def get_core_agent_attributes(con, schema, mode, region):
+def get_core_agent_attributes(con, schema, region):
 
     inputs = locals().copy()
 
-    if mode in ['run', 'setup_develop']:
-        # get the agents from postgres
-        sql = """SELECT *
-                 FROM %(schema)s.agent_core_attributes_all;""" % inputs
+    # get the agents from postgres
+    sql = """SELECT *
+             FROM %(schema)s.agent_core_attributes_all;""" % inputs
 
-        df = pd.read_sql(sql, con, coerce_float=False)
-        df = df.set_index('agent_id')
-    else:
-        raise ValueError(
-            "Invalid mode: must be one of ['run', 'setup_develop', 'develop']")
+    df = pd.read_sql(sql, con, coerce_float=False)
+    df = df.set_index('agent_id')
+
 
     return df
 
@@ -1301,45 +1278,27 @@ def size_systems_solar(dataframe, system_sizing_targets_df, resource_df, techs, 
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def get_normalized_load_profiles(con, schema, sectors, mode):
+def get_normalized_load_profiles(con, schema, sectors):
 
     inputs = locals().copy()
 
-    if mode == 'develop':
-        # set input file
-        in_file = './canned_agents/elec/load_profiles.pkl'
-        # load it from pickle
-        df = datfunc.unpickle(in_file)
+    df_list = []
+    for sector_abbr, sector in sectors.iteritems():
+        inputs['sector_abbr'] = sector_abbr
+        sql = """SELECT a.agent_id, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
+                        a.county_id, a.bin_id,
+                        b.nkwh as consumption_hourly,
+                        1e8 as scale_offset
+                 FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
+                 LEFT JOIN diffusion_load_profiles.energy_plus_normalized_load_%(sector_abbr)s b
+                     ON a.crb_model = b.crb_model
+                     AND a.hdf_load_index = b.hdf_index;""" % inputs
+        df_sector = pd.read_sql(sql, con, coerce_float=False)
+        df_list.append(df_sector)
 
-    elif mode in ['run', 'setup_develop']:
-        df_list = []
-        for sector_abbr, sector in sectors.iteritems():
-            inputs['sector_abbr'] = sector_abbr
-            sql = """SELECT a.agent_id, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
-                            a.county_id, a.bin_id,
-                            b.nkwh as consumption_hourly,
-                            1e8 as scale_offset
-                     FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
-                     LEFT JOIN diffusion_load_profiles.energy_plus_normalized_load_%(sector_abbr)s b
-                         ON a.crb_model = b.crb_model
-                         AND a.hdf_load_index = b.hdf_index;""" % inputs
-            df_sector = pd.read_sql(sql, con, coerce_float=False)
-            df_list.append(df_sector)
-
-        df = pd.concat(df_list, axis=0, ignore_index=True)
-        df = df.set_index('agent_id')
-        df = df[['consumption_hourly', 'scale_offset']]
-
-    else:
-        raise ValueError(
-            "Invalid mode: must be one of ['run', 'setup_develop', 'develop']")
-
-    #  if in setup_develop mode, pickle the load profiles to disk
-    if mode == 'setup_develop':
-        # set output file name
-        out_file = './canned_agents/elec/load_profiles.pkl'
-        # create the pickle
-        datfunc.store_pickle(df, out_file)
+    df = pd.concat(df_list, axis=0, ignore_index=True)
+    df = df.set_index('agent_id')
+    df = df[['consumption_hourly', 'scale_offset']]
 
     return df
 

@@ -48,7 +48,6 @@ class ModelSettings(object):
         # one of ['max_market_share', 'npv4', 'npv']
         self.tech_choice_decision_var = None
         self.delete_output_schema = None  # bool
-        self.mode = None  # one of ['run', 'develop', 'setup_develop']
 
     def set(self, attr, value):
 
@@ -73,7 +72,6 @@ class ModelSettings(object):
         self.set_pg_params(config.pg_params_file)
         self.set('tech_choice_decision_var', config.tech_choice_decision_var)
         self.set('delete_output_schema', config.delete_output_schema)
-        self.set('mode', config.mode)
 
     def set_pg_params(self, pg_params_file):
 
@@ -317,19 +315,6 @@ class ModelSettings(object):
                 check_type(self.get(property_name), bool)
             except TypeError, e:
                 raise TypeError('Invalid %s: %s' % (property_name, e))
-
-        elif property_name == 'mode':
-            # check type
-            try:
-                check_type(self.get(property_name), str)
-            except TypeError, e:
-                raise TypeError('Invalid %s: %s' % (property_name, e))
-
-            # one of ['run', 'develop', 'setup_develop']
-            valid_opts = ['run', 'develop', 'setup_develop']
-            if self.mode not in valid_opts:
-                raise ValueError('Invalid %s: must be one of %s' %
-                                 (property_name, valid_opts))
 
         else:
             print 'No validation method for property %s exists.' % property_name
