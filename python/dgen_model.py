@@ -87,6 +87,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # initialize ScenarioSettings object
             # (this controls settings that apply only to this specific scenario)
             scenario_settings = settings.init_scenario_settings(scenario_file, model_settings, con, cur)
+            scenario_settings.input_data_dir = model_settings.input_data_dir
 
             # summarize high level secenario settings
             datfunc.summarize_scenario(scenario_settings, model_settings)
@@ -97,6 +98,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             out_dir = model_settings.out_dir
             (out_scen_path, scenario_names, dup_n) = datfunc.create_scenario_results_folder(input_scenario, scen_name,
                                                              scenario_names, out_dir, dup_n)
+                                                             
+            # create folder for input data csvs for this scenario
+            scenario_settings.dir_to_write_input_data = out_scen_path + '/input_data'
+            os.makedirs(scenario_settings.dir_to_write_input_data)
+                                                             
             # get other datasets needed for the model run
             logger.info('Getting various scenario parameters')
 
@@ -199,27 +205,27 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # declare input data file names - this is temporary until input sheet is updated
                 #==========================================================================================================
-                model_settings.storage_cost_file_name = 'storage_cost_schedule_FY17_mid.csv'                
-                model_settings.pv_deg_file_name = 'constant_half_percent.csv'                
-                model_settings.elec_price_file_name = 'AEO2016_Reference_case.csv'                
-                model_settings.pv_power_density_file_name = 'pv_power_default.csv'                
-                model_settings.pv_price_file_name = 'pv_price_experimental.csv' #pv_price_atb16_mid, pv_price_experimental
-                model_settings.batt_price_file_name = 'batt_prices_FY17_mid.csv' 
-                model_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
-                model_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
-                model_settings.financing_file_name = 'financing_experimental.csv' #financing_SS_FY17, financing_experimental
+                scenario_settings.storage_cost_file_name = 'storage_cost_schedule_FY17_mid.csv'                
+                scenario_settings.pv_deg_file_name = 'constant_half_percent.csv'                
+                scenario_settings.elec_price_file_name = 'AEO2016_Reference_case.csv'                
+                scenario_settings.pv_power_density_file_name = 'pv_power_default.csv'                
+                scenario_settings.pv_price_file_name = 'pv_price_experimental.csv' #pv_price_atb16_mid, pv_price_experimental
+                scenario_settings.batt_price_file_name = 'batt_prices_FY17_mid.csv' 
+                scenario_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
+                scenario_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
+                scenario_settings.financing_file_name = 'financing_experimental.csv' #financing_SS_FY17, financing_experimental
 
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
                 #==========================================================================================================
-                pv_deg_traj = iFuncs.ingest_pv_degradation_trajectories(model_settings)
-                elec_price_change_traj = iFuncs.ingest_elec_price_trajectories(model_settings)
-                pv_power_traj = iFuncs.ingest_pv_power_density_trajectories(model_settings)
-                pv_price_traj = iFuncs.ingest_pv_price_trajectories(model_settings)
-                batt_price_traj = iFuncs.ingest_batt_price_trajectories(model_settings)
-                deprec_sch = iFuncs.ingest_depreciation_schedules(model_settings)
-                carbon_intensities = iFuncs.ingest_carbon_intensities(model_settings)
-                financing_terms = iFuncs.ingest_financing_terms(model_settings)
+                pv_deg_traj = iFuncs.ingest_pv_degradation_trajectories(scenario_settings)
+                elec_price_change_traj = iFuncs.ingest_elec_price_trajectories(scenario_settings)
+                pv_power_traj = iFuncs.ingest_pv_power_density_trajectories(scenario_settings)
+                pv_price_traj = iFuncs.ingest_pv_price_trajectories(scenario_settings)
+                batt_price_traj = iFuncs.ingest_batt_price_trajectories(scenario_settings)
+                deprec_sch = iFuncs.ingest_depreciation_schedules(scenario_settings)
+                carbon_intensities = iFuncs.ingest_carbon_intensities(scenario_settings)
+                financing_terms = iFuncs.ingest_financing_terms(scenario_settings)
 
                 for year in scenario_settings.model_years:
 

@@ -10,8 +10,10 @@ import numpy as np
 import os
 
 #%%
-def ingest_batt_price_trajectories(model_settings):
-    batt_price_traj = pd.read_csv(os.path.join(model_settings.input_data_dir, 'batt_prices', model_settings.batt_price_file_name))
+def ingest_batt_price_trajectories(scenario_settings):
+    batt_price_traj = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'batt_prices', scenario_settings.batt_price_file_name))
+    batt_price_traj.to_csv(scenario_settings.dir_to_write_input_data + '/batt_prices.csv', index=False)
+
     
     res_df = pd.DataFrame(batt_price_traj['year'])
     res_df = batt_price_traj[['year', 'batt_price_per_kwh_res', 'batt_price_per_kw_res', 'batt_om_per_kw_res', 'batt_om_per_kwh_res']]
@@ -42,8 +44,9 @@ def ingest_batt_price_trajectories(model_settings):
     return batt_price_traj
     
 #%%
-def ingest_pv_price_trajectories(model_settings):
-    pv_price_traj = pd.read_csv(os.path.join(model_settings.input_data_dir, 'pv_prices', model_settings.pv_price_file_name))
+def ingest_pv_price_trajectories(scenario_settings):
+    pv_price_traj = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'pv_prices', scenario_settings.pv_price_file_name))
+    pv_price_traj.to_csv(scenario_settings.dir_to_write_input_data + '/pv_prices.csv', index=False)
     
     res_df = pd.DataFrame(pv_price_traj['year'])
     res_df = pv_price_traj[['year', 'pv_price_res', 'pv_om_res']]
@@ -69,9 +72,10 @@ def ingest_pv_price_trajectories(model_settings):
     
     
 #%%
-def ingest_pv_degradation_trajectories(model_settings):
+def ingest_pv_degradation_trajectories(scenario_settings):
     
-    pv_deg_traj_df = pd.read_csv(os.path.join(model_settings.input_data_dir, 'pv_degradation', model_settings.pv_deg_file_name))
+    pv_deg_traj_df = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'pv_degradation', scenario_settings.pv_deg_file_name))
+    pv_deg_traj_df.to_csv(scenario_settings.dir_to_write_input_data + '/pv_degradation.csv', index=False)
     
     res_df = pd.DataFrame(pv_deg_traj_df['year'])
     res_df = pv_deg_traj_df[['year', 'res']]
@@ -93,10 +97,11 @@ def ingest_pv_degradation_trajectories(model_settings):
     return pv_deg_traj_df
     
 #%%
-def ingest_elec_price_trajectories(model_settings):
+def ingest_elec_price_trajectories(scenario_settings):
     
-    elec_price_traj = pd.read_csv(os.path.join(model_settings.input_data_dir, 'elec_prices', model_settings.elec_price_file_name))
-
+    elec_price_traj = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'elec_prices', scenario_settings.elec_price_file_name))
+    elec_price_traj.to_csv(scenario_settings.dir_to_write_input_data + '/elec_prices.csv', index=False)
+    
     base_year_prices = elec_price_traj[elec_price_traj['year']==2016]
     
     base_year_prices.rename(columns={'elec_price_res':'res_base',
@@ -131,9 +136,10 @@ def ingest_elec_price_trajectories(model_settings):
     
     
 #%%
-def ingest_pv_power_density_trajectories(model_settings):
+def ingest_pv_power_density_trajectories(scenario_settings):
     
-    pv_power_traj = pd.read_csv(os.path.join(model_settings.input_data_dir, 'pv_power_density', model_settings.pv_power_density_file_name))
+    pv_power_traj = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'pv_power_density', scenario_settings.pv_power_density_file_name))
+    pv_power_traj.to_csv(scenario_settings.dir_to_write_input_data + '/pv_power_density.csv', index=False)
     
     res_df = pd.DataFrame(pv_power_traj['year'])
     res_df = pv_power_traj[['year', 'res']]
@@ -155,9 +161,10 @@ def ingest_pv_power_density_trajectories(model_settings):
     return pv_power_traj
     
 #%%
-def ingest_depreciation_schedules(model_settings):
+def ingest_depreciation_schedules(scenario_settings):
     
-    deprec_schedules = pd.read_csv(os.path.join(model_settings.input_data_dir, 'depreciation_schedules', model_settings.deprec_sch_file_name))
+    deprec_schedules = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'depreciation_schedules', scenario_settings.deprec_sch_file_name))
+    deprec_schedules.to_csv(scenario_settings.dir_to_write_input_data + '/depreciation_schedules.csv', index=False)
     
     deprec_schedules['deprec_sch'] = 'temp'
     
@@ -176,9 +183,10 @@ def ingest_depreciation_schedules(model_settings):
     return deprec_schedules[['year', 'sector_abbr', 'deprec_sch']]
     
 #%%
-def ingest_carbon_intensities(model_settings):
+def ingest_carbon_intensities(scenario_settings):
     
-    carbon_intensities = pd.read_csv(os.path.join(model_settings.input_data_dir, 'carbon_intensities', model_settings.carbon_file_name))
+    carbon_intensities = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'carbon_intensities', scenario_settings.carbon_file_name))
+    carbon_intensities.to_csv(scenario_settings.dir_to_write_input_data + '/carbon_intensities.csv', index=False)
     
     years = np.arange(2014, 2051, 2)    
     years = [str(year) for year in years]
@@ -190,9 +198,10 @@ def ingest_carbon_intensities(model_settings):
     return carbon_intensities_tidy
     
 #%%
-def ingest_financing_terms(model_settings):
+def ingest_financing_terms(scenario_settings):
     
-    financing_terms = pd.read_csv(os.path.join(model_settings.input_data_dir, 'financing_terms', model_settings.financing_file_name))
+    financing_terms = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'financing_terms', scenario_settings.financing_file_name))
+    financing_terms.to_csv(scenario_settings.dir_to_write_input_data + '/financing_terms.csv', index=False)
     
     res_df = pd.DataFrame(financing_terms['year'])
     res_df = financing_terms[['year', 'economic_lifetime_res', 'loan_term_res', 'loan_rate_res', 'down_payment_res', 'real_discount_res', 'tax_rate_res']]
