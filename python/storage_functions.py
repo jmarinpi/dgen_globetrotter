@@ -137,7 +137,7 @@ def calc_system_size_and_financial_performance(agent):
                          agent['batt_price_per_kw'], agent['batt_price_per_kwh'], 
                          agent['batt_om_per_kw'], agent['batt_om_per_kwh'],
                          batt_chg_frac,
-                         agent['sector'], agent['itc_fraction'], agent['deprec_sch'], 
+                         agent['sector_abbr'], agent['itc_fraction'], agent['deprec_sch'], 
                          agent['tax_rate'], 0, agent['real_discount'],  
                          agent['economic_lifetime'], agent['inflation'], 
                          agent['down_payment'], agent['loan_rate'], agent['loan_term'])
@@ -180,7 +180,7 @@ def calc_system_size_and_financial_performance(agent):
                      agent['batt_price_per_kw'], agent['batt_price_per_kwh'], 
                      agent['batt_om_per_kw'], agent['batt_om_per_kwh'],
                      batt_chg_frac,
-                     agent['sector'], agent['itc_fraction'], agent['deprec_sch'], 
+                     agent['sector_abbr'], agent['itc_fraction'], agent['deprec_sch'], 
                      agent['tax_rate'], 0, agent['real_discount'],  
                      agent['economic_lifetime'], agent['inflation'], 
                      agent['down_payment'], agent['loan_rate'], agent['loan_term']) 
