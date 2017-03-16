@@ -50,7 +50,10 @@ def calc_system_size_and_financial_performance(agent):
     load_profile = np.array(agent['consumption_hourly'])    
 
     # Create export tariff object
-    export_tariff = tFuncs.Export_Tariff(full_retail_nem=True) 
+    if agent['nem_system_size_limit_kw'] != 0: 
+        export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
+    else:
+        export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
 
     # Misc. calculations
     pv_cf_profile = np.array(agent['solar_cf_profile']) / 1e6
@@ -69,9 +72,13 @@ def calc_system_size_and_financial_performance(agent):
     # Estimate bill savings revenue from a set of solar+storage system sizes
     #=========================================================================#    
     # Set PV sizes to evaluate
-    pv_inc = 1
-    pv_sizes = np.linspace(0, agent['max_pv_size']*0.95, pv_inc)
-    pv_sizes = np.array([agent['max_pv_size']*0.95])
+#    pv_inc = 1
+#    pv_sizes = np.linspace(0, agent['max_pv_size']*0.95, pv_inc)
+    if export_tariff.full_retail_nem==True:
+        pv_sizes = np.array([agent['max_pv_size']*0.95])
+    else:
+        pv_sizes = np.array([agent['max_pv_size']*0.5])
+
     # Set battery sizes to evaluate
     # Only evaluate a battery if there are demand charges, TOU energy charges, or no NEM
     batt_inc = 3
