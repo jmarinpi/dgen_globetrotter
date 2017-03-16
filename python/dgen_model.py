@@ -23,7 +23,6 @@ import storage_functions as sFuncs
 import data_functions as datfunc
 # ---------------------------------------------
 from excel import excel_functions
-import reeds_functions as reedsfunc
 import utility_functions as utilfunc
 from agents import Agents, Solar_Agents
 import tech_choice_elec
@@ -432,10 +431,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
             # add indices to postgres output table
             datfunc.index_output_table(con, cur, scenario_settings.schema)
-
-            # write reeds mode outputs to csvs in case they're needed
-            # these functions have been superceded by midstream processing
-#            reedsfunc.write_reeds_offline_mode_data(scenario_settings.schema, con, scenario_settings.techs, out_scen_path)
 
             # create output html report
             datfunc.create_scenario_report(scenario_settings.techs, scenario_settings.schema, scenario_settings.scen_name, out_scen_path, cur, con, model_settings.Rscript_path, model_settings.pg_params_file)
