@@ -273,7 +273,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     if 'ix' not in os.name: cores=None
                     else: cores=model_settings.local_cores
                     solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, cores=cores)
-
+                    solar_agents.df.to_pickle('agent_df.pkl')
                     # Calculate the financial performance of the S+S systems 
                     solar_agents.on_frame(financial_functions_elec.calc_financial_performance)
 

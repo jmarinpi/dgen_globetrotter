@@ -204,9 +204,8 @@ def ingest_financing_terms(scenario_settings):
     financing_terms.to_csv(scenario_settings.dir_to_write_input_data + '/financing_terms.csv', index=False)
     
     res_df = pd.DataFrame(financing_terms['year'])
-    res_df = financing_terms[['year', 'economic_lifetime_res', 'loan_term_res', 'loan_rate_res', 'down_payment_res', 'real_discount_res', 'tax_rate_res']]
-    res_df.rename(columns={'economic_lifetime_res':'economic_lifetime', 
-                           'loan_term_res':'loan_term', 
+    res_df = financing_terms[['year', 'economic_lifetime', 'loan_term_res', 'loan_rate_res', 'down_payment_res', 'real_discount_res', 'tax_rate_res']]
+    res_df.rename(columns={'loan_term_res':'loan_term', 
                            'loan_rate_res':'loan_rate', 
                            'down_payment_res':'down_payment', 
                            'real_discount_res':'real_discount', 
@@ -214,9 +213,8 @@ def ingest_financing_terms(scenario_settings):
     res_df['sector_abbr'] = 'res'
     
     com_df = pd.DataFrame(financing_terms['year'])
-    com_df = financing_terms[['year', 'economic_lifetime_nonres', 'loan_term_nonres', 'loan_rate_nonres', 'down_payment_nonres', 'real_discount_nonres', 'tax_rate_nonres']]
-    com_df.rename(columns={'economic_lifetime_nonres':'economic_lifetime', 
-                           'loan_term_nonres':'loan_term', 
+    com_df = financing_terms[['year', 'economic_lifetime', 'loan_term_nonres', 'loan_rate_nonres', 'down_payment_nonres', 'real_discount_nonres', 'tax_rate_nonres']]
+    com_df.rename(columns={'loan_term_nonres':'loan_term', 
                            'loan_rate_nonres':'loan_rate', 
                            'down_payment_nonres':'down_payment', 
                            'real_discount_nonres':'real_discount', 
@@ -224,9 +222,8 @@ def ingest_financing_terms(scenario_settings):
     com_df['sector_abbr'] = 'com'
     
     ind_df = pd.DataFrame(financing_terms['year'])
-    ind_df = financing_terms[['year', 'economic_lifetime_nonres', 'loan_term_nonres', 'loan_rate_nonres', 'down_payment_nonres', 'real_discount_nonres', 'tax_rate_nonres']]
-    ind_df.rename(columns={'economic_lifetime_nonres':'economic_lifetime', 
-                           'loan_term_nonres':'loan_term', 
+    ind_df = financing_terms[['year', 'economic_lifetime', 'loan_term_nonres', 'loan_rate_nonres', 'down_payment_nonres', 'real_discount_nonres', 'tax_rate_nonres']]
+    ind_df.rename(columns={'loan_term_nonres':'loan_term', 
                            'loan_rate_nonres':'loan_rate', 
                            'down_payment_nonres':'down_payment', 
                            'real_discount_nonres':'real_discount', 
