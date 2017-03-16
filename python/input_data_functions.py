@@ -198,6 +198,21 @@ def ingest_carbon_intensities(scenario_settings):
     return carbon_intensities_tidy
     
 #%%
+def ingest_wholesale_elec_prices(scenario_settings):
+    
+    wholesale_elec_prices = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'wholesale_electricity_prices', scenario_settings.wholesale_elec_file_name))
+    wholesale_elec_prices.to_csv(scenario_settings.dir_to_write_input_data + '/wholesale_electricity_prices.csv', index=False)
+    
+    years = np.arange(2014, 2051, 2)    
+    years = [str(year) for year in years]
+    
+    wholesale_elec_prices_tidy = pd.melt(wholesale_elec_prices, id_vars='state_abbr', value_vars=years, var_name='year', value_name='wholesale_elec_price')
+
+    wholesale_elec_prices_tidy['year'] = [int(year) for year in wholesale_elec_prices_tidy['year']]
+
+    return wholesale_elec_prices_tidy
+    
+#%%
 def ingest_financing_terms(scenario_settings):
     
     financing_terms = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'financing_terms', scenario_settings.financing_file_name))

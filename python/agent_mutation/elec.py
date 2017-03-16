@@ -1355,6 +1355,19 @@ def apply_carbon_intensities(dataframe, carbon_intensities):
     dataframe = dataframe.set_index('agent_id')
 
     return dataframe
+    
+
+#%%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def apply_wholesale_elec_prices(dataframe, wholesale_elec_prices):
+
+    dataframe = dataframe.reset_index()
+
+    dataframe = pd.merge(dataframe, wholesale_elec_prices, how='left', on=['state_abbr', 'year'])
+
+    dataframe = dataframe.set_index('agent_id')
+
+    return dataframe
 
 
 #%%

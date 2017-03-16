@@ -213,6 +213,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 scenario_settings.batt_price_file_name = 'batt_prices_FY17_mid.csv' 
                 scenario_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
                 scenario_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
+                scenario_settings.wholesale_elec_file_name = 'wholesale_elec_prices_FY17_default.csv'
                 scenario_settings.financing_file_name = 'financing_experimental.csv' #financing_SS_FY17, financing_experimental
 
                 #==========================================================================================================
@@ -225,6 +226,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 batt_price_traj = iFuncs.ingest_batt_price_trajectories(scenario_settings)
                 deprec_sch = iFuncs.ingest_depreciation_schedules(scenario_settings)
                 carbon_intensities = iFuncs.ingest_carbon_intensities(scenario_settings)
+                wholesale_elec_prices = iFuncs.ingest_wholesale_elec_prices(scenario_settings)
                 financing_terms = iFuncs.ingest_financing_terms(scenario_settings)
 
                 for year in scenario_settings.model_years:
@@ -265,6 +267,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Apply carbon intensities
                     solar_agents.on_frame(agent_mutation.elec.apply_carbon_intensities, carbon_intensities)
+                    
+                    # Apply wholesale electricity prices
+                    solar_agents.on_frame(agent_mutation.elec.apply_wholesale_elec_prices, wholesale_elec_prices)
 
                     # Apply host-owned financial parameters
                     solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
@@ -273,7 +278,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     if 'ix' not in os.name: cores=None
                     else: cores=model_settings.local_cores
                     solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, cores=cores)
-                    solar_agents.df.to_pickle('agent_df.pkl')
+
                     # Calculate the financial performance of the S+S systems 
                     solar_agents.on_frame(financial_functions_elec.calc_financial_performance)
 
