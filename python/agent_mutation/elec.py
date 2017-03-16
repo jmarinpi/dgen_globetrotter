@@ -668,36 +668,7 @@ def get_net_metering_settings(con, schema, year):
     return df
 
 
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def select_electric_rates(dataframe, rates_df, net_metering_df):
 
-    dataframe = pd.merge(dataframe, rates_df, how='left', on=[
-                         'county_id', 'bin_id', 'sector_abbr'])
-    dataframe = pd.merge(dataframe, net_metering_df, how='left',  on=[
-                         'state_abbr', 'sector_abbr'])
-
-    return dataframe
-
-
-#%%
-def update_rate_json_w_nem_fields(row):
-
-    nem_fields = ['ur_enable_net_metering',
-                  'ur_nm_yearend_sell_rate', 'ur_flat_sell_rate']
-    nem_dict = dict((k, row[k]) for k in nem_fields)
-    row['rate_json'].update(nem_dict)
-
-    return row
-
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def update_net_metering_fields(dataframe):
-
-    dataframe = dataframe.apply(update_rate_json_w_nem_fields, axis=1)
-
-    return dataframe
 
 
 #%%
@@ -726,35 +697,6 @@ def get_core_agent_attributes(con, schema, region):
     df = pd.read_sql(sql, con, coerce_float=False)
     df = df.set_index('agent_id')
 
-
-    return df
-
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def get_system_sizing_targets(con, schema):
-
-    inputs = locals().copy()
-
-    sql = """SELECT 'solar'::VARCHAR(5) as tech,
-                     sector_abbr,
-                     sys_size_target_nem,
-                     sys_size_target_no_nem,
-                     NULL::NUMERIC AS sys_oversize_limit_nem,
-                     NULL::NUMERIC AS sys_oversize_limit_no_nem
-             FROM %(schema)s.input_solar_performance_system_sizing_factors
-
-             UNION ALL
-
-             SELECT 'wind'::VARCHAR(5) as tech,
-                     sector_abbr,
-                     sys_size_target_nem,
-                     sys_size_target_no_nem,
-                     sys_oversize_limit_nem,
-                     sys_oversize_limit_no_nem
-             FROM %(schema)s.input_wind_performance_system_sizing_factors;""" % inputs
-
-    df = pd.read_sql(sql, con, coerce_float=False)
 
     return df
 
@@ -870,16 +812,6 @@ def get_annual_resource_solar(con, schema, sectors):
     df = pd.concat(df_list, axis=0, ignore_index=True)
 
     return df
-
-
-# Depreciated by Pieter 11/21/16
-#@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-# def apply_technology_performance_solar(resource_solar_df, tech_performance_solar_df):
-#
-#    resource_solar_df = pd.merge(resource_solar_df, tech_performance_solar_df, how = 'left', on = ['tech'])
-#    resource_solar_df['naep'] = resource_solar_df['naep'] * resource_solar_df['pv_efficiency_improvement_factor']
-#
-#    return resource_solar_df
 
 
 #%%
@@ -1031,102 +963,6 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df, techs):
             dataframe_sized[col] = pd.Series([], dtype=dtype)
 
     return dataframe_sized
-
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def size_systems_solar(dataframe, system_sizing_targets_df, resource_df, techs, default_panel_size_sqft=17.5):
-
-    if 'solar' in techs:
-        in_cols = list(dataframe.columns)
-
-        # join in system sizing targets df
-        dataframe = pd.merge(dataframe, system_sizing_targets_df, how='left', on=[
-                             'sector_abbr', 'tech'])
-
-        # join in the resource data
-        dataframe = pd.merge(dataframe, resource_df, how='left', on=[
-                             'tech', 'sector_abbr', 'county_id', 'bin_id'])
-
-        dataframe['max_buildable_system_kw'] = 0.001 * \
-            dataframe['developable_roof_sqft'] * \
-            dataframe['pv_density_w_per_sqft']
-
-        # initialize the system size targets
-        dataframe['ideal_system_size_kw_no_nem'] = dataframe[
-            'load_kwh_per_customer_in_bin'] * dataframe['sys_size_target_no_nem'] / dataframe['naep']
-        dataframe['ideal_system_size_kw_nem'] = dataframe[
-            'load_kwh_per_customer_in_bin'] * dataframe['sys_size_target_nem'] / dataframe['naep']
-
-        # deal with special cases: no net metering, unlimited NEM, limited NEM
-        no_net_metering = dataframe['nem_system_size_limit_kw'] == 0
-        unlimited_net_metering = dataframe[
-            'nem_system_size_limit_kw'] == float('inf')
-        dataframe['ideal_system_size_kw'] = np.where(no_net_metering,
-                                                     dataframe[
-                                                         'ideal_system_size_kw_no_nem'],
-                                                     np.where(unlimited_net_metering,
-                                                              dataframe[
-                                                                  'ideal_system_size_kw_nem'],
-                                                              np.minimum(dataframe['ideal_system_size_kw_nem'], dataframe[
-                                                                  'nem_system_size_limit_kw'])  # if limited NEM, maximize size up to the NEM limit
-                                                              )
-                                                     )
-        # change NEM enabled accordingly
-        dataframe['ur_enable_net_metering'] = np.where(
-            no_net_metering, False, True)
-
-        # calculate the system size based on the target size and the availabile
-        # roof space
-        dataframe.loc[:, 'system_size_kw'] = np.round(np.minimum(
-            dataframe['max_buildable_system_kw'], dataframe['ideal_system_size_kw']), 2)
-        # derive the number of panels
-        dataframe.loc[:, 'n_units'] = dataframe['system_size_kw'] / (0.001 * dataframe[
-                                                                     'pv_density_w_per_sqft'] * default_panel_size_sqft)  # Denom is kW of a panel
-        # calculate aep
-        dataframe.loc[:, 'aep'] = dataframe[
-            'system_size_kw'] * dataframe['naep']
-
-        # add capacity factor
-        dataframe.loc[:, 'cf'] = dataframe['naep'] / 8760.
-
-        # add system size class
-        system_size_breaks = [0, 2.5, 5.0, 10.0, 20.0, 50.0,
-                              100.0, 250.0, 500.0, 750.0, 1000.0, 1500.0, 3000.0]
-        dataframe.loc[:, 'system_size_factors'] = np.where(
-            dataframe['system_size_kw'] == 0, 0, pd.cut(dataframe['system_size_kw'], system_size_breaks))
-
-        # add in dummy columns for compatibility with wind
-        for col in ['turbine_height_m', 'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']:
-            dataframe.loc[:, col] = np.nan
-            dataframe.loc[:, col] = dataframe[col].astype(np.float64)
-
-        return_cols = ['ur_enable_net_metering', 'aep', 'naep', 'cf', 'system_size_kw', 'system_size_factors', 'n_units', 'inverter_lifetime_yrs',
-                       'turbine_height_m', 'turbine_size_kw', 'power_curve_1', 'power_curve_2', 'power_curve_interp_factor', 'wind_derate_factor']
-        out_cols = list(pd.unique(in_cols + return_cols))
-
-        dataframe = dataframe[out_cols]
-    else:
-        out_cols = {'ur_enable_net_metering': 'bool',
-                    'aep': 'float64',
-                    'naep': 'float64',
-                    'cf': 'float64',
-                    'system_size_kw': 'float64',
-                    'system_size_factors': 'object',
-                    'n_units': 'float64',
-                    'inverter_lifetime_yrs': 'float64',
-                    'turbine_height_m': 'int64',
-                    'turbine_size_kw': 'float64',
-                    'power_curve_1': 'int64',
-                    'power_curve_2': 'int64',
-                    'power_curve_interp_factor': 'float64',
-                    'wind_derate_factor': 'float64'
-                    }
-        for col, dtype in out_cols.iteritems():
-            dataframe[col] = pd.Series([], dtype=dtype)
-
-    return dataframe
-
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
