@@ -49,12 +49,6 @@ class ModelSettings(object):
         self.tech_choice_decision_var = None
         self.delete_output_schema = None  # bool
         self.mode = None  # one of ['run', 'develop', 'setup_develop']
-        #======================================================================
-        # TEMPORARY PATCH FOR STORAGE BRANCH
-        # TODO: delete solar_plus_storage_mode after solar+storage is addded as
-        # optinon to the excel input sheet
-        self.solar_plus_storage_mode = None  # boolean (temporary)
-        #======================================================================
 
     def set(self, attr, value):
 
@@ -80,11 +74,6 @@ class ModelSettings(object):
         self.set('tech_choice_decision_var', config.tech_choice_decision_var)
         self.set('delete_output_schema', config.delete_output_schema)
         self.set('mode', config.mode)
-        #======================================================================
-        # TEMPORARY PATCH FOR STORAGE BRANCH
-        # TODO: delete after solar + storage is addded to the excel input sheet
-        self.set('solar_plus_storage_mode', config.solar_plus_storage_mode)
-        #======================================================================
 
     def set_pg_params(self, pg_params_file):
 
@@ -341,17 +330,6 @@ class ModelSettings(object):
             if self.mode not in valid_opts:
                 raise ValueError('Invalid %s: must be one of %s' %
                                  (property_name, valid_opts))
-
-        #======================================================================
-        # TEMPORARY PATCH FOR STORAGE BRANCH
-        # TODO: delete after solar + storage is addded to the excel input sheet
-        elif property_name == 'solar_plus_storage_mode':
-            # check type
-            try:
-                check_type(self.get(property_name), bool)
-            except TypeError, e:
-                raise TypeError('Invalid %s: %s' % (property_name, e))
-        #======================================================================
 
         else:
             print 'No validation method for property %s exists.' % property_name
