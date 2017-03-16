@@ -291,7 +291,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # Aggregate PV and Batt capacity by reeds region
                     #==========================================================================================================   
-#                     TODO: rewrite this using agents class, once above is handled
                     agent_cum_capacities = solar_agents.df[[ 'ba', 'pv_kw_cum']]
                     ba_cum_pv_kw_year = agent_cum_capacities.groupby(by='ba').sum()
                     ba_cum_pv_kw_year['ba'] = ba_cum_pv_kw_year.index
