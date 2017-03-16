@@ -45,8 +45,6 @@ class ModelSettings(object):
         self.min_agents = None  # type is integer, >=0
         self.pg_procs = None  # int<=16
         self.local_cores = None  # int < cores on machine
-        # one of ['max_market_share', 'npv4', 'npv']
-        self.tech_choice_decision_var = None
         self.delete_output_schema = None  # bool
 
     def set(self, attr, value):
@@ -70,7 +68,6 @@ class ModelSettings(object):
         self.set('local_cores', config.local_cores)
         self.set('pg_procs', config.pg_procs)
         self.set_pg_params(config.pg_params_file)
-        self.set('tech_choice_decision_var', config.tech_choice_decision_var)
         self.set('delete_output_schema', config.delete_output_schema)
 
     def set_pg_params(self, pg_params_file):
@@ -296,19 +293,6 @@ class ModelSettings(object):
                 warnings.warn(
                     "High %s: may saturate the resources of the Postgres server" % property_name)
 
-        elif property_name == 'tech_choice_decision_var':
-            # check type
-            try:
-                check_type(self.get(property_name), str)
-            except TypeError, e:
-                raise TypeError('Invalid %s: %s' % (property_name, e))
-
-            # one of ['max_market_share', 'npv4', 'npv']
-            valid_opts = ['max_market_share', 'npv4', 'npv']
-            if self.tech_choice_decision_var not in valid_opts:
-                raise ValueError('Invalid %s: must be one of %s' %
-                                 (property_name, valid_opts))
-
         elif property_name == 'delete_output_schema':
             # check type
             try:
@@ -335,7 +319,6 @@ class ScenarioSettings(object):
 
         self.scen_name = None  # type is text, no spaces?
         self.end_year = None
-        self.choose_tech = None  # if true, multiple techs must be available
         self.region = None
         self.load_growth_scenario = None  # valid options only
         self.random_generator_seed = None  # int
@@ -361,7 +344,6 @@ class ScenarioSettings(object):
 
         self.set('scen_name', scenario_options['scenario_name'])
         self.set('end_year', scenario_options['end_year'])
-        self.set('choose_tech', scenario_options['tech_choice'])
         self.set('region', scenario_options['region'])
         self.set('load_growth_scenario', scenario_options[
                  'load_growth_scenario'])
@@ -370,7 +352,7 @@ class ScenarioSettings(object):
 
     def set_tech_mode(self):
 
-        if sorted(self.techs) in [['wind'], ['solar'], ['solar', 'wind']]:
+        if sorted(self.techs) in [['wind'], ['solar']]:
             self.set('tech_mode', 'elec')
 
         elif self.techs == ['du']:
@@ -405,20 +387,6 @@ class ScenarioSettings(object):
             if self.end_year > 2050:
                 raise ValueError(
                     'Invalid %s: end_year must be <= 2050' % property_name)
-
-        elif property_name == 'choose_tech':
-            try:
-                check_type(self.get(property_name), bool)
-            except TypeError, e:
-                raise TypeError('Invalid %s: %s' % (property_name, e))
-            # must have multiple techs available
-            if self.choose_tech == True and len(self.techs) < 2:
-                raise ValueError(
-                    'Invalid %s: Cannot run tech_choice mode with fewer than two technologies' % property_name)
-            # cannot run if tech_mode == 'ghp' or 'du'
-            if self.choose_tech == True and self.tech_mode in ('ghp', 'du', 'solar+storage'):
-                raise ValueError(
-                    'Invalid %s: Cannot run tech_choice mode with GHP, DU, or Solar+Storage' % property_name)
 
         elif property_name == 'region':
             try:
@@ -519,8 +487,7 @@ class ScenarioSettings(object):
             # check valid options
             valid_options = ['elec',
                              'ghp',
-                             'du',
-                             'solar+storage']
+                             'du']
             if self.tech_mode not in valid_options:
                 raise ValueError('Invalid %s: must be one of %s' %
                                  (property_name, valid_options))

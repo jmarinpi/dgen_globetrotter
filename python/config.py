@@ -64,13 +64,6 @@ pg_procs = 12
 local_cores = multiprocessing.cpu_count()/2
 
 #==============================================================================
-# tech_choice decision variable
-#==============================================================================
-tech_choice_decision_var = 'max_market_share'
-# alternative options are: npv4 or npv
-
-
-#==============================================================================
 #  Should the output schema be deleted after the model run
 #==============================================================================
 delete_output_schema = True

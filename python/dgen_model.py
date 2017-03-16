@@ -421,7 +421,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #    Outputs & Visualization
             #==============================================================================
             logger.info("---------Saving Model Results---------")
-            out_subfolders = datfunc.create_tech_subfolders(out_scen_path, scenario_settings.techs, out_subfolders, scenario_settings.choose_tech)
+            out_subfolders = datfunc.create_tech_subfolders(out_scen_path, scenario_settings.techs, out_subfolders)
 
             # copy outputs to csv
             datfunc.copy_outputs_to_csv(scenario_settings.techs, scenario_settings.schema, out_scen_path, cur, con)
@@ -432,10 +432,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # create output html report
             datfunc.create_scenario_report(scenario_settings.techs, scenario_settings.schema, scenario_settings.scen_name, out_scen_path, cur, con, model_settings.Rscript_path, model_settings.pg_params_file)
 
-            # create tech choice report (if applicable)
-            datfunc.create_tech_choice_report(scenario_settings.choose_tech, scenario_settings.schema, scenario_settings.scen_name, out_scen_path, cur, con, model_settings.Rscript_path, model_settings.pg_params_file)
-
-            # after all techs have been processed:
             #####################################################################
             # drop the new scenario_settings.schema
             datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, model_settings.delete_output_schema)
