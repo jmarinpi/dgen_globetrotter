@@ -185,6 +185,8 @@ def ingest_carbon_intensities(model_settings):
     
     carbon_intensities_tidy = pd.melt(carbon_intensities, id_vars='state_abbr', value_vars=years, var_name='year', value_name='grid_carbon_tco2_per_kwh')
 
+    carbon_intensities_tidy['year'] = [int(year) for year in carbon_intensities_tidy['year']]
+
     return carbon_intensities_tidy
     
 #%%

@@ -191,7 +191,7 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
         first_year = np.min(elec_price_change_traj['year'])
         first_year_df = elec_price_change_traj[elec_price_change_traj['year']==first_year].reset_index()
         missing_years = first_year - horizon_year
-        elec_price_escalator_df['historical'] = first_year_df['elec_price_multiplier']*0.98**missing_years
+        elec_price_escalator_df['historical'] = first_year_df['elec_price_multiplier']*0.99**missing_years
     
     elec_price_escalator_df['elec_price_escalator'] = (elec_price_escalator_df['elec_price_multiplier'] / elec_price_escalator_df['historical'])**(1.0/10) - 1.0
 
@@ -1342,25 +1342,6 @@ def apply_pv_deg(dataframe, pv_deg_traj_df):
     dataframe = dataframe.set_index('agent_id')
 
     return dataframe
-
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def get_carbon_intensities(con, schema, year):
-    ''' Pull depreciation schedule from dB
-
-        IN: type - string - [all, macrs, standard]
-        OUT: df  - pd dataframe - year, depreciation schedule:
-
-    '''
-    inputs = locals().copy()
-
-    sql = '''SELECT state_abbr, carbon_price_cents_per_kwh
-            FROM %(schema)s.carbon_intensities_to_model
-            WHERE year = %(year)s;''' % inputs
-    df = pd.read_sql(sql, con)
-
-    return df
 
 
 #%%

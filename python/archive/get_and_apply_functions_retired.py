@@ -94,3 +94,21 @@ def get_technology_performance_solar(con, schema, year):
     df = pd.read_sql(sql, con, coerce_float=False)
 
     return df
+    
+#%%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def get_carbon_intensities(con, schema, year):
+    ''' Pull depreciation schedule from dB
+
+        IN: type - string - [all, macrs, standard]
+        OUT: df  - pd dataframe - year, depreciation schedule:
+
+    '''
+    inputs = locals().copy()
+
+    sql = '''SELECT state_abbr, carbon_price_cents_per_kwh
+            FROM %(schema)s.carbon_intensities_to_model
+            WHERE year = %(year)s;''' % inputs
+    df = pd.read_sql(sql, con)
+
+    return df
