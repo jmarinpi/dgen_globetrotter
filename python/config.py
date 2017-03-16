@@ -67,21 +67,3 @@ local_cores = multiprocessing.cpu_count()/2
 #  Should the output schema be deleted after the model run
 #==============================================================================
 delete_output_schema = True
-
-#==============================================================================
-#  Do you want to use an existing schema?
-
-#  Warning: Using an existing schema will skip the following steps:
-#   1) generation of agents,
-#   2) bill savings calculations
-#   3) evaluation of agent tech potential against tech potential caps
-# Because some scenario inputs are embedded in agents and bill savings calcs,
-# using an existing schema for multiple scenarios may not yield correct results,
-# depending on which scenario inputs you modify.
-# Refer to https://github.nrel.gov/dg-wind/diffusion/blob/dev_misc/docs/existing_schema_inputs.csv
-# to determine whether this is a safe setting  for your scenario analysis.
-#==============================================================================
-use_existing_schema = False
-# change this to the schema with existing agents/bill savings that you want to use
-existing_schema_name = 'diffusion_results_2016_01_29_11h31m03s'
-

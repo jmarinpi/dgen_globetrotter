@@ -25,8 +25,6 @@ import data_functions as datfunc
 from excel import excel_functions
 import utility_functions as utilfunc
 from agents import Agents, Solar_Agents
-import tech_choice_elec
-import tech_choice_geo
 import settings
 import agent_mutation
 import agent_preparation
@@ -120,31 +118,30 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # create psuedo-rangom number generator (not used until tech/finance choice function)
             prng = np.random.RandomState(scenario_settings.random_generator_seed)
 
-            if model_settings.use_existing_schema == False:
+            #==========================================================================================================
+            # CREATE AGENTS
+            #==========================================================================================================
+            logger.info("--------------Creating Agents---------------")
+
+            if scenario_settings.techs in [['wind'], ['solar']]:
+                # =========================================================
+                # Initialize agents
+                # =========================================================
+                solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
+
+
                 #==========================================================================================================
-                # CREATE AGENTS
+                # GET TECH POTENTIAL LIMITS
                 #==========================================================================================================
-                logger.info("--------------Creating Agents---------------")
-
-                if scenario_settings.techs in [['wind'], ['solar']]:
-                    # =========================================================
-                    # Initialize agents
-                    # =========================================================
-                    solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
+                tech_potential_limits_wind_df =  agent_mutation.elec.get_tech_potential_limits_wind(con)
+                tech_potential_limits_solar_df =  agent_mutation.elec.get_tech_potential_limits_solar(con)
 
 
-                    #==========================================================================================================
-                    # GET TECH POTENTIAL LIMITS
-                    #==========================================================================================================
-                    tech_potential_limits_wind_df =  agent_mutation.elec.get_tech_potential_limits_wind(con)
-                    tech_potential_limits_solar_df =  agent_mutation.elec.get_tech_potential_limits_solar(con)
-
-
-                elif scenario_settings.techs in [['ghp'], ['du']]:
-                    logger.error("GHP and DU not yet supported")
-                    break
-                    # TODO: agents_df =  agent_mutation.geo.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
-                    # TODO: agents = Agents(agents_df)
+            elif scenario_settings.techs in [['ghp'], ['du']]:
+                logger.error("GHP and DU not yet supported")
+                break
+                # TODO: agents_df =  agent_mutation.geo.get_core_agent_attributes(con, scenario_settings.schema, model_settings.mode, scenario_settings.region)
+                # TODO: agents = Agents(agents_df)
 
             #==============================================================================
             # TECHNOLOGY DEPLOYMENT

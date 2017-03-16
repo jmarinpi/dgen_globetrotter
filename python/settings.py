@@ -38,8 +38,6 @@ class ModelSettings(object):
         self.pg_conn_string = None  # type is text
         self.pg_params_log = None  # type is text, doesn't include pw
         self.model_path = None  # path exists
-        self.use_existing_schema = None  # type is boolean
-        self.existing_schema_name = None  # type is text
         self.agents_per_region = None  # type is integer, > 0
         self.sample_pct = None  # type is float, <=1, warn if> 0.05 about slow run times
         self.min_agents = None  # type is integer, >=0
@@ -60,8 +58,6 @@ class ModelSettings(object):
 
         self.set('start_year', config.start_year)
         self.set('model_path', config.model_path)
-        self.set('use_existing_schema', config.use_existing_schema)
-        self.set('existing_schema_name', config.existing_schema_name)
         self.set('agents_per_region', config.agents_per_region)
         self.set('sample_pct', config.sample_pct)
         self.set('min_agents', config.min_agents)
@@ -211,20 +207,6 @@ class ModelSettings(object):
             # check the path exists
             if os.path.exists(self.model_path) == False:
                 raise ValueError('Invalid %s: does not exist' % property_name)
-
-        elif property_name == 'use_existing_schema':
-            # check type
-            try:
-                check_type(self.get(property_name), bool)
-            except TypeError, e:
-                raise TypeError('Invalid %s: %s' % (property_name, e))
-
-        elif property_name == 'existing_schema_name':
-            # check type
-            try:
-                check_type(self.get(property_name), str)
-            except TypeError, e:
-                raise TypeError('Invalid %s: %s' % (property_name, e))
 
         elif property_name == 'agents_per_region':
             # check type
@@ -541,12 +523,8 @@ def init_scenario_settings(scenario_file, model_settings, con, cur):
     # DEFINE SCENARIO SETTINGS
     # =========================================================================
     try:
-        if model_settings.use_existing_schema == True:
-            # create a schema from the existing schema of interest
-            new_schema = datfunc.create_output_schema(model_settings.pg_conn_string, model_settings.cdate, source_schema = model_settings.existing_schema_name, include_data = True)
-        else:
-            # create an empty schema from diffusion_template
-            new_schema = datfunc.create_output_schema(model_settings.pg_conn_string, model_settings.cdate, source_schema = 'diffusion_template', include_data = False)
+        # create an empty schema from diffusion_template
+        new_schema = datfunc.create_output_schema(model_settings.pg_conn_string, model_settings.cdate, source_schema = 'diffusion_template', include_data = False)
     except Exception, e:
         raise Exception('\tCreation of output schema failed with the following error: %s' % e)
 
