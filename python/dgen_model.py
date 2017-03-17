@@ -109,16 +109,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             with utilfunc.Timer() as t:
                 schema = scenario_settings.schema
                 max_market_share = datfunc.get_max_market_share(con, schema)
-                market_projections = datfunc.get_market_projections(con,
-                                                                    schema)
-                # get financial variables
+                market_projections = datfunc.get_market_projections(con, schema)
                 load_growth_scenario = scenario_settings.load_growth_scenario.lower()
-                # these are technology specific, set up in tidy form with a "tech" field
-                financial_parameters = datfunc.get_financial_parameters(con, scenario_settings.schema)
                 inflation_rate = datfunc.get_annual_inflation(con, scenario_settings.schema)
-                rate_growth_df = datfunc.get_rate_escalations(con, scenario_settings.schema)
                 bass_params = datfunc.get_bass_params(con, scenario_settings.schema)
-#                learning_curves_mode = datfunc.get_learning_curves_mode(con, scenario_settings.schema)
             logger.info('\tCompleted in: %0.1fs' % t.interval)
 
             # create psuedo-rangom number generator (not used until tech/finance choice function)
@@ -139,8 +133,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # GET TECH POTENTIAL LIMITS
                 #==========================================================================================================
-                tech_potential_limits_wind_df =  agent_mutation.elec.get_tech_potential_limits_wind(con)
-                tech_potential_limits_solar_df =  agent_mutation.elec.get_tech_potential_limits_solar(con)
+                # TODO: tech potential should be checked in initial agent generation
+#                tech_potential_limits_wind_df =  agent_mutation.elec.get_tech_potential_limits_wind(con)
+#                tech_potential_limits_solar_df =  agent_mutation.elec.get_tech_potential_limits_solar(con)
 
 
             elif scenario_settings.techs in [['ghp'], ['du']]:

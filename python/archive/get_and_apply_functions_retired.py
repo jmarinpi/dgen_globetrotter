@@ -115,18 +115,38 @@ def get_carbon_intensities(con, schema, year):
     
     
 #%%
-def get_learning_curves_mode(con, schema):
+def get_rate_escalations(con, schema):
+    '''
+    Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
+    resulting in an average real compounding rate growth. This rate is then used to calculate cash flows
 
+    IN: con - connection to server
+    OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
+    '''
     inputs = locals().copy()
 
-    sql = """SELECT 'wind'::TEXT as tech, enabled
-            FROM %(schema)s.input_cost_learning_curves_enabled_wind
+    sql = """SELECT census_division_abbr, lower(sector) as sector_abbr,
+                    array_agg(escalation_factor order by year asc)::DOUBLE PRECISION[] as rate_escalations
+            FROM %(schema)s.rate_escalations_to_model
+            GROUP BY census_division_abbr, sector""" % inputs
+    rate_escalations = pd.read_sql(sql, con, coerce_float=False)
 
-            UNION ALL
+    return rate_escalations
+    
+#%%
+def get_financial_parameters(con, schema):
+    ''' Pull financial parameters dataframe from dB. We used to filter by business model here, but with leasing we will join
+    on sector and business_model later in calc_economics.
 
-            SELECT 'solar'::TEXT as tech, enabled
-            FROM %(schema)s.input_cost_learning_curves_enabled_solar""" % inputs
+        IN: con - pg con object - connection object
+            schema - string - schema for technology i.e. diffusion_solar
 
-    learning_curves_mode = pd.read_sql(sql, con)
+        OUT: fin_param  - pd dataframe - pre-processed resource,bins, rates, etc. for all years:
+    '''
+    inputs = locals().copy()
 
-    return learning_curves_mode
+    sql = '''SELECT *
+             FROM %(schema)s.input_financial_parameters;''' % inputs
+    df = pd.read_sql(sql, con)
+
+    return df
