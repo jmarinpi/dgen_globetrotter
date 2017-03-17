@@ -118,7 +118,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 inflation_rate = datfunc.get_annual_inflation(con, scenario_settings.schema)
                 rate_growth_df = datfunc.get_rate_escalations(con, scenario_settings.schema)
                 bass_params = datfunc.get_bass_params(con, scenario_settings.schema)
-                learning_curves_mode = datfunc.get_learning_curves_mode(con, scenario_settings.schema)
+#                learning_curves_mode = datfunc.get_learning_curves_mode(con, scenario_settings.schema)
             logger.info('\tCompleted in: %0.1fs' % t.interval)
 
             # create psuedo-rangom number generator (not used until tech/finance choice function)
