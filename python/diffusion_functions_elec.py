@@ -27,7 +27,7 @@ logger = utilfunc.get_logger()
 
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
-@decorators.fn_timer(logger = logger, tab_level = 3, prefix = '')
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calc_diffusion_solar(df, is_first_year, bass_params, 
                            override_p_value = None, override_q_value = None, override_teq_yr1_value = None):
 
@@ -43,7 +43,6 @@ def calc_diffusion_solar(df, is_first_year, bass_params,
             market_last_year - pd dataframe - market to inform diffusion in next year
     '''
     
-    logger.info("\t\tCalculating Diffusion")
     df = df.reset_index()
     bass_params = bass_params[bass_params['tech']=='solar']    
     

@@ -42,10 +42,20 @@ pg.extensions.register_type(DEC2FLOAT)
 
 
 #%%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def aggregate_outputs_solar(agent_df, year, is_first_year,
                             scenario_settings, out_scen_path,
-                            ba_cum_pv_mw=None, ba_cum_batt_mw=None, ba_cum_batt_mwh=None,
-                            dispatch_all_adopters=None, dispatch_by_ba_and_year=None):
+                            interyear_results_aggregations=None):
+                                
+    # unpack results dict
+    if interyear_results_aggregations != None:
+        ba_cum_pv_mw = interyear_results_aggregations['ba_cum_pv_mw']
+        ba_cum_batt_mw = interyear_results_aggregations['ba_cum_batt_mw']
+        ba_cum_batt_mwh = interyear_results_aggregations['ba_cum_batt_mwh']
+        dispatch_all_adopters = interyear_results_aggregations['dispatch_all_adopters']
+        dispatch_by_ba_and_year = interyear_results_aggregations['dispatch_by_ba_and_year']
+    
+    
     batt_deg_rate = 0.982
     pv_deg_rate = agent_df.loc[agent_df.index[0], 'pv_deg'] 
     
@@ -167,8 +177,15 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
             dispatch_by_ba_and_year = dispatch_by_ba_and_year[['ba', 'year'] + hour_list] # reorder the columns
             dispatch_by_ba_and_year.round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW.csv', index=False)
     
+    # package results
+    interyear_results_aggregations = {'ba_cum_pv_mw':ba_cum_pv_mw,
+                                      'ba_cum_batt_mw':ba_cum_batt_mw,
+                                      'ba_cum_batt_mwh':ba_cum_batt_mwh,
+                                      'dispatch_all_adopters':dispatch_all_adopters,
+                                      'dispatch_by_ba_and_year':dispatch_by_ba_and_year}
+
  
-    return ba_cum_pv_mw, ba_cum_batt_mw, ba_cum_batt_mwh, dispatch_all_adopters, dispatch_by_ba_and_year
+    return interyear_results_aggregations
     
 #%%
 

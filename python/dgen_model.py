@@ -163,32 +163,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
 
-                #==========================================================================================================
-                # Set up dataframes to record aggregated results
-                #==========================================================================================================    
-                ba_list = np.unique(np.array(solar_agents.df['ba']))
-                
-#                year_and_reg_set = gFuncs.cartesian([ba_list, scenario_settings.model_years])                
-                
-                col_list_8760 = list(['ba', 'year'])
-#                hour_list = list()
-#                for hour in np.arange(1,8761):
-#                    hour_list = hour_list + ['H%s' % hour]
-                hour_list = list(np.arange(1,8761))
-                col_list_8760 = col_list_8760 + hour_list
-                
-                # PV and batt capacities
-                ba_cum_pv_mw = pd.DataFrame(index=ba_list)
-                ba_cum_batt_mw = pd.DataFrame(index=ba_list)
-                ba_cum_batt_mwh = pd.DataFrame(index=ba_list)
-                
-                # PV capacity factors
-                pv_gen_by_ba_and_year = pd.DataFrame(index=ba_list, columns=[['ba', 'year'] + hour_list])
-                pv_cf_by_ba_and_year = pd.DataFrame(columns = col_list_8760)
-
-                # Battery dispatches
-                dispatch_by_ba_and_year = pd.DataFrame(columns = col_list_8760)
-
                 #==============================================================================
                 # GET BATTERY REPLACEMENT YEAR AND REPLACEMENT COST FRACTION VALUES
                 #==============================================================================
@@ -287,7 +261,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # determine "developable" population
                     solar_agents.on_frame(agent_mutation.elec.calculate_developable_customers_and_load)
-                    solar_agents.df.to_pickle('agent_df.pkl')
+
                     # Apply market_last_year
                     if is_first_year == True:
                         state_starting_capacities_df = agent_mutation.elec.get_state_starting_capacities(con, schema)
@@ -303,16 +277,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
 
                     # Aggregate results
-                    if is_first_year==True:                        
-                        pv_cum, batt_mw_cum, batt_mwh_cum, dispatch_cum, dispatch_by_by = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
-                                                                                                                          scenario_settings, out_scen_path) 
+                    if is_first_year==True:
+                        interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
+                                                                                         scenario_settings, out_scen_path) 
                     else:
-                        pv_cum, batt_mw_cum, batt_mwh_cum, dispatch_cum, dispatch_by_by = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
-                                                                                                                          scenario_settings, out_scen_path,
-                                                                                                                          pv_cum, batt_mw_cum, batt_mwh_cum,
-                                                                                                                          dispatch_cum, dispatch_by_by)
-
-                    
+                        interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
+                                                                                         scenario_settings, out_scen_path,
+                                                                                         interyear_results_aggregations)
 
                     #==========================================================================================================
                     # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING
