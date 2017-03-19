@@ -106,14 +106,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # get other datasets needed for the model run
             logger.info('Getting various scenario parameters')
 
-            with utilfunc.Timer() as t:
-                schema = scenario_settings.schema
-                max_market_share = datfunc.get_max_market_share(con, schema)
-                market_projections = datfunc.get_market_projections(con, schema)
-                load_growth_scenario = scenario_settings.load_growth_scenario.lower()
-                inflation_rate = datfunc.get_annual_inflation(con, scenario_settings.schema)
-                bass_params = datfunc.get_bass_params(con, scenario_settings.schema)
-            logger.info('\tCompleted in: %0.1fs' % t.interval)
+            schema = scenario_settings.schema
+            max_market_share = datfunc.get_max_market_share(con, schema)
+            market_projections = datfunc.get_market_projections(con, schema)
+            load_growth_scenario = scenario_settings.load_growth_scenario.lower()
+            inflation_rate = datfunc.get_annual_inflation(con, scenario_settings.schema)
+            bass_params = datfunc.get_bass_params(con, scenario_settings.schema)
 
             # create psuedo-rangom number generator (not used until tech/finance choice function)
             prng = np.random.RandomState(scenario_settings.random_generator_seed)
@@ -128,15 +126,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # Initialize agents
                 # =========================================================
                 solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
-
-
-                #==========================================================================================================
-                # GET TECH POTENTIAL LIMITS
-                #==========================================================================================================
-                # TODO: tech potential should be checked in initial agent generation
-#                tech_potential_limits_wind_df =  agent_mutation.elec.get_tech_potential_limits_wind(con)
-#                tech_potential_limits_solar_df =  agent_mutation.elec.get_tech_potential_limits_solar(con)
-
+                
+                # Write base agents to disk
+                solar_agents.df.to_pickle(out_scen_path + '/agent_df_base.pkl')
 
             elif scenario_settings.techs in [['ghp'], ['du']]:
                 logger.error("GHP and DU not yet supported")
@@ -157,19 +149,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 srecs = datfunc.get_srecs(cur, con, scenario_settings.schema, scenario_settings.techs, model_settings.pg_conn_string, dsire_opts)
                 state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
-
-                #==============================================================================
-                # GET BATTERY REPLACEMENT YEAR AND REPLACEMENT COST FRACTION VALUES
-                #==============================================================================
                 batt_replacement_yr = datfunc.get_battery_replacement_year(con, scenario_settings.schema)
                 batt_replacement_cost_fraction = datfunc.get_replacement_cost_fraction(con, scenario_settings.schema)
-                solar_agents.on_frame(agent_mutation.elec.apply_batt_replace_schedule, (batt_replacement_yr))
-
-                #==========================================================================================================
-                # WRITE BASE AGENT_DF TO DISK
-                #==========================================================================================================
-                solar_agents.df.to_pickle(out_scen_path + '/agent_df_base.pkl')
-                
+              
                 
                 #==========================================================================================================
                 # declare input data file names - this is temporary until input sheet is updated
@@ -222,6 +204,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Apply technology performance
                     battery_roundtrip_efficiency = agent_mutation.elec.get_battery_roundtrip_efficiency(con, scenario_settings.schema, year)
+                    solar_agents.on_frame(agent_mutation.elec.apply_batt_replace_schedule, (batt_replacement_yr))
                     solar_agents.on_frame(agent_mutation.elec.apply_solar_power_density, pv_power_traj)
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_deg, (pv_deg_traj))
 
@@ -268,10 +251,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Calculate diffusion based on economics and bass diffusion
                     solar_agents.df, market_last_year_df = diffusion_functions_elec.calc_diffusion_solar(solar_agents.df, is_first_year, bass_params)
                     
-                    scenario_settings.output_batt_dispatch_profiles = True
-
-
                     # Aggregate results
+                    scenario_settings.output_batt_dispatch_profiles = True
                     if is_first_year==True:
                         interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
                                                                                          scenario_settings, out_scen_path) 

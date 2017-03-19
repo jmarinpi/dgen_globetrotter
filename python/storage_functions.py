@@ -205,33 +205,3 @@ def calc_system_size_and_financial_performance(agent):
     
 #    print "Opt PV:", opt_pv_size, np.round(opt_pv_size/agent['max_pv_size'],2), ", opt batt kW:", opt_batt_power, np.round(opt_batt_power/opt_pv_size,2) 
     return agent
-
-    
-#%%
-def system_size_driver(agent_df, deprec_sch_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()-1):  
-    
-    agent_dict = agent_df.T.to_dict()
-    deprec_sch_dict = deprec_sch_df.T.to_dict()
-    
-    if 'ix' not in os.name:
-        EXECUTOR = futures.ThreadPoolExecutor
-    else:
-        EXECUTOR = futures.ProcessPoolExecutor
-        
-    future_list = list()
-    
-    with EXECUTOR(max_workers=n_workers) as executor:
-        for key in agent_dict:    
-        
-            
-            future_list.append(executor.submit(calc_system_size_and_financial_performance, 
-                                               agent_dict[key],
-                                               np.array(deprec_sch_dict[agent_dict[key]['depreciation_sch_index']]['deprec'])))
-    
-    results_df = pd.DataFrame([f.result() for f in future_list])
-
-    agent_df = pd.merge(agent_df, results_df, how='left', on=['agent_id'])
-
-    return agent_df
-    
-        
