@@ -157,15 +157,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # declare input data file names - this is temporary until input sheet is updated
                 #==========================================================================================================
                 scenario_settings.storage_cost_file_name = 'storage_cost_schedule_FY17_mid.csv'                
-                scenario_settings.pv_deg_file_name = 'constant_half_percent.csv'                
+                scenario_settings.pv_deg_file_name = 'pv_deg_atb_FY17.csv'                
                 scenario_settings.elec_price_file_name = 'AEO2016_Reference_case.csv'                
                 scenario_settings.pv_power_density_file_name = 'pv_power_default.csv'                
-                scenario_settings.pv_price_file_name = 'pv_price_experimental.csv' #pv_price_atb16_mid, pv_price_experimental
+                scenario_settings.pv_price_file_name = 'pv_price_atb16_mid.csv' #pv_price_atb16_mid, pv_price_experimental
                 scenario_settings.batt_price_file_name = 'batt_prices_FY17_mid.csv' 
                 scenario_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
                 scenario_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
-                scenario_settings.wholesale_elec_file_name = 'wholesale_elec_prices_FY17_default.csv'
-                scenario_settings.financing_file_name = 'financing_experimental.csv' #financing_SS_FY17, financing_experimental
+                scenario_settings.wholesale_elec_file_name = 'wholesale_elec_prices_atb_FY17_mid.csv'
+                scenario_settings.financing_file_name = 'financing_atb_FY17.csv' #financing_atb_FY17, financing_experimental
 
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
