@@ -69,6 +69,7 @@ def calc_system_size_and_financial_performance(agent):
 
     original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
     agent['fy_bill_without_sys'] = original_bill * agent['elec_price_multiplier']
+    if agent['fy_bill_without_sys'] == 0: agent['fy_bill_without_sys']=1.0
     agent['fy_elec_cents_per_kwh_without_sys'] = agent['fy_bill_without_sys'] / agent['load_kwh_per_customer_in_bin']
 
     #=========================================================================#

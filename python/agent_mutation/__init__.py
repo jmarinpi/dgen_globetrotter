@@ -1,5 +1,6 @@
 import elec
 import agent_preparation
+import numpy as np
 
 
 def init_solar_agents(model_settings, scenario_settings, cur, con):
@@ -33,7 +34,12 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     # Rename 'pca_reg' to 'ba', to align with the same change in ReEDS's - TODO: fix this in initial agent gen
     #==============================================================================
     agents_df['ba'] = agents_df['pca_reg']
-    agents_df.drop(['pca_reg'], axis=1, inplace=True)             
+    agents_df.drop(['pca_reg'], axis=1, inplace=True)          
+    
+    # There was a problem where an agent was being generated that had no customers in the bin, but load in the bin
+    # This is a temporary patch to get the model to run in this scenario
+    agents_df['customers_in_bin'] = np.where(agents_df['customers_in_bin']==0, 1, agents_df['customers_in_bin'])
+    agents_df['load_kwh_per_customer_in_bin'] = np.where(agents_df['load_kwh_per_customer_in_bin']==0, 1, agents_df['load_kwh_per_customer_in_bin'])
 
 
 #    #==============================================================================
