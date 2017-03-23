@@ -54,37 +54,27 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 #==============================================================
                 # NOTE: each of these functions is dependent on the last, so
                 # changes from one must be cascaded to the others
-                sample_blocks(schema, sector_abbr, county_chunks,
-                              agents_per_region, seed, pool, pg_conn_string)
-                add_agent_ids(schema, sector_abbr, 'initial',
-                              county_chunks, pool, pg_conn_string, con, cur)
-                sample_building_microdata(
-                    schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
-                convolve_block_and_building_samples(
-                    schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
-                sample_agent_utility_type(
-                    schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
-                calculate_max_demand(
-                    schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
+                sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
+                add_agent_ids(schema, sector_abbr, 'initial', county_chunks, pool, pg_conn_string, con, cur)
+                sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
+                convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
+                sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
+                calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
 
                 #==============================================================
                 #     impose agent level siting  attributes (i.e., "tech potential")
                 #==============================================================
                 # SOLAR
-                simulate_roof_characteristics(
-                    county_chunks, pool, pg_conn_string, con, schema, sector_abbr, seed)
+                simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, schema, sector_abbr, seed)
 
                 # WIND
-                determine_allowable_turbine_heights(
-                    county_chunks, pool, pg_conn_string, schema, sector_abbr)
-                find_potential_turbine_sizes(
-                    county_chunks, cur, con, pool, pg_conn_string, schema, sector_abbr)
+                determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, schema, sector_abbr)
+                find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, schema, sector_abbr)
 
                 #==============================================================
                 #     combine all pieces into a single table
                 #==============================================================
-                combine_all_attributes(
-                    county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr)
+                combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr)
 
         #======================================================================
         #     create a view that combines all sectors and techs
@@ -94,8 +84,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
         #======================================================================
         #    drop the intermediate tables
         #======================================================================
-        cleanup_intermediate_tables(
-            schema, sectors, county_chunks, pg_conn_string, cur, con, pool)
+        cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, cur, con, pool)
 
     except:
         # roll back any transactions

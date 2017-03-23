@@ -20,8 +20,6 @@ import multiprocessing as mp
 import concurrent.futures as concur_f
 
 # Import from support function repo
-import sys
-sys.path.append('/srv/data/home/mrossol/Support_Functions')
 import tariff_functions as tFuncs
 from agent_mutation import (get_depreciation_schedule,
                             get_leasing_availability,
@@ -1434,12 +1432,12 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
 
     # reproduce these columns as "initial" columns too
     dataframe['initial_number_of_adopters'] = dataframe['number_of_adopters_last_year']
-    dataframe['initial_capacity_mw'] = dataframe['pv_kw_cum_last_year'] / 1000.
+    dataframe['initial_pv_kw'] = dataframe['pv_kw_cum_last_year']
     dataframe['initial_market_share'] = dataframe['market_share_last_year']
     dataframe['initial_market_value'] = 0
 
     # isolate the return columns
-    return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value',
+    return_cols = ['initial_number_of_adopters', 'initial_pv_kw', 'initial_market_share', 'initial_market_value',
                    'number_of_adopters_last_year', 'pv_kw_cum_last_year', 'batt_kw_cum_last_year', 'batt_kwh_cum_last_year', 'market_share_last_year']
 
     dataframe[return_cols] = dataframe[return_cols].fillna(0)
@@ -1471,7 +1469,7 @@ def apply_market_last_year(dataframe, market_last_year_df):
 def estimate_total_generation(dataframe):
 
     dataframe['total_gen_twh'] = ((dataframe['number_of_adopters'] - dataframe['initial_number_of_adopters'])
-                                  * dataframe['aep'] * 1e-9) + (0.23 * 8760 * dataframe['initial_capacity_mw'] * 1e-6)
+                                  * dataframe['aep'] * 1e-9) + (0.23 * 8760 * dataframe['initial_pv_kw'] * 1e-6)
 
     return dataframe
 

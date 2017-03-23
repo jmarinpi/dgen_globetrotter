@@ -62,12 +62,15 @@ def calc_system_size_and_financial_performance(agent):
 
     # Create battery object
     batt = dFuncs.Battery()
+    batt_ratio = 3.0
 
     tariff_dict = agent['tariff_dict']
     tariff = tFuncs.Tariff(dict_obj=tariff_dict)
 
     original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
-    
+    agent['fy_bill_without_sys'] = original_bill * agent['elec_price_multiplier']
+    agent['fy_elec_cents_per_kwh_without_sys'] = agent['fy_bill_without_sys'] / agent['load_kwh_per_customer_in_bin']
+
     #=========================================================================#
     # Estimate bill savings revenue from a set of solar+storage system sizes
     #=========================================================================#    
@@ -98,10 +101,9 @@ def calc_system_size_and_financial_performance(agent):
     system_df = pd.DataFrame(gFuncs.cartesian([pv_sizes, batt_powers]), columns=['pv', 'batt'])
     system_df['est_bills'] = None
     n_sys = len(system_df)
-    deg_ten_years = (1 - agent['pv_deg'])**10.0
     
     for i in system_df.index:    
-        pv_size = system_df['pv'][i].copy() * deg_ten_years
+        pv_size = system_df['pv'][i].copy()
         load_and_pv_profile = load_profile - pv_size*pv_cf_profile
         
         if pv_size<=agent['nem_system_size_limit_kw']:
@@ -110,8 +112,7 @@ def calc_system_size_and_financial_performance(agent):
             export_tariff.set_constant_sell_price(agent['wholesale_elec_price'])
 
         batt_power = system_df['batt'][i].copy()
-        batt.set_cap_and_power(batt_power*3.0, batt_power)  
-        batt.set_cycle_deg(1500) #Setting degradation to 86%, which is the weighted "average" capacity over a 10 year period, where weight of degradation is discounted at 8% annually
+        batt.set_cap_and_power(batt_power*batt_ratio, batt_power)  
 
         if batt_power > 0:
             estimator_params = est_params_df.loc[system_df['pv'][i].copy(), 'estimator_params']
@@ -128,7 +129,8 @@ def calc_system_size_and_financial_performance(agent):
     est_bill_savings = np.zeros([n_sys, agent['economic_lifetime']+1])
     est_bill_savings[:,1:] = avg_est_bill_savings
     escalator = (np.zeros(agent['economic_lifetime']+1) + agent['elec_price_escalator'] + 1)**range(agent['economic_lifetime']+1)
-    est_bill_savings = est_bill_savings * escalator
+    degradation = (np.zeros(agent['economic_lifetime']+1) + 1 - agent['pv_deg'])**range(agent['economic_lifetime']+1)
+    est_bill_savings = est_bill_savings * escalator * degradation
     system_df['est_bill_savings'] = est_bill_savings[:, 1]
         
     # simple representation of 70% minimum of batt charging from PV in order to
@@ -140,7 +142,7 @@ def calc_system_size_and_financial_performance(agent):
     #=========================================================================#  
     cf_results_est = fFuncs.cashflow_constructor(est_bill_savings, 
                          np.array(system_df['pv']), agent['pv_price_per_kw'], agent['pv_om_per_kw'],
-                         np.array(system_df['batt'])*3, np.array(system_df['batt']), 
+                         np.array(system_df['batt'])*batt_ratio, np.array(system_df['batt']), 
                          agent['batt_price_per_kw'], agent['batt_price_per_kwh'], 
                          agent['batt_om_per_kw'], agent['batt_om_per_kwh'],
                          batt_chg_frac,
@@ -158,9 +160,8 @@ def calc_system_size_and_financial_performance(agent):
 
     opt_pv_size = system_df['pv'][index_of_best_fin_perform_ho].copy()
     opt_batt_power = system_df['batt'][index_of_best_fin_perform_ho].copy()
-    opt_batt_cap = opt_batt_power*3.0
+    opt_batt_cap = opt_batt_power*batt_ratio
     batt.set_cap_and_power(opt_batt_cap, opt_batt_power) 
-    batt.set_cycle_deg(1500)
     load_and_pv_profile = load_profile - opt_pv_size*pv_cf_profile
     if opt_pv_size<=agent['nem_system_size_limit_kw']:
         export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
@@ -171,11 +172,16 @@ def calc_system_size_and_financial_performance(agent):
     # Determine dispatch trajectory for chosen system size
     #=========================================================================#     
     
-    accurate_results = dFuncs.determine_optimal_dispatch(load_profile, opt_pv_size*pv_cf_profile*deg_ten_years, batt, tariff, export_tariff, estimated=False, d_inc_n=d_inc_n_acc, DP_inc=DP_inc_acc)
+    accurate_results = dFuncs.determine_optimal_dispatch(load_profile, opt_pv_size*pv_cf_profile, batt, tariff, export_tariff, estimated=False, d_inc_n=d_inc_n_acc, DP_inc=DP_inc_acc)
     opt_bill = accurate_results['bill_under_dispatch']   
+    agent['fy_bill_with_sys'] = opt_bill * agent['elec_price_multiplier']
+    agent['fy_bill_savings'] = agent['fy_bill_without_sys'] - agent['fy_bill_with_sys']
+    agent['fy_bill_savings_frac'] = agent['fy_bill_savings'] / agent['fy_bill_without_sys']
     opt_bill_savings = np.zeros([1, agent['economic_lifetime']+1])
     opt_bill_savings[:, 1:] = (original_bill - opt_bill)
-    opt_bill_savings = opt_bill_savings * agent['elec_price_multiplier'] * escalator
+    opt_bill_savings = opt_bill_savings * agent['elec_price_multiplier'] * escalator * degradation
+    
+    # If the batt kW is less than 25% of the PV kW, apply the ITC
     if opt_pv_size >= opt_batt_power*4:
         batt_chg_frac = 1.0
     else:
@@ -183,7 +189,7 @@ def calc_system_size_and_financial_performance(agent):
 
     cf_results_opt = fFuncs.cashflow_constructor(opt_bill_savings, 
                      opt_pv_size, agent['pv_price_per_kw'], agent['pv_om_per_kw'],
-                     opt_batt_power*3, opt_batt_power, 
+                     opt_batt_cap, opt_batt_power, 
                      agent['batt_price_per_kw'], agent['batt_price_per_kwh'], 
                      agent['batt_om_per_kw'], agent['batt_om_per_kwh'],
                      batt_chg_frac,
