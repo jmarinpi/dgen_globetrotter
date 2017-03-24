@@ -300,7 +300,8 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
 
     outputs_df['installed_capacity'] = outputs_df['pv_kw_cum']
     outputs_df['installed_capacity_last_year'] = outputs_df['pv_kw_cum_last_year']
-    outputs_df['new_capacity'] = outputs_df['new_pv_kw']  
+    outputs_df['new_capacity'] = outputs_df['new_pv_kw']
+    outputs_df['initial_capacity_mw'] = outputs_df['initial_pv_kw'] 
     outputs_df['system_size_kw'] = outputs_df['pv_kw']
     outputs_df['installed_costs_dollars_per_kw'] = outputs_df['pv_price_per_kw']
     outputs_df['fixed_om_dollars_per_kw_per_yr'] = outputs_df['pv_om_per_kw']

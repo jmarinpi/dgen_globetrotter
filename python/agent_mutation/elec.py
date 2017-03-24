@@ -8,6 +8,7 @@ Created on Mon Jun  6 11:35:14 2016
 import psycopg2 as pg
 import numpy as np
 import pandas as pd
+import random
 import decorators
 import utility_functions as utilfunc
 import traceback
@@ -20,8 +21,6 @@ import multiprocessing as mp
 import concurrent.futures as concur_f
 
 # Import from support function repo
-import sys
-sys.path.append('/srv/data/home/mrossol/Support_Functions')
 import tariff_functions as tFuncs
 from agent_mutation import (get_depreciation_schedule,
                             get_leasing_availability,
@@ -61,6 +60,14 @@ def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cp
             else:
                 rate_list = agent_rate_list['rate_id_alias']
             agent_rate_jsons = rates_json_df[rates_json_df.index.isin(rate_list)]
+            
+            # There can be more than one utility that is potentially applicable
+            # to each agent (e.g., if the agent is in a county where more than 
+            # one utility has service). Select which one by random.
+            utility_list = np.unique(agent_rate_jsons['eia_id'])
+            utility_id = random.choice(utility_list)
+            agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
+            
             futures.append(executor.submit(select_tariff, agent, agent_rate_jsons))
 
         results = [future.result() for future in futures]
@@ -69,7 +76,6 @@ def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cp
     agent_df.index.name = 'agent_id'
 
     return agent_df
-
 
 #%%
 def select_tariff(agent, rates_json_df):
@@ -455,10 +461,6 @@ def calculate_developable_customers_and_load(dataframe):
     dataframe['developable_customers_in_bin'] = dataframe['pct_of_bldgs_developable'] * dataframe['customers_in_bin']
 
     dataframe['developable_load_kwh_in_bin'] = dataframe['pct_of_bldgs_developable'] * dataframe['load_kwh_in_bin']
-
-    # There was a problem where an agent was being generated that had no customers in the bin, but load in the bin
-    # This is a temporary patch to get the model to run in this scenario
-    dataframe['developable_customers_in_bin'] = np.where(dataframe['developable_customers_in_bin']==0, 1, dataframe['developable_customers_in_bin'])
 
     dataframe = dataframe.set_index('agent_id')
 
@@ -1436,12 +1438,12 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
 
     # reproduce these columns as "initial" columns too
     dataframe['initial_number_of_adopters'] = dataframe['number_of_adopters_last_year']
-    dataframe['initial_capacity_mw'] = dataframe['pv_kw_cum_last_year'] / 1000.
+    dataframe['initial_pv_kw'] = dataframe['pv_kw_cum_last_year']
     dataframe['initial_market_share'] = dataframe['market_share_last_year']
     dataframe['initial_market_value'] = 0
 
     # isolate the return columns
-    return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value',
+    return_cols = ['initial_number_of_adopters', 'initial_pv_kw', 'initial_market_share', 'initial_market_value',
                    'number_of_adopters_last_year', 'pv_kw_cum_last_year', 'batt_kw_cum_last_year', 'batt_kwh_cum_last_year', 'market_share_last_year', 'market_value_last_year']
 
     dataframe[return_cols] = dataframe[return_cols].fillna(0)
@@ -1473,7 +1475,7 @@ def apply_market_last_year(dataframe, market_last_year_df):
 def estimate_total_generation(dataframe):
 
     dataframe['total_gen_twh'] = ((dataframe['number_of_adopters'] - dataframe['initial_number_of_adopters'])
-                                  * dataframe['aep'] * 1e-9) + (0.23 * 8760 * dataframe['initial_capacity_mw'] * 1e-6)
+                                  * dataframe['aep'] * 1e-9) + (0.23 * 8760 * dataframe['initial_pv_kw'] * 1e-6)
 
     return dataframe
 

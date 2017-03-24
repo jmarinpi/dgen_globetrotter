@@ -79,7 +79,7 @@ def calc_diffusion_solar(df, is_first_year, bass_params,
 
     df = df.set_index('agent_id')
     market_last_year = df[['market_share', 'max_market_share', 'number_of_adopters',
-                            'market_value', 'initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value',
+                            'market_value', 'initial_number_of_adopters', 'initial_pv_kw', 'initial_market_share', 'initial_market_value',
                             'pv_kw_cum', 'new_pv_kw', 'batt_kw_cum', 'batt_kwh_cum']]
 
     market_last_year.rename(columns={'market_share':'market_share_last_year', 
