@@ -40,6 +40,7 @@ def calc_system_size_and_financial_performance(agent):
     #=========================================================================#
     # Setup
     #=========================================================================#
+    print agent['county_id']
     # Set resolution of dispatcher    
     d_inc_n_est = 10    
     DP_inc_est = 12

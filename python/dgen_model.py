@@ -120,13 +120,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # CREATE AGENTS
             #==========================================================================================================
             logger.info("--------------Creating Agents---------------")
-
+            
             if scenario_settings.techs in [['wind'], ['solar']]:
+                use_existing_agents = True
                 # =========================================================
                 # Initialize agents
-                # =========================================================
-                solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
-                
+                # =========================================================                
+                if use_existing_agents==True:
+                    solar_agents = Agents(pd.read_pickle('%s/agent_df_merge.pkl' % model_settings.input_agent_dir))
+                else:
+                    solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
+                    
                 # Write base agents to disk
                 solar_agents.df.to_pickle(out_scen_path + '/agent_df_base.pkl')
 
