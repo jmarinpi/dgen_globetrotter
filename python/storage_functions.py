@@ -167,6 +167,9 @@ def calc_system_size_and_financial_performance(agent):
     else:
         export_tariff.set_constant_sell_price(agent['wholesale_elec_price'])
 
+    # add system size class
+    system_size_breaks = [0.0, 2.5, 5.0, 10.0, 20.0, 50.0, 100.0, 250.0, 500.0, 750.0, 1000.0, 1500.0, 3000.0]
+    
     #=========================================================================#
     # Determine dispatch trajectory for chosen system size
     #=========================================================================#     
@@ -203,5 +206,10 @@ def calc_system_size_and_financial_performance(agent):
     agent['cash_flow'] = cf_results_opt['cf'][0]
     agent['batt_dispatch_profile'] = accurate_results['batt_dispatch_profile']
     
+    agent['bill_savings'] = opt_bill_savings
+    agent['aep'] = agent['pv_kw'] * agent['naep']
+    agent['cf'] = agent['naep']/8760
+    agent['system_size_factors'] = np.where(agent['pv_kw'] == 0, 0, pd.cut([agent['pv_kw']], system_size_breaks))[0]
+
 #    print "Opt PV:", opt_pv_size, np.round(opt_pv_size/agent['max_pv_size'],2), ", opt batt kW:", opt_batt_power, np.round(opt_batt_power/opt_pv_size,2) 
     return agent

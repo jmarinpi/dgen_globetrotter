@@ -251,6 +251,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Calculate diffusion based on economics and bass diffusion
                     solar_agents.df, market_last_year_df = diffusion_functions_elec.calc_diffusion_solar(solar_agents.df, is_first_year, bass_params)
                     
+                    # Estimate total generation
+                    solar_agents.on_frame(agent_mutation.elec.estimate_total_generation)
+
                     # Aggregate results
                     scenario_settings.output_batt_dispatch_profiles = True
                     if is_first_year==True:
@@ -268,7 +271,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     if write_annual_agents==True:                    
                         solar_agents.df.drop(['consumption_hourly', 'solar_cf_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
-
+                    # Write Outputs to the database
+                    datfunc.write_outputs(con, cur, solar_agents.df, scenario_settings.sectors, scenario_settings.schema)
+                    
             elif scenario_settings.techs == ['wind']:
                 logger.error('Wind not yet supported')
                 break
@@ -295,7 +300,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
             #####################################################################
             # drop the new scenario_settings.schema
-            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, model_settings.delete_output_schema)
+            #datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, model_settings.delete_output_schema)
             #####################################################################
 
             logger.info("-------------Model Run Complete-------------")

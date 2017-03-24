@@ -293,6 +293,19 @@ def write_outputs(con, cur, outputs_df, sectors, schema):
 
     inputs = locals().copy()
 
+    # temporary patch to make scenario outputs working
+    # To do - Need to recreate agents_outputs schema once wind, geo attributes 
+    # are finalized and added and also need to decide on the accepted variable naming
+    # conventions and delete the other
+
+    outputs_df['installed_capacity'] = outputs_df['pv_kw_cum']
+    outputs_df['installed_capacity_last_year'] = outputs_df['pv_kw_cum_last_year']
+    outputs_df['new_capacity'] = outputs_df['new_pv_kw']  
+    outputs_df['system_size_kw'] = outputs_df['pv_kw']
+    outputs_df['installed_costs_dollars_per_kw'] = outputs_df['pv_price_per_kw']
+    outputs_df['fixed_om_dollars_per_kw_per_yr'] = outputs_df['pv_om_per_kw']
+    outputs_df['variable_om_dollars_per_kwh'] = outputs_df['pv_variable_om_per_kw'] 
+       
     # set fields to write
     fields = ['selected_option',
               'tech',

@@ -63,23 +63,29 @@ def calc_diffusion_solar(df, is_first_year, bass_params,
 
     # calculate new adopters, capacity and market value            
     df['new_adopters'] = df['new_market_share'] * df['developable_customers_in_bin']
+    df['new_market_value'] = df['new_adopters'] * df['pv_kw'] * df['pv_price_per_kw']
+
     df['new_pv_kw'] = df['new_adopters'] * df['pv_kw']
     df['new_batt_kw'] = df['new_adopters'] * df['batt_kw']
     df['new_batt_kwh'] = df['new_adopters'] * df['batt_kwh']
 
     # then add these values to values from last year to get cumulative values:
     df['number_of_adopters'] = df['number_of_adopters_last_year'] + df['new_adopters']
+    df['market_value'] = df['market_value_last_year'] + df['new_market_value']
+
     df['pv_kw_cum'] = df['pv_kw_cum_last_year'] + df['new_pv_kw']
     df['batt_kw_cum'] = df['batt_kw_cum_last_year'] + df['new_batt_kw']
     df['batt_kwh_cum'] = df['batt_kwh_cum_last_year'] + df['new_batt_kwh']
 
     df = df.set_index('agent_id')
-    market_last_year = df[['market_share', 'max_market_share', 'number_of_adopters', 
-                           'pv_kw_cum', 'batt_kw_cum', 'batt_kwh_cum']]
+    market_last_year = df[['market_share', 'max_market_share', 'number_of_adopters',
+                            'market_value', 'initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value',
+                            'pv_kw_cum', 'new_pv_kw', 'batt_kw_cum', 'batt_kwh_cum']]
 
     market_last_year.rename(columns={'market_share':'market_share_last_year', 
                                'max_market_share':'max_market_share_last_year',
                                'number_of_adopters':'number_of_adopters_last_year',
+                               'market_value': 'market_value_last_year',
                                'pv_kw_cum':'pv_kw_cum_last_year',
                                'batt_kw_cum':'batt_kw_cum_last_year',
                                'batt_kwh_cum':'batt_kwh_cum_last_year'}, inplace=True)

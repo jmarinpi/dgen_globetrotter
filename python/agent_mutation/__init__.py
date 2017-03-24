@@ -27,7 +27,7 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     # Drop some unused columns - TODO: remove these from agent gen
     #==============================================================================
     agents_df.drop(['util_type'], axis=1, inplace=True)             
-    agents_df.drop(['sector'], axis=1, inplace=True)             
+    #agents_df.drop(['sector'], axis=1, inplace=True)             
                                               
     #==============================================================================
     # Rename 'pca_reg' to 'ba', to align with the same change in ReEDS's - TODO: fix this in initial agent gen

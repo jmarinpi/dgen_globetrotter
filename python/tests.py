@@ -25,7 +25,7 @@ def check_dependencies():
         else:
             package, version = [requirement, '']
 
-        # try to lood the package
+        # try to load the package
         try:
             installed = __import__(package)
         except:

@@ -49,7 +49,8 @@ Rscript_paths = ['/usr/bin/Rscript','C:/Users/mgleason/Documents/R/R-3.0.2/bin/R
 support_repo_paths = ['support_functions/python',
 					  'C:/users/pgagnon/desktop/support_functions/python',
                       '/Users/mmooney/Documents/github/support_functions/python',
-                      '/srv/data/home/pgagnon/support_functions/python']
+                      '/srv/data/home/pgagnon/support_functions/python',
+                      '/home/pdas/github/support_functions/python']
 for path in support_repo_paths:
     sys.path.append(path)
 

@@ -49,21 +49,24 @@ def ingest_pv_price_trajectories(scenario_settings):
     pv_price_traj.to_csv(scenario_settings.dir_to_write_input_data + '/pv_prices.csv', index=False)
     
     res_df = pd.DataFrame(pv_price_traj['year'])
-    res_df = pv_price_traj[['year', 'pv_price_res', 'pv_om_res']]
+    res_df = pv_price_traj[['year', 'pv_price_res', 'pv_om_res', 'pv_variable_om_res']]
     res_df.rename(columns={'pv_price_res':'pv_price_per_kw', 
-                           'pv_om_res':'pv_om_per_kw'}, inplace=True)
+                           'pv_om_res':'pv_om_per_kw',
+                           'pv_variable_om_res':'pv_variable_om_per_kw'}, inplace=True)
     res_df['sector_abbr'] = 'res'
     
     com_df = pd.DataFrame(pv_price_traj['year'])
-    com_df = pv_price_traj[['year', 'pv_price_com', 'pv_om_com']]
+    com_df = pv_price_traj[['year', 'pv_price_com', 'pv_om_com', 'pv_variable_om_com']]
     com_df.rename(columns={'pv_price_com':'pv_price_per_kw', 
-                           'pv_om_com':'pv_om_per_kw'}, inplace=True)
+                           'pv_om_com':'pv_om_per_kw',
+                           'pv_variable_om_com':'pv_variable_om_per_kw'}, inplace=True)
     com_df['sector_abbr'] = 'com'
     
     ind_df = pd.DataFrame(pv_price_traj['year'])
-    ind_df = pv_price_traj[['year', 'pv_price_ind', 'pv_om_ind']]
+    ind_df = pv_price_traj[['year', 'pv_price_ind', 'pv_om_ind', 'pv_variable_om_ind']]
     ind_df.rename(columns={'pv_price_ind':'pv_price_per_kw', 
-                           'pv_om_ind':'pv_om_per_kw'}, inplace=True)
+                           'pv_om_ind':'pv_om_per_kw',
+                           'pv_variable_om_ind':'pv_variable_om_per_kw'}, inplace=True)
     ind_df['sector_abbr'] = 'ind'
     
     pv_price_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)

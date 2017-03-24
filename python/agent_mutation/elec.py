@@ -1432,6 +1432,8 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
     dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0, 0,
                                                    dataframe['number_of_adopters_last_year'] / dataframe['developable_customers_in_bin'])
 
+    dataframe['market_value_last_year'] = dataframe['pv_price_per_kw'] * dataframe['pv_kw_cum_last_year']
+
     # reproduce these columns as "initial" columns too
     dataframe['initial_number_of_adopters'] = dataframe['number_of_adopters_last_year']
     dataframe['initial_capacity_mw'] = dataframe['pv_kw_cum_last_year'] / 1000.
@@ -1440,7 +1442,7 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
 
     # isolate the return columns
     return_cols = ['initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share', 'initial_market_value',
-                   'number_of_adopters_last_year', 'pv_kw_cum_last_year', 'batt_kw_cum_last_year', 'batt_kwh_cum_last_year', 'market_share_last_year']
+                   'number_of_adopters_last_year', 'pv_kw_cum_last_year', 'batt_kw_cum_last_year', 'batt_kwh_cum_last_year', 'market_share_last_year', 'market_value_last_year']
 
     dataframe[return_cols] = dataframe[return_cols].fillna(0)
 
