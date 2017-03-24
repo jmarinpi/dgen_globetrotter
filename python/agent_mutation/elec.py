@@ -8,6 +8,7 @@ Created on Mon Jun  6 11:35:14 2016
 import psycopg2 as pg
 import numpy as np
 import pandas as pd
+import random
 import decorators
 import utility_functions as utilfunc
 import traceback
@@ -59,6 +60,14 @@ def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cp
             else:
                 rate_list = agent_rate_list['rate_id_alias']
             agent_rate_jsons = rates_json_df[rates_json_df.index.isin(rate_list)]
+            
+            # There can be more than one utility that is potentially applicable
+            # to each agent (e.g., if the agent is in a county where more than 
+            # one utility has service). Select which one by random.
+            utility_list = np.unique(agent_rate_jsons['eia_id'])
+            utility_id = random.choice(utility_list)
+            agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
+            
             futures.append(executor.submit(select_tariff, agent, agent_rate_jsons))
 
         results = [future.result() for future in futures]
@@ -67,7 +76,6 @@ def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cp
     agent_df.index.name = 'agent_id'
 
     return agent_df
-
 
 #%%
 def select_tariff(agent, rates_json_df):
@@ -453,10 +461,6 @@ def calculate_developable_customers_and_load(dataframe):
     dataframe['developable_customers_in_bin'] = dataframe['pct_of_bldgs_developable'] * dataframe['customers_in_bin']
 
     dataframe['developable_load_kwh_in_bin'] = dataframe['pct_of_bldgs_developable'] * dataframe['load_kwh_in_bin']
-
-    # There was a problem where an agent was being generated that had no customers in the bin, but load in the bin
-    # This is a temporary patch to get the model to run in this scenario
-    dataframe['developable_customers_in_bin'] = np.where(dataframe['developable_customers_in_bin']==0, 1, dataframe['developable_customers_in_bin'])
 
     dataframe = dataframe.set_index('agent_id')
 
