@@ -41,6 +41,62 @@ pg.extensions.register_type(DEC2FLOAT)
 
 
 
+#%%
+def adjust_roof_area(agent_df):
+    '''
+    Temporary function to make the roof areas of the agent_df equal the roof
+    area from lidar data. 
+
+    Note that this assumes small buildings == res and all others equal nonres,
+    which we know is not true. This approach leads to some definitely 
+    incorrect results - e.g., C&I buildings in ID, WY, MT and others are
+    reduced to single-digit percentages of initial roof areas. I am proceeding,
+    because total roof area is more critical at the moment.
+    
+    This should be handled separately in agent generation, eventually.
+    '''
+    
+    roof_areas = pd.read_csv('developable_roof_areas.csv')
+    roof_areas['actual_developable_roof_sqft'] = roof_areas['developable_roof_sqft']
+    res_actual_areas = roof_areas[['actual_developable_roof_sqft', 'state_abbr']][roof_areas['sector_abbr']=='res']
+    nonres_actual_areas = roof_areas[['actual_developable_roof_sqft', 'state_abbr']][roof_areas['sector_abbr']!='res']
+    
+    agent_df = agent_df.reset_index()
+    agent_df_thin = agent_df[['developable_roof_sqft', 'customers_in_bin', 'state_abbr', 'sector_abbr']]
+    
+    res_df = agent_df_thin[agent_df_thin['sector_abbr']=='res']
+    nonres_df = agent_df_thin[agent_df_thin['sector_abbr']!='res']
+    
+    res_df['total_developable_roof_sqft'] = res_df['developable_roof_sqft'] * res_df['customers_in_bin']
+    nonres_df['total_developable_roof_sqft'] = nonres_df['developable_roof_sqft'] * nonres_df['customers_in_bin']
+    
+    
+    res_areas = res_df[['state_abbr', 'total_developable_roof_sqft']].groupby(by='state_abbr').sum()
+    nonres_areas = nonres_df[['state_abbr', 'total_developable_roof_sqft']].groupby(by='state_abbr').sum()
+    res_areas = res_areas.reset_index()
+    nonres_areas = nonres_areas.reset_index()
+    
+    res_areas = pd.merge(res_areas, res_actual_areas, on='state_abbr')
+    nonres_areas = pd.merge(nonres_areas, nonres_actual_areas, on='state_abbr')
+    
+    res_areas['roof_adjustment'] = res_areas['actual_developable_roof_sqft'] / res_areas['total_developable_roof_sqft'] 
+    nonres_areas['roof_adjustment'] = nonres_areas['actual_developable_roof_sqft'] / nonres_areas['total_developable_roof_sqft'] 
+    com_areas = nonres_areas.copy()
+    ind_areas = nonres_areas.copy()
+    
+    res_areas['sector_abbr'] = 'res'
+    com_areas['sector_abbr'] = 'com'
+    ind_areas['sector_abbr'] = 'ind'
+    
+    all_areas = pd.concat([res_areas, com_areas, ind_areas])
+    
+    agent_df = pd.merge(agent_df, all_areas[['roof_adjustment', 'state_abbr', 'sector_abbr']], on=['sector_abbr', 'state_abbr'])
+    
+    agent_df['developable_roof_sqft'] = agent_df['developable_roof_sqft'] * agent_df['roof_adjustment']
+    
+    agent_df = agent_df.set_index('agent_id')
+    
+    return agent_df
 
 #%%
 def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):

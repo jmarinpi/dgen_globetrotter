@@ -41,7 +41,12 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     agents_df['customers_in_bin'] = np.where(agents_df['customers_in_bin']==0, 1, agents_df['customers_in_bin'])
     agents_df['load_kwh_per_customer_in_bin'] = np.where(agents_df['load_kwh_per_customer_in_bin']==0, 1, agents_df['load_kwh_per_customer_in_bin'])
 
-
+    #==============================================================================
+    # ADJUST ROOF AREAS TO ALIGN WITH LIDAR DATA ON SECTOR/STATE LEVEL
+    # TODO: Improve this in actual agent generation
+    #==============================================================================
+    agents_df = elec.adjust_roof_area(agents_df)
+    
 #    #==============================================================================
 #    # CHECK TECH POTENTIAL LIMITS
 #    #==============================================================================
