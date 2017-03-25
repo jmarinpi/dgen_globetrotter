@@ -138,7 +138,10 @@ def calc_system_size_and_financial_performance(agent):
     # simple representation of 70% minimum of batt charging from PV in order to
     # qualify for the ITC. Here, if batt kW is greater than 25% of PV kW, no ITC.
     batt_chg_frac = np.where(system_df['pv'] >= system_df['batt']*4.0, 1.0, 0)
-                
+    
+    if agent['year'] <= 2016: cash_incentives = np.array(system_df['pv']) * agent['pv_price_per_kw'] * 0.3
+    else: cash_incentives = np.array([0])
+        
     #=========================================================================#
     # Determine financial performance of each system size
     #=========================================================================#  
@@ -151,7 +154,8 @@ def calc_system_size_and_financial_performance(agent):
                          agent['sector_abbr'], agent['itc_fraction'], agent['deprec_sch'], 
                          agent['tax_rate'], 0, agent['real_discount'],  
                          agent['economic_lifetime'], agent['inflation'], 
-                         agent['down_payment'], agent['loan_rate'], agent['loan_term'])
+                         agent['down_payment'], agent['loan_rate'], agent['loan_term'],
+                         cash_incentives=cash_incentives)
                     
     system_df['npv'] = cf_results_est['npv']
    
@@ -192,6 +196,10 @@ def calc_system_size_and_financial_performance(agent):
     else:
         batt_chg_frac = 0.0
 
+
+    if agent['year'] <= 2016: cash_incentives = np.array([opt_pv_size * agent['pv_price_per_kw'] * 0.3])
+    else: cash_incentives = np.array([0])
+    
     cf_results_opt = fFuncs.cashflow_constructor(opt_bill_savings, 
                      opt_pv_size, agent['pv_price_per_kw'], agent['pv_om_per_kw'],
                      opt_batt_cap, opt_batt_power, 
@@ -201,7 +209,8 @@ def calc_system_size_and_financial_performance(agent):
                      agent['sector_abbr'], agent['itc_fraction'], agent['deprec_sch'], 
                      agent['tax_rate'], 0, agent['real_discount'],  
                      agent['economic_lifetime'], agent['inflation'], 
-                     agent['down_payment'], agent['loan_rate'], agent['loan_term']) 
+                     agent['down_payment'], agent['loan_rate'], agent['loan_term'],
+                     cash_incentives=cash_incentives) 
                      
     #=========================================================================#
     # Package results

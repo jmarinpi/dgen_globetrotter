@@ -444,7 +444,18 @@ def apply_load_growth(dataframe, load_growth_df):
     dataframe = dataframe.reset_index()
 
     dataframe = pd.merge(dataframe, load_growth_df, how='left', on=['sector_abbr', 'census_division_abbr'])
-    dataframe['customers_in_bin'] = dataframe['customers_in_bin'] * dataframe['load_multiplier']
+    
+    # for res, load growth translates to kwh_per_customer change
+    dataframe['load_kwh_per_customer_in_bin'] = np.where(dataframe['sector_abbr']=='res',
+                                                dataframe['load_kwh_per_customer_in_bin'] * dataframe['load_multiplier'],
+                                                dataframe['load_kwh_per_customer_in_bin'])
+                                                
+    # for C&I, load growth translates to customer count change
+    dataframe['customers_in_bin'] = np.where(dataframe['sector_abbr']!='res',
+                                                dataframe['customers_in_bin'] * dataframe['load_multiplier'],
+                                                dataframe['customers_in_bin'])
+                                                
+    # for all sectors, total kwh_in_bin changes
     dataframe['load_kwh_in_bin'] = dataframe['load_kwh_in_bin'] * dataframe['load_multiplier']
     
     dataframe = dataframe.set_index('agent_id')

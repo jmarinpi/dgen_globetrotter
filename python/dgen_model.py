@@ -122,12 +122,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info("--------------Creating Agents---------------")
             
             if scenario_settings.techs in [['wind'], ['solar']]:
-                use_existing_agents = True
+                use_existing_agents = False
                 # =========================================================
                 # Initialize agents
                 # =========================================================                
                 if use_existing_agents==True:
-                    solar_agents = Agents(pd.read_pickle('%s/agent_df_merge.pkl' % model_settings.input_agent_dir))
+                    solar_agents = Agents(pd.read_pickle('%s/agent_df_merge_DE.pkl' % model_settings.input_agent_dir))
                 else:
                     solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
                     
