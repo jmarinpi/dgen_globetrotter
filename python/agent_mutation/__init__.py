@@ -89,10 +89,9 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     #==============================================================================
     # Set initial year columns. Initial columns do not change, whereas non-initial are adjusted each year
     # note that some of the above operations rely on non-initial name, which should be cleaned up when agent initialization is rebuilt
-    #==============================================================================
-    agents_df['customers_in_bin_initial'] = agents_df['customers_in_bin']             
-    agents_df['load_kwh_per_customer_in_bin_initial'] = agents_df['load_kwh_per_customer_in_bin']             
-    agents_df['load_kwh_in_bin_initial'] = agents_df['load_kwh_in_bin']             
-    agents_df.drop(['customers_in_bin', 'load_kwh_per_customer_in_bin', 'load_kwh_in_bin'], axis=1, inplace=True)  
+    #==============================================================================    
+    agents_df.rename(columns={'customers_in_bin':'customers_in_bin_initial', 
+                               'load_kwh_per_customer_in_bin':'load_kwh_per_customer_in_bin_initial',
+                               'load_kwh_in_bin':'load_kwh_in_bin_initial'}, inplace=True)
 
     return agents_df
