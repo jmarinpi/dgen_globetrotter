@@ -259,6 +259,9 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
     
     elec_price_escalator_df['elec_price_escalator'] = (elec_price_escalator_df['elec_price_multiplier'] / elec_price_escalator_df['historical'])**(1.0/10) - 1.0
 
+    # Set lower bound of escalator at 0, assuming that potential customers would not evaluate declining electricity costs
+    elec_price_escalator_df['elec_price_escalator'] = np.maximum(elec_price_escalator_df['elec_price_escalator'], 0)
+
     dataframe = pd.merge(dataframe, elec_price_multiplier[['elec_price_multiplier', 'sector_abbr', 'census_division_abbr']], how='left', on=['sector_abbr', 'census_division_abbr'])
     dataframe = pd.merge(dataframe, elec_price_escalator_df[['sector_abbr', 'census_division_abbr', 'elec_price_escalator']],
                          how='left', on=['sector_abbr', 'census_division_abbr'])
