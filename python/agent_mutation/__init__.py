@@ -51,7 +51,7 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
 #    # CHECK TECH POTENTIAL LIMITS
 #    #==============================================================================
     # This should happen somewhere after agent generation. It would probably be
-    # best to check # of buildings and roof area, instead of pv tech potential.                
+    # best to check # of buildings and roof area, instead of pv tech potential.           
                              
     # =========================================================================
     # GET NORMALIZED LOAD PROFILES
@@ -85,5 +85,14 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     # AGENT TARIFF SELECTION
     # =========================================================================
     agents_df = elec.select_tariff_driver(agents_df, rates_rank_df, rates_json_df, n_workers=model_settings.local_cores)
+    
+    #==============================================================================
+    # Set initial year columns. Initial columns do not change, whereas non-initial are adjusted each year
+    # note that some of the above operations rely on non-initial name, which should be cleaned up when agent initialization is rebuilt
+    #==============================================================================
+    agents_df['customers_in_bin_initial'] = agents_df['customers_in_bin']             
+    agents_df['load_kwh_per_customer_in_bin_initial'] = agents_df['load_kwh_per_customer_in_bin']             
+    agents_df['load_kwh_in_bin_initial'] = agents_df['load_kwh_in_bin']             
+    agents_df.drop(['customers_in_bin', 'load_kwh_per_customer_in_bin', 'load_kwh_in_bin'], axis=1, inplace=True)  
 
     return agents_df
