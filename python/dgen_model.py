@@ -127,7 +127,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # Initialize agents
                 # =========================================================                
                 if use_existing_agents==True:
-                    solar_agents = Agents(pd.read_pickle('%s/agent_df_merge_DE.pkl' % model_settings.input_agent_dir))
+                    solar_agents = Agents(pd.read_pickle('%s/agent_df_sunShot2030.pkl' % model_settings.input_agent_dir))
                 else:
                     solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
                     
@@ -165,41 +165,42 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 if scenario_settings.scen_name == 'sunShot2030_2cents':
                     scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_2cents.csv' #pv_price_atb16_mid, pv_price_experimental
-                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_high.csv' 
+                    scenario_settings.batt_price_file_name = 'batt_prices_FY17_high.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_2cents.csv'                
 
                 if scenario_settings.scen_name == 'sunShot2030_2cents_lsc':
                     scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_2cents.csv' #pv_price_atb16_mid, pv_price_experimental
-                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_low.csv' 
-                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_2cents.csv'                
+                    scenario_settings.batt_price_file_name = 'batt_prices_FY17_low.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_2cents_battLow.csv'                
 
                 if scenario_settings.scen_name == 'sunShot2030_3cents':
                     scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_3cents.csv' #pv_price_atb16_mid, pv_price_experimental
-                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_high.csv' 
-                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_2cents_battLow.csv'                
+                    scenario_settings.batt_price_file_name = 'batt_prices_FY17_high.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_3cents.csv'                
 
                 if scenario_settings.scen_name == 'sunShot2030_3cents_lsc':
                     scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_3cents.csv' #pv_price_atb16_mid, pv_price_experimental
-                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_low.csv' 
-                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_3cents.csv'                
+                    scenario_settings.batt_price_file_name = 'batt_prices_FY17_low.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_3cents_battLow.csv'                
 
                 if scenario_settings.scen_name == 'sunShot2030_4cents':
                     scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_4cents.csv' #pv_price_atb16_mid, pv_price_experimental
-                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_high.csv' 
-                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_3cents_battLow.csv'                
+                    scenario_settings.batt_price_file_name = 'batt_prices_FY17_high.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_4cents.csv'                
 
                 if scenario_settings.scen_name == 'sunShot2030_4cents_lsc':
                     scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_4cents.csv' #pv_price_atb16_mid, pv_price_experimental
-                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_low.csv' 
-                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_4cents.csv'                
+                    scenario_settings.batt_price_file_name = 'batt_prices_FY17_low.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_4cents_battLow.csv'                
 
                 if scenario_settings.scen_name == 'sunShot2030_atbMid':
                     scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_atbMid.csv' #pv_price_atb16_mid, pv_price_experimental
-                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_high.csv' 
+                    scenario_settings.batt_price_file_name = 'batt_prices_FY17_high.csv' 
                     scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_atbMid.csv'                
 
                 if scenario_settings.scen_name == 'sunShot2030_atbMid_lsc':
                     scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_atbMid.csv' #pv_price_atb16_mid, pv_price_experimental
-                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_low.csv' 
+                    scenario_settings.batt_price_file_name = 'batt_prices_FY17_low.csv' 
                     scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_atbMid_battLow.csv'                
 
                 
