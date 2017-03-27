@@ -137,7 +137,7 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
     
         # write output
         pv_cf_by_ba = pv_cf_by_ba[['ba'] + hour_list]
-        pv_cf_by_ba.round(3).to_csv(out_scen_path + '/dpv_cf_by_ba_and_year.csv', index=False) 
+        pv_cf_by_ba.round(3).to_csv(out_scen_path + '/dpv_cf_by_ba.csv', index=False) 
 
     
     #==========================================================================================================
@@ -177,13 +177,77 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
             dispatch_by_ba_and_year = dispatch_by_ba_and_year[['ba', 'year'] + hour_list] # reorder the columns
             dispatch_by_ba_and_year.round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW.csv', index=False)
     
-    # package results
+
+                                      
+    #==========================================================================================================
+    # Aggregate 8760's into ReEDS timeslices
+    #==========================================================================================================                                        
+    if year==scenario_settings.model_years[-1]:  
+        print "aggregating by timeslice..."                      
+                                                  
+        ba_list = list(pv_cf_by_ba['ba'])
+            
+        ts_list = list()
+        for ts in np.arange(1, 18):
+            ts_list = ts_list + ["H%s" % ts]
+        
+        ts_map = pd.read_csv('timeslice_8760_wH17.csv')
+        ts_map = ts_map[['hour'] + ba_list]
+
+        ts_map_tidy = pd.melt(ts_map, id_vars="hour", value_vars=ba_list, var_name='ba', value_name="ts")
+
+    #==========================================================================================================
+    #==========================================================================================================
+    #==========================================================================================================        
+        ts_cf_tidy = pd.DataFrame(columns=['ba', 'ts'])
+        pv_cf_by_ba.set_index('ba', inplace=True)
+        pv_cf_by_ba = pv_cf_by_ba.transpose()
+        pv_cf_by_ba['hour'] = [int(numeric_string) for numeric_string in pv_cf_by_ba.index.values]
+                
+        pv_cf_by_ba_tidy = pd.melt(pv_cf_by_ba, id_vars='hour', value_vars=ba_list, var_name="ba", value_name="cf")
+            
+        ts_and_cf_tidy = pd.merge(ts_map_tidy, pv_cf_by_ba_tidy, how='left', on=['hour', 'ba'])
+            
+        ts_cf_tidy = ts_and_cf_tidy[['ba', 'cf', 'ts']].groupby(['ba', 'ts']).mean().reset_index()
+                    
+        ts_cf_wide = ts_cf_tidy.pivot(index='ba', columns='ts', values='cf')
+   
+        ts_cf_wide[ts_list].round(3).to_csv(out_scen_path + '/dpv_cf_by_ba_ts.csv')
+                
+        
+    #==========================================================================================================
+    #==========================================================================================================
+    #==========================================================================================================
+        # Dispatch by timeslice
+        ts_dispatch_all_years = pd.DataFrame()
+           
+        for year_i in np.arange(2014, scenario_settings.model_years[-1]+1, 2):
+            dispatch_year = dispatch_by_ba_and_year[dispatch_by_ba_and_year['year']==year_i]
+            dispatch_year = dispatch_year.drop(['year'], axis=1)
+            dispatch_year.set_index('ba', inplace=True)
+            dispatch_year = dispatch_year.transpose()
+            dispatch_year['hour'] = [int(numeric_string) for numeric_string in dispatch_year.index.values]
+                    
+            dispatch_year_tidy = pd.melt(dispatch_year, id_vars='hour', value_vars=ba_list, var_name="ba", value_name="dispatch")
+            
+            ts_and_dispatch_tidy = pd.merge(ts_map_tidy, dispatch_year_tidy, how='left', on=['hour', 'ba'])
+            ts_and_dispatch_tidy_ts = ts_and_dispatch_tidy[['ba', 'dispatch', 'ts']].groupby(['ba', 'ts']).mean().reset_index()
+                
+            ts_dispatch_wide = ts_and_dispatch_tidy_ts.pivot(index='ba', columns='ts', values='dispatch')
+            ts_dispatch_wide['year'] = year_i
+            ts_dispatch_wide['ba'] = ts_dispatch_wide.index.values
+            ts_dispatch_all_years = pd.concat([ts_dispatch_all_years, ts_dispatch_wide], ignore_index=True)    
+                
+        ts_dispatch_all_years[['year']+ts_list].round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW_ts.csv', ignore_index=True)
+        print "done aggregating by timeslice"                      
+
+
+    # package interyear results
     interyear_results_aggregations = {'ba_cum_pv_mw':ba_cum_pv_mw,
                                       'ba_cum_batt_mw':ba_cum_batt_mw,
                                       'ba_cum_batt_mwh':ba_cum_batt_mwh,
                                       'dispatch_all_adopters':dispatch_all_adopters,
                                       'dispatch_by_ba_and_year':dispatch_by_ba_and_year}
-
  
     return interyear_results_aggregations
     

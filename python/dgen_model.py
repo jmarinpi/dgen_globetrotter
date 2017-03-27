@@ -122,12 +122,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info("--------------Creating Agents---------------")
             
             if scenario_settings.techs in [['wind'], ['solar']]:
-                use_existing_agents = False
+                use_existing_agents = True
                 # =========================================================
                 # Initialize agents
                 # =========================================================                
                 if use_existing_agents==True:
-                    solar_agents = Agents(pd.read_pickle('%s/agent_df_sunShot2030.pkl' % model_settings.input_agent_dir))
+                    solar_agents = Agents(pd.read_pickle('%s/agent_df_merge_DE.pkl' % model_settings.input_agent_dir))
+#                    solar_agents = Agents(pd.read_pickle('%s/agent_df_sunShot2030.pkl' % model_settings.input_agent_dir))
                 else:
                     solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
                     
@@ -194,14 +195,21 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_4cents_battLow.csv'                
 
                 if scenario_settings.scen_name == 'sunShot2030_atbMid':
-                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_atbMid.csv' #pv_price_atb16_mid, pv_price_experimental
+                    scenario_settings.pv_price_file_name = 'pv_price_atb16_mid.csv' #pv_price_atb16_mid, pv_price_experimental
                     scenario_settings.batt_price_file_name = 'batt_prices_FY17_high.csv' 
                     scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_atbMid.csv'                
 
                 if scenario_settings.scen_name == 'sunShot2030_atbMid_lsc':
-                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_atbMid.csv' #pv_price_atb16_mid, pv_price_experimental
+                    scenario_settings.pv_price_file_name = 'pv_price_atb16_mid.csv' #pv_price_atb16_mid, pv_price_experimental
                     scenario_settings.batt_price_file_name = 'batt_prices_FY17_low.csv' 
-                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_atbMid_battLow.csv'                
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_atbMid_battLow.csv'    
+                    
+                    
+                    
+                if scenario_settings.scen_name == 'merge_testing':
+                    scenario_settings.pv_price_file_name = 'pv_price_atb16_mid.csv' #pv_price_atb16_mid, pv_price_experimental
+                    scenario_settings.batt_price_file_name = 'batt_prices_FY17_low.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_atbMid_battLow.csv'  
 
                 
                 # This should also change:
@@ -319,7 +327,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING
                     #==========================================================================================================
-                    write_annual_agents = True
+                    write_annual_agents = False
                     if write_annual_agents==True:                    
                         solar_agents.df.drop(['consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
