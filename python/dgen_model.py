@@ -163,15 +163,30 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # declare input data file names - this is temporary until input sheet is updated
                 #==========================================================================================================
-                scenario_settings.storage_cost_file_name = 'storage_cost_schedule_FY17_mid.csv'                
-                scenario_settings.pv_deg_file_name = 'pv_deg_atb_FY17.csv'                
+                if '2cents' in scenario_settings.scen_name:
+                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_2cents.csv' #pv_price_atb16_mid, pv_price_experimental
+                    
+                if '3cents' in scenario_settings.scen_name:
+                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_3cents.csv' #pv_price_atb16_mid, pv_price_experimental
+
+                if '4cents' in scenario_settings.scen_name:
+                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_4cents.csv' #pv_price_atb16_mid, pv_price_experimental
+                    
+                if 'battLow' in scenario_settings.scen_name:
+                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_low.csv' 
+                    
+                if 'battHigh' in scenario_settings.scen_name:
+                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_high.csv' 
+                
+                # These should also change:
+                scenario_settings.wholesale_elec_file_name = 'wholesale_elec_prices_atb_FY17_mid.csv'
                 scenario_settings.elec_price_file_name = 'AEO2016_Reference_case.csv'                
+                
+                    
+                scenario_settings.pv_deg_file_name = 'pv_deg_atb_FY17.csv'                
                 scenario_settings.pv_power_density_file_name = 'pv_power_default.csv'                
-                scenario_settings.pv_price_file_name = 'pv_price_atb16_mid.csv' #pv_price_atb16_mid, pv_price_experimental
-                scenario_settings.batt_price_file_name = 'batt_prices_FY17_mid.csv' 
                 scenario_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
                 scenario_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
-                scenario_settings.wholesale_elec_file_name = 'wholesale_elec_prices_atb_FY17_mid.csv'
                 scenario_settings.financing_file_name = 'financing_atb_FY17.csv' #financing_atb_FY17, financing_experimental
 
                 #==========================================================================================================
