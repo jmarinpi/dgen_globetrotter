@@ -163,24 +163,48 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # declare input data file names - this is temporary until input sheet is updated
                 #==========================================================================================================
-                if '2cents' in scenario_settings.scen_name:
+                if scenario_settings.scen_name == 'sunShot2030_2cents':
                     scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_2cents.csv' #pv_price_atb16_mid, pv_price_experimental
-                    
-                if '3cents' in scenario_settings.scen_name:
-                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_3cents.csv' #pv_price_atb16_mid, pv_price_experimental
-
-                if '4cents' in scenario_settings.scen_name:
-                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_4cents.csv' #pv_price_atb16_mid, pv_price_experimental
-                    
-                if 'battLow' in scenario_settings.scen_name:
-                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_low.csv' 
-                    
-                if 'battHigh' in scenario_settings.scen_name:
                     scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_high.csv' 
+
+                if scenario_settings.scen_name == 'sunShot2030_2cents_lsc':
+                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_2cents.csv' #pv_price_atb16_mid, pv_price_experimental
+                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_low.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_2cents.csv'                
+
+                if scenario_settings.scen_name == 'sunShot2030_3cents':
+                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_3cents.csv' #pv_price_atb16_mid, pv_price_experimental
+                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_high.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_2cents_battLow.csv'                
+
+                if scenario_settings.scen_name == 'sunShot2030_3cents_lsc':
+                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_3cents.csv' #pv_price_atb16_mid, pv_price_experimental
+                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_low.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_3cents.csv'                
+
+                if scenario_settings.scen_name == 'sunShot2030_4cents':
+                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_4cents.csv' #pv_price_atb16_mid, pv_price_experimental
+                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_high.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_3cents_battLow.csv'                
+
+                if scenario_settings.scen_name == 'sunShot2030_4cents_lsc':
+                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_4cents.csv' #pv_price_atb16_mid, pv_price_experimental
+                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_low.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_4cents.csv'                
+
+                if scenario_settings.scen_name == 'sunShot2030_atbMid':
+                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_atbMid.csv' #pv_price_atb16_mid, pv_price_experimental
+                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_high.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_atbMid.csv'                
+
+                if scenario_settings.scen_name == 'sunShot2030_atbMid_lsc':
+                    scenario_settings.pv_price_file_name = 'pv_price_sunShot2030_atbMid.csv' #pv_price_atb16_mid, pv_price_experimental
+                    scenario_settings.batt_price_file_name = 'batt_prices_sunShot2030_low.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_atbMid_battLow.csv'                
+
                 
-                # These should also change:
+                # This should also change:
                 scenario_settings.wholesale_elec_file_name = 'wholesale_elec_prices_atb_FY17_mid.csv'
-                scenario_settings.elec_price_file_name = 'AEO2016_Reference_case.csv'                
                 
                     
                 scenario_settings.pv_deg_file_name = 'pv_deg_atb_FY17.csv'                
