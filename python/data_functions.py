@@ -80,6 +80,8 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
         dispatch_by_ba_and_year = pd.DataFrame(columns = col_list_8760)
     
     # Set up for groupby
+#    agent_df.reset_index(inplace=True)
+#    agent_df['index'] = agent_df.index
     agent_df['index'] = range(len(agent_df))
     agent_df_to_group = agent_df[['ba', 'index']]
     agents_grouped = agent_df_to_group.groupby(['ba']).aggregate(lambda x: tuple(x))
@@ -120,7 +122,7 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
         # Sum each agent's profile into a total dispatch in each BA
         pv_gen_by_ba = np.zeros([len(ba_list), 8760])
         for ba_n, ba in enumerate(ba_list):
-            list_of_agent_indicies = np.array(agents_grouped.loc[ba, 'index']) - 1
+            list_of_agent_indicies = np.array(agents_grouped.loc[ba, 'index'])
             pv_gen_by_ba[ba_n, :] = np.sum(pv_gen_by_agent[list_of_agent_indicies, :], axis=0)
        
         # Apply ten-year degradation
@@ -151,7 +153,7 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
         # Sum each agent's profile into a total dispatch for new adopters in each BA
         dispatch_new_adopters_by_ba = np.zeros([len(ba_list), 8760])
         for ba_n, ba in enumerate(ba_list):
-            list_of_agent_indicies = np.array(agents_grouped.loc[ba, 'index']) - 1
+            list_of_agent_indicies = np.array(agents_grouped.loc[ba, 'index'])
             dispatch_new_adopters_by_ba[ba_n, :] = np.sum(dispatch_new_adopters[list_of_agent_indicies, :], axis=0)
         
         # Change the numpy array into pandas dataframe
