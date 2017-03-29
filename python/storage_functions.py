@@ -233,6 +233,22 @@ def calc_system_size_and_financial_performance(agent):
         print "failed in calc_system_size_and_financial_performance"
         agent.to_pickle('agent_that_failed.pkl')
         
-
+    out_cols = ['agent_id',
+                'pv_kw',
+                'batt_kw',
+                'batt_kwh',
+                'npv',
+                'cash_flow',
+                'batt_dispatch_profile',
+                'aep',
+                'cf',
+                'system_size_factors',
+                'fy_bill_with_sys',
+                'fy_bill_savings',
+                'fy_bill_savings_frac',
+                'max_pv_size',
+                'fy_bill_without_sys',
+                'fy_elec_cents_per_kwh_without_sys']
+            
 #    print "Opt PV:", opt_pv_size, np.round(opt_pv_size/agent['max_pv_size'],2), ", opt batt kW:", opt_batt_power, np.round(opt_batt_power/opt_pv_size,2) 
-    return agent
+    return agent[out_cols]

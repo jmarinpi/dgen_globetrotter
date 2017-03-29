@@ -118,7 +118,8 @@ class Agents(object):
 
     def on_row(self, func, cores=None, in_place=True, **kwargs):
         """
-        Apply function to agents on an agent by agent basis
+        Apply function to agents on an agent by agent basis. Function should
+        return a df to be merged onto the original df.
         Parameters
         ----------
         func : 'function'
@@ -137,6 +138,7 @@ class Agents(object):
         results_df : 'pd.df'
             Dataframe of agents after application of func
         """
+        self.df.reset_index(inplace=True)
 
         if cores is None:
             apply_func = partial(func, **kwargs)
@@ -154,11 +156,11 @@ class Agents(object):
 
                 results = [future.result() for future in futures]
             results_df = pd.concat(results, axis=1).T
-            results_df.index.name = 'agent_id'
-
+            
 
         if in_place:
-            self.df = results_df
+            self.df = pd.merge(self.df, results_df, on='agent_id')
+            self.df.set_index('agent_id', inplace=True)
             self.update_attrs
         else:
             return results_df
