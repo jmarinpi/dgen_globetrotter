@@ -287,7 +287,7 @@ def create_scenario_results_folder(input_scenario, scen_name, scenario_names, ou
 def create_output_schema(pg_conn_string, suffix, source_schema='diffusion_template', include_data=False):
 
     inputs = locals().copy()
-
+    suffix = utilfunc.get_formatted_time()
     logger.info('Creating output schema based on %(source_schema)s' % inputs)
 
     con, cur = utilfunc.make_con(
