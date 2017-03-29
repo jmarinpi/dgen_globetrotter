@@ -168,6 +168,11 @@ def select_tariff(agent, rates_json_df):
         if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
     tariff = tFuncs.Tariff(dict_obj=tariff_dict)
 
+    # Removes the two 8760's from the dictionary, since these will be built from
+    # 12x24's now
+    if 'd_tou_8760' in tariff_dict.keys(): del tariff_dict['d_tou_8760']
+    if 'e_tou_8760' in tariff_dict.keys(): del tariff_dict['e_tou_8760']
+
     agent['tariff_dict'] = tariff_dict
     agent['tariff_id'] = tariff_id
 
