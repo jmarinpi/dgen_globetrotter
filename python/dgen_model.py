@@ -122,7 +122,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info("--------------Creating Agents---------------")
             
             if scenario_settings.techs in [['wind'], ['solar']]:
-                use_existing_agents = False
+                use_existing_agents = True
                 # =========================================================
                 # Initialize agents
                 # =========================================================                

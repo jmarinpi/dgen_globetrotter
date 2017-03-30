@@ -240,7 +240,7 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
             ts_dispatch_wide['ba'] = ts_dispatch_wide.index.values
             ts_dispatch_all_years = pd.concat([ts_dispatch_all_years, ts_dispatch_wide], ignore_index=True)    
                 
-        ts_dispatch_all_years[['year']+ts_list].round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW_ts.csv', ignore_index=True)
+        ts_dispatch_all_years[['year', 'ba']+ts_list].round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW_ts.csv', index=False)
         print "done aggregating by timeslice"                      
 
 
