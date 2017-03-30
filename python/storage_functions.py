@@ -51,12 +51,6 @@ def calc_system_size_and_financial_performance(agent):
         # Extract load profile
         load_profile = np.array(agent['consumption_hourly'])    
     
-        # Create export tariff object
-        if agent['nem_system_size_limit_kw'] != 0: 
-            export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
-        else:
-            export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
-    
         # Misc. calculations
         pv_cf_profile = np.array(agent['solar_cf_profile']) / 1e6
         agent['naep'] = float(np.sum(pv_cf_profile))    
@@ -68,6 +62,14 @@ def calc_system_size_and_financial_performance(agent):
     
         tariff_dict = agent['tariff_dict']
         tariff = tFuncs.Tariff(dict_obj=tariff_dict)
+
+        # Create export tariff object
+        if agent['nem_system_size_limit_kw'] != 0: 
+            export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
+            export_tariff.periods_8760 = tariff.e_tou_8760
+            export_tariff.prices = tariff.e_prices_no_tier
+        else:
+            export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
     
         original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
         agent['fy_bill_without_sys'] = original_bill * agent['elec_price_multiplier']
@@ -111,6 +113,8 @@ def calc_system_size_and_financial_performance(agent):
             
             if pv_size<=agent['nem_system_size_limit_kw']:
                 export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
+                export_tariff.periods_8760 = tariff.e_tou_8760
+                export_tariff.prices = tariff.e_prices_no_tier
             else:
                 export_tariff.set_constant_sell_price(agent['wholesale_elec_price'])
     
@@ -172,6 +176,8 @@ def calc_system_size_and_financial_performance(agent):
         load_and_pv_profile = load_profile - opt_pv_size*pv_cf_profile
         if opt_pv_size<=agent['nem_system_size_limit_kw']:
             export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
+            export_tariff.periods_8760 = tariff.e_tou_8760
+            export_tariff.prices = tariff.e_prices_no_tier
         else:
             export_tariff.set_constant_sell_price(agent['wholesale_elec_price'])
     
