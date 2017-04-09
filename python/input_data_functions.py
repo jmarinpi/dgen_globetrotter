@@ -10,13 +10,41 @@ import numpy as np
 import os
 
 #%%
+def ingest_batt_tech_performance(scenario_settings):
+    batt_tech_traj = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'batt_technical_performance', scenario_settings.batt_tech_file_name))
+    batt_tech_traj.to_csv(scenario_settings.dir_to_write_input_data + '/batt_tech_performance.csv', index=False)
+    
+    res_df = pd.DataFrame(batt_tech_traj['year'])
+    res_df = batt_tech_traj[['year', 'batt_eff_res', 'batt_lifetime_res']]
+    res_df.rename(columns={'batt_eff_res':'batt_eff', 
+                           'batt_lifetime_res':'batt_lifetime'}, inplace=True)
+    res_df['sector_abbr'] = 'res'
+    
+    com_df = pd.DataFrame(batt_tech_traj['year'])
+    com_df = batt_tech_traj[['year', 'batt_eff_com', 'batt_lifetime_com']]
+    com_df.rename(columns={'batt_eff_com':'batt_eff', 
+                           'batt_lifetime_com':'batt_lifetime'}, inplace=True)
+    com_df['sector_abbr'] = 'com'
+    
+    ind_df = pd.DataFrame(batt_tech_traj['year'])
+    ind_df = batt_tech_traj[['year', 'batt_eff_ind', 'batt_lifetime_ind']]
+    ind_df.rename(columns={'batt_eff_ind':'batt_eff', 
+                           'batt_lifetime_ind':'batt_lifetime'}, inplace=True)
+    ind_df['sector_abbr'] = 'ind'
+    
+    batt_tech_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)
+    
+    return batt_tech_traj
+
+#%%
 def ingest_batt_price_trajectories(scenario_settings):
     batt_price_traj = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'batt_prices', scenario_settings.batt_price_file_name))
     batt_price_traj.to_csv(scenario_settings.dir_to_write_input_data + '/batt_prices.csv', index=False)
 
     
     res_df = pd.DataFrame(batt_price_traj['year'])
-    res_df = batt_price_traj[['year', 'batt_price_per_kwh_res', 'batt_price_per_kw_res', 'batt_om_per_kw_res', 'batt_om_per_kwh_res']]
+    res_df = batt_price_traj[['year', 'batt_price_per_kwh_res', 'batt_price_per_kw_res',
+                              'batt_om_per_kw_res', 'batt_om_per_kwh_res', 'batt_replace_frac_kw', 'batt_replace_frac_kwh']]
     res_df.rename(columns={'batt_price_per_kwh_res':'batt_price_per_kwh', 
                            'batt_price_per_kw_res':'batt_price_per_kw',
                            'batt_om_per_kw_res':'batt_om_per_kw',
@@ -24,7 +52,8 @@ def ingest_batt_price_trajectories(scenario_settings):
     res_df['sector_abbr'] = 'res'
     
     com_df = pd.DataFrame(batt_price_traj['year'])
-    com_df = batt_price_traj[['year', 'batt_price_per_kwh_nonres', 'batt_price_per_kw_nonres', 'batt_om_per_kw_nonres', 'batt_om_per_kwh_nonres']]
+    com_df = batt_price_traj[['year', 'batt_price_per_kwh_nonres', 'batt_price_per_kw_nonres',
+                              'batt_om_per_kw_nonres', 'batt_om_per_kwh_nonres', 'batt_replace_frac_kw', 'batt_replace_frac_kwh']]
     com_df.rename(columns={'batt_price_per_kwh_nonres':'batt_price_per_kwh', 
                            'batt_price_per_kw_nonres':'batt_price_per_kw',
                            'batt_om_per_kw_nonres':'batt_om_per_kw',
@@ -32,7 +61,8 @@ def ingest_batt_price_trajectories(scenario_settings):
     com_df['sector_abbr'] = 'com'
     
     ind_df = pd.DataFrame(batt_price_traj['year'])
-    ind_df = batt_price_traj[['year', 'batt_price_per_kwh_nonres', 'batt_price_per_kw_nonres', 'batt_om_per_kw_nonres', 'batt_om_per_kwh_nonres']]
+    ind_df = batt_price_traj[['year', 'batt_price_per_kwh_nonres', 'batt_price_per_kw_nonres',
+                              'batt_om_per_kw_nonres', 'batt_om_per_kwh_nonres', 'batt_replace_frac_kw', 'batt_replace_frac_kwh']]
     ind_df.rename(columns={'batt_price_per_kwh_nonres':'batt_price_per_kwh', 
                            'batt_price_per_kw_nonres':'batt_price_per_kw',
                            'batt_om_per_kw_nonres':'batt_om_per_kw',

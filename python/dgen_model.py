@@ -157,8 +157,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 srecs = datfunc.get_srecs(cur, con, scenario_settings.schema, scenario_settings.techs, model_settings.pg_conn_string, dsire_opts)
                 state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
-                batt_replacement_yr = datfunc.get_battery_replacement_year(con, scenario_settings.schema)
-                batt_replacement_cost_fraction = datfunc.get_replacement_cost_fraction(con, scenario_settings.schema)
               
                 
                 #==========================================================================================================
@@ -221,6 +219,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 scenario_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
                 scenario_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
                 scenario_settings.financing_file_name = 'financing_atb_FY17.csv' #financing_atb_FY17, financing_experimental
+                scenario_settings.batt_tech_file_name = 'batt_tech_performance_SunLamp17.csv'                
+
 
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
@@ -234,6 +234,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 carbon_intensities = iFuncs.ingest_carbon_intensities(scenario_settings)
                 wholesale_elec_prices = iFuncs.ingest_wholesale_elec_prices(scenario_settings)
                 financing_terms = iFuncs.ingest_financing_terms(scenario_settings)
+                batt_tech_traj = iFuncs.ingest_batt_tech_performance(scenario_settings)
 
                 for year in scenario_settings.model_years:
 
@@ -263,16 +264,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     solar_agents.on_frame(agent_mutation.elec.apply_elec_price_multiplier_and_escalator, [year, elec_price_change_traj])
 
                     # Apply technology performance
-                    battery_roundtrip_efficiency = agent_mutation.elec.get_battery_roundtrip_efficiency(con, scenario_settings.schema, year)
-                    solar_agents.on_frame(agent_mutation.elec.apply_batt_replace_schedule, (batt_replacement_yr))
+                    solar_agents.on_frame(agent_mutation.elec.apply_batt_tech_performance, (batt_tech_traj))
                     solar_agents.on_frame(agent_mutation.elec.apply_solar_power_density, pv_power_traj)
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_deg, (pv_deg_traj))
 
                     # Apply technology prices                    
-                    batt_replace_frac_kw = 0.75 #placeholder
-                    batt_replace_frac_kwh = 0.75 #placeholder
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_prices, pv_price_traj)
-                    solar_agents.on_frame(agent_mutation.elec.apply_batt_prices, [batt_price_traj, year, batt_replacement_yr, batt_replace_frac_kw, batt_replace_frac_kwh])
+                    solar_agents.on_frame(agent_mutation.elec.apply_batt_prices, [batt_price_traj, batt_tech_traj, year])
 
                     # Apply depreciation schedule
                     solar_agents.on_frame(agent_mutation.elec.apply_depreciation_schedule, deprec_sch)
