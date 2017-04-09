@@ -150,9 +150,6 @@ def select_tariff(agent, rates_json_df):
         # determine which of the tariffs has the cheapest cost of electricity without a system
         for index in rates_json_df.index:
             tariff_dict = rates_json_df.loc[index, 'rate_json']
-            # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
-            if 'energy_rate_unit' in tariff_dict:
-                if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
             tariff = tFuncs.Tariff(dict_obj=tariff_dict)
             bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
             rates_json_df.loc[index, 'bills'] = bill
