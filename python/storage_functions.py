@@ -59,8 +59,7 @@ def calc_system_size_and_financial_performance(agent):
     batt = dFuncs.Battery()
     batt_ratio = 3.0
 
-    tariff_dict = agent['tariff_dict']
-    tariff = tFuncs.Tariff(dict_obj=tariff_dict)
+    tariff = tFuncs.Tariff(dict_obj=agent['tariff_dict'])
 
     # Create export tariff object
     if agent['nem_system_size_limit_kw'] != 0: 
@@ -79,8 +78,6 @@ def calc_system_size_and_financial_performance(agent):
     # Estimate bill savings revenue from a set of solar+storage system sizes
     #=========================================================================#    
     # Set PV sizes to evaluate
-#    pv_inc = 1
-#    pv_sizes = np.linspace(0, agent['max_pv_size']*0.95, pv_inc)
     if export_tariff.full_retail_nem==True:
         pv_sizes = np.array([agent['max_pv_size']*0.95])
     else:
