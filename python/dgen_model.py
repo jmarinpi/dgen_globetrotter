@@ -127,7 +127,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # Initialize agents
                 # =========================================================                
                 if use_existing_agents==True:
-                    solar_agents = Agents(pd.read_pickle('%s/agent_df_merge_DE.pkl' % model_settings.input_agent_dir))
+                    solar_agents = Agents(pd.read_pickle('%s/agent_df_merge_DE_all.pkl' % model_settings.input_agent_dir))
 #                    solar_agents = Agents(pd.read_pickle('%s/agent_df_sunShot2030.pkl' % model_settings.input_agent_dir))
                 else:
                     solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
@@ -214,8 +214,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 scenario_settings.wholesale_elec_file_name = 'wholesale_elec_prices_atb_FY17_mid.csv'
                 
                     
-                scenario_settings.pv_deg_file_name = 'pv_deg_atb_FY17.csv'                
-                scenario_settings.pv_power_density_file_name = 'pv_power_default.csv'                
+                scenario_settings.pv_tech_file_name = 'pv_tech_performance_defaultFY17.csv'                
                 scenario_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
                 scenario_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
                 scenario_settings.financing_file_name = 'financing_atb_FY17.csv' #financing_atb_FY17, financing_experimental
@@ -225,9 +224,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
                 #==========================================================================================================
-                pv_deg_traj = iFuncs.ingest_pv_degradation_trajectories(scenario_settings)
+                pv_tech_traj = iFuncs.ingest_pv_tech_performance(scenario_settings)
                 elec_price_change_traj = iFuncs.ingest_elec_price_trajectories(scenario_settings)
-                pv_power_traj = iFuncs.ingest_pv_power_density_trajectories(scenario_settings)
                 pv_price_traj = iFuncs.ingest_pv_price_trajectories(scenario_settings)
                 batt_price_traj = iFuncs.ingest_batt_price_trajectories(scenario_settings)
                 deprec_sch = iFuncs.ingest_depreciation_schedules(scenario_settings)
@@ -264,8 +262,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Apply technology performance
                     solar_agents.on_frame(agent_mutation.elec.apply_batt_tech_performance, (batt_tech_traj))
-                    solar_agents.on_frame(agent_mutation.elec.apply_solar_power_density, pv_power_traj)
-                    solar_agents.on_frame(agent_mutation.elec.apply_pv_deg, (pv_deg_traj))
+                    solar_agents.on_frame(agent_mutation.elec.apply_pv_tech_performance, pv_tech_traj)
 
                     # Apply technology prices                    
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_prices, pv_price_traj)

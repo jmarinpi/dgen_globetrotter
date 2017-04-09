@@ -290,12 +290,11 @@ def apply_export_tariff_params(dataframe, net_metering_df):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_solar_power_density(dataframe, pv_power_traj):
+def apply_pv_tech_performance(dataframe, pv_tech_traj):
 
     dataframe = dataframe.reset_index()
 
-    dataframe = pd.merge(dataframe, pv_power_traj[['sector_abbr', 'pv_power_density_w_per_sqft', 'year']],
-                         how='left', on=['sector_abbr', 'year'])
+    dataframe = pd.merge(dataframe, pv_tech_traj, how='left', on=['sector_abbr', 'year'])
                          
     dataframe = dataframe.set_index('agent_id')
 

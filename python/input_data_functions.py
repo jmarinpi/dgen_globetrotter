@@ -11,7 +11,7 @@ import os
 
 #%%
 def ingest_batt_tech_performance(scenario_settings):
-    batt_tech_traj = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'batt_technical_performance', scenario_settings.batt_tech_file_name))
+    batt_tech_traj = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'batt_tech_performance', scenario_settings.batt_tech_file_name))
     batt_tech_traj.to_csv(scenario_settings.dir_to_write_input_data + '/batt_tech_performance.csv', index=False)
     
     res_df = pd.DataFrame(batt_tech_traj['year'])
@@ -105,29 +105,33 @@ def ingest_pv_price_trajectories(scenario_settings):
     
     
 #%%
-def ingest_pv_degradation_trajectories(scenario_settings):
+def ingest_pv_tech_performance(scenario_settings):
     
-    pv_deg_traj_df = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'pv_degradation', scenario_settings.pv_deg_file_name))
-    pv_deg_traj_df.to_csv(scenario_settings.dir_to_write_input_data + '/pv_degradation.csv', index=False)
+    pv_tech_traj_df = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'pv_tech_performance', scenario_settings.pv_tech_file_name))
+    pv_tech_traj_df.to_csv(scenario_settings.dir_to_write_input_data + '/pv_tech_performance.csv', index=False)
     
-    res_df = pd.DataFrame(pv_deg_traj_df['year'])
-    res_df = pv_deg_traj_df[['year', 'res']]
-    res_df.rename(columns={'res':'pv_deg'}, inplace=True)
+    res_df = pd.DataFrame(pv_tech_traj_df['year'])
+    res_df = pv_tech_traj_df[['year', 'pv_deg_res', 'pv_power_density_w_per_sqft_res']]
+    res_df.rename(columns={'pv_deg_res':'pv_deg',
+                           'pv_power_density_w_per_sqft_res':'pv_power_density_w_per_sqft'}, inplace=True)
     res_df['sector_abbr'] = 'res'
     
-    com_df = pd.DataFrame(pv_deg_traj_df['year'])
-    com_df = pv_deg_traj_df[['year', 'com']]
-    com_df.rename(columns={'com':'pv_deg'}, inplace=True)
+    com_df = pd.DataFrame(pv_tech_traj_df['year'])
+    com_df = pv_tech_traj_df[['year', 'pv_deg_com', 'pv_power_density_w_per_sqft_com']]
+    com_df.rename(columns={'pv_deg_com':'pv_deg',
+                           'pv_power_density_w_per_sqft_com':'pv_power_density_w_per_sqft'}, inplace=True)
     com_df['sector_abbr'] = 'com'
     
-    ind_df = pd.DataFrame(pv_deg_traj_df['year'])
-    ind_df = pv_deg_traj_df[['year', 'ind']]
-    ind_df.rename(columns={'ind':'pv_deg'}, inplace=True)
+    ind_df = pd.DataFrame(pv_tech_traj_df['year'])
+    ind_df = pv_tech_traj_df[['year', 'pv_deg_ind', 'pv_power_density_w_per_sqft_ind']]
+    ind_df.rename(columns={'pv_deg_ind':'pv_deg',
+                           'pv_power_density_w_per_sqft_ind':'pv_power_density_w_per_sqft'}, inplace=True)
     ind_df['sector_abbr'] = 'ind'
     
-    pv_deg_traj_df = pd.concat([res_df, com_df, ind_df], ignore_index=True)
+    pv_tech_traj_df = pd.concat([res_df, com_df, ind_df], ignore_index=True)
 
-    return pv_deg_traj_df
+    return pv_tech_traj_df
+    
     
 #%%
 def ingest_elec_price_trajectories(scenario_settings):
@@ -166,32 +170,6 @@ def ingest_elec_price_trajectories(scenario_settings):
     elec_price_change_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)
 
     return elec_price_change_traj
-    
-    
-#%%
-def ingest_pv_power_density_trajectories(scenario_settings):
-    
-    pv_power_traj = pd.read_csv(os.path.join(scenario_settings.input_data_dir, 'pv_power_density', scenario_settings.pv_power_density_file_name))
-    pv_power_traj.to_csv(scenario_settings.dir_to_write_input_data + '/pv_power_density.csv', index=False)
-    
-    res_df = pd.DataFrame(pv_power_traj['year'])
-    res_df = pv_power_traj[['year', 'res']]
-    res_df.rename(columns={'res':'pv_power_density_w_per_sqft'}, inplace=True)
-    res_df['sector_abbr'] = 'res'
-    
-    com_df = pd.DataFrame(pv_power_traj['year'])
-    com_df = pv_power_traj[['year', 'com']]
-    com_df.rename(columns={'com':'pv_power_density_w_per_sqft'}, inplace=True)
-    com_df['sector_abbr'] = 'com'
-    
-    ind_df = pd.DataFrame(pv_power_traj['year'])
-    ind_df = pv_power_traj[['year', 'ind']]
-    ind_df.rename(columns={'ind':'pv_power_density_w_per_sqft'}, inplace=True)
-    ind_df['sector_abbr'] = 'ind'
-    
-    pv_power_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)
-
-    return pv_power_traj
     
 #%%
 def ingest_depreciation_schedules(scenario_settings):

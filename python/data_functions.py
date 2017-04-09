@@ -131,10 +131,9 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
         # Change the numpy array into pandas dataframe
         pv_gen_by_ba_df = pd.DataFrame(pv_gen_by_ba, columns=hour_list)
         pv_gen_by_ba_df.index = ba_list
-        pv_gen_by_ba_df.to_pickle('pv_gen.pkl')    
+
         # Convert generation into capacity factor by diving by total capacity
         pv_cf_by_ba = pv_gen_by_ba_df[hour_list].divide(ba_cum_pv_mw[year]*1000.0, 'index')
-        pv_cf_by_ba.to_pickle('pv_cf.pkl')
         pv_cf_by_ba['ba'] = ba_list
     
         # write output
