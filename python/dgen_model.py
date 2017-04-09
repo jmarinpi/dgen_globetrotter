@@ -240,13 +240,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     logger.info('\tWorking on %s' % year)
 
-                    # determine any non-base columns and drop them
+                    # determine any non-base-year columns and drop them
                     cols = list(solar_agents.df.columns)
                     cols_to_drop = [x for x in cols if x not in cols_base]
                     solar_agents.df.drop(cols_to_drop, axis=1, inplace=True)          
 
                     # copy the core agent object and set their year
-#                    solar_agents = Agents(pd.read_pickle(out_scen_path + '/agent_df_base.pkl'))
                     solar_agents.df['year'] = year
 
                     # is it the first model year?

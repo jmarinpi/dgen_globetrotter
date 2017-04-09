@@ -233,7 +233,6 @@ def calc_system_size_and_financial_performance(agent):
     agent['aep'] = agent['pv_kw'] * agent['naep']
     agent['cf'] = agent['naep']/8760
     agent['system_size_factors'] = np.where(agent['pv_kw'] == 0, 0, pd.cut([agent['pv_kw']], system_size_breaks))[0]
-       
         
     out_cols = ['agent_id',
                 'pv_kw',
@@ -243,6 +242,7 @@ def calc_system_size_and_financial_performance(agent):
                 'cash_flow',
                 'batt_dispatch_profile',
                 'aep',
+                'naep',
                 'cf',
                 'system_size_factors',
                 'fy_bill_with_sys',
