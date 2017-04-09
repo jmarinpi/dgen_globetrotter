@@ -368,26 +368,6 @@ def apply_batt_prices(dataframe, batt_price_traj, batt_tech_traj, year):
 
     return dataframe
 
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_depreciation_schedule_index(dataframe, depreciation_df):
-
-    depreciation_df['depreciation_sch_index'] = depreciation_df.index
-
-    dataframe = pd.merge(dataframe, depreciation_df[
-                         ['tech', 'depreciation_sch_index']], how='left', on=['tech'])
-
-    return dataframe
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_batt_replace_schedule(dataframe, replacement_yr):
-    # TODO: Replace a fixed schedule with a dynamic one based on cycle counts
-
-    dataframe['batt_replace_yr'] = replacement_yr
-
-    return dataframe
     
     
 #%%
@@ -402,20 +382,6 @@ def apply_batt_tech_performance(dataframe, batt_tech_traj):
     
     return dataframe
     
-#%%
-@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def get_battery_roundtrip_efficiency(con, schema, year):
-
-    inputs = locals().copy()
-
-    sql = """SELECT a.year,
-            substring(lower(a.sector), 1, 3) as sector_abbr,
-            a.battery_roundtrip_efficiency
-            FROM %(schema)s.input_battery_roundtrip_efficiency a
-            WHERE a.year = %(year)s;""" % inputs
-    df = pd.read_sql(sql, con, coerce_float = False)
-
-    return df
 
 
 #%%
@@ -490,29 +456,6 @@ def calculate_developable_customers_and_load(dataframe):
     dataframe = dataframe.set_index('agent_id')
 
     return dataframe
-
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def get_rate_structures(con, schema):
-
-    inputs = locals().copy()
-
-    sql = """
-            SELECT 'res' as sector_abbr, res_rate_structure as rate_structure
-        	FROM %(schema)s.input_main_scenario_options
-        	UNION
-        	SELECT 'com' as sector_abbr, com_rate_structure as rate_structure
-        	FROM %(schema)s.input_main_scenario_options
-        	UNION
-        	SELECT 'ind' as sector_abbr, ind_rate_structure as rate_structure
-        	FROM %(schema)s.input_main_scenario_options;""" % inputs
-
-    rate_structures_df = pd.read_sql(sql, con)
-    rate_structures = dict(
-        zip(rate_structures_df['sector_abbr'], rate_structures_df['rate_structure']))
-
-    return rate_structures
 
 
 #%%
@@ -711,21 +654,6 @@ def get_net_metering_settings(con, schema, year):
 
     return df
 
-
-
-
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def assemble_resource_data():
-
-    # all in postgres
-    # for wind, need to use
-    # %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s
-    pass
-    # for solar, not changes to columns:
-    # available_roof_sqft --> developable_roof_sqft
-    # pct_developable --> pct_of_bldgs_developable
 
 
 #%%
@@ -1356,19 +1284,6 @@ def apply_tech_costs_wind(dataframe, tech_costs_df):
     out_cols = in_cols + return_cols
 
     dataframe = dataframe[out_cols]
-
-    return dataframe
-
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_pv_deg(dataframe, pv_deg_traj_df):
-
-    dataframe = dataframe.reset_index()
-
-    dataframe = pd.merge(dataframe, pv_deg_traj_df, how='left', on=['year', 'sector_abbr'])
-                         
-    dataframe = dataframe.set_index('agent_id')
 
     return dataframe
 
