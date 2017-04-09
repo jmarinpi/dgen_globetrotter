@@ -242,10 +242,16 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
     Also calculate the average increase in the price of electricity over the
     past ten years, which will be the escalator that they use to project
     electricity changes in their bill calculations.
+    
+    elec_price_multiplier = change in present-year elec cost to 2016
+    elec_price_escalator = agent's assumption about future price changes
 
     Note that many customers will not differentiate between real and nomianl,
     and therefore many would overestimate the real escalation of electriicty
     prices.
+    
+    TODO: Add in actual historical electricity prices. Right now, a simple 
+        placeholder of 1% annual growth is assumed.
     '''
     dataframe = dataframe.reset_index()
 
@@ -264,7 +270,7 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
     
     elec_price_escalator_df['elec_price_escalator'] = (elec_price_escalator_df['elec_price_multiplier'] / elec_price_escalator_df['historical'])**(1.0/10) - 1.0
 
-    # Set lower bound of escalator at 0, assuming that potential customers would not evaluate declining electricity costs
+    # Set lower bound of escalator at 0, assuming that potential customers would not assume declining electricity costs
     elec_price_escalator_df['elec_price_escalator'] = np.maximum(elec_price_escalator_df['elec_price_escalator'], 0)
 
     dataframe = pd.merge(dataframe, elec_price_multiplier[['elec_price_multiplier', 'sector_abbr', 'census_division_abbr']], how='left', on=['sector_abbr', 'census_division_abbr'])
