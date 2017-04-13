@@ -72,6 +72,10 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     # =========================================================
     # get (ranked) rates for each sector
     rates_rank_df =  elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string)
+
+    # Remove certain manually selected tariffs
+    rates_rank_df = rates_rank_df[rates_rank_df['rate_id_alias'] != 2779] # colorado's residential demand tariff
+
     # find the list of unique rate ids that are included in rates_rank_df
     selected_rate_ids =  elec.identify_selected_rate_ids(rates_rank_df)
     # get lkup table with rate jsons

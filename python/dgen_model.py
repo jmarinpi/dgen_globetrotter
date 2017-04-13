@@ -206,14 +206,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                 if scenario_settings.scen_name == 'merge_testing':
                     scenario_settings.pv_price_file_name = 'pv_price_atb16_mid.csv' #pv_price_atb16_mid, pv_price_experimental
-                    scenario_settings.batt_price_file_name = 'batt_prices_FY17_low.csv' 
-                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_atbMid_battLow.csv'  
+                    scenario_settings.batt_price_file_name = 'batt_prices_FY17_high.csv' 
+                    scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_atbMid.csv'  
 
                 
-                # This should also change:
+
                 scenario_settings.wholesale_elec_file_name = 'wholesale_elec_prices_atb_FY17_mid.csv'
-                
-                    
                 scenario_settings.pv_tech_file_name = 'pv_tech_performance_defaultFY17.csv'                
                 scenario_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
                 scenario_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
