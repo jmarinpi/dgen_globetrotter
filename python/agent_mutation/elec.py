@@ -584,8 +584,12 @@ def check_rate_coverage(dataframe, rates_rank_df, rates_json_df):
         print(missing_agents)
         for missing_agent_id in missing_agents:
             agent_row = dataframe.loc[missing_agent_id]['sector_abbr']
-            agent_row['rate_id_alias'] = np.array(rates_rank_df.loc[np.array(rates_rank_df.index, int)[0], 'rate_id_alias'])
-            agent_row['rate_type_tou'] = np.array(rates_rank_df.loc[np.array(rates_rank_df.index, int)[0], 'rate_type_tou'])
+            if dataframe.loc[missing_agent_id]['sector_abbr'] == 'res':
+                agent_row['rate_id_alias'] = int(2778)
+                agent_row['rate_type_tou'] = True
+            else:
+                agent_row['rate_id_alias'] = int(2779)
+                agent_row['rate_type_tou'] = True
             rates_rank_df = rates_rank_df.append(agent_row)
 
     missing_agents = list(set(dataframe.index).difference(set(rates_rank_df.index)))
