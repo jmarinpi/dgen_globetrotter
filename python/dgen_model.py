@@ -2,7 +2,7 @@
 Distributed Generation Market Demand Model (dGen)
 National Renewable Energy Lab
 """
-
+#test
 # before doing anything, check model dependencies
 import tests
 tests.check_dependencies()
