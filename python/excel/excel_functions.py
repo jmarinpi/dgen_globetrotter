@@ -10,7 +10,7 @@ import sys
 import os
 from excel_objects import FancyNamedRange, ExcelError
 import pandas as pd
-import decorators
+
 import warnings
 
 
@@ -18,7 +18,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 par_path = os.path.dirname(path)
 sys.path.append(par_path)
 import utility_functions as utilfunc
-
+import decorators
 #==============================================================================
 # Load logger
 logger = utilfunc.get_logger()
@@ -65,5 +65,5 @@ def load_scenario(xls_file, schema, con, cur):
 
 
 if __name__ == '__main__':
-    input_xls = '../../excel/scenario_inputs.xlsm'
-    load_scenario(input_xls, schema='diffusion_results_2016_06_22_10h16m46s')
+    input_xls = '~/Desktop/input_sheet_with_storage.xlsm'
+    load_scenario(input_xls, schema='diffusion_results_2017_04_30_18h46m00s')

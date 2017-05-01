@@ -646,13 +646,38 @@ def get_net_metering_settings(con, schema, year):
 
     inputs = locals().copy()
 
-    sql = """SELECT state_abbr,
-                    sector_abbr,
-                    system_size_limit_kw as nem_system_size_limit_kw,
-                    year_end_excess_sell_rate_dlrs_per_kwh as ur_nm_yearend_sell_rate,
-                    hourly_excess_sell_rate_dlrs_per_kwh as ur_flat_sell_rate
-             FROM %(schema)s.input_main_nem_scenario
-             WHERE year = %(year)s;""" % inputs
+    sql = """WITH base AS (
+                SELECT
+                    a.state_abbr,a.sector_abbr,b.system_size_limit_kw
+                FROM
+                    ( SELECT
+                        s.state_abbr,sec AS sector_abbr
+                      FROM
+                        unnest(ARRAY['res'::text, 'com'::text, 'ind'::text]) AS sec
+                      CROSS JOIN
+                        diffusion_shared.state_fips_lkup s
+                      WHERE
+                        s.state_abbr <> 'PR') a
+                LEFT JOIN
+                    ( SELECT * FROM diffusion_results_20170501_122631.input_main_nem_scenario_2017
+                      WHERE %(year)s <= sunset_year AND %(year)s >= first_year
+                    ) b
+                ON a.state_abbr = b.state_abbr AND a.sector_abbr = b.sector_abbr)
+
+            SELECT
+                base.state_abbr,base.sector_abbr,base.nem_system_size_limit_kw
+            FROM
+                base
+            WHERE
+                base.system_size_limit_kw IS NOT NULL
+            UNION ALL
+                (
+                    SELECT
+                        base.state_abbr, base.sector_abbr,0::double precision as nem_system_size_limit_kw
+                    FROM
+                        base
+                    WHERE
+                        base.system_size_limit_kw IS NULL);""" % inputs
 
     df = pd.read_sql(sql, con, coerce_float=False)
 

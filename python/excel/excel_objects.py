@@ -49,7 +49,6 @@ class FancyNamedRange(object):
         self.rec_array = self.__rec_array__()
         
         self.data_frame = self.__data_frame__()
-    
 
     def __colnames_included__(self):
         self.rec_array = self.__rec_array__(colnames_included = True)
@@ -192,11 +191,7 @@ class FancyNamedRange(object):
         first_value = self.data_frame.ix[0][0]
 
         return first_value
-        
 
-        
-    
-    
     def to_stringIO(self, transpose = False, columns = None, index = False, header = False):
         
         s = StringIO()
@@ -219,7 +214,7 @@ class FancyNamedRange(object):
         
     def to_postgres(self, connection, cursor, schema, table, transpose = False, columns = None, create = False, overwrite = True):
         
-        sql_dict = {'schema': schema, 'table': table}
+        sql_dict = {'schema': schema, 'table': table }
         
         if create == True:
             raise NotImplementedError('Creation of a new postgres table is not implemented')
