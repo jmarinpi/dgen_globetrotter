@@ -285,7 +285,7 @@ def apply_export_tariff_params(dataframe, net_metering_df):
 
     dataframe = dataframe.reset_index()
     dataframe = pd.merge(dataframe, net_metering_df[
-                         ['state_abbr', 'sector_abbr', 'nem_system_size_limit_kw']], how='left', on=['state_abbr', 'sector_abbr'])
+                         ['state_abbr', 'sector_abbr', 'pv_kw_limit']], how='left', on=['state_abbr', 'sector_abbr'])
     dataframe = dataframe.set_index('agent_id')
 
     return dataframe
@@ -639,49 +639,52 @@ def get_electric_rates_json(con, unique_rate_ids):
 
     return df
 
-
-#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def get_net_metering_settings(con, schema, year):
+def filter_nem_year(df, year):
 
-    inputs = locals().copy()
-
-    sql = """WITH base AS (
-                SELECT
-                    a.state_abbr,a.sector_abbr,b.system_size_limit_kw
-                FROM
-                    ( SELECT
-                        s.state_abbr,sec AS sector_abbr
-                      FROM
-                        unnest(ARRAY['res'::text, 'com'::text, 'ind'::text]) AS sec
-                      CROSS JOIN
-                        diffusion_shared.state_fips_lkup s
-                      WHERE
-                        s.state_abbr <> 'PR') a
-                LEFT JOIN
-                    ( SELECT * FROM diffusion_results_20170501_122631.input_main_nem_scenario_2017
-                      WHERE %(year)s <= sunset_year AND %(year)s >= first_year
-                    ) b
-                ON a.state_abbr = b.state_abbr AND a.sector_abbr = b.sector_abbr)
-
-            SELECT
-                base.state_abbr,base.sector_abbr,base.nem_system_size_limit_kw
-            FROM
-                base
-            WHERE
-                base.system_size_limit_kw IS NOT NULL
-            UNION ALL
-                (
-                    SELECT
-                        base.state_abbr, base.sector_abbr,0::double precision as nem_system_size_limit_kw
-                    FROM
-                        base
-                    WHERE
-                        base.system_size_limit_kw IS NULL);""" % inputs
-
-    df = pd.read_sql(sql, con, coerce_float=False)
+    # Filter by Sector Specific Sunset Years
+    df = df.loc[(df['first_year'] <= year) & (df['sunset_year'] >= year)]
 
     return df
+
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def get_nem_settings(state_limits, state_by_sector, selected_scenario, year):
+
+    # Get Current Cumulative Adoption Statistics
+    state_capacity_by_year = pd.DataFrame.from_records(
+        [{"state_abbr": "MD", "cum_capacity_mw": 3000, "peak_demand_mw": 10000, "year": 2014},
+         {"state_abbr": "AK", "cum_capacity_mw": 2000, "peak_demand_mw": 2000000, "year": 2014},
+         {"state_abbr": "AK", "cum_capacity_mw": 2000, "peak_demand_mw": 2000000, "year": 2015}])
+
+
+    # Find States That Have Not Sunset
+    valid_states = filter_nem_year(state_limits, year)
+
+    # Filter States to Those That Have Not Exceeded Cumulative Capacity Constraints
+    valid_states['filter_year'] = pd.to_numeric(valid_states['max_reference_year'], errors='coerce')
+    valid_states['filter_year'][valid_states['max_reference_year'] == 'previous'] = year - 2
+    valid_states['filter_year'][valid_states['max_reference_year'] == 'current'] = year
+    valid_states['filter_year'][pd.isnull(valid_states['filter_year'])] = year
+
+    state_df = pd.merge(state_capacity_by_year, valid_states , how='left', on=['state_abbr'])
+    state_df = state_df[state_df['year'] == state_df['filter_year'] ]
+
+    state_df = state_df.loc[ pd.isnull(state_df['max_cum_capacity_mw']) | ( pd.notnull( state_df['max_cum_capacity_mw']) & (state_df['cum_capacity_mw'] < state_df['max_cum_capacity_mw']))]
+    state_df['max_mw'] = (state_df['max_pct_cum_capacity']/100) * state_df['peak_demand_mw']
+    state_df = state_df.loc[ pd.isnull(state_df['max_pct_cum_capacity']) | ( pd.notnull( state_df['max_pct_cum_capacity']) & (state_df['max_mw'] > state_df['cum_capacity_mw']))]
+
+    # Filter state and sector data to those that have not sunset
+    selected_state_by_sector = state_by_sector.loc[state_by_sector['scenario'] == selected_scenario]
+    valid_state_sector = filter_nem_year(selected_state_by_sector, year)
+
+    # Filter state and sector data to those that match states which have not sunset/reached peak capacity
+    valid_state_sector = valid_state_sector[valid_state_sector['state_abbr'].isin(state_df['state_abbr'].values)]
+
+    # Return State/Sector data (or null) for all combinations of states and sectors
+    full_list = state_by_sector.loc[ state_by_sector['scenario'] == 'BAU' ].ix[:, ['state_abbr', 'sector_abbr']]
+    result = pd.merge( full_list, valid_state_sector, how='left', on=['state_abbr','sector_abbr'] )
+
+    return result
 
 
 
@@ -700,8 +703,6 @@ def get_core_agent_attributes(con, schema, region):
 
 
     return df
-
-
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
@@ -822,7 +823,7 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df, techs):
 
         # determine whether NEM is available in the state and sector
         dataframe['ur_enable_net_metering'] = dataframe[
-            'nem_system_size_limit_kw'] > 0
+            'pv_kw_limit'] > 0
 
         # set the target kwh according to NEM availability
         dataframe['target_kwh'] = np.where(dataframe['ur_enable_net_metering'] == False,
@@ -876,7 +877,7 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df, techs):
 
         # check that the system is within the net metering size limit
         over_nem_limit = dataframe['turbine_size_kw'] > dataframe[
-            'nem_system_size_limit_kw']
+            'pv_kw_limit']
         dataframe.loc[over_nem_limit, 'score'] = dataframe['score'] * 2
         dataframe.loc[over_nem_limit, 'ur_enable_net_metering'] = False
 

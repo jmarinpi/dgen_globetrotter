@@ -34,12 +34,14 @@ class FancyNamedRange(object):
         self.cell_ranges = self.__cell_ranges__()
         
         self.count_cell_ranges = self.__count_destination_components__(self.cell_ranges)
+
         if self.count_cell_ranges > 1:
             raise NotImplementedError("Named Ranges spanning multiple, non-contiguous cell ranges  are not currently supported")
         
         self.cell_range = self.cell_ranges[0]        
         
         self.topleft = self.__topleft__()
+
         self.bottomright = self.__bottomright__()
         
         self.cells = self.__cells__()
@@ -143,7 +145,7 @@ class FancyNamedRange(object):
         
         if floats == True and cell.data_type == 'n' and type(cell.value) <> datetime.datetime:
             if cell.value is None:
-                cell_value = 0.0
+                cell_value = float(np.nan)
             else:
                 cell_value = float(cell.value)
         else:

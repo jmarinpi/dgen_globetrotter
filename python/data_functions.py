@@ -2101,3 +2101,23 @@ def get_replacement_cost_fraction(con,schema):
              FROM %(schema)s.input_battery_replacement_parameters;''' % inputs
     df = pd.read_sql(sql, con)
     return df.values[0][0] # Just want the replacement cost fraction as a float (for now)
+
+def get_nem_state(con, schema):
+    sql = "SELECT * FROM %s.input_main_nem_state_limits_2017;" % schema
+    df = pd.read_sql(sql, con, coerce_float=False)
+
+    return df
+
+def get_nem_state_by_sector(con, schema):
+    sql = "SELECT * FROM %s.input_main_nem_state_by_sector_2017;" % schema
+    df = pd.read_sql(sql, con, coerce_float=False)
+
+    return df
+
+def get_selected_scenario(con, schema):
+    sql = "SELECT * FROM %s.input_main_nem_selected_scenario;" % schema
+    df = pd.read_sql(sql, con, coerce_float=False)
+    value = df['val'][0]
+
+    return value
+

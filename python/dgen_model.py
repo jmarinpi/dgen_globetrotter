@@ -157,6 +157,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 srecs = datfunc.get_srecs(cur, con, scenario_settings.schema, scenario_settings.techs, model_settings.pg_conn_string, dsire_opts)
                 state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
+                nem_state_capacity_limits = datfunc.get_nem_state(con, scenario_settings.schema)
+                nem_state_and_sector_attributes = datfunc.get_nem_state_by_sector(con, scenario_settings.schema)
+                nem_selected_scenario = datfunc.get_selected_scenario(con, scenario_settings.schema)
+
               
                 
                 #==========================================================================================================
@@ -205,8 +209,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     load_growth_df =  agent_mutation.elec.get_load_growth(con, scenario_settings.schema, year)
                     solar_agents.on_frame(agent_mutation.elec.apply_load_growth, (load_growth_df))
 
-                    # Get and apply net metering parameters
-                    net_metering_df =  agent_mutation.elec.get_net_metering_settings(con, scenario_settings.schema, year)
+                    #Apply net metering parameters
+                    net_metering_df = agent_mutation.elec.get_nem_settings(nem_state_capacity_limits, nem_state_and_sector_attributes, nem_selected_scenario, year)
                     solar_agents.on_frame(agent_mutation.elec.apply_export_tariff_params, (net_metering_df))
 
                     # Apply each agent's electricity price change and assumption about increases
