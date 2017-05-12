@@ -1194,13 +1194,12 @@ def calc_state_dsire_incentives(df, state_dsire_df, year):
     # calculate ITC
     inc['value_of_itc'] = 0.0
     inc.loc[inc['incentive_type'] == 'ITC',
-            'value_of_itc'] = np.minimum(
-        inc['val_pct_cost'] * inc['ic'] *
-        (inc['system_size_kw'] >= inc['min_size_kw']) *
-        (inc['system_size_kw'] < inc['max_size_kw']) *
-        (inc['cur_date'] <=
-         inc['exp_date']),
-        inc['cap_dlrs']
+            'value_of_itc'] = np.minimum( inc['val_pct_cost'] * inc['ic'] *
+            (inc['system_size_kw'] >= inc['min_size_kw']) *
+            (inc['system_size_kw'] < inc['max_size_kw']) *
+            (inc['cur_date'] <= inc['exp_date']),
+
+            inc['cap_dlrs']
     )
 
     # calculate PTC
@@ -1212,8 +1211,8 @@ def calc_state_dsire_incentives(df, state_dsire_df, year):
         (inc['system_size_kw'] < inc['max_size_kw']) *
         (inc['aep'] >= inc['min_aep_kwh']) *
         (inc['aep'] < inc['max_aep_kwh']) *
-        (inc['cur_date'] <=
-         inc['exp_date']),
+        (inc['cur_date'] <= inc['exp_date']),
+
         np.minimum(
             inc['cap_dlrs'],
             inc['cap_pct_cost'] * inc['ic']

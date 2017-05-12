@@ -270,6 +270,33 @@ CREATE OR REPLACE VIEW diffusion_template.input_main_nem_state_by_sector_2017 AS
 ALTER TABLE diffusion_template.input_main_nem_state_by_sector_2017
     OWNER TO "diffusion-writers";
 
+CREATE TABLE diffusion_shared.state_incentives_2017
+(
+    State char(2),
+    Sector char(50),
+    IncentiveType char(50),
+    StateMin_kW double precision,
+    StateMax_kW double precision,
+    PerformanceInc_usd_p_kW double precision,
+    MinIncentive_usd double precision,
+    MaxIncentive_usd double precision,
+    InvestmentInc_usd_p_w double precision,
+    InvestmentInc_pctCost double precision,
+    AnnualBudget_usd double precision,
+    TotalBudget_usd double precision,
+    AnnualCapacityCap_usd double precision,
+    CumCapacityCap_usd double precision,
+    Cap_pct double precision,
+    YearCap int,
+    StartDate date,
+    EndDate date,
+    Total varchar
+);
+
+ALTER TABLE diffusion_shared.state_incentives_2017
+    OWNER TO "diffusion-writers";
+
+
 psql -c "\copy diffusion_shared.nem_scenario_bau_2017 FROM '~/Desktop/nem_2017.csv' delimiter ',' csv" -h atlas.nrel.gov -d dgen_db_fy17q2_merge
 psql -c "\copy diffusion_shared.nem_state_limits_2017 FROM '~/Desktop/nem_state_limits_2017.csv' delimiter ',' csv" -h atlas.nrel.gov -d dgen_db_fy17q2_merge
 psql -c "\copy diffusion_shared.state_nem_grades FROM '~/Desktop/NMGrades.csv' delimiter ',' csv" -h atlas.nrel.gov -d dgen_db_fy17q2_merge

@@ -683,6 +683,8 @@ def get_nem_settings(state_limits, state_by_sector, selected_scenario, year):
     # Return State/Sector data (or null) for all combinations of states and sectors
     full_list = state_by_sector.loc[ state_by_sector['scenario'] == 'BAU' ].ix[:, ['state_abbr', 'sector_abbr']]
     result = pd.merge( full_list, valid_state_sector, how='left', on=['state_abbr','sector_abbr'] )
+    result['pv_kw_limit'].fillna(0, inplace=True)
+
 
     return result
 

@@ -151,11 +151,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             if scenario_settings.techs == ['solar']:
                 # get dsire incentives, srecs, and itc inputs
                 # TODO: move these to agent mutation
-                dsire_opts = datfunc.get_dsire_settings(con, scenario_settings.schema)
-                incentives_cap = datfunc.get_incentives_cap(con, scenario_settings.schema)
-                dsire_incentives = datfunc.get_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, scenario_settings.sectors, model_settings.pg_conn_string, dsire_opts)
-                srecs = datfunc.get_srecs(cur, con, scenario_settings.schema, scenario_settings.techs, model_settings.pg_conn_string, dsire_opts)
-                state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
+
+                #dsire_opts = datfunc.get_dsire_settings(con, scenario_settings.schema)
+                #incentives_cap = datfunc.get_incentives_cap(con, scenario_settings.schema)
+                #dsire_incentives = datfunc.get_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, scenario_settings.sectors, model_settings.pg_conn_string, dsire_opts)
+                #srecs = datfunc.get_srecs(cur, con, scenario_settings.schema, scenario_settings.techs, model_settings.pg_conn_string, dsire_opts)
+                #state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
+
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
                 nem_state_capacity_limits = datfunc.get_nem_state(con, scenario_settings.schema)
                 nem_state_and_sector_attributes = datfunc.get_nem_state_by_sector(con, scenario_settings.schema)

@@ -20,7 +20,7 @@ import decorators
 # Import from support function repo
 import dispatch_functions as dFuncs
 import tariff_functions as tFuncs
-import financial_functions as fFuncs
+import financial_functions_copy as fFuncs
 import general_functions as gFuncs
 
 #==============================================================================
@@ -63,7 +63,7 @@ def calc_system_size_and_financial_performance(agent):
     tariff = tFuncs.Tariff(dict_obj=agent['tariff_dict'])
 
     # Create export tariff object
-    if agent['nem_system_size_limit_kw'] != 0: 
+    if agent['pv_kw_limit'] != 0:
         export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
         export_tariff.periods_8760 = tariff.e_tou_8760
         export_tariff.prices = tariff.e_prices_no_tier
@@ -108,7 +108,7 @@ def calc_system_size_and_financial_performance(agent):
         pv_size = system_df['pv'][i].copy()
         load_and_pv_profile = load_profile - pv_size*pv_cf_profile
         
-        if pv_size<=agent['nem_system_size_limit_kw']:
+        if pv_size<=agent['pv_kw_limit']:
             export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
             export_tariff.periods_8760 = tariff.e_tou_8760
             export_tariff.prices = tariff.e_prices_no_tier
@@ -171,7 +171,7 @@ def calc_system_size_and_financial_performance(agent):
     opt_batt_cap = opt_batt_power*batt_ratio
     batt.set_cap_and_power(opt_batt_cap, opt_batt_power) 
     load_and_pv_profile = load_profile - opt_pv_size*pv_cf_profile
-    if opt_pv_size<=agent['nem_system_size_limit_kw']:
+    if opt_pv_size<=agent['pv_kw_limit']:
         export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
         export_tariff.periods_8760 = tariff.e_tou_8760
         export_tariff.prices = tariff.e_prices_no_tier

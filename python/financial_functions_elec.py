@@ -152,7 +152,8 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     # split out rows to run through state and old dsire incentives
     df_dsire_incentives = df[(df['tech'] == 'solar')]
     df_state_dsire_incentives = df[(df['tech'] == 'wind')]
-    # Calculate value of incentives. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
+
+    # Calculate value of incentives. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.
     value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, srecs, year, 
                                                               dsire_opts, assumed_duration = 10)
     value_of_incentives_state_dsire = datfunc.calc_state_dsire_incentives(df_state_dsire_incentives, state_dsire, year)
