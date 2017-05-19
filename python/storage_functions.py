@@ -15,7 +15,7 @@ import os
 import time
 import financial_functions_elec as fFuncs_dGen
 import decorators
-
+import datetime
 
 # Import from support function repo
 import dispatch_functions as dFuncs
@@ -82,31 +82,44 @@ def check_minmax(value, min, max):
     return output
 
 #%%
-def eqn_linear_decay_to_zero(incentive_info, incentive_info_params, default_params):
-    #Row Params [pbi_usd_p_kwh, incentive_duration_years]
-    #Default Params [usd per kwh, years, timesteps_per_year]
-
-    for i, r in enumerate(incentive_info_params):
-        if np.isnan(incentive_info[r]):
-            incentive_info[r] = default_params[i]
-
-    pbi_usd_p_kwh = float(incentive_info[incentive_info_params[0]])
-    years = float(incentive_info[incentive_info_params[1]])
-    timesteps_per_year = float(default_params[2])
-    expiration = years * timesteps_per_year
-
-    return lambda ts: (pbi_usd_p_kwh + ((-1*pbi_usd_p_kwh/expiration) * ts)) if ts < expiration else 0
+def get_expiration(end_date, current_year, timesteps_per_year):
+    return  ((end_date - datetime.date(current_year, 1, 1)).days / 365.0) * timesteps_per_year
 
 #%%
-def eqn_flat_rate(ts, row, row_params, default_params):
-    # timestep not needed for this function as written, kept to follow convention in construct_linear_decay_to_zero
-    # Row Params [pbi_usd_p_kwh]
-    # Default Params [usd per kwh]
-    pbi_usd_p_kwh = row[row_params[0]]
-    if np.isnan(pbi_usd_p_kwh):
-        pbi_usd_p_kwh = default_params[0]
+def eqn_builder(method,incentive_info, info_params, default_params):
+    #Row Params [pbi_usd_p_kwh, incentive_duration_years]
+    #Default Params [usd per kwh, ]
 
-    return lambda ts: pbi_usd_p_kwh
+    for i, r in enumerate(info_params):
+        try:
+            if np.isnan(incentive_info[r]):
+                incentive_info[r] = default_params[i]
+        except:
+            pass
+
+    pbi_usd_p_kwh = float(incentive_info[info_params[0]])
+    years = float(incentive_info[info_params[1]])
+    end_date = incentive_info[info_params[2]]
+    current_year = int(default_params[3])
+
+    timesteps_per_year = float(default_params[4])
+
+    expiration = get_expiration(end_date, current_year, timesteps_per_year)
+    expiration =  min(years * timesteps_per_year, expiration)
+
+    if method =='linear_decay':
+        return lambda ts: (pbi_usd_p_kwh + ((-1*pbi_usd_p_kwh/expiration) * ts)) if ts < expiration else 0.0
+
+    if method == 'flat_rate':
+        return lambda ts: pbi_usd_p_kwh if ts < expiration else 0.0
+
+#%%
+def eqn_linear_decay_to_zero(incentive_info, info_params, default_params):
+    return eqn_builder('linear_decay',incentive_info, info_params, default_params)
+
+#%%
+def eqn_flat_rate(incentive_info, info_params, default_params):
+    return eqn_builder('flat_rate', incentive_info, info_params, default_params)
 
 #%%
 def calculate_production_based_incentives(system_df, agent, function_templates={}):
@@ -259,8 +272,9 @@ def calc_system_size_and_financial_performance(agent):
     investment_incentives = calculate_investment_based_incentives(system_df, agent)
     capacity_based_incentives = calculate_capacity_based_incentives(system_df, agent)
 
-    pbi_by_timestep_functions = { "default":{'function':eqn_flat_rate,'row_params':['pbi_usd_p_kwh'], 'default_params':[0]},
-                                  "SREC":{'function':eqn_linear_decay_to_zero,'row_params':['pbi_usd_p_kwh','incentive_duration_yrs'], 'default_params':[0, 10, agent['timesteps_per_year']]}}
+    default_expiration = datetime.datetime(agent['year'] + agent['loan_term'],1,1)
+    pbi_by_timestep_functions = { "default":{'function':eqn_flat_rate,'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'],'default_params':[0, agent['loan_term'], default_expiration, agent['year'], agent['timesteps_per_year']]},
+                                  "SREC":{'function':eqn_linear_decay_to_zero,'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'], 'default_params':[0, 10, default_expiration, agent['year'], agent['timesteps_per_year']]}}
     production_based_incentives =  calculate_production_based_incentives(system_df, agent, function_templates=pbi_by_timestep_functions)
 
     cf_results_est = fFuncs.cashflow_constructor(est_bill_savings, 
