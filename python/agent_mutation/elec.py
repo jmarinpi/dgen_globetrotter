@@ -652,10 +652,9 @@ def get_nem_settings(state_limits, state_by_sector, selected_scenario, year):
 
     # Get Current Cumulative Adoption Statistics
     state_capacity_by_year = pd.DataFrame.from_records(
-        [{"state_abbr": "MD", "cum_capacity_mw": 3000, "peak_demand_mw": 10000, "year": 2014},
-         {"state_abbr": "AK", "cum_capacity_mw": 2000, "peak_demand_mw": 2000000, "year": 2014},
-         {"state_abbr": "AK", "cum_capacity_mw": 2000, "peak_demand_mw": 2000000, "year": 2015}])
-
+            [{ "state_abbr": state, "cum_capacity_mw": 0, "cum_capacity_pct": 1, "cum_incentive_spending_usd": 1e20,
+                 "peak_demand_mw": 0, "year": year
+                 } for state in state_limits['state_abbr'].unique()])
 
     # Find States That Have Not Sunset
     valid_states = filter_nem_year(state_limits, year)
@@ -1357,6 +1356,46 @@ def get_state_starting_capacities(con, schema):
     df = pd.read_sql(sql, con)
 
     return df
+
+
+
+#%%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def apply_state_incentives(dataframe, state_incentives, year):
+    dataframe = dataframe.reset_index()
+
+    state_capacity_by_year = pd.DataFrame.from_records(
+        [{
+             "state_abbr": state, "cum_capacity_mw": 0, "cum_capacity_pct": 1, "cum_incentive_spending_usd": 0,
+             "peak_demand_mw": 0, "year": year
+             } for state in state_incentives['state_abbr'].unique()])
+
+    # Filter Incentives by the Years in which they are valid
+    state_incentives = state_incentives.loc[
+        pd.isnull(state_incentives['start_date']) | (pd.to_datetime(state_incentives['start_date']).dt.year <= year)]
+    state_incentives = state_incentives.loc[
+        pd.isnull(state_incentives['end_date']) | (pd.to_datetime(state_incentives['end_date']).dt.year >= year)]
+
+    # Combine valid incentives with the cumulative metrics for each state up until the current year
+    state_incentives_mg = state_incentives.merge(state_capacity_by_year.loc[state_capacity_by_year['year'] == year],
+                                                 how='left', on=["state_abbr"])
+
+    # Filter where the states have not exceeded their cumulative installed capacity (by mw or pct generation) or total program budget
+    state_incentives_mg = state_incentives_mg.loc[pd.isnull(state_incentives_mg['incentive_cap_total_pct']) | (state_incentives_mg['cum_capacity_pct'] < state_incentives_mg['incentive_cap_total_pct'])]
+    state_incentives_mg = state_incentives_mg.loc[pd.isnull(state_incentives_mg['incentive_cap_total_mw']) | (state_incentives_mg['cum_capacity_mw'] < state_incentives_mg['incentive_cap_total_mw'])]
+    state_incentives_mg = state_incentives_mg.loc[pd.isnull(state_incentives_mg['budget_total_usd']) | (state_incentives_mg['cum_incentive_spending_usd'] < state_incentives_mg['budget_total_usd'])]
+
+    output  =[]
+    for i in state_incentives_mg.groupby(['state_abbr', 'sector_abbr']):
+        row = i[1]
+        state, sector = i[0]
+        output.append({'state_abbr':state, 'sector_abbr':sector,"state_incentives":row})
+
+    state_inc_df = pd.DataFrame.from_records(output)
+    dataframe = pd.merge(dataframe, state_inc_df, on=['state_abbr','sector_abbr'], how='left')
+
+
+    return dataframe
 
 
 #%%

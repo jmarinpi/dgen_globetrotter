@@ -272,25 +272,25 @@ ALTER TABLE diffusion_template.input_main_nem_state_by_sector_2017
 
 CREATE TABLE diffusion_shared.state_incentives_2017
 (
-    State char(2),
-    Sector char(50),
-    IncentiveType char(50),
-    StateMin_kW double precision,
-    StateMax_kW double precision,
-    PerformanceInc_usd_p_kW double precision,
-    MinIncentive_usd double precision,
-    MaxIncentive_usd double precision,
-    InvestmentInc_usd_p_w double precision,
-    InvestmentInc_pctCost double precision,
-    AnnualBudget_usd double precision,
-    TotalBudget_usd double precision,
-    AnnualCapacityCap_usd double precision,
-    CumCapacityCap_usd double precision,
-    Cap_pct double precision,
-    YearCap int,
-    StartDate date,
-    EndDate date,
-    Total varchar
+    state_abbr varchar,
+    sector_abbr varchar,
+    tech varchar,
+    incentive_type varchar,
+    min_kw double precision,
+    max_kw double precision,
+    pbi_usd_p_kwh double precision,
+    min_incentive_usd double precision,
+    max_incentive_usd double precision,
+    ibi_usd_p_w double precision,
+    ibi_pct double precision,
+    budget_annual_usd double precision,
+    budget_total_usd double precision,
+    incentive_cap_annual_mw double precision,
+    incentive_cap_total_mw double precision,
+    incentive_cap_total_pct double precision,
+    incentive_duration_yrs double precision,
+    start_date date,
+    end_date date
 );
 
 ALTER TABLE diffusion_shared.state_incentives_2017

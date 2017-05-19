@@ -1102,6 +1102,15 @@ def get_bass_params(con, schema):
     return bass_df
 
 
+def get_state_incentives(con):
+
+    sql = """SELECT * FROM diffusion_shared.state_incentives_2017;"""
+
+    state_incentives = pd.read_sql(sql, con)
+
+    return state_incentives
+
+
 def get_itc_incentives(con, schema):
 
     inputs = locals().copy()
@@ -1167,7 +1176,6 @@ def get_state_dsire_incentives(cur, con, schema, techs, dsire_opts):
     df['exp_date'] = pd.to_datetime(df['exp_date'])
 
     return df[out_cols]
-
 
 def calc_state_dsire_incentives(df, state_dsire_df, year):
 

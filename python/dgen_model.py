@@ -158,13 +158,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #srecs = datfunc.get_srecs(cur, con, scenario_settings.schema, scenario_settings.techs, model_settings.pg_conn_string, dsire_opts)
                 #state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
 
+                state_incentives = datfunc.get_state_incentives(con)
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
                 nem_state_capacity_limits = datfunc.get_nem_state(con, scenario_settings.schema)
                 nem_state_and_sector_attributes = datfunc.get_nem_state_by_sector(con, scenario_settings.schema)
                 nem_selected_scenario = datfunc.get_selected_scenario(con, scenario_settings.schema)
 
-              
-                
                 #==========================================================================================================
                 # declare input data file names - this is temporary until input sheet is updated
                 #==========================================================================================================
@@ -239,9 +238,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
 
                     # Size S+S system and calculate electric bills
+
+                    solar_agents.on_frame(agent_mutation.elec.apply_state_incentives,[state_incentives, year])
+
                     if 'ix' not in os.name: cores=None
                     else: cores=model_settings.local_cores
-                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, cores=cores)
+                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance,cores=cores)
 
                     # Calculate the financial performance of the S+S systems 
                     solar_agents.on_frame(financial_functions_elec.calc_financial_performance)
