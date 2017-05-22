@@ -59,8 +59,8 @@ def calculate_capacity_based_incentives(system_df, agent):
     for i, row in cbi_list.iterrows():
         if row['tech'] == 'solar':
             size_filter = check_minmax(system_df['pv'], row['min_pv'], row['max_pv'])
-
-            temp = (system_df['pv'] * row['ibi_pct']) * size_filter
+#check that this runs
+            temp = (system_df['pv'] * row['ibi_usd_p_kw']) * size_filter
 
             if not pd.isnull(row['max_incentive_usd']):
                 temp = min(temp,row['max_incentive_usd'])
