@@ -59,8 +59,8 @@ def calculate_capacity_based_incentives(system_df, agent):
     for i, row in cbi_list.iterrows():
         if row['tech'] == 'solar':
             size_filter = check_minmax(system_df['pv'], row['min_pv'], row['max_pv'])
-#check that this runs
-            temp = (system_df['pv'] * row['ibi_usd_p_kw']) * size_filter
+
+            temp = (system_df['pv'] * (row['ibi_usd_p_w']*1000)) * size_filter
 
             if not pd.isnull(row['max_incentive_usd']):
                 temp = min(temp,row['max_incentive_usd'])
@@ -140,10 +140,10 @@ def calculate_production_based_incentives(system_df, agent, function_templates={
             fn = function_templates[f_name]
             f =  np.vectorize(fn['function'](row,fn['row_params'],fn['default_params']))
 
-            system_df['usd_p_kwh_by_timestep'] = system_df['kwh_by_timestep'].apply(lambda x: f(range(0,len(x))))
-            result += system_df['usd_p_kwh_by_timestep'] * system_df['kwh_by_timestep']
+            temp = system_df['kwh_by_timestep'].apply(lambda x: f(range(0,len(x))))
+            result += temp * system_df['kwh_by_timestep'] * size_filter
 
-    result = map(lambda x: np.split(x, agent['loan_term']), result)
+    result = map(lambda x: np.split(x, agent['economic_lifetime']-1), result)
 
     return result
 
@@ -169,7 +169,7 @@ def calc_system_size_and_financial_performance(agent):
 
     # Extract load profile
     load_profile = np.array(agent['consumption_hourly'])    
-    agent['timesteps_per_year'] = 8760
+    agent['timesteps_per_year'] = 1
 
     # Misc. calculations
     pv_cf_profile = np.array(agent['solar_cf_profile']) / 1e6
@@ -222,7 +222,11 @@ def calc_system_size_and_financial_performance(agent):
     # Create df with all combinations of solar+storage sizes
     system_df = pd.DataFrame(gFuncs.cartesian([pv_sizes, batt_powers]), columns=['pv', 'batt'])
     system_df['est_bills'] = None
-    system_df['kwh_by_timestep'] = system_df['pv'].apply(lambda x: x * np.concatenate([pv_cf_profile * (1 - agent['pv_deg'] ** i) for i in range(1, agent['loan_term'])]))
+
+    pv_kwh_by_year = np.array(map(lambda x: sum(x), np.split(np.array(pv_cf_profile), agent['timesteps_per_year'])))
+    pv_kwh_by_year = np.concatenate([pv_kwh_by_year * (1 - agent['pv_deg'] ** i) for i in range(1, agent['economic_lifetime'])])
+    system_df['kwh_by_timestep'] = system_df['pv'].apply(lambda x: x * pv_kwh_by_year)
+
     n_sys = len(system_df)
     
     for i in system_df.index:    
@@ -272,8 +276,8 @@ def calc_system_size_and_financial_performance(agent):
     investment_incentives = calculate_investment_based_incentives(system_df, agent)
     capacity_based_incentives = calculate_capacity_based_incentives(system_df, agent)
 
-    default_expiration = datetime.datetime(agent['year'] + agent['loan_term'],1,1)
-    pbi_by_timestep_functions = { "default":{'function':eqn_flat_rate,'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'],'default_params':[0, agent['loan_term'], default_expiration, agent['year'], agent['timesteps_per_year']]},
+    default_expiration = datetime.datetime(agent['year'] + agent['economic_lifetime']-1,1,1)
+    pbi_by_timestep_functions = { "default":{'function':eqn_flat_rate,'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'],'default_params':[0, agent['economic_lifetime']-1, default_expiration, agent['year'], agent['timesteps_per_year']]},
                                   "SREC":{'function':eqn_linear_decay_to_zero,'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'], 'default_params':[0, 10, default_expiration, agent['year'], agent['timesteps_per_year']]}}
     production_based_incentives =  calculate_production_based_incentives(system_df, agent, function_templates=pbi_by_timestep_functions)
 
