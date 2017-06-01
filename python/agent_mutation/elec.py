@@ -652,7 +652,7 @@ def get_nem_settings(state_limits, state_by_sector, selected_scenario, year):
 
     # Get Current Cumulative Adoption Statistics
     state_capacity_by_year = pd.DataFrame.from_records(
-            [{ "state_abbr": state, "cum_capacity_mw": 0, "cum_capacity_pct": 1, "cum_incentive_spending_usd": 1e20,
+            [{ "state_abbr": state, "cum_capacity_mw": 0, "cum_capacity_pct": 0, "cum_incentive_spending_usd": 1e20,
                  "peak_demand_mw": 0, "year": year
                  } for state in state_limits['state_abbr'].unique()])
 
@@ -1366,7 +1366,7 @@ def apply_state_incentives(dataframe, state_incentives, year):
 
     state_capacity_by_year = pd.DataFrame.from_records(
         [{
-             "state_abbr": state, "cum_capacity_mw": 0, "cum_capacity_pct": 1, "cum_incentive_spending_usd": 0,
+             "state_abbr": state, "cum_capacity_mw": 0, "cum_capacity_pct": 0, "cum_incentive_spending_usd": 0,
              "peak_demand_mw": 0, "year": year
              } for state in state_incentives['state_abbr'].unique()])
 

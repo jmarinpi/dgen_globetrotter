@@ -241,8 +241,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     solar_agents.on_frame(agent_mutation.elec.apply_state_incentives,[state_incentives, year])
 
-                    if 'ix' not in os.name: cores=None
-                    else: cores=model_settings.local_cores
+                   # if 'ix' not in os.name: cores=None
+                   # else: cores=model_settings.local_cores
+                    cores = None
                     solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance,cores=cores)
 
                     # Calculate the financial performance of the S+S systems 

@@ -30,120 +30,202 @@ logger = utilfunc.get_logger()
 
 #%%
 def calculate_investment_based_incentives(system_df, agent):
-
+    #Get State Incentives that have a valid Investment Based Incentive value (based on percent of total installed costs)
     cbi_list = agent['state_incentives'].loc[pd.notnull(agent['state_incentives']['ibi_pct'])]
 
-    result = np.zeros((system_df.shape[0],1))
+    #Create a empty dataframe to store cumulative ibi's for each system configuration
+    result = np.zeros(system_df.shape[0])
 
-    for i, row in cbi_list.iterrows():
+    #Loop through each incenctive and add it to the result df
+    for row in cbi_list.to_dict('records'):
         if row['tech'] == 'solar':
-            size_filter = check_minmax(system_df['pv'], row['min_pv'], row['max_pv'])
+            #Size filer calls a function to check for valid system size limitations - a boolean so if the size in invalid it will add zero's to the results df
+            size_filter = check_minmax(system_df['pv'], row['min_kw'], row['max_kw'])
+
+            #Scale costs based on system size
             system_df['pv_cost_usd'] = ( system_df['pv'] * agent['pv_price_per_kw'] )
 
+            #Total incentive
             temp = ( system_df['pv_cost_usd'] * row['ibi_pct'] ) * size_filter
 
+            #Reduce the incentive if is is more than the max allowable payment
             if not pd.isnull(row['max_incentive_usd']):
-                temp = min(temp,row['max_incentive_usd'])
+                temp = temp.apply(lambda x: min(x, row['max_incentive_usd']))
 
+            #Set the incentive to zero if it is less than the minimum incentive
+            if not pd.isnull(row['min_incentive_usd']):
+                temp = temp * temp.apply(lambda x: int(x>row['min_incentive_usd']))
+
+            #Add the result to the cumulative total
             result += temp
 
     return result
 
 #%%
 def calculate_capacity_based_incentives(system_df, agent):
+    # Get State Incentives that have a valid Capacity Based Incentive value (based on $ per watt)
+    cbi_list = agent['state_incentives'].loc[pd.notnull(agent['state_incentives']['cbi_usd_p_w'])]
 
-    cbi_list = agent['state_incentives'].loc[pd.notnull(agent['state_incentives']['ibi_usd_p_w'])]
+    # Create a empty dataframe to store cumulative cbi's for each system configuration
+    result = np.zeros(system_df.shape[0])
 
-    result = np.zeros((system_df.shape[0], 1))
-
-    for i, row in cbi_list.iterrows():
+    # Loop through each incenctive and add it to the result df
+    for row in cbi_list.to_dict('records'):
         if row['tech'] == 'solar':
-            size_filter = check_minmax(system_df['pv'], row['min_pv'], row['max_pv'])
+            # Size filer calls a function to check for valid system size limitations - a boolean so if the size in invalid it will add zero's to the results df
+            size_filter = check_minmax(system_df['pv'], row['min_kw'], row['max_kw'])
 
-            temp = (system_df['pv'] * (row['ibi_usd_p_w']*1000)) * size_filter
+            # Calculate incentives
+            temp = (system_df['pv'] * (row['cbi_usd_p_w']*1000)) * size_filter
 
+            # Reduce the incentive if is is more than the max allowable payment (by percent total costs)
             if not pd.isnull(row['max_incentive_usd']):
-                temp = min(temp,row['max_incentive_usd'])
+                temp = temp.apply(lambda x: min(x, row['max_incentive_usd'] ))
 
+            # Reduce the incentive if is is more than the max allowable payment (by percent of total installed costs)
+            if not pd.isnull(row['max_incentive_pct']):
+                temp = temp.combine( system_df['pv'] * agent['pv_price_per_kw'] * row['max_incentive_pct'], min)
+
+            # Set the incentive to zero if it is less than the minimum incentive
+            if not pd.isnull(row['min_incentive_usd']):
+                temp = temp * temp.apply(lambda x: int(x>row['min_incentive_usd']))
+
+            # Add the result to the cumulative total
             result += temp
 
     return result
 
 #%%
-def check_minmax(value, min, max):
-    output = (value*0) + 1
+def check_minmax(value, min_, max_):
+    #Returns 1 if the value is within a valid system size limitation - works for single numbers and arrays (assumes valid is system size limitation are not known)
 
-    if not np.isnan(min):
-        output = (value >= min)
+    output = value.apply(lambda x: True)
 
-    if not np.isnan(max):
-        output = (value <= max)
+    if isinstance(min_,float):
+        if not np.isnan(min_):
+            output = output * value.apply(lambda x: x > min_)
+
+    if isinstance(max_, float):
+        if not np.isnan(max_):
+            output = output * value.apply(lambda x: x < max_)
 
     return output
 
 #%%
 def get_expiration(end_date, current_year, timesteps_per_year):
-    return  ((end_date - datetime.date(current_year, 1, 1)).days / 365.0) * timesteps_per_year
+    #Calculates the timestep at which the end date occurs based on pytoh datetime.date objects and a number of timesteps per year
+    return  float(((end_date - datetime.date(current_year, 1, 1)).days / 365.0) * timesteps_per_year)
 
 #%%
-def eqn_builder(method,incentive_info, info_params, default_params):
-    #Row Params [pbi_usd_p_kwh, incentive_duration_years]
-    #Default Params [usd per kwh, ]
+def eqn_builder(method,incentive_info, info_params, default_params,additional_data):
+    #Builds an equation to scale a series of timestep values
+        #method:            'linear_decay' linearly drop from the full price to zero at a given timestep (used for SREC's currently)
+        #                   'flat_rate' used as a defualt to keep the consistent value until an endpoint at which point the value is always zero
+        #incentive_info:    a row from the agent['state_incentives'] dataframe from which to draw info to customize and equation
+        #incentive params:  an array containing the names of the params in agent['state_incentives'] to use in the equation
+        #default params:    an array of default values for each incentive param. Entries must match the order of the incentive params.
+        #additional_data:    Addtional data can be used to customize the equation
 
+    #Loop through params and grab the default value is the agent['state_incentives'] entry does not have a valid value for it
     for i, r in enumerate(info_params):
         try:
             if np.isnan(incentive_info[r]):
                 incentive_info[r] = default_params[i]
         except:
-            pass
+            if incentive_info[r] is None:
+                incentive_info[r] = default_params[i]
 
     pbi_usd_p_kwh = float(incentive_info[info_params[0]])
     years = float(incentive_info[info_params[1]])
     end_date = incentive_info[info_params[2]]
-    current_year = int(default_params[3])
 
-    timesteps_per_year = float(default_params[4])
+    current_year = int(additional_data[0])
+    timesteps_per_year = float(additional_data[1])
 
-    expiration = get_expiration(end_date, current_year, timesteps_per_year)
-    expiration =  min(years * timesteps_per_year, expiration)
+    #Get the timestep at which the incentive expires
+    try:
+        #Find expiration timestep by explict program end date
+        expiration = get_expiration(end_date, current_year, timesteps_per_year)
+    except:
+        #Assume the incetive applies for all years if there is an error in the previous step
+        expiration = years * timesteps_per_year
+
+    #Reduce the expiration if there is a cap on the number of years the incentive can be applied
+    expiration = min(years * timesteps_per_year, expiration)
 
     if method =='linear_decay':
-        return lambda ts: (pbi_usd_p_kwh + ((-1*pbi_usd_p_kwh/expiration) * ts)) if ts < expiration else 0.0
+        #Linear decline to zero at expiration
+        def function(ts):
+            if ts > expiration:
+                return  0.0
+            else:
+                if expiration - ts < 1:
+                    fraction = expiration - ts
+                else:
+                    fraction = 1
+                return fraction * (pbi_usd_p_kwh + ((-1 * (pbi_usd_p_kwh / expiration) * ts)))
+
+        return function
+
 
     if method == 'flat_rate':
-        return lambda ts: pbi_usd_p_kwh if ts < expiration else 0.0
+        # Flat rate until expiration, and then zero
+        def function(ts):
+            if ts > expiration:
+                return 0.0
+            else:
+                if expiration - ts < 1:
+                    fraction = expiration - ts
+                else:
+                    fraction = 1
+
+                return fraction * pbi_usd_p_kwh
+
+        return function
 
 #%%
-def eqn_linear_decay_to_zero(incentive_info, info_params, default_params):
-    return eqn_builder('linear_decay',incentive_info, info_params, default_params)
+def eqn_linear_decay_to_zero(incentive_info, info_params, default_params,additional_params):
+    return eqn_builder('linear_decay',incentive_info, info_params, default_params,additional_params)
 
 #%%
-def eqn_flat_rate(incentive_info, info_params, default_params):
-    return eqn_builder('flat_rate', incentive_info, info_params, default_params)
+def eqn_flat_rate(incentive_info, info_params, default_params,additional_params):
+    return eqn_builder('flat_rate', incentive_info, info_params, default_params,additional_params)
 
 #%%
 def calculate_production_based_incentives(system_df, agent, function_templates={}):
 
+    # Get State Incentives that have a valid Production Based Incentive value
     pbi_list = agent['state_incentives'].loc[pd.notnull(agent['state_incentives']['pbi_usd_p_kwh'])]
 
-    result = system_df['kwh_by_timestep']*0
+    # Create a empty dataframe to store cumulative pbi's for each system configuration (each system should have an array as long as the number of years times the number of timesteps per year)
+    result = np.tile( np.array([0]*agent['economic_lifetime']*agent['timesteps_per_year']), (system_df.shape[0],1))
 
-    for i, row in pbi_list.iterrows():
+    #Loop through incentives
+    for row in pbi_list.to_dict('records'):
+        #Build boolean array to express if system sizes are valid
         size_filter = check_minmax(system_df['pv'], row['min_kw'], row['max_kw'])
 
         if row['tech'] == 'solar':
+            # Get the incentive type - this should match a key in the function dictionary
             if row['incentive_type'] in function_templates.keys():
                 f_name = row['incentive_type']
             else:
                 f_name = 'default'
 
+            # Grab infomation about the incentive from the function template
             fn = function_templates[f_name]
-            f =  np.vectorize(fn['function'](row,fn['row_params'],fn['default_params']))
 
-            temp = system_df['kwh_by_timestep'].apply(lambda x: f(range(0,len(x))))
-            result += temp * system_df['kwh_by_timestep'] * size_filter
+            # Vectorize the function
+            f =  np.vectorize(fn['function'](row,fn['row_params'],fn['default_params'],fn['additional_params']))
 
-    result = map(lambda x: np.split(x, agent['economic_lifetime']-1), result)
+            # Apply the function to each row (containing an array of timestep values)
+            temp = system_df['kwh_by_timestep'].apply(lambda x: x * f(range(0,len(x))))
+
+            #Add the pbi the cumulative total
+            result += list(temp * size_filter)
+
+    #Sum the incentive at each timestep by year for each system size
+    result =  [np.array(map(lambda x: sum(x), np.split(x,agent['economic_lifetime'] ))) for x in result]
 
     return result
 
@@ -224,7 +306,7 @@ def calc_system_size_and_financial_performance(agent):
     system_df['est_bills'] = None
 
     pv_kwh_by_year = np.array(map(lambda x: sum(x), np.split(np.array(pv_cf_profile), agent['timesteps_per_year'])))
-    pv_kwh_by_year = np.concatenate([pv_kwh_by_year * (1 - agent['pv_deg'] ** i) for i in range(1, agent['economic_lifetime'])])
+    pv_kwh_by_year = np.concatenate([(pv_kwh_by_year - ( pv_kwh_by_year * agent['pv_deg'] * i)) for i in range(1, agent['economic_lifetime']+1)])
     system_df['kwh_by_timestep'] = system_df['pv'].apply(lambda x: x * pv_kwh_by_year)
 
     n_sys = len(system_df)
@@ -267,19 +349,35 @@ def calc_system_size_and_financial_performance(agent):
     batt_chg_frac = np.where(system_df['pv'] >= system_df['batt']*4.0, 1.0, 0)
     
     if agent['year'] <= 2016: cash_incentives = np.array(system_df['pv']) * agent['pv_price_per_kw'] * 0.3
-    else: cash_incentives = np.array([0])
+    else: cash_incentives = np.array([0]*system_df.shape[0])
         
     #=========================================================================#
     # Determine financial performance of each system size
     #=========================================================================#
 
-    investment_incentives = calculate_investment_based_incentives(system_df, agent)
-    capacity_based_incentives = calculate_capacity_based_incentives(system_df, agent)
+    if not isinstance(agent['state_incentives'],float):
 
-    default_expiration = datetime.datetime(agent['year'] + agent['economic_lifetime']-1,1,1)
-    pbi_by_timestep_functions = { "default":{'function':eqn_flat_rate,'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'],'default_params':[0, agent['economic_lifetime']-1, default_expiration, agent['year'], agent['timesteps_per_year']]},
-                                  "SREC":{'function':eqn_linear_decay_to_zero,'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'], 'default_params':[0, 10, default_expiration, agent['year'], agent['timesteps_per_year']]}}
-    production_based_incentives =  calculate_production_based_incentives(system_df, agent, function_templates=pbi_by_timestep_functions)
+        investment_incentives = calculate_investment_based_incentives(system_df, agent)
+        capacity_based_incentives = calculate_capacity_based_incentives(system_df, agent)
+
+        default_expiration = datetime.date(agent['year'] + agent['economic_lifetime'],1,1)
+        pbi_by_timestep_functions = {
+                                    "default":
+                                            {   'function':eqn_flat_rate,
+                                                'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'],
+                                                'default_params':[0, agent['economic_lifetime'], default_expiration],
+                                                'additional_params':[agent['year'], agent['timesteps_per_year']]},
+                                    "SREC":
+                                            {   'function':eqn_linear_decay_to_zero,
+                                                'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'],
+                                                'default_params':[0, 10, default_expiration],
+                                                'additional_params':[agent['year'], agent['timesteps_per_year']]}
+                                      }
+        production_based_incentives =  calculate_production_based_incentives(system_df, agent, function_templates=pbi_by_timestep_functions)
+    else:
+        investment_incentives = np.zeros(system_df.shape[0])
+        capacity_based_incentives = np.zeros(system_df.shape[0])
+        production_based_incentives = np.tile( np.array([0]*agent['economic_lifetime']), (system_df.shape[0],1))
 
     cf_results_est = fFuncs.cashflow_constructor(est_bill_savings, 
                          np.array(system_df['pv']), agent['pv_price_per_kw'], agent['pv_om_per_kw'],
@@ -291,7 +389,7 @@ def calc_system_size_and_financial_performance(agent):
                          agent['tax_rate'], 0, agent['real_discount'],  
                          agent['economic_lifetime'], agent['inflation'], 
                          agent['down_payment'], agent['loan_rate'], agent['loan_term'],
-                         cash_incentives=cash_incentives, ibi=investment_incentives, cbi=capacity_based_incentives, pbi=production_based_incentives)
+                         cash_incentives,investment_incentives, capacity_based_incentives, production_based_incentives)
                     
     system_df['npv'] = cf_results_est['npv']
    
@@ -302,9 +400,12 @@ def calc_system_size_and_financial_performance(agent):
 
     opt_pv_size = system_df['pv'][index_of_best_fin_perform_ho].copy()
     opt_batt_power = system_df['batt'][index_of_best_fin_perform_ho].copy()
+
+
     opt_batt_cap = opt_batt_power*batt_ratio
     batt.set_cap_and_power(opt_batt_cap, opt_batt_power) 
     load_and_pv_profile = load_profile - opt_pv_size*pv_cf_profile
+
     if opt_pv_size<=agent['pv_kw_limit']:
         export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
         export_tariff.periods_8760 = tariff.e_tou_8760
@@ -334,9 +435,10 @@ def calc_system_size_and_financial_performance(agent):
     else:
         batt_chg_frac = 0.0
 
-
-    if agent['year'] <= 2016: cash_incentives = np.array([opt_pv_size * agent['pv_price_per_kw'] * 0.3])
-    else: cash_incentives = np.array([0])
+    cash_incentives = np.array([cash_incentives[index_of_best_fin_perform_ho]])
+    investment_incentives = np.array(investment_incentives[index_of_best_fin_perform_ho])
+    capacity_based_incentives = np.array(capacity_based_incentives[index_of_best_fin_perform_ho])
+    production_based_incentives = np.array(production_based_incentives[index_of_best_fin_perform_ho])
     
     cf_results_opt = fFuncs.cashflow_constructor(opt_bill_savings, 
                      opt_pv_size, agent['pv_price_per_kw'], agent['pv_om_per_kw'],
@@ -348,7 +450,7 @@ def calc_system_size_and_financial_performance(agent):
                      agent['tax_rate'], 0, agent['real_discount'],  
                      agent['economic_lifetime'], agent['inflation'], 
                      agent['down_payment'], agent['loan_rate'], agent['loan_term'],
-                     cash_incentives=cash_incentives) 
+                     cash_incentives, investment_incentives, capacity_based_incentives, production_based_incentives)
                      
     #=========================================================================#
     # Package results

@@ -281,7 +281,7 @@ CREATE TABLE diffusion_shared.state_incentives_2017
     pbi_usd_p_kwh double precision,
     min_incentive_usd double precision,
     max_incentive_usd double precision,
-    ibi_usd_p_w double precision,
+    cbi_usd_p_w double precision,
     ibi_pct double precision,
     budget_annual_usd double precision,
     budget_total_usd double precision,
@@ -290,7 +290,12 @@ CREATE TABLE diffusion_shared.state_incentives_2017
     incentive_cap_total_pct double precision,
     incentive_duration_yrs double precision,
     start_date date,
-    end_date date
+    end_date date,
+    cbi_usd_p_kwh double precision,
+    max_incentive_pct double precision,
+    min_incentive_pct double precision,
+    max_kwh double precision,
+    min_kwh double precision 
 );
 
 ALTER TABLE diffusion_shared.state_incentives_2017
