@@ -29,44 +29,27 @@ logger = utilfunc.get_logger()
 #==============================================================================
 
 #%%
+def check_incentive_constraints(incentive_data, temp, system_costs):
+    # Reduce the incentive if is is more than the max allowable payment (by percent total costs)
+    if not pd.isnull(incentive_data['max_incentive_usd']):
+        temp = temp.apply(lambda x: min(x, incentive_data['max_incentive_usd']))
+
+    # Reduce the incentive if is is more than the max allowable payment (by percent of total installed costs)
+    if not pd.isnull(incentive_data['max_incentive_pct']):
+        temp = temp.combine(system_costs * incentive_data['max_incentive_pct'], min)
+
+    # Set the incentive to zero if it is less than the minimum incentive
+    if not pd.isnull(incentive_data['min_incentive_usd']):
+        temp = temp * temp.apply(lambda x: int(x > incentive_data['min_incentive_usd']))
+
+    return temp
+
+# %%
 def calculate_investment_based_incentives(system_df, agent):
-    #Get State Incentives that have a valid Investment Based Incentive value (based on percent of total installed costs)
+    # Get State Incentives that have a valid Investment Based Incentive value (based on percent of total installed costs)
     cbi_list = agent['state_incentives'].loc[pd.notnull(agent['state_incentives']['ibi_pct'])]
 
-    #Create a empty dataframe to store cumulative ibi's for each system configuration
-    result = np.zeros(system_df.shape[0])
-
-    #Loop through each incenctive and add it to the result df
-    for row in cbi_list.to_dict('records'):
-        if row['tech'] == 'solar':
-            #Size filer calls a function to check for valid system size limitations - a boolean so if the size in invalid it will add zero's to the results df
-            size_filter = check_minmax(system_df['pv'], row['min_kw'], row['max_kw'])
-
-            #Scale costs based on system size
-            system_df['pv_cost_usd'] = ( system_df['pv'] * agent['pv_price_per_kw'] )
-
-            #Total incentive
-            temp = ( system_df['pv_cost_usd'] * row['ibi_pct'] ) * size_filter
-
-            #Reduce the incentive if is is more than the max allowable payment
-            if not pd.isnull(row['max_incentive_usd']):
-                temp = temp.apply(lambda x: min(x, row['max_incentive_usd']))
-
-            #Set the incentive to zero if it is less than the minimum incentive
-            if not pd.isnull(row['min_incentive_usd']):
-                temp = temp * temp.apply(lambda x: int(x>row['min_incentive_usd']))
-
-            #Add the result to the cumulative total
-            result += temp
-
-    return result
-
-#%%
-def calculate_capacity_based_incentives(system_df, agent):
-    # Get State Incentives that have a valid Capacity Based Incentive value (based on $ per watt)
-    cbi_list = agent['state_incentives'].loc[pd.notnull(agent['state_incentives']['cbi_usd_p_w'])]
-
-    # Create a empty dataframe to store cumulative cbi's for each system configuration
+    # Create a empty dataframe to store cumulative ibi's for each system configuration
     result = np.zeros(system_df.shape[0])
 
     # Loop through each incenctive and add it to the result df
@@ -75,23 +58,61 @@ def calculate_capacity_based_incentives(system_df, agent):
             # Size filer calls a function to check for valid system size limitations - a boolean so if the size in invalid it will add zero's to the results df
             size_filter = check_minmax(system_df['pv'], row['min_kw'], row['max_kw'])
 
+            # Scale costs based on system size
+            system_costs = (system_df['pv'] * agent['pv_price_per_kw'])
+
+        if row['tech'] == 'storage':
+            # Size filer calls a function to check for valid system size limitations - a boolean so if the size in invalid it will add zero's to the results df
+            size_filter = check_minmax(system_df['batt_kwh'], row['min_kwh'], row['max_kwh'])
+            size_filter = size_filter * check_minmax(system_df['batt_kw'], row['min_kw'], row['max_kw'])
+
+            # Calculate system costs
+            system_costs = (system_df['batt_kw'] * agent['batt_price_per_kw']) + (system_df['batt_kwh'] * agent['batt_price_per_kwh'])
+
+        # Total incentive
+        temp = (system_costs * row['ibi_pct']) * size_filter
+
+        # Add the result to the cumulative total
+        result += check_incentive_constraints(row, temp,system_costs)
+
+    return result
+
+
+#%%
+def calculate_capacity_based_incentives(system_df, agent):
+
+    # Get State Incentives that have a valid Capacity Based Incentive value (based on $ per watt)
+    cbi_list = agent['state_incentives'].loc[pd.notnull(agent['state_incentives']['cbi_usd_p_w']) | pd.notnull(agent['state_incentives']['cbi_usd_p_wh'])]
+
+    # Create a empty dataframe to store cumulative cbi's for each system configuration
+    result = np.zeros(system_df.shape[0])
+
+    # Loop through each incenctive and add it to the result df
+    for row in cbi_list.to_dict('records'):
+
+        if row['tech'] == 'solar':
+            # Size filer calls a function to check for valid system size limitations - a boolean so if the size in invalid it will add zero's to the results df
+            size_filter = check_minmax(system_df['pv'], row['min_kw'], row['max_kw'])
+
             # Calculate incentives
             temp = (system_df['pv'] * (row['cbi_usd_p_w']*1000)) * size_filter
 
-            # Reduce the incentive if is is more than the max allowable payment (by percent total costs)
-            if not pd.isnull(row['max_incentive_usd']):
-                temp = temp.apply(lambda x: min(x, row['max_incentive_usd'] ))
+            # Calculate system costs
+            system_costs = system_df['pv'] * agent['pv_price_per_kw']
 
-            # Reduce the incentive if is is more than the max allowable payment (by percent of total installed costs)
-            if not pd.isnull(row['max_incentive_pct']):
-                temp = temp.combine( system_df['pv'] * agent['pv_price_per_kw'] * row['max_incentive_pct'], min)
 
-            # Set the incentive to zero if it is less than the minimum incentive
-            if not pd.isnull(row['min_incentive_usd']):
-                temp = temp * temp.apply(lambda x: int(x>row['min_incentive_usd']))
+        if row['tech'] == 'storage' and not np.isnan(row['cbi_usd_p_wh']):
+            # Size filer calls a function to check for valid system size limitations - a boolean so if the size in invalid it will add zero's to the results df
+            size_filter = check_minmax(system_df['batt_kwh'], row['min_kwh'], row['max_kwh'])
+            size_filter = size_filter * check_minmax(system_df['batt_kw'], row['min_kw'], row['max_kw'])
 
-            # Add the result to the cumulative total
-            result += temp
+            # Calculate incentives
+            temp = row['cbi_usd_p_wh']* system_df['batt_kw'] * 1000  * size_filter
+
+            # Calculate system costs
+            system_costs = (system_df['batt_kw'] * agent['batt_price_per_kw']) + (system_df['batt_kwh'] * agent['batt_price_per_kwh'])
+
+        result += check_incentive_constraints(row, temp, system_costs)
 
     return result
 
@@ -103,11 +124,11 @@ def check_minmax(value, min_, max_):
 
     if isinstance(min_,float):
         if not np.isnan(min_):
-            output = output * value.apply(lambda x: x > min_)
+            output = output * value.apply(lambda x: x >= min_)
 
     if isinstance(max_, float):
         if not np.isnan(max_):
-            output = output * value.apply(lambda x: x < max_)
+            output = output * value.apply(lambda x: x <= max_)
 
     return output
 
@@ -302,7 +323,7 @@ def calc_system_size_and_financial_performance(agent):
         est_params_df.set_value(pv_size, 'estimator_params', dFuncs.calc_estimator_params(load_and_pv_profile, tariff, export_tariff, batt.eta_charge, batt.eta_discharge))
     
     # Create df with all combinations of solar+storage sizes
-    system_df = pd.DataFrame(gFuncs.cartesian([pv_sizes, batt_powers]), columns=['pv', 'batt'])
+    system_df = pd.DataFrame(gFuncs.cartesian([pv_sizes, batt_powers]), columns=['pv', 'batt_kw'])
     system_df['est_bills'] = None
 
     pv_kwh_by_year = np.array(map(lambda x: sum(x), np.split(np.array(pv_cf_profile), agent['timesteps_per_year'])))
@@ -322,7 +343,7 @@ def calc_system_size_and_financial_performance(agent):
         else:
             export_tariff.set_constant_sell_price(agent['wholesale_elec_price'])
 
-        batt_power = system_df['batt'][i].copy()
+        batt_power = system_df['batt_kw'][i].copy()
         batt.set_cap_and_power(batt_power*batt_ratio, batt_power)  
 
         if batt_power > 0:
@@ -332,6 +353,8 @@ def calc_system_size_and_financial_performance(agent):
         else:
             bill_with_PV, _ = tFuncs.bill_calculator(load_and_pv_profile, tariff, export_tariff)
             system_df.loc[i, 'est_bills'] = bill_with_PV
+
+    system_df['batt_kwh'] = system_df['batt_kw'] * batt_ratio
     
     # Calculate bill savings cash flow
     # elec_price_multiplier is the scalar increase in the cost of electricity since 2016, when the tariffs were curated
@@ -346,7 +369,7 @@ def calc_system_size_and_financial_performance(agent):
         
     # simple representation of 70% minimum of batt charging from PV in order to
     # qualify for the ITC. Here, if batt kW is greater than 25% of PV kW, no ITC.
-    batt_chg_frac = np.where(system_df['pv'] >= system_df['batt']*4.0, 1.0, 0)
+    batt_chg_frac = np.where(system_df['pv'] >= system_df['batt_kw']*4.0, 1.0, 0)
     
     if agent['year'] <= 2016: cash_incentives = np.array(system_df['pv']) * agent['pv_price_per_kw'] * 0.3
     else: cash_incentives = np.array([0]*system_df.shape[0])
@@ -356,7 +379,6 @@ def calc_system_size_and_financial_performance(agent):
     #=========================================================================#
 
     if not isinstance(agent['state_incentives'],float):
-
         investment_incentives = calculate_investment_based_incentives(system_df, agent)
         capacity_based_incentives = calculate_capacity_based_incentives(system_df, agent)
 
@@ -381,7 +403,7 @@ def calc_system_size_and_financial_performance(agent):
 
     cf_results_est = fFuncs.cashflow_constructor(est_bill_savings, 
                          np.array(system_df['pv']), agent['pv_price_per_kw'], agent['pv_om_per_kw'],
-                         np.array(system_df['batt'])*batt_ratio, np.array(system_df['batt']), 
+                         np.array(system_df['batt_kw'])*batt_ratio, np.array(system_df['batt_kw']),
                          agent['batt_price_per_kw'], agent['batt_price_per_kwh'], 
                          agent['batt_om_per_kw'], agent['batt_om_per_kwh'],
                          batt_chg_frac,
@@ -399,12 +421,11 @@ def calc_system_size_and_financial_performance(agent):
     index_of_best_fin_perform_ho = system_df['npv'].idxmax()
 
     opt_pv_size = system_df['pv'][index_of_best_fin_perform_ho].copy()
-    opt_batt_power = system_df['batt'][index_of_best_fin_perform_ho].copy()
-
+    opt_batt_power = system_df['batt_kw'][index_of_best_fin_perform_ho].copy()
 
     opt_batt_cap = opt_batt_power*batt_ratio
     batt.set_cap_and_power(opt_batt_cap, opt_batt_power) 
-    load_and_pv_profile = load_profile - opt_pv_size*pv_cf_profile
+    #load_and_pv_profile = load_profile - opt_pv_size*pv_cf_profile  not used
 
     if opt_pv_size<=agent['pv_kw_limit']:
         export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
@@ -430,10 +451,7 @@ def calc_system_size_and_financial_performance(agent):
     opt_bill_savings = opt_bill_savings * agent['elec_price_multiplier'] * escalator * degradation
     
     # If the batt kW is less than 25% of the PV kW, apply the ITC
-    if opt_pv_size >= opt_batt_power*4:
-        batt_chg_frac = 1.0
-    else:
-        batt_chg_frac = 0.0
+    batt_chg_frac = int( opt_batt_power/opt_pv_size < 0.25)
 
     cash_incentives = np.array([cash_incentives[index_of_best_fin_perform_ho]])
     investment_incentives = np.array(investment_incentives[index_of_best_fin_perform_ho])
