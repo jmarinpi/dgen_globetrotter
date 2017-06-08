@@ -243,7 +243,7 @@ def calculate_production_based_incentives(system_df, agent, function_templates={
             temp = system_df['kwh_by_timestep'].apply(lambda x: x * f(range(0,len(x))))
 
             #Add the pbi the cumulative total
-            result += list(temp * size_filter)
+            result = result + list(temp * size_filter)
 
     #Sum the incentive at each timestep by year for each system size
     result =  [np.array(map(lambda x: sum(x), np.split(x,agent['economic_lifetime'] ))) for x in result]

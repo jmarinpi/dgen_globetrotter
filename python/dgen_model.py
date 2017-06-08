@@ -42,8 +42,6 @@ import input_data_functions as iFuncs
 #import tariff_functions as tFuncs
 #import financial_functions as fFuncs
 import general_functions as gFuncs
-
-
 #==============================================================================
 # raise  numpy and pandas warnings as exceptions
 #==============================================================================
