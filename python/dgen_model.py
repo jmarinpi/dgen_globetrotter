@@ -163,31 +163,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 nem_selected_scenario = datfunc.get_selected_scenario(con, scenario_settings.schema)
 
                 #==========================================================================================================
-                # declare input data file names - this is temporary until input sheet is updated
-                #==========================================================================================================
-                scenario_settings.pv_price_file_name = 'pv_price_atb16_mid.csv' #pv_price_atb16_mid, pv_price_experimental
-                scenario_settings.batt_price_file_name = 'batt_prices_FY17_high.csv' 
-                scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_atbMid.csv'  
-                scenario_settings.wholesale_elec_file_name = 'wholesale_elec_prices_atb_FY17_mid.csv'
-                scenario_settings.pv_tech_file_name = 'pv_tech_performance_defaultFY17.csv'                
-                scenario_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
-                scenario_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
-                scenario_settings.financing_file_name = 'financing_atb_FY17.csv' #financing_atb_FY17, financing_experimental
-                scenario_settings.batt_tech_file_name = 'batt_tech_performance_SunLamp17.csv'                
-
-
-                #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
                 #==========================================================================================================
-                pv_tech_traj = iFuncs.ingest_pv_tech_performance(scenario_settings)
-                elec_price_change_traj = iFuncs.ingest_elec_price_trajectories(scenario_settings)
-                pv_price_traj = iFuncs.ingest_pv_price_trajectories(scenario_settings)
-                batt_price_traj = iFuncs.ingest_batt_price_trajectories(scenario_settings)
-                deprec_sch = iFuncs.ingest_depreciation_schedules(scenario_settings)
-                carbon_intensities = iFuncs.ingest_carbon_intensities(scenario_settings)
-                wholesale_elec_prices = iFuncs.ingest_wholesale_elec_prices(scenario_settings)
-                financing_terms = iFuncs.ingest_financing_terms(scenario_settings)
-                batt_tech_traj = iFuncs.ingest_batt_tech_performance(scenario_settings)
+                deprec_sch = iFuncs.import_table( scenario_settings, con, input_name='pv_tech_performance', csv_import_function=iFuncs.deprec_schedule)
+                carbon_intensities = iFuncs.import_table( scenario_settings, con, input_name='pv_tech_performance', csv_import_function=iFuncs.melt_year('grid_carbon_tco2_per_kwh'))
+                wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, input_name='pv_tech_performance', csv_import_function=iFuncs.melt_year('wholesale_elec_price'))
+                pv_tech_traj = iFuncs.import_table( scenario_settings, con, input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
+                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, input_name='elec_prices', csv_import_function=iFuncs.stacked_sectors)
+                pv_price_traj = iFuncs.import_table( scenario_settings, con, input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
+                batt_price_traj = iFuncs.import_table( scenario_settings, con, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
+                financing_terms = iFuncs.import_table( scenario_settings, con, input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
+                batt_tech_traj = iFuncs.import_table( scenario_settings, con, input_name='batt_tech_performance', csv_import_function=iFuncs.stacked_sectors)
 
                 for year in scenario_settings.model_years:
 
@@ -196,7 +182,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # determine any non-base-year columns and drop them
                     cols = list(solar_agents.df.columns)
                     cols_to_drop = [x for x in cols if x not in cols_base]
-                    solar_agents.df.drop(cols_to_drop, axis=1, inplace=True)          
+                    solar_agents.df.drop(cols_to_drop, axis=1, inplace=True)
 
                     # copy the core agent object and set their year
                     solar_agents.df['year'] = year
@@ -219,7 +205,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     solar_agents.on_frame(agent_mutation.elec.apply_batt_tech_performance, (batt_tech_traj))
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_tech_performance, pv_tech_traj)
 
-                    # Apply technology prices                    
+                    # Apply technology prices
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_prices, pv_price_traj)
                     solar_agents.on_frame(agent_mutation.elec.apply_batt_prices, [batt_price_traj, batt_tech_traj, year])
 
@@ -228,7 +214,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Apply carbon intensities
                     solar_agents.on_frame(agent_mutation.elec.apply_carbon_intensities, carbon_intensities)
-                    
+
                     # Apply wholesale electricity prices
                     solar_agents.on_frame(agent_mutation.elec.apply_wholesale_elec_prices, wholesale_elec_prices)
 
@@ -244,7 +230,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     cores = None
                     solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance,cores=cores)
 
-                    # Calculate the financial performance of the S+S systems 
+                    # Calculate the financial performance of the S+S systems
                     solar_agents.on_frame(financial_functions_elec.calc_financial_performance)
 
                     # Calculate Maximum Market Share
@@ -263,7 +249,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Calculate diffusion based on economics and bass diffusion
                     solar_agents.df, market_last_year_df = diffusion_functions_elec.calc_diffusion_solar(solar_agents.df, is_first_year, bass_params)
-                    
+
                     # Estimate total generation
                     solar_agents.on_frame(agent_mutation.elec.estimate_total_generation)
 
@@ -271,7 +257,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     scenario_settings.output_batt_dispatch_profiles = True
                     if is_first_year==True:
                         interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
-                                                                                         scenario_settings, out_scen_path) 
+                                                                                         scenario_settings, out_scen_path)
                     else:
                         interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
                                                                                          scenario_settings, out_scen_path,
@@ -281,12 +267,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING
                     #==========================================================================================================
                     write_annual_agents = True
-                    if write_annual_agents==True:                    
+                    if write_annual_agents==True:
                         solar_agents.df.drop(['consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
                     # Write Outputs to the database
                     datfunc.write_outputs(con, cur, solar_agents.df, scenario_settings.sectors, scenario_settings.schema)
-                    
+
             elif scenario_settings.techs == ['wind']:
                 logger.error('Wind not yet supported')
                 break
