@@ -29,6 +29,14 @@ def get_scenario_settings(schema, con):
 
     return df
 
+
+def get_userdefined_scenario_settings(schema, table_name, con):
+
+    sql = '''SELECT * FROM %s.%s'''%(schema, table_name)
+    df = pd.read_sql(sql, con)
+
+    return df
+
 #%%
 def import_table(scenario_settings, con, input_name, csv_import_function):
 
@@ -37,18 +45,23 @@ def import_table(scenario_settings, con, input_name, csv_import_function):
     scenario_settings = get_scenario_settings(schema, con)
     scenario_name = scenario_settings[input_name].values[0]
 
-    if scenario_name == 'User-Defined':
+    if scenario_name == 'User Defined':
 
-        scenario_name = scenario_settings[input_name + "_user_defined"].values[0]
+        #scenario_name = scenario_settings["input_" + input_name + "_user_defined"].values[0]
+        userdefined_table_name = "input_" + input_name + "_user_defined"
+        scenario_userdefined_name = get_userdefined_scenario_settings(schema, userdefined_table_name, con)
+        scenario_userdefined_value = scenario_userdefined_name['val'].values[0]
+
 
         if check_table_exists(schema, input_name, con):
             sql = '''SELECT * FROM %s.%s;''' % (schema, input_name)
             df = pd.read_sql(sql, con)
 
         else:
-            df = pd.read_csv(os.path.join(input_data_dir, input_name, scenario_name + ".csv"), index_col=None)
+            
+            df = pd.read_csv(os.path.join(input_data_dir, input_name, scenario_userdefined_value), index_col=None)
             df = csv_import_function(df)
-            df.to_sql(scenario_name, con, schema=schema)
+            df.to_sql(scenario_userdefined_value, con, schema=schema)
 
     else:
         sql = '''SELECT * FROM %s.%s WHERE source = %s;''' % (schema, input_name, scenario_name)

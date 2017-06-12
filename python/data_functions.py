@@ -1704,6 +1704,25 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, dsire_opts, ass
     return inc_summed[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
 
 
+def get_rate_escalations(con, schema):
+    '''
+    Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
+    resulting in an average real compounding rate growth. This rate is then used to calculate cash flows
+    
+    IN: con - connection to server
+    OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
+    '''  
+    inputs = locals().copy()
+    
+    sql = """SELECT year, census_division_abbr, sector AS sector_abbr, 
+                    escalation_factor as elec_price_multiplier
+            FROM %(schema)s.rate_escalations_to_model
+            ORDER BY year, census_division_abbr, sector""" % inputs
+    rate_escalations = pd.read_sql(sql, con, coerce_float = False)
+    
+    return rate_escalations
+
+    
 def get_lease_availability(con, schema, tech):
     '''
     Get leasing availability by state and year, based on options selected in input sheet

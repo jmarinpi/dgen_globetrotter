@@ -110,6 +110,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             load_growth_scenario = scenario_settings.load_growth_scenario.lower()
             inflation_rate = datfunc.get_annual_inflation(con, scenario_settings.schema)
             bass_params = datfunc.get_bass_params(con, scenario_settings.schema)
+            elec_price_change_traj = datfunc.get_rate_escalations(con, scenario_settings.schema)
 
             # create psuedo-rangom number generator (not used until tech/finance choice function)
             prng = np.random.RandomState(scenario_settings.random_generator_seed)
@@ -165,11 +166,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
                 #==========================================================================================================
-                deprec_sch = iFuncs.import_table( scenario_settings, con, input_name='pv_tech_performance', csv_import_function=iFuncs.deprec_schedule)
-                carbon_intensities = iFuncs.import_table( scenario_settings, con, input_name='pv_tech_performance', csv_import_function=iFuncs.melt_year('grid_carbon_tco2_per_kwh'))
-                wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, input_name='pv_tech_performance', csv_import_function=iFuncs.melt_year('wholesale_elec_price'))
+                deprec_sch = iFuncs.import_table( scenario_settings, con, input_name='depreciation_schedules', csv_import_function=iFuncs.deprec_schedule)
+                carbon_intensities = iFuncs.import_table( scenario_settings, con, input_name='carbon_intensities', csv_import_function=iFuncs.melt_year('grid_carbon_tco2_per_kwh'))
+                wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, input_name='wholesale_electricity_prices', csv_import_function=iFuncs.melt_year('wholesale_elec_price'))
                 pv_tech_traj = iFuncs.import_table( scenario_settings, con, input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
-                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, input_name='elec_prices', csv_import_function=iFuncs.stacked_sectors)
+#                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, input_name='elec_prices', csv_import_function=iFuncs.stacked_sectors)
                 pv_price_traj = iFuncs.import_table( scenario_settings, con, input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
                 batt_price_traj = iFuncs.import_table( scenario_settings, con, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
                 financing_terms = iFuncs.import_table( scenario_settings, con, input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
