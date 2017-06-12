@@ -9,17 +9,25 @@ import pandas as pd
 import numpy as np
 import os
 
+
+
 #%%
 def check_table_exists(schema, table, con):
 
-    sql = '''SELECT EXISTS (
-               SELECT 1
-               FROM   information_schema.tables
-               WHERE  table_schema = '%s'
-               AND    table_name = '%s'
-               );''' % (schema, table)
+    sql = '''SELECT EXISTS (SELECT 1 FROM   information_schema.tables WHERE  table_schema = '%s' AND table_name = '%s');''' % (schema, table)
 
     return pd.read_sql(sql, con).values[0][0]
+
+def df_to_psql(df, name, con, engine, schema, owner):
+
+    df.to_sql(name, engine, schema=schema)
+
+    sql = 'ALTER TABLE %s."%s" OWNER to "%s";' % (schema, name, owner)
+    with engine.begin() as conn:
+        conn.execute(sql)
+
+    return df
+    
 
 #%%
 def get_scenario_settings(schema, con):
@@ -38,9 +46,10 @@ def get_userdefined_scenario_settings(schema, table_name, con):
     return df
 
 #%%
-def import_table(scenario_settings, con, input_name, csv_import_function):
+def import_table(scenario_settings, con, engine, role, input_name, csv_import_function):
 
     schema = scenario_settings.schema
+    shared_schema = 'diffusion_shared'
     input_data_dir = scenario_settings.input_data_dir
     scenario_settings = get_scenario_settings(schema, con)
     scenario_name = scenario_settings[input_name].values[0]
@@ -53,15 +62,14 @@ def import_table(scenario_settings, con, input_name, csv_import_function):
         scenario_userdefined_value = scenario_userdefined_name['val'].values[0]
 
 
-        if check_table_exists(schema, input_name, con):
-            sql = '''SELECT * FROM %s.%s;''' % (schema, input_name)
+        if check_table_exists(shared_schema, scenario_userdefined_value, con):
+            sql = '''SELECT * FROM %s."%s";''' % (shared_schema, scenario_userdefined_value)
             df = pd.read_sql(sql, con)
 
         else:
-            
-            df = pd.read_csv(os.path.join(input_data_dir, input_name, scenario_userdefined_value), index_col=None)
+            df = pd.read_csv(os.path.join(input_data_dir, input_name, scenario_userdefined_value+".csv"), index_col=None)
             df = csv_import_function(df)
-            df.to_sql(scenario_userdefined_value, con, schema=schema)
+            df_to_psql(df, scenario_userdefined_value, con, engine,shared_schema, role)
 
     else:
         sql = '''SELECT * FROM %s.%s WHERE source = %s;''' % (schema, input_name, scenario_name)
@@ -104,7 +112,7 @@ def deprec_schedule(df):
         last_entry['year'] = year
         df = df.append(last_entry)
 
-    return df.ix[:,['year','deprec_sch']]
+    return df.ix[:,['year','sector_abbr','deprec_sch']]
 
 #%%
 def melt_year(paramater_name):

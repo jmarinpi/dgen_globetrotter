@@ -71,6 +71,8 @@ class ModelSettings(object):
         # check that it exists
         pg_params, pg_conn_string = utilfunc.get_pg_params(
             os.path.join(self.model_path, pg_params_file))
+        pg_engine_params, pg_engine_string = utilfunc.get_pg_engine_params(
+            os.path.join(self.model_path, pg_params_file))
         pg_params_log = json.dumps(json.loads(pd.DataFrame([pg_params])[
                                    ['host', 'port', 'dbname', 'user']].ix[0].to_json()), indent=4, sort_keys=True)
 
@@ -78,6 +80,8 @@ class ModelSettings(object):
         self.set('pg_params', pg_params)
         self.set('pg_conn_string', pg_conn_string)
         self.set('pg_params_log', pg_params_log)
+        self.set('pg_engine_params', pg_engine_params)
+        self.set('pg_engine_string', pg_engine_string)
 
     def set_Rscript_path(self, Rscript_paths):
 
@@ -503,6 +507,7 @@ def init_model_settings():
     model_settings.add_config(config)
     model_settings.set_Rscript_path(config.Rscript_paths)
     model_settings.set('model_init', utilfunc.get_epoch_time())
+    model_settings.set('role', 'diffusion-writers')
     model_settings.set('cdate', utilfunc.get_formatted_time())
     model_settings.set('out_dir', datfunc.make_output_directory_path(model_settings.cdate))
     model_settings.set('input_data_dir', '%s/input_data' % os.path.dirname(os.getcwd()))
@@ -525,12 +530,13 @@ def init_scenario_settings(scenario_file, model_settings, con, cur):
     # =========================================================================
     try:
         # create an empty schema from diffusion_template
-        new_schema = datfunc.create_output_schema(model_settings.pg_conn_string, model_settings.cdate, source_schema = 'diffusion_template', include_data = False)
+        new_schema = datfunc.create_output_schema(model_settings.pg_conn_string,model_settings.role, model_settings.cdate, source_schema = 'diffusion_template', include_data = False)
     except Exception, e:
         raise Exception('\tCreation of output schema failed with the following error: %s' % e)
 
     # set the schema
     scenario_settings.set('schema', new_schema)
+
     # load Input Scenario to the new schema
     try:
         excel_functions.load_scenario(scenario_settings.input_scenario, scenario_settings.schema, con, cur)

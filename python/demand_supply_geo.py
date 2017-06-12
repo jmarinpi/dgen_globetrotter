@@ -78,7 +78,7 @@ def create_resource_id_sequence(schema, con, cur):
     
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, chunks):
+def setup_resource_data_egs_hdr(cur, con, schema, role, seed, pool, pg_conn_string, chunks):
     
     inputs = locals().copy()
     inputs['i_place_holder'] = '%(i)s'
@@ -159,7 +159,7 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, ch
                 	END as extractable_resource_per_wellset_in_tract_mwh
             FROM c
             WHERE c.n_wellsets_in_tract > 0;""" % inputs    
-    agent_prep.p_run(pg_conn_string, sql, chunks, pool)
+    agent_prep.p_run(pg_conn_string, role, sql, chunks, pool)
     
     # add an index on year
     sql = """CREATE INDEX resources_egs_hdr_btree_year
@@ -177,7 +177,7 @@ def setup_resource_data_egs_hdr(cur, con, schema, seed, pool, pg_conn_string, ch
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def setup_resource_data_hydrothermal(cur, con, schema, seed, pool, pg_conn_string, chunks):
+def setup_resource_data_hydrothermal(cur, con, schema, role, seed, pool, pg_conn_string, chunks):
     
     inputs = locals().copy()
     inputs['i_place_holder'] = '%(i)s'
@@ -214,7 +214,7 @@ def setup_resource_data_hydrothermal(cur, con, schema, seed, pool, pg_conn_strin
                 	a.extractable_resource_per_well_in_tract_mwh as extractable_resource_per_wellset_in_tract_mwh
             FROM  %(schema)s.du_resources_hydrothermal a
             WHERE a.tract_id_alias IN (%(chunk_place_holder)s);""" % inputs
-    agent_prep.p_run(pg_conn_string, sql, chunks, pool)
+    agent_prep.p_run(pg_conn_string, role, sql, chunks, pool)
 
     # add primary key
     sql = """ALTER TABLE %(schema)s.resources_hydrothermal 
@@ -335,7 +335,7 @@ def get_reservoir_factors(con, schema, year):
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
+def calculate_tract_demand_profiles(con, cur, schema,role, pg_procs, pg_conn_string):
     
     inputs = locals().copy()
     
@@ -416,7 +416,7 @@ def calculate_tract_demand_profiles(con, cur, schema, pg_procs, pg_conn_string):
                              ) AS heat_demand_profile_mw
                  FROM yearly_increments;""" % inputs
         
-        agent_prep.p_run(pg_conn_string, sql, chunks, pool)        
+        agent_prep.p_run(pg_conn_string, role, sql, chunks, pool)
 
 
         # add index on year

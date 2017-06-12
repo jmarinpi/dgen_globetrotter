@@ -67,7 +67,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         logger.info("Model version is git commit {:}".format(model_settings.git_hash))
 
         # connect to Postgres and configure connection
-        con, cur = utilfunc.make_con(model_settings.pg_conn_string)
+        con, cur = utilfunc.make_con(model_settings.pg_conn_string, model_settings.role)
+        engine = utilfunc.make_engine(model_settings.pg_engine_string)
         pgx.register_hstore(con)  # register access to hstore in postgres
         logger.info("Connected to Postgres with the following params:\n{:}".format(model_settings.pg_params_log))
 
@@ -166,15 +167,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
                 #==========================================================================================================
-                deprec_sch = iFuncs.import_table( scenario_settings, con, input_name='depreciation_schedules', csv_import_function=iFuncs.deprec_schedule)
-                carbon_intensities = iFuncs.import_table( scenario_settings, con, input_name='carbon_intensities', csv_import_function=iFuncs.melt_year('grid_carbon_tco2_per_kwh'))
-                wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, input_name='wholesale_electricity_prices', csv_import_function=iFuncs.melt_year('wholesale_elec_price'))
-                pv_tech_traj = iFuncs.import_table( scenario_settings, con, input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
-#                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, input_name='elec_prices', csv_import_function=iFuncs.stacked_sectors)
-                pv_price_traj = iFuncs.import_table( scenario_settings, con, input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
-                batt_price_traj = iFuncs.import_table( scenario_settings, con, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
-                financing_terms = iFuncs.import_table( scenario_settings, con, input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
-                batt_tech_traj = iFuncs.import_table( scenario_settings, con, input_name='batt_tech_performance', csv_import_function=iFuncs.stacked_sectors)
+                deprec_sch = iFuncs.import_table( scenario_settings, con, engine, model_settings.role, input_name ='depreciation_schedules', csv_import_function=iFuncs.deprec_schedule)
+                carbon_intensities = iFuncs.import_table( scenario_settings, con, engine,model_settings.role, input_name='carbon_intensities', csv_import_function=iFuncs.melt_year('grid_carbon_tco2_per_kwh'))
+                wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, engine, model_settings.role, input_name='wholesale_electricity_prices', csv_import_function=iFuncs.melt_year('wholesale_elec_price'))
+                pv_tech_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
+#                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='elec_prices', csv_import_function=iFuncs.stacked_sectors)
+                pv_price_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
+                batt_price_traj = iFuncs.import_table( scenario_settings, con, engine,model_settings.role, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
+                financing_terms = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
+                batt_tech_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='batt_tech_performance', csv_import_function=iFuncs.stacked_sectors)
 
                 for year in scenario_settings.model_years:
 

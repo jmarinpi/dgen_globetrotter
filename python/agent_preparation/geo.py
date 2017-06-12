@@ -26,7 +26,7 @@ pg.extensions.register_type(DEC2FLOAT)
 
 
 @decorators.fn_timer(logger=logger, tab_level=0, prefix='')
-def generate_core_agent_attributes(cur, con, techs, schema, sample_pct,
+def generate_core_agent_attributes(cur, con, techs, schema, role, sample_pct,
                                    min_agents, agents_per_region, sectors,
                                    pg_procs, pg_conn_string, seed, end_year):
 
@@ -65,23 +65,23 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct,
                                                             min_agents, seed,
                                                             pool,
                                                             pg_conn_string)
-                sample_blocks(schema, sector_abbr, 'initial',
+                sample_blocks(schema, role, sector_abbr, 'initial',
                               chunks, seed, pool, pg_conn_string, con, cur)
-                add_agent_ids(schema, sector_abbr, 'initial',
+                add_agent_ids(schema, role,sector_abbr, 'initial',
                               chunks, pool, pg_conn_string, con, cur)
-                sample_building_type(schema, sector_abbr, 'initial', chunks,
+                sample_building_type(schema,role, sector_abbr, 'initial', chunks,
                                      seed, pool, pg_conn_string)
                 # TODO: add in selection of heating fuel type for res sector
-                sample_building_microdata(schema, sector_abbr, 'initial',
+                sample_building_microdata(schema,role, sector_abbr, 'initial',
                                           chunks, seed, pool, pg_conn_string)
-                estimate_agent_thermal_loads(schema, sector_abbr, 'initial',
+                estimate_agent_thermal_loads(schema,role, sector_abbr, 'initial',
                                              chunks, pool, pg_conn_string)
-                estimate_system_ages(schema, sector_abbr, 'initial', chunks,
+                estimate_system_ages(schema, role,sector_abbr, 'initial', chunks,
                                      seed, pool, pg_conn_string)
-                estimate_system_lifetimes(schema, sector_abbr, 'initial',
+                estimate_system_lifetimes(schema, role,sector_abbr, 'initial',
                                           chunks, seed, pool, pg_conn_string)
                 # get GHP resource (thermal conductivity)
-                sample_ground_thermal_conductivity(schema, sector_abbr,
+                sample_ground_thermal_conductivity(schema,role, sector_abbr,
                                                    'initial', chunks, pool,
                                                    pg_conn_string, seed)
 
@@ -90,24 +90,24 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct,
                 logger.info(
                     "\tWorking on New Construction (2014 - %s)" % end_year)
                 calculate_new_construction_number_of_agents_by_tract(
-                    schema, sector_abbr, chunks, sample_pct, seed, pool,
+                    schema,role, sector_abbr, chunks, sample_pct, seed, pool,
                     pg_conn_string, end_year)
-                sample_blocks(schema, sector_abbr, 'new', chunks,
+                sample_blocks(schema, role, sector_abbr, 'new', chunks,
                               seed, pool, pg_conn_string, con, cur)
-                add_agent_ids(schema, sector_abbr, 'new', chunks,
+                add_agent_ids(schema,role, sector_abbr, 'new', chunks,
                               pool, pg_conn_string, con, cur)
-                sample_building_type(schema, sector_abbr,
+                sample_building_type(schema,role, sector_abbr,
                                      'new', chunks, seed, pool, pg_conn_string)
-                sample_building_microdata(schema, sector_abbr, 'new', chunks,
+                sample_building_microdata(schema,role, sector_abbr, 'new', chunks,
                                           seed, pool, pg_conn_string)
                 estimate_agent_thermal_loads(
-                    schema, sector_abbr, 'new', chunks, pool, pg_conn_string)
-                estimate_system_ages(schema, sector_abbr,
+                    schema,role, sector_abbr, 'new', chunks, pool, pg_conn_string)
+                estimate_system_ages(schema,role, sector_abbr,
                                      'new', chunks, seed, pool, pg_conn_string)
-                estimate_system_lifetimes(schema, sector_abbr, 'new', chunks,
+                estimate_system_lifetimes(schema,role, sector_abbr, 'new', chunks,
                                           seed, pool, pg_conn_string)
                 # get GHP resource (thermal conductivity)
-                sample_ground_thermal_conductivity(schema, sector_abbr, 'new',
+                sample_ground_thermal_conductivity(schema,role, sector_abbr, 'new',
                                                    chunks, pool,
                                                    pg_conn_string, seed)
 
@@ -115,18 +115,18 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct,
                 #     combine all pieces into a single table
                 # =============================================================
                 combine_all_attributes(chunks, pool, cur, con, pg_conn_string,
-                                       schema, sector_abbr)
+                                       schema,role, sector_abbr)
 
         # =====================================================================
         #     create a view that combines all sectors and techs
         # =====================================================================
-        merge_all_core_agents(cur, con, schema, sectors, techs)
+        merge_all_core_agents(cur, con, schema,role, sectors, techs)
 
         # =====================================================================
         #    drop the intermediate tables
         # =====================================================================
         # TODO: update the list of tables to delete
-        cleanup_intermediate_tables(schema, sectors, chunks, pg_conn_string,
+        cleanup_intermediate_tables(schema,role, sectors, chunks, pg_conn_string,
                                     cur, con, pool)
 
     except:
@@ -163,7 +163,7 @@ def split_tracts(cur, schema, pg_procs):
     return chunks, pg_procs
 
 
-def calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks,
+def calculate_initial_number_of_agents_by_tract(schema, role, sector_abbr, chunks,
                                                 sample_pct, min_agents, seed,
                                                 pool, pg_conn_string):
 
@@ -187,15 +187,15 @@ def calculate_initial_number_of_agents_by_tract(schema, sector_abbr, chunks,
             	WHERE tract_id_alias in (%(chunk_place_holder)s)
             AND a.bldg_count_%(sector_abbr)s > 0;""" % inputs
 
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
     # add primary key
     sql = """ALTER TABLE %(schema)s.initial_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (tract_id_alias, year);""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string,role,  sql, chunks, pool)
 
 
-def calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr,
+def calculate_new_construction_number_of_agents_by_tract(schema, role, sector_abbr,
                                                          chunks, sample_pct,
                                                          seed, pool,
                                                          pg_conn_string,
@@ -231,16 +231,16 @@ def calculate_new_construction_number_of_agents_by_tract(schema, sector_abbr,
                     END AS n_agents
             FROM a;""" % inputs
 
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
     # add primary key
     sql = """ALTER TABLE %(schema)s.new_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (tract_id_alias, year);""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
 
 @decorators.fn_timer(logger=logger, tab_level=3, prefix='')
-def sample_blocks(schema, sector_abbr, initial_or_new, chunks, seed, pool,
+def sample_blocks(schema, role, sector_abbr, initial_or_new, chunks, seed, pool,
                   pg_conn_string, con, cur):
 
     msg = '\t\tSampling from Blocks for Each Tract'
@@ -283,17 +283,17 @@ def sample_blocks(schema, sector_abbr, initial_or_new, chunks, seed, pool,
             LEFT JOIN %(schema)s.%(initial_or_new)s_agent_count_by_tract_%(sector_abbr)s_%(i_place_holder)s b
                 ON a.tract_id_alias = b.tract_id_alias
             ORDER BY b.year, a.tract_id_alias, pgid;""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
     # add indices
     sql = """CREATE INDEX %(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s_pgid_btree
             ON %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s
             USING BTREE(pgid);""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
 
 @decorators.fn_timer(logger=logger, tab_level=3, prefix='')
-def add_agent_ids(schema, sector_abbr, initial_or_new, chunks, pool,
+def add_agent_ids(schema, role, sector_abbr, initial_or_new, chunks, pool,
                   pg_conn_string, con, cur):
 
     inputs = locals().copy()
@@ -317,11 +317,11 @@ def add_agent_ids(schema, sector_abbr, initial_or_new, chunks, pool,
     # run query
     sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_blocks_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
 
 @decorators.fn_timer(logger=logger, tab_level=3, prefix='')
-def sample_building_type(schema, sector_abbr, initial_or_new, chunks, seed,
+def sample_building_type(schema, role, sector_abbr, initial_or_new, chunks, seed,
                          pool, pg_conn_string):
 
     msg = '\t\tSampling Building Types from Blocks for Each Tract'
@@ -354,12 +354,12 @@ def sample_building_type(schema, sector_abbr, initial_or_new, chunks, seed,
                 ON a.pgid = b.pgid
             lEFT JOIN diffusion_blocks.bldg_type_arrays c
                 ON c.sector_abbr = '%(sector_abbr)s';""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
     # add primary key
     sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
     # add indices
     sql = """CREATE INDEX %(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s_bldg_type_btree
@@ -378,11 +378,11 @@ def sample_building_type(schema, sector_abbr, initial_or_new, chunks, seed,
             ON %(schema)s.%(initial_or_new)s_agent_building_types_%(sector_abbr)s_%(i_place_holder)s
             USING BTREE(tract_id_alias);
             """ % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role,sql, chunks, pool)
 
 
 @decorators.fn_timer(logger=logger, tab_level=3, prefix='')
-def sample_building_microdata(schema, sector_abbr, initial_or_new, chunks,
+def sample_building_microdata(schema, role, sector_abbr, initial_or_new, chunks,
                               seed, pool, pg_conn_string):
 
     msg = "\t\tSampling from Building Microdata"
@@ -509,16 +509,16 @@ def sample_building_microdata(schema, sector_abbr, initial_or_new, chunks,
             AND b.water_heat_equip = e.equipment_type
             and b.water_heat_fuel = e.fuel
             AND e.end_use = 'water_heat';""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
     # add primary key
     sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_eia_bldgs_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
 
 @decorators.fn_timer(logger=logger, tab_level=3, prefix='')
-def estimate_agent_thermal_loads(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_string):
+def estimate_agent_thermal_loads(schema, role, sector_abbr, initial_or_new, chunks, pool, pg_conn_string):
 
     msg = '\t\tEstimating Agent Thermal Loads'
     logger.info(msg)
@@ -615,16 +615,16 @@ def estimate_agent_thermal_loads(schema, sector_abbr, initial_or_new, chunks, po
                     site_space_heat_per_building_in_bin_kwh * space_heat_efficiency + site_water_heat_per_building_in_bin_kwh * water_heat_efficiency as demand_total_heat_per_building_in_bin_kwh
 
             FROM d;""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role,sql, chunks, pool)
 
     # add primary key
     sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_thermal_loads_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
 
 @decorators.fn_timer(logger=logger, tab_level=3, prefix='')
-def estimate_system_ages(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
+def estimate_system_ages(schema, role, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
 
     msg = '\t\tEstimating Agent HVAC System Ages'
     logger.info(msg)
@@ -662,16 +662,16 @@ def estimate_system_ages(schema, sector_abbr, initial_or_new, chunks, seed, pool
             SELECT agent_id, space_heat_system_age, space_cool_system_age,
                     diffusion_shared.r_median(ARRAY[space_heat_system_age, space_cool_system_age]) as average_system_age
             FROM a;""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
     # add primary key
     sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_system_ages_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
 
 @decorators.fn_timer(logger=logger, tab_level=3, prefix='')
-def estimate_system_lifetimes(schema, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
+def estimate_system_lifetimes(schema, role, sector_abbr, initial_or_new, chunks, seed, pool, pg_conn_string):
 
     msg = '\t\tEstimating Agent HVAC System Expected Lifetimes'
     logger.info(msg)
@@ -708,16 +708,16 @@ def estimate_system_lifetimes(schema, sector_abbr, initial_or_new, chunks, seed,
             SELECT agent_id, space_heat_system_expected_lifetime, space_cool_system_expected_lifetime,
                     diffusion_shared.r_median(ARRAY[space_heat_system_expected_lifetime, space_cool_system_expected_lifetime]) as average_system_expected_lifetime
             FROM a;""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
     # add primary key
     sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_system_expected_lifetimes_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
 
 @decorators.fn_timer(logger=logger, tab_level=3, prefix='')
-def sample_ground_thermal_conductivity(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_string, seed):
+def sample_ground_thermal_conductivity(schema, role, sector_abbr, initial_or_new, chunks, pool, pg_conn_string, seed):
 
     msg = '\t\tSimulating Ground Thermal Conductivity for Buildings'
     logger.info(msg)
@@ -740,7 +740,7 @@ def sample_ground_thermal_conductivity(schema, sector_abbr, initial_or_new, chun
                      ON a.pgid = b.pgid
             LEFT JOIN diffusion_geo.thermal_conductivity_summary_by_climate_zone_ornl c
                 ON b.iecc_climate_zone = c.iecc_climate_zone;""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role,sql, chunks, pool)
     # TODO: should be using
     # diffusion_geo.thermal_conductivity_summary_by_climate_zone, but not sure
     # what ORNL used so have to use theirs for now
@@ -748,17 +748,17 @@ def sample_ground_thermal_conductivity(schema, sector_abbr, initial_or_new, chun
     # add primary key
     sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_gtc_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (agent_id);""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string,role, sql, chunks, pool)
 
     # make sure no nulls
     sql = """ALTER TABLE %(schema)s.%(initial_or_new)s_agent_gtc_%(sector_abbr)s_%(i_place_holder)s
              ALTER COLUMN gtc_btu_per_hftf
              SET NOT NULL;""" % inputs
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role,sql, chunks, pool)
 
 
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, sector_abbr):
+def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, role, sector_abbr):
 
     msg = "\tCombining All Core Agent Attributes"
     logger.info(msg)
@@ -979,7 +979,7 @@ def combine_all_attributes(chunks, pool, cur, con, pg_conn_string, schema, secto
     sql = """INSERT INTO %(schema)s.agent_core_attributes_%(sector_abbr)s
             %(sql_body)s;""" % inputs
     # run the insert statement
-    p_run(pg_conn_string, sql, chunks, pool)
+    p_run(pg_conn_string, role, sql, chunks, pool)
 
     # add primary key
     sql =  """ALTER TABLE %(schema)s.agent_core_attributes_%(sector_abbr)s
@@ -1043,7 +1043,7 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks,
             table_name = intermediate_table % inputs
             isql = sql % table_name
             if '%(i)s' in table_name:
-                p_run(pg_conn_string, isql, county_chunks, pool)
+                p_run(pg_conn_string, role, isql, county_chunks, pool)
             else:
                 cur.execute(isql)
                 con.commit()

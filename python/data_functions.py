@@ -283,7 +283,7 @@ def create_scenario_results_folder(input_scenario, scen_name, scenario_names, ou
 
 
 @decorators.fn_timer(logger=logger, tab_level=1, prefix='')
-def create_output_schema(pg_conn_string, suffix, source_schema='diffusion_template', include_data=False):
+def create_output_schema(pg_conn_string, role, suffix, source_schema='diffusion_template', include_data=False):
 
     inputs = locals().copy()
     suffix = utilfunc.get_formatted_time()
@@ -304,7 +304,7 @@ def create_output_schema(pg_conn_string, suffix, source_schema='diffusion_templa
     dest_schema = 'diffusion_results_%s' % suffix
     inputs['dest_schema'] = dest_schema
 
-    sql = '''SELECT diffusion_shared.clone_schema('%(source_schema)s', '%(dest_schema)s', 'diffusion-writers', %(include_data)s);''' % inputs
+    sql = '''SELECT diffusion_shared.clone_schema('%(source_schema)s', '%(dest_schema)s', '%(role)s', %(include_data)s);''' % inputs
     cur.execute(sql)
     con.commit()
 

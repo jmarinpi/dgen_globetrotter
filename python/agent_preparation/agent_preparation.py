@@ -24,10 +24,10 @@ pg.extensions.register_type(DEC2FLOAT)
 
 
 #%%
-def p_execute(pg_conn_string, sql):
+def p_execute(pg_conn_string,role, sql):
     try:
         # create cursor and connection
-        con, cur = utilfunc.make_con(pg_conn_string)
+        con, cur = utilfunc.make_con(pg_conn_string, role)
         # execute query
         cur.execute(sql)
         # commit changes
@@ -43,7 +43,7 @@ def p_execute(pg_conn_string, sql):
 
 
 #%%
-def p_run(pg_conn_string, sql, county_chunks, pool):
+def p_run(pg_conn_string, role, sql, county_chunks, pool):
 
     num_workers = pool._processes
     result_list = []
@@ -53,7 +53,7 @@ def p_run(pg_conn_string, sql, county_chunks, pool):
                          'county_ids': county_id}
         isql = sql % place_holders
 
-        res = pool.apply_async(p_execute, args=(pg_conn_string, isql))
+        res = pool.apply_async(p_execute, args=(pg_conn_string, role, isql))
         result_list.append(res)
 
     # get results as they are returned
