@@ -166,15 +166,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
                 #==========================================================================================================
-                deprec_sch = iFuncs.import_table( scenario_settings, con, input_name='depreciation_schedules', csv_import_function=iFuncs.deprec_schedule)
+                deprec_sch = iFuncs.import_table( scenario_settings, con, input_name='depreciation_schedules', csv_import_function=iFuncs.process_depreciation_schedules)
                 carbon_intensities = iFuncs.import_table( scenario_settings, con, input_name='carbon_intensities', csv_import_function=iFuncs.melt_year('grid_carbon_tco2_per_kwh'))
                 wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, input_name='wholesale_electricity_prices', csv_import_function=iFuncs.melt_year('wholesale_elec_price'))
-                pv_tech_traj = iFuncs.import_table( scenario_settings, con, input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
+                pv_tech_traj = iFuncs.import_table( scenario_settings, con, input_name='pv_tech_performance', csv_import_function=iFuncs.process_pv_tech_performance)
 #                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, input_name='elec_prices', csv_import_function=iFuncs.stacked_sectors)
-                pv_price_traj = iFuncs.import_table( scenario_settings, con, input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
-                batt_price_traj = iFuncs.import_table( scenario_settings, con, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
-                financing_terms = iFuncs.import_table( scenario_settings, con, input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
-                batt_tech_traj = iFuncs.import_table( scenario_settings, con, input_name='batt_tech_performance', csv_import_function=iFuncs.stacked_sectors)
+                pv_price_traj = iFuncs.import_table( scenario_settings, con, input_name='pv_prices', csv_import_function=iFuncs.process_pv_price_trajectories)
+                batt_price_traj = iFuncs.import_table( scenario_settings, con, input_name='batt_prices', csv_import_function=iFuncs.process_batt_price_trajectories)
+                financing_terms = iFuncs.import_table( scenario_settings, con, input_name='financing_terms', csv_import_function=iFuncs.process_financing_terms)
+                batt_tech_traj = iFuncs.import_table( scenario_settings, con, input_name='batt_tech_performance', csv_import_function=iFuncs.process_batt_tech_performance)
 
                 for year in scenario_settings.model_years:
 
