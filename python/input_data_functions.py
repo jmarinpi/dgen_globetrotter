@@ -45,18 +45,18 @@ def get_userdefined_scenario_settings(schema, table_name, con):
 
     return df
 
+
 #%%
 def import_table(scenario_settings, con, engine, role, input_name, csv_import_function):
 
     schema = scenario_settings.schema
     shared_schema = 'diffusion_shared'
     input_data_dir = scenario_settings.input_data_dir
-    scenario_settings = get_scenario_settings(schema, con)
-    scenario_name = scenario_settings[input_name].values[0]
+    user_scenario_settings = get_scenario_settings(schema, con)
+    scenario_name = user_scenario_settings[input_name].values[0]
 
     if scenario_name == 'User Defined':
 
-        #scenario_name = scenario_settings["input_" + input_name + "_user_defined"].values[0]
         userdefined_table_name = "input_" + input_name + "_user_defined"
         scenario_userdefined_name = get_userdefined_scenario_settings(schema, userdefined_table_name, con)
         scenario_userdefined_value = scenario_userdefined_name['val'].values[0]
@@ -69,6 +69,7 @@ def import_table(scenario_settings, con, engine, role, input_name, csv_import_fu
         else:
             df = pd.read_csv(os.path.join(input_data_dir, input_name, scenario_userdefined_value+".csv"), index_col=None)
             df = csv_import_function(df)
+
             df_to_psql(df, scenario_userdefined_value, con, engine,shared_schema, role)
 
     else:
@@ -129,5 +130,3 @@ def melt_year(paramater_name):
         return df_tify
 
     return function
-
-
