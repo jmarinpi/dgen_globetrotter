@@ -8,6 +8,7 @@ Created on Fri Mar 10 14:33:49 2017
 import pandas as pd
 import numpy as np
 import os
+import sqlalchemy
 
 
 
@@ -18,9 +19,9 @@ def check_table_exists(schema, table, con):
 
     return pd.read_sql(sql, con).values[0][0]
 
-def df_to_psql(df, name, con, engine, schema, owner):
+def df_to_psql(df, name, con, engine, schema, owner,data_types={}):
 
-    df.to_sql(name, engine, schema=schema)
+    df.to_sql(name, engine, schema=schema, dtype=data_types)
 
     sql = 'ALTER TABLE %s."%s" OWNER to "%s";' % (schema, name, owner)
     with engine.begin() as conn:
@@ -68,9 +69,9 @@ def import_table(scenario_settings, con, engine, role, input_name, csv_import_fu
 
         else:
             df = pd.read_csv(os.path.join(input_data_dir, input_name, scenario_userdefined_value+".csv"), index_col=None)
-            df = csv_import_function(df)
+            df,d_types = csv_import_function(df)
 
-            df_to_psql(df, scenario_userdefined_value, con, engine,shared_schema, role)
+            df_to_psql(df, scenario_userdefined_value, con, engine,shared_schema, role,data_types=d_types)
 
     else:
         sql = '''SELECT * FROM %s.%s WHERE source = %s;''' % (schema, input_name, scenario_name)
@@ -80,7 +81,8 @@ def import_table(scenario_settings, con, engine, role, input_name, csv_import_fu
 
 #%%
 def stacked_sectors(df):
-    sectors = ['res', 'ind','com','nonres']
+    d_types={}
+    sectors = ['res', 'ind','com','nonres','all']
     output = pd.DataFrame()
     core_columns = [x for x in df.columns if x.split("_")[-1] not in sectors]
 
@@ -92,11 +94,17 @@ def stacked_sectors(df):
 
             temp =  df.ix[:,core_columns + sector_columns]
             temp = temp.rename(columns=rename_fields)
-            temp['sector_abbr'] = sector
+            if sector =='nonres':
+                sector_list = ['com', 'ind']
+            elif sector=='all':
+                sector_list = ['com', 'ind','res']
+            else:
+                sector_list = [sector]
+            for s in sector_list:
+                temp['sector_abbr'] = s
+                output = pd.concat([output, temp], ignore_index=True)
 
-            output = pd.concat([output, temp], ignore_index=True)
-
-    return output
+    return output, d_types
 
 #%%
 def deprec_schedule(df):
@@ -113,13 +121,15 @@ def deprec_schedule(df):
         last_entry['year'] = year
         df = df.append(last_entry)
 
-    return df.ix[:,['year','sector_abbr','deprec_sch']]
+    d_types = {'deprec_sch': sqlalchemy.types.ARRAY(sqlalchemy.types.Float())}
+
+    return df.ix[:,['year','sector_abbr','deprec_sch']], d_types
 
 #%%
 def melt_year(paramater_name):
 
     def function(df):
-
+        d_types = {}
         years = np.arange(2014, 2051, 2)
         years = [str(year) for year in years]
 
@@ -127,6 +137,6 @@ def melt_year(paramater_name):
 
         df_tify['year'] = df_tify['year'].astype(int)
 
-        return df_tify
+        return df_tify, d_types
 
     return function

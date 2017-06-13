@@ -20,7 +20,7 @@ import datetime
 # Import from support function repo
 import dispatch_functions as dFuncs
 import tariff_functions as tFuncs
-import financial_functions as fFuncs
+import financial_functions_copy as fFuncs
 import general_functions as gFuncs
 
 #==============================================================================
@@ -269,6 +269,7 @@ def calc_system_size_and_financial_performance(agent):
     DP_inc_est = 12
     d_inc_n_acc = 20     
     DP_inc_acc = 12
+    agent = agent.to_dict()
 
     # Extract load profile
     load_profile = np.array(agent['consumption_hourly'])    
@@ -407,7 +408,7 @@ def calc_system_size_and_financial_performance(agent):
                          agent['batt_price_per_kw'], agent['batt_price_per_kwh'], 
                          agent['batt_om_per_kw'], agent['batt_om_per_kwh'],
                          batt_chg_frac,
-                         agent['sector_abbr'], agent['itc_fraction'], agent['deprec_sch'], 
+                         agent['sector_abbr'], agent['itc_fraction'], agent['deprec_sch'],
                          agent['tax_rate'], 0, agent['real_discount'],  
                          agent['economic_lifetime'], agent['inflation'], 
                          agent['down_payment'], agent['loan_rate'], agent['loan_term'],
@@ -505,4 +506,4 @@ def calc_system_size_and_financial_performance(agent):
                 'fy_elec_cents_per_kwh_without_sys']
             
 #    print "Opt PV:", opt_pv_size, np.round(opt_pv_size/agent['max_pv_size'],2), ", opt batt kW:", opt_batt_power, np.round(opt_batt_power/opt_pv_size,2) 
-    return agent[out_cols]
+    return {k:v for k,v in agent.items() if k in out_cols }

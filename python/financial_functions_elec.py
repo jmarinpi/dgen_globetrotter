@@ -746,7 +746,7 @@ def virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5):
     
     # Find the pairwise differences in boolean values
     # sign crosses over, the pairwise diff will be True
-    crossovers = np.diff(signs,1,1)
+    crossovers = np.diff(signs.astype(int),1,1)
     
     # Extract the irr from the first crossover for each row
     irr = np.min(np.ma.masked_equal(rates[1:]* crossovers,0),1)

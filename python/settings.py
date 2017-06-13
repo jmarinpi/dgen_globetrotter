@@ -113,7 +113,7 @@ class ModelSettings(object):
             except TypeError, e:
                 raise TypeError('Invalid %s: %s' % (property_name, e))
 
-        elif property_name == 'out_dir':
+        elif property_name in ['out_dir','input_agent_dir','input_data_dir']:
             # check type
             try:
                 check_type(self.get(property_name), str)
@@ -167,8 +167,14 @@ class ModelSettings(object):
             # check the path exists
             if os.path.exists(self.pg_params_file) == False:
                 raise ValueError('Invalid %s: does not exist' % property_name)
+        elif property_name == 'role':
+            # check type
+            try:
+                check_type(self.get(property_name), str)
+            except TypeError, e:
+                raise TypeError('Invalid %s: %s' % (property_name, e))
 
-        elif property_name == 'pg_params':
+        elif property_name in ['pg_params','pg_engine_params']:
             # check type
             try:
                 check_type(self.get(property_name), dict)
@@ -184,7 +190,7 @@ class ModelSettings(object):
                 raise ValueError('Invalid %s: missing required keys (%s)' % (
                     property_name, required_keys))
 
-        elif property_name == 'pg_conn_string':
+        elif property_name in ['pg_conn_string','pg_engine_string']:
             # check type
             try:
                 check_type(self.get(property_name), unicode)
