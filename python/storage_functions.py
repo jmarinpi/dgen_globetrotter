@@ -20,7 +20,7 @@ import datetime
 # Import from support function repo
 import dispatch_functions as dFuncs
 import tariff_functions as tFuncs
-import financial_functions_copy as fFuncs
+import financial_functions as fFuncs
 import general_functions as gFuncs
 
 #==============================================================================
