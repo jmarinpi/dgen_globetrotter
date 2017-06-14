@@ -11,7 +11,6 @@ import os
 import sqlalchemy
 
 
-
 #%%
 def check_table_exists(schema, table, con):
 

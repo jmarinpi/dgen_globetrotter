@@ -142,7 +142,7 @@ class Agents(object):
 
         if cores is None:
             apply_func = partial(func, **kwargs)
-            results_df = pd.DataFrame.from_records(self.df.apply(apply_func, axis=1))
+            results_df = self.df.apply(apply_func, axis=1)
         else:
             if 'ix' not in os.name:
                 EXECUTOR = cf.ThreadPoolExecutor
