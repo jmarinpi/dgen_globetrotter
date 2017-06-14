@@ -28,6 +28,7 @@ from agents import Agents, Solar_Agents
 import settings
 import agent_mutation
 import agent_preparation
+import tariff_building_functions as tBuildFuncs
 #import demand_supply_geo
 import diffusion_functions_elec
 import diffusion_functions_ghp
@@ -186,6 +187,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 financing_terms = iFuncs.ingest_financing_terms(scenario_settings)
                 batt_tech_traj = iFuncs.ingest_batt_tech_performance(scenario_settings)
 
+                #==========================================================================================================
+                # Calculate Tariff Components from ReEDS data
+                #==========================================================================================================
+                input_dir = 'input_data/reeds_data_for_tariff_construction'
+                scenario = 'ThreeCents'
+                start_year = 2018
+                end_year = 2050
+                base_year = 2016
+                
+                tariff_dict_df = tBuildFuncs.calc_tariff_components_from_reeds_data(solar_agents.df, input_dir, scenario, start_year, end_year, base_year)
+
                 for year in scenario_settings.model_years:
 
                     logger.info('\tWorking on %s' % year)
@@ -231,6 +243,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Apply host-owned financial parameters
                     solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
+
+                    # Write ReEDS-derived tariff dicts to each agent
+                    tariff_dict_df_year = tariff_dict_df[tariff_dict_df['year']==year]
+                    if year >= 2018:
+                        solar_agents.df = tBuildFuncs.assign_tariff_dicts_to_agents(solar_agents.df, tariff_dict_df_year)
 
                     # Size S+S system and calculate electric bills
                     if 'ix' not in os.name: cores=None
