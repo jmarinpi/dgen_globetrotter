@@ -124,9 +124,13 @@ def design_tariffs(agent_df, rto_df, ts_df, ts_map):
         load_by_agent_com = np.vstack(agent_df_rto_com['consumption_hourly']).astype(np.float) * np.array(agent_df_rto_com['customers_in_bin_initial']).reshape(agent_n_com, 1).astype(np.float)
         load_by_agent_ind = np.vstack(agent_df_rto_ind['consumption_hourly']).astype(np.float) * np.array(agent_df_rto_ind['customers_in_bin_initial']).reshape(agent_n_ind, 1).astype(np.float)
 
-        total_loads_res = np.sum(load_by_agent_res, axis=0)
-        total_loads_com = np.sum(load_by_agent_com, axis=0)
-        total_loads_ind = np.sum(load_by_agent_ind, axis=0)
+        net_load_by_agent_res = load_by_agent_res - (np.vstack(agent_df_rto_res['solar_cf_profile']).astype(np.float) * 1e-6 * np.array(agent_df_rto_res['pv_kw_cum']).reshape(agent_n_res, 1).astype(np.float))
+        net_load_by_agent_com = load_by_agent_com - (np.vstack(agent_df_rto_com['solar_cf_profile']).astype(np.float) * 1e-6 * np.array(agent_df_rto_com['pv_kw_cum']).reshape(agent_n_com, 1).astype(np.float))
+        net_load_by_agent_ind = load_by_agent_ind - (np.vstack(agent_df_rto_ind['solar_cf_profile']).astype(np.float) * 1e-6 * np.array(agent_df_rto_ind['pv_kw_cum']).reshape(agent_n_ind, 1).astype(np.float))
+
+        total_loads_res = np.sum(net_load_by_agent_res, axis=0)
+        total_loads_com = np.sum(net_load_by_agent_com, axis=0)
+        total_loads_ind = np.sum(net_load_by_agent_ind, axis=0)
             
         for ts in ts_list:
             ts_array = np.array(ts_map['ts'])==ts
@@ -161,7 +165,7 @@ def design_tariffs(agent_df, rto_df, ts_df, ts_map):
         total_flat_demand_com = 0
         total_tou_demand_com = 0
         for n in range(agent_n_com):       
-            load_distributed = load_by_agent_com[n,:][np.newaxis, :].T*period_matrix
+            load_distributed = net_load_by_agent_com[n,:][np.newaxis, :].T*period_matrix
             period_maxs = np.max(load_distributed, axis=0).reshape([d_tou_n,12], order='F')
             
             flat_demands = np.max(period_maxs, axis=0)
@@ -174,7 +178,7 @@ def design_tariffs(agent_df, rto_df, ts_df, ts_map):
         total_flat_demand_ind = 0
         total_tou_demand_ind = 0
         for n in range(agent_n_ind):       
-            load_distributed = load_by_agent_ind[n,:][np.newaxis, :].T*period_matrix
+            load_distributed = net_load_by_agent_ind[n,:][np.newaxis, :].T*period_matrix
             period_maxs = np.max(load_distributed, axis=0).reshape([d_tou_n,12], order='F')
             
             flat_demands = np.max(period_maxs, axis=0)
@@ -237,9 +241,11 @@ def design_tariffs(agent_df, rto_df, ts_df, ts_map):
         tariff_dict_df.set_value(rto, 'tariff_components_dict_ind', tariff_component_dict_ind)
         
     return tariff_component_df, tariff_dict_df
-    
+
+
+
 #%%
-def calc_tariff_components_from_reeds_data(agent_df, input_dir, scenario, start_year, end_year, base_year):
+def calc_revenue_fracs_from_reeds_data(agent_df, input_dir, scenario, start_year, end_year, base_year):
     # if the agent_df doesn't have ref bills, calculate them and resave the file
     if 'rev_base_year' not in list(agent_df.columns):
         agent_df = evaluate_agent_ref_bills(agent_df)
@@ -323,7 +329,8 @@ def calc_tariff_components_from_reeds_data(agent_df, input_dir, scenario, start_
         cap_cost_df_sy.loc[rto, :] = costs_by_rto_single['cap_cost'].transpose()
         mwh_df_sy.loc[rto, :] = costs_by_rto_single['Consumption'].transpose()
     
-    #%% Interpolate reeds-projected energy and cost values, from solve years to all years
+    ###########################################################################
+    # Interpolate reeds-projected energy and cost values, from solve years to all years
     total_cost_df = pd.DataFrame(index=rto_list, columns=years_all)
     energy_cost_df = pd.DataFrame(index=rto_list, columns=years_all)
     cap_cost_df = pd.DataFrame(index=rto_list, columns=years_all)
@@ -349,8 +356,8 @@ def calc_tariff_components_from_reeds_data(agent_df, input_dir, scenario, start_
     for year in np.arange(2010, 2051, 1):
         cap_cost_all_years_df[year] = cap_cost_df.loc[:, year]
     
-    
-    #%% Calculate the capacity payments, as if each year's capacity cost was spread out over 30 years
+    ###########################################################################
+    # Calculate the capacity payments, as if each year's capacity cost was spread out over 30 years
     # This method assumes that each year's capacity payment is paid 100% with a 30-year loan
     # Interest payments are paid each year (not added to total debt)
     # Consider: Should debt fraction be less than 100%? What interest rate is appropriate?
@@ -370,7 +377,8 @@ def calc_tariff_components_from_reeds_data(agent_df, input_dir, scenario, start_
     total_cost_smoothed_df = energy_cost_df + cap_cost_smoothed_df.loc[:, years_all]
     cap_frac_smoothed_df = cap_cost_smoothed_df.loc[:, years_all] /  total_cost_smoothed_df
     
-    #%% Summarize the observed revenue collected from agent's base tariffs by sector, RTO
+    ###########################################################################
+    # Summarize the observed revenue collected from agent's base tariffs by sector, RTO
     # prep for revenue fraction summaries
     agent_df['d_charges_in_bin'] = agent_df['d_charges_f_ref'] * agent_df['ref_bill'] * agent_df['customers_in_bin_initial']
     agent_df['f_charges_in_bin'] = agent_df['f_charges_f_ref'] * agent_df['ref_bill'] * agent_df['customers_in_bin_initial']
@@ -435,7 +443,8 @@ def calc_tariff_components_from_reeds_data(agent_df, input_dir, scenario, start_
     print "observed nationwide fixed charge revenue from ind:", np.sum(rto_df['f_charges_ind']) / np.sum(rto_df['rev_base_year_ind'])
     print "observed nationwide fixed charge revenue all sectors:", np.sum(rto_df['f_charges']) / np.sum(rto_df['rev_base_year'])
     
-    #%% Compare the observed c/kWh revenue collected in base_year from actual tariffs to 
+    ####################### Calc Adder ########################################
+    # Compare the observed c/kWh revenue collected in base_year from actual tariffs to 
     # the amount calculated from reeds values. This becomes a c/kWh adder, that we 
     # assume represents costs not captured by reeds (administrative, distribution,
     # etc)
@@ -444,63 +453,70 @@ def calc_tariff_components_from_reeds_data(agent_df, input_dir, scenario, start_
     rto_df['total_cost_base_year'] = total_cost_smoothed_df[base_year]
     
     
-    #%%
-    rto_rev_and_tariff_results = pd.DataFrame()
-    tariff_dict_df = pd.DataFrame()
-    for year in np.arange(start_year, end_year+1, 2):
-        print year
-        rto_df_year = rto_df.copy()
+    ###################### Return results #####################################
+    return rto_df, total_cost_smoothed_df, cap_frac_smoothed_df, ts_df_rto, ts_map
     
-        # Calculate revenue requirements by sector and tariff component
-        # f = fixed charges
-        # e = energy charges
-        # d = demand charges
-        
-        # Revenue ratio is (reeds_captured_year+adder / reeds_captured_base+adder) 
-        rto_df_year['rev_ratio'] = (total_cost_smoothed_df[year]+rto_df_year['adder']) / (total_cost_smoothed_df[base_year]+rto_df_year['adder'])
-        
-        rto_df_year['rev_req_res'] = rto_df_year['rev_base_year_res'] * rto_df_year['rev_ratio']
-        rto_df_year['rev_req_com'] = rto_df_year['rev_base_year_com'] * rto_df_year['rev_ratio']
-        rto_df_year['rev_req_ind'] = rto_df_year['rev_base_year_ind'] * rto_df_year['rev_ratio']
-            
-        rto_df_year['f_rev_req_res'] = rto_df_year['rev_req_res'] * rto_df_year['f_f_res_ref']
-        rto_df_year['f_rev_req_com'] = rto_df_year['rev_req_com'] * rto_df_year['f_f_com_ref']
-        rto_df_year['f_rev_req_ind'] = rto_df_year['rev_req_ind'] * rto_df_year['f_f_ind_ref']   
-            
-        rto_df_year['e_rev_req_res'] = rto_df_year['rev_req_res'] * (1-rto_df_year['f_f_res_ref'])
-        rto_df_year['e_rev_req_com'] = rto_df_year['rev_req_com'] * (1-rto_df_year['f_f_com_ref']) * (1-cap_frac_smoothed_df[year])
-        rto_df_year['e_rev_req_ind'] = rto_df_year['rev_req_ind'] * (1-rto_df_year['f_f_ind_ref']) * (1-cap_frac_smoothed_df[year])
-        
-        rto_df_year['d_rev_req_res'] = rto_df_year['rev_req_res'] * 0.0
-        rto_df_year['d_rev_req_com'] = rto_df_year['rev_req_com'] * (1-rto_df_year['f_f_com_ref']) * (cap_frac_smoothed_df[year])
-        rto_df_year['d_rev_req_ind'] = rto_df_year['rev_req_ind'] * (1-rto_df_year['f_f_ind_ref']) * (cap_frac_smoothed_df[year])
-        
-        # hard-code 50/50 TOU and flat energy split
-        rto_df_year['d_flat_rev_req_res'] = rto_df_year['d_rev_req_res'] * 0.5
-        rto_df_year['d_flat_rev_req_com'] = rto_df_year['d_rev_req_com'] * 0.5
-        rto_df_year['d_flat_rev_req_ind'] = rto_df_year['d_rev_req_ind'] * 0.5
-        rto_df_year['d_tou_rev_req_res'] = rto_df_year['d_rev_req_res'] * 0.5
-        rto_df_year['d_tou_rev_req_com'] = rto_df_year['d_rev_req_com'] * 0.5
-        rto_df_year['d_tou_rev_req_ind'] = rto_df_year['d_rev_req_ind'] * 0.5
-        
-                 
-        # Design tariffs            
-        ts_df_rto_year = ts_df_rto[ts_df_rto['year']==year]
-        tariff_component_df, tariff_dict_df_year = design_tariffs(agent_df, rto_df_year, ts_df_rto_year, ts_map)
-        rto_df_year = rto_df_year.join(tariff_component_df)
-        
-        rto_df_year.reset_index(inplace=True)
-        rto_df_year['year'] = year
-        rto_rev_and_tariff_results = pd.concat([rto_rev_and_tariff_results, rto_df_year], ignore_index=True)
-        
-        tariff_dict_df_year.reset_index(inplace=True)
-        tariff_dict_df_year['year'] = year
-        tariff_dict_df = pd.concat([tariff_dict_df, tariff_dict_df_year], ignore_index=True)
-        
-    rto_rev_and_tariff_results.to_pickle('rev_and_tariff_components_by_rto.pkl')
     
-    return tariff_dict_df
+#%%
+def design_tariff_components(agent_df, year, rto_df, total_cost_smoothed_df, cap_frac_smoothed_df, ts_df_rto, base_year, ts_map):
+    # Calculate revenue requirements by sector and tariff component
+    # f = fixed charges
+    # e = energy charges
+    # d = demand charges
+
+    rto_df_year = rto_df.copy()
     
+    # Revenue ratio is (reeds_captured_year+adder / reeds_captured_base+adder) 
+    rto_df_year['rev_ratio'] = (total_cost_smoothed_df[year]+rto_df_year['adder']) / (total_cost_smoothed_df[base_year]+rto_df_year['adder'])
+    
+    rto_df_year['rev_req_res'] = rto_df_year['rev_base_year_res'] * rto_df_year['rev_ratio']
+    rto_df_year['rev_req_com'] = rto_df_year['rev_base_year_com'] * rto_df_year['rev_ratio']
+    rto_df_year['rev_req_ind'] = rto_df_year['rev_base_year_ind'] * rto_df_year['rev_ratio']
+        
+    rto_df_year['f_rev_req_res'] = rto_df_year['rev_req_res'] * rto_df_year['f_f_res_ref']
+    rto_df_year['f_rev_req_com'] = rto_df_year['rev_req_com'] * rto_df_year['f_f_com_ref']
+    rto_df_year['f_rev_req_ind'] = rto_df_year['rev_req_ind'] * rto_df_year['f_f_ind_ref']   
+        
+    rto_df_year['e_rev_req_res'] = rto_df_year['rev_req_res'] * (1-rto_df_year['f_f_res_ref'])
+    rto_df_year['e_rev_req_com'] = rto_df_year['rev_req_com'] * (1-rto_df_year['f_f_com_ref']) * (1-cap_frac_smoothed_df[year])
+    rto_df_year['e_rev_req_ind'] = rto_df_year['rev_req_ind'] * (1-rto_df_year['f_f_ind_ref']) * (1-cap_frac_smoothed_df[year])
+    
+    rto_df_year['d_rev_req_res'] = rto_df_year['rev_req_res'] * 0.0
+    rto_df_year['d_rev_req_com'] = rto_df_year['rev_req_com'] * (1-rto_df_year['f_f_com_ref']) * (cap_frac_smoothed_df[year])
+    rto_df_year['d_rev_req_ind'] = rto_df_year['rev_req_ind'] * (1-rto_df_year['f_f_ind_ref']) * (cap_frac_smoothed_df[year])
+    
+    # hard-code 50/50 TOU and flat energy split
+    rto_df_year['d_flat_rev_req_res'] = rto_df_year['d_rev_req_res'] * 0.5
+    rto_df_year['d_flat_rev_req_com'] = rto_df_year['d_rev_req_com'] * 0.5
+    rto_df_year['d_flat_rev_req_ind'] = rto_df_year['d_rev_req_ind'] * 0.5
+    rto_df_year['d_tou_rev_req_res'] = rto_df_year['d_rev_req_res'] * 0.5
+    rto_df_year['d_tou_rev_req_com'] = rto_df_year['d_rev_req_com'] * 0.5
+    rto_df_year['d_tou_rev_req_ind'] = rto_df_year['d_rev_req_ind'] * 0.5
+    
+             
+    ########################## Design tariffs #################################            
+    ts_df_rto_year = ts_df_rto[ts_df_rto['year']==year]
+    tariff_component_df, tariff_dict_df = design_tariffs(agent_df, rto_df_year, ts_df_rto_year, ts_map)
+    rto_df_year = rto_df_year.join(tariff_component_df)
+    
+    rto_df_year.reset_index(inplace=True)
+    rto_df_year['year'] = year        
+    rto_df_year.to_pickle('rev_and_tariff_components_by_rto_%s.pkl' % year)
+    tariff_dict_df.to_pickle('tariff_dicts_by_rto_%s.pkl' % year)
+    
+    ###################### Assign tariffs to agents ###########################            
+    for n, idx in enumerate(agent_df.index):
+        print n+1, "of", len(agent_df)
+
+        # Extract tariff components dict for this agent's sector and RTO
+        rto = agent_df.loc[idx, 'rto']
+        sector = agent_df.loc[idx, 'sector_abbr']        
+        tariff_dict = tariff_dict_df.loc[rto, 'tariff_components_dict_%s' % sector]                 
+        agent_df.set_value(idx, 'tariff_dict', tariff_dict)
+        
+    return agent_df    
+    
+        
     
 #%%
 def evaluate_agent_ref_bills(agent_df):
@@ -524,17 +540,3 @@ def evaluate_agent_ref_bills(agent_df):
     
     return agent_df    
     
-#%%
-def assign_tariff_dicts_to_agents(agent_df, tariff_dict_df_year):   
-    
-    for n, idx in enumerate(agent_df.index):
-        print n+1, "of", len(agent_df)
-        rto = agent_df.loc[idx, 'rto']
-        sector = agent_df.loc[idx, 'sector_abbr']
-        
-        # Extract tariff components dict for this agent's sector and RTO
-        tariff_dict = tariff_dict_df_year.loc[rto, 'tariff_components_dict_%s' % sector]         
-        
-        agent_df.set_value(idx, 'tariff_dict', tariff_dict)
-        
-    return agent_df
