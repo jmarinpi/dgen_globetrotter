@@ -163,7 +163,7 @@ def import_agent_file(scenario_settings, con, cur, engine, model_settings, agent
     role = model_settings.role
     input_agent_dir = model_settings.input_agent_dir
 
-    if agent_file_status == 'Use Pre-generated Agents':
+    if agent_file_status == ['Use pre-generated Agents']:
 
         userdefined_table_name = "input_" + input_name + "_user_defined"
         scenario_userdefined_name = get_userdefined_scenario_settings(schema, userdefined_table_name, con)
