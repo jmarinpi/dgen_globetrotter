@@ -919,15 +919,13 @@ def get_sectors(cur, schema):
 
 def get_technologies(con, schema):
 
-    sql = '''with a as
-            (
-                	select unnest(array['wind', 'solar', 'du', 'ghp']) as tech,
-                         unnest(array[run_wind, run_solar, run_du, run_ghp]) as enabled
-                  FROM %s.input_main_scenario_options
-            )
-            SELECT tech
-            FROM a
-            WHERE enabled = TRUE;''' % schema
+    sql = """SELECT 
+                CASE WHEN run_tech = 'Solar + Storage' THEN 'solar'::text
+                     WHEN run_tech = 'Wind' THEN 'wind'::text
+                     WHEN run_tech = 'Geothermal Heat Pump' THEN 'ghp'::text
+                     WHEN run_tech = 'Geothermal Direct Use' THEN 'du'::text
+                END AS tech
+            FROM %s.input_main_scenario_options;""" % schema
 
     # get the data
     df = pd.read_sql(sql, con)
@@ -940,6 +938,23 @@ def get_technologies(con, schema):
 
     return techs
 
+
+
+def get_agent_file_scenario(con, schema):
+
+    sql = """SELECT agent_file as agent_file_status
+            FROM %s.input_main_scenario_options;""" % schema
+
+    # get the data
+    df = pd.read_sql(sql, con)
+    # convert to a simple list
+    agent_file_status = df.agent_file_status.tolist()
+
+    if len(agent_file_status) == 0:
+        raise ValueError(
+            "No pre-generated pkl agent file was provided to be run in the input sheet.")
+
+    return agent_file_status
 
 
 def cleanup_incentives(df, dsire_opts):
@@ -1721,6 +1736,64 @@ def get_rate_escalations(con, schema):
     rate_escalations = pd.read_sql(sql, con, coerce_float = False)
     
     return rate_escalations
+
+
+def get_load_growth(con, schema):
+
+    inputs = locals().copy()
+
+    sql = """SELECT year, sector_abbr, census_division_abbr, load_multiplier
+            FROM %(schema)s.load_growth_to_model;""" % inputs
+
+    df = pd.read_sql(sql, con, coerce_float=False)
+
+    return df
+
+
+def get_technology_costs_solar(con, schema):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT year,
+                    sector_abbr,
+                    pv_price_per_kw,
+                    pv_om_per_kw,
+                    pv_variable_om_per_kw
+            FROM %(schema)s.input_pv_prices_to_model;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
+
+
+def get_storage_costs(con, schema):
+
+    inputs = locals().copy()
+
+    sql = """SELECT year,
+                    sector_abbr,
+                    batt_price_per_kwh,
+                    batt_price_per_kw,
+                    batt_om_per_kwh,
+                    batt_om_per_kw,
+                    batt_replace_frac_kwh,
+                    batt_replace_frac_kw
+            FROM %(schema)s.input_storage_cost_projections_to_model;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df  
+
+
+def get_wholesale_electricity_prices(con, schema):
+
+    inputs = locals().copy()
+
+    sql = """SELECT year,
+                    state_abbr,
+                    wholesale_elec_price
+            FROM %(schema)s.input_wholesale_electricity_prices_to_model;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
 
     
 def get_lease_availability(con, schema, tech):

@@ -108,10 +108,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             schema = scenario_settings.schema
             max_market_share = datfunc.get_max_market_share(con, schema)
             market_projections = datfunc.get_market_projections(con, schema)
-            load_growth_scenario = scenario_settings.load_growth_scenario.lower()
+            load_growth_scenario = scenario_settings.load_growth.lower()
             inflation_rate = datfunc.get_annual_inflation(con, scenario_settings.schema)
             bass_params = datfunc.get_bass_params(con, scenario_settings.schema)
-            elec_price_change_traj = datfunc.get_rate_escalations(con, scenario_settings.schema)
+
+            # get settings whether to use pre-generated agent file ('User Defined'- provide pkl file name) or generate new agents
+            agent_file_status = scenario_settings.agent_file_status
 
             # create psuedo-rangom number generator (not used until tech/finance choice function)
             prng = np.random.RandomState(scenario_settings.random_generator_seed)
@@ -122,15 +124,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info("--------------Creating Agents---------------")
             
             if scenario_settings.techs in [['wind'], ['solar']]:
-                use_existing_agents = False
+
                 # =========================================================
                 # Initialize agents
-                # =========================================================                
-                if use_existing_agents==True:
-                    solar_agents = Agents(pd.read_pickle('%s/agent_df_merge_DE_all.pkl' % model_settings.input_agent_dir))
-#                    solar_agents = Agents(pd.read_pickle('%s/agent_df_sunShot2030.pkl' % model_settings.input_agent_dir))
-                else:
-                    solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
+                # =========================================================   
+             
+                # Depending on settings either generate new agents or use pre-generated agents from provided .pkl file                
+                solar_agents = iFuncs.import_agent_file( scenario_settings, con, cur, engine, model_settings, agent_file_status, input_name='agent_file')            
                     
                 # Write base agents to disk
                 solar_agents.df.to_pickle(out_scen_path + '/agent_df_base.pkl')
@@ -152,12 +152,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # get dsire incentives, srecs, and itc inputs
                 # TODO: move these to agent mutation
 
-                #dsire_opts = datfunc.get_dsire_settings(con, scenario_settings.schema)
-                #incentives_cap = datfunc.get_incentives_cap(con, scenario_settings.schema)
-                #dsire_incentives = datfunc.get_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, scenario_settings.sectors, model_settings.pg_conn_string, dsire_opts)
-                #srecs = datfunc.get_srecs(cur, con, scenario_settings.schema, scenario_settings.techs, model_settings.pg_conn_string, dsire_opts)
-                #state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
-
                 state_incentives = datfunc.get_state_incentives(con)
                 itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
                 nem_state_capacity_limits = datfunc.get_nem_state(con, scenario_settings.schema)
@@ -171,7 +165,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 carbon_intensities = iFuncs.import_table( scenario_settings, con, engine,model_settings.role, input_name='carbon_intensities', csv_import_function=iFuncs.melt_year('grid_carbon_tco2_per_kwh'))
                 wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, engine, model_settings.role, input_name='wholesale_electricity_prices', csv_import_function=iFuncs.melt_year('wholesale_elec_price'))
                 pv_tech_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
-#                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='elec_prices', csv_import_function=iFuncs.stacked_sectors)
+                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='elec_prices', csv_import_function=iFuncs.process_elec_price_trajectories)
+                load_growth = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='load_growth', csv_import_function=iFuncs.process_load_growth)
                 pv_price_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
                 batt_price_traj = iFuncs.import_table( scenario_settings, con, engine,model_settings.role, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
                 financing_terms = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
@@ -193,8 +188,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     is_first_year = year == model_settings.start_year
 
                     # get and apply load growth
-                    load_growth_df =  agent_mutation.elec.get_load_growth(con, scenario_settings.schema, year)
-                    solar_agents.on_frame(agent_mutation.elec.apply_load_growth, (load_growth_df))
+                    solar_agents.on_frame(agent_mutation.elec.apply_load_growth, (load_growth))
 
                     #Apply net metering parameters
                     net_metering_df = agent_mutation.elec.get_nem_settings(nem_state_capacity_limits, nem_state_and_sector_attributes, nem_selected_scenario, year)

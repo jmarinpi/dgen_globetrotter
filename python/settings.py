@@ -312,13 +312,14 @@ class ScenarioSettings(object):
         self.scen_name = None  # type is text, no spaces?
         self.end_year = None
         self.region = None
-        self.load_growth_scenario = None  # valid options only
+        self.load_growth = None  # valid options only
         self.random_generator_seed = None  # int
 
         self.sectors = None  # valid options only
         self.techs = None  # valid options only
         self.input_scenario = None  # exists on disk
         self.schema = None  # string
+        self.agent_file_status = None # valid options onl
 
         self.model_years = None  # starts at 2014 and ends <= 2050
         self.tech_mode = None  # valid options only
@@ -337,8 +338,8 @@ class ScenarioSettings(object):
         self.set('scen_name', scenario_options['scenario_name'])
         self.set('end_year', scenario_options['end_year'])
         self.set('region', scenario_options['region'])
-        self.set('load_growth_scenario', scenario_options[
-                 'load_growth_scenario'])
+        self.set('load_growth', scenario_options[
+                 'load_growth'])
         self.set('random_generator_seed', scenario_options[
                  'random_generator_seed'])
 
@@ -386,7 +387,7 @@ class ScenarioSettings(object):
             except TypeError, e:
                 raise TypeError('Invalid %s: %s' % (property_name, e))
 
-        elif property_name == 'load_growth_scenario':
+        elif property_name == 'load_growth':
             try:
                 check_type(self.get(property_name), str)
             except TypeError, e:
@@ -551,6 +552,9 @@ def init_scenario_settings(scenario_file, model_settings, con, cur):
 
     # read in high level scenario settings
     scenario_settings.set('techs', datfunc.get_technologies(con, scenario_settings.schema))
+
+    # read in settings whether to use pre-generated agent file ('User Defined'- provide pkl file name) or generate new agents
+    scenario_settings.set('agent_file_status', datfunc.get_agent_file_scenario(con, scenario_settings.schema))
 
     # set tech_mode
     scenario_settings.set_tech_mode()
