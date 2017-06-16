@@ -423,7 +423,7 @@ def apply_load_growth(dataframe, load_growth_df):
 
     dataframe = dataframe.reset_index()
 
-    dataframe = pd.merge(dataframe, load_growth_df, how='left', on=['sector_abbr', 'census_division_abbr'])
+    dataframe = pd.merge(dataframe, load_growth_df, how='left', on=['year', 'sector_abbr', 'census_division_abbr'])
     
     # for res, load growth translates to kwh_per_customer change
     dataframe['load_kwh_per_customer_in_bin'] = np.where(dataframe['sector_abbr']=='res',

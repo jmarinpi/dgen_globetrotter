@@ -9,6 +9,9 @@ import pandas as pd
 import numpy as np
 import os
 import sqlalchemy
+import data_functions as datfunc
+import agent_mutation
+from agents import Agents, Solar_Agents
 
 
 #%%
@@ -20,7 +23,7 @@ def check_table_exists(schema, table, con):
 
 def df_to_psql(df, name, con, engine, schema, owner,data_types={}):
 
-    df.to_sql(name, engine, schema=schema, dtype=data_types)
+    df.to_sql(name, engine, schema=schema, index=False, dtype=data_types)
 
     sql = 'ALTER TABLE %s."%s" OWNER to "%s";' % (schema, name, owner)
     with engine.begin() as conn:
@@ -60,23 +63,34 @@ def import_table(scenario_settings, con, engine, role, input_name, csv_import_fu
         userdefined_table_name = "input_" + input_name + "_user_defined"
         scenario_userdefined_name = get_userdefined_scenario_settings(schema, userdefined_table_name, con)
         scenario_userdefined_value = scenario_userdefined_name['val'].values[0]
-
+        scenario_userdefined_table_name = "user_defined_" + scenario_userdefined_value
 
         if check_table_exists(shared_schema, scenario_userdefined_value, con):
             sql = '''SELECT * FROM %s."%s";''' % (shared_schema, scenario_userdefined_value)
             df = pd.read_sql(sql, con)
 
         else:
-            df = pd.read_csv(os.path.join(input_data_dir, input_name, scenario_userdefined_value+".csv"), index_col=None)
+            df = pd.read_csv(os.path.join(input_data_dir, input_name, scenario_userdefined_value+".csv"), index_col=False)
             df,d_types = csv_import_function(df)
 
-            df_to_psql(df, scenario_userdefined_value, con, engine,shared_schema, role,data_types=d_types)
+            df_to_psql(df, scenario_userdefined_value, con, engine, shared_schema, role, data_types=d_types)
 
     else:
-        sql = '''SELECT * FROM %s.%s WHERE source = %s;''' % (schema, input_name, scenario_name)
-        df = pd.read_sql(sql, con)
+        # To do: Convert all specific functions below into a single generalized function
+        #attribute_table_name = "input_" + input_name + "_to_model"
+        if input_name == 'elec_prices':
+            df = datfunc.get_rate_escalations(con, scenario_settings.schema)
+        elif input_name == 'load_growth':
+            df = datfunc.get_load_growth(con, scenario_settings.schema)
+        elif input_name == 'pv_prices':
+            df = datfunc.get_technology_costs_solar(con, scenario_settings.schema)
+        elif input_name == 'batt_prices':
+             df = datfunc.get_storage_costs(con, scenario_settings.schema)
+        elif input_name == 'wholesale_electricity_prices':
+             df = datfunc.get_wholesale_electricity_prices(con, scenario_settings.schema)
 
     return df
+
 
 #%%
 def stacked_sectors(df):
@@ -139,3 +153,99 @@ def melt_year(paramater_name):
         return df_tify, d_types
 
     return function
+
+
+#%%
+def import_agent_file(scenario_settings, con, cur, engine, model_settings, agent_file_status, input_name):
+
+    schema = scenario_settings.schema
+    shared_schema = 'diffusion_shared'
+    role = model_settings.role
+    input_agent_dir = model_settings.input_agent_dir
+
+    if agent_file_status == 'Use Pre-generated Agents':
+
+        userdefined_table_name = "input_" + input_name + "_user_defined"
+        scenario_userdefined_name = get_userdefined_scenario_settings(schema, userdefined_table_name, con)
+        scenario_userdefined_value = scenario_userdefined_name['val'].values[0]
+        solar_agents = Agents(pd.read_pickle(os.path.join(input_agent_dir, scenario_userdefined_value+".pkl")))
+
+    else:
+
+        solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
+
+    return solar_agents
+
+
+#%%
+def process_elec_price_trajectories(elec_price_traj):
+       
+    d_types={}
+    base_year_prices = elec_price_traj[elec_price_traj['year']==2016]
+    
+    base_year_prices.rename(columns={'elec_price_res':'res_base',
+                                     'elec_price_com':'com_base',
+                                     'elec_price_ind':'ind_base'}, inplace=True)
+    
+    elec_price_change_traj = pd.merge(elec_price_traj, base_year_prices[['res_base', 'com_base', 'ind_base', 'census_division_abbr']], on='census_division_abbr')
+
+    elec_price_change_traj['elec_price_change_res'] = elec_price_change_traj['elec_price_res'] / elec_price_change_traj['res_base']
+    elec_price_change_traj['elec_price_change_com'] = elec_price_change_traj['elec_price_com'] / elec_price_change_traj['com_base']
+    elec_price_change_traj['elec_price_change_ind'] = elec_price_change_traj['elec_price_ind'] / elec_price_change_traj['ind_base']
+
+    # Melt by sector
+    res_df = pd.DataFrame(elec_price_change_traj['year'])
+    res_df = elec_price_change_traj[['year', 'elec_price_change_res', 'census_division_abbr']]
+    res_df.rename(columns={'elec_price_change_res':'elec_price_multiplier'}, inplace=True)
+    res_df['sector_abbr'] = 'res'
+    
+    com_df = pd.DataFrame(elec_price_change_traj['year'])
+    com_df = elec_price_change_traj[['year', 'elec_price_change_com', 'census_division_abbr']]
+    com_df.rename(columns={'elec_price_change_com':'elec_price_multiplier'}, inplace=True)
+    com_df['sector_abbr'] = 'com'
+    
+    ind_df = pd.DataFrame(elec_price_change_traj['year'])
+    ind_df = elec_price_change_traj[['year', 'elec_price_change_ind', 'census_division_abbr']]
+    ind_df.rename(columns={'elec_price_change_ind':'elec_price_multiplier'}, inplace=True)
+    ind_df['sector_abbr'] = 'ind'
+    
+    elec_price_change_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)
+
+    return elec_price_change_traj, d_types
+
+
+#%%
+def process_load_growth(load_growth):
+       
+    d_types={}
+    base_year_load_growth = load_growth[load_growth['year']==2014]
+    
+    base_year_load_growth.rename(columns={'load_growth_res':'res_base',
+                                     'load_growth_com':'com_base',
+                                     'load_growth_ind':'ind_base'}, inplace=True)
+    
+    load_growth_change_traj = pd.merge(load_growth, base_year_load_growth[['res_base', 'com_base', 'ind_base', 'census_division_abbr']], on='census_division_abbr')
+
+    load_growth_change_traj['load_growth_change_res'] = load_growth_change_traj['load_growth_res'] / load_growth_change_traj['res_base']
+    load_growth_change_traj['load_growth_change_com'] = load_growth_change_traj['load_growth_com'] / load_growth_change_traj['com_base']
+    load_growth_change_traj['load_growth_change_ind'] = load_growth_change_traj['load_growth_ind'] / load_growth_change_traj['ind_base']
+
+    # Melt by sector
+    res_df = pd.DataFrame(load_growth_change_traj['year'])
+    res_df = load_growth_change_traj[['year', 'load_growth_change_res', 'census_division_abbr']]
+    res_df.rename(columns={'load_growth_change_res':'load_multiplier'}, inplace=True)
+    res_df['sector_abbr'] = 'res'
+    
+    com_df = pd.DataFrame(load_growth_change_traj['year'])
+    com_df = load_growth_change_traj[['year', 'load_growth_change_com', 'census_division_abbr']]
+    com_df.rename(columns={'load_growth_change_com':'load_multiplier'}, inplace=True)
+    com_df['sector_abbr'] = 'com'
+    
+    ind_df = pd.DataFrame(load_growth_change_traj['year'])
+    ind_df = load_growth_change_traj[['year', 'load_growth_change_ind', 'census_division_abbr']]
+    ind_df.rename(columns={'load_growth_change_ind':'load_multiplier'}, inplace=True)
+    ind_df['sector_abbr'] = 'ind'
+    
+    load_growth_change_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)
+
+    return load_growth_change_traj, d_types
