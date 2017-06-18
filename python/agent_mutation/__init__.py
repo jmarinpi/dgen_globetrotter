@@ -5,6 +5,7 @@ import numpy as np
 
 def init_solar_agents(model_settings, scenario_settings, cur, con):
     # Prepare core agent attributes
+    role = model_settings.role
     techs = scenario_settings.techs
     schema = scenario_settings.schema
     sample_pct = model_settings.sample_pct
@@ -15,7 +16,7 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     pg_conn_string = model_settings.pg_conn_string
     random_generator_seed = scenario_settings.random_generator_seed
     end_year = scenario_settings.end_year
-    agent_prep_args = (techs, schema, sample_pct, min_agents,
+    agent_prep_args = (techs, schema, role, sample_pct, min_agents,
                        agents_per_region, sectors, pg_procs,
                        pg_conn_string, random_generator_seed,
                        end_year)

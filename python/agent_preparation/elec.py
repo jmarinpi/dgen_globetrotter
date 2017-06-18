@@ -28,7 +28,7 @@ pg.extensions.register_type(DEC2FLOAT)
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=0, prefix='')
-def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agents, agents_per_region, sectors,
+def generate_core_agent_attributes(cur, con, techs, schema, role, sample_pct, min_agents, agents_per_region, sectors,
                                    pg_procs, pg_conn_string, seed, end_year):
 
     inputs = locals().copy()
@@ -54,37 +54,37 @@ def generate_core_agent_attributes(cur, con, techs, schema, sample_pct, min_agen
                 #==============================================================
                 # NOTE: each of these functions is dependent on the last, so
                 # changes from one must be cascaded to the others
-                sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
-                add_agent_ids(schema, sector_abbr, 'initial', county_chunks, pool, pg_conn_string, con, cur)
-                sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
-                convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
-                sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
-                calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
+                sample_blocks(schema,role, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
+                add_agent_ids(schema,role, sector_abbr, 'initial', county_chunks, pool, pg_conn_string, con, cur)
+                sample_building_microdata(schema,role, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
+                convolve_block_and_building_samples(schema, role,sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
+                sample_agent_utility_type(schema,role, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
+                calculate_max_demand(schema, role,sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string)
 
                 #==============================================================
                 #     impose agent level siting  attributes (i.e., "tech potential")
                 #==============================================================
                 # SOLAR
-                simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, schema, sector_abbr, seed)
+                simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, schema, role,sector_abbr, seed)
 
                 # WIND
-                determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, schema, sector_abbr)
-                find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, schema, sector_abbr)
+                determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, schema,role, sector_abbr)
+                find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, schema,role, sector_abbr)
 
                 #==============================================================
                 #     combine all pieces into a single table
                 #==============================================================
-                combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr)
+                combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, role,sector_abbr)
 
         #======================================================================
         #     create a view that combines all sectors and techs
         #======================================================================
-        merge_all_core_agents(cur, con, schema, sectors, techs)
+        merge_all_core_agents(cur, con, schema, role,sectors, techs)
 
         #======================================================================
         #    drop the intermediate tables
         #======================================================================
-        cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, cur, con, pool)
+        cleanup_intermediate_tables(schema,role, sectors, county_chunks, pg_conn_string, cur, con, pool)
 
     except:
         # roll back any transactions
@@ -123,7 +123,7 @@ def split_counties(cur, schema, pg_procs):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
+def sample_blocks(schema, role, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
 
     msg = '\tSampling from Blocks for Each County'
     logger.info(msg)
@@ -161,24 +161,24 @@ def sample_blocks(schema, sector_abbr, county_chunks, agents_per_region, seed, p
             LEFT JOIN diffusion_blocks.block_tract_id_alias b
             ON a.pgid = b.pgid
             ORDER BY a.county_id, a.pgid;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role, sql, county_chunks, pool)
 
     # add primary key
     sql = """ALTER TABLE %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role, sql, county_chunks, pool)
 
     # add indices
     sql = """CREATE INDEX agent_blocks_%(sector_abbr)s_%(i_place_holder)s_pgid_btree
             ON %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s
             USING BTREE(pgid);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role, sql, county_chunks, pool)
 
 
 #%%
 # TODO -- make sure that this agent_id gets filtered through
 @decorators.fn_timer(logger=logger, tab_level=3, prefix='')
-def add_agent_ids(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_string, con, cur):
+def add_agent_ids(schema, role, sector_abbr, initial_or_new, chunks, pool, pg_conn_string, con, cur):
     inputs = locals().copy()
 
     # need to do this sequentially to ensure conssitent application of agent_ids
@@ -198,13 +198,13 @@ def add_agent_ids(schema, sector_abbr, initial_or_new, chunks, pool, pg_conn_str
     # # run query
     # sql = """ALTER TABLE %(schema)s.agent_blocks_%(sector_abbr)s_%(i_place_holder)s
     #          ADD PRIMARY KEY (agent_id);""" % inputs
-    # p_run(pg_conn_string, sql, chunks, pool)
+    # p_run(pg_conn_string, role, sql, chunks, pool)
 
 
 #%%
 # an agent belongs to
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
+def sample_building_microdata(schema, role, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
 
     msg = "\tSampling from Building Microdata"
     logger.info(msg)
@@ -260,17 +260,17 @@ def sample_building_microdata(schema, sector_abbr, county_chunks, agents_per_reg
         LEFT JOIN diffusion_shared.cbecs_recs_combined b
             ON a.bldg_id = b.bldg_id
         %(load_where)s ;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role, sql, county_chunks, pool)
 
     # add primary key
     sql = """ALTER TABLE %(schema)s.agent_bldgs_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role, sql, county_chunks, pool)
 
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string, step=3):
+def convolve_block_and_building_samples(schema, role, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string, step=3):
 
     msg = '\tConvolving Block and Building Samples'
     logger.info(msg)
@@ -317,12 +317,12 @@ def convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agen
                 	ELSE 0::BIGINT
                   END AS load_kwh_per_customer_in_bin
             FROM a;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role, sql, county_chunks, pool)
 
     # add primary key
     sql = """ALTER TABLE %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role, sql, county_chunks, pool)
 
     # add indices
     sql = """CREATE INDEX agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s_join_btree
@@ -334,12 +334,12 @@ def convolve_block_and_building_samples(schema, sector_abbr, county_chunks, agen
             ON %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s
             USING BTREE(pgid);
             """ % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role, sql, county_chunks, pool)
 
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
+def sample_agent_utility_type(schema, role, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
     # NOTE: This function uses a random weighted sampling process to determine the agent's utility type.
     #       The utility type will be used to determine the agent's rates later on in
     #       agent_mutation_elec.get_electric_rates.
@@ -404,22 +404,22 @@ def sample_agent_utility_type(schema, sector_abbr, county_chunks, agents_per_reg
                 FROM sample a;""" % inputs
     # TODO--fix nulls
     # TODO -change utility names to shorthand
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role,  sql, county_chunks, pool)
 
     # Add primary key
     sql = """ALTER TABLE %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s
             ADD PRIMARY KEY (agent_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role, sql, county_chunks, pool)
 
     # add constraint to confirm no null utility types
     sql = """ALTER TABLE %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s
              ALTER COLUMN utility_type SET NOT NULL;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role, sql, county_chunks, pool)
 
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
+def calculate_max_demand(schema, role, sector_abbr, county_chunks, agents_per_region, seed, pool, pg_conn_string):
 
     msg = '\tCalculating Maximum Electricity Demand for Each Agent'
     logger.info(msg)
@@ -441,17 +441,17 @@ def calculate_max_demand(schema, sector_abbr, county_chunks, agents_per_region, 
             LEFT JOIN diffusion_load_profiles.energy_plus_max_normalized_demand b
                 ON a.crb_model = b.crb_model
                 AND a.hdf_index = b.hdf_index;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role, sql, county_chunks, pool)
 
     # add primary key
     sql = """ALTER TABLE %(schema)s.agent_max_demand_%(sector_abbr)s_%(i_place_holder)s
              ADD PRIMARY KEY (county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role, sql, county_chunks, pool)
 
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, schema, sector_abbr, seed):
+def simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, schema, role, sector_abbr, seed):
 
     msg = "\tSimulating Rooftop Characteristics For Each Agent"
     logger.info(msg)
@@ -498,7 +498,7 @@ def simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, sche
             SELECT *
             FROM b
             WHERE rank = 1;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string,role, sql, county_chunks, pool)
 
     # add indices on join keys
     sql =  """CREATE INDEX agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s_city_id_btree
@@ -522,7 +522,7 @@ def simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, sche
               CREATE INDEX agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s_id_btree
               ON %(schema)s.agent_rooftop_cities_%(sector_abbr)s_%(i_place_holder)s
               USING BTREE(county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string,role, sql, county_chunks, pool)
 
     # sample from the lidar bins for that city
     sql = """DROP TABLE IF EXISTS %(schema)s.agent_rooftops_%(sector_abbr)s_%(i_place_holder)s;
@@ -558,17 +558,17 @@ def simulate_roof_characteristics(county_chunks, pool, pg_conn_string, con, sche
             INNER JOIN diffusion_solar.rooftop_percent_developable_buildings_by_state e
                 	ON a.state_abbr = e.state_abbr
                   AND a.bldg_size_class = e.size_class;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string,role, sql, county_chunks, pool)
 
     # add primary key
     sql =  """ALTER TABLE %(schema)s.agent_rooftops_%(sector_abbr)s_%(i_place_holder)s
               ADD PRIMARY KEY (county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role,sql, county_chunks, pool)
 
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, schema, sector_abbr):
+def determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, schema, role, sector_abbr):
 
     msg = "\tDetermining Allowable Turbine Heights for Each Agent"
     logger.info(msg)
@@ -598,17 +598,17 @@ def determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, sch
                   LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
                         ON a.pgid = b.pgid
                 	CROSS JOIN %(schema)s.input_wind_siting_settings_all c;""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role,sql, county_chunks, pool)
 
     # add primary key
     sql =  """ALTER TABLE %(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s
               ADD PRIMARY KEY (county_id, bin_id);""" % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role,sql, county_chunks, pool)
 
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, schema, sector_abbr):
+def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, schema, role, sector_abbr):
 
     msg = "\tIdentifying Potential Turbine Sizes for Each Agent"
     logger.info(msg)
@@ -642,7 +642,7 @@ def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, 
                 	ON b.effective_min_blade_height_m >= a.min_allowable_blade_height_m
                 	AND b.effective_max_blade_height_m <= a.max_allowable_blade_height_m;
              """ % inputs
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role,sql, county_chunks, pool)
 
     # create indices
     sql =  """CREATE INDEX agent_allowable_turbines_lkup_%(sector_abbr)s_id_btree
@@ -658,7 +658,7 @@ def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, 
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, sector_abbr):
+def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, role, sector_abbr):
 
     inputs = locals().copy()
     inputs['i_place_holder'] = '%(i)s'
@@ -733,7 +733,7 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
     sql = """INSERT INTO %(schema)s.agent_core_attributes_%(sector_abbr)s
             %(sql_body)s;""" % inputs
     # run the insert statement
-    p_run(pg_conn_string, sql, county_chunks, pool)
+    p_run(pg_conn_string, role,sql, county_chunks, pool)
 
     # add primary key
     sql =  """ALTER TABLE %(schema)s.agent_core_attributes_%(sector_abbr)s
@@ -756,7 +756,7 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, cur, con, pool):
+def cleanup_intermediate_tables(schema, role, sectors, county_chunks, pg_conn_string, cur, con, pool):
 
     inputs = locals().copy()
     inputs['i_place_holder'] = '%(i)s'
@@ -784,7 +784,7 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
             table_name = intermediate_table % inputs
             isql = sql % table_name
             if '%(i)s' in table_name:
-                p_run(pg_conn_string, isql, county_chunks, pool)
+                p_run(pg_conn_string, role,isql, county_chunks, pool)
             else:
                 cur.execute(isql)
                 con.commit()
@@ -792,7 +792,7 @@ def cleanup_intermediate_tables(schema, sectors, county_chunks, pg_conn_string, 
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def merge_all_core_agents(cur, con, schema, sectors, techs):
+def merge_all_core_agents(cur, con, schema, role, sectors, techs):
 
     inputs = locals().copy()
 

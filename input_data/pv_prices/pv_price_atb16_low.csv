@@ -1,4 +1,4 @@
-year,pv_price_res,pv_price_com,pv_price_ind,pv_om_res,pv_om_com,pv_om_ind,pv_variable_om_res,pv_variable_om_com,pv_variable_om_ind
+year,pv_price_per_kw_res,pv_price_per_kw_com,pv_price_per_kw_ind,pv_om_per_kw_res,pv_om_per_kw_com,pv_om_per_kw_ind,pv_variable_om_per_kw_res,pv_variable_om_per_kw_com,pv_variable_om_per_kw_ind
 2014,3284.981095,2699.070473,2699.070473,20,15,15,0,0,0
 2015,3096.324736,2249.114594,2249.114594,18,13.5,13.5,0,0,0
 2016,2809.707105,2034.163452,2034.163452,16,12,12,0,0,0

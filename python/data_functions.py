@@ -283,7 +283,7 @@ def create_scenario_results_folder(input_scenario, scen_name, scenario_names, ou
 
 
 @decorators.fn_timer(logger=logger, tab_level=1, prefix='')
-def create_output_schema(pg_conn_string, suffix, source_schema='diffusion_template', include_data=False):
+def create_output_schema(pg_conn_string, role, suffix, source_schema='diffusion_template', include_data=False):
 
     inputs = locals().copy()
     suffix = utilfunc.get_formatted_time()
@@ -304,7 +304,7 @@ def create_output_schema(pg_conn_string, suffix, source_schema='diffusion_templa
     dest_schema = 'diffusion_results_%s' % suffix
     inputs['dest_schema'] = dest_schema
 
-    sql = '''SELECT diffusion_shared.clone_schema('%(source_schema)s', '%(dest_schema)s', 'diffusion-writers', %(include_data)s);''' % inputs
+    sql = '''SELECT diffusion_shared.clone_schema('%(source_schema)s', '%(dest_schema)s', '%(role)s', %(include_data)s);''' % inputs
     cur.execute(sql)
     con.commit()
 
@@ -919,15 +919,13 @@ def get_sectors(cur, schema):
 
 def get_technologies(con, schema):
 
-    sql = '''with a as
-            (
-                	select unnest(array['wind', 'solar', 'du', 'ghp']) as tech,
-                         unnest(array[run_wind, run_solar, run_du, run_ghp]) as enabled
-                  FROM %s.input_main_scenario_options
-            )
-            SELECT tech
-            FROM a
-            WHERE enabled = TRUE;''' % schema
+    sql = """SELECT 
+                CASE WHEN run_tech = 'Solar + Storage' THEN 'solar'::text
+                     WHEN run_tech = 'Wind' THEN 'wind'::text
+                     WHEN run_tech = 'Geothermal Heat Pump' THEN 'ghp'::text
+                     WHEN run_tech = 'Geothermal Direct Use' THEN 'du'::text
+                END AS tech
+            FROM %s.input_main_scenario_options;""" % schema
 
     # get the data
     df = pd.read_sql(sql, con)
@@ -940,6 +938,23 @@ def get_technologies(con, schema):
 
     return techs
 
+
+
+def get_agent_file_scenario(con, schema):
+
+    sql = """SELECT agent_file as agent_file_status
+            FROM %s.input_main_scenario_options;""" % schema
+
+    # get the data
+    df = pd.read_sql(sql, con)
+    # convert to a simple list
+    agent_file_status = df.agent_file_status.tolist()
+
+    if len(agent_file_status) == 0:
+        raise ValueError(
+            "No pre-generated pkl agent file was provided to be run in the input sheet.")
+
+    return agent_file_status
 
 
 def cleanup_incentives(df, dsire_opts):
@@ -1102,6 +1117,15 @@ def get_bass_params(con, schema):
     return bass_df
 
 
+def get_state_incentives(con):
+
+    sql = """SELECT * FROM diffusion_shared.state_incentives_2017;"""
+
+    state_incentives = pd.read_sql(sql, con)
+
+    return state_incentives
+
+
 def get_itc_incentives(con, schema):
 
     inputs = locals().copy()
@@ -1168,7 +1192,6 @@ def get_state_dsire_incentives(cur, con, schema, techs, dsire_opts):
 
     return df[out_cols]
 
-
 def calc_state_dsire_incentives(df, state_dsire_df, year):
 
     # convert current year into a datetime object (assume current date is the
@@ -1194,13 +1217,12 @@ def calc_state_dsire_incentives(df, state_dsire_df, year):
     # calculate ITC
     inc['value_of_itc'] = 0.0
     inc.loc[inc['incentive_type'] == 'ITC',
-            'value_of_itc'] = np.minimum(
-        inc['val_pct_cost'] * inc['ic'] *
-        (inc['system_size_kw'] >= inc['min_size_kw']) *
-        (inc['system_size_kw'] < inc['max_size_kw']) *
-        (inc['cur_date'] <=
-         inc['exp_date']),
-        inc['cap_dlrs']
+            'value_of_itc'] = np.minimum( inc['val_pct_cost'] * inc['ic'] *
+            (inc['system_size_kw'] >= inc['min_size_kw']) *
+            (inc['system_size_kw'] < inc['max_size_kw']) *
+            (inc['cur_date'] <= inc['exp_date']),
+
+            inc['cap_dlrs']
     )
 
     # calculate PTC
@@ -1212,8 +1234,8 @@ def calc_state_dsire_incentives(df, state_dsire_df, year):
         (inc['system_size_kw'] < inc['max_size_kw']) *
         (inc['aep'] >= inc['min_aep_kwh']) *
         (inc['aep'] < inc['max_aep_kwh']) *
-        (inc['cur_date'] <=
-         inc['exp_date']),
+        (inc['cur_date'] <= inc['exp_date']),
+
         np.minimum(
             inc['cap_dlrs'],
             inc['cap_pct_cost'] * inc['ic']
@@ -1697,6 +1719,83 @@ def calc_dsire_incentives(df, dsire_incentives, srecs, cur_year, dsire_opts, ass
     return inc_summed[['tech', 'sector_abbr', 'county_id', 'bin_id', 'business_model', 'value_of_increment', 'value_of_pbi_fit', 'value_of_ptc', 'pbi_fit_length', 'ptc_length', 'value_of_rebate', 'value_of_tax_credit_or_deduction']]
 
 
+def get_rate_escalations(con, schema):
+    '''
+    Get rate escalation multipliers from database. Escalations are filtered and applied in calc_economics,
+    resulting in an average real compounding rate growth. This rate is then used to calculate cash flows
+    
+    IN: con - connection to server
+    OUT: DataFrame with census_division_abbr, sector, year, escalation_factor, and source as columns
+    '''  
+    inputs = locals().copy()
+    
+    sql = """SELECT year, census_division_abbr, sector AS sector_abbr, 
+                    escalation_factor as elec_price_multiplier
+            FROM %(schema)s.rate_escalations_to_model
+            ORDER BY year, census_division_abbr, sector""" % inputs
+    rate_escalations = pd.read_sql(sql, con, coerce_float = False)
+    
+    return rate_escalations
+
+
+def get_load_growth(con, schema):
+
+    inputs = locals().copy()
+
+    sql = """SELECT year, sector_abbr, census_division_abbr, load_multiplier
+            FROM %(schema)s.load_growth_to_model;""" % inputs
+
+    df = pd.read_sql(sql, con, coerce_float=False)
+
+    return df
+
+
+def get_technology_costs_solar(con, schema):
+    
+    inputs = locals().copy()
+    
+    sql = """SELECT year,
+                    sector_abbr,
+                    pv_price_per_kw,
+                    pv_om_per_kw,
+                    pv_variable_om_per_kw
+            FROM %(schema)s.input_pv_prices_to_model;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
+
+
+def get_storage_costs(con, schema):
+
+    inputs = locals().copy()
+
+    sql = """SELECT year,
+                    sector_abbr,
+                    batt_price_per_kwh,
+                    batt_price_per_kw,
+                    batt_om_per_kwh,
+                    batt_om_per_kw,
+                    batt_replace_frac_kwh,
+                    batt_replace_frac_kw
+            FROM %(schema)s.input_storage_cost_projections_to_model;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df  
+
+
+def get_wholesale_electricity_prices(con, schema):
+
+    inputs = locals().copy()
+
+    sql = """SELECT year,
+                    state_abbr,
+                    wholesale_elec_price
+            FROM %(schema)s.input_wholesale_electricity_prices_to_model;""" % inputs
+    df = pd.read_sql(sql, con, coerce_float = False)
+
+    return df
+
+    
 def get_lease_availability(con, schema, tech):
     '''
     Get leasing availability by state and year, based on options selected in input sheet
@@ -2101,3 +2200,23 @@ def get_replacement_cost_fraction(con,schema):
              FROM %(schema)s.input_battery_replacement_parameters;''' % inputs
     df = pd.read_sql(sql, con)
     return df.values[0][0] # Just want the replacement cost fraction as a float (for now)
+
+def get_nem_state(con, schema):
+    sql = "SELECT * FROM %s.input_main_nem_state_limits_2017;" % schema
+    df = pd.read_sql(sql, con, coerce_float=False)
+
+    return df
+
+def get_nem_state_by_sector(con, schema):
+    sql = "SELECT * FROM %s.input_main_nem_state_by_sector_2017;" % schema
+    df = pd.read_sql(sql, con, coerce_float=False)
+
+    return df
+
+def get_selected_scenario(con, schema):
+    sql = "SELECT * FROM %s.input_main_nem_selected_scenario;" % schema
+    df = pd.read_sql(sql, con, coerce_float=False)
+    value = df['val'][0]
+
+    return value
+

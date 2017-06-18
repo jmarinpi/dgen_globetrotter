@@ -71,6 +71,8 @@ class ModelSettings(object):
         # check that it exists
         pg_params, pg_conn_string = utilfunc.get_pg_params(
             os.path.join(self.model_path, pg_params_file))
+        pg_engine_params, pg_engine_string = utilfunc.get_pg_engine_params(
+            os.path.join(self.model_path, pg_params_file))
         pg_params_log = json.dumps(json.loads(pd.DataFrame([pg_params])[
                                    ['host', 'port', 'dbname', 'user']].ix[0].to_json()), indent=4, sort_keys=True)
 
@@ -78,6 +80,8 @@ class ModelSettings(object):
         self.set('pg_params', pg_params)
         self.set('pg_conn_string', pg_conn_string)
         self.set('pg_params_log', pg_params_log)
+        self.set('pg_engine_params', pg_engine_params)
+        self.set('pg_engine_string', pg_engine_string)
 
     def set_Rscript_path(self, Rscript_paths):
 
@@ -109,7 +113,7 @@ class ModelSettings(object):
             except TypeError, e:
                 raise TypeError('Invalid %s: %s' % (property_name, e))
 
-        elif property_name == 'out_dir':
+        elif property_name in ['out_dir','input_agent_dir','input_data_dir']:
             # check type
             try:
                 check_type(self.get(property_name), str)
@@ -163,8 +167,14 @@ class ModelSettings(object):
             # check the path exists
             if os.path.exists(self.pg_params_file) == False:
                 raise ValueError('Invalid %s: does not exist' % property_name)
+        elif property_name == 'role':
+            # check type
+            try:
+                check_type(self.get(property_name), str)
+            except TypeError, e:
+                raise TypeError('Invalid %s: %s' % (property_name, e))
 
-        elif property_name == 'pg_params':
+        elif property_name in ['pg_params','pg_engine_params']:
             # check type
             try:
                 check_type(self.get(property_name), dict)
@@ -180,7 +190,7 @@ class ModelSettings(object):
                 raise ValueError('Invalid %s: missing required keys (%s)' % (
                     property_name, required_keys))
 
-        elif property_name == 'pg_conn_string':
+        elif property_name in ['pg_conn_string','pg_engine_string']:
             # check type
             try:
                 check_type(self.get(property_name), unicode)
@@ -302,13 +312,14 @@ class ScenarioSettings(object):
         self.scen_name = None  # type is text, no spaces?
         self.end_year = None
         self.region = None
-        self.load_growth_scenario = None  # valid options only
+        self.load_growth = None  # valid options only
         self.random_generator_seed = None  # int
 
         self.sectors = None  # valid options only
         self.techs = None  # valid options only
         self.input_scenario = None  # exists on disk
         self.schema = None  # string
+        self.agent_file_status = None # valid options onl
 
         self.model_years = None  # starts at 2014 and ends <= 2050
         self.tech_mode = None  # valid options only
@@ -327,8 +338,8 @@ class ScenarioSettings(object):
         self.set('scen_name', scenario_options['scenario_name'])
         self.set('end_year', scenario_options['end_year'])
         self.set('region', scenario_options['region'])
-        self.set('load_growth_scenario', scenario_options[
-                 'load_growth_scenario'])
+        self.set('load_growth', scenario_options[
+                 'load_growth'])
         self.set('random_generator_seed', scenario_options[
                  'random_generator_seed'])
 
@@ -376,7 +387,7 @@ class ScenarioSettings(object):
             except TypeError, e:
                 raise TypeError('Invalid %s: %s' % (property_name, e))
 
-        elif property_name == 'load_growth_scenario':
+        elif property_name == 'load_growth':
             try:
                 check_type(self.get(property_name), str)
             except TypeError, e:
@@ -503,6 +514,7 @@ def init_model_settings():
     model_settings.add_config(config)
     model_settings.set_Rscript_path(config.Rscript_paths)
     model_settings.set('model_init', utilfunc.get_epoch_time())
+    model_settings.set('role', 'diffusion-writers')
     model_settings.set('cdate', utilfunc.get_formatted_time())
     model_settings.set('out_dir', datfunc.make_output_directory_path(model_settings.cdate))
     model_settings.set('input_data_dir', '%s/input_data' % os.path.dirname(os.getcwd()))
@@ -525,12 +537,13 @@ def init_scenario_settings(scenario_file, model_settings, con, cur):
     # =========================================================================
     try:
         # create an empty schema from diffusion_template
-        new_schema = datfunc.create_output_schema(model_settings.pg_conn_string, model_settings.cdate, source_schema = 'diffusion_template', include_data = False)
+        new_schema = datfunc.create_output_schema(model_settings.pg_conn_string,model_settings.role, model_settings.cdate, source_schema = 'diffusion_template', include_data = False)
     except Exception, e:
         raise Exception('\tCreation of output schema failed with the following error: %s' % e)
 
     # set the schema
     scenario_settings.set('schema', new_schema)
+
     # load Input Scenario to the new schema
     try:
         excel_functions.load_scenario(scenario_settings.input_scenario, scenario_settings.schema, con, cur)
@@ -539,6 +552,9 @@ def init_scenario_settings(scenario_file, model_settings, con, cur):
 
     # read in high level scenario settings
     scenario_settings.set('techs', datfunc.get_technologies(con, scenario_settings.schema))
+
+    # read in settings whether to use pre-generated agent file ('User Defined'- provide pkl file name) or generate new agents
+    scenario_settings.set('agent_file_status', datfunc.get_agent_file_scenario(con, scenario_settings.schema))
 
     # set tech_mode
     scenario_settings.set_tech_mode()

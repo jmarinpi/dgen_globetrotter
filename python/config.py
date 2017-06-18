@@ -29,7 +29,7 @@ pg_params_file = 'pg_params_atlas.json'
 #==============================================================================
 #   set the number of customer bins to model in each county
 #==============================================================================
-agents_per_region = 5
+agents_per_region = 1
 sample_pct = 0.02
 min_agents = 3
 
@@ -41,17 +41,12 @@ start_year = 2014
 #==============================================================================
 #   Path to R will vary by user (until we move the script over to run on gispgdb server)
 #==============================================================================
-Rscript_paths = ['/usr/bin/Rscript','C:/Users/mgleason/Documents/R/R-3.0.2/bin/Rscript.exe','C:/Program Files/R/R-3.0.2/bin/Rscript.exe','C:/Program Files/R/R-3.0.3/bin/Rscript.exe', 'C:/Users/bsigrin/Documents/R/R-3.1.1/bin/Rscript.exe', 'C:/Users/pgagnon/Documents/R/R-3.2.2/bin/Rscript.exe']
+Rscript_paths = ['/usr/bin/Rscript','/usr/local/bin/Rscript','C:/Users/mgleason/Documents/R/R-3.0.2/bin/Rscript.exe','C:/Program Files/R/R-3.0.2/bin/Rscript.exe','C:/Program Files/R/R-3.0.3/bin/Rscript.exe', 'C:/Users/bsigrin/Documents/R/R-3.1.1/bin/Rscript.exe', 'C:/Users/pgagnon/Documents/R/R-3.2.2/bin/Rscript.exe', 'C:/Program Files/R/R-3.3.2/bin/Rscript.exe']
 
 #==============================================================================
 #   Path to support functions repo will vary by user
 #==============================================================================
-support_repo_paths = ['support_functions/python',
-						'C:/users/pgagnon/desktop/support_functions/python',
-						'/Users/mmooney/Documents/github/support_functions/python',
-                      	'/srv/data/home/pgagnon/support_functions/python',
-                      	'/home/pdas/github/support_functions/python',
-                      	'/srv/data/home/mrossol/Support_Functions']
+support_repo_paths = ['C:/Users/pdas/Documents/GitHub/support_functions/python', '/users/tkwasnik/github/support_functions/python', '/home/pdas/github/support_functions/python', 'C:/users/pgagnon/desktop/support_functions/python', '/srv/data/home/pgagnon/support_functions/python']
 for path in support_repo_paths:
     sys.path.append(path)
 

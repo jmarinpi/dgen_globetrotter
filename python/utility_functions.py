@@ -19,7 +19,7 @@ import psycopg2.extras as pgx
 import time
 import subprocess
 import os
-
+from sqlalchemy import create_engine
 #==============================================================================
 #       Logging Functions
 #==============================================================================
@@ -126,7 +126,7 @@ def pylist_2_pglist(l):
     return str(l)[1:-1]
 
 
-def make_con(connection_string, role='diffusion-writers', async=False):
+def make_con(connection_string, role, async=False):
     con = pg.connect(connection_string, async=async)
     if async:
         wait(con)
@@ -141,6 +141,10 @@ def make_con(connection_string, role='diffusion-writers', async=False):
 
     return con, cur
 
+def make_engine(pg_engine_con):
+
+    return create_engine(pg_engine_con)
+
 
 def get_pg_params(json_file):
 
@@ -149,6 +153,16 @@ def get_pg_params(json_file):
     pg_params_json.close()
 
     pg_conn_string = 'host=%(host)s dbname=%(dbname)s user=%(user)s password=%(password)s port=%(port)s' % pg_params
+
+    return pg_params, pg_conn_string
+
+def get_pg_engine_params(json_file):
+
+    pg_params_json = file(json_file, 'r')
+    pg_params = json.load(pg_params_json)
+    pg_params_json.close()
+
+    pg_conn_string = 'postgresql://%(user)s:%(password)s@%(host)s:%(port)s/%(dbname)s' % pg_params
 
     return pg_params, pg_conn_string
 

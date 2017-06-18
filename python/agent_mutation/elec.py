@@ -285,7 +285,7 @@ def apply_export_tariff_params(dataframe, net_metering_df):
 
     dataframe = dataframe.reset_index()
     dataframe = pd.merge(dataframe, net_metering_df[
-                         ['state_abbr', 'sector_abbr', 'nem_system_size_limit_kw']], how='left', on=['state_abbr', 'sector_abbr'])
+                         ['state_abbr', 'sector_abbr', 'pv_kw_limit']], how='left', on=['state_abbr', 'sector_abbr'])
     dataframe = dataframe.set_index('agent_id')
 
     return dataframe
@@ -423,7 +423,7 @@ def apply_load_growth(dataframe, load_growth_df):
 
     dataframe = dataframe.reset_index()
 
-    dataframe = pd.merge(dataframe, load_growth_df, how='left', on=['sector_abbr', 'census_division_abbr'])
+    dataframe = pd.merge(dataframe, load_growth_df, how='left', on=['year', 'sector_abbr', 'census_division_abbr'])
     
     # for res, load growth translates to kwh_per_customer change
     dataframe['load_kwh_per_customer_in_bin'] = np.where(dataframe['sector_abbr']=='res',
@@ -639,24 +639,53 @@ def get_electric_rates_json(con, unique_rate_ids):
 
     return df
 
-
-#%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def get_net_metering_settings(con, schema, year):
+def filter_nem_year(df, year):
 
-    inputs = locals().copy()
-
-    sql = """SELECT state_abbr,
-                    sector_abbr,
-                    system_size_limit_kw as nem_system_size_limit_kw,
-                    year_end_excess_sell_rate_dlrs_per_kwh as ur_nm_yearend_sell_rate,
-                    hourly_excess_sell_rate_dlrs_per_kwh as ur_flat_sell_rate
-             FROM %(schema)s.input_main_nem_scenario
-             WHERE year = %(year)s;""" % inputs
-
-    df = pd.read_sql(sql, con, coerce_float=False)
+    # Filter by Sector Specific Sunset Years
+    df = df.loc[(df['first_year'] <= year) & (df['sunset_year'] >= year)]
 
     return df
+
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def get_nem_settings(state_limits, state_by_sector, selected_scenario, year):
+
+    # Get Current Cumulative Adoption Statistics
+    state_capacity_by_year = pd.DataFrame.from_records(
+            [{ "state_abbr": state, "cum_capacity_mw": 0, "cum_capacity_pct": 0, "cum_incentive_spending_usd": 1e20,
+                 "peak_demand_mw": 0, "year": year
+                 } for state in state_limits['state_abbr'].unique()])
+
+    # Find States That Have Not Sunset
+    valid_states = filter_nem_year(state_limits, year)
+
+    # Filter States to Those That Have Not Exceeded Cumulative Capacity Constraints
+    valid_states['filter_year'] = pd.to_numeric(valid_states['max_reference_year'], errors='coerce')
+    valid_states['filter_year'][valid_states['max_reference_year'] == 'previous'] = year - 2
+    valid_states['filter_year'][valid_states['max_reference_year'] == 'current'] = year
+    valid_states['filter_year'][pd.isnull(valid_states['filter_year'])] = year
+
+    state_df = pd.merge(state_capacity_by_year, valid_states , how='left', on=['state_abbr'])
+    state_df = state_df[state_df['year'] == state_df['filter_year'] ]
+
+    state_df = state_df.loc[ pd.isnull(state_df['max_cum_capacity_mw']) | ( pd.notnull( state_df['max_cum_capacity_mw']) & (state_df['cum_capacity_mw'] < state_df['max_cum_capacity_mw']))]
+    state_df['max_mw'] = (state_df['max_pct_cum_capacity']/100) * state_df['peak_demand_mw']
+    state_df = state_df.loc[ pd.isnull(state_df['max_pct_cum_capacity']) | ( pd.notnull( state_df['max_pct_cum_capacity']) & (state_df['max_mw'] > state_df['cum_capacity_mw']))]
+
+    # Filter state and sector data to those that have not sunset
+    selected_state_by_sector = state_by_sector.loc[state_by_sector['scenario'] == selected_scenario]
+    valid_state_sector = filter_nem_year(selected_state_by_sector, year)
+
+    # Filter state and sector data to those that match states which have not sunset/reached peak capacity
+    valid_state_sector = valid_state_sector[valid_state_sector['state_abbr'].isin(state_df['state_abbr'].values)]
+
+    # Return State/Sector data (or null) for all combinations of states and sectors
+    full_list = state_by_sector.loc[ state_by_sector['scenario'] == 'BAU' ].ix[:, ['state_abbr', 'sector_abbr']]
+    result = pd.merge( full_list, valid_state_sector, how='left', on=['state_abbr','sector_abbr'] )
+    result['pv_kw_limit'].fillna(0, inplace=True)
+
+
+    return result
 
 
 
@@ -675,8 +704,6 @@ def get_core_agent_attributes(con, schema, region):
 
 
     return df
-
-
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
@@ -797,7 +824,7 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df, techs):
 
         # determine whether NEM is available in the state and sector
         dataframe['ur_enable_net_metering'] = dataframe[
-            'nem_system_size_limit_kw'] > 0
+            'pv_kw_limit'] > 0
 
         # set the target kwh according to NEM availability
         dataframe['target_kwh'] = np.where(dataframe['ur_enable_net_metering'] == False,
@@ -851,7 +878,7 @@ def size_systems_wind(dataframe, system_sizing_targets_df, resource_df, techs):
 
         # check that the system is within the net metering size limit
         over_nem_limit = dataframe['turbine_size_kw'] > dataframe[
-            'nem_system_size_limit_kw']
+            'pv_kw_limit']
         dataframe.loc[over_nem_limit, 'score'] = dataframe['score'] * 2
         dataframe.loc[over_nem_limit, 'ur_enable_net_metering'] = False
 
@@ -1329,6 +1356,46 @@ def get_state_starting_capacities(con, schema):
     df = pd.read_sql(sql, con)
 
     return df
+
+
+
+#%%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def apply_state_incentives(dataframe, state_incentives, year):
+    dataframe = dataframe.reset_index()
+
+    state_capacity_by_year = pd.DataFrame.from_records(
+        [{
+             "state_abbr": state, "cum_capacity_mw": 0, "cum_capacity_pct": 0, "cum_incentive_spending_usd": 0,
+             "peak_demand_mw": 0, "year": year
+             } for state in state_incentives['state_abbr'].unique()])
+
+    # Filter Incentives by the Years in which they are valid
+    state_incentives = state_incentives.loc[
+        pd.isnull(state_incentives['start_date']) | (pd.to_datetime(state_incentives['start_date']).dt.year <= year)]
+    state_incentives = state_incentives.loc[
+        pd.isnull(state_incentives['end_date']) | (pd.to_datetime(state_incentives['end_date']).dt.year >= year)]
+
+    # Combine valid incentives with the cumulative metrics for each state up until the current year
+    state_incentives_mg = state_incentives.merge(state_capacity_by_year.loc[state_capacity_by_year['year'] == year],
+                                                 how='left', on=["state_abbr"])
+
+    # Filter where the states have not exceeded their cumulative installed capacity (by mw or pct generation) or total program budget
+    state_incentives_mg = state_incentives_mg.loc[pd.isnull(state_incentives_mg['incentive_cap_total_pct']) | (state_incentives_mg['cum_capacity_pct'] < state_incentives_mg['incentive_cap_total_pct'])]
+    state_incentives_mg = state_incentives_mg.loc[pd.isnull(state_incentives_mg['incentive_cap_total_mw']) | (state_incentives_mg['cum_capacity_mw'] < state_incentives_mg['incentive_cap_total_mw'])]
+    state_incentives_mg = state_incentives_mg.loc[pd.isnull(state_incentives_mg['budget_total_usd']) | (state_incentives_mg['cum_incentive_spending_usd'] < state_incentives_mg['budget_total_usd'])]
+
+    output  =[]
+    for i in state_incentives_mg.groupby(['state_abbr', 'sector_abbr']):
+        row = i[1]
+        state, sector = i[0]
+        output.append({'state_abbr':state, 'sector_abbr':sector,"state_incentives":row})
+
+    state_inc_df = pd.DataFrame.from_records(output)
+    dataframe = pd.merge(dataframe, state_inc_df, on=['state_abbr','sector_abbr'], how='left')
+
+
+    return dataframe
 
 
 #%%

@@ -152,7 +152,8 @@ def calc_economics(df, schema, market_projections, financial_parameters, rate_gr
     # split out rows to run through state and old dsire incentives
     df_dsire_incentives = df[(df['tech'] == 'solar')]
     df_state_dsire_incentives = df[(df['tech'] == 'wind')]
-    # Calculate value of incentives. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.    
+
+    # Calculate value of incentives. DSIRE ptc/pbi/fit are assumed to disburse over 10 years.
     value_of_incentives_dsire = datfunc.calc_dsire_incentives(df_dsire_incentives, dsire_incentives, srecs, year, 
                                                               dsire_opts, assumed_duration = 10)
     value_of_incentives_state_dsire = datfunc.calc_state_dsire_incentives(df_state_dsire_incentives, state_dsire, year)
@@ -745,7 +746,7 @@ def virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5):
     
     # Find the pairwise differences in boolean values
     # sign crosses over, the pairwise diff will be True
-    crossovers = np.diff(signs,1,1)
+    crossovers = np.diff(signs.astype(int),1,1)
     
     # Extract the irr from the first crossover for each row
     irr = np.min(np.ma.masked_equal(rates[1:]* crossovers,0),1)

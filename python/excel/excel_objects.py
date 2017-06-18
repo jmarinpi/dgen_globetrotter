@@ -34,12 +34,14 @@ class FancyNamedRange(object):
         self.cell_ranges = self.__cell_ranges__()
         
         self.count_cell_ranges = self.__count_destination_components__(self.cell_ranges)
+
         if self.count_cell_ranges > 1:
             raise NotImplementedError("Named Ranges spanning multiple, non-contiguous cell ranges  are not currently supported")
         
         self.cell_range = self.cell_ranges[0]        
         
         self.topleft = self.__topleft__()
+
         self.bottomright = self.__bottomright__()
         
         self.cells = self.__cells__()
@@ -49,7 +51,6 @@ class FancyNamedRange(object):
         self.rec_array = self.__rec_array__()
         
         self.data_frame = self.__data_frame__()
-    
 
     def __colnames_included__(self):
         self.rec_array = self.__rec_array__(colnames_included = True)
@@ -144,7 +145,7 @@ class FancyNamedRange(object):
         
         if floats == True and cell.data_type == 'n' and type(cell.value) <> datetime.datetime:
             if cell.value is None:
-                cell_value = 0.0
+                cell_value = float(np.nan)
             else:
                 cell_value = float(cell.value)
         else:
@@ -192,11 +193,7 @@ class FancyNamedRange(object):
         first_value = self.data_frame.ix[0][0]
 
         return first_value
-        
 
-        
-    
-    
     def to_stringIO(self, transpose = False, columns = None, index = False, header = False):
         
         s = StringIO()
@@ -219,7 +216,7 @@ class FancyNamedRange(object):
         
     def to_postgres(self, connection, cursor, schema, table, transpose = False, columns = None, create = False, overwrite = True):
         
-        sql_dict = {'schema': schema, 'table': table}
+        sql_dict = {'schema': schema, 'table': table }
         
         if create == True:
             raise NotImplementedError('Creation of a new postgres table is not implemented')

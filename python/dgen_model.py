@@ -43,8 +43,6 @@ import input_data_functions as iFuncs
 #import tariff_functions as tFuncs
 #import financial_functions as fFuncs
 import general_functions as gFuncs
-
-
 #==============================================================================
 # raise  numpy and pandas warnings as exceptions
 #==============================================================================
@@ -70,7 +68,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         logger.info("Model version is git commit {:}".format(model_settings.git_hash))
 
         # connect to Postgres and configure connection
-        con, cur = utilfunc.make_con(model_settings.pg_conn_string)
+        con, cur = utilfunc.make_con(model_settings.pg_conn_string, model_settings.role)
+        engine = utilfunc.make_engine(model_settings.pg_engine_string)
         pgx.register_hstore(con)  # register access to hstore in postgres
         logger.info("Connected to Postgres with the following params:\n{:}".format(model_settings.pg_params_log))
 
@@ -110,9 +109,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             schema = scenario_settings.schema
             max_market_share = datfunc.get_max_market_share(con, schema)
             market_projections = datfunc.get_market_projections(con, schema)
-            load_growth_scenario = scenario_settings.load_growth_scenario.lower()
+            load_growth_scenario = scenario_settings.load_growth.lower()
             inflation_rate = datfunc.get_annual_inflation(con, scenario_settings.schema)
             bass_params = datfunc.get_bass_params(con, scenario_settings.schema)
+
+            # get settings whether to use pre-generated agent file ('User Defined'- provide pkl file name) or generate new agents
+            agent_file_status = scenario_settings.agent_file_status
 
             # create psuedo-rangom number generator (not used until tech/finance choice function)
             prng = np.random.RandomState(scenario_settings.random_generator_seed)
@@ -123,15 +125,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info("--------------Creating Agents---------------")
             
             if scenario_settings.techs in [['wind'], ['solar']]:
-                use_existing_agents = False
+
                 # =========================================================
                 # Initialize agents
-                # =========================================================                
-                if use_existing_agents==True:
-                    solar_agents = Agents(pd.read_pickle('%s/agent_df_merge_DE_all.pkl' % model_settings.input_agent_dir))
-#                    solar_agents = Agents(pd.read_pickle('%s/agent_df_sunShot2030.pkl' % model_settings.input_agent_dir))
-                else:
-                    solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
+                # =========================================================   
+             
+                # Depending on settings either generate new agents or use pre-generated agents from provided .pkl file                
+                solar_agents = iFuncs.import_agent_file( scenario_settings, con, cur, engine, model_settings, agent_file_status, input_name='agent_file')            
                     
                 # Write base agents to disk
                 solar_agents.df.to_pickle(out_scen_path + '/agent_df_base.pkl')
@@ -152,40 +152,26 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             if scenario_settings.techs == ['solar']:
                 # get dsire incentives, srecs, and itc inputs
                 # TODO: move these to agent mutation
-                dsire_opts = datfunc.get_dsire_settings(con, scenario_settings.schema)
-                incentives_cap = datfunc.get_incentives_cap(con, scenario_settings.schema)
-                dsire_incentives = datfunc.get_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, scenario_settings.sectors, model_settings.pg_conn_string, dsire_opts)
-                srecs = datfunc.get_srecs(cur, con, scenario_settings.schema, scenario_settings.techs, model_settings.pg_conn_string, dsire_opts)
-                state_dsire = datfunc.get_state_dsire_incentives(cur, con, scenario_settings.schema, scenario_settings.techs, dsire_opts)
-                itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
-              
-                
-                #==========================================================================================================
-                # declare input data file names - this is temporary until input sheet is updated
-                #==========================================================================================================
-                scenario_settings.pv_price_file_name = 'pv_price_atb16_mid.csv' #pv_price_atb16_mid, pv_price_experimental
-                scenario_settings.batt_price_file_name = 'batt_prices_FY17_high.csv' 
-                scenario_settings.elec_price_file_name = 'elec_prices_sunShot2030_atbMid.csv'  
-                scenario_settings.wholesale_elec_file_name = 'wholesale_elec_prices_atb_FY17_mid.csv'
-                scenario_settings.pv_tech_file_name = 'pv_tech_performance_defaultFY17.csv'                
-                scenario_settings.deprec_sch_file_name = 'deprec_sch_FY17.csv'
-                scenario_settings.carbon_file_name = 'carbon_intensities_FY17.csv'
-                scenario_settings.financing_file_name = 'financing_atb_FY17.csv' #financing_atb_FY17, financing_experimental
-                scenario_settings.batt_tech_file_name = 'batt_tech_performance_SunLamp17.csv'                
 
+                state_incentives = datfunc.get_state_incentives(con)
+                itc_options = datfunc.get_itc_incentives(con, scenario_settings.schema)
+                nem_state_capacity_limits = datfunc.get_nem_state(con, scenario_settings.schema)
+                nem_state_and_sector_attributes = datfunc.get_nem_state_by_sector(con, scenario_settings.schema)
+                nem_selected_scenario = datfunc.get_selected_scenario(con, scenario_settings.schema)
 
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
                 #==========================================================================================================
-                pv_tech_traj = iFuncs.ingest_pv_tech_performance(scenario_settings)
-                elec_price_change_traj = iFuncs.ingest_elec_price_trajectories(scenario_settings)
-                pv_price_traj = iFuncs.ingest_pv_price_trajectories(scenario_settings)
-                batt_price_traj = iFuncs.ingest_batt_price_trajectories(scenario_settings)
-                deprec_sch = iFuncs.ingest_depreciation_schedules(scenario_settings)
-                carbon_intensities = iFuncs.ingest_carbon_intensities(scenario_settings)
-                wholesale_elec_prices = iFuncs.ingest_wholesale_elec_prices(scenario_settings)
-                financing_terms = iFuncs.ingest_financing_terms(scenario_settings)
-                batt_tech_traj = iFuncs.ingest_batt_tech_performance(scenario_settings)
+                deprec_sch = iFuncs.import_table( scenario_settings, con, engine, model_settings.role, input_name ='depreciation_schedules', csv_import_function=iFuncs.deprec_schedule)
+                carbon_intensities = iFuncs.import_table( scenario_settings, con, engine,model_settings.role, input_name='carbon_intensities', csv_import_function=iFuncs.melt_year('grid_carbon_tco2_per_kwh'))
+                wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, engine, model_settings.role, input_name='wholesale_electricity_prices', csv_import_function=iFuncs.melt_year('wholesale_elec_price'))
+                pv_tech_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
+                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='elec_prices', csv_import_function=iFuncs.process_elec_price_trajectories)
+                load_growth = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='load_growth', csv_import_function=iFuncs.process_load_growth)
+                pv_price_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
+                batt_price_traj = iFuncs.import_table( scenario_settings, con, engine,model_settings.role, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
+                financing_terms = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
+                batt_tech_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='batt_tech_performance', csv_import_function=iFuncs.stacked_sectors)
 
                 #==========================================================================================================
                 # Calculate Tariff Components from ReEDS data
@@ -205,7 +191,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # determine any non-base-year columns and drop them
                     cols = list(solar_agents.df.columns)
                     cols_to_drop = [x for x in cols if x not in cols_base]
-                    solar_agents.df.drop(cols_to_drop, axis=1, inplace=True)          
+                    solar_agents.df.drop(cols_to_drop, axis=1, inplace=True)
 
                     # copy the core agent object and set their year
                     solar_agents.df['year'] = year
@@ -214,11 +200,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     is_first_year = year == model_settings.start_year
 
                     # get and apply load growth
-                    load_growth_df =  agent_mutation.elec.get_load_growth(con, scenario_settings.schema, year)
-                    solar_agents.on_frame(agent_mutation.elec.apply_load_growth, (load_growth_df))
+                    solar_agents.on_frame(agent_mutation.elec.apply_load_growth, (load_growth))
 
-                    # Get and apply net metering parameters
-                    net_metering_df =  agent_mutation.elec.get_net_metering_settings(con, scenario_settings.schema, year)
+                    #Apply net metering parameters
+                    net_metering_df = agent_mutation.elec.get_nem_settings(nem_state_capacity_limits, nem_state_and_sector_attributes, nem_selected_scenario, year)
                     solar_agents.on_frame(agent_mutation.elec.apply_export_tariff_params, (net_metering_df))
 
                     # Apply each agent's electricity price change and assumption about increases
@@ -228,7 +213,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     solar_agents.on_frame(agent_mutation.elec.apply_batt_tech_performance, (batt_tech_traj))
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_tech_performance, pv_tech_traj)
 
-                    # Apply technology prices                    
+                    # Apply technology prices
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_prices, pv_price_traj)
                     solar_agents.on_frame(agent_mutation.elec.apply_batt_prices, [batt_price_traj, batt_tech_traj, year])
 
@@ -237,7 +222,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Apply carbon intensities
                     solar_agents.on_frame(agent_mutation.elec.apply_carbon_intensities, carbon_intensities)
-                    
+
                     # Apply wholesale electricity prices
                     solar_agents.on_frame(agent_mutation.elec.apply_wholesale_elec_prices, wholesale_elec_prices)
 
@@ -250,11 +235,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         solar_agents.df = tBuildFuncs.assign_tariff_dicts_to_agents(solar_agents.df, tariff_dict_df_year)
 
                     # Size S+S system and calculate electric bills
-                    if 'ix' not in os.name: cores=None
-                    else: cores=model_settings.local_cores
-                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, cores=cores)
 
-                    # Calculate the financial performance of the S+S systems 
+                    solar_agents.on_frame(agent_mutation.elec.apply_state_incentives,[state_incentives, year])
+
+                   # if 'ix' not in os.name: cores=None
+                   # else: cores=model_settings.local_cores
+                    cores = None
+                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance,cores=cores)
+
+                    # Calculate the financial performance of the S+S systems
                     solar_agents.on_frame(financial_functions_elec.calc_financial_performance)
 
                     # Calculate Maximum Market Share
@@ -273,7 +262,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Calculate diffusion based on economics and bass diffusion
                     solar_agents.df, market_last_year_df = diffusion_functions_elec.calc_diffusion_solar(solar_agents.df, is_first_year, bass_params)
-                    
+
                     # Estimate total generation
                     solar_agents.on_frame(agent_mutation.elec.estimate_total_generation)
 
@@ -281,7 +270,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     scenario_settings.output_batt_dispatch_profiles = True
                     if is_first_year==True:
                         interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
-                                                                                         scenario_settings, out_scen_path) 
+                                                                                         scenario_settings, out_scen_path)
                     else:
                         interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
                                                                                          scenario_settings, out_scen_path,
@@ -291,12 +280,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING
                     #==========================================================================================================
                     write_annual_agents = True
-                    if write_annual_agents==True:                    
+                    if write_annual_agents==True:
                         solar_agents.df.drop(['consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
                     # Write Outputs to the database
                     datfunc.write_outputs(con, cur, solar_agents.df, scenario_settings.sectors, scenario_settings.schema)
-                    
+
             elif scenario_settings.techs == ['wind']:
                 logger.error('Wind not yet supported')
                 break
@@ -336,9 +325,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             con.close()
         if 'logger' in locals():
             logger.error(e.__str__(), exc_info = True)
-        if 'scenario_settings' in locals() and scenario_settings.schema is not None:
+#        if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
-            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+#            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
         if 'logger' not in locals():
             raise
 
@@ -346,9 +335,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
     finally:
         if 'con' in locals():
             con.close()
-        if 'scenario_settings' in locals() and scenario_settings.schema is not None:
+#        if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
-            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+#            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
         if 'logger' in locals():
             utilfunc.shutdown_log(logger)
             utilfunc.code_profiler(model_settings.out_dir)
