@@ -309,11 +309,12 @@ def calc_system_size_and_financial_performance(agent):
 
     # Set battery sizes to evaluate
     # Only evaluate a battery if there are demand charges, TOU energy charges, or no NEM
-    batt_inc = 3
-    if tariff.d_flat_exists or tariff.d_tou_exists or tariff.e_max_difference>0.02 or export_tariff.full_retail_nem==False:
-        batt_powers = np.linspace(0, np.array(agent.loc['max_demand_kw']) * 0.2, batt_inc)
-    else:
-        batt_powers = np.zeros(1)
+#    batt_inc = 3
+#    if hasattr(tariff, 'd_flat_prices') or hasattr(tariff, 'd_tou_prices') or tariff.e_max_difference>0.02 or export_tariff.full_retail_nem==False:
+#        batt_powers = np.linspace(0, np.array(agent.loc['max_demand_kw']) * 0.2, batt_inc)
+#    else:
+#        batt_powers = np.zeros(1)
+    batt_powers = np.zeros(1)
         
     # Calculate the estimation parameters for each PV size
     est_params_df = pd.DataFrame(index=pv_sizes)

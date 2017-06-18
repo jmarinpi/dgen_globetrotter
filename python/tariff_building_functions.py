@@ -11,6 +11,7 @@ sys.path.append('C:/users/pgagnon/desktop/support_functions/python')
 
 import numpy as np
 import pandas as pd
+import os
 import tariff_functions as tFuncs
 import financial_functions as fFuncs
 import matplotlib.pyplot as plt
@@ -124,9 +125,9 @@ def design_tariffs(agent_df, rto_df, ts_df, ts_map):
         load_by_agent_com = np.vstack(agent_df_rto_com['consumption_hourly']).astype(np.float) * np.array(agent_df_rto_com['customers_in_bin_initial']).reshape(agent_n_com, 1).astype(np.float)
         load_by_agent_ind = np.vstack(agent_df_rto_ind['consumption_hourly']).astype(np.float) * np.array(agent_df_rto_ind['customers_in_bin_initial']).reshape(agent_n_ind, 1).astype(np.float)
 
-        net_load_by_agent_res = load_by_agent_res - (np.vstack(agent_df_rto_res['solar_cf_profile']).astype(np.float) * 1e-6 * np.array(agent_df_rto_res['pv_kw_cum']).reshape(agent_n_res, 1).astype(np.float))
-        net_load_by_agent_com = load_by_agent_com - (np.vstack(agent_df_rto_com['solar_cf_profile']).astype(np.float) * 1e-6 * np.array(agent_df_rto_com['pv_kw_cum']).reshape(agent_n_com, 1).astype(np.float))
-        net_load_by_agent_ind = load_by_agent_ind - (np.vstack(agent_df_rto_ind['solar_cf_profile']).astype(np.float) * 1e-6 * np.array(agent_df_rto_ind['pv_kw_cum']).reshape(agent_n_ind, 1).astype(np.float))
+        net_load_by_agent_res = load_by_agent_res - (np.vstack(agent_df_rto_res['solar_cf_profile']).astype(np.float) * 1e-6 * np.array(agent_df_rto_res['pv_kw_cum_last_sy']).reshape(agent_n_res, 1).astype(np.float))
+        net_load_by_agent_com = load_by_agent_com - (np.vstack(agent_df_rto_com['solar_cf_profile']).astype(np.float) * 1e-6 * np.array(agent_df_rto_com['pv_kw_cum_last_sy']).reshape(agent_n_com, 1).astype(np.float))
+        net_load_by_agent_ind = load_by_agent_ind - (np.vstack(agent_df_rto_ind['solar_cf_profile']).astype(np.float) * 1e-6 * np.array(agent_df_rto_ind['pv_kw_cum_last_sy']).reshape(agent_n_ind, 1).astype(np.float))
 
         total_loads_res = np.sum(net_load_by_agent_res, axis=0)
         total_loads_com = np.sum(net_load_by_agent_com, axis=0)
@@ -204,9 +205,9 @@ def design_tariffs(agent_df, rto_df, ts_df, ts_map):
         tariff_component_df.loc[rto, 'fixed_monthly_charge_ind'] = rto_df.loc[rto, 'f_rev_req_ind'] / total_ind_cust / 12.0
     
         ############### Store variables for tariff design ##########################
-        tariff_component_df.set_value(rto, 'e_prices_res', np.array(rto_ts_values.loc[ts_list,'e_prices_res']))
-        tariff_component_df.set_value(rto, 'e_prices_com', np.array(rto_ts_values.loc[ts_list,'e_prices_com']))
-        tariff_component_df.set_value(rto, 'e_prices_ind', np.array(rto_ts_values.loc[ts_list,'e_prices_ind']))
+        tariff_component_df.set_value(rto, 'e_prices_res', np.array([rto_ts_values.loc[ts_list,'e_prices_res']]))
+        tariff_component_df.set_value(rto, 'e_prices_com', np.array([rto_ts_values.loc[ts_list,'e_prices_com']]))
+        tariff_component_df.set_value(rto, 'e_prices_ind', np.array([rto_ts_values.loc[ts_list,'e_prices_ind']]))
         tariff_component_df.set_value(rto, 'd_wkday_12by24', d_wkday_12by24)
         tariff_component_df.set_value(rto, 'd_wkend_12by24', d_wkend_12by24)
         tariff_component_df.set_value(rto, 'e_wkday_12by24', e_wkday_12by24)
@@ -216,25 +217,25 @@ def design_tariffs(agent_df, rto_df, ts_df, ts_map):
         tariff_component_dict_res = {'e_prices':tariff_component_df.loc[rto, 'e_prices_res'],
                                      'e_wkday_12by24':tariff_component_df.loc[rto, 'e_wkday_12by24'],
                                      'e_wkend_12by24':tariff_component_df.loc[rto, 'e_wkend_12by24'],
-                                     'fixed_monthly_charge':tariff_component_df.loc[rto, 'fixed_monthly_charge_res']}
+                                     'fixed_charge':tariff_component_df.loc[rto, 'fixed_monthly_charge_res']}
                                      
         tariff_component_dict_com = {'e_prices':tariff_component_df.loc[rto, 'e_prices_com'],
                                      'e_wkday_12by24':tariff_component_df.loc[rto, 'e_wkday_12by24'],
                                      'e_wkend_12by24':tariff_component_df.loc[rto, 'e_wkend_12by24'],
                                      'd_wkday_12by24':tariff_component_df.loc[rto, 'd_wkday_12by24'],
                                      'd_wkend_12by24':tariff_component_df.loc[rto, 'd_wkend_12by24'],
-                                     'fixed_monthly_charge':tariff_component_df.loc[rto, 'fixed_monthly_charge_com'],
-                                     'd_flat_price':tariff_component_df.loc[rto, 'd_flat_price_com'],
-                                     'd_tou_price':tariff_component_df.loc[rto, 'd_tou_price_com']}
+                                     'fixed_charge':tariff_component_df.loc[rto, 'fixed_monthly_charge_com'],
+                                     'd_flat_prices':np.zeros([1,12]) + tariff_component_df.loc[rto, 'd_flat_price_com'],
+                                     'd_tou_prices':np.array([[0, tariff_component_df.loc[rto, 'd_tou_price_com']]])}
                                      
         tariff_component_dict_ind = {'e_prices':tariff_component_df.loc[rto, 'e_prices_ind'],
                                      'e_wkday_12by24':tariff_component_df.loc[rto, 'e_wkday_12by24'],
                                      'e_wkend_12by24':tariff_component_df.loc[rto, 'e_wkend_12by24'],
                                      'd_wkday_12by24':tariff_component_df.loc[rto, 'd_wkday_12by24'],
                                      'd_wkend_12by24':tariff_component_df.loc[rto, 'd_wkend_12by24'],
-                                     'fixed_monthly_charge':tariff_component_df.loc[rto, 'fixed_monthly_charge_ind'],
-                                     'd_flat_price':tariff_component_df.loc[rto, 'd_flat_price_ind'],
-                                     'd_tou_price':tariff_component_df.loc[rto, 'd_tou_price_ind']}
+                                     'fixed_charge':tariff_component_df.loc[rto, 'fixed_monthly_charge_ind'],
+                                     'd_flat_prices':np.zeros([1,12]) + tariff_component_df.loc[rto, 'd_flat_price_ind'],
+                                     'd_tou_prices':np.array([[0, tariff_component_df.loc[rto, 'd_tou_price_ind']]])}
         
         tariff_dict_df.set_value(rto, 'tariff_components_dict_res', tariff_component_dict_res)
         tariff_dict_df.set_value(rto, 'tariff_components_dict_com', tariff_component_dict_com)
@@ -251,20 +252,21 @@ def calc_revenue_fracs_from_reeds_data(agent_df, input_dir, scenario, start_year
         agent_df = evaluate_agent_ref_bills(agent_df)
     
     ############# Import maps and historical capacity costs ###################
-    ts_map = pd.read_csv('%s/timeslice_8760_noH17.csv' % input_dir)
+    ts_map = pd.read_csv(os.path.join(input_dir, 'timeslice_8760_noH17.csv'))
     rto_map = pd.read_csv('%s/BA_to_RTO_mapping.csv' % input_dir)
     cap_cost_all_years_df = pd.read_pickle('%s/historical_cap_cost_df.pkl' % input_dir) # Import historical capacity costs
     
     
     ###################### Import ReEDS values ################################
     # Import reeds timeslice data
-    ts_df = pd.read_csv('%s/%s_TimesliceData.csv' % (input_dir, scenario))
+    ts_df = pd.read_csv(os.path.join(input_dir, scenario, '%s_TimesliceData.csv' % scenario))
     ts_df.rename(columns={'n':'ba', 
                           'm':'ts',
                           'yr':'year'}, inplace=True)
     
     # If the ReEDS timeslice file contains H17, merge those values into H3    
-    if 'H17' in ts_df['ts'].as_matrix():                 
+    if 'H17' in ts_df['ts'].as_matrix():
+        print "Merging H17 into H3"              
         H17_df = ts_df[ts_df['ts']=='H17']
         for idx in ts_df.index:
             if ts_df.loc[idx, 'ts'] == 'H3':
@@ -291,7 +293,7 @@ def calc_revenue_fracs_from_reeds_data(agent_df, input_dir, scenario, start_year
     ts_df_rto.rename(columns={'EnergyValue_weighted':'EnergyValue'}, inplace=True)
            
     # Import reeds annual data        
-    annual_df = pd.read_csv('%s/%s_AnnualData.csv' % (input_dir, scenario))
+    annual_df = pd.read_csv(os.path.join(input_dir, scenario, '%s_AnnualData.csv' % scenario))
     annual_df.rename(columns={'n':'ba', 
                               'm':'ts',
                               'yr':'year'}, inplace=True)
@@ -299,7 +301,6 @@ def calc_revenue_fracs_from_reeds_data(agent_df, input_dir, scenario, start_year
     # Misc setup
     years_sy = np.unique(annual_df['year']) # Just the reeds solve years
     years_all = np.arange(2010, 2051, 1)
-    agent_df = pd.merge(agent_df, rto_map, on='ba')
     rto_list = list(agent_df['rto'].unique())
     
     #### Calculate reeds-projected energy and capacity costs, group by RTO ####
@@ -504,7 +505,8 @@ def design_tariff_components(agent_df, year, rto_df, total_cost_smoothed_df, cap
     rto_df_year.to_pickle('rev_and_tariff_components_by_rto_%s.pkl' % year)
     tariff_dict_df.to_pickle('tariff_dicts_by_rto_%s.pkl' % year)
     
-    ###################### Assign tariffs to agents ###########################            
+    ###################### Assign tariffs to agents ########################### 
+    print "Assigning tariffs to agents..."           
     for n, idx in enumerate(agent_df.index):
         print n+1, "of", len(agent_df)
 

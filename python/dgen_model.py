@@ -176,13 +176,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # Calculate Tariff Components from ReEDS data
                 #==========================================================================================================
-                input_dir = 'input_data/reeds_data_for_tariff_construction'
+                input_dir = os.path.join(os.getcwd(), '..', 'reeds_data_for_tariff_construction')
                 scenario = 'ThreeCents'
                 start_year = 2018
                 end_year = 2050
                 base_year = 2016
-                
-                tariff_dict_df = tBuildFuncs.calc_tariff_components_from_reeds_data(solar_agents.df, input_dir, scenario, start_year, end_year, base_year)
+                pv_kw_cum_last_sy_df = pd.DataFrame()
+
+                rto_df, total_cost_smoothed_df, cap_frac_smoothed_df, ts_df_rto, ts_map = tBuildFuncs.calc_revenue_fracs_from_reeds_data(solar_agents.df, input_dir, scenario, start_year, end_year, base_year)
+
 
                 for year in scenario_settings.model_years:
 
@@ -230,18 +232,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
 
                     # Write ReEDS-derived tariff dicts to each agent
-                    tariff_dict_df_year = tariff_dict_df[tariff_dict_df['year']==year]
                     if year >= 2018:
-                        solar_agents.df = tBuildFuncs.assign_tariff_dicts_to_agents(solar_agents.df, tariff_dict_df_year)
+                        solar_agents.df['pv_kw_cum_last_sy'] = pv_kw_cum_last_sy_df.copy()
+                        solar_agents.df = tBuildFuncs.design_tariff_components(solar_agents.df, year, rto_df, total_cost_smoothed_df, cap_frac_smoothed_df, ts_df_rto, base_year, ts_map)
+
+                    # Apply state incentives
+                    solar_agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year])
 
                     # Size S+S system and calculate electric bills
-
-                    solar_agents.on_frame(agent_mutation.elec.apply_state_incentives,[state_incentives, year])
-
-                   # if 'ix' not in os.name: cores=None
-                   # else: cores=model_settings.local_cores
+                    # if 'ix' not in os.name: cores=None
+                    # else: cores=model_settings.local_cores
                     cores = None
-                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance,cores=cores)
+                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, cores=cores)
 
                     # Calculate the financial performance of the S+S systems
                     solar_agents.on_frame(financial_functions_elec.calc_financial_performance)
@@ -275,6 +277,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
                                                                                          scenario_settings, out_scen_path,
                                                                                          interyear_results_aggregations)
+
+                    pv_kw_cum_last_sy_df = solar_agents.df['pv_kw_cum'].copy()
+
 
                     #==========================================================================================================
                     # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING
