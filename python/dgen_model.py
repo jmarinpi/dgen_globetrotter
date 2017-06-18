@@ -205,8 +205,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # get and apply load growth
                     solar_agents.on_frame(agent_mutation.elec.apply_load_growth, (load_growth))
 
+                    # Update net metering and incentive expiration
+                    # TODO: add these table to dB
+                    cf_during_peak_demand = pd.read_csv('cf_during_peak_demand.csv') # Apply NEM on generation basis, i.e. solar capacity factor during peak demand
+                    peak_demand_mw = pd.read_csv('peak_demand_mw.csv')
+                    census_division_lkup = pd.read_csv('census_division_lkup.csv')
+                    if is_first_year:
+                        last_year_installed_capacity = agent_mutation.elec.get_state_starting_capacities(con, schema)
+
+                    state_capacity_by_year = agent_mutation.elec.calc_state_capacity_by_year(con, schema, load_growth, peak_demand_mw, census_division_lkup, is_first_year, year,solar_agents,last_year_installed_capacity)
+                    
                     #Apply net metering parameters
-                    net_metering_df = agent_mutation.elec.get_nem_settings(nem_state_capacity_limits, nem_state_and_sector_attributes, nem_selected_scenario, year)
+                    net_metering_df = agent_mutation.elec.get_nem_settings(nem_state_capacity_limits, nem_state_and_sector_attributes, nem_selected_scenario, year, state_capacity_by_year, cf_during_peak_demand)
                     solar_agents.on_frame(agent_mutation.elec.apply_export_tariff_params, (net_metering_df))
 
                     # Apply each agent's electricity price change and assumption about increases
@@ -240,11 +250,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply state incentives
                     solar_agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year])
 
-                    # Size S+S system and calculate electric bills
-                    # if 'ix' not in os.name: cores=None
-                    # else: cores=model_settings.local_cores
-                    cores = None
-                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, cores=cores)
+                    if 'ix' not in os.name: 
+                        cores = None
+                    else: 
+                        cores = model_settings.local_cores
+
+                    # Calculate System Financial Performance
+                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance,cores=cores)
 
                     # Calculate the financial performance of the S+S systems
                     solar_agents.on_frame(financial_functions_elec.calc_financial_performance)
@@ -271,6 +283,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Aggregate results
                     scenario_settings.output_batt_dispatch_profiles = True
+                    # Keep an in-memory table of installed capacity
+                    last_year_installed_capacity = solar_agents.df[['state_abbr','pv_kw_cum','year']].copy()
+                    last_year_installed_capacity = last_year_installed_capacity.loc[last_year_installed_capacity['year'] == year]
+                    last_year_installed_capacity = last_year_installed_capacity.groupby('state_abbr')['pv_kw_cum'].sum().reset_index()
+
                     if is_first_year==True:
                         interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
                                                                                          scenario_settings, out_scen_path)
