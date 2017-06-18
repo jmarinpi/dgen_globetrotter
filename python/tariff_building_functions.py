@@ -459,7 +459,7 @@ def calc_revenue_fracs_from_reeds_data(agent_df, input_dir, scenario, start_year
     
     
 #%%
-def design_tariff_components(agent_df, year, rto_df, total_cost_smoothed_df, cap_frac_smoothed_df, ts_df_rto, base_year, ts_map):
+def design_tariff_components(agent_df, year, rto_df, total_cost_smoothed_df, cap_frac_smoothed_df, ts_df_rto, base_year, ts_map, scenario_settings):
     # Calculate revenue requirements by sector and tariff component
     # f = fixed charges
     # e = energy charges
@@ -502,8 +502,8 @@ def design_tariff_components(agent_df, year, rto_df, total_cost_smoothed_df, cap
     
     rto_df_year.reset_index(inplace=True)
     rto_df_year['year'] = year        
-    rto_df_year.to_pickle('rev_and_tariff_components_by_rto_%s.pkl' % year)
-    tariff_dict_df.to_pickle('tariff_dicts_by_rto_%s.pkl' % year)
+    rto_df_year.to_pickle(os.path.join(scenario_settings.scen_output_dir, 'rev_and_tariff_components_by_rto_%s.pkl' % year))
+    tariff_dict_df.to_pickle(os.path.join(scenario_settings.scen_output_dir, 'tariff_dicts_by_rto_%s.pkl' % year))
     
     ###################### Assign tariffs to agents ########################### 
     print "Assigning tariffs to agents..."           
