@@ -243,12 +243,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
 
                     # Write ReEDS-derived tariff dicts to each agent
-                    if year >= 2051:
+                    if year >= 2018:
                         solar_agents.df['pv_kw_cum_last_sy'] = pv_kw_cum_last_sy_df.copy()
                         solar_agents.df = tBuildFuncs.design_tariff_components(solar_agents.df, year, rto_df, total_cost_smoothed_df, cap_frac_smoothed_df, ts_df_rto, base_year, ts_map, scenario_settings)
 
                     # Apply state incentives
-                    solar_agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year])
+                    solar_agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year, state_capacity_by_year])
 
                     if 'ix' not in os.name: 
                         cores = None
