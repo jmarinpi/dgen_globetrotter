@@ -648,13 +648,7 @@ def filter_nem_year(df, year):
     return df
 
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def get_nem_settings(state_limits, state_by_sector, selected_scenario, year):
-
-    # Get Current Cumulative Adoption Statistics
-    state_capacity_by_year = pd.DataFrame.from_records(
-            [{ "state_abbr": state, "cum_capacity_mw": 0, "cum_capacity_pct": 0, "cum_incentive_spending_usd": 1e20,
-                 "peak_demand_mw": 0, "year": year
-                 } for state in state_limits['state_abbr'].unique()])
+def get_nem_settings(state_limits, state_by_sector, selected_scenario, year, state_capacity_by_year, cf_during_peak_demand):
 
     # Find States That Have Not Sunset
     valid_states = filter_nem_year(state_limits, year)
@@ -667,9 +661,12 @@ def get_nem_settings(state_limits, state_by_sector, selected_scenario, year):
 
     state_df = pd.merge(state_capacity_by_year, valid_states , how='left', on=['state_abbr'])
     state_df = state_df[state_df['year'] == state_df['filter_year'] ]
+    state_df = state_df.merge(cf_during_peak_demand, on = 'state_abbr')
 
     state_df = state_df.loc[ pd.isnull(state_df['max_cum_capacity_mw']) | ( pd.notnull( state_df['max_cum_capacity_mw']) & (state_df['cum_capacity_mw'] < state_df['max_cum_capacity_mw']))]
-    state_df['max_mw'] = (state_df['max_pct_cum_capacity']/100) * state_df['peak_demand_mw']
+    # Calculate the maximum MW of solar capacity before reaching the NEM cap. MW are determine on a generation basis during the period of peak demand, as determined by ReEDS.
+    # CF during peak period is based on ReEDS H17 timeslice, assuming average over south-facing 15 degree tilt systems (so this could be improved by using the actual tilts selected)
+    state_df['max_mw'] = (state_df['max_pct_cum_capacity']/100) * state_df['peak_demand_mw'] / state_df['solar_cf_during_peak_demand_period']
     state_df = state_df.loc[ pd.isnull(state_df['max_pct_cum_capacity']) | ( pd.notnull( state_df['max_pct_cum_capacity']) & (state_df['max_mw'] > state_df['cum_capacity_mw']))]
 
     # Filter state and sector data to those that have not sunset
@@ -1361,14 +1358,8 @@ def get_state_starting_capacities(con, schema):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_state_incentives(dataframe, state_incentives, year):
+def apply_state_incentives(dataframe, state_incentives, year, state_capacity_by_year):
     dataframe = dataframe.reset_index()
-
-    state_capacity_by_year = pd.DataFrame.from_records(
-        [{
-             "state_abbr": state, "cum_capacity_mw": 0, "cum_capacity_pct": 0, "cum_incentive_spending_usd": 0,
-             "peak_demand_mw": 0, "year": year
-             } for state in state_incentives['state_abbr'].unique()])
 
     # Filter Incentives by the Years in which they are valid
     state_incentives = state_incentives.loc[
@@ -1381,6 +1372,7 @@ def apply_state_incentives(dataframe, state_incentives, year):
                                                  how='left', on=["state_abbr"])
 
     # Filter where the states have not exceeded their cumulative installed capacity (by mw or pct generation) or total program budget
+    #state_incentives_mg = state_incentives_mg.loc[pd.isnull(state_incentives_mg['incentive_cap_total_pct']) | (state_incentives_mg['cum_capacity_pct'] < state_incentives_mg['incentive_cap_total_pct'])]
     state_incentives_mg = state_incentives_mg.loc[pd.isnull(state_incentives_mg['incentive_cap_total_mw']) | (state_incentives_mg['cum_capacity_mw'] < state_incentives_mg['incentive_cap_total_mw'])]
     state_incentives_mg = state_incentives_mg.loc[pd.isnull(state_incentives_mg['budget_total_usd']) | (state_incentives_mg['cum_incentive_spending_usd'] < state_incentives_mg['budget_total_usd'])]
 
@@ -1647,3 +1639,34 @@ def check_tech_potential_limits_solar(dataframe, tech_potential_limits_solar_df,
 
     return
 
+#%%   
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def calc_state_capacity_by_year(con, schema, load_growth, peak_demand_mw, census_division_lkup, is_first_year, year,solar_agents,last_year_installed_capacity):
+
+    if is_first_year:
+        df = last_year_installed_capacity.query('tech == "solar"').groupby('state_abbr')['capacity_mw'].sum().reset_index()
+        # Not all states have starting capacity, don't want to drop any states thus left join on peak_demand
+        df = peak_demand_mw.merge(df,how = 'left').fillna(0)
+        df['peak_demand_mw'] = df['peak_demand_mw_2014']
+        df['cum_capacity_mw'] = df['capacity_mw']
+
+    else:
+        #installed_capacity_df = solar_agents.df[['state_abbr','pv_kw_cum','year']].copy()
+        #last_year_installed_capacity = installed_capacity_df.loc[installed_capacities_df['year'] == year]
+        #df = last_year_installed_capacity.groupby('state_abbr')['pv_kw_cum'].sum().reset_index()
+        df = last_year_installed_capacity.copy()
+        df['cum_capacity_mw'] = df['pv_kw_cum']/1000
+        # Load growth is resolved by census region, so a lookup table is needed
+        df = df.merge(census_division_lkup, on = 'state_abbr')
+        load_growth_this_year = load_growth.loc[(load_growth['year'] == year) & (load_growth['sector_abbr'] == 'res')]
+        df = df.merge(load_growth_this_year, on = 'census_division_abbr')
+        df = peak_demand_mw.merge(df,how = 'left', on = 'state_abbr').fillna(0)
+        df['peak_demand_mw'] = df['peak_demand_mw_2014'] * df['load_multiplier']
+
+    # TODO: drop cum_capacity_pct from table (misnomer)
+    df["cum_capacity_pct"] = 0
+    # TODO: enforce program spending cap
+    df["cum_incentive_spending_usd"] = 0
+    df['year'] = year
+    df = df[["state_abbr","cum_capacity_mw","cum_capacity_pct","cum_incentive_spending_usd","peak_demand_mw","year"]]
+    return df
