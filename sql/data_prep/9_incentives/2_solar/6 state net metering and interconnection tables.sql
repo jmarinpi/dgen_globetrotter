@@ -287,7 +287,6 @@ CREATE TABLE diffusion_shared.state_incentives_2017
     budget_total_usd double precision,
     incentive_cap_annual_mw double precision,
     incentive_cap_total_mw double precision,
-    incentive_cap_total_pct double precision,
     incentive_duration_yrs double precision,
     start_date date,
     end_date date,
