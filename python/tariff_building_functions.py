@@ -526,7 +526,7 @@ def design_tariff_components(agent_df, year, rto_df, total_cost_smoothed_df,
              
     ########################## Design tariffs #################################            
     ts_df_rto_year = ts_df_rto[ts_df_rto['year']==year]
-    tariff_component_df, tariff_dict_df = design_tariffs(agent_df, rto_df_year, ts_df_rto_year, ts_map)
+    tariff_component_df, tariff_dict_df = design_tariffs(agent_df, rto_df_year, ts_df_rto_year, ts_map, res_demand_charges)
     rto_df_year = rto_df_year.join(tariff_component_df)
     
     rto_df_year.reset_index(inplace=True)

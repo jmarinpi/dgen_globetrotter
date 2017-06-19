@@ -244,6 +244,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Write ReEDS-derived tariff dicts to each agent
                     res_demand_charges = True
+                    solar_agents.df['elec_price_multiplier'] = 1.0
                     if year >= 2018:
                         solar_agents.df['pv_kw_cum_last_sy'] = pv_kw_cum_last_sy_df.copy()
                         solar_agents.df = tBuildFuncs.design_tariff_components(solar_agents.df, year, rto_df, 
