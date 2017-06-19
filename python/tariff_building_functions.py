@@ -23,7 +23,7 @@ import scipy.special
 
 
 
-def design_tariffs(agent_df, rto_df, ts_df, ts_map):
+def design_tariffs(agent_df, rto_df, ts_df, ts_map, res_demand_charges):
 
     ###################### General Setup #################################
     tariff_component_df = pd.DataFrame(index=rto_df.index)
@@ -161,6 +161,20 @@ def design_tariffs(agent_df, rto_df, ts_df, ts_map):
         
         period_matrix = np.zeros([8760, d_tou_n*12], bool)
         period_matrix[range(8760),d_tou_8760+month_index*d_tou_n] = True
+
+        # Calculate demand totals for Res
+        if res_demand_charges == True:
+            total_flat_demand_res = 0
+            total_tou_demand_res = 0
+            for n in range(agent_n_com):       
+                load_distributed = net_load_by_agent_res[n,:][np.newaxis, :].T*period_matrix
+                period_maxs = np.max(load_distributed, axis=0).reshape([d_tou_n,12], order='F')
+                
+                flat_demands = np.max(period_maxs, axis=0)
+                tou_demands = period_maxs[1, :]
+    
+                total_flat_demand_res += np.sum(flat_demands)            
+                total_tou_demand_res += np.sum(tou_demands)
     
         # Calculate demand totals for Com
         total_flat_demand_com = 0
@@ -188,6 +202,9 @@ def design_tariffs(agent_df, rto_df, ts_df, ts_map):
             total_flat_demand_ind += np.sum(flat_demands)            
             total_tou_demand_ind += np.sum(tou_demands)
                 
+        tariff_component_df.loc[rto, 'd_flat_price_res'] = rto_df.loc[rto, 'd_flat_rev_req_res'] / total_flat_demand_res
+        tariff_component_df.loc[rto, 'd_tou_price_res'] = rto_df.loc[rto, 'd_tou_rev_req_res'] / total_tou_demand_res
+
         tariff_component_df.loc[rto, 'd_flat_price_com'] = rto_df.loc[rto, 'd_flat_rev_req_com'] / total_flat_demand_com
         tariff_component_df.loc[rto, 'd_tou_price_com'] = rto_df.loc[rto, 'd_tou_rev_req_com'] / total_tou_demand_com
 
@@ -218,6 +235,11 @@ def design_tariffs(agent_df, rto_df, ts_df, ts_map):
                                      'e_wkday_12by24':tariff_component_df.loc[rto, 'e_wkday_12by24'],
                                      'e_wkend_12by24':tariff_component_df.loc[rto, 'e_wkend_12by24'],
                                      'fixed_charge':tariff_component_df.loc[rto, 'fixed_monthly_charge_res']}
+
+        if res_demand_charges == True:
+            tariff_component_dict_res['d_flat_prices'] = np.zeros([1,12]) + tariff_component_df.loc[rto, 'd_flat_price_res'],
+            tariff_component_dict_res['d_tou_prices'] = np.array([[0, tariff_component_df.loc[rto, 'd_tou_price_res']]])
+
                                      
         tariff_component_dict_com = {'e_prices':tariff_component_df.loc[rto, 'e_prices_com'],
                                      'e_wkday_12by24':tariff_component_df.loc[rto, 'e_wkday_12by24'],
@@ -459,7 +481,9 @@ def calc_revenue_fracs_from_reeds_data(agent_df, input_dir, scenario, start_year
     
     
 #%%
-def design_tariff_components(agent_df, year, rto_df, total_cost_smoothed_df, cap_frac_smoothed_df, ts_df_rto, base_year, ts_map, scenario_settings):
+def design_tariff_components(agent_df, year, rto_df, total_cost_smoothed_df, 
+                             cap_frac_smoothed_df, ts_df_rto, base_year, ts_map, 
+                             scenario_settings, res_demand_charges):
     # Calculate revenue requirements by sector and tariff component
     # f = fixed charges
     # e = energy charges
@@ -478,14 +502,19 @@ def design_tariff_components(agent_df, year, rto_df, total_cost_smoothed_df, cap
     rto_df_year['f_rev_req_com'] = rto_df_year['rev_req_com'] * rto_df_year['f_f_com_ref']
     rto_df_year['f_rev_req_ind'] = rto_df_year['rev_req_ind'] * rto_df_year['f_f_ind_ref']   
         
-    rto_df_year['e_rev_req_res'] = rto_df_year['rev_req_res'] * (1-rto_df_year['f_f_res_ref'])
     rto_df_year['e_rev_req_com'] = rto_df_year['rev_req_com'] * (1-rto_df_year['f_f_com_ref']) * (1-cap_frac_smoothed_df[year])
     rto_df_year['e_rev_req_ind'] = rto_df_year['rev_req_ind'] * (1-rto_df_year['f_f_ind_ref']) * (1-cap_frac_smoothed_df[year])
     
-    rto_df_year['d_rev_req_res'] = rto_df_year['rev_req_res'] * 0.0
     rto_df_year['d_rev_req_com'] = rto_df_year['rev_req_com'] * (1-rto_df_year['f_f_com_ref']) * (cap_frac_smoothed_df[year])
     rto_df_year['d_rev_req_ind'] = rto_df_year['rev_req_ind'] * (1-rto_df_year['f_f_ind_ref']) * (cap_frac_smoothed_df[year])
     
+    if res_demand_charges == True:
+        rto_df_year['e_rev_req_res'] = rto_df_year['rev_req_res'] * (1-rto_df_year['f_f_res_ref']) * (1-cap_frac_smoothed_df[year])
+        rto_df_year['d_rev_req_res'] = rto_df_year['rev_req_res'] * (1-rto_df_year['f_f_res_ref']) * (cap_frac_smoothed_df[year])
+    else:
+        rto_df_year['e_rev_req_res'] = rto_df_year['rev_req_res'] * (1-rto_df_year['f_f_res_ref'])
+        rto_df_year['d_rev_req_res'] = rto_df_year['rev_req_res'] * 0.0
+
     # hard-code 50/50 TOU and flat energy split
     rto_df_year['d_flat_rev_req_res'] = rto_df_year['d_rev_req_res'] * 0.5
     rto_df_year['d_flat_rev_req_com'] = rto_df_year['d_rev_req_com'] * 0.5

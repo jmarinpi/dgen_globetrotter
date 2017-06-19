@@ -371,13 +371,12 @@ def calc_system_size_and_financial_performance(agent):
     # simple representation of 70% minimum of batt charging from PV in order to
     # qualify for the ITC. Here, if batt kW is greater than 25% of PV kW, no ITC.
     batt_chg_frac = np.where(system_df['pv'] >= system_df['batt_kw']*4.0, 1.0, 0)
-    
-    if agent.loc['year'] <= 2016: cash_incentives = np.array(system_df['pv']) * agent.loc['pv_price_per_kw'] * 0.3
-    else: cash_incentives = np.array([0]*system_df.shape[0])
         
     #=========================================================================#
     # Determine financial performance of each system size
     #=========================================================================#
+        
+    cash_incentives = np.array([0]*system_df.shape[0])
 
     if not isinstance(agent.loc['state_incentives'],float):
         investment_incentives = calculate_investment_based_incentives(system_df, agent)
