@@ -294,7 +294,7 @@ def calc_system_size_and_financial_performance(agent):
         export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
 
     original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
-    agent.loc['fy_bill_without_sys'] = original_bill * agent.loc['elec_price_multiplier']
+    agent.loc['fy_bill_without_sys'] = original_bill * agent.loc['elec_price_multiplier']    
     if agent.loc['fy_bill_without_sys'] == 0: agent.loc['fy_bill_without_sys']=1.0
     agent.loc['fy_elec_cents_per_kwh_without_sys'] = agent.loc['fy_bill_without_sys'] / agent.loc['load_kwh_per_customer_in_bin']
 
@@ -503,6 +503,6 @@ def calc_system_size_and_financial_performance(agent):
                 'max_pv_size',
                 'fy_bill_without_sys',
                 'fy_elec_cents_per_kwh_without_sys']
-            
+                            
 #    print "Opt PV:", opt_pv_size, np.round(opt_pv_size/agent['max_pv_size'],2), ", opt batt kW:", opt_batt_power, np.round(opt_batt_power/opt_pv_size,2) 
     return agent[out_cols]
