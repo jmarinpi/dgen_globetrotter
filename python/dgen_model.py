@@ -193,8 +193,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     evolve = False
                 else:
                     evolve = True
+                    
+                evolve = False
+                res_demand_charges = False
 
-                rto_df, total_cost_smoothed_df, cap_frac_smoothed_df, ts_df_rto, ts_map = tBuildFuncs.calc_revenue_fracs_from_reeds_data(solar_agents.df, input_dir, scenario, start_year, end_year, base_year)
+                #rto_df, total_cost_smoothed_df, cap_frac_smoothed_df, ts_df_rto, ts_map = tBuildFuncs.calc_revenue_fracs_from_reeds_data(solar_agents.df, input_dir, scenario, start_year, end_year, base_year)
 
 
                 for year in scenario_settings.model_years:
