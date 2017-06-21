@@ -28,6 +28,7 @@ from agents import Agents, Solar_Agents
 import settings
 import agent_mutation
 import agent_preparation
+import tariff_building_functions as tBuildFuncs
 #import demand_supply_geo
 import diffusion_functions_elec
 import diffusion_functions_ghp
@@ -100,6 +101,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                                                              
             # create folder for input data csvs for this scenario
             scenario_settings.dir_to_write_input_data = out_scen_path + '/input_data'
+            scenario_settings.scen_output_dir = out_scen_path
             os.makedirs(scenario_settings.dir_to_write_input_data)
                                                              
             # get other datasets needed for the model run
@@ -172,6 +174,32 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 financing_terms = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
                 batt_tech_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='batt_tech_performance', csv_import_function=iFuncs.stacked_sectors)
 
+                #==========================================================================================================
+                # Calculate Tariff Components from ReEDS data
+                #==========================================================================================================
+                input_dir = os.path.join(os.getcwd(), '..', 'reeds_data_for_tariff_construction')
+                scenario = 'ThreeCents'
+                start_year = 2018
+                end_year = 2050
+                base_year = 2016
+                pv_kw_cum_last_sy_df = pd.DataFrame()
+                
+                if 'noResD' in scenario_settings.scen_name:
+                    res_demand_charges = False
+                else:
+                    res_demand_charges = True
+                    
+                if 'noEvolve' in scenario_settings.scen_name:
+                    evolve = False
+                else:
+                    evolve = True
+                    
+                evolve = False
+                res_demand_charges = False
+
+                #rto_df, total_cost_smoothed_df, cap_frac_smoothed_df, ts_df_rto, ts_map = tBuildFuncs.calc_revenue_fracs_from_reeds_data(solar_agents.df, input_dir, scenario, start_year, end_year, base_year)
+
+
                 for year in scenario_settings.model_years:
 
                     logger.info('\tWorking on %s' % year)
@@ -227,14 +255,27 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply host-owned financial parameters
                     solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
 
-                    # Size S+S system and calculate electric bills
-                    solar_agents.on_frame(agent_mutation.elec.apply_state_incentives,[state_incentives, year, state_capacity_by_year])
+
+                    # Write ReEDS-derived tariff dicts to each agent
+                    if evolve == True:
+                        if year >= 2018:
+                            solar_agents.df['elec_price_multiplier'] = 1.0
+                            solar_agents.df['pv_kw_cum_last_sy'] = pv_kw_cum_last_sy_df.copy()
+                            solar_agents.df = tBuildFuncs.design_tariff_components(solar_agents.df, year, rto_df, 
+                                                                                   total_cost_smoothed_df, cap_frac_smoothed_df, 
+                                                                                   ts_df_rto, base_year, ts_map, scenario_settings, 
+                                                                                   res_demand_charges)
 
                     if 'ix' not in os.name: 
                         cores = None
                     else: 
                         cores = model_settings.local_cores
 
+                    # Apply state incentives
+                    solar_agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year, state_capacity_by_year])
+
+
+                    # Calculate System Financial Performance
                     solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance,cores=cores)
 
                     # Calculate the financial performance of the S+S systems
@@ -274,6 +315,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
                                                                                          scenario_settings, out_scen_path,
                                                                                          interyear_results_aggregations)
+
+                    pv_kw_cum_last_sy_df = solar_agents.df['pv_kw_cum'].copy()
+
 
                     #==========================================================================================================
                     # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING

@@ -1,6 +1,8 @@
 import elec
 import agent_preparation
 import numpy as np
+import pandas as pd
+import os
 
 
 def init_solar_agents(model_settings, scenario_settings, cur, con):
@@ -41,6 +43,14 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     # This is a temporary patch to get the model to run in this scenario
     agents_df['customers_in_bin'] = np.where(agents_df['customers_in_bin']==0, 1, agents_df['customers_in_bin'])
     agents_df['load_kwh_per_customer_in_bin'] = np.where(agents_df['load_kwh_per_customer_in_bin']==0, 1, agents_df['load_kwh_per_customer_in_bin'])
+
+    #==============================================================================
+    # Merge RTO data onto agent_df - TODO: Store this mapping in database
+    #==============================================================================
+    agents_df.reset_index(inplace=True)
+    rto_map = pd.read_csv(os.path.join(os.getcwd(), '..', 'reeds_data_for_tariff_construction', 'BA_to_RTO_mapping.csv'))
+    agents_df = pd.merge(agents_df, rto_map, on='ba')
+    agents_df.set_index('agent_id', inplace=True)
 
     #==============================================================================
     # ADJUST ROOF AREAS TO ALIGN WITH LIDAR DATA ON SECTOR/STATE LEVEL

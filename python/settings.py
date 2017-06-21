@@ -556,6 +556,8 @@ def init_scenario_settings(scenario_file, model_settings, con, cur):
     # read in settings whether to use pre-generated agent file ('User Defined'- provide pkl file name) or generate new agents
     scenario_settings.set('agent_file_status', datfunc.get_agent_file_scenario(con, scenario_settings.schema))
 
+    # Set scenario output dir
+
     # set tech_mode
     scenario_settings.set_tech_mode()
     scenario_settings.set('sectors', datfunc.get_sectors(cur, scenario_settings.schema))

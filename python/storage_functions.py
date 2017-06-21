@@ -294,7 +294,7 @@ def calc_system_size_and_financial_performance(agent):
         export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
 
     original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
-    agent.loc['fy_bill_without_sys'] = original_bill * agent.loc['elec_price_multiplier']
+    agent.loc['fy_bill_without_sys'] = original_bill * agent.loc['elec_price_multiplier']    
     if agent.loc['fy_bill_without_sys'] == 0: agent.loc['fy_bill_without_sys']=1.0
     agent.loc['fy_elec_cents_per_kwh_without_sys'] = agent.loc['fy_bill_without_sys'] / agent.loc['load_kwh_per_customer_in_bin']
 
@@ -309,11 +309,12 @@ def calc_system_size_and_financial_performance(agent):
 
     # Set battery sizes to evaluate
     # Only evaluate a battery if there are demand charges, TOU energy charges, or no NEM
-    batt_inc = 3
-    if tariff.d_flat_exists or tariff.d_tou_exists or tariff.e_max_difference>0.02 or export_tariff.full_retail_nem==False:
-        batt_powers = np.linspace(0, np.array(agent.loc['max_demand_kw']) * 0.2, batt_inc)
-    else:
-        batt_powers = np.zeros(1)
+#    batt_inc = 3
+#    if hasattr(tariff, 'd_flat_prices') or hasattr(tariff, 'd_tou_prices') or tariff.e_max_difference>0.02 or export_tariff.full_retail_nem==False:
+#        batt_powers = np.linspace(0, np.array(agent.loc['max_demand_kw']) * 0.2, batt_inc)
+#    else:
+#        batt_powers = np.zeros(1)
+    batt_powers = np.zeros(1)
         
     # Calculate the estimation parameters for each PV size
     est_params_df = pd.DataFrame(index=pv_sizes)
@@ -370,13 +371,12 @@ def calc_system_size_and_financial_performance(agent):
     # simple representation of 70% minimum of batt charging from PV in order to
     # qualify for the ITC. Here, if batt kW is greater than 25% of PV kW, no ITC.
     batt_chg_frac = np.where(system_df['pv'] >= system_df['batt_kw']*4.0, 1.0, 0)
-    
-    if agent.loc['year'] <= 2016: cash_incentives = np.array(system_df['pv']) * agent.loc['pv_price_per_kw'] * 0.3
-    else: cash_incentives = np.array([0]*system_df.shape[0])
         
     #=========================================================================#
     # Determine financial performance of each system size
     #=========================================================================#
+        
+    cash_incentives = np.array([0]*system_df.shape[0])
 
     if not isinstance(agent.loc['state_incentives'],float):
         investment_incentives = calculate_investment_based_incentives(system_df, agent)
@@ -503,6 +503,6 @@ def calc_system_size_and_financial_performance(agent):
                 'max_pv_size',
                 'fy_bill_without_sys',
                 'fy_elec_cents_per_kwh_without_sys']
-            
+                            
 #    print "Opt PV:", opt_pv_size, np.round(opt_pv_size/agent['max_pv_size'],2), ", opt batt kW:", opt_batt_power, np.round(opt_batt_power/opt_pv_size,2) 
     return agent[out_cols]
