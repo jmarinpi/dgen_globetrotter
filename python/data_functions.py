@@ -363,21 +363,18 @@ def index_output_table(con, cur, schema):
 
     # create indices that will be needed for various aggregations in R
     # visualization script
-    sql = '''CREATE INDEX agent_outputs_year_btree ON %(schema)s.agent_outputs USING BTREE(year);
-             CREATE INDEX agent_outputs_state_abbr_btree ON %(schema)s.agent_outputs USING BTREE(state_abbr);
-             CREATE INDEX agent_outputs_sector_btree ON %(schema)s.agent_outputs USING BTREE(sector);
-             CREATE INDEX agent_outputs_business_model_btree ON %(schema)s.agent_outputs USING BTREE(business_model);
-             CREATE INDEX agent_outputs_system_size_factors_btree ON %(schema)s.agent_outputs USING BTREE(system_size_factors);
-             CREATE INDEX agent_outputs_metric_btree ON %(schema)s.agent_outputs USING BTREE(metric);
-             CREATE INDEX agent_outputs_turbine_height_m_btree ON %(schema)s.agent_outputs USING BTREE(turbine_height_m);
-             CREATE INDEX agent_outputs_tech_btree ON %(schema)s.agent_outputs USING BTREE(tech);
-             ''' % inputs
-    cur.execute(sql)
-    con.commit()
 
+    for f in ['year', 'state_abbr', 'sector', 'system_size_factors', 'metric', 'turbine_height_m', 'tech']:
+        try:
+            sql = '''CREATE INDEX agent_outputs_%s_btree ON %s.agent_outputs USING BTREE(%s);
+             ''' % (f,schema,f)
+            cur.execute(sql)
+            con.commit()
+        except:
+            print "Warning: Could not index %s" % (f)
 
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def copy_outputs_to_csv(techs, schema, out_scen_path, cur, con, file_suffix=''):
+def copy_outputs_to_csv(techs, schema, out_scen_path, engine, con, file_suffix=''):
 
     logger.info('\tExporting Results from Database')
 
@@ -386,24 +383,16 @@ def copy_outputs_to_csv(techs, schema, out_scen_path, cur, con, file_suffix=''):
     # copy data to csv
     for tech in techs:
         inputs['tech'] = tech
-        out_file = os.path.join(out_scen_path, tech,
-                                'outputs_%s%s.csv.gz' % (tech, file_suffix))
-        f = gzip.open(out_file, 'w', 1)
-        sql = """COPY
-                    (
-                        SELECT *
-                        FROM %(schema)s.agent_outputs
-                        WHERE tech = '%(tech)s'
-                    )
-                TO STDOUT WITH CSV HEADER;""" % inputs
-        cur.copy_expert(sql, f)
-        f.close()
+        out_file = os.path.join(out_scen_path, tech,'outputs_%s%s.csv.gz' % (tech, file_suffix))
+
+        sql = "SELECT * FROM %(schema)s.agent_outputs WHERE tech = '%(tech)s'" % inputs
+        df = pd.read_sql(sql, engine)
+        df.to_csv(out_file, sep='|', compression='gzip')
 
     # write the scenario optoins to csv as well
-    f2 = open(os.path.join(out_scen_path, 'scenario_options_summary.csv'), 'w')
-    cur.copy_expert(
-        'COPY %s.input_main_scenario_options TO STDOUT WITH CSV HEADER;' % schema, f2)
-    f2.close()
+    f2 = os.path.join(out_scen_path, 'scenario_options_summary.csv')
+    sql = 'SELECT * FROM %s.input_main_scenario_options' % (schema)
+    pd.read_sql(sql,engine).to_csv(f2)
 
 
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')

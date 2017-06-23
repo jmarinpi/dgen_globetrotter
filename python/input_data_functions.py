@@ -27,24 +27,43 @@ def df_to_psql(df, engine, schema, owner, name, if_exists='replace', append_tran
     d_types = {}
     transform = {}
     f_d_type  ={}
+    sql_type = {}
 
     for f in df.columns:
         f_d_type[f] = type(df[f].values[0]).__name__
+        if f_d_type[f][0:3].lower() == 'int':
+            sql_type[f] = 'INTEGER'
+
+        if f_d_type[f][0:5].lower() == 'float':
+            sql_type[f] = 'DOUBLE PRECISION'
+
+        if f_d_type[f][0:3].lower() == 'str':
+            sql_type[f] = 'VARCHAR'
+
         if f_d_type[f] == 'list':
             d_types[f] = sqlalchemy.types.ARRAY(sqlalchemy.types.STRINGTYPE)
             transform[f] = lambda x: json.dumps(x)
+            sql_type[f] = 'VARCHAR'
+
         if f_d_type[f] == 'ndarray':
             d_types[f] = sqlalchemy.types.ARRAY(sqlalchemy.types.STRINGTYPE)
             transform[f] = lambda x: json.dumps(list(x))
+            sql_type[f] = 'VARCHAR'
+
         if f_d_type[f] == 'dict':
             d_types[f] = sqlalchemy.types.STRINGTYPE
             transform[f] = lambda x: json.dumps(dict(map(lambda (k,v):  (k, list(v)) if (type(v).__name__ == 'ndarray') else (k,v), x.items())))
+            sql_type[f] = 'VARCHAR'
+
         if f_d_type[f] == 'Interval':
             d_types[f] = sqlalchemy.types.STRINGTYPE
             transform[f] = lambda x: str(x)
+            sql_type[f] = 'VARCHAR'
+
         if f_d_type[f] == 'DataFrame':
             d_types[f] = sqlalchemy.types.STRINGTYPE
             transform[f] = lambda x: x.to_json()
+            sql_type[f] = 'VARCHAR'
 
     for k, v in transform.items():
         if append_transformations:
@@ -52,6 +71,13 @@ def df_to_psql(df, engine, schema, owner, name, if_exists='replace', append_tran
             del df[k]
         else:
             df[k] = df[k].apply(v)
+
+    if if_exists == 'append':
+        sql = "SELECT column_name FROM information_schema.columns WHERE table_schema = '%s' AND table_name   = '%s'" % (schema, name)
+        fields = np.concatenate(pd.read_sql_query(sql, engine).values)
+        for f in list(set(df.columns.values) - set(fields)):
+            sql = "ALTER TABLE %s.%s ADD COLUMN %s %s" % (schema, name, f, sql_type[f])
+            engine.execute(sql)
 
     df.to_sql(name, engine, schema=schema, index=False, dtype=d_types, if_exists=if_exists)
 

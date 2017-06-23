@@ -179,7 +179,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # Calculate Tariff Components from ReEDS data
                 #==========================================================================================================
 
-                for year in scenario_settings.model_years:
+                for i, year in enumerate(scenario_settings.model_years):
 
                     logger.info('\tWorking on %s' % year)
 
@@ -288,11 +288,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING
                     #==========================================================================================================
                     write_annual_agents = True
+                    drop_fields = ['consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile']
+                    df_write = solar_agents.df.drop(drop_fields, axis=1)
                     if write_annual_agents==True:
-                        solar_agents.df.drop(['consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
+                        df_write.to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
                     # Write Outputs to the database
-                    iFuncs.df_to_psql(solar_agents.df, engine, schema, owner,'agents_output', if_exists='append', append_transformations=True)
+                    if i == 0:
+                        write_mode = 'replace'
+                    else:
+                        write_mode = 'append'
+                    iFuncs.df_to_psql(df_write, engine, schema, owner,'agent_outputs', if_exists=write_mode, append_transformations=True)
 
             elif scenario_settings.techs == ['wind']:
                 logger.error('Wind not yet supported')
@@ -310,7 +316,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             out_subfolders = datfunc.create_tech_subfolders(out_scen_path, scenario_settings.techs, out_subfolders)
 
             # copy outputs to csv
-            datfunc.copy_outputs_to_csv(scenario_settings.techs, scenario_settings.schema, out_scen_path, cur, con)
+            datfunc.copy_outputs_to_csv(scenario_settings.techs, scenario_settings.schema, out_scen_path, engine, con)
 
             # add indices to postgres output table
             datfunc.index_output_table(con, cur, scenario_settings.schema)
