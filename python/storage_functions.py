@@ -454,8 +454,8 @@ def calc_system_size_and_financial_performance(agent):
     batt_chg_frac = int( opt_batt_power/opt_pv_size < 0.25)
 
     cash_incentives = np.array([cash_incentives[index_of_best_fin_perform_ho]])
-    investment_incentives = np.array(investment_incentives[index_of_best_fin_perform_ho])
-    capacity_based_incentives = np.array(capacity_based_incentives[index_of_best_fin_perform_ho])
+    investment_incentives = np.array([investment_incentives[index_of_best_fin_perform_ho]])
+    capacity_based_incentives = np.array([capacity_based_incentives[index_of_best_fin_perform_ho]])
     production_based_incentives = np.array(production_based_incentives[index_of_best_fin_perform_ho])
     
     cf_results_opt = fFuncs.cashflow_constructor(opt_bill_savings, 
@@ -485,6 +485,11 @@ def calc_system_size_and_financial_performance(agent):
     agent.loc['aep'] = agent.loc['pv_kw'] * agent.loc['naep']
     agent.loc['cf'] = agent.loc['naep']/8760
     agent.loc['system_size_factors'] = np.where(agent.loc['pv_kw'] == 0, 0, pd.cut([agent.loc['pv_kw']], system_size_breaks))[0]
+    agent.loc['cbi'] = capacity_based_incentives
+    agent.loc['ibi'] = investment_incentives
+    agent.loc['pbi'] = production_based_incentives
+    agent.loc['cash_incentives'] = cash_incentives
+    agent['export_tariff_results'] = original_results
         
     out_cols = ['agent_id',
                 'pv_kw',
@@ -502,7 +507,13 @@ def calc_system_size_and_financial_performance(agent):
                 'fy_bill_savings_frac',
                 'max_pv_size',
                 'fy_bill_without_sys',
-                'fy_elec_cents_per_kwh_without_sys']
+                'fy_elec_cents_per_kwh_without_sys',
+                'cbi',
+                'ibi',
+                'pbi',
+                'cash_incentives',
+                'export_tariff_results'
+                ]
                             
 #    print "Opt PV:", opt_pv_size, np.round(opt_pv_size/agent['max_pv_size'],2), ", opt batt kW:", opt_batt_power, np.round(opt_batt_power/opt_pv_size,2) 
     return agent[out_cols]

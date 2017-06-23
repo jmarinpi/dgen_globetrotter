@@ -23,6 +23,8 @@ import pickle
 import sys
 import logging
 reload(logging)
+import sqlalchemy
+import json
 
 #==============================================================================
 # Load logger
@@ -352,148 +354,6 @@ def clear_outputs(con, cur, schema):
             """ % inputs
     cur.execute(sql)
     con.commit()
-
-
-def write_outputs(con, cur, outputs_df, sectors, schema):
-
-    inputs = locals().copy()
-
-    # temporary patch to make scenario outputs working
-    # To do - Need to recreate agents_outputs schema once wind, geo attributes 
-    # are finalized and added and also need to decide on the accepted variable naming
-    # conventions and delete the other
-
-    outputs_df['installed_capacity'] = outputs_df['pv_kw_cum']
-    outputs_df['installed_capacity_last_year'] = outputs_df['pv_kw_cum_last_year']
-    outputs_df['new_capacity'] = outputs_df['new_pv_kw']
-    outputs_df['initial_capacity_mw'] = outputs_df['initial_pv_kw'] 
-    outputs_df['system_size_kw'] = outputs_df['pv_kw']
-    outputs_df['installed_costs_dollars_per_kw'] = outputs_df['pv_price_per_kw']
-    outputs_df['fixed_om_dollars_per_kw_per_yr'] = outputs_df['pv_om_per_kw']
-    outputs_df['variable_om_dollars_per_kwh'] = outputs_df['pv_variable_om_per_kw'] 
-       
-    # set fields to write
-    fields = ['selected_option',
-              'tech',
-              'pgid',
-              'county_id',
-              'bin_id',
-              'year',
-              'sector_abbr',
-              'sector',
-              'state_abbr',
-              'census_division_abbr',
-              'pca_reg',
-              'reeds_reg',
-              'customers_in_bin',
-              'load_kwh_per_customer_in_bin',
-              'load_kwh_in_bin',
-              'max_demand_kw',
-              'hdf_load_index',
-              'owner_occupancy_status',
-              'pct_of_bldgs_developable',
-              'developable_customers_in_bin',
-              'developable_load_kwh_in_bin',
-              'solar_re_9809_gid',
-              'tilt',
-              'azimuth',
-              'developable_roof_sqft',
-              'inverter_lifetime_yrs',
-              'ann_system_degradation',
-              'i',
-              'j',
-              'cf_bin',
-              'power_curve_1',
-              'power_curve_2',
-              'power_curve_interp_factor',
-              'wind_derate_factor',
-              'turbine_height_m',
-              'turbine_size_kw',
-              'aep',
-              'naep',
-              'cf',
-              'system_size_kw',
-              'system_size_factors',
-              'n_units',
-              'total_gen_twh',
-              'rate_id_alias',
-              'rate_source',
-              'nem_system_size_limit_kw',
-              'ur_nm_yearend_sell_rate',
-              'ur_flat_sell_rate',
-              'flat_rate_excess_gen_kwh',
-              'ur_enable_net_metering',
-              'full_net_metering',
-              'excess_generation_percent',
-              'first_year_bill_with_system',
-              'first_year_bill_without_system',
-              'net_fit_credit_dollars',
-              'monthly_bill_savings',
-              'percent_monthly_bill_savings',
-              'cost_of_elec_dols_per_kwh',
-              'cap_cost_multiplier',
-              'inverter_cost_dollars_per_kw',
-              'installed_costs_dollars_per_kw',
-              'fixed_om_dollars_per_kw_per_yr',
-              'variable_om_dollars_per_kwh',
-              'carbon_price_cents_per_kwh',
-              'curtailment_rate',
-              'reeds_elec_price_mult',
-              'business_model',
-              'leasing_allowed',
-              'loan_term_yrs',
-              'loan_rate',
-              'down_payment',
-              'discount_rate',
-              'tax_rate',
-              'length_of_irr_analysis_yrs',
-              'value_of_increment',
-              'value_of_pbi_fit',
-              'value_of_ptc',
-              'pbi_fit_length',
-              'ptc_length',
-              'value_of_rebate',
-              'value_of_tax_credit_or_deduction',
-              'value_of_itc',
-              'total_value_of_incentives',
-              'lcoe',
-              'npv4',
-              'npv_agent',
-              'metric',
-              'metric_value',
-              'max_market_share',
-              'initial_number_of_adopters',
-              'initial_capacity_mw',
-              'initial_market_share',
-              'initial_market_value',
-              'number_of_adopters_last_year',
-              'installed_capacity_last_year',
-              'market_share_last_year',
-              'market_value_last_year',
-              'new_adopters',
-              'new_capacity',
-              'new_market_share',
-              'new_market_value',
-              'number_of_adopters',
-              'installed_capacity',
-              'market_share',
-              'market_value'
-              ]
-
-    # convert formatting of fields list
-    inputs['fields_str'] = utilfunc.pylist_2_pglist(fields).replace("'", "")
-    # open an in memory stringIO file (like an in memory csv)
-    s = StringIO()
-    # write the data to the stringIO
-    outputs_df.loc[:, fields].to_csv(s, index=False, header=False)
-    # seek back to the beginning of the stringIO file
-    s.seek(0)
-    # copy the data from the stringio file to the postgres table
-    sql = 'COPY %(schema)s.agent_outputs (%(fields_str)s) FROM STDOUT WITH CSV' % inputs
-    cur.copy_expert(sql, s)
-    # commit the additions and close the stringio file (clears memory)
-    con.commit()
-    s.close()
 
 
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')

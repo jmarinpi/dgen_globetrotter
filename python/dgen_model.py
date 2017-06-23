@@ -72,6 +72,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         engine = utilfunc.make_engine(model_settings.pg_engine_string)
         pgx.register_hstore(con)  # register access to hstore in postgres
         logger.info("Connected to Postgres with the following params:\n{:}".format(model_settings.pg_params_log))
+        owner = model_settings.role
 
         # =====================================================================
         # LOOP OVER SCENARIOS
@@ -163,16 +164,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
                 #==========================================================================================================
-                deprec_sch = iFuncs.import_table( scenario_settings, con, engine, model_settings.role, input_name ='depreciation_schedules', csv_import_function=iFuncs.deprec_schedule)
-                carbon_intensities = iFuncs.import_table( scenario_settings, con, engine,model_settings.role, input_name='carbon_intensities', csv_import_function=iFuncs.melt_year('grid_carbon_tco2_per_kwh'))
-                wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, engine, model_settings.role, input_name='wholesale_electricity_prices', csv_import_function=iFuncs.melt_year('wholesale_elec_price'))
-                pv_tech_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
-                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='elec_prices', csv_import_function=iFuncs.process_elec_price_trajectories)
-                load_growth = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='load_growth', csv_import_function=iFuncs.process_load_growth)
-                pv_price_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
-                batt_price_traj = iFuncs.import_table( scenario_settings, con, engine,model_settings.role, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
-                financing_terms = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
-                batt_tech_traj = iFuncs.import_table( scenario_settings, con, engine, model_settings.role,input_name='batt_tech_performance', csv_import_function=iFuncs.stacked_sectors)
+                deprec_sch = iFuncs.import_table( scenario_settings, con, engine, owner, input_name ='depreciation_schedules', csv_import_function=iFuncs.deprec_schedule)
+                carbon_intensities = iFuncs.import_table( scenario_settings, con, engine,owner, input_name='carbon_intensities', csv_import_function=iFuncs.melt_year('grid_carbon_tco2_per_kwh'))
+                wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, engine, owner, input_name='wholesale_electricity_prices', csv_import_function=iFuncs.melt_year('wholesale_elec_price'))
+                pv_tech_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
+                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='elec_prices', csv_import_function=iFuncs.process_elec_price_trajectories)
+                load_growth = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='load_growth', csv_import_function=iFuncs.process_load_growth)
+                pv_price_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
+                batt_price_traj = iFuncs.import_table( scenario_settings, con, engine,owner, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
+                financing_terms = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
+                batt_tech_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='batt_tech_performance', csv_import_function=iFuncs.stacked_sectors)
 
                 #==========================================================================================================
                 # Calculate Tariff Components from ReEDS data
@@ -241,7 +242,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply state incentives
                     solar_agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year, state_capacity_by_year])
 
-
                     # Calculate System Financial Performance
                     solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance,cores=cores)
 
@@ -292,7 +292,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         solar_agents.df.drop(['consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile'], axis=1).to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
                     # Write Outputs to the database
-                    datfunc.write_outputs(con, cur, solar_agents.df, scenario_settings.sectors, scenario_settings.schema)
+                    iFuncs.df_to_psql(solar_agents.df, engine, schema, owner,'agents_output', if_exists='append', append_transformations=True)
 
             elif scenario_settings.techs == ['wind']:
                 logger.error('Wind not yet supported')

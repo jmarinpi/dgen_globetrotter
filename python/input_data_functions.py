@@ -12,6 +12,7 @@ import sqlalchemy
 import data_functions as datfunc
 import agent_mutation
 from agents import Agents, Solar_Agents
+import json
 
 
 #%%
@@ -21,9 +22,38 @@ def check_table_exists(schema, table, con):
 
     return pd.read_sql(sql, con).values[0][0]
 
-def df_to_psql(df, name, con, engine, schema, owner,data_types={}):
 
-    df.to_sql(name, engine, schema=schema, index=False, dtype=data_types)
+def df_to_psql(df, engine, schema, owner, name, if_exists='replace', append_transformations=False):
+    d_types = {}
+    transform = {}
+    f_d_type  ={}
+
+    for f in df.columns:
+        f_d_type[f] = type(df[f].values[0]).__name__
+        if f_d_type[f] == 'list':
+            d_types[f] = sqlalchemy.types.ARRAY(sqlalchemy.types.STRINGTYPE)
+            transform[f] = lambda x: json.dumps(x)
+        if f_d_type[f] == 'ndarray':
+            d_types[f] = sqlalchemy.types.ARRAY(sqlalchemy.types.STRINGTYPE)
+            transform[f] = lambda x: json.dumps(list(x))
+        if f_d_type[f] == 'dict':
+            d_types[f] = sqlalchemy.types.STRINGTYPE
+            transform[f] = lambda x: json.dumps(dict(map(lambda (k,v):  (k, list(v)) if (type(v).__name__ == 'ndarray') else (k,v), x.items())))
+        if f_d_type[f] == 'Interval':
+            d_types[f] = sqlalchemy.types.STRINGTYPE
+            transform[f] = lambda x: str(x)
+        if f_d_type[f] == 'DataFrame':
+            d_types[f] = sqlalchemy.types.STRINGTYPE
+            transform[f] = lambda x: x.to_json()
+
+    for k, v in transform.items():
+        if append_transformations:
+            df[k+"_"+f_d_type[k]] = df[k].apply(v)
+            del df[k]
+        else:
+            df[k] = df[k].apply(v)
+
+    df.to_sql(name, engine, schema=schema, index=False, dtype=d_types, if_exists=if_exists)
 
     sql = 'ALTER TABLE %s."%s" OWNER to "%s";' % (schema, name, owner)
     with engine.begin() as conn:
@@ -71,9 +101,9 @@ def import_table(scenario_settings, con, engine, role, input_name, csv_import_fu
 
         else:
             df = pd.read_csv(os.path.join(input_data_dir, input_name, scenario_userdefined_value+".csv"), index_col=False)
-            df,d_types = csv_import_function(df)
+            df = csv_import_function(df)
 
-            df_to_psql(df, scenario_userdefined_value, con, engine, shared_schema, role, data_types=d_types)
+            df_to_psql(df, scenario_userdefined_value, con, engine, shared_schema, role)
 
     else:
         # To do: Convert all specific functions below into a single generalized function
@@ -94,7 +124,7 @@ def import_table(scenario_settings, con, engine, role, input_name, csv_import_fu
 
 #%%
 def stacked_sectors(df):
-    d_types={}
+
     sectors = ['res', 'ind','com','nonres','all']
     output = pd.DataFrame()
     core_columns = [x for x in df.columns if x.split("_")[-1] not in sectors]
@@ -117,7 +147,7 @@ def stacked_sectors(df):
                 temp['sector_abbr'] = s
                 output = pd.concat([output, temp], ignore_index=True)
 
-    return output, d_types
+    return output
 
 #%%
 def deprec_schedule(df):
@@ -134,9 +164,8 @@ def deprec_schedule(df):
         last_entry['year'] = year
         df = df.append(last_entry)
 
-    d_types = {'deprec_sch': sqlalchemy.types.ARRAY(sqlalchemy.types.Float())}
 
-    return df.ix[:,['year','sector_abbr','deprec_sch']], d_types
+    return df.ix[:,['year','sector_abbr','deprec_sch']]
 
 #%%
 def melt_year(paramater_name):
@@ -179,8 +208,7 @@ def import_agent_file(scenario_settings, con, cur, engine, model_settings, agent
 
 #%%
 def process_elec_price_trajectories(elec_price_traj):
-       
-    d_types={}
+
     base_year_prices = elec_price_traj[elec_price_traj['year']==2016]
     
     base_year_prices.rename(columns={'elec_price_res':'res_base',
@@ -211,13 +239,12 @@ def process_elec_price_trajectories(elec_price_traj):
     
     elec_price_change_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)
 
-    return elec_price_change_traj, d_types
+    return elec_price_change_traj
 
 
 #%%
 def process_load_growth(load_growth):
-       
-    d_types={}
+
     base_year_load_growth = load_growth[load_growth['year']==2014]
     
     base_year_load_growth.rename(columns={'load_growth_res':'res_base',
@@ -248,4 +275,4 @@ def process_load_growth(load_growth):
     
     load_growth_change_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)
 
-    return load_growth_change_traj, d_types
+    return load_growth_change_traj
