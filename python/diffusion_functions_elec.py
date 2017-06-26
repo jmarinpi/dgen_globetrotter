@@ -28,7 +28,7 @@ logger = utilfunc.get_logger()
 #=============================================================================
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calc_diffusion_solar(df, is_first_year, bass_params, 
+def calc_diffusion_solar(df, is_first_year, bass_params, year,
                            override_p_value = None, override_q_value = None, override_teq_yr1_value = None):
 
     ''' Calculates the market share (ms) added in the solve year. Market share must be less
@@ -76,6 +76,42 @@ def calc_diffusion_solar(df, is_first_year, bass_params,
     df['pv_kw_cum'] = df['pv_kw_cum_last_year'] + df['new_pv_kw']
     df['batt_kw_cum'] = df['batt_kw_cum_last_year'] + df['new_batt_kw']
     df['batt_kwh_cum'] = df['batt_kwh_cum_last_year'] + df['new_batt_kwh']
+    
+    # constrain state-level capacity totals to known historical values
+    if year in (2014, 2016):
+        group_cols = ['state_abbr', 'sector_abbr', 'year']
+        # find modeled capacity total by state and sector for 2014 and 2016; also return number of agents in this grouping
+        state_capacity_total = df[group_cols + ['pv_kw_cum', 'agent_id']].groupby(group_cols).agg(
+                {'pv_kw_cum':{'state_kw_cum':'sum'}, 'agent_id':{'agent_count':'count'}}).reset_index(col_level=1)
+        # drop multi-index and coerce dtypes
+        state_capacity_total.columns = state_capacity_total.columns.droplevel(0)
+        state_capacity_total.state_kw_cum = state_capacity_total.state_kw_cum.astype(np.float64) 
+        df.pv_kw_cum = df.pv_kw_cum.astype(np.float64) 
+        
+        # merge state totals back to agent df
+        df = pd.merge(df, state_capacity_total, how = 'left', on = ['state_abbr', 'sector_abbr', 'year'])
+        
+        # read csv of historical capacity values by state and sector
+        historical_state_capacity_df = pd.read_csv('../input_data/installed_capacity_mw_by_state_sector.csv')
+        
+        # join historical data to agent df
+        df = pd.merge(df, historical_state_capacity_df, how='left', on=['state_abbr', 'sector_abbr', 'year'])
+        
+        # calculate scale factor - weight that is given to each agent based on proportion of state total
+        # where state cumulative capacity is 0, proportion evenly to all agents
+        df['scale_factor'] =  np.where(df['state_kw_cum'] == 0, 1./df['agent_count'], df['pv_kw_cum'] / df['state_kw_cum'])
+        
+        # use scale factor to constrain agent capacity values to historical values
+        df['pv_kw_cum'] = df['scale_factor'] * df['observed_capacity_mw'] * 1000.
+        
+        # recalculate number of adopters using anecdotal values
+        df['number_of_adopters'] = np.where(df['sector_abbr'] == 'res', df['pv_kw_cum']/5.0, df['pv_kw_cum']/100.0)
+    
+        # recalculate market share
+        df['market_share'] = np.where(df['developable_customers_in_bin'] == 0, 0., 
+                           df['number_of_adopters'] / df['developable_customers_in_bin'])
+        df['market_share'] = df['market_share'].astype(np.float64)
+        
 
     df = df.set_index('agent_id')
     market_last_year = df[['market_share', 'max_market_share', 'number_of_adopters',
@@ -257,5 +293,4 @@ def calc_equiv_time(df):
     return df
     
 #=============================================================================
-
 

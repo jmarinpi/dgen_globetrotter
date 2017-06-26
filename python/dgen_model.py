@@ -263,7 +263,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         solar_agents.on_frame(agent_mutation.elec.apply_market_last_year, market_last_year_df)
 
                     # Calculate diffusion based on economics and bass diffusion
-                    solar_agents.df, market_last_year_df = diffusion_functions_elec.calc_diffusion_solar(solar_agents.df, is_first_year, bass_params)
+                    solar_agents.df, market_last_year_df = diffusion_functions_elec.calc_diffusion_solar(solar_agents.df, is_first_year, bass_params, year)
 
                     # Estimate total generation
                     solar_agents.on_frame(agent_mutation.elec.estimate_total_generation)
