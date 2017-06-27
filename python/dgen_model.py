@@ -308,6 +308,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 break
             elif scenario_settings.techs == ['du']:
                 logger.error('GHP not yet supported')
+                logger.error('GHP not yet supported')
                 break
             #==============================================================================
             #    Outputs & Visualization

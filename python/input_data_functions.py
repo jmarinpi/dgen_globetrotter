@@ -22,59 +22,72 @@ def check_table_exists(schema, table, con):
 
     return pd.read_sql(sql, con).values[0][0]
 
+def get_psql_table_fields(engine, schema, name):
+    sql = "SELECT column_name FROM information_schema.columns WHERE table_schema = '%s' AND table_name   = '%s'" % (schema, name)
+    return np.concatenate(pd.read_sql_query(sql, engine).values)
 
 def df_to_psql(df, engine, schema, owner, name, if_exists='replace', append_transformations=False):
     d_types = {}
     transform = {}
-    f_d_type  ={}
+    f_d_type = {}
     sql_type = {}
 
+    delete_list = []
     for f in df.columns:
-        f_d_type[f] = type(df[f].values[0]).__name__
-        if f_d_type[f][0:3].lower() == 'int':
-            sql_type[f] = 'INTEGER'
+        df_filter = pd.notnull(df[f]).values
+        if sum(df_filter) > 0:
+            f_d_type[f] = type(df[f][df_filter].values[0]).__name__
 
-        if f_d_type[f][0:5].lower() == 'float':
-            sql_type[f] = 'DOUBLE PRECISION'
+            if f_d_type[f][0:3].lower() == 'int':
+                sql_type[f] = 'INTEGER'
 
-        if f_d_type[f][0:3].lower() == 'str':
-            sql_type[f] = 'VARCHAR'
+            if f_d_type[f][0:5].lower() == 'float':
+                sql_type[f] = 'DOUBLE PRECISION'
 
-        if f_d_type[f] == 'list':
-            d_types[f] = sqlalchemy.types.ARRAY(sqlalchemy.types.STRINGTYPE)
-            transform[f] = lambda x: json.dumps(x)
-            sql_type[f] = 'VARCHAR'
+            if f_d_type[f][0:3].lower() == 'str':
+                sql_type[f] = 'VARCHAR'
 
-        if f_d_type[f] == 'ndarray':
-            d_types[f] = sqlalchemy.types.ARRAY(sqlalchemy.types.STRINGTYPE)
-            transform[f] = lambda x: json.dumps(list(x))
-            sql_type[f] = 'VARCHAR'
+            if f_d_type[f] == 'list':
+                d_types[f] = sqlalchemy.types.ARRAY(sqlalchemy.types.STRINGTYPE)
+                transform[f] = lambda x: json.dumps(x)
+                sql_type[f] = 'VARCHAR'
 
-        if f_d_type[f] == 'dict':
-            d_types[f] = sqlalchemy.types.STRINGTYPE
-            transform[f] = lambda x: json.dumps(dict(map(lambda (k,v):  (k, list(v)) if (type(v).__name__ == 'ndarray') else (k,v), x.items())))
-            sql_type[f] = 'VARCHAR'
+            if f_d_type[f] == 'ndarray':
+                d_types[f] = sqlalchemy.types.ARRAY(sqlalchemy.types.STRINGTYPE)
+                transform[f] = lambda x: json.dumps(list(x))
+                sql_type[f] = 'VARCHAR'
 
-        if f_d_type[f] == 'Interval':
-            d_types[f] = sqlalchemy.types.STRINGTYPE
-            transform[f] = lambda x: str(x)
-            sql_type[f] = 'VARCHAR'
+            if f_d_type[f] == 'dict':
+                d_types[f] = sqlalchemy.types.STRINGTYPE
+                transform[f] = lambda x: json.dumps(
+                    dict(map(lambda (k, v): (k, list(v)) if (type(v).__name__ == 'ndarray') else (k, v), x.items())))
+                sql_type[f] = 'VARCHAR'
 
-        if f_d_type[f] == 'DataFrame':
-            d_types[f] = sqlalchemy.types.STRINGTYPE
-            transform[f] = lambda x: x.to_json()
-            sql_type[f] = 'VARCHAR'
+            if f_d_type[f] == 'Interval':
+                d_types[f] = sqlalchemy.types.STRINGTYPE
+                transform[f] = lambda x: str(x)
+                sql_type[f] = 'VARCHAR'
+
+            if f_d_type[f] == 'DataFrame':
+                d_types[f] = sqlalchemy.types.STRINGTYPE
+                transform[f] = lambda x: x.to_json()
+                sql_type[f] = 'VARCHAR'
+        else:
+            delete_list.append(f)
+
+    df = df.drop(delete_list, axis=1)
 
     for k, v in transform.items():
         if append_transformations:
-            df[k+"_"+f_d_type[k]] = df[k].apply(v)
+            df[k + "_" + f_d_type[k]] = df[k].apply(v)
+            sql_type[k + "_" + f_d_type[k]] = sql_type[k]
             del df[k]
+            del sql_type[k]
         else:
             df[k] = df[k].apply(v)
 
     if if_exists == 'append':
-        sql = "SELECT column_name FROM information_schema.columns WHERE table_schema = '%s' AND table_name   = '%s'" % (schema, name)
-        fields = np.concatenate(pd.read_sql_query(sql, engine).values)
+        fields = get_psql_table_fields(engine, schema, name)
         for f in list(set(df.columns.values) - set(fields)):
             sql = "ALTER TABLE %s.%s ADD COLUMN %s %s" % (schema, name, f, sql_type[f])
             engine.execute(sql)
