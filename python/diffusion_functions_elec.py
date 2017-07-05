@@ -112,6 +112,8 @@ def calc_diffusion_solar(df, is_first_year, bass_params, year,
                            df['number_of_adopters'] / df['developable_customers_in_bin'])
         df['market_share'] = df['market_share'].astype(np.float64)
         
+        df.drop(['agent_count', 'state_kw_cum', 'state', 'observed_capacity_mw', 'scale_factor'], axis=1, inplace=True)
+        
 
     df = df.set_index('agent_id')
     market_last_year = df[['market_share', 'max_market_share', 'number_of_adopters',
