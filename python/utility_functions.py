@@ -20,6 +20,7 @@ import time
 import subprocess
 import os
 from sqlalchemy import create_engine
+from sqlalchemy.pool import  NullPool
 #==============================================================================
 #       Logging Functions
 #==============================================================================
@@ -143,7 +144,7 @@ def make_con(connection_string, role, async=False):
 
 def make_engine(pg_engine_con):
 
-    return create_engine(pg_engine_con)
+    return create_engine(pg_engine_con, poolclass=NullPool)
 
 
 def get_pg_params(json_file):

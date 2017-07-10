@@ -58,8 +58,9 @@ def load_scenario(xls_file, schema, con, cur):
                 fnr.__transpose_values__()
             if melt == True:
                 fnr.__melt__()
-            fnr.to_postgres(con, cur, schema, table)
-
+           
+            fnr.to_postgres(con,cur, schema, table)
+           
     except ExcelError, e:
         raise ExcelError(e)
 

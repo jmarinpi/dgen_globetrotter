@@ -222,11 +222,13 @@ class FancyNamedRange(object):
             raise NotImplementedError('Creation of a new postgres table is not implemented')
         
         s = self.to_stringIO(transpose, columns)        
-        
+
+        connection.commit()           
         if overwrite == True:
             sql = 'DELETE FROM %(schema)s.%(table)s;' % sql_dict
             cursor.execute(sql)
-        
+            connection.commit()
+ 
         sql = '%(schema)s.%(table)s' % sql_dict
         cursor.copy_from(s, sql, sep = ',', null = '')
         connection.commit()    

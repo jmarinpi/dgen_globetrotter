@@ -12,6 +12,7 @@ import sqlalchemy
 import data_functions as datfunc
 import agent_mutation
 from agents import Agents, Solar_Agents
+from pandas import DataFrame
 import json
 
 
@@ -33,10 +34,12 @@ def df_to_psql(df, engine, schema, owner, name, if_exists='replace', append_tran
     sql_type = {}
 
     delete_list = []
+    orig_fields = df.columns.values
+    df.columns = [i.lower() for i in orig_fields]
     for f in df.columns:
         df_filter = pd.notnull(df[f]).values
         if sum(df_filter) > 0:
-            f_d_type[f] = type(df[f][df_filter].values[0]).__name__
+            f_d_type[f] = type(df[f][df_filter].values[0]).__name__.lower()
 
             if f_d_type[f][0:3].lower() == 'int':
                 sql_type[f] = 'INTEGER'
@@ -63,16 +66,17 @@ def df_to_psql(df, engine, schema, owner, name, if_exists='replace', append_tran
                     dict(map(lambda (k, v): (k, list(v)) if (type(v).__name__ == 'ndarray') else (k, v), x.items())))
                 sql_type[f] = 'VARCHAR'
 
-            if f_d_type[f] == 'Interval':
+            if f_d_type[f] == 'interval':
                 d_types[f] = sqlalchemy.types.STRINGTYPE
                 transform[f] = lambda x: str(x)
                 sql_type[f] = 'VARCHAR'
 
-            if f_d_type[f] == 'DataFrame':
+            if f_d_type[f] == 'dataframe':
                 d_types[f] = sqlalchemy.types.STRINGTYPE
-                transform[f] = lambda x: x.to_json()
+                transform[f] = lambda x: x.to_json() if isinstance(x,DataFrame) else str(x)
                 sql_type[f] = 'VARCHAR'
         else:
+            orig_fields = [i for i in orig_fields if i.lower()!=f]
             delete_list.append(f)
 
     df = df.drop(delete_list, axis=1)
@@ -86,18 +90,21 @@ def df_to_psql(df, engine, schema, owner, name, if_exists='replace', append_tran
         else:
             df[k] = df[k].apply(v)
 
+    conn = engine.connect()
     if if_exists == 'append':
-        fields = get_psql_table_fields(engine, schema, name)
+        fields = [i.lower() for i in get_psql_table_fields(engine, schema, name)]
         for f in list(set(df.columns.values) - set(fields)):
             sql = "ALTER TABLE %s.%s ADD COLUMN %s %s" % (schema, name, f, sql_type[f])
-            engine.execute(sql)
-
+            conn.execute(sql)
+            
     df.to_sql(name, engine, schema=schema, index=False, dtype=d_types, if_exists=if_exists)
-
     sql = 'ALTER TABLE %s."%s" OWNER to "%s";' % (schema, name, owner)
-    with engine.begin() as conn:
-        conn.execute(sql)
+    conn.execute(sql)
+    
+    conn.close()
+    engine.dispose() 
 
+    df.columns = orig_fields
     return df
     
 

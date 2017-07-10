@@ -234,10 +234,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply host-owned financial parameters
                     solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
 
-                    if 'ix' not in os.name: 
-                        cores = None
-                    else: 
-                        cores = model_settings.local_cores
+                     
+                    cores = model_settings.local_cores
 
                     # Apply state incentives
                     solar_agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year, state_capacity_by_year])
@@ -329,13 +327,15 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # drop the new scenario_settings.schema
             #datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, model_settings.delete_output_schema)
             #####################################################################
-
+            engine.dispose()
             logger.info("-------------Model Run Complete-------------")
             logger.info('Completed in: %.1f seconds' % (time.time() - model_settings.model_init))
 
 
     except Exception, e:
         # close the connection (need to do this before dropping schema or query will hang)
+        if 'engine' in locals():
+            engine.dispose()
         if 'con' in locals():
             con.close()
         if 'logger' in locals():
