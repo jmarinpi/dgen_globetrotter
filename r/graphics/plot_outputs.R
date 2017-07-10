@@ -58,6 +58,13 @@ sql = sprintf("SELECT *
                  WHERE tech = '%s'", schema, tech)
 df = tbl(src,sql(sql))
 
+# renaming certain table column names to make it consistent with the varaible names in R scripts
+
+df <- rename(df, installed_capacity=pv_kw_cum, installed_capacity_last_year=pv_kw_cum_last_year,
+	new_capacity=new_pv_kw, initial_capacity_mw=initial_pv_kw, system_size_kw=pv_kw,
+	installed_costs_dollars_per_kw=pv_price_per_kw, fixed_om_dollars_per_kw_per_yr=pv_om_per_kw,
+	variable_om_dollars_per_kwh=pv_variable_om_per_kw)
+
 # get the start year and end year for the model run
 start_year = as.numeric(collect(summarise(df, min(year))))
 end_year = as.numeric(collect(summarise(df, max(year))))

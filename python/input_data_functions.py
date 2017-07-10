@@ -45,7 +45,8 @@ def df_to_psql(df, engine, schema, owner, name, if_exists='replace', append_tran
                 sql_type[f] = 'INTEGER'
 
             if f_d_type[f][0:5].lower() == 'float':
-                sql_type[f] = 'DOUBLE PRECISION'
+                d_types[f] = sqlalchemy.types.NUMERIC
+                sql_type[f] = 'NUMERIC'
 
             if f_d_type[f][0:3].lower() == 'str':
                 sql_type[f] = 'VARCHAR'
