@@ -46,7 +46,8 @@ Rscript_paths = ['/usr/bin/Rscript','/usr/local/bin/Rscript','C:/Users/mgleason/
 #==============================================================================
 #   Path to support functions repo will vary by user
 #==============================================================================
-support_repo_paths = ['/home/tkwasnik/support_functions/python','C:/Users/pdas/Documents/GitHub/support_functions/python', '/users/tkwasnik/github/support_functions/python', '/home/pdas/github/support_functions/python', 'C:/users/pgagnon/desktop/support_functions/python', '/srv/data/home/pgagnon/support_functions/python','support_functions/python']
+support_repo_paths = ['C:/Users/pdas/Documents/GitHub/support_functions/python', '/users/tkwasnik/github/support_functions/python', '/home/pdas/github/support_functions/python', 'C:/users/pgagnon/desktop/support_functions/python', '/srv/data/home/pgagnon/support_functions/python','support_functions/python','/Users/kmccabe/Projects/support_functions/python','/home/tkwasnik/support_functions/python']
+
 for path in support_repo_paths:
     sys.path.append(path)
 

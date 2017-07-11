@@ -178,6 +178,7 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
         # If it is the final year, write outputs
         if year==scenario_settings.model_years[-1]:
             dispatch_by_ba_and_year = dispatch_by_ba_and_year[['ba', 'year'] + hour_list] # reorder the columns
+            dispatch_by_ba_and_year['year'] = np.array(dispatch_by_ba_and_year['year'], int)
             dispatch_by_ba_and_year.round(3).to_csv(out_scen_path + '/dispatch_by_ba_and_year_MW.csv', index=False)
     
 
