@@ -5,7 +5,7 @@ import pandas as pd
 import os
 
 
-def init_solar_agents(model_settings, scenario_settings, cur, con):
+def init_solar_agents(model_settings, scenario_settings, prng, cur, con):
     # Prepare core agent attributes
     role = model_settings.role
     techs = scenario_settings.techs
@@ -99,7 +99,7 @@ def init_solar_agents(model_settings, scenario_settings, cur, con):
     # =========================================================================
     # AGENT TARIFF SELECTION
     # =========================================================================
-    agents_df = elec.select_tariff_driver(agents_df, rates_rank_df, rates_json_df, n_workers=model_settings.local_cores)
+    agents_df = elec.select_tariff_driver(agents_df, prng, rates_rank_df, rates_json_df, n_workers=model_settings.local_cores)
     
     #==============================================================================
     # Set initial year columns. Initial columns do not change, whereas non-initial are adjusted each year

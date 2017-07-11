@@ -232,7 +232,7 @@ def melt_year(paramater_name):
 
 
 #%%
-def import_agent_file(scenario_settings, con, cur, engine, model_settings, agent_file_status, input_name):
+def import_agent_file(scenario_settings, prng, con, cur, engine, model_settings, agent_file_status, input_name):
 
     schema = scenario_settings.schema
     shared_schema = 'diffusion_shared'
@@ -248,7 +248,7 @@ def import_agent_file(scenario_settings, con, cur, engine, model_settings, agent
 
     else:
 
-        solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, cur, con))
+        solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, prng, cur, con))
 
     return solar_agents
 

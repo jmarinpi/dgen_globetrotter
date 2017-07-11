@@ -118,7 +118,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # get settings whether to use pre-generated agent file ('User Defined'- provide pkl file name) or generate new agents
             agent_file_status = scenario_settings.agent_file_status
 
-            # create psuedo-rangom number generator (not used until tech/finance choice function)
+            # create psuedo-random number generator (not used until select_tariff_driver, tech/finance choice function)
             prng = np.random.RandomState(scenario_settings.random_generator_seed)
 
             #==========================================================================================================
@@ -133,7 +133,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 # =========================================================   
              
                 # Depending on settings either generate new agents or use pre-generated agents from provided .pkl file                
-                solar_agents = iFuncs.import_agent_file( scenario_settings, con, cur, engine, model_settings, agent_file_status, input_name='agent_file')            
+                solar_agents = iFuncs.import_agent_file(scenario_settings, prng, con, cur, engine, model_settings, agent_file_status, input_name='agent_file')            
                     
                 # Write base agents to disk
                 solar_agents.df.to_pickle(out_scen_path + '/agent_df_base.pkl')

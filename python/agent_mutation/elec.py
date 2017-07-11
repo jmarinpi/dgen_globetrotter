@@ -99,16 +99,20 @@ def adjust_roof_area(agent_df):
     return agent_df
 
 #%%
-def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):
+def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):
 
     if 'ix' not in os.name:
         EXECUTOR = concur_f.ThreadPoolExecutor
     else:
         EXECUTOR = concur_f.ProcessPoolExecutor
 
+    seed = prng.get_state()[1][0]
+
     futures = []
     with EXECUTOR(max_workers=n_workers) as executor:
         for agent_id, agent in agent_df.iterrows():
+            
+            prng.seed(seed)
             # Filter for list of tariffs available to this agent
             agent_rate_list = rates_rank_df.loc[agent_id].drop_duplicates()
             if np.isscalar(agent_rate_list['rate_id_alias']):
@@ -121,7 +125,10 @@ def select_tariff_driver(agent_df, rates_rank_df, rates_json_df, n_workers=mp.cp
             # to each agent (e.g., if the agent is in a county where more than 
             # one utility has service). Select which one by random.
             utility_list = np.unique(agent_rate_jsons['eia_id'])
-            utility_id = random.choice(utility_list)
+
+            # Do a random draw from the utility_list using the same seed as generated in dgen_model.py and return the utility_id that was selected
+            utility_id = prng.choice(utility_list)
+
             agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
             
             futures.append(executor.submit(select_tariff, agent, agent_rate_jsons))
