@@ -315,9 +315,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info("---------Saving Model Results---------")
             out_subfolders = datfunc.create_tech_subfolders(out_scen_path, scenario_settings.techs, out_subfolders)
 
-            # copy outputs to csv
-            datfunc.copy_outputs_to_csv(scenario_settings.techs, scenario_settings.schema, out_scen_path, engine, con)
-
             # add indices to postgres output table
             datfunc.index_output_table(con, cur, scenario_settings.schema)
 

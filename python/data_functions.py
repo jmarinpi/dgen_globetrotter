@@ -375,27 +375,6 @@ def index_output_table(con, cur, schema):
         except:
             print "Warning: Could not index %s" % (f)
 
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def copy_outputs_to_csv(techs, schema, out_scen_path, engine, con, file_suffix=''):
-
-    logger.info('\tExporting Results from Database')
-
-    inputs = locals().copy()
-
-    # copy data to csv
-    for tech in techs:
-        inputs['tech'] = tech
-        out_file = os.path.join(out_scen_path, tech,'outputs_%s%s.csv.gz' % (tech, file_suffix))
-
-        sql = "SELECT * FROM %(schema)s.agent_outputs WHERE tech = '%(tech)s'" % inputs
-        df = pd.read_sql(sql, engine)
-        df.to_csv(out_file, sep='|', compression='gzip')
-
-    # write the scenario optoins to csv as well
-    f2 = os.path.join(out_scen_path, 'scenario_options_summary.csv')
-    sql = 'SELECT * FROM %s.input_main_scenario_options' % (schema)
-    pd.read_sql(sql,engine).to_csv(f2)
-
 
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def create_scenario_report(techs, schema, scen_name, out_scen_path, cur, con, Rscriblock_path, pg_params_file, file_suffix=''):
