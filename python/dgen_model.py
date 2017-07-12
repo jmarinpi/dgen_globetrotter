@@ -323,7 +323,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
             #####################################################################
             # drop the new scenario_settings.schema
-            #datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, model_settings.delete_output_schema)
+            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, model_settings.delete_output_schema)
             #####################################################################
             engine.dispose()
             logger.info("-------------Model Run Complete-------------")
@@ -338,9 +338,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             con.close()
         if 'logger' in locals():
             logger.error(e.__str__(), exc_info = True)
-      #  if 'scenario_settings' in locals() and scenario_settings.schema is not None:
+        if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
-      #      datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
         if 'logger' not in locals():
             raise
 
@@ -348,9 +348,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
     finally:
         if 'con' in locals():
             con.close()
-      #  if 'scenario_settings' in locals() and scenario_settings.schema is not None:
+        if 'scenario_settings' in locals() and scenario_settings.schema is not None:
       #      # drop the output schema
-       #     datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
         if 'logger' in locals():
             utilfunc.shutdown_log(logger)
             utilfunc.code_profiler(model_settings.out_dir)
