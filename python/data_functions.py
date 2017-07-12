@@ -365,7 +365,8 @@ def index_output_table(con, cur, schema):
     # create indices that will be needed for various aggregations in R
     # visualization script
 
-    for f in ['year', 'state_abbr', 'sector', 'system_size_factors', 'metric', 'turbine_height_m', 'tech']:
+    #for f in ['year', 'state_abbr', 'sector', 'system_size_factors', 'metric', 'turbine_height_m', 'tech']:
+    for f in ['year', 'state_abbr', 'sector', 'system_size_factors', 'metric', 'tech']:
         try:
             sql = '''CREATE INDEX agent_outputs_%s_btree ON %s.agent_outputs USING BTREE(%s);
              ''' % (f,schema,f)
