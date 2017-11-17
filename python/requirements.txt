@@ -20,6 +20,7 @@ pickle
 psutil
 psycopg2
 scoop=0.7
+sqlalchemy=1.1.10
 shutil
 subprocess
 sys
