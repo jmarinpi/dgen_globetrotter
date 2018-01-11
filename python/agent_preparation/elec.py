@@ -848,3 +848,53 @@ def merge_all_core_agents(cur, con, schema, role, sectors, techs):
              %(sql_body)s;""" % inputs
     cur.execute(sql)
     con.commit()
+
+
+#%%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def combine_temporal_data_wind(cur, con, schema, start_year, end_year):
+    
+    inputs = locals().copy()
+    
+    # combined temporal data for technology specific factors
+    sql = """DROP TABLE IF EXISTS %(schema)s.temporal_factors_wind;
+            CREATE UNLOGGED TABLE %(schema)s.temporal_factors_wind as
+            SELECT      a.year, 
+                    	a.turbine_size_kw, 
+                         a.power_curve_1,
+                         a.power_curve_2,
+                    	a.interp_factor,
+                    	b.turbine_height_m,
+                    	d.derate_factor
+            FROM %(schema)s.input_wind_performance_power_curve_transitions a
+            LEFT JOIN %(schema)s.input_wind_performance_allowable_turbine_sizes b
+                	ON a.turbine_size_kw = b.turbine_size_kw
+            LEFT JOIN %(schema)s.input_wind_performance_gen_derate_factors d
+                	ON a.year = d.year
+                 AND  a.turbine_size_kw = d.turbine_size_kw
+            WHERE a.year BETWEEN %(start_year)s AND %(end_year)s
+            
+            UNION ALL
+            
+            SELECT GENERATE_SERIES(%(start_year)s, %(end_year)s, 2) as year,
+                	0 as turbine_size_kw,
+                	0 as power_curve_1,
+                  0 as power_curve_2,
+                  0 as interp_factor,
+                	0 as turbine_height_m,
+                	0 as derate_factor;""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
+    
+    # create indices for subsequent joins
+    sql =  """CREATE INDEX temporal_factors_technology_join_fields_btree 
+              ON %(schema)s.temporal_factors_wind
+              USING BTREE(turbine_height_m, turbine_size_kw, power_curve_1, power_curve_2);
+              
+              CREATE INDEX temporal_factors_technology_year_btree 
+              ON %(schema)s.temporal_factors_wind
+              USING BTREE(year);""" % inputs
+    cur.execute(sql)
+    con.commit()  
+    

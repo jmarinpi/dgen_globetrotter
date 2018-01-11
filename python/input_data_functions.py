@@ -244,13 +244,18 @@ def import_agent_file(scenario_settings, prng, con, cur, engine, model_settings,
         userdefined_table_name = "input_" + input_name + "_user_defined"
         scenario_userdefined_name = get_userdefined_scenario_settings(schema, userdefined_table_name, con)
         scenario_userdefined_value = scenario_userdefined_name['val'].values[0]
-        solar_agents = Agents(pd.read_pickle(os.path.join(input_agent_dir, scenario_userdefined_value+".pkl")))
+        agents = Agents(pd.read_pickle(os.path.join(input_agent_dir, scenario_userdefined_value+".pkl")))
 
     else:
+        
+        if scenario_settings.techs == ['solar']:
+            agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, prng, cur, con))
+        elif scenario_settings.techs == ['wind']:
+            agents = Agents(agent_mutation.init_wind_agents(model_settings, scenario_settings, prng, cur, con))
+        else:
+            raise ValueError('Invalid tech mode: only wind or solar supported.')
 
-        solar_agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, prng, cur, con))
-
-    return solar_agents
+    return agents
 
 
 #%%
