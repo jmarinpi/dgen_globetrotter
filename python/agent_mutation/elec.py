@@ -264,8 +264,9 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
     horizon_year = year-10
 
     elec_price_escalator_df = elec_price_multiplier.copy()
-    if horizon_year in elec_price_change_traj['year']:
-        elec_price_escalator_df['historical'] = elec_price_change_traj[elec_price_change_traj['year']==horizon_year]
+
+    if horizon_year in elec_price_change_traj.year.values:
+        elec_price_escalator_df['historical'] = elec_price_change_traj[elec_price_change_traj['year']==horizon_year]['elec_price_multiplier'].values
     else:
         first_year = np.min(elec_price_change_traj['year'])
         first_year_df = elec_price_change_traj[elec_price_change_traj['year']==first_year].reset_index()
