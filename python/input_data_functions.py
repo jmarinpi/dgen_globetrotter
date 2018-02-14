@@ -248,12 +248,7 @@ def import_agent_file(scenario_settings, prng, con, cur, engine, model_settings,
 
     else:
         
-        if scenario_settings.techs == ['solar']:
-            agents = Agents(agent_mutation.init_solar_agents(model_settings, scenario_settings, prng, cur, con))
-        elif scenario_settings.techs == ['wind']:
-            agents = Agents(agent_mutation.init_wind_agents(model_settings, scenario_settings, prng, cur, con))
-        else:
-            raise ValueError('Invalid tech mode: only wind or solar supported.')
+        agents = Agents(agent_mutation.init_agents(model_settings, scenario_settings, prng, cur, con))
 
     return agents
 

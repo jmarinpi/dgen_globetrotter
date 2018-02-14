@@ -963,7 +963,7 @@ def get_normalized_load_profiles(con, schema, sectors):
     df_list = []
     for sector_abbr, sector in sectors.iteritems():
         inputs['sector_abbr'] = sector_abbr
-        sql = """SELECT a.agent_id, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
+        sql = """SELECT DISTINCT a.agent_id, '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
                         a.county_id, a.bin_id,
                         b.nkwh as consumption_hourly,
                         1e8 as scale_offset
