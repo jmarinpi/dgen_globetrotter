@@ -318,8 +318,8 @@ def apply_depreciation_schedule(dataframe, deprec_sch):
 
     dataframe = dataframe.reset_index()
 
-    dataframe = pd.merge(dataframe, deprec_sch[['sector_abbr', 'deprec_sch', 'year']],
-                         how='left', on=['sector_abbr', 'year'])
+    dataframe = pd.merge(dataframe, deprec_sch[['tech', 'sector_abbr', 'deprec_sch', 'year']],
+                         how='left', on=['tech', 'sector_abbr', 'year'])
                          
     dataframe = dataframe.set_index('agent_id')
 

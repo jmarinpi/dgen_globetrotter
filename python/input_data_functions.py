@@ -215,14 +215,14 @@ def deprec_schedule(df):
     return df.ix[:,['year','sector_abbr','deprec_sch']]
 
 #%%
-def melt_year(paramater_name):
+def melt_year(parameter_name):
 
     def function(df):
         d_types = {}
         years = np.arange(2014, 2051, 2)
         years = [str(year) for year in years]
 
-        df_tify = pd.melt(df, id_vars='state_abbr', value_vars=years, var_name='year', value_name=paramater_name)
+        df_tify = pd.melt(df, id_vars='state_abbr', value_vars=years, var_name='year', value_name=parameter_name)
 
         df_tify['year'] = df_tify['year'].astype(int)
 
