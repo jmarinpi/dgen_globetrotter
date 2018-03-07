@@ -193,6 +193,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # is it the first model year?
                     is_first_year = year == model_settings.start_year
+                    
+                    # combine temporal data of current year
+                    agents.on_frame(agent_mutation.elec.apply_temporal_data_wind, [con, schema, year])
 
                     # get and apply load growth
                     agents.on_frame(agent_mutation.elec.apply_load_growth, (load_growth))

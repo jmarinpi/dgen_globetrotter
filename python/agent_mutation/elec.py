@@ -1033,7 +1033,7 @@ def get_normalized_hourly_resource_solar(con, schema, sectors, techs):
         df_list = []
         for sector_abbr, sector in sectors.iteritems():
             inputs['sector_abbr'] = sector_abbr
-            sql = """SELECT 'solar'::VARCHAR(5) as tech,
+            sql = """SELECT DISTINCT 'solar'::VARCHAR(5) as tech,
                             '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
                             a.county_id, a.bin_id,
                             b.cf as generation_hourly,
@@ -1677,3 +1677,23 @@ def calc_state_capacity_by_year(con, schema, load_growth, peak_demand_mw, census
     df['year'] = year
     df = df[["state_abbr","cum_capacity_mw","cum_capacity_pct","cum_incentive_spending_usd","peak_demand_mw","year"]]
     return df
+
+#%%   
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def apply_temporal_data_wind(dataframe, con, schema, year):
+    
+    inputs = locals().copy()
+    dataframe = dataframe.reset_index()    
+    
+    sql = """SELECT *
+             FROM %(schema)s.agent_best_option_wind_all
+             WHERE year = %(year)s;""" % inputs
+    temporal_data = pd.read_sql(sql, con)
+    
+    join_cols = ['year','county_id','bin_id','sector_abbr','sector','tech','turbine_height_m','turbine_size_kw']
+    out_cols = ['naep','aep','system_size_kw','nturb','scoe']
+    dataframe = pd.merge(dataframe, temporal_data[join_cols+out_cols], how='inner', on=join_cols)
+    
+    dataframe = dataframe.set_index('agent_id')
+    
+    return dataframe

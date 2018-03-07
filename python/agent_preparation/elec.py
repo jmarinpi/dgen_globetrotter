@@ -77,7 +77,8 @@ def generate_core_agent_attributes(cur, con, techs, schema, role, sample_pct, mi
         #======================================================================
         #     create a view that combines all sectors and techs
         #======================================================================
-        merge_all_core_agents(cur, con, schema, role,sectors, techs)
+        merge_all_core_agents(cur, con, schema, role, sectors, techs)
+        merge_best_options_wind(cur, con, schema, role, sectors, techs)
 
         #======================================================================
         #    drop the intermediate tables
@@ -1173,6 +1174,43 @@ def merge_all_core_agents(cur, con, schema, role, sectors, techs):
     inputs['sql_body'] = ' UNION ALL '.join(sql_list)
     sql = """DROP VIEW IF EXISTS %(schema)s.agent_core_attributes_all;
              CREATE VIEW %(schema)s.agent_core_attributes_all AS
+             %(sql_body)s;""" % inputs
+    cur.execute(sql)
+    con.commit()
+    
+    
+#%%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def merge_best_options_wind(cur, con, schema, role, sectors, techs):
+
+    inputs = locals().copy()
+
+    sql_list = []
+    for sector_abbr, sector in sectors.iteritems():
+        for tech in techs:
+            inputs['sector_abbr'] = sector_abbr
+            inputs['sector'] = sector
+            inputs['tech'] = tech
+            sql = """SELECT a.year,
+                            a.county_id,
+                            a.bin_id,
+                            a.turbine_height_m,
+                            a.turbine_size_kw,
+                            -- replicate for each sector and tech
+                            '%(sector_abbr)s'::CHARACTER VARYING(3) as sector_abbr,
+                            '%(sector)s'::TEXT as sector,
+                            '%(tech)s'::varchar(5) as tech,
+                            a.naep,
+                            a.aep,
+                            a.system_size_kw,
+                            a.nturb,
+                            a.scoe
+                    FROM %(schema)s.agent_best_option_wind_%(sector_abbr)s a """ % inputs
+            sql_list.append(sql)
+
+    inputs['sql_body'] = ' UNION ALL '.join(sql_list)
+    sql = """DROP VIEW IF EXISTS %(schema)s.agent_best_option_wind_all;
+             CREATE VIEW %(schema)s.agent_best_option_wind_all AS
              %(sql_body)s;""" % inputs
     cur.execute(sql)
     con.commit()
