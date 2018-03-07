@@ -151,7 +151,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # TECHNOLOGY DEPLOYMENT
             #==============================================================================
 
-            if scenario_settings.techs == ['solar']:
+            if scenario_settings.techs in [['wind'],['solar']]:
                 # get dsire incentives, srecs, and itc inputs
                 # TODO: move these to agent mutation
 

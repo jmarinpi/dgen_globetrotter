@@ -113,9 +113,11 @@ def init_agents(model_settings, scenario_settings, prng, cur, con):
     agents_unique_df = agents_df.drop_duplicates(subset=['county_id','bin_id','sector_abbr'])
     agents_unique_df = elec.select_tariff_driver(agents_unique_df, prng, rates_rank_df, rates_json_df, n_workers=model_settings.local_cores)
     
+    agents_df.reset_index(inplace=True)
     join_cols = ['county_id','bin_id','sector_abbr']
     out_cols = ['tariff_dict','tariff_id']
     agents_df = pd.merge(agents_df, agents_unique_df[join_cols+out_cols], how='left', on=join_cols)
+    agents_df.set_index('agent_id', inplace=True)
     
     #==============================================================================
     # Set initial year columns. Initial columns do not change, whereas non-initial are adjusted each year
