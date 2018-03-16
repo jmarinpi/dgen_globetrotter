@@ -167,13 +167,14 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 deprec_sch = iFuncs.import_table( scenario_settings, con, engine, owner, input_name ='depreciation_schedules', csv_import_function=iFuncs.deprec_schedule)
                 carbon_intensities = iFuncs.import_table( scenario_settings, con, engine,owner, input_name='carbon_intensities', csv_import_function=iFuncs.melt_year('grid_carbon_tco2_per_kwh'))
                 wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, engine, owner, input_name='wholesale_electricity_prices', csv_import_function=iFuncs.melt_year('wholesale_elec_price'))
-                pv_tech_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
                 elec_price_change_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='elec_prices', csv_import_function=iFuncs.process_elec_price_trajectories)
                 load_growth = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='load_growth', csv_import_function=iFuncs.process_load_growth)
-                pv_price_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
-                batt_price_traj = iFuncs.import_table( scenario_settings, con, engine,owner, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
                 financing_terms = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
+                
+                pv_tech_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
+                pv_price_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
                 batt_tech_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='batt_tech_performance', csv_import_function=iFuncs.stacked_sectors)
+                batt_price_traj = iFuncs.import_table( scenario_settings, con, engine,owner, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
 
                 #==========================================================================================================
                 # Calculate Tariff Components from ReEDS data
@@ -192,10 +193,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents.df['year'] = year
 
                     # is it the first model year?
-                    is_first_year = year == model_settings.start_year
-                    
-                    # combine temporal data of current year
-                    agents.on_frame(agent_mutation.elec.apply_temporal_data_wind, [con, schema, year])
+                    is_first_year = year == model_settings.start_year            
 
                     # get and apply load growth
                     agents.on_frame(agent_mutation.elec.apply_load_growth, (load_growth))
@@ -210,16 +208,25 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     state_capacity_by_year = agent_mutation.elec.calc_state_capacity_by_year(con, schema, load_growth, peak_demand_mw, census_division_lkup, is_first_year, year,agents,last_year_installed_capacity)
                     
-                    #Apply net metering parameters
+                    # Apply net metering parameters
                     net_metering_df = agent_mutation.elec.get_nem_settings(nem_state_capacity_limits, nem_state_and_sector_attributes, nem_selected_scenario, year, state_capacity_by_year, cf_during_peak_demand)
                     agents.on_frame(agent_mutation.elec.apply_export_tariff_params, (net_metering_df))
+                    
+                    
+                    # Apply annual resource data
+                    solar_resource_df = agent_mutation.elec.get_annual_resource_solar(con, schema, scenario_settings.sectors)
+                    
+                    wind_resource_df = agent_mutation.elec.get_annual_resource_wind(con, schema, year, scenario_settings.sectors)
+                    tech_performance_wind_df = agent_mutation.elec.get_technology_performance_wind(con, schema, year)
+                    wind_resource_df = agent_mutation.elec.apply_technology_performance_wind(wind_resource_df, tech_performance_wind_df)
+
 
                     # Apply each agent's electricity price change and assumption about increases
                     agents.on_frame(agent_mutation.elec.apply_elec_price_multiplier_and_escalator, [year, elec_price_change_traj])
 
                     # Apply technology performance
                     agents.on_frame(agent_mutation.elec.apply_batt_tech_performance, (batt_tech_traj))
-                    agents.on_frame(agent_mutation.elec.apply_pv_tech_performance, pv_tech_traj)
+                    agents.on_frame(agent_mutation.elec.apply_tech_performance, pv_tech_traj)
 
                     # Apply technology prices
                     agents.on_frame(agent_mutation.elec.apply_pv_prices, pv_price_traj)
@@ -234,21 +241,44 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply wholesale electricity prices
                     agents.on_frame(agent_mutation.elec.apply_wholesale_elec_prices, wholesale_elec_prices)
 
-                    # Apply host-owned financial parameters
-                    agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
-
                     if 'ix' not in os.name: 
                         cores = None
                     else:
                         cores = model_settings.local_cores
                     # Apply state incentives
                     agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year, state_capacity_by_year])
-
-                    # Calculate System Financial Performance
-                    agents.on_row(sFuncs.calc_system_size_and_financial_performance,cores=cores)
+                    
+                    
+                    
+                    # Calculate system size - required to know system size before getting hourly *wind* resource (only) and filtering *wind* financial params
+                    cores = None
+                    if 'wind' in scenario_settings.techs:
+                        # Calculate system size for wind
+                        agents.on_frame(sFuncs.calc_system_size_wind, [con, schema, wind_resource_df])
+                        
+                        # Apply host-owned financial parameters - dependent on size of wind system
+                        agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
+                        
+                        # Calculate financial performance (cashflows, etc)
+                        agents.on_frame(sFuncs.calc_financial_performance_wind)
+                    else:                        
+                        # Apply host-owned financial parameters - does NOT depend on size of solar system
+                        agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])                        
+                        
+                        # for now, do not split solar into 'calc_system_size' and 'calc_financial_performance', just use old function that does both
+                        agents.on_row(sFuncs.calc_system_size_and_financial_performance_pv, cores=cores)
+                    
+                    
+                    # Apply hourly resource data
+                    hourly_solar_resource_df = agent_mutation.elec.get_normalized_hourly_resource_solar(con, schema, scenario_settings.sectors, scenario_settings.techs)
+                    agents.on_frame(agent_mutation.elec.apply_solar_capacity_factor_profile, hourly_solar_resource_df)
+                    
+                    hourly_wind_resource_df = agent_mutation.elec.get_normalized_hourly_resource_wind(con, schema, scenario_settings.sectors, cur, agents, scenario_settings.techs)
+                    agents.on_frame(agent_mutation.elec.apply_normalized_hourly_resource_wind, [hourly_wind_resource_df, scenario_settings.techs])
+                    
 
                     # Calculate the financial performance of the S+S systems
-                    agents.on_frame(financial_functions_elec.calc_financial_performance)
+                    agents.on_frame(financial_functions_elec.calc_financial_metrics)
 
                     # Calculate Maximum Market Share
                     agents.on_frame(financial_functions_elec.calc_max_market_share, max_market_share)

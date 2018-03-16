@@ -70,7 +70,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, role, sample_pct, mi
                 # WIND
                 determine_allowable_turbine_heights(county_chunks, pool, pg_conn_string, schema,role, sector_abbr)
                 find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, schema,role, sector_abbr)
-                simulate_turbine_configurations(county_chunks, pool, cur, con, pg_conn_string, schema, role, sector_abbr)
+#                simulate_turbine_configurations(county_chunks, pool, cur, con, pg_conn_string, schema, role, sector_abbr)
                 
                 # combine attributes
                 combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema, role, sector_abbr)
@@ -78,7 +78,7 @@ def generate_core_agent_attributes(cur, con, techs, schema, role, sample_pct, mi
         #     create a view that combines all sectors and techs
         #======================================================================
         merge_all_core_agents(cur, con, schema, role, sectors, techs)
-        merge_best_options_wind(cur, con, schema, role, sectors, techs)
+#        merge_best_options_wind(cur, con, schema, role, sectors, techs)
 
         #======================================================================
         #    drop the intermediate tables
@@ -620,27 +620,39 @@ def find_potential_turbine_sizes(county_chunks, cur, con, pool, pg_conn_string, 
     #     Create a lookup table of the allowable turbine heights and sizes for
     #     each agent
     #=========================================================================
-    sql = """DROP TABLE IF EXISTS %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s;
-             CREATE TABLE %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s AS
-             SELECT a.county_id, a.bin_id,
-                 COALESCE(b.turbine_height_m, 0) AS turbine_height_m,
-                 COALESCE(b.turbine_size_kw, 0) as turbine_size_kw
-             FROM %(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s a
-             LEFT JOIN %(schema)s.input_wind_siting_turbine_sizes b
-                 ON b.effective_min_blade_height_m >= a.min_allowable_blade_height_m
-                 AND b.effective_max_blade_height_m <= a.max_allowable_blade_height_m;
+    # create the output table
+    sql = """DROP TABLE IF EXISTS %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s;
+              CREATE TABLE %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
+              (
+                county_id integer,
+                bin_id integer,
+                turbine_height_m integer,
+                turbine_size_kw numeric
+              );""" % inputs                   
+    cur.execute(sql)
+    con.commit()
+    
+    sql = """INSERT INTO %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
+            SELECT a.county_id, a.bin_id,
+                	COALESCE(b.turbine_height_m, 0) AS turbine_height_m,
+                	COALESCE(b.turbine_size_kw, 0) as turbine_size_kw 
+            FROM %(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s a
+            LEFT JOIN %(schema)s.input_wind_siting_turbine_sizes b
+                	ON b.effective_min_blade_height_m >= a.min_allowable_blade_height_m 
+                	AND b.effective_max_blade_height_m <= a.max_allowable_blade_height_m;
              """ % inputs
     p_run(pg_conn_string, role, sql, county_chunks, pool)
 
-    # create indices
-    sql =  """CREATE INDEX agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s_id_btree
-              ON %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s
+    # create indices        
+    sql =  """CREATE INDEX agent_allowable_turbines_lkup_%(sector_abbr)s_id_btree 
+              ON %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
               USING BTREE(county_id, bin_id);
-
-              CREATE INDEX agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s_turbine_height_m_btree
-              ON %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s
+    
+              CREATE INDEX agent_allowable_turbines_lkup_%(sector_abbr)s_turbine_height_m_btree 
+              ON %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s
               USING BTREE(turbine_height_m);""" % inputs
-    p_run(pg_conn_string, role, sql, county_chunks, pool)
+    cur.execute(sql)
+    con.commit()
 
 
 #%%
@@ -827,8 +839,10 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
                     d.ground_cover_ratio,
 
                     -- wind siting constraints
-                    e.turbine_height_m,
-                    e.turbine_size_kw
+                    e.min_allowable_blade_height_m,
+                    e.max_allowable_blade_height_m
+                    --e.turbine_height_m,
+                    --e.turbine_size_kw
 
              FROM %(schema)s.agent_blocks_and_bldgs_%(sector_abbr)s_%(i_place_holder)s a
              LEFT JOIN %(schema)s.block_microdata_%(sector_abbr)s_joined b
@@ -839,9 +853,12 @@ def combine_all_attributes(county_chunks, pool, cur, con, pg_conn_string, schema
              LEFT JOIN %(schema)s.agent_rooftops_%(sector_abbr)s_%(i_place_holder)s d
                  ON a.county_id = d.county_id
                  AND a.bin_id = d.bin_id
-            RIGHT JOIN %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s e
+             LEFT JOIN %(schema)s.agent_turbine_height_constraints_%(sector_abbr)s_%(i_place_holder)s e
                  ON a.county_id = e.county_id
                  AND a.bin_id = e.bin_id
+            --RIGHT JOIN %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s_%(i_place_holder)s e
+                 --ON a.county_id = e.county_id
+                 --AND a.bin_id = e.bin_id
             LEFT JOIN %(schema)s.agent_utility_type_%(sector_abbr)s_%(i_place_holder)s f
                 on a.agent_id = f.agent_id """ % inputs
 
@@ -1162,8 +1179,8 @@ def merge_all_core_agents(cur, con, schema, role, sectors, techs):
                             a.i,
                             a.j,
                             a.cf_bin,
-                            a.turbine_height_m,
-                            a.turbine_size_kw,
+                            --a.turbine_height_m,
+                            --a.turbine_size_kw,
                             -- replicate for each sector and tech
                             '%(sector_abbr)s'::CHARACTER VARYING(3) as sector_abbr,
                             '%(sector)s'::TEXT as sector,

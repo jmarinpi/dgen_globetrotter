@@ -150,7 +150,7 @@ def import_table(scenario_settings, con, engine, role, input_name, csv_import_fu
             df = pd.read_csv(os.path.join(input_data_dir, input_name, scenario_userdefined_value+".csv"), index_col=False)
             df = csv_import_function(df)
 
-            df_to_psql(df, scenario_userdefined_value, con, engine, shared_schema, role)
+            df_to_psql(df, engine, shared_schema, role, scenario_userdefined_value)
 
     else:
         # To do: Convert all specific functions below into a single generalized function
@@ -212,7 +212,7 @@ def deprec_schedule(df):
         df = df.append(last_entry)
 
 
-    return df.ix[:,['year','sector_abbr','deprec_sch']]
+    return df.ix[:,['year','tech','sector_abbr','deprec_sch']]
 
 #%%
 def melt_year(parameter_name):

@@ -300,11 +300,11 @@ def apply_export_tariff_params(dataframe, net_metering_df):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_pv_tech_performance(dataframe, pv_tech_traj):
+def apply_tech_performance(dataframe, tech_traj):
 
     dataframe = dataframe.reset_index()
 
-    dataframe = pd.merge(dataframe, pv_tech_traj, how='left', on=['sector_abbr', 'year'])
+    dataframe = pd.merge(dataframe, tech_traj, how='left', on=['sector_abbr', 'year'])
                          
     dataframe = dataframe.set_index('agent_id')
 
@@ -401,6 +401,8 @@ def apply_financial_params(dataframe, financing_terms, itc_options, inflation_ra
 
     dataframe = dataframe.merge(itc_options[['itc_fraction', 'year', 'tech', 'sector_abbr']], 
                                 how='left', on=['year', 'tech', 'sector_abbr'])
+    
+    dataframe = dataframe[(dataframe['system_size_kw'] > dataframe['min_size_kw']) & (dataframe['system_size_kw'] <= dataframe['max_size_kw'])]
 
     dataframe['inflation'] = inflation_rate
     
@@ -1033,7 +1035,7 @@ def get_normalized_hourly_resource_solar(con, schema, sectors, techs):
         df_list = []
         for sector_abbr, sector in sectors.iteritems():
             inputs['sector_abbr'] = sector_abbr
-            sql = """SELECT DISTINCT 'solar'::VARCHAR(5) as tech,
+            sql = """SELECT 'solar'::VARCHAR(5) as tech,
                             '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
                             a.county_id, a.bin_id,
                             b.cf as generation_hourly,
@@ -1073,7 +1075,7 @@ def get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents, techs
 
         # isolate the information from agents regarding the power curves and
         # hub heights for each agent
-        system_sizes_df = agents.dataframe[agents.dataframe['tech'] == 'wind'][
+        system_sizes_df = agents.df[agents.df['tech'] == 'wind'][
             ['sector_abbr', 'county_id', 'bin_id', 'i', 'j', 'cf_bin', 'turbine_height_m', 'power_curve_1', 'power_curve_2']]
         system_sizes_df['turbine_height_m'] = system_sizes_df[
             'turbine_height_m'].astype(np.int64)
@@ -1391,6 +1393,8 @@ def apply_state_incentives(dataframe, state_incentives, year, state_capacity_by_
 
     state_inc_df = pd.DataFrame.from_records(output)
     dataframe = pd.merge(dataframe, state_inc_df, on=['state_abbr','sector_abbr'], how='left')
+    
+    dataframe = dataframe.set_index('agent_id')
 
 
     return dataframe
@@ -1677,23 +1681,3 @@ def calc_state_capacity_by_year(con, schema, load_growth, peak_demand_mw, census
     df['year'] = year
     df = df[["state_abbr","cum_capacity_mw","cum_capacity_pct","cum_incentive_spending_usd","peak_demand_mw","year"]]
     return df
-
-#%%   
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_temporal_data_wind(dataframe, con, schema, year):
-    
-    inputs = locals().copy()
-    dataframe = dataframe.reset_index()    
-    
-    sql = """SELECT *
-             FROM %(schema)s.agent_best_option_wind_all
-             WHERE year = %(year)s;""" % inputs
-    temporal_data = pd.read_sql(sql, con)
-    
-    join_cols = ['year','county_id','bin_id','sector_abbr','sector','tech','turbine_height_m','turbine_size_kw']
-    out_cols = ['naep','aep','system_size_kw','nturb','scoe']
-    dataframe = pd.merge(dataframe, temporal_data[join_cols+out_cols], how='inner', on=join_cols)
-    
-    dataframe = dataframe.set_index('agent_id')
-    
-    return dataframe

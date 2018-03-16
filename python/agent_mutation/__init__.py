@@ -80,13 +80,6 @@ def init_agents(model_settings, scenario_settings, prng, cur, con):
     norm_load_profiles_df = elec.get_normalized_load_profiles(con, schema, sectors)
     agents_df = elec.apply_normalized_load_profiles(agents_df, norm_load_profiles_df)
 
-    # =========================================================================
-    # RESOURCE DATA
-    # =========================================================================
-    # get hourly resource
-    solar_resource_df = elec.get_normalized_hourly_resource_solar(con, schema, sectors, techs)
-    agents_df = elec.apply_solar_capacity_factor_profile(agents_df, solar_resource_df)
-
 
     # =========================================================
     # GET RATE RANKS & TARIFF LOOKUP TABLE FOR EACH SECTOR
@@ -109,15 +102,8 @@ def init_agents(model_settings, scenario_settings, prng, cur, con):
     # =========================================================================
     # AGENT TARIFF SELECTION
     # =========================================================================
-    # TODO: unique df could be created earlier to optimize several operations
-    agents_unique_df = agents_df.drop_duplicates(subset=['county_id','bin_id','sector_abbr'])
-    agents_unique_df = elec.select_tariff_driver(agents_unique_df, prng, rates_rank_df, rates_json_df, n_workers=model_settings.local_cores)
+    agents_df = elec.select_tariff_driver(agents_df, prng, rates_rank_df, rates_json_df, n_workers=model_settings.local_cores)
     
-    agents_df.reset_index(inplace=True)
-    join_cols = ['county_id','bin_id','sector_abbr']
-    out_cols = ['tariff_dict','tariff_id']
-    agents_df = pd.merge(agents_df, agents_unique_df[join_cols+out_cols], how='left', on=join_cols)
-    agents_df.set_index('agent_id', inplace=True)
     
     #==============================================================================
     # Set initial year columns. Initial columns do not change, whereas non-initial are adjusted each year
