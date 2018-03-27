@@ -642,7 +642,7 @@ def calc_financial_performance_wind(agent):
     generation_profile = np.array(agent.loc['generation_hourly'])
 
     # Calculate net load profile (with wind generation)
-    net_load_profile =load_profile - generation_profile
+    net_load_profile = load_profile - generation_profile
 
     # Create battery object
     batt = dFuncs.Battery()
@@ -690,7 +690,7 @@ def calc_financial_performance_wind(agent):
     # Calculate relevant incentives
     #=========================================================================#    
     
-    cash_incentives = np.array([0]*system_df.shape[0])
+    cash_incentives = np.zeros(1)
     
     # TODO: make sure this is done correctly for wind
 #    if not isinstance(agent.loc['state_incentives'],float):

@@ -259,22 +259,26 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         # Apply host-owned financial parameters - dependent on size of wind system
                         agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
                         
+                        # Apply hourly resource data
+                        hourly_wind_resource_df = agent_mutation.elec.get_normalized_hourly_resource_wind(con, schema, scenario_settings.sectors, cur, agents, scenario_settings.techs)
+                        agents.on_frame(agent_mutation.elec.apply_normalized_hourly_resource_wind, [hourly_wind_resource_df, scenario_settings.techs])
+                        
                         # Calculate financial performance (cashflows, etc)
-                        agents.on_frame(sFuncs.calc_financial_performance_wind)
+                        agents.on_row(sFuncs.calc_financial_performance_wind, cores=cores)
                     else:                        
-                        # Apply host-owned financial parameters - does NOT depend on size of solar system
+                        # Apply host-owned financial parameters - does NOT depend on size of solar system but included here for consistency with wind
                         agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])                        
+                        
+                        # Apply hourly resource data
+                        hourly_solar_resource_df = agent_mutation.elec.get_normalized_hourly_resource_solar(con, schema, scenario_settings.sectors, scenario_settings.techs)
+                        agents.on_frame(agent_mutation.elec.apply_solar_capacity_factor_profile, hourly_solar_resource_df)
                         
                         # for now, do not split solar into 'calc_system_size' and 'calc_financial_performance', just use old function that does both
                         agents.on_row(sFuncs.calc_system_size_and_financial_performance_pv, cores=cores)
                     
                     
-                    # Apply hourly resource data
-                    hourly_solar_resource_df = agent_mutation.elec.get_normalized_hourly_resource_solar(con, schema, scenario_settings.sectors, scenario_settings.techs)
-                    agents.on_frame(agent_mutation.elec.apply_solar_capacity_factor_profile, hourly_solar_resource_df)
                     
-                    hourly_wind_resource_df = agent_mutation.elec.get_normalized_hourly_resource_wind(con, schema, scenario_settings.sectors, cur, agents, scenario_settings.techs)
-                    agents.on_frame(agent_mutation.elec.apply_normalized_hourly_resource_wind, [hourly_wind_resource_df, scenario_settings.techs])
+
                     
 
                     # Calculate the financial performance of the S+S systems

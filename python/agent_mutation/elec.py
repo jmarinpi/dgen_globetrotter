@@ -395,18 +395,21 @@ def apply_batt_tech_performance(dataframe, batt_tech_traj):
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_financial_params(dataframe, financing_terms, itc_options, inflation_rate):
 
+    in_cols = list(dataframe.columns)
     dataframe = dataframe.reset_index()
 
     dataframe = dataframe.merge(financing_terms, how='left', on=['year', 'sector_abbr'])
-
-    dataframe = dataframe.merge(itc_options[['itc_fraction', 'year', 'tech', 'sector_abbr']], 
-                                how='left', on=['year', 'tech', 'sector_abbr'])
+    dataframe = dataframe.merge(itc_options, how='left', on=['year', 'tech', 'sector_abbr'])
     
     dataframe = dataframe[(dataframe['system_size_kw'] > dataframe['min_size_kw']) & (dataframe['system_size_kw'] <= dataframe['max_size_kw'])]
 
     dataframe['inflation'] = inflation_rate
     
+    return_cols = list(financing_terms.columns) + ['itc_fraction']
+    out_cols = list(pd.unique(in_cols + return_cols))
+    
     dataframe = dataframe.set_index('agent_id')
+    dataframe = dataframe[out_cols]
     
     return dataframe
 
