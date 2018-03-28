@@ -10,7 +10,7 @@ import numpy as np
 
 # %%
 def cashflow_constructor(bill_savings,
-                         pv_size, pv_price, pv_om,
+                         system_size, system_price, system_om,
                          batt_cap, batt_power,
                          batt_cost_per_kw, batt_cost_per_kwh,
                          batt_om_per_kw, batt_om_per_kwh,
@@ -76,9 +76,9 @@ def cashflow_constructor(bill_savings,
     if np.size(fed_tax_rate) != n_agents or n_agents == 1: fed_tax_rate = np.repeat(fed_tax_rate, n_agents)
     if np.size(state_tax_rate) != n_agents or n_agents == 1: state_tax_rate = np.repeat(state_tax_rate, n_agents)
     if np.size(itc) != n_agents or n_agents == 1: itc = np.repeat(itc, n_agents)
-    if np.size(pv_size) != n_agents or n_agents == 1: pv_size = np.repeat(pv_size, n_agents)
-    if np.size(pv_price) != n_agents or n_agents == 1: pv_price = np.repeat(pv_price, n_agents)
-    if np.size(pv_om) != n_agents or n_agents == 1: pv_om = np.repeat(pv_om, n_agents)
+    if np.size(system_size) != n_agents or n_agents == 1: system_size = np.repeat(system_size, n_agents)
+    if np.size(system_price) != n_agents or n_agents == 1: system_price = np.repeat(system_price, n_agents)
+    if np.size(system_om) != n_agents or n_agents == 1: system_om = np.repeat(system_om, n_agents)
     if np.size(batt_cap) != n_agents or n_agents == 1: batt_cap = np.repeat(batt_cap, n_agents)
     if np.size(batt_power) != n_agents or n_agents == 1: batt_power = np.repeat(batt_power, n_agents)
     if np.size(batt_cost_per_kw) != n_agents or n_agents == 1: batt_cost_per_kw = np.repeat(batt_cost_per_kw, n_agents)
@@ -122,9 +122,9 @@ def cashflow_constructor(bill_savings,
     #################### Installed Costs ######################################
     # Assumes that cash incentives, IBIs, and CBIs will be monetized in year 0,
     # reducing the up front installed cost that determines debt levels.
-    pv_cost = pv_size * pv_price  # assume pv_price includes initial inverter purchase
+    system_cost = system_size * system_price  # assume system_price includes initial inverter purchase for PV
     batt_cost = batt_power * batt_cost_per_kw + batt_cap * batt_cost_per_kwh
-    installed_cost = pv_cost + batt_cost
+    installed_cost = system_cost + batt_cost
     net_installed_cost = installed_cost - cash_incentives - ibi - cbi
     up_front_cost = net_installed_cost * down_payment_fraction
     cf[:, 0] -= up_front_cost
@@ -140,7 +140,7 @@ def cashflow_constructor(bill_savings,
     batt_om_cf[:, 1:] = (batt_power * batt_om_per_kw + batt_cap * batt_om_per_kwh).reshape(n_agents, 1)
 
     # PV O&M
-    operating_expenses_cf[:, 1:] = (pv_om * pv_size).reshape(n_agents, 1)
+    operating_expenses_cf[:, 1:] = (system_om * system_size).reshape(n_agents, 1)
 
     operating_expenses_cf += batt_om_cf
     operating_expenses_cf = operating_expenses_cf * inflation_adjustment
@@ -151,9 +151,9 @@ def cashflow_constructor(bill_savings,
     cf[:, 1:] += pbi
 
     #################### Federal ITC #########################################
-    pv_itc_value = pv_cost * itc
+    system_itc_value = system_cost * itc
     batt_itc_value = batt_cost * itc * batt_chg_frac * (batt_chg_frac >= 0.75)
-    itc_value = pv_itc_value + batt_itc_value
+    itc_value = system_itc_value + batt_itc_value
     # itc value added in fed_tax_savings_or_liability
 
     #################### Depreciation #########################################
@@ -257,13 +257,13 @@ def cashflow_constructor(bill_savings,
         'npv': npv,
         'bill_savings': bill_savings,
         'after_tax_bill_savings': after_tax_bill_savings,
-        'pv_cost': pv_cost,
+        'system_cost': system_cost,
         'batt_cost': batt_cost,
         'installed_cost': installed_cost,
         'up_front_cost': up_front_cost,
         'batt_om_cf': batt_om_cf,
         'operating_expenses': operating_expenses_cf,
-        'pv_itc_value': pv_itc_value,
+        'system_itc_value': system_itc_value,
         'batt_itc_value': batt_itc_value,
         'itc_value': itc_value,
         'deprec_basis': deprec_basis,
