@@ -273,7 +273,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         agents.on_frame(agent_mutation.elec.apply_wind_prices, wind_prices)                        
                         
                         # Apply host-owned financial parameters - dependent on size of wind system
-                        agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
+                        agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate, scenario_settings.techs])
                         
                         # Apply hourly resource data
                         hourly_wind_resource_df = agent_mutation.elec.get_normalized_hourly_resource_wind(con, schema, scenario_settings.sectors, cur, agents, scenario_settings.techs)
@@ -282,8 +282,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         # Calculate financial performance (cashflows, etc)
                         agents.on_row(sFuncs.calc_financial_performance_wind, cores=cores)
                     else:                        
-                        # Apply host-owned financial parameters - does NOT depend on size of solar system but included here for consistency with wind
-                        agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])                        
+                        # Apply host-owned financial parameters
+                        agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate, scenario_settings.techs])                        
                         
                         # Apply hourly resource data
                         hourly_solar_resource_df = agent_mutation.elec.get_normalized_hourly_resource_solar(con, schema, scenario_settings.sectors, scenario_settings.techs)

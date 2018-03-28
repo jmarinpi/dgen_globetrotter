@@ -214,6 +214,7 @@ def apply_normalized_hourly_resource_index_solar(dataframe, hourly_resource_df, 
 
 
 #%%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def apply_solar_capacity_factor_profile(dataframe, hourly_resource_df):
 
     # record the columns in the input dataframe
@@ -231,7 +232,7 @@ def apply_solar_capacity_factor_profile(dataframe, hourly_resource_df):
     dataframe['solar_cf_profile'] = dataframe['generation_hourly']
 
     # subset to only the desired output columns
-    out_cols = in_cols + ['solar_cf_profile']
+    out_cols = in_cols + ['agent_id', 'solar_cf_profile']
     dataframe = dataframe[out_cols]
 
     return dataframe
@@ -393,7 +394,7 @@ def apply_batt_tech_performance(dataframe, batt_tech_traj):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_financial_params(dataframe, financing_terms, itc_options, inflation_rate):
+def apply_financial_params(dataframe, financing_terms, itc_options, inflation_rate, techs):
 
     in_cols = list(dataframe.columns)
     dataframe = dataframe.reset_index()
@@ -401,7 +402,8 @@ def apply_financial_params(dataframe, financing_terms, itc_options, inflation_ra
     dataframe = dataframe.merge(financing_terms, how='left', on=['year', 'sector_abbr'])
     dataframe = dataframe.merge(itc_options, how='left', on=['year', 'tech', 'sector_abbr'])
     
-    dataframe = dataframe[(dataframe['system_size_kw'] > dataframe['min_size_kw']) & (dataframe['system_size_kw'] <= dataframe['max_size_kw'])]
+    if 'wind' in techs:    
+        dataframe = dataframe[(dataframe['system_size_kw'] > dataframe['min_size_kw']) & (dataframe['system_size_kw'] <= dataframe['max_size_kw'])]
 
     dataframe['inflation'] = inflation_rate
     
