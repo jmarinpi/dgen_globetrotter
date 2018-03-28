@@ -21,7 +21,7 @@ logger = utilfunc.get_logger()
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
-def calc_financial_performance(dataframe):
+def calc_financial_metrics(dataframe):
     '''
     Calculates the economic value of adoption given the metric chosen. Residential buyers
     use simple payback, non-residential buyers use time-to-double, leasers use monthly bill savings

@@ -229,7 +229,6 @@ def apply_solar_capacity_factor_profile(dataframe, hourly_resource_df):
     dataframe = pd.merge(dataframe, hourly_resource_df, how='left', on=[
                          'sector_abbr', 'tech', 'county_id', 'bin_id'])
     dataframe['solar_cf_profile'] = dataframe['generation_hourly']
-    dataframe = dataframe.set_index('agent_id')
 
     # subset to only the desired output columns
     out_cols = in_cols + ['solar_cf_profile']
@@ -300,7 +299,7 @@ def apply_export_tariff_params(dataframe, net_metering_df):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_tech_performance(dataframe, tech_traj):
+def apply_pv_tech_performance(dataframe, tech_traj):
 
     dataframe = dataframe.reset_index()
 
@@ -341,6 +340,7 @@ def apply_pv_prices(dataframe, pv_price_traj):
     dataframe = dataframe.set_index('agent_id')
 
     return dataframe
+
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -405,7 +405,7 @@ def apply_financial_params(dataframe, financing_terms, itc_options, inflation_ra
 
     dataframe['inflation'] = inflation_rate
     
-    return_cols = list(financing_terms.columns) + ['itc_fraction']
+    return_cols = list(financing_terms.columns) + ['itc_fraction', 'inflation']
     out_cols = list(pd.unique(in_cols + return_cols))
     
     dataframe = dataframe.set_index('agent_id')
@@ -1242,36 +1242,31 @@ def interpolate_array(row, array_1_col, array_2_col, interp_factor_col, out_col)
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_normalized_hourly_resource_wind(dataframe, hourly_resource_df, techs):
+def apply_normalized_hourly_resource_wind(dataframe, hourly_resource_df):
 
-    if 'wind' in techs:
-        # record the columns in the input dataframe
-        in_cols = list(dataframe.columns)
+    # record the columns in the input dataframe
+    in_cols = list(dataframe.columns)
+    dataframe = dataframe.reset_index()
 
-        # join resource data to dataframe
-        dataframe = pd.merge(dataframe, hourly_resource_df, how='left', on=[
-                             'sector_abbr', 'tech', 'county_id', 'bin_id'])
-        # apply the scale offset to convert values to float with correct
-        # precision
-        dataframe = dataframe.apply(scale_array_precision, axis=1, args=(
-            'generation_hourly_1', 'scale_offset'))
-        dataframe = dataframe.apply(scale_array_precision, axis=1, args=(
-            'generation_hourly_2', 'scale_offset'))
-        # interpolate power curves
-        dataframe = dataframe.apply(interpolate_array, axis=1, args=(
-            'generation_hourly_1', 'generation_hourly_2', 'power_curve_interp_factor', 'generation_hourly'))
-        # scale the normalized profile by the system size
-        dataframe = dataframe.apply(
-            scale_array_sum, axis=1, args=('generation_hourly', 'aep'))
-        # subset to only the desired output columns
-        out_cols = in_cols + ['generation_hourly']
-        dataframe = dataframe[out_cols]
-    else:
-        out_cols = {'generation_hourly': 'object'}
-        for col, dtype in out_cols.iteritems():
-            dataframe[col] = pd.Series([], dtype=dtype)
+    # join resource data to dataframe
+    dataframe = pd.merge(dataframe, hourly_resource_df, how='left', on=[
+                         'sector_abbr', 'tech', 'county_id', 'bin_id'])
+    # apply the scale offset to convert values to float with correct
+    # precision
+    dataframe = dataframe.apply(scale_array_precision, axis=1, args=(
+        'generation_hourly_1', 'scale_offset'))
+    dataframe = dataframe.apply(scale_array_precision, axis=1, args=(
+        'generation_hourly_2', 'scale_offset'))
+    # interpolate power curves
+    dataframe = dataframe.apply(interpolate_array, axis=1, args=(
+        'generation_hourly_1', 'generation_hourly_2', 'power_curve_interp_factor', 'generation_hourly'))
+    # scale the normalized profile by the system size
+    dataframe = dataframe.apply(
+        scale_array_sum, axis=1, args=('generation_hourly', 'aep'))
+    # subset to only the desired output columns
+    out_cols = in_cols + ['agent_id', 'generation_hourly']
 
-    return dataframe
+    return dataframe[out_cols]
 
 
 #%%
@@ -1684,3 +1679,54 @@ def calc_state_capacity_by_year(con, schema, load_growth, peak_demand_mw, census
     df['year'] = year
     df = df[["state_abbr","cum_capacity_mw","cum_capacity_pct","cum_incentive_spending_usd","peak_demand_mw","year"]]
     return df
+
+
+#%%   
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def process_wind_prices(wind_allowable_turbine_sizes, wind_price_traj):
+    
+    # join the data
+    turbine_prices = pd.merge(wind_allowable_turbine_sizes[wind_allowable_turbine_sizes['allowed'] == True],
+                              wind_price_traj, how='left', on=['turbine_size_kw'])
+    
+    # calculate cost for taller towers
+    turbine_prices['tower_cost_adder_dollars_per_kw'] = turbine_prices['cost_for_higher_towers_dollars_per_kw_per_m'] * (
+            turbine_prices['turbine_height_m'] - turbine_prices['default_tower_height_m'])
+    
+    # calculated installed costs (per kW)
+    turbine_prices['installed_costs_dollars_per_kw'] = (turbine_prices['capital_cost_dollars_per_kw'] + 
+                  turbine_prices['cost_for_higher_towers_dollars_per_kw_per_m'] * (turbine_prices['turbine_height_m'] - turbine_prices['default_tower_height_m']))
+    
+    return_cols= ['turbine_size_kw', 'turbine_height_m', 'year', 'capital_cost_dollars_per_kw', 'fixed_om_dollars_per_kw_per_yr', 'variable_om_dollars_per_kwh',
+                  'cost_for_higher_towers_dollars_per_kw_per_m', 'tower_cost_adder_dollars_per_kw', 'installed_costs_dollars_per_kw']    
+    
+    return turbine_prices[return_cols]
+
+
+#%%
+@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
+def apply_wind_prices(dataframe, turbine_prices):
+
+    in_cols = list(dataframe.columns)    
+    dataframe = dataframe.reset_index()
+
+    # join the data
+    dataframe = pd.merge(dataframe, turbine_prices, how='left', on=['turbine_size_kw', 'turbine_height_m', 'year'])
+
+    # fill nas (these occur where system size is zero)
+    dataframe['installed_costs_dollars_per_kw'] = dataframe['installed_costs_dollars_per_kw'].fillna(0)
+    dataframe['fixed_om_dollars_per_kw_per_yr'] = dataframe['fixed_om_dollars_per_kw_per_yr'].fillna(0)
+    dataframe['variable_om_dollars_per_kwh'] = dataframe['variable_om_dollars_per_kwh'].fillna(0)
+
+    # apply the capital cost multipliers
+    dataframe['wind_price_per_kw'] = (dataframe['installed_costs_dollars_per_kw'] * dataframe['cap_cost_multiplier'])
+    
+    # rename fixed O&M column for later compatibility
+    dataframe.rename(columns={'fixed_om_dollars_per_kw_per_yr':'wind_om_per_kw'}, inplace=True)
+
+    return_cols = ['wind_price_per_kw', 'wind_om_per_kw', 'variable_om_dollars_per_kwh']
+    out_cols = list(pd.unique(in_cols + return_cols))
+    
+    dataframe = dataframe.set_index('agent_id')
+
+    return dataframe[out_cols]

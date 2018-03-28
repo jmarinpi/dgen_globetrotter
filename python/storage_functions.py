@@ -618,10 +618,8 @@ def calc_system_size_wind(dataframe, con, schema, wind_resource_df):
     out_cols = list(pd.unique(in_cols + return_cols))
     
     dataframe_sized = dataframe_sized.set_index('agent_id')
-    
-    dataframe_sized = dataframe_sized[out_cols]
 
-    return dataframe_sized
+    return dataframe_sized[out_cols]
 
 
 #%%
@@ -741,7 +739,7 @@ def calc_financial_performance_wind(agent):
     opt_bill_savings = opt_bill_savings * agent.loc['elec_price_multiplier'] * escalator * degradation
     
     # If the batt kW is less than 25% of the PV kW, apply the ITC
-    batt_chg_frac = int( opt_batt_power/opt_system_size < 0.25)
+    batt_chg_frac = int( np.divide(opt_batt_power, opt_system_size, out=np.array(1.), where=opt_system_size!=0.) < 0.25)
     
     # TODO: get this right for wind - can cashflow_constructor readily accept wind inputs and return correctly?
     cf_results_opt = fFuncs.cashflow_constructor(opt_bill_savings,
@@ -769,9 +767,6 @@ def calc_financial_performance_wind(agent):
     agent.loc['batt_dispatch_profile'] = accurate_results['batt_dispatch_profile']
 
     agent.loc['bill_savings'] = opt_bill_savings
-    # agent.loc['aep'] = agent.loc['pv_kw'] * agent.loc['naep']
-    agent.loc['cf'] = agent.loc['naep']/8760
-    # agent.loc['system_size_factors'] = np.where(agent.loc['pv_kw'] == 0, 0, pd.cut([agent.loc['pv_kw']], system_size_breaks))[0]
     agent.loc['cbi'] = capacity_based_incentives
     agent.loc['ibi'] = investment_incentives
     agent.loc['pbi'] = production_based_incentives
@@ -785,10 +780,6 @@ def calc_financial_performance_wind(agent):
                 'npv',
                 'cash_flow',
                 'batt_dispatch_profile',
-                'aep',
-                'naep',
-                'cf',
-                'system_size_factors',
                 'fy_bill_with_sys',
                 'fy_bill_savings',
                 'fy_bill_savings_frac',
