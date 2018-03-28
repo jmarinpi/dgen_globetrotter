@@ -262,11 +262,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         cores = model_settings.local_cores
                     # Apply state incentives
                     agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year, state_capacity_by_year])
-                    
-                    
-                    
+                                       
                     # Calculate system size - required to know system size before getting hourly *wind* resource (only) and filtering *wind* financial params
-                    cores = None
                     if 'wind' in scenario_settings.techs:
                         # Calculate system size for wind
                         agents.on_frame(sFuncs.calc_system_size_wind, [con, schema, wind_resource_df])
@@ -296,10 +293,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         agents.on_row(sFuncs.calc_system_size_and_financial_performance_pv, cores=cores)
                     
                     
-                    
-
-                    
-
                     # Calculate the financial performance of the S+S systems
                     agents.on_frame(financial_functions_elec.calc_financial_metrics)
 
