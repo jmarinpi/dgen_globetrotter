@@ -323,3 +323,37 @@ def process_load_growth(load_growth):
     load_growth_change_traj = pd.concat([res_df, com_df, ind_df], ignore_index=True)
 
     return load_growth_change_traj
+
+
+#%%
+def process_wind_derate_traj(df):
+    
+    years = np.arange(2014, 2051, 2)
+    years = [str(year) for year in years]
+    
+    df_zeros = pd.DataFrame(data={'year':years}, index=None, columns=['year'])
+    df_zeros['turbine_size_kw'] = 0.
+    df_zeros['wind_derate_factor'] = 0.
+    
+    df_tidy = pd.melt(df, id_vars=['turbine_size_kw'], value_vars=years, var_name='year', value_name='wind_derate_factor')
+    
+    df_tidy = df_tidy.append(df_zeros)
+
+    return df_tidy
+
+
+#%%
+def process_wind_tech_traj(df):
+    
+    years = np.arange(2014, 2051, 2)
+    years = [str(year) for year in years]
+    
+    df_tidy = pd.melt(df, id_vars=['turbine_size_kw'], value_vars=years, var_name='year', value_name='perf_improvement_factor')
+
+    return df_tidy
+
+
+#%%
+def no_processing(df):
+    
+    return df

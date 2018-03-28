@@ -164,17 +164,32 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 #==========================================================================================================
                 # INGEST SCENARIO ENVIRONMENTAL VARIABLES
                 #==========================================================================================================
+                # tech-agnostic scenario variables
                 deprec_sch = iFuncs.import_table( scenario_settings, con, engine, owner, input_name ='depreciation_schedules', csv_import_function=iFuncs.deprec_schedule)
                 carbon_intensities = iFuncs.import_table( scenario_settings, con, engine,owner, input_name='carbon_intensities', csv_import_function=iFuncs.melt_year('grid_carbon_tco2_per_kwh'))
                 wholesale_elec_prices = iFuncs.import_table( scenario_settings, con, engine, owner, input_name='wholesale_electricity_prices', csv_import_function=iFuncs.melt_year('wholesale_elec_price'))
-                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='elec_prices', csv_import_function=iFuncs.process_elec_price_trajectories)
-                load_growth = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='load_growth', csv_import_function=iFuncs.process_load_growth)
-                financing_terms = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
+                elec_price_change_traj = iFuncs.import_table( scenario_settings, con, engine, owner, input_name='elec_prices', csv_import_function=iFuncs.process_elec_price_trajectories)
+                load_growth = iFuncs.import_table( scenario_settings, con, engine, owner, input_name='load_growth', csv_import_function=iFuncs.process_load_growth)
+                financing_terms = iFuncs.import_table( scenario_settings, con, engine, owner, input_name='financing_terms', csv_import_function=iFuncs.stacked_sectors)
                 
-                pv_tech_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
-                pv_price_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
+                # solar cost and performance
+                pv_tech_traj = iFuncs.import_table( scenario_settings, con, engine, owner, input_name='pv_tech_performance', csv_import_function=iFuncs.stacked_sectors)
+                pv_price_traj = iFuncs.import_table( scenario_settings, con, engine, owner, input_name='pv_prices', csv_import_function=iFuncs.stacked_sectors)
+                
+                # wind system sizing
+                wind_allowable_turbine_sizes = iFuncs.import_table(scenario_settings, con, engine, owner, input_name='wind_allowable_turbine_sizes', csv_import_function=iFuncs.no_processing)
+                wind_system_sizing = iFuncs.import_table(scenario_settings, con, engine, owner, input_name='wind_system_sizing', csv_import_function=iFuncs.no_processing)
+                # wind turbine siting
+                wind_canopy_clearance = iFuncs.import_table(scenario_settings, con, engine, owner, input_name='wind_canopy_clearance', csv_import_function=iFuncs.no_processing)
+                wind_property_setbacks = iFuncs.import_table(scenario_settings, con, engine, owner, input_name='wind_property_setbacks', csv_import_function=iFuncs.no_processing)
+                # wind cost and performance
+                wind_derate_traj = iFuncs.import_table(scenario_settings, con, engine, owner, input_name='wind_derate_sched', csv_import_function=iFuncs.process_wind_derate_traj)
+                wind_tech_traj = iFuncs.import_table(scenario_settings, con, engine, owner, input_name='wind_tech_performance', csv_import_function=iFuncs.process_wind_tech_traj)
+                wind_price_traj = iFuncs.import_table(scenario_settings, con, engine, owner, input_name='wind_prices', csv_import_function=iFuncs.no_processing)
+                
+                # battery cost and performance
                 batt_tech_traj = iFuncs.import_table( scenario_settings, con, engine, owner,input_name='batt_tech_performance', csv_import_function=iFuncs.stacked_sectors)
-                batt_price_traj = iFuncs.import_table( scenario_settings, con, engine,owner, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
+                batt_price_traj = iFuncs.import_table( scenario_settings, con, engine, owner, input_name='batt_prices', csv_import_function=iFuncs.stacked_sectors)
 
                 #==========================================================================================================
                 # Calculate Tariff Components from ReEDS data
@@ -226,10 +241,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Apply technology performance
                     agents.on_frame(agent_mutation.elec.apply_batt_tech_performance, (batt_tech_traj))
-                    agents.on_frame(agent_mutation.elec.apply_tech_performance, pv_tech_traj)
+                    agents.on_frame(agent_mutation.elec.apply_pv_tech_performance, pv_tech_traj)
 
                     # Apply technology prices
-                    agents.on_frame(agent_mutation.elec.apply_pv_prices, pv_price_traj)
+                    agents.on_frame(agent_mutation.elec.apply_pv_prices, pv_price_traj)                    
                     agents.on_frame(agent_mutation.elec.apply_batt_prices, [batt_price_traj, batt_tech_traj, year])
 
                     # Apply depreciation schedule
@@ -256,12 +271,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         # Calculate system size for wind
                         agents.on_frame(sFuncs.calc_system_size_wind, [con, schema, wind_resource_df])
                         
+                        # Apply wind costs - dependent of size of wind system
+                        wind_prices = agent_mutation.elec.process_wind_prices(wind_allowable_turbine_sizes, wind_price_traj)
+                        agents.on_frame(agent_mutation.elec.apply_wind_prices, wind_prices)                        
+                        
                         # Apply host-owned financial parameters - dependent on size of wind system
                         agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate])
                         
                         # Apply hourly resource data
                         hourly_wind_resource_df = agent_mutation.elec.get_normalized_hourly_resource_wind(con, schema, scenario_settings.sectors, cur, agents, scenario_settings.techs)
-                        agents.on_frame(agent_mutation.elec.apply_normalized_hourly_resource_wind, [hourly_wind_resource_df, scenario_settings.techs])
+                        agents.on_frame(agent_mutation.elec.apply_normalized_hourly_resource_wind, hourly_wind_resource_df)
                         
                         # Calculate financial performance (cashflows, etc)
                         agents.on_row(sFuncs.calc_financial_performance_wind, cores=cores)
