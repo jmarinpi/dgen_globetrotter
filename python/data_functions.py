@@ -57,7 +57,7 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
                                 
     # Unpack results dict from previous years
     if interyear_results_aggregations != None:
-        ba_cum_pv_mw = interyear_results_aggregations['ba_cum_pv_mw']
+        ba_cum_system_mw = interyear_results_aggregations['ba_cum_system_mw']
         ba_cum_batt_mw = interyear_results_aggregations['ba_cum_batt_mw']
         ba_cum_batt_mwh = interyear_results_aggregations['ba_cum_batt_mwh']
         dispatch_all_adopters = interyear_results_aggregations['dispatch_all_adopters']
@@ -74,7 +74,7 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
     
     if is_first_year == True:  
         # PV and batt capacities
-        ba_cum_pv_mw = pd.DataFrame(index=ba_list)
+        ba_cum_system_mw = pd.DataFrame(index=ba_list)
         ba_cum_batt_mw = pd.DataFrame(index=ba_list)
         ba_cum_batt_mwh = pd.DataFrame(index=ba_list)
     
@@ -89,11 +89,11 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
     #==========================================================================================================
     # Aggregate PV and Batt capacity by reeds region
     #========================================================================================================== 
-    agent_cum_capacities = agent_df[[ 'ba', 'pv_kw_cum']]
-    ba_cum_pv_kw_year = agent_cum_capacities.groupby(by='ba').sum()
-    ba_cum_pv_kw_year['ba'] = ba_cum_pv_kw_year.index
-    ba_cum_pv_mw[year] = ba_cum_pv_kw_year['pv_kw_cum'] / 1000.0
-    ba_cum_pv_mw.round(3).to_csv(out_scen_path + '/dpv_MW_by_ba_and_year.csv', index_label='ba')                     
+    agent_cum_capacities = agent_df[[ 'ba', 'system_kw_cum']]
+    ba_cum_system_kw_year = agent_cum_capacities.groupby(by='ba').sum()
+    ba_cum_system_kw_year['ba'] = ba_cum_system_kw_year.index
+    ba_cum_system_mw[year] = ba_cum_system_kw_year['system_kw_cum'] / 1000.0
+    ba_cum_system_mw.round(3).to_csv(out_scen_path + '/dpv_MW_by_ba_and_year.csv', index_label='ba')                     
     
     agent_cum_batt_mw = agent_df[[ 'ba', 'batt_kw_cum']]
     agent_cum_batt_mw['batt_mw_cum'] = agent_cum_batt_mw['batt_kw_cum'] / 1000.0
@@ -117,29 +117,32 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
     # negligibly from year-to-year. A ten-year degradation is applied, to 
     # approximate the age of a mature fleet.
     if year==scenario_settings.model_years[-1]:
-        pv_gen_by_agent = np.vstack(agent_df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(agent_df['pv_kw_cum']).reshape(len(agent_df), 1)
+        system_gen_by_agent = np.vstack(
+            np.where(agent_df['tech'] == 'solar', 
+                agent_df['solar_cf_profile']).astype(np.float) / 1e6, 
+                agent_df['generation_hourly'].astype(np.float) / 1e6) * np.array(agent_df['system_kw_cum']).reshape(len(agent_df), 1)
         
         # Sum each agent's profile into a total dispatch in each BA
-        pv_gen_by_ba = np.zeros([len(ba_list), 8760])
+        system_gen_by_ba = np.zeros([len(ba_list), 8760])
         for ba_n, ba in enumerate(ba_list):
             list_of_agent_indicies = np.array(agents_grouped.loc[ba, 'index'])
-            pv_gen_by_ba[ba_n, :] = np.sum(pv_gen_by_agent[list_of_agent_indicies, :], axis=0)
+            system_gen_by_ba[ba_n, :] = np.sum(system_gen_by_agent[list_of_agent_indicies, :], axis=0)
        
         # Apply ten-year degradation
-        pv_deg_rate = agent_df.loc[agent_df.index[0], 'pv_deg'] 
-        pv_gen_by_ba = pv_gen_by_ba * (1-pv_deg_rate)**10   
+        system_deg_rate = np.where(agent_df.loc[agent_df.index[0], 'tech'] == 'solar', agent_df.loc[agent_df.index[0], 'pv_deg'], 0.)
+        system_gen_by_ba = system_gen_by_ba * (1-system_deg_rate)**10   
         
         # Change the numpy array into pandas dataframe
-        pv_gen_by_ba_df = pd.DataFrame(pv_gen_by_ba, columns=hour_list)
-        pv_gen_by_ba_df.index = ba_list
+        system_gen_by_ba_df = pd.DataFrame(system_gen_by_ba, columns=hour_list)
+        system_gen_by_ba_df.index = ba_list
 
         # Convert generation into capacity factor by diving by total capacity
-        pv_cf_by_ba = pv_gen_by_ba_df[hour_list].divide(ba_cum_pv_mw[year]*1000.0, 'index')
-        pv_cf_by_ba['ba'] = ba_list
+        system_cf_by_ba = system_gen_by_ba_df[hour_list].divide(ba_cum_system_mw[year]*1000.0, 'index')
+        system_cf_by_ba['ba'] = ba_list
     
         # write output
-        pv_cf_by_ba = pv_cf_by_ba[['ba'] + hour_list]
-        pv_cf_by_ba.round(3).to_csv(out_scen_path + '/dpv_cf_by_ba.csv', index=False) 
+        system_cf_by_ba = system_cf_by_ba[['ba'] + hour_list]
+        system_cf_by_ba.round(3).to_csv(out_scen_path + '/dpv_cf_by_ba.csv', index=False) 
 
     
     #==========================================================================================================
@@ -189,7 +192,7 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
     if year==scenario_settings.model_years[-1]:  
         print "aggregating by timeslice..."                      
                                                   
-        ba_list = list(pv_cf_by_ba['ba'])
+        ba_list = list(system_cf_by_ba['ba'])
             
         ts_list = list()
         for ts in np.arange(1, 18):
@@ -204,13 +207,13 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
         # Aggregate PV CF by timeslice
         #==========================================================================================================        
         ts_cf_tidy = pd.DataFrame(columns=['ba', 'ts'])
-        pv_cf_by_ba.set_index('ba', inplace=True)
-        pv_cf_by_ba = pv_cf_by_ba.transpose()
-        pv_cf_by_ba['hour'] = [int(numeric_string) for numeric_string in pv_cf_by_ba.index.values]
+        system_cf_by_ba.set_index('ba', inplace=True)
+        system_cf_by_ba = system_cf_by_ba.transpose()
+        system_cf_by_ba['hour'] = [int(numeric_string) for numeric_string in system_cf_by_ba.index.values]
                 
-        pv_cf_by_ba_tidy = pd.melt(pv_cf_by_ba, id_vars='hour', value_vars=ba_list, var_name="ba", value_name="cf")
+        system_cf_by_ba_tidy = pd.melt(system_cf_by_ba, id_vars='hour', value_vars=ba_list, var_name="ba", value_name="cf")
             
-        ts_and_cf_tidy = pd.merge(ts_map_tidy, pv_cf_by_ba_tidy, how='left', on=['hour', 'ba'])
+        ts_and_cf_tidy = pd.merge(ts_map_tidy, system_cf_by_ba_tidy, how='left', on=['hour', 'ba'])
             
         ts_cf_tidy = ts_and_cf_tidy[['ba', 'cf', 'ts']].groupby(['ba', 'ts']).mean().reset_index()
                     
@@ -248,7 +251,7 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
     #==========================================================================================================
     # Package interyear results
     #========================================================================================================== 
-    interyear_results_aggregations = {'ba_cum_pv_mw':ba_cum_pv_mw,
+    interyear_results_aggregations = {'ba_cum_system_mw':ba_cum_system_mw,
                                       'ba_cum_batt_mw':ba_cum_batt_mw,
                                       'ba_cum_batt_mwh':ba_cum_batt_mwh,
                                       'dispatch_all_adopters':dispatch_all_adopters,
@@ -1223,7 +1226,7 @@ def write_last_year(con, cur, market_last_year, schema):
     s = StringIO()
     # write the data to the stringIO
     out_cols = ['county_id', 'bin_id', 'tech', 'sector_abbr',
-                'market_share_last_year', 'max_market_share_last_year', 'number_of_adopters_last_year', 'pv_kw_last_year', 'batt_kw_last_year', 'batt_kwh_last_year',
+                'market_share_last_year', 'max_market_share_last_year', 'number_of_adopters_last_year', 'system_kw_last_year', 'batt_kw_last_year', 'batt_kwh_last_year',
                 'initial_number_of_adopters', 'initial_capacity_mw', 'initial_market_share'
                 ]
     market_last_year[out_cols].to_csv(s, index=False, header=False)

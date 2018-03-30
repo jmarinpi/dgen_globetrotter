@@ -203,13 +203,15 @@ def deprec_schedule(df):
     df['deprec_sch']=df.apply(lambda x: [x.to_dict()[y] for y in columns], axis=1)
 
     max_required_year = 2050
-    max_input_year = np.max(df['year'])
-    missing_years = np.arange(max_input_year + 1, max_required_year + 1, 1)
-    last_entry = df[df['year'] == max_input_year]
+    
+    for tech in pd.unique(df['tech']):
+        max_input_year = np.max(df.loc[df['tech'] == tech, 'year'])
+        missing_years = np.arange(max_input_year + 1, max_required_year + 1, 1)
+        last_entry = df[(df['tech'] == tech) & (df['year'] == max_input_year)]
 
-    for year in missing_years:
-        last_entry['year'] = year
-        df = df.append(last_entry)
+        for year in missing_years:
+            last_entry['year'] = year
+            df = df.append(last_entry)
 
 
     return df.ix[:,['year','tech','sector_abbr','deprec_sch']]
@@ -338,6 +340,7 @@ def process_wind_derate_traj(df):
     df_tidy = pd.melt(df, id_vars=['turbine_size_kw'], value_vars=years, var_name='year', value_name='wind_derate_factor')
     
     df_tidy = df_tidy.append(df_zeros)
+    df_tidy['year'] = df_tidy['year'].astype('int64')
 
     return df_tidy
 
@@ -349,6 +352,8 @@ def process_wind_tech_traj(df):
     years = [str(year) for year in years]
     
     df_tidy = pd.melt(df, id_vars=['turbine_size_kw'], value_vars=years, var_name='year', value_name='perf_improvement_factor')
+    
+    df_tidy['year'] = df_tidy['year'].astype('int64')
 
     return df_tidy
 

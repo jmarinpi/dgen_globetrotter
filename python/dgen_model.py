@@ -232,9 +232,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     solar_resource_df = agent_mutation.elec.get_annual_resource_solar(con, schema, scenario_settings.sectors)
                     
                     wind_resource_df = agent_mutation.elec.get_annual_resource_wind(con, schema, year, scenario_settings.sectors)
-                    tech_performance_wind_df = agent_mutation.elec.get_technology_performance_wind(con, schema, year)
-                    wind_resource_df = agent_mutation.elec.apply_technology_performance_wind(wind_resource_df, tech_performance_wind_df)
-
+                    wind_resource_df = agent_mutation.elec.apply_technology_performance_wind(wind_resource_df, wind_derate_traj, year)
 
                     # Apply each agent's electricity price change and assumption about increases
                     agents.on_frame(agent_mutation.elec.apply_elec_price_multiplier_and_escalator, [year, elec_price_change_traj])
@@ -263,10 +261,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply state incentives
                     agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year, state_capacity_by_year])
                                        
-                    # Calculate system size - required to know system size before getting hourly *wind* resource (only) and filtering *wind* financial params
+                    # Calculate system size - required to know wind system size before processing wind costs, hourly resource, and financial params
                     if 'wind' in scenario_settings.techs:
                         # Calculate system size for wind
-                        agents.on_frame(sFuncs.calc_system_size_wind, [con, schema, wind_resource_df])
+                        agents.on_frame(sFuncs.calc_system_size_wind, [con, schema, wind_system_sizing, wind_resource_df])
                         
                         # Apply wind costs - dependent of size of wind system
                         wind_prices = agent_mutation.elec.process_wind_prices(wind_allowable_turbine_sizes, wind_price_traj)
@@ -319,9 +317,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Aggregate results
                     scenario_settings.output_batt_dispatch_profiles = True
                     # Keep an in-memory table of installed capacity
-                    last_year_installed_capacity = agents.df[['state_abbr','pv_kw_cum','year']].copy()
+                    last_year_installed_capacity = agents.df[['state_abbr','system_kw_cum','year']].copy()
                     last_year_installed_capacity = last_year_installed_capacity.loc[last_year_installed_capacity['year'] == year]
-                    last_year_installed_capacity = last_year_installed_capacity.groupby('state_abbr')['pv_kw_cum'].sum().reset_index()
+                    last_year_installed_capacity = last_year_installed_capacity.groupby('state_abbr')['system_kw_cum'].sum().reset_index()
 
                     if is_first_year==True:
                         interyear_results_aggregations = datfunc.aggregate_outputs_solar(agents.df, year, is_first_year,
@@ -336,7 +334,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING
                     #==========================================================================================================
                     write_annual_agents = True
-                    drop_fields = ['consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile']
+                    drop_fields = ['consumption_hourly', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile']
+                    if 'solar' in scenario_settings.techs:
+                        drop_fields.append('solar_cf_profile')
+                    else:
+                        drop_fields.append('generation_hourly')
                     df_write = agents.df.drop(drop_fields, axis=1)
                     if write_annual_agents==True:
                         df_write.to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)

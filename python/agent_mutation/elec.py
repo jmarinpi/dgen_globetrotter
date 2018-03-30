@@ -748,8 +748,7 @@ def get_annual_resource_wind(con, schema, year, sectors):
     df_list = []
     for sector_abbr, sector in sectors.iteritems():
         inputs['sector_abbr'] = sector_abbr
-        sql = """SELECT 'wind'::VARCHAR(5) as tech,
-                        '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
+        sql = """SELECT '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
                         a.county_id, a.bin_id,
                     	COALESCE(b.turbine_height_m, 0) as turbine_height_m,
                     	COALESCE(b.turbine_size_kw, 0) as turbine_size_kw,
@@ -813,14 +812,18 @@ def get_annual_resource_solar(con, schema, sectors):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_technology_performance_wind(resource_wind_df, tech_performance_wind_df):
+def apply_technology_performance_wind(wind_resource_df, wind_derate_traj, year):
+    
+    in_cols = list(wind_resource_df)
 
-    resource_wind_df = pd.merge(resource_wind_df, tech_performance_wind_df, how='left', on=[
-                                'tech', 'turbine_size_kw'])
-    resource_wind_df['naep'] = (resource_wind_df['power_curve_interp_factor'] * (resource_wind_df['naep_2'] -
-                                                                                 resource_wind_df['naep_1']) + resource_wind_df['naep_1']) * resource_wind_df['wind_derate_factor']
+    wind_resource_df = pd.merge(wind_resource_df, wind_derate_traj[wind_derate_traj['year'] == year], how='left', on=['turbine_size_kw'])
+    wind_resource_df['naep'] = (wind_resource_df['power_curve_interp_factor'] * (wind_resource_df['naep_2'] -
+                                                                                 wind_resource_df['naep_1']) + wind_resource_df['naep_1']) * wind_resource_df['wind_derate_factor']
+    
+    return_cols = ['wind_derate_factor', 'naep']
+    out_cols = list(pd.unique(in_cols + return_cols))
 
-    return resource_wind_df
+    return wind_resource_df[out_cols]
 
 
 #%%
@@ -1440,24 +1443,24 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
     # apply the agent's portion to the total to calculate starting capacity
     # and systems
     dataframe['number_of_adopters_last_year'] = dataframe['portion_of_state'] * dataframe['systems_count']
-    dataframe['pv_kw_cum_last_year'] = dataframe['portion_of_state'] * dataframe['capacity_mw'] * 1000.0
+    dataframe['system_kw_cum_last_year'] = dataframe['portion_of_state'] * dataframe['capacity_mw'] * 1000.0
     dataframe['batt_kw_cum_last_year'] = 0.0
     dataframe['batt_kwh_cum_last_year'] = 0.0
 
     dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0, 0,
                                                    dataframe['number_of_adopters_last_year'] / dataframe['developable_customers_in_bin'])
 
-    dataframe['market_value_last_year'] = dataframe['pv_price_per_kw'] * dataframe['pv_kw_cum_last_year']
+    dataframe['market_value_last_year'] = np.where(dataframe['tech'] == 'solar', dataframe['pv_price_per_kw'] * dataframe['system_kw_cum_last_year'], dataframe['wind_price_per_kw'] * dataframe['system_kw_cum_last_year'])
 
     # reproduce these columns as "initial" columns too
     dataframe['initial_number_of_adopters'] = dataframe['number_of_adopters_last_year']
-    dataframe['initial_pv_kw'] = dataframe['pv_kw_cum_last_year']
+    dataframe['initial_system_kw'] = dataframe['system_kw_cum_last_year']
     dataframe['initial_market_share'] = dataframe['market_share_last_year']
     dataframe['initial_market_value'] = 0
 
     # isolate the return columns
-    return_cols = ['initial_number_of_adopters', 'initial_pv_kw', 'initial_market_share', 'initial_market_value',
-                   'number_of_adopters_last_year', 'pv_kw_cum_last_year', 'batt_kw_cum_last_year', 'batt_kwh_cum_last_year', 'market_share_last_year', 'market_value_last_year']
+    return_cols = ['initial_number_of_adopters', 'initial_system_kw', 'initial_market_share', 'initial_market_value',
+                   'number_of_adopters_last_year', 'system_kw_cum_last_year', 'batt_kw_cum_last_year', 'batt_kwh_cum_last_year', 'market_share_last_year', 'market_value_last_year']
 
     dataframe[return_cols] = dataframe[return_cols].fillna(0)
 
@@ -1488,7 +1491,7 @@ def apply_market_last_year(dataframe, market_last_year_df):
 def estimate_total_generation(dataframe):
 
     dataframe['total_gen_twh'] = ((dataframe['number_of_adopters'] - dataframe['initial_number_of_adopters'])
-                                  * dataframe['aep'] * 1e-9) + (0.23 * 8760 * dataframe['initial_pv_kw'] * 1e-6)
+                                  * dataframe['aep'] * 1e-9) + (0.23 * 8760 * dataframe['initial_system_kw'] * 1e-6)
 
     return dataframe
 
@@ -1666,7 +1669,7 @@ def calc_state_capacity_by_year(con, schema, load_growth, peak_demand_mw, census
         #last_year_installed_capacity = installed_capacity_df.loc[installed_capacities_df['year'] == year]
         #df = last_year_installed_capacity.groupby('state_abbr')['pv_kw_cum'].sum().reset_index()
         df = last_year_installed_capacity.copy()
-        df['cum_capacity_mw'] = df['pv_kw_cum']/1000
+        df['cum_capacity_mw'] = df['system_kw_cum']/1000
         # Load growth is resolved by census region, so a lookup table is needed
         df = df.merge(census_division_lkup, on = 'state_abbr')
         load_growth_this_year = load_growth.loc[(load_growth['year'] == year) & (load_growth['sector_abbr'] == 'res')]

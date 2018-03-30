@@ -475,7 +475,7 @@ def calc_system_size_and_financial_performance_pv(agent):
     # Package results
     #=========================================================================# 
 
-    agent.loc['pv_kw'] = opt_pv_size
+    agent.loc['system_kw'] = opt_pv_size
     agent.loc['batt_kw'] = opt_batt_power
     agent.loc['batt_kwh'] = opt_batt_cap
     agent.loc['npv'] = cf_results_opt['npv'][0]
@@ -493,7 +493,7 @@ def calc_system_size_and_financial_performance_pv(agent):
     agent['export_tariff_results'] = original_results
         
     out_cols = ['agent_id',
-                'pv_kw',
+                'system_kw',
                 'batt_kw',
                 'batt_kwh',
                 'npv',
@@ -521,15 +521,14 @@ def calc_system_size_and_financial_performance_pv(agent):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def calc_system_size_wind(dataframe, con, schema, wind_resource_df):
+def calc_system_size_wind(dataframe, con, schema, wind_system_sizing, wind_resource_df):
     
     in_cols = list(dataframe.columns)
     
     dataframe = dataframe.reset_index()    
     
     # get and join in system sizing targets df
-    system_sizing_targets_df = get_system_sizing_targets(con, schema)
-    dataframe = pd.merge(dataframe, system_sizing_targets_df, how='left', on=['sector_abbr','tech'])
+    dataframe = pd.merge(dataframe, wind_system_sizing, how='left', on=['sector_abbr'])
     
     # determine whether NEM is available in the state and sector
     # TODO: change column name to 'system_size_limit'
@@ -546,7 +545,7 @@ def calc_system_size_wind(dataframe, con, schema, wind_resource_df):
         dataframe['load_kwh_per_customer_in_bin'] * dataframe['sys_oversize_limit_nem'])
 
     # join in the resource data
-    dataframe = pd.merge(dataframe, wind_resource_df, how = 'left', on = ['tech', 'sector_abbr', 'county_id', 'bin_id'])
+    dataframe = pd.merge(dataframe, wind_resource_df, how = 'left', on = ['sector_abbr', 'county_id', 'bin_id'])
 
     # calculate the system generation from naep and turbine_size_kw    
     dataframe['aep_kwh'] = dataframe['turbine_size_kw'] * dataframe['naep']
@@ -639,9 +638,6 @@ def calc_financial_performance_wind(agent):
     load_profile = np.array(agent.loc['consumption_hourly'])
     generation_profile = np.array(agent.loc['generation_hourly'])
 
-    # Calculate net load profile (with wind generation)
-    net_load_profile = load_profile - generation_profile
-
     # Create battery object
     batt = dFuncs.Battery()
     batt_ratio = 3.0
@@ -681,7 +677,7 @@ def calc_financial_performance_wind(agent):
         export_tariff.periods_8760 = tariff.e_tou_8760
         export_tariff.prices = tariff.e_prices_no_tier
     else:
-        export_tariff.set_constant_sell_price(agent.loc['wholesale_elec_price_dollars_per_kwh'])
+        export_tariff.set_constant_sell_price(agent.loc['wholesale_elec_price'])
         
         
     #=========================================================================#
@@ -759,7 +755,6 @@ def calc_financial_performance_wind(agent):
     # Package results
     #=========================================================================#     
 
-    agent.loc['system_size_kw'] = opt_system_size
     agent.loc['batt_kw'] = opt_batt_power
     agent.loc['batt_kwh'] = opt_batt_cap
     agent.loc['npv'] = cf_results_opt['npv'][0]
@@ -774,7 +769,6 @@ def calc_financial_performance_wind(agent):
     agent['export_tariff_results'] = original_results
         
     out_cols = ['agent_id',
-                'system_size_kw',
                 'batt_kw',
                 'batt_kwh',
                 'npv',
