@@ -58,7 +58,7 @@ def df_to_psql(df, engine, schema, owner, name, if_exists='replace', append_tran
 
             if f_d_type[f] == 'ndarray':
                 d_types[f] = sqlalchemy.types.ARRAY(sqlalchemy.types.STRINGTYPE)
-                transform[f] = lambda x: json.dumps(list(x))
+                transform[f] = lambda x: json.dumps(x.tolist())
                 sql_type[f] = 'VARCHAR'
 
             if f_d_type[f] == 'dict':

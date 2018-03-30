@@ -1389,13 +1389,13 @@ def apply_state_incentives(dataframe, state_incentives, year, state_capacity_by_
     state_incentives_mg = state_incentives_mg.loc[pd.isnull(state_incentives_mg['budget_total_usd']) | (state_incentives_mg['cum_incentive_spending_usd'] < state_incentives_mg['budget_total_usd'])]
 
     output  =[]
-    for i in state_incentives_mg.groupby(['state_abbr', 'sector_abbr']):
+    for i in state_incentives_mg.groupby(['state_abbr', 'sector_abbr', 'tech']):
         row = i[1]
-        state, sector = i[0]
-        output.append({'state_abbr':state, 'sector_abbr':sector,"state_incentives":row})
+        state, sector, tech = i[0]
+        output.append({'state_abbr':state, 'sector_abbr':sector, 'tech':tech, 'state_incentives':row})
 
     state_inc_df = pd.DataFrame.from_records(output)
-    dataframe = pd.merge(dataframe, state_inc_df, on=['state_abbr','sector_abbr'], how='left')
+    dataframe = pd.merge(dataframe, state_inc_df, on=['state_abbr','sector_abbr','tech'], how='left')
     
     dataframe = dataframe.set_index('agent_id')
 

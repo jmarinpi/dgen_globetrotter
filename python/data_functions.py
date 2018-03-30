@@ -953,7 +953,7 @@ def get_bass_params(con, schema):
 
 def get_state_incentives(con):
 
-    sql = """SELECT * FROM diffusion_shared.state_incentives_2017;"""
+    sql = """SELECT * FROM diffusion_shared.state_incentives_2018;"""
 
     state_incentives = pd.read_sql(sql, con)
 
