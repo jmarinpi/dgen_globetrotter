@@ -279,7 +279,7 @@ def calculate_production_based_incentives(system_df, agent, function_templates={
             result = result + list(temp * size_filter)
 
     #Sum the incentive at each timestep by year for each system size
-    result =  [np.array(map(lambda x: sum(x), np.split(x,agent.loc['economic_lifetime'] ))) for x in result]
+    result =  np.asarray([np.array(map(lambda x: sum(x), np.split(x,agent.loc['economic_lifetime'] ))) for x in result])
 
     return result
 
@@ -745,7 +745,10 @@ def calc_financial_performance_wind(agent):
     # Create df with all combinations of solar+storage sizes
     system_df = pd.DataFrame(gFuncs.cartesian([opt_system_size, batt_powers]), columns=['system_size_kw', 'batt_kw'])
 
-    cf_profile = agent.loc['generation_hourly'] / agent.loc['system_size_kw']
+    if opt_system_size == 0.:
+        cf_profile = np.zeros(len(agent.loc['generation_hourly']))
+    else:
+        cf_profile = agent.loc['generation_hourly'] / agent.loc['system_size_kw']
     kwh_by_year = np.array(map(lambda x: sum(x), np.split(np.array(cf_profile), agent.loc['timesteps_per_year'])))
     kwh_by_year = np.concatenate([kwh_by_year for i in range(1, agent.loc['economic_lifetime']+1)])
     system_df['kwh_by_timestep'] = system_df['system_size_kw'].apply(lambda x: x * kwh_by_year)
