@@ -117,10 +117,10 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
     # negligibly from year-to-year. A ten-year degradation is applied, to 
     # approximate the age of a mature fleet.
     if year==scenario_settings.model_years[-1]:
-        system_gen_by_agent = np.vstack(
-            np.where(agent_df['tech'] == 'solar', 
-                agent_df['solar_cf_profile']).astype(np.float) / 1e6, 
-                agent_df['generation_hourly'].astype(np.float) / 1e6) * np.array(agent_df['system_kw_cum']).reshape(len(agent_df), 1)
+        if agent_df.loc[agent_df.index[0], 'tech'] == 'solar':
+            system_gen_by_agent = np.vstack(agent_df['solar_cf_profile']).astype(np.float) / 1e6 * np.array(agent_df['system_kw_cum']).reshape(len(agent_df), 1)
+        else:
+            system_gen_by_agent = np.vstack(agent_df['generation_hourly']).astype(np.float) / 1e6 * np.array(agent_df['system_kw_cum']).reshape(len(agent_df), 1)
         
         # Sum each agent's profile into a total dispatch in each BA
         system_gen_by_ba = np.zeros([len(ba_list), 8760])

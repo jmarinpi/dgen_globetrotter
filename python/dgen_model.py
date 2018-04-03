@@ -328,12 +328,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING
                     #==========================================================================================================
                     write_annual_agents = True
-                    drop_fields = ['consumption_hourly', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile']
-                    if 'solar' in scenario_settings.techs:
-                        drop_fields.append('solar_cf_profile')
-                    else:
-                        drop_fields.append('generation_hourly')
+                    drop_fields = ['consumption_hourly', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile', 'solar_cf_profile', 'generation_hourly']
                     df_write = agents.df.drop(drop_fields, axis=1)
+                    # replace infinite values for writing to database
+                    df_write.replace([np.inf, -np.inf], np.nan, inplace=True)
                     if write_annual_agents==True:
                         df_write.to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
