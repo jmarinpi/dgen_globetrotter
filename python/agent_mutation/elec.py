@@ -232,7 +232,7 @@ def apply_solar_capacity_factor_profile(dataframe, hourly_resource_df):
     dataframe['solar_cf_profile'] = dataframe['generation_hourly']
 
     # subset to only the desired output columns
-    out_cols = in_cols + ['agent_id', 'solar_cf_profile']
+    out_cols = in_cols + ['solar_cf_profile']
     dataframe = dataframe[out_cols]
 
     return dataframe

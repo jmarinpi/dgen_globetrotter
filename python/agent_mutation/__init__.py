@@ -80,6 +80,13 @@ def init_agents(model_settings, scenario_settings, prng, cur, con):
     norm_load_profiles_df = elec.get_normalized_load_profiles(con, schema, sectors)
     agents_df = elec.apply_normalized_load_profiles(agents_df, norm_load_profiles_df)
 
+    # =========================================================================
+    # RESOURCE DATA
+    # =========================================================================
+    # get hourly resource    
+    hourly_solar_resource_df = elec.get_normalized_hourly_resource_solar(con, schema, sectors, techs)
+    agents_df = elec.apply_solar_capacity_factor_profile(agents_df, hourly_solar_resource_df)
+
 
     # =========================================================
     # GET RATE RANKS & TARIFF LOOKUP TABLE FOR EACH SECTOR

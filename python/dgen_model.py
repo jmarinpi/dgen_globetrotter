@@ -228,9 +228,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents.on_frame(agent_mutation.elec.apply_export_tariff_params, (net_metering_df))
                     
                     
-                    # Apply annual resource data
-                    solar_resource_df = agent_mutation.elec.get_annual_resource_solar(con, schema, scenario_settings.sectors)
-                    
+                    # Apply annual resource data                    
                     wind_resource_df = agent_mutation.elec.get_annual_resource_wind(con, schema, year, scenario_settings.sectors)
                     wind_resource_df = agent_mutation.elec.apply_technology_performance_wind(wind_resource_df, wind_derate_traj, year)
 
@@ -282,10 +280,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     else:                        
                         # Apply host-owned financial parameters
                         agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate, scenario_settings.techs])                        
-                        
-                        # Apply hourly resource data
-                        hourly_solar_resource_df = agent_mutation.elec.get_normalized_hourly_resource_solar(con, schema, scenario_settings.sectors, scenario_settings.techs)
-                        agents.on_frame(agent_mutation.elec.apply_solar_capacity_factor_profile, hourly_solar_resource_df)
                         
                         # for now, do not split solar into 'calc_system_size' and 'calc_financial_performance', just use old function that does both
                         agents.on_row(sFuncs.calc_system_size_and_financial_performance_pv, cores=cores)
