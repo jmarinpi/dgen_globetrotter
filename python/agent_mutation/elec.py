@@ -511,11 +511,11 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string):
         # Add logic for Commercial and Industrial
         if sector_abbr != 'res':
             if sector_abbr == 'ind':
-                sector_priority_1 = 'I'
-                sector_priority_2 = 'C'
+                inputs['sector_priority_1'] = 'I'
+                inputs['sector_priority_2'] = 'C'
             elif sector_abbr == 'com':
-                sector_priority_1 = 'C'
-                sector_priority_2 = 'I'
+                inputs['sector_priority_1'] = 'C'
+                inputs['sector_priority_2'] = 'I'
 
             # Select Appropriate Rates and Rank the Ranked Rates based on
             # Sector
@@ -537,7 +537,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string):
                             SELECT *, rank() OVER (PARTITION BY agent_id ORDER BY rate_rank ASC, sector_rank
                             ASC) as rank
                             FROM b
-                    )"""
+                    )""" % inputs
 
         elif sector_abbr == 'res':
             sql2 = """b AS
