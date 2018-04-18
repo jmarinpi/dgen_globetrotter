@@ -99,7 +99,7 @@ def adjust_roof_area(agent_df):
     return agent_df
 
 #%%
-def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):
+def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, default_res_rate_lkup, n_workers=mp.cpu_count()/2):
 
     if 'ix' not in os.name:
         EXECUTOR = concur_f.ThreadPoolExecutor
@@ -128,8 +128,14 @@ def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, n_workers
 
             # Do a random draw from the utility_list using the same seed as generated in dgen_model.py and return the utility_id that was selected
             utility_id = prng.choice(utility_list)
-
-            agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
+            
+            # If agent is in residential sector and selected utility is included in the default residential rate table, assign default rate only.
+            # Otherwise, proceed as before by returning all rates applicable to agent.
+            if (utility_id in default_res_rate_lkup['eia_id'].values) & (agent.loc['sector_abbr'] == 'res'):
+                rate_id = default_res_rate_lkup[default_res_rate_lkup['eia_id'] == utility_id]['rate_id_alias'].values[0]
+                agent_rate_jsons = agent_rate_jsons.loc[rate_id]
+            else:
+                agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
             
             futures.append(executor.submit(select_tariff, agent, agent_rate_jsons))
 
@@ -181,6 +187,16 @@ def select_tariff(agent, rates_json_df):
     agent['tariff_id'] = tariff_id
 
     return agent
+
+
+#%%
+def get_default_res_rates(con):
+    
+    sql = """SELECT * FROM diffusion_shared.default_res_rate_lkup"""
+           
+    dataframe = pd.read_sql(sql, con, coerce_float=False)
+    
+    return dataframe
 
 
 #%%
@@ -503,9 +519,9 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string):
                                     b.min_energy_kwh as rate_min_energy_kwh,
                                     b.sector as rate_sector
                                 FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
-                                LEFT JOIN diffusion_shared.cntys_ranked_rates_lkup_20170103 b  --  *******
+                                LEFT JOIN diffusion_shared.cntys_ranked_rates_lkup_20180413 b  --  *******
                                         ON a.county_id = b.county_id
-                                        AND a.util_type = b.rank_utility_type
+                                        --AND a.util_type = b.rank_utility_type
                     ),""" % inputs
 
         # Add logic for Commercial and Industrial
@@ -593,10 +609,10 @@ def check_rate_coverage(dataframe, rates_rank_df): #rates_json_df
         for missing_agent_id in missing_agents:
             agent_row = dataframe.loc[missing_agent_id]
             if agent_row['sector_abbr'] == 'res':
-                agent_row['rate_id_alias'] = int(2778)
+                agent_row['rate_id_alias'] = int(16656) # corresponds to Xcel Energy (CO) "Residential Service (Schedule R)" tariff
                 agent_row['rate_type_tou'] = True
             else:
-                agent_row['rate_id_alias'] = int(2779)
+                agent_row['rate_id_alias'] = int(16661) # corresponds to Xcel Energy (CO) "Secondary General Service (Schedule SG)" tariff
                 agent_row['rate_type_tou'] = True
             rates_rank_df = rates_rank_df.append(agent_row[['sector_abbr', 'rate_id_alias', 'rate_type_tou']])
 
@@ -639,9 +655,7 @@ def get_electric_rates_json(con, unique_rate_ids):
 
     # get (only the required) rate jsons from postgres
     sql = """SELECT a.rate_id_alias, a.rate_name, a.eia_id, a.json as rate_json
-             FROM diffusion_shared.urdb3_rate_sam_jsons_20170103 a
-             --LEFT JOIN diffusion_shared.urdb3_rate_sam_jsons_20170103 b
-             --ON a.rate_id_alias = b.rate_id_alias
+             FROM diffusion_shared.urdb3_rate_jsons_20180413 a
              WHERE a.rate_id_alias in (%(rate_id_list)s);""" % inputs
     df = pd.read_sql(sql, con, coerce_float=False)
 

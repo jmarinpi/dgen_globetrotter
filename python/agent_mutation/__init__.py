@@ -85,7 +85,7 @@ def init_solar_agents(model_settings, scenario_settings, prng, cur, con):
     rates_rank_df =  elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string)
 
     # Remove certain manually selected tariffs
-    rates_rank_df = rates_rank_df[rates_rank_df['rate_id_alias'] != 2779] # colorado's residential demand tariff
+    rates_rank_df = rates_rank_df[rates_rank_df['rate_id_alias'] != 16657] # colorado's residential demand tariff
 
     # check that every agent has a tariff, assign one to them if they don't
     rates_rank_df = elec.check_rate_coverage(agents_df, rates_rank_df)
@@ -99,7 +99,10 @@ def init_solar_agents(model_settings, scenario_settings, prng, cur, con):
     # =========================================================================
     # AGENT TARIFF SELECTION
     # =========================================================================
-    agents_df = elec.select_tariff_driver(agents_df, prng, rates_rank_df, rates_json_df, n_workers=model_settings.local_cores)
+    # get lookup table to assign default tariffs to residential agents, where applicable
+    default_res_rate_lkup = elec.get_default_res_rates(con)
+    
+    agents_df = elec.select_tariff_driver(agents_df, prng, rates_rank_df, rates_json_df, default_res_rate_lkup, n_workers=model_settings.local_cores)
     
     #==============================================================================
     # Set initial year columns. Initial columns do not change, whereas non-initial are adjusted each year
