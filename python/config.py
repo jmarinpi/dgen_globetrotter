@@ -26,7 +26,7 @@ pg_params_file = 'pg_params_atlas.json'
 #==============================================================================
 #   set the number of customer bins to model in each county
 #==============================================================================
-agents_per_region = 1
+agents_per_region = 2
 sample_pct = 0.02
 min_agents = 3
 

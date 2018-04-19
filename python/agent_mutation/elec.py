@@ -19,6 +19,7 @@ import os
 import pickle
 import multiprocessing as mp
 import concurrent.futures as concur_f
+import concurrent.futures as concur_f
 
 # Import from support function repo
 import tariff_functions as tFuncs
@@ -55,47 +56,51 @@ def adjust_roof_area(agent_df):
     
     This should be handled separately in agent generation, eventually.
     '''
-    
-    roof_areas = pd.read_csv('developable_roof_areas.csv')
-    roof_areas['actual_developable_roof_sqft'] = roof_areas['developable_roof_sqft']
-    res_actual_areas = roof_areas[['actual_developable_roof_sqft', 'state_abbr']][roof_areas['sector_abbr']=='res']
-    nonres_actual_areas = roof_areas[['actual_developable_roof_sqft', 'state_abbr']][roof_areas['sector_abbr']!='res']
-    
     agent_df = agent_df.reset_index()
-    agent_df_thin = agent_df[['developable_roof_sqft', 'customers_in_bin', 'state_abbr', 'sector_abbr']]
+    agent_df_thin = agent_df[['developable_roof_sqft', 'customers_in_bin', 'state_abbr', 'sector_abbr','county_id']]
     
+
+    #RES
+    res_roof_areas_by_county = pd.read_csv('res_developable_roof_by_county.csv')
+    res_roof_areas_by_county = res_roof_areas_by_county[res_roof_areas_by_county['sector_abbr']=='res']
+    res_roof_areas_by_county['actual_developable_roof_sqft'] = res_roof_areas_by_county['developable_roof_sng_own_sqft']
+    res_roof_areas_by_county = res_roof_areas_by_county[['actual_developable_roof_sqft', 'county_id','sector_abbr']]
+
     res_df = agent_df_thin[agent_df_thin['sector_abbr']=='res']
-    nonres_df = agent_df_thin[agent_df_thin['sector_abbr']!='res']
-    
     res_df['total_developable_roof_sqft'] = res_df['developable_roof_sqft'] * res_df['customers_in_bin']
+    
+    res_areas_by_county = res_df[['county_id', 'total_developable_roof_sqft']].groupby(by='county_id').sum()
+    res_areas_by_county = res_areas_by_county.reset_index()
+    
+    res_areas_by_county = pd.merge(res_areas_by_county, res_roof_areas_by_county, on='county_id')
+    res_areas_by_county['roof_adjustment'] = res_areas_by_county['actual_developable_roof_sqft'] / res_areas_by_county['total_developable_roof_sqft']
+    
+    agent_df_res = pd.merge(agent_df[agent_df['sector_abbr']=='res'], res_areas_by_county[['roof_adjustment', 'county_id']], on= 'county_id')
+    agent_df_res['developable_roof_sqft'] = agent_df_res['developable_roof_sqft'] * agent_df_res['roof_adjustment']
+
+    #NON RES
+    non_res_roof_areas_by_state = pd.read_csv('developable_roof_areas.csv')
+    non_res_roof_areas_by_state['actual_developable_roof_sqft'] = non_res_roof_areas_by_state['developable_roof_sqft']
+    non_res_roof_areas_by_state = non_res_roof_areas_by_state[['actual_developable_roof_sqft', 'state_abbr']][non_res_roof_areas_by_state['sector_abbr']!='res']
+    
+    nonres_df = agent_df_thin[agent_df_thin['sector_abbr']!='res']
     nonres_df['total_developable_roof_sqft'] = nonres_df['developable_roof_sqft'] * nonres_df['customers_in_bin']
     
     
-    res_areas = res_df[['state_abbr', 'total_developable_roof_sqft']].groupby(by='state_abbr').sum()
-    nonres_areas = nonres_df[['state_abbr', 'total_developable_roof_sqft']].groupby(by='state_abbr').sum()
-    res_areas = res_areas.reset_index()
-    nonres_areas = nonres_areas.reset_index()
+    nonres_areas_by_state = nonres_df[['state_abbr', 'total_developable_roof_sqft']].groupby(by='state_abbr').sum()
+    nonres_areas_by_state = nonres_areas_by_state.reset_index()
     
-    res_areas = pd.merge(res_areas, res_actual_areas, on='state_abbr')
-    nonres_areas = pd.merge(nonres_areas, nonres_actual_areas, on='state_abbr')
+    nonres_areas_by_state = pd.merge(nonres_areas_by_state, non_res_roof_areas_by_state, on='state_abbr')
     
-    res_areas['roof_adjustment'] = res_areas['actual_developable_roof_sqft'] / res_areas['total_developable_roof_sqft'] 
-    nonres_areas['roof_adjustment'] = nonres_areas['actual_developable_roof_sqft'] / nonres_areas['total_developable_roof_sqft'] 
-    com_areas = nonres_areas.copy()
-    ind_areas = nonres_areas.copy()
-    
-    res_areas['sector_abbr'] = 'res'
-    com_areas['sector_abbr'] = 'com'
-    ind_areas['sector_abbr'] = 'ind'
-    
-    all_areas = pd.concat([res_areas, com_areas, ind_areas])
-    
-    agent_df = pd.merge(agent_df, all_areas[['roof_adjustment', 'state_abbr', 'sector_abbr']], on=['sector_abbr', 'state_abbr'])
-    
-    agent_df['developable_roof_sqft'] = agent_df['developable_roof_sqft'] * agent_df['roof_adjustment']
-    
+    nonres_areas_by_state['roof_adjustment'] = nonres_areas_by_state['actual_developable_roof_sqft'] / nonres_areas_by_state['total_developable_roof_sqft']
+
+    agent_df_nonres = pd.merge(agent_df[agent_df['sector_abbr']!='res'], nonres_areas_by_state[['roof_adjustment', 'state_abbr']], on=['state_abbr'])
+
+    agent_df_nonres['developable_roof_sqft'] = agent_df_nonres['developable_roof_sqft'] * agent_df_nonres['roof_adjustment']
+
+    agent_df = pd.concat([agent_df_nonres,agent_df_res])
+
     agent_df = agent_df.set_index('agent_id')
-    
     return agent_df
 
 #%%
