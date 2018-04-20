@@ -1,4 +1,4 @@
-geoid,county_id,state_abbr,non_res_bldg_sqft,sector_abbr
+geoid,county_id,state_abbr,developable_roof_sqft,sector_abbr
 48401,2988,TX,0,nonres
 16071,600,ID,12313.87231,nonres
 30017,1109,MT,17149.24954,nonres

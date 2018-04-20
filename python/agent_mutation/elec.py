@@ -78,23 +78,25 @@ def adjust_roof_area(agent_df):
     agent_df_res = pd.merge(agent_df[agent_df['sector_abbr']=='res'], res_areas_by_county[['roof_adjustment', 'county_id']], on= 'county_id')
     agent_df_res['developable_roof_sqft'] = agent_df_res['developable_roof_sqft'] * agent_df_res['roof_adjustment']
 
+
+
     #NON RES
-    non_res_roof_areas_by_state = pd.read_csv('developable_roof_areas.csv')
+    non_res_roof_areas_by_state = pd.read_csv('nonres_developable_roof_by_county.csv')
     non_res_roof_areas_by_state['actual_developable_roof_sqft'] = non_res_roof_areas_by_state['developable_roof_sqft']
-    non_res_roof_areas_by_state = non_res_roof_areas_by_state[['actual_developable_roof_sqft', 'state_abbr']][non_res_roof_areas_by_state['sector_abbr']!='res']
-    
+    non_res_roof_areas_by_state = non_res_roof_areas_by_state[['actual_developable_roof_sqft', 'county_id']][non_res_roof_areas_by_state['sector_abbr']!='res']
+
     nonres_df = agent_df_thin[agent_df_thin['sector_abbr']!='res']
     nonres_df['total_developable_roof_sqft'] = nonres_df['developable_roof_sqft'] * nonres_df['customers_in_bin']
-    
-    
-    nonres_areas_by_state = nonres_df[['state_abbr', 'total_developable_roof_sqft']].groupby(by='state_abbr').sum()
+
+
+    nonres_areas_by_state = nonres_df[['county_id', 'total_developable_roof_sqft']].groupby(by='county_id').sum()
     nonres_areas_by_state = nonres_areas_by_state.reset_index()
-    
-    nonres_areas_by_state = pd.merge(nonres_areas_by_state, non_res_roof_areas_by_state, on='state_abbr')
-    
+
+    nonres_areas_by_state = pd.merge(nonres_areas_by_state, non_res_roof_areas_by_state, on='county_id')
+
     nonres_areas_by_state['roof_adjustment'] = nonres_areas_by_state['actual_developable_roof_sqft'] / nonres_areas_by_state['total_developable_roof_sqft']
 
-    agent_df_nonres = pd.merge(agent_df[agent_df['sector_abbr']!='res'], nonres_areas_by_state[['roof_adjustment', 'state_abbr']], on=['state_abbr'])
+    agent_df_nonres = pd.merge(agent_df[agent_df['sector_abbr']!='res'], nonres_areas_by_state[['roof_adjustment', 'county_id']], on=['county_id'])
 
     agent_df_nonres['developable_roof_sqft'] = agent_df_nonres['developable_roof_sqft'] * agent_df_nonres['roof_adjustment']
 
