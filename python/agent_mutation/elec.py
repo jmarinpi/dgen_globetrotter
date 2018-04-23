@@ -524,7 +524,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string):
                                     b.min_energy_kwh as rate_min_energy_kwh,
                                     b.sector as rate_sector
                                 FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
-                                LEFT JOIN diffusion_shared.cntys_ranked_rates_lkup_20180413 b  --  *******
+                                LEFT JOIN diffusion_shared.cntys_ranked_rates_lkup_20180423 b  --  *******
                                         ON a.county_id = b.county_id
                                         --AND a.util_type = b.rank_utility_type
                     ),""" % inputs
@@ -660,7 +660,7 @@ def get_electric_rates_json(con, unique_rate_ids):
 
     # get (only the required) rate jsons from postgres
     sql = """SELECT a.rate_id_alias, a.rate_name, a.eia_id, a.json as rate_json
-             FROM diffusion_shared.urdb3_rate_jsons_20180413 a
+             FROM diffusion_shared.urdb3_rate_jsons_20180423 a
              WHERE a.rate_id_alias in (%(rate_id_list)s);""" % inputs
     df = pd.read_sql(sql, con, coerce_float=False)
 
