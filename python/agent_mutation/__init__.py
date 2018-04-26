@@ -85,7 +85,7 @@ def init_solar_agents(model_settings, scenario_settings, prng, cur, con):
     rates_rank_df =  elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string)
 
     # Remove certain manually selected tariffs
-    rates_rank_df = rates_rank_df[rates_rank_df['rate_id_alias'] != 16657] # colorado's residential demand tariff
+    rates_rank_df = rates_rank_df[rates_rank_df['rate_id_alias'] != 16592] # colorado's residential demand tariff
 
     # check that every agent has a tariff, assign one to them if they don't
     rates_rank_df = elec.check_rate_coverage(agents_df, rates_rank_df)

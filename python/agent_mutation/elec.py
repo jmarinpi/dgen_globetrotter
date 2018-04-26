@@ -614,10 +614,10 @@ def check_rate_coverage(dataframe, rates_rank_df): #rates_json_df
         for missing_agent_id in missing_agents:
             agent_row = dataframe.loc[missing_agent_id]
             if agent_row['sector_abbr'] == 'res':
-                agent_row['rate_id_alias'] = int(16656) # corresponds to Xcel Energy (CO) "Residential Service (Schedule R)" tariff
+                agent_row['rate_id_alias'] = int(16591) # corresponds to Xcel Energy (CO) "Residential Service (Schedule R)" tariff
                 agent_row['rate_type_tou'] = True
             else:
-                agent_row['rate_id_alias'] = int(16661) # corresponds to Xcel Energy (CO) "Secondary General Service (Schedule SG)" tariff
+                agent_row['rate_id_alias'] = int(16596) # corresponds to Xcel Energy (CO) "Secondary General Service (Schedule SG)" tariff
                 agent_row['rate_type_tou'] = True
             rates_rank_df = rates_rank_df.append(agent_row[['sector_abbr', 'rate_id_alias', 'rate_type_tou']])
 
