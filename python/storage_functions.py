@@ -277,7 +277,7 @@ def calc_system_size_and_financial_performance(agent):
     # Misc. calculations
     pv_cf_profile = np.array(agent['solar_cf_profile']) / 1e6
     agent.loc['naep'] = float(np.sum(pv_cf_profile))
-    agent.loc['max_pv_size'] = np.min([agent.loc['load_kwh_per_customer_in_bin']/agent.loc['naep'], agent.loc['developable_roof_sqft']*agent.loc['pv_power_density_w_per_sqft']/1000.0])
+    
 
     # Create battery object
     batt = dFuncs.Battery()
@@ -295,32 +295,39 @@ def calc_system_size_and_financial_performance(agent):
 
     original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
     agent.loc['fy_bill_without_sys'] = original_bill * agent.loc['elec_price_multiplier']    
-    if agent.loc['fy_bill_without_sys'] == 0: agent.loc['fy_bill_without_sys']=1.0
+    if agent.loc['fy_bill_without_sys'] == 0: 
+        agent.loc['fy_bill_without_sys'] = 1.0
     agent.loc['fy_elec_cents_per_kwh_without_sys'] = agent.loc['fy_bill_without_sys'] / agent.loc['load_kwh_per_customer_in_bin']
 
     #=========================================================================#
     # Estimate bill savings revenue from a set of solar+storage system sizes
     #=========================================================================#    
     # Set PV sizes to evaluate
+    
+    max_size_load = agent.loc['load_kwh_per_customer_in_bin']/agent.loc['naep']
+    max_size_roof = agent.loc['developable_roof_sqft'] * agent.loc['pv_power_density_w_per_sqft']/1000.0
+    agent.loc['max_pv_size'] = min(max_size_load, max_size_roof)
+
+    # Size the PV system depending on NEM availability, either to 95% of load w/NEM, or 50% w/o NEM. In both cases, roof size is a constraint.
     if export_tariff.full_retail_nem==True:
-        pv_sizes = np.array([agent.loc['max_pv_size']*0.95])
+        pv_sizes = np.array([min(max_size_load * 0.95, max_size_roof)])
     else:
-        pv_sizes = np.array([agent.loc['max_pv_size']*0.5])
+        pv_sizes = np.array([min(max_size_load * 0.5, max_size_roof)])
 
     # Set battery sizes to evaluate
     # Only evaluate a battery if there are demand charges, TOU energy charges, or no NEM
-#    batt_inc = 3
-#    if hasattr(tariff, 'd_flat_prices') or hasattr(tariff, 'd_tou_prices') or tariff.e_max_difference>0.02 or export_tariff.full_retail_nem==False:
-#        batt_powers = np.linspace(0, np.array(agent.loc['max_demand_kw']) * 0.2, batt_inc)
-#    else:
-#        batt_powers = np.zeros(1)
+    #batt_inc = 3
+    #if hasattr(tariff, 'd_flat_prices') or hasattr(tariff, 'd_tou_prices') or tariff.e_max_difference>0.02 or export_tariff.full_retail_nem==False:
+    #    batt_powers = np.linspace(0, np.array(agent.loc['max_demand_kw']) * 0.2, batt_inc)
+    #else:
+    #    batt_powers = np.zeros(1)
     batt_powers = np.zeros(1)
         
     # Calculate the estimation parameters for each PV size
     est_params_df = pd.DataFrame(index=pv_sizes)
     est_params_df['estimator_params'] = 'temp'
     for pv_size in pv_sizes:
-        load_and_pv_profile = load_profile - pv_size*pv_cf_profile
+        load_and_pv_profile = load_profile - pv_size * pv_cf_profile
         est_params_df.set_value(pv_size, 'estimator_params', dFuncs.calc_estimator_params(load_and_pv_profile, tariff, export_tariff, batt.eta_charge, batt.eta_discharge))
     
     # Create df with all combinations of solar+storage sizes
@@ -427,7 +434,7 @@ def calc_system_size_and_financial_performance(agent):
     batt.set_cap_and_power(opt_batt_cap, opt_batt_power) 
     #load_and_pv_profile = load_profile - opt_pv_size*pv_cf_profile  not used
 
-    if opt_pv_size<=agent.loc['pv_kw_limit']:
+    if opt_pv_size <= agent.loc['pv_kw_limit']:
         export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
         export_tariff.periods_8760 = tariff.e_tou_8760
         export_tariff.prices = tariff.e_prices_no_tier
@@ -446,7 +453,7 @@ def calc_system_size_and_financial_performance(agent):
     agent.loc['fy_bill_with_sys'] = opt_bill * agent.loc['elec_price_multiplier']
     agent.loc['fy_bill_savings'] = agent.loc['fy_bill_without_sys'] - agent.loc['fy_bill_with_sys']
     agent.loc['fy_bill_savings_frac'] = agent.loc['fy_bill_savings'] / agent.loc['fy_bill_without_sys']
-    opt_bill_savings = np.zeros([1, agent.loc['economic_lifetime']+1])
+    opt_bill_savings = np.zeros([1, agent.loc['economic_lifetime'] + 1])
     opt_bill_savings[:, 1:] = (original_bill - opt_bill)
     opt_bill_savings = opt_bill_savings * agent.loc['elec_price_multiplier'] * escalator * degradation
     
@@ -514,6 +521,5 @@ def calc_system_size_and_financial_performance(agent):
                 'cash_incentives',
                 'export_tariff_results'
                 ]
-                            
-#    print "Opt PV:", opt_pv_size, np.round(opt_pv_size/agent['max_pv_size'],2), ", opt batt kW:", opt_batt_power, np.round(opt_batt_power/opt_pv_size,2) 
+
     return agent[out_cols]
