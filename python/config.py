@@ -26,7 +26,7 @@ pg_params_file = 'pg_params_atlas.json'
 #==============================================================================
 #   set the number of customer bins to model in each county
 #==============================================================================
-agents_per_region = 2
+agents_per_region = 1
 sample_pct = 0.02
 min_agents = 3
 
@@ -38,7 +38,7 @@ start_year = 2014
 #==============================================================================
 #   Path to R will vary by user (until we move the script over to run on gispgdb server)
 #==============================================================================
-Rscript_paths = ['/usr/bin/Rscript','/usr/local/bin/Rscript','C:/Users/mgleason/Documents/R/R-3.0.2/bin/Rscript.exe','C:/Program Files/R/R-3.0.2/bin/Rscript.exe','C:/Program Files/R/R-3.0.3/bin/Rscript.exe', 'C:/Users/bsigrin/Documents/R/R-3.1.1/bin/Rscript.exe', 'C:/Users/pgagnon/Documents/R/R-3.2.2/bin/Rscript.exe', 'C:/Program Files/R/R-3.3.2/bin/Rscript.exe']
+Rscript_paths = ['/nopt/nrel/apps/R/3.2.2-gcc/bin/Rscript','/usr/bin/Rscript','/usr/local/bin/Rscript','C:/Program Files/R/R-3.0.2/bin/Rscript.exe','C:/Program Files/R/R-3.0.3/bin/Rscript.exe', 'C:/Users/bsigrin/Documents/R/R-3.1.1/bin/Rscript.exe', 'C:/Program Files/R/R-3.3.2/bin/Rscript.exe']
 
 #==============================================================================
 #   set number of parallel processes to run postgres queries (this is ignored if parallelize = F)
@@ -53,4 +53,4 @@ local_cores = multiprocessing.cpu_count()/2
 #==============================================================================
 #  Should the output schema be deleted after the model run
 #==============================================================================
-delete_output_schema = True
+delete_output_schema = False
