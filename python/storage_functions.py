@@ -308,11 +308,19 @@ def calc_system_size_and_financial_performance(agent):
     max_size_roof = agent.loc['developable_roof_sqft'] * agent.loc['pv_power_density_w_per_sqft']/1000.0
     agent.loc['max_pv_size'] = min(max_size_load, max_size_roof)
 
-    # Size the PV system depending on NEM availability, either to 95% of load w/NEM, or 50% w/o NEM. In both cases, roof size is a constraint.
-    if export_tariff.full_retail_nem==True:
-        pv_sizes = np.array([min(max_size_load * 0.95, max_size_roof)])
+    dynamic_sizing = True #False
+
+    if dynamic_sizing:
+        # Size the PV system based on the optimal NPV value. Default is to search over 10% increments of generation to load ratios. This adds to the model run time.
+        # TODO: There are likely more efficient ways to find the optimal PV size, such as a Newton-Ralphson or curve-fitting method
+        # TODO: Add dynamic_sizing switch to config file and the allowable sizing increments
+        pv_sizes = np.arange(0, 1.1, 0.1) * agent.loc['max_pv_size']
     else:
-        pv_sizes = np.array([min(max_size_load * 0.5, max_size_roof)])
+        # Size the PV system depending on NEM availability, either to 95% of load w/NEM, or 50% w/o NEM. In both cases, roof size is a constraint.
+        if export_tariff.full_retail_nem==True:
+            pv_sizes = np.array([min(max_size_load * 0.95, max_size_roof)])
+        else:
+            pv_sizes = np.array([min(max_size_load * 0.5, max_size_roof)])
 
     # Set battery sizes to evaluate
     # Only evaluate a battery if there are demand charges, TOU energy charges, or no NEM
