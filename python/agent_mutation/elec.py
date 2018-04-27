@@ -507,26 +507,31 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string):
     df_list = []
     for sector_abbr, sector in sectors.iteritems():
         inputs['sector_abbr'] = sector_abbr
+        inputs['sector_initial'] = sector_abbr[0].upper()
 
         sql1 =  """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
                     CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS (
                         WITH a AS
                         (
-                            -- Unnest Rates t
-                                SELECT a.agent_id, a.tract_id_alias, a.county_id, a.max_demand_kw, a.avg_monthly_kwh,
-                                    b.rate_id_alias as rate_id_alias,
-                                    b.rate_rank as rate_rank,
-                                    b.rank_utility_type,
-                                    b.rate_type_tou,
-                                    b.max_demand_kw as rate_max_demand_kw,
-                                    b.min_demand_kw as rate_min_demand_kw,
-                                    b.max_energy_kwh as rate_max_energy_kwh,
-                                    b.min_energy_kwh as rate_min_energy_kwh,
-                                    b.sector as rate_sector
+                                SELECT a.agent_id, a.tract_id_alias, a.county_id, a.max_demand_kw, a.avg_monthly_kwh, 
+                                    d.rate_id_alias, 
+                                    e.rate_rank,
+                                    e.rank_utility_type,
+                                    e.rate_type_tou,
+                                    e.min_demand_kw as rate_min_demand_kw,
+                                    e.max_demand_kw as rate_max_demand_kw,
+                                    e.min_energy_kwh as rate_min_energy_kwh,
+                                    e.max_energy_kwh as rate_max_energy_kwh,
+                                    e.sector as rate_sector
                                 FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
-                                LEFT JOIN diffusion_shared.cntys_ranked_rates_lkup_20180423 b  --  *******
-                                        ON a.county_id = b.county_id
-                                        --AND a.util_type = b.rank_utility_type
+                                LEFT JOIN diffusion_shared.tract_geoms_2015 b
+                                    ON a.state_fips = b.state_fips AND a.county_fips = b.county_fips AND a.tract_fips = b.tract_fips
+                                LEFT JOIN diffusion_shared.ventyx_tracts_mappings c
+                                    ON b.gisjoin = c.gisjoin
+                                INNER JOIN diffusion_shared.urdb3_rate_jsons_20180423 d
+                                    ON c.urdb_id = d.eia_id AND '%(sector_initial)s' = d.res_com
+                                INNER JOIN (SELECT DISTINCT ON (rate_id_alias) * FROM diffusion_shared.cntys_ranked_rates_lkup_20180423) e
+                                    ON a.state_fips = b.state_fips AND a.county_fips = b.county_fips AND d.rate_id_alias = e.rate_id_alias
                     ),""" % inputs
 
         # Add logic for Commercial and Industrial
