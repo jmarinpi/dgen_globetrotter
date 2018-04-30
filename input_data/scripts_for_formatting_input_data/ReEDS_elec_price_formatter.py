@@ -56,7 +56,7 @@ for scen in scen_names:
             scen_df = scen_df[scen_df.scenario == scen]
         
         # process retail rates and write to csv
-        if price_type == 'Competitive':
+        if price_type == 'Regulated':
             scen_df['value'] = scen_df.value * (1 - 0.0012) / 1000 # convert to 2014$ and from $/MWh to $/kWh
             scen_df.rename(columns={'value':'elec_price_res'}, inplace=True)
             scen_df['elec_price_com'] = scen_df.elec_price_res
