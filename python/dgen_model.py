@@ -242,7 +242,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     solar_agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year, state_capacity_by_year])
 
                     # Calculate System Financial Performance
-                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance,cores=cores)
+                    solar_agents.chunk_on_row(sFuncs.calc_system_size_and_financial_performance,cores=cores)
+#                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance,cores=cores)
 
                     # Calculate the financial performance of the S+S systems
                     solar_agents.on_frame(financial_functions_elec.calc_financial_performance)
@@ -274,13 +275,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     last_year_installed_capacity = last_year_installed_capacity.loc[last_year_installed_capacity['year'] == year]
                     last_year_installed_capacity = last_year_installed_capacity.groupby('state_abbr')['pv_kw_cum'].sum().reset_index()
 
-                    if is_first_year==True:
-                        interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
-                                                                                         scenario_settings, out_scen_path)
-                    else:
-                        interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, is_first_year,
-                                                                                         scenario_settings, out_scen_path,
-                                                                                         interyear_results_aggregations)
+#                    if is_first_year==True:
+#                        interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, #is_first_year,
+#                                                                                         scenario_settings, #out_scen_path)
+#                    else:
+#                        interyear_results_aggregations = datfunc.aggregate_outputs_solar(solar_agents.df, year, #is_first_year,
+#                                                                                         scenario_settings, #out_scen_path, interyear_results_aggregations)
 
 
                     #==========================================================================================================
@@ -289,8 +289,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     write_annual_agents = True
                     drop_fields = ['consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile']
                     df_write = solar_agents.df.drop(drop_fields, axis=1)
-                    if write_annual_agents==True:
-                        df_write.to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
+#                    if write_annual_agents==True:
+#                        df_write.to_pickle(out_scen_path + '/agent_df_%s.pkl' % year)
 
                     # Write Outputs to the database
                     if i == 0:
@@ -298,6 +298,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     else:
                         write_mode = 'append'
                     iFuncs.df_to_psql(df_write, engine, schema, owner,'agent_outputs', if_exists=write_mode, append_transformations=True)
+
+                    del df_write
 
             elif scenario_settings.techs == ['wind']:
                 logger.error('Wind not yet supported')

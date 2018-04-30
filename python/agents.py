@@ -2,6 +2,9 @@ import concurrent.futures as cf
 from functools import partial
 import os
 import pandas as pd
+import utility_functions as utilfunc
+
+logger = utilfunc.get_logger()
 
 
 class Agents(object):
@@ -124,7 +127,7 @@ class Agents(object):
         ----------
         func : 'function'
             Function to be applied to each agent
-            Must take a pd.Series as the arguement
+            Must take a pd.Series as the argument
         cores : 'int'
             Number of cores to use for computation
         in_place : 'bool'
@@ -157,6 +160,60 @@ class Agents(object):
                 results = [future.result() for future in futures]
             results_df = pd.concat(results, axis=1).T
             
+
+        if in_place:
+            self.df = pd.merge(self.df, results_df, on='agent_id')
+            self.df.set_index('agent_id', inplace=True)
+            self.update_attrs
+        else:
+            return results_df
+
+    def chunk_on_row(self, func, cores=None, in_place=True, **kwargs):
+        """
+        Divide the dataframe into chunks according to the number of processors and 		
+	then apply function to agents on an agent by agent basis within that 			
+	dataframe chunk. Function should return a df to be merged onto the original df.
+        Parameters
+        ----------
+        func : 'function'
+            Function to be applied to each agent
+            Must take a pd.Series as the argument
+        cores : 'int'
+            Number of cores to use for computation
+        in_place : 'bool'
+            If true, set self.df = results of compute
+            else return results of compute
+        **kwargs
+            Any kwargs for func
+
+        Returns
+        -------
+        results_df : 'pd.df'
+            Dataframe of agents after application of func
+        """
+        self.df.reset_index(inplace=True)
+
+        if cores is None:
+            apply_func = partial(func, **kwargs)
+            results_df = self.df.apply(apply_func, axis=1)
+        else:
+            if 'ix' not in os.name:
+                EXECUTOR = cf.ThreadPoolExecutor
+            else:
+                EXECUTOR = cf.ProcessPoolExecutor
+
+            logger.info('Number of Workers inside chunk_on_row is %s' % cores) 
+            futures = []
+            chunk_size = int(self.df.shape[0]/cores)
+            chunks = [self.df.ix[self.df.index[i:i + chunk_size]] for i in range(0, self.df.shape[0], chunk_size)]
+            
+            with EXECUTOR(max_workers=cores) as executor:
+                for agent_chunks in chunks:
+                    for _, row in agent_chunks.iterrows():
+                        futures.append(executor.submit(func, row, **kwargs))
+    
+                    results = [future.result() for future in futures]
+                results_df = pd.concat(results, axis=1).T                
 
         if in_place:
             self.df = pd.merge(self.df, results_df, on='agent_id')

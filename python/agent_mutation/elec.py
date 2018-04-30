@@ -16,6 +16,7 @@ import data_functions as datfunc
 from cStringIO import StringIO
 import pssc_mp
 import os
+import gc
 import pickle
 import multiprocessing as mp
 import concurrent.futures as concur_f
@@ -106,47 +107,73 @@ def adjust_roof_area(agent_df):
     return agent_df
 
 #%%
-def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, default_res_rate_lkup, n_workers=mp.cpu_count()/2):
+def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, default_res_rate_lkup, n_workers=mp.cpu_count()):
 
     if 'ix' not in os.name:
+	logger.info('Within ThreadPool')
         EXECUTOR = concur_f.ThreadPoolExecutor
     else:
+	logger.info('Within ProcessPool')
         EXECUTOR = concur_f.ProcessPoolExecutor
 
     seed = prng.get_state()[1][0]
 
     futures = []
+    results = []
+
+    n_workers = 12
+
+    logger.info('Number of Workers is %s' % n_workers)
+
+    # Chunk the large agent dataframe into smaller chunks to be processed by all the available processors
+
+    # calculate the chunk size as an integer to split the dataframe
+
+    if n_workers > int(agent_df.shape[0]):
+        n_workers = int(agent_df.shape[0])-1
+        logger.info('Agent Chunk size less than n_workers so reassigning n_workers as %s' % n_workers)
+
+    chunk_size = int(agent_df.shape[0]/n_workers)
+    
+    # chunk the dataframe according to the chunksize calculated above
+    chunks = [agent_df.ix[agent_df.index[i:i + chunk_size]] for i in range(0, agent_df.shape[0], chunk_size)]
+
+
     with EXECUTOR(max_workers=n_workers) as executor:
-        for agent_id, agent in agent_df.iterrows():
-            
-            prng.seed(seed)
-            # Filter for list of tariffs available to this agent
-            agent_rate_list = rates_rank_df.loc[agent_id].drop_duplicates()
-            if np.isscalar(agent_rate_list['rate_id_alias']):
-                rate_list = [agent_rate_list['rate_id_alias']]
-            else:
-                rate_list = agent_rate_list['rate_id_alias']
-            agent_rate_jsons = rates_json_df[rates_json_df.index.isin(rate_list)]
-            
-            # There can be more than one utility that is potentially applicable
-            # to each agent (e.g., if the agent is in a county where more than 
-            # one utility has service). Select which one by random.
-            utility_list = np.unique(agent_rate_jsons['eia_id'])
+        for agent_chunks in chunks:
 
-            # Do a random draw from the utility_list using the same seed as generated in dgen_model.py and return the utility_id that was selected
-            utility_id = prng.choice(utility_list)
+            for agent_id, agent in agent_chunks.iterrows():
+         
+            	prng.seed(seed)
+            	# Filter for list of tariffs available to this agent
+            	agent_rate_list = rates_rank_df.loc[agent_id].drop_duplicates()
+            	if np.isscalar(agent_rate_list['rate_id_alias']):
+                	rate_list = [agent_rate_list['rate_id_alias']]
+            	else:
+                	rate_list = agent_rate_list['rate_id_alias']
+            	agent_rate_jsons = rates_json_df[rates_json_df.index.isin(rate_list)]
             
-            # If agent is in residential sector and selected utility is included in the default residential rate table, assign default rate only.
-            # Otherwise, proceed as before by returning all rates applicable to agent.
-            if (utility_id in default_res_rate_lkup['eia_id'].values) & (agent.loc['sector_abbr'] == 'res'):
-                rate_id = default_res_rate_lkup[default_res_rate_lkup['eia_id'] == utility_id]['rate_id_alias'].values[0]
-                agent_rate_jsons = agent_rate_jsons.loc[[rate_id]]
-            else:
-                agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
-            
-            futures.append(executor.submit(select_tariff, agent, agent_rate_jsons))
+            	# There can be more than one utility that is potentially applicable
+            	# to each agent (e.g., if the agent is in a county where more than 
+            	# one utility has service). Select which one by random.
+            	utility_list = np.unique(agent_rate_jsons['eia_id'])
 
-        results = [future.result() for future in futures]
+            	# Do a random draw from the utility_list using the same seed as generated in dgen_model.py and return the utility_id that was selected
+            	utility_id = prng.choice(utility_list)
+            
+            	# If agent is in residential sector and selected utility is included in the default residential rate table, assign default rate only.
+            	# Otherwise, proceed as before by returning all rates applicable to agent.
+            	if (utility_id in default_res_rate_lkup['eia_id'].values) & (agent.loc['sector_abbr'] == 'res'):
+                	rate_id = default_res_rate_lkup[default_res_rate_lkup['eia_id'] == utility_id]['rate_id_alias'].values[0]
+                	agent_rate_jsons = agent_rate_jsons.loc[[rate_id]]
+            	else:
+                	agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
+            
+            	futures.append(executor.submit(select_tariff, agent, agent_rate_jsons))
+
+            results = [future.result() for future in futures]
+            del future
+            gc.collect()
 
     agent_df = pd.concat(results, axis=1).T
     agent_df.index.name = 'agent_id'
@@ -154,7 +181,7 @@ def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, default_r
     return agent_df
 
 #%%
-def select_tariff(agent, rates_json_df):
+def select_tariff_orig(agent, rates_json_df):
 
     # Extract load profile
     load_profile = np.array(agent['consumption_hourly'])
@@ -195,6 +222,59 @@ def select_tariff(agent, rates_json_df):
 
     return agent
 
+#%%
+def select_tariff(agent, rates_json_df):
+
+    # Extract load profile
+    load_profile = np.array(agent['consumption_hourly'])
+    logger.info('Finished load_profile within select_tariff function')
+
+    # Create export tariff object
+    export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
+    logger.info('Finished export_tariff within select_tariff function')
+
+    #=========================================================================#
+    # Tariff selection
+    #=========================================================================#
+    logger.info('Entering for loop within select_tariff function')
+    rates_json_df['bills'] = 0.0
+    if len(rates_json_df > 1):
+        # determine which of the tariffs has the cheapest cost of electricity without a system
+        for index in rates_json_df.index:
+#	    logger.info('Within select_tariff for %s' % index)
+#	    logger.info('Multiple tariff for Utility Name %s' % rates_json_df.loc[index, 'utility_name'])
+#	    logger.info('Multiple tariff for Rate Name %s' % rates_json_df.loc[index, 'rate_name'])
+            tariff_dict = rates_json_df.loc[index, 'rate_json']
+            tariff = tFuncs.Tariff(dict_obj=tariff_dict)
+            bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
+            rates_json_df.loc[index, 'bills'] = bill
+
+    # Select the tariff that had the cheapest electricity. Note that there is
+    # currently no rate switching, if it would be cheaper once a system is
+    # installed. This is currently for computational reasons.
+    logger.info('Entering rates_json_df within select_tariff function')
+    rates_json_df['tariff_ids'] = rates_json_df.index
+    logger.info('Entering tariff_id within select_tariff function')
+    tariff_id = rates_json_df.loc[rates_json_df['bills'].idxmin(), 'tariff_ids']
+    logger.info('Entering tariff_dict within select_tariff function')
+    tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
+    # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
+    logger.info('Entering if within select_tariff function')
+    if 'energy_rate_unit' in tariff_dict:
+        if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
+    logger.info('Entering tFuncs.Tariff within select_tariff function')
+    tariff = tFuncs.Tariff(dict_obj=tariff_dict)
+
+    # Removes the two 8760's from the dictionary, since these will be built from
+    # 12x24's now
+    if 'd_tou_8760' in tariff_dict.keys(): del tariff_dict['d_tou_8760']
+    if 'e_tou_8760' in tariff_dict.keys(): del tariff_dict['e_tou_8760']
+
+    agent['tariff_dict'] = tariff_dict
+    agent['tariff_id'] = tariff_id
+
+    logger.info('Finished select_tariff function')
+    return agent
 
 #%%
 def get_default_res_rates(con):
@@ -631,6 +711,7 @@ def check_rate_coverage(dataframe, rates_rank_df): #rates_json_df
     missing_agents = list(set(dataframe.index).difference(set(rates_rank_df.index)))
     if len(missing_agents) > 0:
         raise ValueError('Some agents are missing electric rates, including the following agent_ids: {:}'.format(missing_agents))
+    logger.info('Agents with Missing Electric Rates are %s' % missing_agents)    
 
 #    # check that all rate_id_aliases have a nonnull rate json
 #    # check for empty dictionary
