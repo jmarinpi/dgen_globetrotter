@@ -695,6 +695,18 @@ def check_rate_coverage(dataframe, rates_rank_df): #rates_json_df
     agent_ids = set(dataframe.index)
     rate_agent_ids = set(rates_rank_df.index)
     missing_agents = list(agent_ids.difference(rate_agent_ids))
+    
+    # map industrial tariffs based on census division
+    ind_tariffs = {'SA':{'rate_id_alias':14486,'rate_type_tou':True}, # Georgia Power Co, Schedule TOU-GSD-10 Time Of Use - General Service Demand
+                   'WSC':{'rate_id_alias':15731,'rate_type_tou':False}, # Southwestern Public Service Co (Texas), Large General Service - Inside City Limits 115 KV
+                   'PAC':{'rate_id_alias':15891,'rate_type_tou':True}, # PacifiCorp (Oregon), Schedule 47 - Secondary (Less than 4000 kW)
+                   'MA':{'rate_id_alias':16062,'rate_type_tou':True}, # New York State Elec & Gas Corp, All Regions - SERVICE CLASSIFICATION NO. 7-1 Large General Service TOU - Secondary -ESCO
+                   'MTN':{'rate_id_alias':16596,'rate_type_tou':True}, # Public Service Co of Colorado, Secondary General Service (Schedule SG)
+                   'ENC':{'rate_id_alias':16704,'rate_type_tou':True}, # Wisconsin Power & Light Co, Industrial Power Cp-1 (Secondary)
+                   'NE':{'rate_id_alias':16733,'rate_type_tou':True}, # Delmarva Power, General Service - Primary
+                   'ESC':{'rate_id_alias':16924,'rate_type_tou':True}, # Kentucky Utilities Co, Retail Transmission Service
+                   'WNC':{'rate_id_alias':17018,'rate_type_tou':True} # Northern States Power Co - Wisconsin, Cg-9.1 Large General Time-of-Day Primary Mandatory Customers
+                   }
 
     if len(missing_agents) > 0:
         print "agents who are missing tariffs:", (missing_agents)
@@ -703,6 +715,9 @@ def check_rate_coverage(dataframe, rates_rank_df): #rates_json_df
             if agent_row['sector_abbr'] == 'res':
                 agent_row['rate_id_alias'] = int(16591) # corresponds to Xcel Energy (CO) "Residential Service (Schedule R)" tariff
                 agent_row['rate_type_tou'] = True
+            elif agent_row['sector_abbr'] == 'ind':
+                agent_row['rate_id_alias'] = ind_tariffs[agent_row['census_division_abbr']]['rate_id_alias']
+                agent_row['rate_type_tou'] = ind_tariffs[agent_row['census_division_abbr']]['rate_type_tou']
             else:
                 agent_row['rate_id_alias'] = int(16596) # corresponds to Xcel Energy (CO) "Secondary General Service (Schedule SG)" tariff
                 agent_row['rate_type_tou'] = True
