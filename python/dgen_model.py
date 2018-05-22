@@ -256,6 +256,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         cores = None
                     else:
                         cores = model_settings.local_cores
+                    cores=None
                     # Apply state incentives
                     agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year, state_capacity_by_year])
                                        
@@ -329,6 +330,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     write_annual_agents = True
                     drop_fields = ['consumption_hourly', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile', 'solar_cf_profile', 'generation_hourly']
+                    drop_fields = [x for x in drop_fields if x in agents.df.columns]
                     df_write = agents.df.drop(drop_fields, axis=1)
                     # replace infinite values for writing to database
                     df_write.replace([np.inf, -np.inf], np.nan, inplace=True)
@@ -341,6 +343,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     else:
                         write_mode = 'append'
                     iFuncs.df_to_psql(df_write, engine, schema, owner,'agent_outputs', if_exists=write_mode, append_transformations=True)
+
+                    del df_write
 
             elif scenario_settings.techs == ['wind']:
                 logger.error('Wind not yet supported')
@@ -383,7 +387,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.error(e.__str__(), exc_info = True)
         if 'scenario_settings' in locals() and scenario_settings.schema is not None:
             # drop the output schema
-            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, model_settings.delete_output_schema)
         if 'logger' not in locals():
             raise
 
@@ -392,8 +396,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         if 'con' in locals():
             con.close()
         if 'scenario_settings' in locals() and scenario_settings.schema is not None:
-      #      # drop the output schema
-            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, True)
+            # drop the output schema
+            datfunc.drop_output_schema(model_settings.pg_conn_string, scenario_settings.schema, model_settings.delete_output_schema)
         if 'logger' in locals():
             utilfunc.shutdown_log(logger)
             utilfunc.code_profiler(model_settings.out_dir)

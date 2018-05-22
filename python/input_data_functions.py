@@ -10,11 +10,14 @@ import numpy as np
 import os
 import sqlalchemy
 import data_functions as datfunc
+import utility_functions as utilfunc
 import agent_mutation
 from agents import Agents, Solar_Agents
 from pandas import DataFrame
 import json
 
+# Load logger
+logger = utilfunc.get_logger()
 
 #%%
 def check_table_exists(schema, table, con):
@@ -97,7 +100,7 @@ def df_to_psql(df, engine, schema, owner, name, if_exists='replace', append_tran
         for f in list(set(df.columns.values) - set(fields)):
             sql = "ALTER TABLE %s.%s ADD COLUMN %s %s" % (schema, name, f, sql_type[f])
             conn.execute(sql)
-            
+       
     df.to_sql(name, engine, schema=schema, index=False, dtype=d_types, if_exists=if_exists)
     sql = 'ALTER TABLE %s."%s" OWNER to "%s";' % (schema, name, owner)
     conn.execute(sql)
@@ -220,15 +223,14 @@ def deprec_schedule(df):
 def melt_year(parameter_name):
 
     def function(df):
-        d_types = {}
         years = np.arange(2014, 2051, 2)
         years = [str(year) for year in years]
 
-        df_tify = pd.melt(df, id_vars='state_abbr', value_vars=years, var_name='year', value_name=parameter_name)
+        df_tidy = pd.melt(df, id_vars='state_abbr', value_vars=years, var_name='year', value_name=parameter_name)
 
-        df_tify['year'] = df_tify['year'].astype(int)
+        df_tidy['year'] = df_tidy['year'].astype(int)
 
-        return df_tify, d_types
+        return df_tidy
 
     return function
 
@@ -258,7 +260,7 @@ def import_agent_file(scenario_settings, prng, con, cur, engine, model_settings,
 #%%
 def process_elec_price_trajectories(elec_price_traj):
 
-    base_year_prices = elec_price_traj[elec_price_traj['year']==2016]
+    base_year_prices = elec_price_traj[elec_price_traj['year']==2014]
     
     base_year_prices.rename(columns={'elec_price_res':'res_base',
                                      'elec_price_com':'com_base',

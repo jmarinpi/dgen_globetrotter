@@ -62,7 +62,7 @@ def calc_diffusion_solar(df, is_first_year, bass_params, year,
 
     # calculate new adopters, capacity and market value            
     df['new_adopters'] = df['new_market_share'] * df['developable_customers_in_bin']
-    df['new_market_value'] = df['new_adopters'] * df['system_size_kw'] * np.where(df['tech'] == 'solar', df['pv_price_per_kw'], df['wind_price_per_kw'])
+    df['new_market_value'] = df['new_adopters'] * df['system_size_kw'] * df['system_price_per_kw']
 
     df['new_system_kw'] = df['new_adopters'] * df['system_size_kw']
     df['new_batt_kw'] = df['new_adopters'] * df['batt_kw']

@@ -68,9 +68,9 @@ def init_agents(model_settings, scenario_settings, prng, cur, con):
     #==============================================================================
     agents_df = elec.adjust_roof_area(agents_df)
     
-#    #==============================================================================
-#    # CHECK TECH POTENTIAL LIMITS
-#    #==============================================================================
+    #==============================================================================
+    # CHECK TECH POTENTIAL LIMITS
+    #==============================================================================
     # This should happen somewhere after agent generation. It would probably be
     # best to check # of buildings and roof area, instead of pv tech potential.           
                              
@@ -79,13 +79,15 @@ def init_agents(model_settings, scenario_settings, prng, cur, con):
     # =========================================================================
     norm_load_profiles_df = elec.get_normalized_load_profiles(con, schema, sectors)
     agents_df = elec.apply_normalized_load_profiles(agents_df, norm_load_profiles_df)
+    del norm_load_profiles_df
 
     # =========================================================================
     # RESOURCE DATA
     # =========================================================================
-    # get hourly resource    
+    # get hourly resource
     hourly_solar_resource_df = elec.get_normalized_hourly_resource_solar(con, schema, sectors, techs)
     agents_df = elec.apply_solar_capacity_factor_profile(agents_df, hourly_solar_resource_df)
+    del hourly_solar_resource_df
 
 
     # =========================================================
@@ -95,7 +97,7 @@ def init_agents(model_settings, scenario_settings, prng, cur, con):
     rates_rank_df =  elec.get_electric_rates(cur, con, scenario_settings.schema, scenario_settings.sectors, scenario_settings.random_generator_seed, model_settings.pg_conn_string)
 
     # Remove certain manually selected tariffs
-    rates_rank_df = rates_rank_df[rates_rank_df['rate_id_alias'] != 2779] # colorado's residential demand tariff
+    rates_rank_df = rates_rank_df[rates_rank_df['rate_id_alias'] != 16592] # colorado's residential demand tariff
 
     # check that every agent has a tariff, assign one to them if they don't
     rates_rank_df = elec.check_rate_coverage(agents_df, rates_rank_df)
@@ -109,7 +111,11 @@ def init_agents(model_settings, scenario_settings, prng, cur, con):
     # =========================================================================
     # AGENT TARIFF SELECTION
     # =========================================================================
-    agents_df = elec.select_tariff_driver(agents_df, prng, rates_rank_df, rates_json_df, n_workers=model_settings.local_cores)
+    # get lookup table to assign default tariffs to residential agents, where applicable
+    default_res_rate_lkup = elec.get_default_res_rates(con)
+    
+    agents_df = elec.select_tariff_driver(agents_df, prng, rates_rank_df, rates_json_df, default_res_rate_lkup, n_workers=model_settings.local_cores)
+    del rates_json_df, selected_rate_ids, rates_rank_df, rto_map, default_res_rate_lkup 
     
     
     #==============================================================================

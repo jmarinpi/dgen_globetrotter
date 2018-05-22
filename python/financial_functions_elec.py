@@ -40,12 +40,9 @@ def calc_financial_metrics(dataframe):
     # calculate payback period
     tech_lifetime = np.shape(cfs)[1] - 1
     payback = calc_payback_vectorized(cfs, tech_lifetime)
-    # calculate time to double
-    ttd = calc_ttd(cfs)
 
-    metric_value = np.where(dataframe['sector_abbr']=='res', payback, ttd)
-
-    dataframe['metric_value'] = metric_value
+    # All agents (residential and non-residential use payback period)
+    dataframe['metric_value'] = payback
     
     dataframe = dataframe.set_index('agent_id')
 

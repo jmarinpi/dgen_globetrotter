@@ -16,8 +16,10 @@ import data_functions as datfunc
 from cStringIO import StringIO
 import pssc_mp
 import os
+import gc
 import pickle
 import multiprocessing as mp
+import concurrent.futures as concur_f
 import concurrent.futures as concur_f
 
 # Import from support function repo
@@ -55,90 +57,170 @@ def adjust_roof_area(agent_df):
     
     This should be handled separately in agent generation, eventually.
     '''
-    
-    roof_areas = pd.read_csv('developable_roof_areas.csv')
-    roof_areas['actual_developable_roof_sqft'] = roof_areas['developable_roof_sqft']
-    res_actual_areas = roof_areas[['actual_developable_roof_sqft', 'state_abbr']][roof_areas['sector_abbr']=='res']
-    nonres_actual_areas = roof_areas[['actual_developable_roof_sqft', 'state_abbr']][roof_areas['sector_abbr']!='res']
-    
     agent_df = agent_df.reset_index()
-    agent_df_thin = agent_df[['developable_roof_sqft', 'customers_in_bin', 'state_abbr', 'sector_abbr']]
+    agent_df_thin = agent_df[['developable_roof_sqft', 'customers_in_bin', 'state_abbr', 'sector_abbr','county_id']]
     
+
+    #RES
+    res_roof_areas_by_county = pd.read_csv('res_developable_roof_by_county.csv')
+    res_roof_areas_by_county = res_roof_areas_by_county[res_roof_areas_by_county['sector_abbr']=='res']
+    res_roof_areas_by_county['actual_developable_roof_sqft'] = res_roof_areas_by_county['developable_roof_sng_own_sqft']
+    res_roof_areas_by_county = res_roof_areas_by_county[['actual_developable_roof_sqft', 'county_id','sector_abbr']]
+
     res_df = agent_df_thin[agent_df_thin['sector_abbr']=='res']
-    nonres_df = agent_df_thin[agent_df_thin['sector_abbr']!='res']
-    
     res_df['total_developable_roof_sqft'] = res_df['developable_roof_sqft'] * res_df['customers_in_bin']
+    
+    res_areas_by_county = res_df[['county_id', 'total_developable_roof_sqft']].groupby(by='county_id').sum()
+    res_areas_by_county = res_areas_by_county.reset_index()
+    
+    res_areas_by_county = pd.merge(res_areas_by_county, res_roof_areas_by_county, on='county_id')
+    res_areas_by_county['roof_adjustment'] = res_areas_by_county['actual_developable_roof_sqft'] / res_areas_by_county['total_developable_roof_sqft']
+    
+    agent_df_res = pd.merge(agent_df[agent_df['sector_abbr']=='res'], res_areas_by_county[['roof_adjustment', 'county_id']], on= 'county_id')
+    agent_df_res['developable_roof_sqft'] = agent_df_res['developable_roof_sqft'] * agent_df_res['roof_adjustment']
+
+
+
+    #NON RES
+    non_res_roof_areas_by_state = pd.read_csv('nonres_developable_roof_by_county.csv')
+    non_res_roof_areas_by_state['actual_developable_roof_sqft'] = non_res_roof_areas_by_state['developable_roof_sqft']
+    non_res_roof_areas_by_state = non_res_roof_areas_by_state[['actual_developable_roof_sqft', 'county_id']][non_res_roof_areas_by_state['sector_abbr']!='res']
+
+    nonres_df = agent_df_thin[agent_df_thin['sector_abbr']!='res']
     nonres_df['total_developable_roof_sqft'] = nonres_df['developable_roof_sqft'] * nonres_df['customers_in_bin']
-    
-    
-    res_areas = res_df[['state_abbr', 'total_developable_roof_sqft']].groupby(by='state_abbr').sum()
-    nonres_areas = nonres_df[['state_abbr', 'total_developable_roof_sqft']].groupby(by='state_abbr').sum()
-    res_areas = res_areas.reset_index()
-    nonres_areas = nonres_areas.reset_index()
-    
-    res_areas = pd.merge(res_areas, res_actual_areas, on='state_abbr')
-    nonres_areas = pd.merge(nonres_areas, nonres_actual_areas, on='state_abbr')
-    
-    res_areas['roof_adjustment'] = res_areas['actual_developable_roof_sqft'] / res_areas['total_developable_roof_sqft'] 
-    nonres_areas['roof_adjustment'] = nonres_areas['actual_developable_roof_sqft'] / nonres_areas['total_developable_roof_sqft'] 
-    com_areas = nonres_areas.copy()
-    ind_areas = nonres_areas.copy()
-    
-    res_areas['sector_abbr'] = 'res'
-    com_areas['sector_abbr'] = 'com'
-    ind_areas['sector_abbr'] = 'ind'
-    
-    all_areas = pd.concat([res_areas, com_areas, ind_areas])
-    
-    agent_df = pd.merge(agent_df, all_areas[['roof_adjustment', 'state_abbr', 'sector_abbr']], on=['sector_abbr', 'state_abbr'])
-    
-    agent_df['developable_roof_sqft'] = agent_df['developable_roof_sqft'] * agent_df['roof_adjustment']
-    
+
+
+    nonres_areas_by_state = nonres_df[['county_id', 'total_developable_roof_sqft']].groupby(by='county_id').sum()
+    nonres_areas_by_state = nonres_areas_by_state.reset_index()
+
+    nonres_areas_by_state = pd.merge(nonres_areas_by_state, non_res_roof_areas_by_state, on='county_id')
+
+    nonres_areas_by_state['roof_adjustment'] = nonres_areas_by_state['actual_developable_roof_sqft'] / nonres_areas_by_state['total_developable_roof_sqft']
+
+    agent_df_nonres = pd.merge(agent_df[agent_df['sector_abbr']!='res'], nonres_areas_by_state[['roof_adjustment', 'county_id']], on=['county_id'])
+
+    agent_df_nonres['developable_roof_sqft'] = agent_df_nonres['developable_roof_sqft'] * agent_df_nonres['roof_adjustment']
+
+    agent_df = pd.concat([agent_df_nonres,agent_df_res])
+
     agent_df = agent_df.set_index('agent_id')
-    
     return agent_df
 
 #%%
-def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, n_workers=mp.cpu_count()/2):
+def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, default_res_rate_lkup, n_workers=mp.cpu_count()):
 
     if 'ix' not in os.name:
+	logger.info('Within ThreadPool')
         EXECUTOR = concur_f.ThreadPoolExecutor
     else:
+	logger.info('Within ProcessPool')
         EXECUTOR = concur_f.ProcessPoolExecutor
 
     seed = prng.get_state()[1][0]
 
     futures = []
+    results = []
+
+    n_workers = 12
+
+    logger.info('Number of Workers is %s' % n_workers)
+
+    # Chunk the large agent dataframe into smaller chunks to be processed by all the available processors
+
+    # calculate the chunk size as an integer to split the dataframe
+
+    if n_workers > int(agent_df.shape[0]):
+        n_workers = int(agent_df.shape[0])-1
+        logger.info('Agent Chunk size less than n_workers so reassigning n_workers as %s' % n_workers)
+
+    chunk_size = int(agent_df.shape[0]/n_workers)
+    
+    # chunk the dataframe according to the chunksize calculated above
+    chunks = [agent_df.ix[agent_df.index[i:i + chunk_size]] for i in range(0, agent_df.shape[0], chunk_size)]
+
+
     with EXECUTOR(max_workers=n_workers) as executor:
-        for agent_id, agent in agent_df.iterrows():
-            
-            prng.seed(seed)
-            # Filter for list of tariffs available to this agent
-            agent_rate_list = rates_rank_df.loc[agent_id].drop_duplicates()
-            if np.isscalar(agent_rate_list['rate_id_alias']):
-                rate_list = [agent_rate_list['rate_id_alias']]
-            else:
-                rate_list = agent_rate_list['rate_id_alias']
-            agent_rate_jsons = rates_json_df[rates_json_df.index.isin(rate_list)]
-            
-            # There can be more than one utility that is potentially applicable
-            # to each agent (e.g., if the agent is in a county where more than 
-            # one utility has service). Select which one by random.
-            utility_list = np.unique(agent_rate_jsons['eia_id'])
+        for agent_chunks in chunks:
 
-            # Do a random draw from the utility_list using the same seed as generated in dgen_model.py and return the utility_id that was selected
-            utility_id = prng.choice(utility_list)
-
-            agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
+            for agent_id, agent in agent_chunks.iterrows():
+         
+            	prng.seed(seed)
+            	# Filter for list of tariffs available to this agent
+            	agent_rate_list = rates_rank_df.loc[agent_id].drop_duplicates()
+            	if np.isscalar(agent_rate_list['rate_id_alias']):
+                	rate_list = [agent_rate_list['rate_id_alias']]
+            	else:
+                	rate_list = agent_rate_list['rate_id_alias']
+            	agent_rate_jsons = rates_json_df[rates_json_df.index.isin(rate_list)]
             
-            futures.append(executor.submit(select_tariff, agent, agent_rate_jsons))
+            	# There can be more than one utility that is potentially applicable
+            	# to each agent (e.g., if the agent is in a county where more than 
+            	# one utility has service). Select which one by random.
+            	utility_list = np.unique(agent_rate_jsons['eia_id'])
 
-        results = [future.result() for future in futures]
+            	# Do a random draw from the utility_list using the same seed as generated in dgen_model.py and return the utility_id that was selected
+            	utility_id = prng.choice(utility_list)
+            
+            	# If agent is in residential sector and selected utility is included in the default residential rate table, assign default rate only.
+            	# Otherwise, proceed as before by returning all rates applicable to agent.
+            	if (utility_id in default_res_rate_lkup['eia_id'].values) & (agent.loc['sector_abbr'] == 'res'):
+                	rate_id = default_res_rate_lkup[default_res_rate_lkup['eia_id'] == utility_id]['rate_id_alias'].values[0]
+                	agent_rate_jsons = agent_rate_jsons.loc[[rate_id]]
+            	else:
+                	agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
+            
+            	futures.append(executor.submit(select_tariff, agent, agent_rate_jsons))
+
+            results = [future.result() for future in futures]
+            del future
+            gc.collect()
 
     agent_df = pd.concat(results, axis=1).T
     agent_df.index.name = 'agent_id'
 
     return agent_df
+
+#%%
+def select_tariff_orig(agent, rates_json_df):
+
+    # Extract load profile
+    load_profile = np.array(agent['consumption_hourly'])
+
+    # Create export tariff object
+    export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
+
+    #=========================================================================#
+    # Tariff selection
+    #=========================================================================#
+    rates_json_df['bills'] = 0.0
+    if len(rates_json_df > 1):
+        # determine which of the tariffs has the cheapest cost of electricity without a system
+        for index in rates_json_df.index:
+            tariff_dict = rates_json_df.loc[index, 'rate_json']
+            tariff = tFuncs.Tariff(dict_obj=tariff_dict)
+            bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
+            rates_json_df.loc[index, 'bills'] = bill
+
+    # Select the tariff that had the cheapest electricity. Note that there is
+    # currently no rate switching, if it would be cheaper once a system is
+    # installed. This is currently for computational reasons.
+    rates_json_df['tariff_ids'] = rates_json_df.index
+    tariff_id = rates_json_df.loc[rates_json_df['bills'].idxmin(), 'tariff_ids']
+    tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
+    # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
+    if 'energy_rate_unit' in tariff_dict:
+        if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
+    tariff = tFuncs.Tariff(dict_obj=tariff_dict)
+
+    # Removes the two 8760's from the dictionary, since these will be built from
+    # 12x24's now
+    if 'd_tou_8760' in tariff_dict.keys(): del tariff_dict['d_tou_8760']
+    if 'e_tou_8760' in tariff_dict.keys(): del tariff_dict['e_tou_8760']
+
+    agent['tariff_dict'] = tariff_dict
+    agent['tariff_id'] = tariff_id
+
+    return agent
 
 #%%
 def select_tariff(agent, rates_json_df):
@@ -181,6 +263,15 @@ def select_tariff(agent, rates_json_df):
     agent['tariff_id'] = tariff_id
 
     return agent
+
+#%%
+def get_default_res_rates(con):
+    
+    sql = """SELECT * FROM diffusion_shared.default_res_rate_lkup"""
+           
+    dataframe = pd.read_sql(sql, con, coerce_float=False)
+    
+    return dataframe
 
 
 #%%
@@ -264,8 +355,9 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
     horizon_year = year-10
 
     elec_price_escalator_df = elec_price_multiplier.copy()
-    if horizon_year in elec_price_change_traj['year']:
-        elec_price_escalator_df['historical'] = elec_price_change_traj[elec_price_change_traj['year']==horizon_year]
+
+    if horizon_year in elec_price_change_traj.year.values:
+        elec_price_escalator_df['historical'] = elec_price_change_traj[elec_price_change_traj['year']==horizon_year]['elec_price_multiplier'].values
     else:
         first_year = np.min(elec_price_change_traj['year'])
         first_year_df = elec_price_change_traj[elec_price_change_traj['year']==first_year].reset_index()
@@ -335,8 +427,8 @@ def apply_pv_prices(dataframe, pv_price_traj):
     # join the data
     dataframe = pd.merge(dataframe, pv_price_traj, how='left', on=['sector_abbr', 'year'])
 
-    # apply the capital cost multipliers
-    dataframe['pv_price_per_kw'] = (dataframe['pv_price_per_kw'] * dataframe['cap_cost_multiplier'])
+    # apply the capital cost multipliers and generalize variable name
+    dataframe['system_price_per_kw'] = (dataframe['pv_price_per_kw'] * dataframe['cap_cost_multiplier'])
 
     dataframe = dataframe.set_index('agent_id')
 
@@ -492,36 +584,41 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string):
     df_list = []
     for sector_abbr, sector in sectors.iteritems():
         inputs['sector_abbr'] = sector_abbr
+        inputs['sector_initial'] = sector_abbr[0].upper()
 
         sql1 =  """DROP TABLE IF EXISTS %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s;
                     CREATE UNLOGGED TABLE %(schema)s.agent_electric_rate_tariffs_lkup_%(sector_abbr)s AS (
                         WITH a AS
                         (
-                            -- Unnest Rates t
-                                SELECT a.agent_id, a.tract_id_alias, a.county_id, a.max_demand_kw, a.avg_monthly_kwh,
-                                    b.rate_id_alias as rate_id_alias,
-                                    b.rate_rank as rate_rank,
-                                    b.rank_utility_type,
-                                    b.rate_type_tou,
-                                    b.max_demand_kw as rate_max_demand_kw,
-                                    b.min_demand_kw as rate_min_demand_kw,
-                                    b.max_energy_kwh as rate_max_energy_kwh,
-                                    b.min_energy_kwh as rate_min_energy_kwh,
-                                    b.sector as rate_sector
+                                SELECT a.agent_id, a.tract_id_alias, a.county_id, a.max_demand_kw, a.avg_monthly_kwh, 
+                                    d.rate_id_alias, 
+                                    e.rate_rank,
+                                    e.rank_utility_type,
+                                    e.rate_type_tou,
+                                    e.min_demand_kw as rate_min_demand_kw,
+                                    e.max_demand_kw as rate_max_demand_kw,
+                                    e.min_energy_kwh as rate_min_energy_kwh,
+                                    e.max_energy_kwh as rate_max_energy_kwh,
+                                    e.sector as rate_sector
                                 FROM %(schema)s.agent_core_attributes_%(sector_abbr)s a
-                                LEFT JOIN diffusion_shared.cntys_ranked_rates_lkup_20170103 b  --  *******
-                                        ON a.county_id = b.county_id
-                                        AND a.util_type = b.rank_utility_type
+                                LEFT JOIN diffusion_shared.tract_geoms_2015 b
+                                    ON a.state_fips = b.state_fips AND a.county_fips = b.county_fips AND a.tract_fips = b.tract_fips
+                                LEFT JOIN diffusion_shared.ventyx_tracts_mappings c
+                                    ON b.gisjoin = c.gisjoin
+                                INNER JOIN diffusion_shared.urdb3_rate_jsons_20180423 d
+                                    ON c.urdb_id = d.eia_id AND '%(sector_initial)s' = d.res_com
+                                INNER JOIN (SELECT DISTINCT ON (rate_id_alias) * FROM diffusion_shared.cntys_ranked_rates_lkup_20180423) e
+                                    ON a.state_fips = b.state_fips AND a.county_fips = b.county_fips AND d.rate_id_alias = e.rate_id_alias
                     ),""" % inputs
 
         # Add logic for Commercial and Industrial
         if sector_abbr != 'res':
             if sector_abbr == 'ind':
-                sector_priority_1 = 'I'
-                sector_priority_2 = 'C'
+                inputs['sector_priority_1'] = 'I'
+                inputs['sector_priority_2'] = 'C'
             elif sector_abbr == 'com':
-                sector_priority_1 = 'C'
-                sector_priority_2 = 'I'
+                inputs['sector_priority_1'] = 'C'
+                inputs['sector_priority_2'] = 'I'
 
             # Select Appropriate Rates and Rank the Ranked Rates based on
             # Sector
@@ -543,7 +640,7 @@ def get_electric_rates(cur, con, schema, sectors, seed, pg_conn_string):
                             SELECT *, rank() OVER (PARTITION BY agent_id ORDER BY rate_rank ASC, sector_rank
                             ASC) as rank
                             FROM b
-                    )"""
+                    )""" % inputs
 
         elif sector_abbr == 'res':
             sql2 = """b AS
@@ -593,22 +690,38 @@ def check_rate_coverage(dataframe, rates_rank_df): #rates_json_df
     agent_ids = set(dataframe.index)
     rate_agent_ids = set(rates_rank_df.index)
     missing_agents = list(agent_ids.difference(rate_agent_ids))
+    
+    # map industrial tariffs based on census division
+    ind_tariffs = {'SA':{'rate_id_alias':14486,'rate_type_tou':True}, # Georgia Power Co, Schedule TOU-GSD-10 Time Of Use - General Service Demand
+                   'WSC':{'rate_id_alias':15731,'rate_type_tou':False}, # Southwestern Public Service Co (Texas), Large General Service - Inside City Limits 115 KV
+                   'PAC':{'rate_id_alias':15891,'rate_type_tou':True}, # PacifiCorp (Oregon), Schedule 47 - Secondary (Less than 4000 kW)
+                   'MA':{'rate_id_alias':16062,'rate_type_tou':True}, # New York State Elec & Gas Corp, All Regions - SERVICE CLASSIFICATION NO. 7-1 Large General Service TOU - Secondary -ESCO
+                   'MTN':{'rate_id_alias':16596,'rate_type_tou':True}, # Public Service Co of Colorado, Secondary General Service (Schedule SG)
+                   'ENC':{'rate_id_alias':16704,'rate_type_tou':True}, # Wisconsin Power & Light Co, Industrial Power Cp-1 (Secondary)
+                   'NE':{'rate_id_alias':16733,'rate_type_tou':True}, # Delmarva Power, General Service - Primary
+                   'ESC':{'rate_id_alias':16924,'rate_type_tou':True}, # Kentucky Utilities Co, Retail Transmission Service
+                   'WNC':{'rate_id_alias':17018,'rate_type_tou':True} # Northern States Power Co - Wisconsin, Cg-9.1 Large General Time-of-Day Primary Mandatory Customers
+                   }
 
     if len(missing_agents) > 0:
         print "agents who are missing tariffs:", (missing_agents)
         for missing_agent_id in missing_agents:
             agent_row = dataframe.loc[missing_agent_id]
             if agent_row['sector_abbr'] == 'res':
-                agent_row['rate_id_alias'] = int(2778)
+                agent_row['rate_id_alias'] = int(16591) # corresponds to Xcel Energy (CO) "Residential Service (Schedule R)" tariff
                 agent_row['rate_type_tou'] = True
+            elif agent_row['sector_abbr'] == 'ind':
+                agent_row['rate_id_alias'] = ind_tariffs[agent_row['census_division_abbr']]['rate_id_alias']
+                agent_row['rate_type_tou'] = ind_tariffs[agent_row['census_division_abbr']]['rate_type_tou']
             else:
-                agent_row['rate_id_alias'] = int(2779)
+                agent_row['rate_id_alias'] = int(16596) # corresponds to Xcel Energy (CO) "Secondary General Service (Schedule SG)" tariff
                 agent_row['rate_type_tou'] = True
             rates_rank_df = rates_rank_df.append(agent_row[['sector_abbr', 'rate_id_alias', 'rate_type_tou']])
 
     missing_agents = list(set(dataframe.index).difference(set(rates_rank_df.index)))
     if len(missing_agents) > 0:
         raise ValueError('Some agents are missing electric rates, including the following agent_ids: {:}'.format(missing_agents))
+    logger.info('Agents with Missing Electric Rates are %s' % missing_agents)    
 
 #    # check that all rate_id_aliases have a nonnull rate json
 #    # check for empty dictionary
@@ -645,9 +758,7 @@ def get_electric_rates_json(con, unique_rate_ids):
 
     # get (only the required) rate jsons from postgres
     sql = """SELECT a.rate_id_alias, a.rate_name, a.eia_id, a.json as rate_json
-             FROM diffusion_shared.urdb3_rate_sam_jsons_20170103 a
-             --LEFT JOIN diffusion_shared.urdb3_rate_sam_jsons_20170103 b
-             --ON a.rate_id_alias = b.rate_id_alias
+             FROM diffusion_shared.urdb3_rate_jsons_20180423 a
              WHERE a.rate_id_alias in (%(rate_id_list)s);""" % inputs
     df = pd.read_sql(sql, con, coerce_float=False)
 
@@ -1450,7 +1561,7 @@ def estimate_initial_market_shares(dataframe, state_starting_capacities_df):
     dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0, 0,
                                                    dataframe['number_of_adopters_last_year'] / dataframe['developable_customers_in_bin'])
 
-    dataframe['market_value_last_year'] = np.where(dataframe['tech'] == 'solar', dataframe['pv_price_per_kw'] * dataframe['system_kw_cum_last_year'], dataframe['wind_price_per_kw'] * dataframe['system_kw_cum_last_year'])
+    dataframe['market_value_last_year'] = dataframe['system_price_per_kw'] * dataframe['system_kw_cum_last_year']
 
     # reproduce these columns as "initial" columns too
     dataframe['initial_number_of_adopters'] = dataframe['number_of_adopters_last_year']
@@ -1723,13 +1834,13 @@ def apply_wind_prices(dataframe, turbine_prices):
     dataframe['fixed_om_dollars_per_kw_per_yr'] = dataframe['fixed_om_dollars_per_kw_per_yr'].fillna(0)
     dataframe['variable_om_dollars_per_kwh'] = dataframe['variable_om_dollars_per_kwh'].fillna(0)
 
-    # apply the capital cost multipliers
-    dataframe['wind_price_per_kw'] = (dataframe['installed_costs_dollars_per_kw'] * dataframe['cap_cost_multiplier'])
+    # apply the capital cost multipliers and generalize variable name
+    dataframe['system_price_per_kw'] = (dataframe['installed_costs_dollars_per_kw'] * dataframe['cap_cost_multiplier'])
     
     # rename fixed O&M column for later compatibility
     dataframe.rename(columns={'fixed_om_dollars_per_kw_per_yr':'wind_om_per_kw'}, inplace=True)
 
-    return_cols = ['wind_price_per_kw', 'wind_om_per_kw', 'variable_om_dollars_per_kwh']
+    return_cols = ['system_price_per_kw', 'wind_om_per_kw', 'variable_om_dollars_per_kwh']
     out_cols = list(pd.unique(in_cols + return_cols))
     
     dataframe = dataframe.set_index('agent_id')
