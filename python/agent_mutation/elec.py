@@ -166,6 +166,7 @@ def select_tariff_driver(agent_df, con, prng, rates_rank_df, rates_json_df, defa
                 if (utility_id in default_res_rate_lkup['eia_id'].values) & (agent.loc['sector_abbr'] == 'res'):
                     rate_id = default_res_rate_lkup[default_res_rate_lkup['eia_id'] == utility_id]['rate_id_alias'].values[0]
                     agent_rate_jsons = get_electric_rates_json(con, [rate_id])
+                    agent_rate_jsons = agent_rate_jsons.set_index('rate_id_alias')
                 else:
                     agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
             
