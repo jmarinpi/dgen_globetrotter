@@ -114,7 +114,7 @@ def init_agents(model_settings, scenario_settings, prng, cur, con):
     # get lookup table to assign default tariffs to residential agents, where applicable
     default_res_rate_lkup = elec.get_default_res_rates(con)
     
-    agents_df = elec.select_tariff_driver(agents_df, prng, rates_rank_df, rates_json_df, default_res_rate_lkup, n_workers=model_settings.local_cores)
+    agents_df = elec.select_tariff_driver(agents_df, con, prng, rates_rank_df, rates_json_df, default_res_rate_lkup, n_workers=model_settings.local_cores)
     del rates_json_df, selected_rate_ids, rates_rank_df, rto_map, default_res_rate_lkup 
     
     

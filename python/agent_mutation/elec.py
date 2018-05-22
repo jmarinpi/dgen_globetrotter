@@ -107,7 +107,7 @@ def adjust_roof_area(agent_df):
     return agent_df
 
 #%%
-def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, default_res_rate_lkup, n_workers=mp.cpu_count()):
+def select_tariff_driver(agent_df, con, prng, rates_rank_df, rates_json_df, default_res_rate_lkup, n_workers=mp.cpu_count()):
 
     if 'ix' not in os.name:
         logger.info('Within ThreadPool')
@@ -165,7 +165,7 @@ def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, default_r
                 # Otherwise, proceed as before by returning all rates applicable to agent.
                 if (utility_id in default_res_rate_lkup['eia_id'].values) & (agent.loc['sector_abbr'] == 'res'):
                     rate_id = default_res_rate_lkup[default_res_rate_lkup['eia_id'] == utility_id]['rate_id_alias'].values[0]
-                    agent_rate_jsons = agent_rate_jsons.loc[[rate_id]]
+                    agent_rate_jsons = get_electric_rates_json(con, [rate_id])
                 else:
                     agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
             
