@@ -747,7 +747,6 @@ def identify_selected_rate_ids(rates_rank_df):
 
 
 #%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def get_electric_rates_json(con, unique_rate_ids):
 
     inputs = locals().copy()
