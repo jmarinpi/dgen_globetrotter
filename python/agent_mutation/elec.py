@@ -110,10 +110,10 @@ def adjust_roof_area(agent_df):
 def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, default_res_rate_lkup, n_workers=mp.cpu_count()):
 
     if 'ix' not in os.name:
-	logger.info('Within ThreadPool')
+        logger.info('Within ThreadPool')
         EXECUTOR = concur_f.ThreadPoolExecutor
     else:
-	logger.info('Within ProcessPool')
+        logger.info('Within ProcessPool')
         EXECUTOR = concur_f.ProcessPoolExecutor
 
     seed = prng.get_state()[1][0]
@@ -144,32 +144,32 @@ def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, default_r
 
             for agent_id, agent in agent_chunks.iterrows():
          
-            	prng.seed(seed)
-            	# Filter for list of tariffs available to this agent
-            	agent_rate_list = rates_rank_df.loc[agent_id].drop_duplicates()
-            	if np.isscalar(agent_rate_list['rate_id_alias']):
-                	rate_list = [agent_rate_list['rate_id_alias']]
-            	else:
-                	rate_list = agent_rate_list['rate_id_alias']
-            	agent_rate_jsons = rates_json_df[rates_json_df.index.isin(rate_list)]
+                prng.seed(seed)
+                # Filter for list of tariffs available to this agent
+                agent_rate_list = rates_rank_df.loc[agent_id].drop_duplicates()
+                if np.isscalar(agent_rate_list['rate_id_alias']):
+                    rate_list = [agent_rate_list['rate_id_alias']]
+                else:
+                    rate_list = agent_rate_list['rate_id_alias']
+                agent_rate_jsons = rates_json_df[rates_json_df.index.isin(rate_list)]
             
-            	# There can be more than one utility that is potentially applicable
-            	# to each agent (e.g., if the agent is in a county where more than 
-            	# one utility has service). Select which one by random.
-            	utility_list = np.unique(agent_rate_jsons['eia_id'])
+                # There can be more than one utility that is potentially applicable
+                # to each agent (e.g., if the agent is in a county where more than 
+                # one utility has service). Select which one by random.
+                utility_list = np.unique(agent_rate_jsons['eia_id'])
 
-            	# Do a random draw from the utility_list using the same seed as generated in dgen_model.py and return the utility_id that was selected
-            	utility_id = prng.choice(utility_list)
+                # Do a random draw from the utility_list using the same seed as generated in dgen_model.py and return the utility_id that was selected
+                utility_id = prng.choice(utility_list)
             
-            	# If agent is in residential sector and selected utility is included in the default residential rate table, assign default rate only.
-            	# Otherwise, proceed as before by returning all rates applicable to agent.
-            	if (utility_id in default_res_rate_lkup['eia_id'].values) & (agent.loc['sector_abbr'] == 'res'):
-                	rate_id = default_res_rate_lkup[default_res_rate_lkup['eia_id'] == utility_id]['rate_id_alias'].values[0]
-                	agent_rate_jsons = agent_rate_jsons.loc[[rate_id]]
-            	else:
-                	agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
+                # If agent is in residential sector and selected utility is included in the default residential rate table, assign default rate only.
+                # Otherwise, proceed as before by returning all rates applicable to agent.
+                if (utility_id in default_res_rate_lkup['eia_id'].values) & (agent.loc['sector_abbr'] == 'res'):
+                    rate_id = default_res_rate_lkup[default_res_rate_lkup['eia_id'] == utility_id]['rate_id_alias'].values[0]
+                    agent_rate_jsons = agent_rate_jsons.loc[[rate_id]]
+                else:
+                    agent_rate_jsons = agent_rate_jsons[agent_rate_jsons['eia_id']==utility_id]
             
-            	futures.append(executor.submit(select_tariff, agent, agent_rate_jsons))
+                futures.append(executor.submit(select_tariff, agent, agent_rate_jsons))
 
             results = [future.result() for future in futures]
             del future
@@ -861,32 +861,32 @@ def get_annual_resource_wind(con, schema, year, sectors):
         inputs['sector_abbr'] = sector_abbr
         sql = """SELECT '%(sector_abbr)s'::VARCHAR(3) as sector_abbr,
                         a.county_id, a.bin_id,
-                    	COALESCE(b.turbine_height_m, 0) as turbine_height_m,
-                    	COALESCE(b.turbine_size_kw, 0) as turbine_size_kw,
-                    	coalesce(c.interp_factor, 0) as power_curve_interp_factor,
-                    	COALESCE(c.power_curve_1, -1) as power_curve_1,
-                    	COALESCE(c.power_curve_2, -1) as power_curve_2,
-                    	COALESCE(d.aep, 0) as naep_1,
-                    	COALESCE(e.aep, 0) as naep_2
+                        COALESCE(b.turbine_height_m, 0) as turbine_height_m,
+                        COALESCE(b.turbine_size_kw, 0) as turbine_size_kw,
+                        coalesce(c.interp_factor, 0) as power_curve_interp_factor,
+                        COALESCE(c.power_curve_1, -1) as power_curve_1,
+                        COALESCE(c.power_curve_2, -1) as power_curve_2,
+                        COALESCE(d.aep, 0) as naep_1,
+                        COALESCE(e.aep, 0) as naep_2
                 FROM  %(schema)s.agent_core_attributes_%(sector_abbr)s a
                 LEFT JOIN %(schema)s.agent_allowable_turbines_lkup_%(sector_abbr)s b
-                    	ON a.county_id = b.county_id
-                    	and a.bin_id = b.bin_id
+                        ON a.county_id = b.county_id
+                        and a.bin_id = b.bin_id
                 LEFT JOIN %(schema)s.input_wind_performance_power_curve_transitions c
-                    	ON b.turbine_size_kw = c.turbine_size_kw
+                        ON b.turbine_size_kw = c.turbine_size_kw
                          AND c.year = %(year)s
                 LEFT JOIN diffusion_resource_wind.wind_resource_annual d
-                    	ON a.i = d.i
-                    	AND a.j = d.j
-                    	AND a.cf_bin = d.cf_bin
-                    	AND b.turbine_height_m = d.height
-                    	AND c.power_curve_1 = d.turbine_id
+                        ON a.i = d.i
+                        AND a.j = d.j
+                        AND a.cf_bin = d.cf_bin
+                        AND b.turbine_height_m = d.height
+                        AND c.power_curve_1 = d.turbine_id
                 LEFT JOIN diffusion_resource_wind.wind_resource_annual e
-                    	ON a.i = e.i
-                    	AND a.j = e.j
-                    	AND a.cf_bin = e.cf_bin
-                    	AND b.turbine_height_m = e.height
-                    	AND c.power_curve_2 = e.turbine_id;""" % inputs
+                        ON a.i = e.i
+                        AND a.j = e.j
+                        AND a.cf_bin = e.cf_bin
+                        AND b.turbine_height_m = e.height
+                        AND c.power_curve_2 = e.turbine_id;""" % inputs
         df_sector = pd.read_sql(sql, con, coerce_float=False)
         df_list.append(df_sector)
 
@@ -1282,16 +1282,16 @@ def get_normalized_hourly_resource_wind(con, schema, sectors, cur, agents, techs
                     FROM %(schema)s.agent_selected_turbines_%(sector_abbr)s a
                     LEFT JOIN diffusion_resource_wind.wind_resource_hourly b
                         ON a.i = b.i
-                        	AND a.j = b.j
-                        	AND a.cf_bin = b.cf_bin
-                        	AND a.turbine_height_m = b.height
-                        	AND a.power_curve_1 = b.turbine_id
+                            AND a.j = b.j
+                            AND a.cf_bin = b.cf_bin
+                            AND a.turbine_height_m = b.height
+                            AND a.power_curve_1 = b.turbine_id
                     LEFT JOIN diffusion_resource_wind.wind_resource_hourly c
                         ON a.i = c.i
-                        	AND a.j = c.j
-                        	AND a.cf_bin = c.cf_bin
-                        	AND a.turbine_height_m = c.height
-                        	AND a.power_curve_2 = c.turbine_id;""" % inputs
+                            AND a.j = c.j
+                            AND a.cf_bin = c.cf_bin
+                            AND a.turbine_height_m = c.height
+                            AND a.power_curve_2 = c.turbine_id;""" % inputs
             df_sector = pd.read_sql(sql, con, coerce_float=False)
             df_list.append(df_sector)
 
