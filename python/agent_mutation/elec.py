@@ -322,6 +322,7 @@ def apply_solar_capacity_factor_profile(dataframe, hourly_resource_df):
     dataframe = pd.merge(dataframe, hourly_resource_df, how='left', on=[
                          'sector_abbr', 'tech', 'county_id', 'bin_id'])
     dataframe['solar_cf_profile'] = dataframe['generation_hourly']
+    dataframe = dataframe.set_index('agent_id')
 
     # subset to only the desired output columns
     out_cols = in_cols + ['solar_cf_profile']
