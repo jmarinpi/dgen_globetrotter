@@ -227,23 +227,17 @@ def select_tariff(agent, rates_json_df):
 
     # Extract load profile
     load_profile = np.array(agent['consumption_hourly'])
-    logger.info('Finished load_profile within select_tariff function')
 
     # Create export tariff object
     export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
-    logger.info('Finished export_tariff within select_tariff function')
 
     #=========================================================================#
     # Tariff selection
     #=========================================================================#
-    logger.info('Entering for loop within select_tariff function')
     rates_json_df['bills'] = 0.0
     if len(rates_json_df > 1):
         # determine which of the tariffs has the cheapest cost of electricity without a system
         for index in rates_json_df.index:
-#	    logger.info('Within select_tariff for %s' % index)
-#	    logger.info('Multiple tariff for Utility Name %s' % rates_json_df.loc[index, 'utility_name'])
-#	    logger.info('Multiple tariff for Rate Name %s' % rates_json_df.loc[index, 'rate_name'])
             tariff_dict = rates_json_df.loc[index, 'rate_json']
             tariff = tFuncs.Tariff(dict_obj=tariff_dict)
             bill, _ = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
@@ -252,17 +246,12 @@ def select_tariff(agent, rates_json_df):
     # Select the tariff that had the cheapest electricity. Note that there is
     # currently no rate switching, if it would be cheaper once a system is
     # installed. This is currently for computational reasons.
-    logger.info('Entering rates_json_df within select_tariff function')
     rates_json_df['tariff_ids'] = rates_json_df.index
-    logger.info('Entering tariff_id within select_tariff function')
     tariff_id = rates_json_df.loc[rates_json_df['bills'].idxmin(), 'tariff_ids']
-    logger.info('Entering tariff_dict within select_tariff function')
     tariff_dict = rates_json_df.loc[tariff_id, 'rate_json']
     # TODO: Patch for daily energy tiers. Remove once bill calculator is improved.
-    logger.info('Entering if within select_tariff function')
     if 'energy_rate_unit' in tariff_dict:
         if tariff_dict['energy_rate_unit'] == 'kWh daily': tariff_dict['e_levels'] = np.array(tariff_dict['e_levels']) * 30.0
-    logger.info('Entering tFuncs.Tariff within select_tariff function')
     tariff = tFuncs.Tariff(dict_obj=tariff_dict)
 
     # Removes the two 8760's from the dictionary, since these will be built from
@@ -273,7 +262,6 @@ def select_tariff(agent, rates_json_df):
     agent['tariff_dict'] = tariff_dict
     agent['tariff_id'] = tariff_id
 
-    logger.info('Finished select_tariff function')
     return agent
 
 #%%
