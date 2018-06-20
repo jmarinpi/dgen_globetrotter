@@ -296,7 +296,6 @@ def calc_system_size_and_financial_performance_pv(agent):
     #=========================================================================#
     # Setup
     #=========================================================================#
-    print agent.loc['county_id']
     # Set resolution of dispatcher    
     d_inc_n_est = 10    
     DP_inc_est = 12
@@ -673,7 +672,6 @@ def calc_financial_performance_wind(agent):
     #=========================================================================#
     # Setup
     #=========================================================================#
-    print agent.loc['county_id']
     # Set resolution of dispatcher    
     d_inc_n_est = 10    
     DP_inc_est = 12

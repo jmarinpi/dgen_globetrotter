@@ -257,7 +257,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         cores = None
                     else:
                         cores = model_settings.local_cores
-                    cores=None
+                        
                     # Apply state incentives
                     agents.on_frame(agent_mutation.elec.apply_state_incentives, [state_incentives, year, state_capacity_by_year])
                                        
