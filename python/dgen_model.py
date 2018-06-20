@@ -228,9 +228,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     agents.on_frame(agent_mutation.elec.apply_export_tariff_params, (net_metering_df))
                     
                     
-                    # Apply annual resource data                    
-                    wind_resource_df = agent_mutation.elec.get_annual_resource_wind(con, schema, year, scenario_settings.sectors)
-                    wind_resource_df = agent_mutation.elec.apply_technology_performance_wind(wind_resource_df, wind_derate_traj, year)
+                    # Apply annual resource data
+                    if 'wind' in scenario_settings.techs:
+                        wind_resource_df = agent_mutation.elec.get_annual_resource_wind(con, schema, year, scenario_settings.sectors)
+                        wind_resource_df = agent_mutation.elec.apply_technology_performance_wind(wind_resource_df, wind_derate_traj, year)
 
                     # Apply each agent's electricity price change and assumption about increases
                     agents.on_frame(agent_mutation.elec.apply_elec_price_multiplier_and_escalator, [year, elec_price_change_traj])
@@ -267,7 +268,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         
                         # Apply wind costs - dependent of size of wind system
                         wind_prices = agent_mutation.elec.process_wind_prices(wind_allowable_turbine_sizes, wind_price_traj)
-                        agents.on_frame(agent_mutation.elec.apply_wind_prices, wind_prices)                        
+                        agents.on_frame(agent_mutation.elec.apply_wind_prices, wind_prices)           
                         
                         # Apply host-owned financial parameters - dependent on size of wind system
                         agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate, scenario_settings.techs])
