@@ -281,13 +281,13 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         agents.on_frame(agent_mutation.elec.apply_normalized_hourly_resource_wind, hourly_wind_resource_df)
                         
                         # Calculate financial performance (cashflows, etc)
-                        agents.on_row(sFuncs.calc_financial_performance_wind, cores=cores)
+                        agents.chunk_on_row(sFuncs.calc_financial_performance_wind, cores=cores)
                     else:                        
                         # Apply host-owned financial parameters
                         agents.on_frame(agent_mutation.elec.apply_financial_params, [financing_terms, itc_options, inflation_rate, scenario_settings.techs])                        
                         
                         # for now, do not split solar into 'calc_system_size' and 'calc_financial_performance', just use old function that does both
-                        agents.on_row(sFuncs.calc_system_size_and_financial_performance_pv, cores=cores)
+                        agents.chunk_on_row(sFuncs.calc_system_size_and_financial_performance_pv, cores=cores)
                     
                     
                     # Calculate the financial performance of the S+S systems
