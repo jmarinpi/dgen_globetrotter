@@ -548,7 +548,6 @@ def calc_system_size_and_financial_performance_pv(agent):
                 'aep',
                 'naep',
                 'cf',
-                'system_size_factors',
                 'fy_bill_with_sys',
                 'fy_bill_savings',
                 'fy_bill_savings_frac',

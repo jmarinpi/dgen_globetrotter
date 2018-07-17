@@ -121,7 +121,8 @@ def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, default_r
     futures = []
     results = []
 
-    n_workers = 12
+    # Use n_workers=12 when running national run in peregrine or hermes
+    #n_workers = 12
 
     logger.info('Number of Workers is %s' % n_workers)
 
@@ -131,7 +132,7 @@ def select_tariff_driver(agent_df, prng, rates_rank_df, rates_json_df, default_r
 
     if n_workers > int(agent_df.shape[0]):
         n_workers = int(agent_df.shape[0])-1
-        logger.info('Agent Chunk size less than n_workers so reassigning n_workers as %s' % n_workers)
+        logger.info('Agent Chunk size less than n_workers so re-assigning n_workers as %s' % n_workers)
 
     chunk_size = int(agent_df.shape[0]/n_workers)
     

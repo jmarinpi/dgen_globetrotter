@@ -70,7 +70,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
         # connect to Postgres and configure connection
         con, cur = utilfunc.make_con(model_settings.pg_conn_string, model_settings.role)
         engine = utilfunc.make_engine(model_settings.pg_engine_string)
-        pgx.register_hstore(con)  # register access to hstore in postgres
+
+        # register access to hstore in postgres
+        pgx.register_hstore(con)  
+
         logger.info("Connected to Postgres with the following params:\n{:}".format(model_settings.pg_params_log))
         owner = model_settings.role
 
@@ -347,15 +350,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     del df_write
 
-            elif scenario_settings.techs == ['wind']:
-                logger.error('Wind not yet supported')
-                break
             elif scenario_settings.techs == ['ghp']:
                 logger.error('GHP not yet supported')
                 break
             elif scenario_settings.techs == ['du']:
-                logger.error('GHP not yet supported')
-                logger.error('GHP not yet supported')
+                logger.error('DU not yet supported')
                 break
             #==============================================================================
             #    Outputs & Visualization
