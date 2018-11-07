@@ -1,0 +1,1 @@
+Units are W/ft^2

@@ -1,0 +1,15 @@
+colorama
+colorlog
+datetime
+decorators
+logging
+matplotlib
+multiprocessing
+numpy==1.11.3
+openpyxl==2.3.2
+pandas==0.20.1
+psutil
+scoop==0.7.1.release
+futures
+configobj
+requests
