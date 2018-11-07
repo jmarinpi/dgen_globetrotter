@@ -1,9 +1,0 @@
-- edited "file" command to point to %gams.curdir% (put within quotes)
-	- C4_unittracker.gms
-	- A_readinputs.gms
-- edited all calls to Rscript to drop the preceding paths 
-- read.csv() in InitUnitTracker.R should use fileEncoding = "latin1" for VentyxUnitData.csv
-- read.csv() in HeatRateOld.R should use fileEncoding = "latin1" for VentyxUnitData.csv
-- in D1_report.gams:
-	- turn off line that copies automatic_report.R to automatic_report_2.R and change to call automtic_report.R not automatic_report_2.R
-	- change reeds_functions.r to reeds_functions.R (capitalize the R)
