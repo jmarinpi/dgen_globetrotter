@@ -545,19 +545,17 @@ class InputSheet:
      def load_core_agent_attributes(self):
           self.core_agent_attributes = pd.DataFrame()
           tmp = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder, 'agent_core_attributes_all.csv'),index_col=None)
+          tmp['agent_id']= range(tmp.shape[0])
           
-          for sector, settings in self.sector_data.items():
-               for t in self.techs:
-                    tmp['sector_abbr'] = sector
-                    tmp['tech'] = t
-               self.core_agent_attributes = pd.concat([self.core_agent_attributes,tmp])
+          for t in self.techs:
+               tmp['tech'] = t
+          self.core_agent_attributes = pd.concat([self.core_agent_attributes,tmp])
 
           if 'solar' in self.techs:
                df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder, 'pv_state_starting_capacities.csv'),index_col=None)
                self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['control_reg_id','state_id','sector_abbr','tariff_class','country_abbr'])
           
-          self.core_agent_attributes['agent_id']= range(self.core_agent_attributes.shape[0])
-          
+        
         # There was a problem where an agent was being generated that had no customers in the bin, but load in the bin
           # This is a temporary patch to get the model to run in this scenario\
           self.core_agent_attributes['customers_in_bin'] = np.where(self.core_agent_attributes['customers_in_bin']==0, 1, self.core_agent_attributes['customers_in_bin'])
@@ -612,8 +610,7 @@ class InputSheet:
    
      def load_electric_rates_json(self):
           df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'urdb3_rates.csv'),index_col=None)
-          df.rename(columns={'json':'rate_json'},inplace=True)
-          df = df[['rate_id_alias','rate_name','eia_id','rate_json']]
+          df = df[['rate_id_alias','rate_json']]
           self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['rate_id_alias'])
           self.core_agent_attributes.rename(columns={'rate_json':'tariff_dict', 'rate_id_alias':'tariff_id'}, inplace=True)
           self.core_agent_attributes['tariff_dict'] = self.core_agent_attributes['tariff_dict'].apply(lambda x: json.loads(x))
@@ -651,8 +648,8 @@ class InputSheet:
           
           mms_filter = []
           for sector,settings  in self.sector_data.items():
-               mms_filter.append( list((view['sector'] == settings.sector_name.lower()) & ( view['source'] == settings.max_market_curve_name ) & (view['business_model'] == 'host_owned')))
-               mms_filter.append( list((view['sector'] == settings.sector_name.lower()) & ( view['source'] == "NREL" ) & (view['business_model'] == 'tpo')))
+               mms_filter.append( list((view['sector_abbr'] == sector) & ( view['source'] == settings.max_market_curve_name ) & (view['business_model'] == 'host_owned')))
+               mms_filter.append( list((view['sector_abbr'] == sector) & ( view['source'] == "NREL" ) & (view['business_model'] == 'tpo')))
 
           df = view[np.any(mms_filter,axis=0)]
 

@@ -39,7 +39,7 @@ To Run the Model
 To Run From a Pregenerated Agent File:
 =========
 
-	At the end of each new run the results fodler will contain a file named agents_df_base.pkl. This folder contains agent core paramters, linked with hourly solar resource, normalized loads, and tariff rates. To use these agents again in alternative scenarios:
+	At the end of each new run the results fodler will contain a file named agents_df_base.pkl. This folder contains agent core paramters, linked with state PV starting capacities, hourly solar resource, normalized loads, and tariff rates. To use these agents again in alternative scenarios:
 
 	1. Copy agents_df_base.pkl to the agent_inputs folder. Rename if necessary.
 
