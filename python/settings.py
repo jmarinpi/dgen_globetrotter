@@ -306,6 +306,10 @@ class InputSheet:
           self.input_scenario = input_scenario
           self.time_step_increment = time_step_increment
           self.scenario_name = None
+<<<<<<< HEAD
+          self.scenario_folder = None
+=======
+>>>>>>> ad8575d2a5ea7294bfae6e2d3f79ae5874f2717d
           self.generate_agents = True
           self.agents_file_name = ''
           self.techs = None
@@ -334,7 +338,11 @@ class InputSheet:
 
      @property
      def input_csv_folder(self):
+<<<<<<< HEAD
+          return os.path.join('../input_scenarios',self.scenario_folder)
+=======
           return os.path.join('../input_scenarios',self.scenario_name)
+>>>>>>> ad8575d2a5ea7294bfae6e2d3f79ae5874f2717d
      
      @property
      def model_years(self):
@@ -357,6 +365,10 @@ class InputSheet:
                     sector_strs.append('sector_data.{}.{}'.format(s,a))
           check_data_types = {
                str: [     'scenario_name',
+<<<<<<< HEAD
+                          'scenario_folder',
+=======
+>>>>>>> ad8575d2a5ea7294bfae6e2d3f79ae5874f2717d
                               'scenarios.load_growth_scenario_name',
                               'scenarios.carbon_price_scenario_name',
                               'scenarios.nem_scenario_name',
@@ -382,6 +394,10 @@ class InputSheet:
                raise ValueError( 'Invalid %s: cannot contain spaces.' % property_name)
           if self.end_year > 2050:
                raise ValueError('Invalid: end_year must be <= 2050' )
+<<<<<<< HEAD
+          
+=======
+>>>>>>> ad8575d2a5ea7294bfae6e2d3f79ae5874f2717d
           if os.path.exists(self.input_scenario) == False:
                raise ValueError('Invalid %s: does not exist' % self.input_scenario)
           
@@ -431,14 +447,22 @@ class InputSheet:
                return result
 
      def loadFromDataFrame(self,table_name,df):
+<<<<<<< HEAD
+          if table_name == "input_main_scenario_options":
+=======
 
           if table_name == "input_main_scenario_options":
 
+>>>>>>> ad8575d2a5ea7294bfae6e2d3f79ae5874f2717d
                values = df.iloc[0]
                if str(values.get('agents_file')).replace(' ','') not in ['None','','0']:
                   self.agents_file_name = os.path.join('../input_agents',values.get('agents_file')) 
                   self.generate_agents = False
                self.scenario_name = values.get('scenario_name')
+<<<<<<< HEAD
+               self.scenario_folder = values.get('scenario_folder')
+=======
+>>>>>>> ad8575d2a5ea7294bfae6e2d3f79ae5874f2717d
                self.end_year = values.get('end_year')
                self.scenarios['load_growth_scenario_name'] = values.get('load_growth_scenario') 
                self.scenarios['carbon_price_scenario_name'] = values.get('carbon_price') 
@@ -446,6 +470,17 @@ class InputSheet:
                sector_selection = values.get('markets')
                self.sector_data = {}
                if sector_selection == 'All':
+<<<<<<< HEAD
+                   self.sectors = SECTORS
+               else:
+                   self.sectors = [i for i in SECTORS if i in sector_selection.lower()]
+               for s in self.sectors:
+                   sector = SectorInputs(s)
+                   sector.rate_structure_name = values.get(s + '_rate_structure') 
+                   sector.rate_escalation_name = values.get(s + '_rate_escalation') 
+                   sector.max_market_curve_name = values.get(s + '_max_market_curve')
+                   self.sector_data[s] = sector
+=======
                     self.sectors = SECTORS
                else:
                     self.sectors = [i for i in SECTORS if i in sector_selection.lower()]
@@ -455,6 +490,7 @@ class InputSheet:
                     sector.rate_escalation_name = values.get(s + '_rate_escalation') 
                     sector.max_market_curve_name = values.get(s + '_max_market_curve')
                     self.sector_data[s] = sector
+>>>>>>> ad8575d2a5ea7294bfae6e2d3f79ae5874f2717d
                self.techs = ['solar']
                self.tech_mode = 'elec' 
                self.load_max_market_share()

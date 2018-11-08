@@ -70,10 +70,18 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # log summary high level secenario settings
             logger.info('Scenario Settings:')
             logger.info('\tScenario Name: %s' % scenario_settings.scenario_name)
+<<<<<<< HEAD
+            logger.info('\tSectors: %s' % scenario_settings.sector_data.keys())
+            logger.info('\tTechnologies: %s' % scenario_settings.techs)
+            logger.info('\tYears: %s - %s' % (scenario_settings.start_year, scenario_settings.end_year))
+
+            logger.info('Results Path: %s' % (scenario_settings.out_scen_path))
+=======
             logger.info('\tRegion: %s' % scenario_settings.region_name)
             logger.info('\tSectors: %s' % scenario_settings.sector_data.keys())
             logger.info('\tTechnologies: %s' % scenario_settings.techs)
             logger.info('\tYears: %s - %s' % (scenario_settings.start_year, scenario_settings.end_year))
+>>>>>>> ad8575d2a5ea7294bfae6e2d3f79ae5874f2717d
 
             #==========================================================================================================
             # CREATE AGENTS
@@ -81,7 +89,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info("-------------- Agent Preparation ---------------")
             
             if scenario_settings.generate_agents:
+<<<<<<< HEAD
+                logger.info('\tCreating Agents')
+=======
                 logger.info('Creating Agents')
+>>>>>>> ad8575d2a5ea7294bfae6e2d3f79ae5874f2717d
                 solar_agents = Agents(agent_mutation.init_solar_agents(scenario_settings))
                 
                 # Write base agents to disk

@@ -1,5 +1,9 @@
 table,named_range,transpose,melt,columns
+<<<<<<< HEAD
+input_main_scenario_options,scenario_options_main,TRUE,FALSE,"scenario_name,scenario_folder,end_year,markets,load_growth_scenario,res_rate_structure,com_rate_structure,ind_rate_structure,res_rate_escalation,com_rate_escalation,ind_rate_escalation,res_max_market_curve,com_max_market_curve,ind_max_market_curve,carbon_price,nem_scenario,agents_file"
+=======
 input_main_scenario_options,scenario_options_main,TRUE,FALSE,"scenario_name,end_year,markets,load_growth_scenario,res_rate_structure,com_rate_structure,ind_rate_structure,res_rate_escalation,com_rate_escalation,ind_rate_escalation,res_max_market_curve,com_max_market_curve,ind_max_market_curve,carbon_price,nem_scenario,agents_file"
+>>>>>>> ad8575d2a5ea7294bfae6e2d3f79ae5874f2717d
 input_main_market_inflation,annual_inflation_main,FALSE,FALSE,"ann_inflation"
 input_main_storage_options,storage_options,TRUE,FALSE,"batt_replacement_yr,batt_replace_frac_kw,batt_replace_frac_kwh"
 input_main_pv_trajectories,pv_trajectories,FALSE,FALSE,"year,pv_price_res,pv_price_com,pv_price_ind,pv_om_res,pv_om_com,pv_om_ind,pv_variable_om_res,pv_variable_om_com,pv_variable_om_ind,pv_deg_res,pv_deg_com,pv_deg_ind,pv_power_density_w_per_sqft_res,pv_power_density_w_per_sqft_com,pv_power_density_w_per_sqft_ind"
