@@ -25,8 +25,7 @@ import utility_functions as utilfunc
 from agents import Agents
 import settings
 import agent_mutation
-import diffusion_functions_elec
-import financial_functions_elec
+import diffusion_functions
 import pickle
 
 #==============================================================================
@@ -70,18 +69,12 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # log summary high level secenario settings
             logger.info('Scenario Settings:')
             logger.info('\tScenario Name: %s' % scenario_settings.scenario_name)
-<<<<<<< HEAD
+
             logger.info('\tSectors: %s' % scenario_settings.sector_data.keys())
             logger.info('\tTechnologies: %s' % scenario_settings.techs)
             logger.info('\tYears: %s - %s' % (scenario_settings.start_year, scenario_settings.end_year))
 
             logger.info('Results Path: %s' % (scenario_settings.out_scen_path))
-=======
-            logger.info('\tRegion: %s' % scenario_settings.region_name)
-            logger.info('\tSectors: %s' % scenario_settings.sector_data.keys())
-            logger.info('\tTechnologies: %s' % scenario_settings.techs)
-            logger.info('\tYears: %s - %s' % (scenario_settings.start_year, scenario_settings.end_year))
->>>>>>> ad8575d2a5ea7294bfae6e2d3f79ae5874f2717d
 
             #==========================================================================================================
             # CREATE AGENTS
@@ -89,11 +82,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info("-------------- Agent Preparation ---------------")
             
             if scenario_settings.generate_agents:
-<<<<<<< HEAD
                 logger.info('\tCreating Agents')
-=======
-                logger.info('Creating Agents')
->>>>>>> ad8575d2a5ea7294bfae6e2d3f79ae5874f2717d
                 solar_agents = Agents(agent_mutation.init_solar_agents(scenario_settings))
                 
                 # Write base agents to disk
@@ -170,10 +159,10 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     solar_agents.df['agent_id'] = solar_agents.df.index.values
 
                     # Calculate the financial performance of the S+S systems 
-                    solar_agents.on_frame(financial_functions_elec.calc_financial_performance)
+                    solar_agents.on_frame(financial_functions.calc_financial_performance)
 
                     # Calculate Maximum Market Share
-                    solar_agents.on_frame(financial_functions_elec.calc_max_market_share, scenario_settings.get_max_market_share())
+                    solar_agents.on_frame(financial_functions.calc_max_market_share, scenario_settings.get_max_market_share())
 
                     # determine "developable" population
                     solar_agents.on_frame(agent_mutation.elec.calculate_developable_customers_and_load)
@@ -186,7 +175,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         solar_agents.on_frame(agent_mutation.elec.apply_market_last_year, market_last_year_df)
 
                     # Calculate diffusion based on economics and bass diffusion
-                    solar_agents.df, market_last_year_df = diffusion_functions_elec.calc_diffusion_solar(solar_agents.df, is_first_year, scenario_settings.get_bass_params())
+                    solar_agents.df, market_last_year_df = diffusion_functions.calc_diffusion_solar(solar_agents.df, is_first_year, scenario_settings.get_bass_params())
                     
                     # Estimate total generation
                     solar_agents.on_frame(agent_mutation.elec.estimate_total_generation)

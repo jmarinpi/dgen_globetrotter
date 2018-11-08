@@ -6,6 +6,119 @@ Created on Tue Oct 11 10:27:48 2016
 """
 
 import numpy as np
+np.seterr(divide='ignore', invalid='ignore')
+import pandas as pd
+import utility_functions as utilfunc
+import decorators
+
+#==============================================================================
+# Load logger
+logger = utilfunc.get_logger()
+#==============================================================================
+
+#%%
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calc_financial_performance(dataframe):
+    '''
+    Calculates the economic value of adoption given the metric chosen. Residential buyers
+    use simple payback, non-residential buyers use time-to-double, leasers use monthly bill savings
+    
+        IN:
+            df    
+        
+        OUT:
+            metric_value - pd series - series of values given the business_model and sector
+    '''
+    
+#    dataframe = dataframe.reset_index()
+
+    cfs = np.vstack(dataframe['cash_flow']).astype(np.float)    
+    
+    # calculate payback period
+    tech_lifetime = np.shape(cfs)[1] - 1
+    payback = calc_payback_vectorized(cfs, tech_lifetime)
+    # calculate time to double
+    ttd = calc_ttd(cfs)
+
+    metric_value = np.where(dataframe['sector_abbr']=='res', payback, ttd)
+
+    dataframe['metric_value'] = metric_value
+    
+    dataframe = dataframe.set_index('agent_id')
+
+    return dataframe
+    
+#%%
+
+
+@decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
+def calc_max_market_share(dataframe, max_market_share_df):
+
+    in_cols = list(dataframe.columns)
+    dataframe = dataframe.reset_index()
+    
+    dataframe['business_model'] = 'host_owned'
+    dataframe['metric'] = 'payback_period'
+    
+    # Convert metric value to integer as a primary key, then bound within max market share ranges
+    max_payback = max_market_share_df[max_market_share_df.metric == 'payback_period'].metric_value.max()
+    min_payback = max_market_share_df[max_market_share_df.metric == 'payback_period'].metric_value.min()
+    max_mbs = max_market_share_df[max_market_share_df.metric == 'percent_monthly_bill_savings'].metric_value.max()
+    min_mbs = max_market_share_df[max_market_share_df.metric == 'percent_monthly_bill_savings'].metric_value.min()
+    
+    # copy the metric valeus to a new column to store an edited version
+    metric_value_bounded = dataframe['metric_value'].values.copy()
+    
+    # where the metric value exceeds the corresponding max market curve bounds, set the value to the corresponding bound
+    metric_value_bounded[np.where((dataframe.metric == 'payback_period') & (dataframe['metric_value'] < min_payback))] = min_payback
+    metric_value_bounded[np.where((dataframe.metric == 'payback_period') & (dataframe['metric_value'] > max_payback))] = max_payback    
+    metric_value_bounded[np.where((dataframe.metric == 'percent_monthly_bill_savings') & (dataframe['metric_value'] < min_mbs))] = min_mbs
+    metric_value_bounded[np.where((dataframe.metric == 'percent_monthly_bill_savings') & (dataframe['metric_value'] > max_mbs))] = max_mbs
+    dataframe['metric_value_bounded'] = metric_value_bounded
+
+    # scale and round to nearest int    
+    dataframe['metric_value_as_factor'] = (dataframe['metric_value_bounded'] * 100).round().astype('int')
+    # add a scaled key to the max_market_share dataframe too
+    max_market_share_df['metric_value_as_factor'] = (max_market_share_df['metric_value'] * 100).round().astype('int')
+
+    # Join the max_market_share table and dataframe in order to select the ultimate mms based on the metric value. 
+    dataframe = pd.merge(dataframe, max_market_share_df[['sector_abbr', 'max_market_share', 'metric', 'metric_value_as_factor', 'business_model']], how = 'left', on = ['sector_abbr', 'metric','metric_value_as_factor','business_model'])
+    
+    # Derate the maximum market share for commercial and industrial customers in leased buildings by (2/3)
+    # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
+    dataframe['max_market_share'] = np.where(dataframe.owner_occupancy_status == 2, dataframe['max_market_share']/3,dataframe['max_market_share'])
+    
+    out_cols = in_cols + ['max_market_share', 'metric']    
+    dataframe = dataframe.set_index('agent_id')
+
+    return dataframe[out_cols]
+
+
+
+#==============================================================================
+
+def calc_ttd(cfs):
+    ''' Calculate time to double investment based on the MIRR. This is used for
+    the commercial and industrial sectors.
+    
+    IN: cfs - numpy array - project cash flows ($/yr)
+
+    OUT: ttd - numpy array - Time to double investment (years) 
+    
+    '''
+    irrs = virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5)
+    # suppress errors due to irrs of nan
+    with np.errstate(invalid = 'ignore'):
+        irrs = np.where(irrs<=0,1e-6,irrs)
+    ttd = np.log(2) / np.log(1 + irrs)
+    ttd[ttd <= 0] = 0
+    ttd[ttd > 30] = 30.1
+    # also deal with ttd of nan by setting to max payback period (this should only occur when cashflows = 0)
+    if not np.all(np.isnan(ttd) == np.all(cfs == 0, axis = 1)):
+        raise Exception("np.nan found in ttd for non-zero cashflows")
+    ttd[np.isnan(ttd)] = 30.1
+    
+    return ttd.round(decimals = 1) # must be rounded to nearest 0.1 to join with max_market_share
 
 
 #%%
@@ -273,29 +386,6 @@ def cashflow_constructor(bill_savings,
 
     return results
 
-#%%
-#==============================================================================
-
-def calc_npv(cfs,dr):
-    ''' Vectorized NPV calculation based on (m x n) cashflows and (n x 1) 
-    discount rate
-    
-    author: bsigrin
-    
-    IN: cfs - numpy array - project cash flows ($/yr)
-        dr  - numpy array - annual discount rate (decimal)
-        
-    OUT: npv - numpy array - net present value of cash flows ($) 
-    
-    '''
-    dr = dr[:,np.newaxis]
-    tmp = np.empty(cfs.shape)
-    tmp[:,0] = 1
-    tmp[:,1:] = 1/(1+dr)
-    drm = np.cumprod(tmp, axis = 1)        
-    npv = (drm * cfs).sum(axis = 1)   
-    return npv
-    
     
 #==============================================================================
      

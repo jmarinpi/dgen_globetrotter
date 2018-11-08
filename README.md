@@ -3,6 +3,21 @@ diffusion
 
 Repository for the Distributed Wind Diffusion Model.
 
+
+To Run the Model on Mac or Linux
+=========
+
+From a command line window, navigate to the diffusion/python folder, then:
+	1. Install virtualenv:
+		$ pip install virtualenv
+	2. Set up a new environment
+		$ virtualenv env
+	3. Activate the environment
+		$ source env/bin/activate
+	3. Load the required Python packages:
+		$ pip install -r requitements.txt
+
+
 To Run the Model
 =========
 
