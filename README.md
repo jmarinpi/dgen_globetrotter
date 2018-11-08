@@ -6,7 +6,7 @@ Repository for the Distributed Wind Diffusion Model. Includes related SQL, Pytho
 To Run the Model
 =========
 
-	1. Copy reference_data/example_data/mex_high_costs.xlsm to input_scenarios and rename to a unique scenario name.
+	1. Copy **reference_data/example_data/mex_high_costs.xlsm** to input_scenarios and rename to a unique scenario name.
 
 	2. Copy reference_data/example_data/mex_high_costs input csv folder to input_scenarios as well, then rename to the a unique name.
 
