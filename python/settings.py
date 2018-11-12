@@ -378,9 +378,6 @@ class ScenarioSettings:
           os.makedirs(self.out_scen_path)
           os.makedirs(self.dir_to_write_input_data)
           shutil.copy(self.input_scenario, self.out_scen_path)
-          for tech in self.techs:
-               out_tech_path = os.path.join(self.out_scen_path, tech)
-               os.makedirs(out_tech_path)
 
      def write_inputs(self):
           #==========================================================================================================
