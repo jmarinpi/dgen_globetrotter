@@ -191,16 +191,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     
                     write_annual_agents = True
-                    drop_fields = ['bill_savings', 'consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile']
+                    drop_fields = ['consumption_hourly_initial','generation_hourly','bill_savings', 'consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile']
                     df_write = solar_agents.df.drop(drop_fields, axis=1)
                     if write_annual_agents==True:
                         df_write.to_pickle(scenario_settings.out_scen_path + '/agent_df_%s.pkl' % year)
 
                     # Write Outputs to the database
                     if i == 0:
-                        complete_df = solar_agents.df
+                        complete_df = df_write
                     else:
-                        pd.concat([complete_df, solar_agents.df])
+                        pd.concat([complete_df, df_write])
 
 
             
