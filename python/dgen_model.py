@@ -190,20 +190,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING
                     #==========================================================================================================
                     
-                    write_annual_agents = True
-                    drop_fields = ['consumption_hourly_initial','generation_hourly','bill_savings', 'consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile']
-                    df_write = solar_agents.df.drop(drop_fields, axis=1)
-                    if write_annual_agents==True:
-                        df_write.to_pickle(scenario_settings.out_scen_path + '/agent_df_%s.pkl' % year)
-
+                    solar_agents.df.to_pickle(scenario_settings.out_scen_path + '/agent_df_%s.pkl' % year)
+                    
                     # Write Outputs to the database
+                    drop_fields = ['consumption_hourly_initial','generation_hourly','bill_savings', 'consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile'] #dropping because are arrays or json
+                    df_write = solar_agents.df.drop(drop_fields, axis=1)
                     if i == 0:
                         complete_df = df_write
                     else:
                         pd.concat([complete_df, df_write])
 
-
-            
             #==============================================================================
             #    Outputs & Visualization
             #==============================================================================

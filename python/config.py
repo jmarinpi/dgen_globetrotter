@@ -28,4 +28,4 @@ START_YEAR = 2016
 #==============================================================================
 #   local cores
 #==============================================================================
-LOCAL_CORES = multiprocessing.cpu_count()/2
+LOCAL_CORES = multiprocessing.cpu_count()
