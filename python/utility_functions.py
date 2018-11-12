@@ -5,7 +5,6 @@ Created on Thu Sep 17 10:51:51 2015
 @author: mgleason
 """
 
-import json
 import getopt
 import sys
 import colorama
@@ -13,7 +12,6 @@ import logging
 import colorlog
 import pandas as pd
 import datetime
-import select
 import time
 import subprocess
 import os

@@ -1,4 +1,4 @@
-agent_id,control_reg,control_reg_id,state_id,state,sector_abbr,tariff_class,country_abbr,customers_in_bin,load_kwh_in_bin,load_kwh_per_customer_in_bin,max_demand_kw,avg_monthly_kwh,owner_occupancy_status,cap_cost_multiplier,pct_of_bldgs_developable,bldg_size_class,rate_id_alias
+agent_id,control_reg,control_reg_id,state_id,state,sector_abbr,tariff_class,country_abbr,customers_in_bin,load_in_bin_kwh,load_per_customer_in_bin_kwh,max_demand_kw,avg_monthly_kwh,owner_occupancy_status,cap_cost_multiplier,developable_buildings_pct,bldg_size_class,rate_id_alias
 1,Occidental,3,1,Aguascalientes,res,1,MEX,399237,498873678,1249.567745,9351,94,1,1,0.6,small,0
 2,Occidental,3,1,Aguascalientes,com,2,MEX,49859,146874027,2945.787661,9351,221,1,1,0.6,small,17
 3,Occidental,3,1,Aguascalientes,com,3,MEX,21,646704.57,30795.45571,9351,2307,1,1,0.6,small,18

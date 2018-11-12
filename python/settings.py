@@ -5,7 +5,7 @@ Edited Monday Nov 5, 218
 """
 import os
 import multiprocessing
-import config
+from config import *
 import glob
 from excel.excel_objects import FancyNamedRange, ExcelError
 import pandas as pd
@@ -17,18 +17,6 @@ import sys
 import decorators
 import warnings
 
-SECTORS = ['res','com','ind']
-SECTOR_NAMES = {'res':'Residential','com':'Commercial','ind':'Industrial'}
-TECHS = [['solar']]
-TECH_MODES = ['elec']
-
-def check_type(obj, expected_type):
-
-    if isinstance(obj, expected_type) == False:
-        raise TypeError('object type (%s) does not match expected type (%s)' % (
-            type(obj), expected_type))
-
-
 path = os.path.dirname(os.path.abspath(__file__))
 par_path = os.path.dirname(path)
 sys.path.append(par_path)
@@ -39,12 +27,33 @@ import utility_functions as utilfunc
 logger = utilfunc.get_logger()
 #==============================================================================
 
+def check_type(obj, expected_type):
+
+    if isinstance(obj, expected_type) == False:
+        raise TypeError('object type (%s) does not match expected type (%s)' % (
+            type(obj), expected_type))
 
 @decorators.fn_timer(logger=logger, tab_level=1, prefix='')
-def load_scenario_to_inputSheet(xls_file,model_settings):
+def load_scenario_to_inputSheet(xls_file, model_settings):
+    '''load_scenario_to_inputSheet
+        
+        Aggregate agent-level results into ba-level results for the given year. 
+
+        Author: Ted Kwasnik
+
+        Inputs:
+        -xls_file - string - name of a file in the input_scenarios folder
+        -model_settings - object - global model settings
+
+        Outputs:
+        -scenario_settings - object - scenario specific settings and model data loaded from the excel spreadsheet and the associated input csv data folder
+    '''
     logger.info('Loading Input Scenario Worksheet') 
+    #==========================================================================================================
+    # Load the spreadsheet and the mapping_file to parse it
+    #========================================================================================================== 
     try:
-        inputSheet = InputSheet(xls_file,model_settings)
+        scenarioSettings = ScenarioSettings(xls_file,model_settings)
 
         if not os.path.exists(xls_file):
             raise ExcelError(
@@ -63,16 +72,19 @@ def load_scenario_to_inputSheet(xls_file,model_settings):
                 "ignore", message="Discarded range with reserved name")
             wb = xl.load_workbook(xls_file, data_only=True, read_only=True)
 
+    #==========================================================================================================
+    # Loop through tables from the mapping_file spreadsheet and convert named ranges to pandas dataframes before loading into scenario settings
+    #========================================================================================================== 
         for table, range_name, transpose, melt,columns in mappings.itertuples(index=False):
             fnr = FancyNamedRange(wb, range_name)
             if transpose == True:
                 fnr.__transpose_values__()
             if melt == True:
                 fnr.__melt__()
-            inputSheet.loadFromDataFrame(table, fnr.to_df(columns= columns))
-        inputSheet.validate()
+            scenarioSettings.loadFromDataFrame(table, fnr.to_df(columns= columns))
+        scenarioSettings.validate()
         
-        return inputSheet
+        return scenarioSettings
     except ExcelError, e:
         raise ExcelError(e)
 
@@ -87,9 +99,6 @@ class ModelSettings(object):
         self.input_scenarios = None  # type is list, is not empty
         self.git_hash = None  # type is text
         self.model_path = None  # path exists
-        self.agents_per_region = None  # type is integer, > 0
-        self.sample_pct = None  # type is float, <=1, warn if> 0.05 about slow run times
-        self.min_agents = None  # type is integer, >=0
         self.local_cores = None  # int < cores on machine
         self.used_scenario_names = [] #running list of modelined scenarios
 
@@ -115,15 +124,6 @@ class ModelSettings(object):
     def get(self, attr):
 
         return self.__getattribute__(attr)
-
-    def add_config(self, config):
-
-        self.set('start_year', config.start_year)
-        self.set('model_path', config.model_path)
-        self.set('agents_per_region', config.agents_per_region)
-        self.set('sample_pct', config.sample_pct)
-        self.set('min_agents', config.min_agents)
-        self.set('local_cores', config.local_cores)
 
     def validate_property(self, property_name):
 
@@ -201,58 +201,17 @@ class ModelSettings(object):
             if os.path.exists(self.model_path) == False:
                 raise ValueError('Invalid %s: does not exist' % property_name)
 
-        elif property_name == 'agents_per_region':
-            # check type
-            try:
-                check_type(self.get(property_name), int)
-            except TypeError, e:
-                raise TypeError('Invalid %s: %s' % (property_name, e))
-            if self.agents_per_region <= 0:
-                raise ValueError('Invalid %s: value must be >0' %
-                                 property_name)
-            if self.agents_per_region > 20:
-                warnings.warn(
-                    'High %s: using values > 20 may result in very slow model run times' % property_name)
-
-        elif property_name == 'sample_pct':
-            # check type
-            try:
-                check_type(self.get(property_name), float)
-            except TypeError, e:
-                raise TypeError('Invalid %s: %s' % (property_name, e))
-            if self.sample_pct > 1:
-                raise ValueError(
-                    'Invalid %s: value must be <= 0' % property_name)
-            if self.sample_pct > 0.05:
-                warnings.warn(
-                    'High %s: using values > 0.05 may result in very slow model run times' % property_name)
-
-        elif property_name == 'min_agents':
-            # check type
-            try:
-                check_type(self.get(property_name), int)
-            except TypeError, e:
-                raise TypeError('Invalid %s: %s' % (property_name, e))
-            # >= 0
-            if self.min_agents < 0:
-                raise ValueError(
-                    'Invalid %s: value must be >= 0' % property_name)
-
         elif property_name == 'local_cores':
             # check type
             try:
                 check_type(self.get(property_name), int)
             except TypeError, e:
                 raise TypeError('Invalid %s: %s' % (property_name, e))
-            # >= 0
-            if self.min_agents < 0:
-                raise ValueError(
-                    'Invalid %s: value must be >= 0' % property_name)
+            
             # check if too large
             if self.local_cores > multiprocessing.cpu_count():
                 raise ValueError(
                     'Invalid %s: value exceeds number of CPUs on local machine' % property_name)
-
 
         elif property_name == 'input_agent_dir':
 
@@ -270,29 +229,11 @@ class ModelSettings(object):
 
         return
 
-
-def init_model_settings():
-    # initialize Model Settings object (this controls settings that apply to
-    # all scenarios to be executed)
-    model_settings = ModelSettings()
-
-    # add the config to model settings; set Rscript path, model starting time,
-    # and output directory based on run time
-    model_settings.add_config(config)
-    model_settings.set('model_init', utilfunc.get_epoch_time())
-    model_settings.set('cdate', utilfunc.get_formatted_time())
-    model_settings.set('out_dir',  '%s/runs/results_%s' % (os.path.dirname(os.getcwd()), model_settings.cdate))
-    model_settings.set('input_agent_dir', '%s/input_agents' % os.path.dirname(os.getcwd()))
-    model_settings.set('git_hash', utilfunc.get_git_hash())
-    model_settings.set('input_scenarios', [s for s in glob.glob("../input_scenarios/*.xls*") if not '~$' in s])
-    # validate all model settings
-    model_settings.validate()
-    os.makedirs(model_settings.out_dir)
-
-    return model_settings
-
-
 class SectorInputs:
+    #==========================================================================================================
+    # Storage of sector-specific scenario inputs
+    #========================================================================================================== 
+
      def __init__(self,name):
           self.sector_abbr = name
           self.sector_name = SECTOR_NAMES[name]
@@ -300,7 +241,10 @@ class SectorInputs:
           self.rate_escalation_name = None
           self.max_market_curve_name = None
 
-class InputSheet:
+class ScenarioSettings:
+    #==========================================================================================================
+    # Storage of all scenario specific inputs
+    #========================================================================================================== 
      
      def __init__(self, input_scenario, model_settings, time_step_increment=2):
           self.input_scenario = input_scenario
@@ -319,7 +263,6 @@ class InputSheet:
                'carbon_price_scenario_name': None,
                'nem_scenario_name':None
                }
-
           self.random_seed_generator = None
           self.start_year = model_settings.start_year
           self.end_year = None   
@@ -335,16 +278,26 @@ class InputSheet:
 
      @property
      def input_csv_folder(self):
+          #==========================================================================================================
+          # Location of input csv files
+          #========================================================================================================== 
           return os.path.join('../input_scenarios',self.scenario_folder)
      
      @property
      def model_years(self):
+          #==========================================================================================================
+          # Range of years to model
+          #========================================================================================================== 
           if self.start_year and self.end_year:
                return range(self.start_year, self.end_year + 1, self.time_step_increment)
           else:
                return []
      
      def validate(self):
+          #==========================================================================================================
+          # Validate the scenario attributes for data type and necessary file system structure
+          #========================================================================================================== 
+
           def check_type(obj, expected_type):
                if expected_type == str:
                     failed = not (isinstance(obj, str) or isinstance(obj, unicode))
@@ -352,10 +305,17 @@ class InputSheet:
                     failed = not isinstance(obj, expected_type)
                if failed:
                     raise TypeError('object type (%s) does not match expected type (%s)' % (type(obj), expected_type))
+
+          #==========================================================================================================
+          # Format list of inputs to read from SectorInput Objects in a following loop
+          #==========================================================================================================           
           sector_strs = []
           for s in self.sectors:
                for a in ['rate_structure_name', 'rate_escalation_name', 'max_market_curve_name']:
                     sector_strs.append('sector_data.{}.{}'.format(s,a))
+          #==========================================================================================================
+          # Format full list inputs to read from SectorInput Objects in the following loop
+          #==========================================================================================================                     
           check_data_types = {
                str: [     'scenario_name',
                           'scenario_folder',
@@ -365,7 +325,10 @@ class InputSheet:
                               'tech_mode'] + sector_strs,
                int: ['start_year','end_year'],
                list: ['sectors']
-          }          
+          }  
+          #==========================================================================================================
+          # Loop through and validate all inputs
+          #==========================================================================================================           
           for data_type,attributes in check_data_types.items():
                for a in attributes:
                     if '.' in a:
@@ -380,29 +343,35 @@ class InputSheet:
                          check_type(v, data_type)
                     except TypeError, e:
                          raise TypeError('Invalid %s: %s' % (a, e))
+          #==========================================================================================================
+          # Check other one-off checks
+          #==========================================================================================================                     
           if ' ' in self.scenario_name:
                raise ValueError( 'Invalid %s: cannot contain spaces.' % property_name)
           if self.end_year > 2050:
                raise ValueError('Invalid: end_year must be <= 2050' )
           if os.path.exists(self.input_scenario) == False:
                raise ValueError('Invalid %s: does not exist' % self.input_scenario)
-          
           if os.path.exists(os.path.join('../input_agents',self.agents_file_name)) == False:
                raise ValueError('Invalid %s: does not exist' % os.path.join('../input_agents',self.agents_file_name))
-
-          self.model_years.sort()
           # make sure starts at 2016
+          self.model_years.sort()
           if self.model_years[0] <> 2016:
                raise ValueError('Invalid %s: Must begin with 2016.' % 'model_years')
-     # last year must be <= 2050
+          # last year must be <= 2050
           if self.model_years[-1] > 2050:
                raise ValueError('Invalid %s: End year must be <= 2050.' % 'model_years')        
+          # tech is a valid value
           if self.techs not in TECHS:
                raise ValueError('Invalid %s: must be one of %s' %(self.techs, TECHS))
+          # tech_mode is a valid value
           if self.tech_mode not in TECH_MODES:
                raise ValueError('Invalid %s: must be one of %s' %(self.tech_mode, TECHMODES))
      
      def write_folders(self, model_settings):
+          #==========================================================================================================
+          # make output folders for the run
+          #==========================================================================================================                     
           self.scenario_name = model_settings.check_scenario_name(self)
           self.out_scen_path = os.path.join(self.out_dir, self.scenario_name)
           self.dir_to_write_input_data = self.out_scen_path + '/input_data'
@@ -414,6 +383,9 @@ class InputSheet:
                os.makedirs(out_tech_path)
 
      def write_inputs(self):
+          #==========================================================================================================
+          # Export key attributes to output foler
+          #==========================================================================================================                     
           self.pv_trajectories.to_csv(self.dir_to_write_input_data + '/pv_trajectories.csv', index=False)
           self.storage_trajectories.to_csv(self.dir_to_write_input_data + '/storage_trajectories.csv', index=False)
           self.financial_trajectories.to_csv(self.dir_to_write_input_data + '/financial_trajectories.csv', index=False)
@@ -422,22 +394,35 @@ class InputSheet:
           self.state_start_conditions.to_csv(self.dir_to_write_input_data + '/state_start_conditions.csv', index=False)
       
      def collapse_sectors(self, df, columns, adders =[]):
-               adders  = ['year'] + adders
-               result = pd.DataFrame()
-               for sector in self.sectors:
-                    rename_set = {k.format(sector):v for k,v in columns.items()}
-                    tmp = df[rename_set.keys() + adders]
-                    tmp.rename(columns=rename_set, inplace=True)
-                    tmp['sector_abbr'] = sector
-                    result = pd.concat([result,tmp])
-               return result
+          #==========================================================================================================
+          # split each row into groups by sector, then stack the groups
+          #==========================================================================================================                     
+          adders  = ['year'] + adders
+          result = pd.DataFrame()
+          for sector in self.sectors:
+               rename_set = {k.format(sector):v for k,v in columns.items()}
+               tmp = df[rename_set.keys() + adders]
+               tmp.rename(columns=rename_set, inplace=True)
+               tmp['sector_abbr'] = sector
+               result = pd.concat([result,tmp])
+          return result
 
      def loadFromDataFrame(self,table_name,df):
+          #==========================================================================================================
+          # Accept a dataframe from the input spreadsheet and load it into the scenario settings
+          #==========================================================================================================                     
+
           if table_name == "input_main_scenario_options":
                values = df.iloc[0]
+              #==========================================================================================================
+              # determine if agents need to be generated or loaded from an existing pickle
+              #==========================================================================================================                     
                if str(values.get('agents_file')).replace(' ','') not in ['None','','0']:
                   self.agents_file_name = os.path.join('../input_agents',values.get('agents_file')) 
                   self.generate_agents = False
+              #==========================================================================================================
+              # parse other key attributes
+              #==========================================================================================================                     
                self.scenario_name = values.get('scenario_name')
                self.scenario_folder = values.get('scenario_folder')
                self.end_year = values.get('end_year')
@@ -457,7 +442,10 @@ class InputSheet:
                    sector.max_market_curve_name = values.get(s + '_max_market_curve')
                    self.sector_data[s] = sector
                self.techs = ['solar']
-               self.tech_mode = 'elec' 
+               self.tech_mode = 'elec'
+              #==========================================================================================================
+              # load from input csv data folder
+              #==========================================================================================================                     
                self.load_max_market_share()
                self.load_load_growth()
                self.load_rate_escalations()
@@ -492,28 +480,15 @@ class InputSheet:
                     self.storage_trajectories = self.storage_trajectories.merge(result, on=['year','sector_abbr'])
 
           if table_name == "input_main_depreciation_schedule":
-               self.deprec_schedules = df
-               
-               df = df[df['sector_abbr'].isin(self.sectors)]
-
-               df['deprec_sch'] = 'temp'
-
-               for index in df.index:
-                    df.set_value(index, 'deprec_sch', np.array(df.loc[index, ['1','2','3','4','5','6']]))
-
-               max_required_year = self.end_year
-               max_input_year = np.max(df['year'])
-               missing_years = np.arange(max_input_year+1, max_required_year+1, 1)
-               last_entry = df[df['year']==max_input_year]
-
-               for year in missing_years:
-                    last_entry['year'] = year
-                    df = df.append(last_entry)
-                
+               rename_set = {'1_{}':'1','2_{}':'2','3_{}':'3','4_{}':'4','5_{}':'5','6_{}':'6'}
+               result = self.collapse_sectors(df, rename_set)
+               columns = ['1', '2', '3', '4', '5', '6']
+               result['deprec_sch']=result.apply(lambda x: [x.to_dict()[y] for y in columns], axis=1)
+               result  = result[['year','sector_abbr','deprec_sch']]
                if self.financial_trajectories.empty:
-                    self.financial_trajectories = df
+                    self.financial_trajectories = result
                else:
-                    self.financial_trajectories = self.financial_trajectories.merge(df, on=['year','sector_abbr'])
+                    self.financial_trajectories = self.financial_trajectories.merge(result, on=['year','sector_abbr'])
                
           if table_name == "input_main_financial_trajecories":
                self.financing_terms = df 
@@ -546,20 +521,16 @@ class InputSheet:
           self.core_agent_attributes = pd.DataFrame()
           tmp = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder, 'agent_core_attributes_all.csv'),index_col=None)
           tmp['agent_id']= range(tmp.shape[0])
-          
           for t in self.techs:
                tmp['tech'] = t
           self.core_agent_attributes = pd.concat([self.core_agent_attributes,tmp])
-
           if 'solar' in self.techs:
                df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder, 'pv_state_starting_capacities.csv'),index_col=None)
                self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['control_reg_id','state_id','sector_abbr','tariff_class','country_abbr'])
-          
-        
-        # There was a problem where an agent was being generated that had no customers in the bin, but load in the bin
+          # There was a problem where an agent was being generated that had no customers in the bin, but load in the bin
           # This is a temporary patch to get the model to run in this scenario\
           self.core_agent_attributes['customers_in_bin'] = np.where(self.core_agent_attributes['customers_in_bin']==0, 1, self.core_agent_attributes['customers_in_bin'])
-          self.core_agent_attributes['load_kwh_per_customer_in_bin'] = np.where(self.core_agent_attributes['load_kwh_per_customer_in_bin']==0, 1, self.core_agent_attributes['load_kwh_per_customer_in_bin'])
+          self.core_agent_attributes['load_per_customer_in_bin_kwh'] = np.where(self.core_agent_attributes['load_per_customer_in_bin_kwh']==0, 1, self.core_agent_attributes['load_per_customer_in_bin_kwh'])
 
      def load_normalized_load_profiles(self):
 
@@ -588,7 +559,7 @@ class InputSheet:
           self.core_agent_attributes = self.core_agent_attributes.apply(scale_array_precision, axis=1, args=('consumption_hourly', 'scale_offset_load'))
           
           # scale the normalized profile to sum to the total load
-          self.core_agent_attributes = self.core_agent_attributes.apply(scale_array_sum, axis=1, args=('consumption_hourly', 'load_kwh_per_customer_in_bin'))
+          self.core_agent_attributes = self.core_agent_attributes.apply(scale_array_sum, axis=1, args=('consumption_hourly', 'load_per_customer_in_bin_kwh'))
 
           # subset to only the desired output columns
           out_cols = list(in_cols.values)
@@ -625,7 +596,6 @@ class InputSheet:
 
           if self.scenarios['carbon_price_scenario_name'] == 'No Carbon Price':
                set_zero = True
-
           ids = ['country_abbr','control_reg_id']
           years = [i for i in df.columns if i not in ids]
           result = pd.DataFrame()
@@ -680,7 +650,7 @@ class InputSheet:
           
           if self.scenarios['nem_scenario_name'] == 'State Wholesale':
             join = self.get_wholesale_elec_prices()
-            join.rename(columns={"wholesale_elec_price":"hourly_excess_sell_rate_dlrs_per_kwh"},inplace=True)
+            join.rename(columns={"wholesale_elec_usd_per_kwh":"hourly_excess_sell_rate_usd_per_kwh"},inplace=True)
             cols = ['control_reg_id', 'country_abbr', 'year','sector_abbr']
           
           df = df.merge(join, on=cols)
@@ -699,7 +669,7 @@ class InputSheet:
           for year in years:
             tmp = df[ids+[year]]
             tmp['year'] = int(year)
-            tmp.rename(columns={year:'hourly_excess_sell_rate_dlrs_per_kwh'},inplace=True)
+            tmp.rename(columns={year:'hourly_excess_sell_rate_usd_per_kwh'},inplace=True)
             result = pd.concat([result,tmp])
           return result
 
@@ -711,7 +681,7 @@ class InputSheet:
           for year in years:
             tmp = df[ids+[year]]
             tmp['year'] = int(year)
-            tmp.rename(columns={year:'wholesale_elec_price'},inplace=True)
+            tmp.rename(columns={year:'wholesale_elec_usd_per_kwh'},inplace=True)
             result = pd.concat([result,tmp])
           
           if self.control_reg_trajectories.empty:
@@ -749,26 +719,20 @@ class InputSheet:
      def get_batt_price_trajectories(self):
           return self.storage_trajectories[['year', 'sector_abbr','batt_price_per_kwh','batt_price_per_kw','batt_om_per_kw','batt_om_per_kwh']]
 
-     def get_itc_incentives(self):
-          return self.financial_trajectories[['year','sector_abbr','itc_fraction','tech','min_size_kw','max_size_kw']]
-
-     def get_depreciation_schedules(self):
-          return self.financial_trajectories[['year', 'sector_abbr','deprec_sch', 'loan_term','loan_rate','down_payment','real_discount','tax_rate']]
-
      def get_financing_terms(self):
-          return self.financial_trajectories[['year', 'sector_abbr','loan_term', 'economic_lifetime', 'loan_rate', 'down_payment', 'real_discount','tax_rate']]     
-     
+          return self.financial_trajectories[['year','sector_abbr','deprec_sch','itc_fraction','min_size_kw','max_size_kw','loan_term','loan_rate','down_payment','real_discount','tax_rate','economic_lifetime']]
+  
      def get_rate_escalations(self):
           return self.control_reg_trajectories[['control_reg_id', 'country_abbr','sector_abbr','elec_price_multiplier','year']]
      
      def get_wholesale_elec_prices(self):
-          return self.control_reg_trajectories[['control_reg_id', 'country_abbr','sector_abbr','wholesale_elec_price','year']]
+          return self.control_reg_trajectories[['control_reg_id', 'country_abbr','sector_abbr','wholesale_elec_usd_per_kwh','year']]
 
      def get_load_growth(self,year):
           return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['control_reg_id', 'country_abbr','sector_abbr','load_multiplier']]
 
      def get_nem_settings(self,year):
-          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['country_abbr','control_reg_id','sector_abbr','nem_system_size_limit_kw','year_end_excess_sell_rate_dlrs_per_kwh','hourly_excess_sell_rate_dlrs_per_kwh']]
+          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['country_abbr','control_reg_id','sector_abbr','nem_system_size_limit_kw','year_end_excess_sell_rate_usd_per_kwh','hourly_excess_sell_rate_usd_per_kwh']]
 
      def get_carbon_intensities(self,year):
           return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['control_reg_id', 'country_abbr','sector_abbr','carbon_price_cents_per_kwh']]
@@ -777,10 +741,39 @@ class InputSheet:
           return self.market_share_parameters
 
      def get_bass_params(self):
-          return self.state_start_conditions[['control_reg_id', 'country_abbr','sector_abbr','state','p','q','teq_yr1','tech']]
+          return self.state_start_conditions[['control_reg_id', 'country_abbr','sector_abbr','state_id','p','q','teq_yr1','tech']]
 
+def init_model_settings():
+    #==========================================================================================================
+    # initialize Model Settings object (this controls settings that apply to all scenarios to be executed)
+    #========================================================================================================== 
+    model_settings = ModelSettings()
+
+    #==========================================================================================================
+    # add the config to model settings; set model starting time, and output directory based on run time
+    #==========================================================================================================
+    model_settings.set('start_year', START_YEAR)
+    model_settings.set('model_path', MODEL_PATH)
+    model_settings.set('local_cores', LOCAL_CORES)
+    model_settings.set('model_init', utilfunc.get_epoch_time())
+    model_settings.set('cdate', utilfunc.get_formatted_time())
+    model_settings.set('out_dir',  '%s/runs/results_%s' % (os.path.dirname(os.getcwd()), model_settings.cdate))
+    model_settings.set('input_agent_dir', '%s/input_agents' % os.path.dirname(os.getcwd()))
+    model_settings.set('git_hash', utilfunc.get_git_hash())
+    model_settings.set('input_scenarios', [s for s in glob.glob("../input_scenarios/*.xls*") if not '~$' in s])
+    
+    #==========================================================================================================
+    # validate model settings and make the ouput directory
+    #==========================================================================================================
+    model_settings.validate()
+    os.makedirs(model_settings.out_dir)
+
+    return model_settings
 
 def init_scenario_settings(scenario_file, model_settings):
+    #==========================================================================================================
+    # load scenario specific data and configure output settings
+    #========================================================================================================== 
     try:
         scenario_settings = load_scenario_to_inputSheet(scenario_file, model_settings)
         scenario_settings.write_folders(model_settings)

@@ -1,4 +1,4 @@
-country_abbr,sector_abbr,control_reg_id,nem_system_size_limit_kw,year_end_excess_sell_rate_dlrs_per_kwh,year
+country_abbr,sector_abbr,control_reg_id,nem_system_size_limit_kw,year_end_excess_sell_rate_usd_per_kwh,year
 MEX,res,1,10000000000,0,2016
 MEX,res,2,10000000000,0,2016
 MEX,res,3,10000000000,0,2016

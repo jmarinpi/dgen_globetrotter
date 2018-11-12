@@ -20,7 +20,7 @@ This folder contains the following country specific input parameters:
 				avg_monthly_kwh - average agent monthly energy use in kWh (float) 
 				owner_occupancy_status - code lookup for owner statis where 1 = owner-occupied and 2 = leased (int)
 				cap_cost_multiplier - agent capital cost multiplier
-				bldgs_developable_pct - pecent of agent's buildngs that are suitable for DPV development  (float)
+				developable_buildings_pct - pecent of agent's buildngs that are suitable for DPV development  (float)
 				bldg_size_class - size of agent's building (str). Must be one of ['small','med','large']
 				rate_id_alias - common electric rate identifier (int). Must match similar field in urdb3_rates.csv
 
@@ -93,7 +93,7 @@ This folder contains the following country specific input parameters:
 			country_abbr - common country abbreviation (str)
 			control_reg_id - unique common control region identifier (int)
 			nem_system_size_limit_kw - net metering system size limit kW (float)
-			year_end_excess_sell_rate_dlrs_per_kwh - excess sell rate for net metering in US Dollars (float)
+			year_end_excess_sell_rate_usd_per_kwh - excess sell rate for net metering in US Dollars (float)
 			year - scenario year (int)
 
 	- normalized_load.csv
@@ -165,7 +165,7 @@ This folder contains the following country specific input parameters:
 
 		Fields:
 			rate_id_alias - rate id matching that of agent_core_attributes_all.csv (int)
-			json - complete urdb rate (json)
+			rate_json - complete urdb rate (json)
 
 	- wholesale_rates.csv
 

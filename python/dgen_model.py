@@ -26,6 +26,7 @@ from agents import Agents
 import settings
 import agent_mutation
 import diffusion_functions
+import financial_functions
 import pickle
 
 #==============================================================================
@@ -98,6 +99,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==============================================================================
             # TECHNOLOGY DEPLOYMENT
             #==============================================================================
+            logger.info("-------------- Yearly Analysis ---------------")
             complete_df = pd.DataFrame()
             if scenario_settings.techs == ['solar']:
                 solar_agents.df['tech'] = 'solar'
@@ -135,8 +137,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_specs, scenario_settings.get_pv_specs())
                     solar_agents.on_frame(agent_mutation.elec.apply_storage_specs, [scenario_settings.get_batt_price_trajectories(), year, scenario_settings])
                     
-                    # Apply depreciation schedule
-                    solar_agents.on_frame(agent_mutation.elec.apply_depreciation_schedule, scenario_settings.get_depreciation_schedules())
+                    # Apply financial terms
+                    solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [scenario_settings.get_financing_terms(), scenario_settings.financial_options['annual_inflation_pct']])
                     
                     # Apply carbon intensities
                     carbon_intensities_yearly = scenario_settings.get_carbon_intensities(year)
@@ -144,9 +146,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     # Apply wholesale electricity prices
                     solar_agents.on_frame(agent_mutation.elec.apply_wholesale_elec_prices, scenario_settings.get_wholesale_elec_prices())
-                    
-                    # Apply host-owned financial parameters
-                    solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [scenario_settings.get_financing_terms(),  scenario_settings.get_itc_incentives(), scenario_settings.financial_options['annual_inflation_pct']])
                     
                     # Size S+S system and calculate electric bills
                     if 'ix' not in os.name: 
@@ -210,7 +209,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             #==============================================================================
             logger.info("---------Saving Model Results---------")
             
-            complete_df.to_csv(scenario_settings.out_scen_path + '/agent_outpus.csv' )
+            complete_df.to_csv(scenario_settings.out_scen_path + '/agent_outputs.csv' )
             
             logger.info("-------------Model Run Complete-------------")
             logger.info('Completed in: %.1f seconds' % (time.time() - model_settings.model_init))

@@ -203,9 +203,7 @@ def cashflow_constructor(bill_savings,
     
     
     if np.size(pbi) != n_agents or n_agents==1: pbi = np.repeat(pbi, n_agents)[:,np.newaxis]
-    if deprec_sched.ndim == 1 or n_agents==1: deprec_sched = np.array([deprec_sched])
-#    if len(loan_term) != n_agents: loan_term = np.repeat(loan_term, n_agents)
-#    if np.size(batt_replacement_sch) != n_agents: batt_replacement_sch = np.repeat(batt_replacement_sch, n_agents)
+    deprec_sched = np.array([deprec_sched])
 
     #################### Setup #########################################
     effective_tax_rate = fed_tax_rate * (1 - state_tax_rate) + state_tax_rate
@@ -334,13 +332,7 @@ def cashflow_constructor(bill_savings,
     elec_OM_deduction_decrease_tax_liability = (bill_savings.T * effective_tax_rate).T
     
     ########################### Post Processing ###############################
-    
-#    dr = nom_d[:,np.newaxis]
-#    tmp = np.empty(cf.shape)
-#    tmp[:,0] = 1
-#    tmp[:,1:] = 1/(1+dr)
-#    drm = np.cumprod(tmp, axis = 1)        
-#    npv = (drm * cf).sum(axis = 1)      
+      
     powers = np.zeros(shape, int)
     powers[:,:] = np.array(range(analysis_years+1))
     discounts = np.zeros(shape, float)

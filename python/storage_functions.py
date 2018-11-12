@@ -34,7 +34,7 @@ def calc_system_size_and_financial_performance(agent):
     # Setup
     #=========================================================================#
     try:
-        print "                             Running system size calculations for", agent['state'], agent['tariff_class'], agent['sector_abbr']
+        print "\t\t\t\tRunning system size calculations for", agent['state'], agent['tariff_class'], agent['sector_abbr']
         # Set resolution of dispatcher    
         d_inc_n_est = 10    
         DP_inc_est = 12
@@ -57,13 +57,7 @@ def calc_system_size_and_financial_performance(agent):
             
         pv_cf_profile = np.array(agent['solar_cf_profile']) / 1e3
         agent['naep'] = float(np.sum(pv_cf_profile))    
-    #    agent['max_pv_size'] = np.min([agent['load_kwh_per_customer_in_bin']/agent['naep'], agent['developable_roof_sqft']*agent['pv_power_density_w_per_sqft']/1000.0])
-        # BS May 9th - Adding 50% derating factor to account for derating for owner-occupancy and developable roof. This should be fixed in a later commit.
-        # PD Sept 8th - Updating derating factor for Mexico from 50% to 60% according to owner-occupancy data
-        #agent['max_pv_size'] = 0.6 * agent['load_kwh_per_customer_in_bin']/agent['naep']
 
-	#agent['max_pv_size'] = agent['load_kwh_per_customer_in_bin']/agent['naep']
-	#agent['max_pv_size'] = np.min([agent['load_kwh_per_customer_in_bin']/agent['naep'], #interconnect_limit_kw])        
         # Create battery object
         batt = dFuncs.Battery()
         batt_ratio = 3.0
@@ -83,7 +77,7 @@ def calc_system_size_and_financial_performance(agent):
         agent['fy_bill_without_sys'] = original_bill * agent['elec_price_multiplier']
         if agent['fy_bill_without_sys'] == 0: 
             agent['fy_bill_without_sys']=1.0
-        agent['fy_elec_cents_per_kwh_without_sys'] = agent['fy_bill_without_sys'] / agent['load_kwh_per_customer_in_bin']
+        agent['fy_elec_cents_per_kwh_without_sys'] = agent['fy_bill_without_sys'] / agent['load_per_customer_in_bin_kwh']
     
         #=========================================================================#
         # Estimate bill savings revenue from a set of solar+storage system sizes
@@ -99,7 +93,7 @@ def calc_system_size_and_financial_performance(agent):
         #The average area for medium and large solar-suitable buildings in the U.S. is 4280.6 m2. For context, at 160 W/m2 this is about 684.8 kW. 
         #For the purpose of this study we will assume all commercial and industrial buildings are either large or medium. 
 
-        #Derating factor already used in core_attributes i.e. pct_of_bldgs_developable=0.6
+        #Derating factor already used in core_attributes i.e. developable_buildings_pct=0.6
 
         agent['developable_roof_sqft'] = float(np.where(agent['sector_abbr']=='res', (10.7639 * 52.1),
                                                     np.where(agent['sector_abbr']=='com', (10.7639 * 317.6),
@@ -108,8 +102,8 @@ def calc_system_size_and_financial_performance(agent):
                                                         )
                                             )
 
-        max_size_load = agent.loc['load_kwh_per_customer_in_bin']/agent.loc['naep']
-        max_size_roof = agent.loc['developable_roof_sqft'] * agent.loc['pct_of_bldgs_developable'] * agent.loc['pv_power_density_w_per_sqft']/1000.0
+        max_size_load = agent.loc['load_per_customer_in_bin_kwh']/agent.loc['naep']
+        max_size_roof = agent.loc['developable_roof_sqft'] * agent.loc['developable_buildings_pct'] * agent.loc['pv_power_density_w_per_sqft']/1000.0
         agent.loc['max_pv_size'] = min(max_size_load, max_size_roof)
     
         dynamic_sizing = True #False
@@ -161,7 +155,7 @@ def calc_system_size_and_financial_performance(agent):
                 export_tariff.periods_8760 = tariff.e_tou_8760
                 export_tariff.prices = tariff.e_prices_no_tier
             else:
-                export_tariff.set_constant_sell_price(agent['wholesale_elec_price'])
+                export_tariff.set_constant_sell_price(agent['wholesale_elec_usd_per_kwh'])
                 
             batt_power = system_df['batt'][i].copy()
             batt.set_cap_and_power(batt_power*batt_ratio, batt_power)  
@@ -228,7 +222,7 @@ def calc_system_size_and_financial_performance(agent):
             export_tariff.periods_8760 = tariff.e_tou_8760
             export_tariff.prices = tariff.e_prices_no_tier
         else:
-            export_tariff.set_constant_sell_price(agent['wholesale_elec_price'])
+            export_tariff.set_constant_sell_price(agent['wholesale_elec_usd_per_kwh'])
     
         # add system size class
         system_size_breaks = [0.0, 2.5, 5.0, 10.0, 20.0, 50.0, 100.0, 250.0, 500.0, 750.0, 1000.0, 1500.0, 3000.0]

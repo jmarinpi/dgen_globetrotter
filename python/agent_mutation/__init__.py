@@ -3,10 +3,27 @@
 Edited Monday Nov 5, 218
 @author: tkwasnik
 """
+
 import elec
 
 def init_solar_agents(scenario_settings):
-    # Create core agent attributes
+    '''initiate solar agents
+        
+        Loads and merges state DPV capacity in 2015, load profiles, hourly solar resource, and electric rates with core agent attributes.
+
+        Author: Ted Kwasnik
+
+        Inputs:
+        -scenario_settings - object - 
+        
+        Outputs:
+        -agents_df - pandas dataframe - core initial agent attributes
+    '''
+
+    # =========================================================================
+    # LOAD CORE AGENT ATTRIBUTES
+    # =========================================================================
+    
     scenario_settings.load_core_agent_attributes()
     
     # =========================================================================
@@ -24,8 +41,8 @@ def init_solar_agents(scenario_settings):
     # note that some of the above operations rely on non-initial name, which should be cleaned up when agent initialization is rebuilt
     #==============================================================================    
     agents_df.rename(columns={'customers_in_bin':'customers_in_bin_initial', 
-                               'load_kwh_per_customer_in_bin':'load_kwh_per_customer_in_bin_initial',
-                               'load_kwh_in_bin':'load_kwh_in_bin_initial',
+                               'load_per_customer_in_bin_kwh':'load_per_customer_in_bin_kwh_initial',
+                               'load_in_bin_kwh':'load_in_bin_kwh_initial',
                                'consumption_hourly':'consumption_hourly_initial'}, inplace=True)
 
     return agents_df

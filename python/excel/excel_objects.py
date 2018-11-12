@@ -4,9 +4,6 @@ Created on Thu Jul  9 12:09:03 2015
 
 @author: mgleason
 """
-
-import openpyxl as xl
-from cStringIO import StringIO
 import numpy as np
 import pandas as pd
 import datetime
@@ -191,46 +188,6 @@ class FancyNamedRange(object):
         first_value = self.data_frame.ix[0][0]
 
         return first_value
-        
-    def to_stringIO(self, transpose = False, columns = None, index = False, header = False):
-        
-        s = StringIO()
-        
-        if columns == None:
-            columns = self.data_frame.columns
-        
-        if transpose:
-            out_df = self.data_frame[columns].T
-        else:
-            out_df = self.data_frame[columns]
-
-        try:
-            out_df.to_csv(s, delimiter = ',', index = index, header = header)
-        except:
-            out_df.to_csv(s, index=index, header=header)
-        s.seek(0)
-        
-        return s
-        
-    def to_postgres(self, connection, cursor, schema, table, transpose = False, columns = None, create = False, overwrite = True):
-        
-        sql_dict = {'schema': schema, 'table': table}
-        
-        if create == True:
-            raise NotImplementedError('Creation of a new postgres table is not implemented')
-        
-        s = self.to_stringIO(transpose, columns)        
-        
-        if overwrite == True:
-            sql = 'DELETE FROM %(schema)s.%(table)s;' % sql_dict
-            cursor.execute(sql)
-        
-        sql = '%(schema)s.%(table)s' % sql_dict
-        cursor.copy_from(s, sql, sep = ',', null = '')
-        connection.commit()    
-        
-        # release the string io object
-        s.close()      
 
     def to_df(self, transpose = False, columns = None):
         

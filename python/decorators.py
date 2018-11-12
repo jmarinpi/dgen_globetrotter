@@ -6,26 +6,6 @@ Edited Monday Nov 5, 218
 
 import time
 from functools import wraps
-
-def shared(f):
-    f.shared = True
-    return f  
-
-
-def unshared(f):
-    f.shared = False
-    return f  
-
-    
-class fid(object):
-    
-    def __init__(self, i):
-        self.fid = i
-
-    def __call__(self, f):
-        f.fid = self.fid
-        return f
-  
         
 class fn_timer(object):
     
@@ -48,24 +28,4 @@ class fn_timer(object):
                     else:
                         print msg
                 return result
-            return function_timer        
-
-
-class fn_info(object):
-    
-    def __init__(self, info, logger = None, tab_level = 0):
-        self.info = info
-        self.tabs = '\t' * tab_level
-        self.logger = logger
-
-    def __call__(self, f):
-            @wraps(f)
-            def function_status_info(*args, **kwargs):
-                msg = '%s%s' % (self.tabs, self.info)
-                if self.logger is not None:
-                    self.logger.info(msg)
-                else:
-                    print msg
-                result = f(*args, **kwargs)
-                return result
-            return function_status_info    
+            return function_timer
