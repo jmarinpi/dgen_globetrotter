@@ -176,7 +176,6 @@ def cashflow_constructor(bill_savings,
     # If given just a single value for an agent-specific variable, repeat that
     # variable for each agent. This assumes that the variable is intended to be
     # applied to each agent. 
-
     if np.size(np.shape(bill_savings)) == 1: shape = (1, analysis_years+1)
     else: shape = (np.shape(bill_savings)[0], analysis_years+1)
     n_agents = shape[0]

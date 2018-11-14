@@ -40,16 +40,16 @@ def calc_system_size_and_financial_performance(agent):
         DP_inc_est = 12
         d_inc_n_acc = 20     
         DP_inc_acc = 12
-    
+
         # Extract load profile
         load_profile = np.array(agent['consumption_hourly'])    
         agent.loc['timesteps_per_year'] = 1
 
         # Misc. calculations
-        
+
         # Set the interconnection limit according to sectors (residential <= 50 KW and commercial\industrial <=500 KW)
         # Values set according to the "Interconnection Manual for generating plants with capacity less than 0.5 MW"
-        
+
         if agent.sector_abbr == 'res':
             interconnect_limit_kw = 50
         else:
@@ -61,9 +61,9 @@ def calc_system_size_and_financial_performance(agent):
         # Create battery object
         batt = dFuncs.Battery()
         batt_ratio = 3.0
-    
+
         tariff = tFuncs.Tariff(dict_obj=agent.loc['tariff_dict'])
-        
+
         # Create export tariff object
         if agent['nem_system_size_limit_kw'] != 0:
             export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
@@ -71,20 +71,20 @@ def calc_system_size_and_financial_performance(agent):
             export_tariff.prices = tariff.e_prices_no_tier
         else:
             export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
-    
-    
+
+
         original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
         agent['fy_bill_without_sys'] = original_bill * agent['elec_price_multiplier']
         if agent['fy_bill_without_sys'] == 0: 
             agent['fy_bill_without_sys']=1.0
         agent['fy_elec_cents_per_kwh_without_sys'] = agent['fy_bill_without_sys'] / agent['load_per_customer_in_bin_kwh']
-    
+
         #=========================================================================#
         # Estimate bill savings revenue from a set of solar+storage system sizes
         #=========================================================================#    
         # Set PV sizes to evaluate
-    #    pv_inc = 1
-    #    pv_sizes = np.linspace(0, agent['max_pv_size']*0.95, pv_inc)
+        #    pv_inc = 1
+        #    pv_sizes = np.linspace(0, agent['max_pv_size']*0.95, pv_inc)
 
         # set up developable_roof_sqft according to the average US statistics from the LiDAR rooftop Data (see Ben's values below)
 
@@ -105,7 +105,7 @@ def calc_system_size_and_financial_performance(agent):
         max_size_load = agent.loc['load_per_customer_in_bin_kwh']/agent.loc['naep']
         max_size_roof = agent.loc['developable_roof_sqft'] * agent.loc['developable_buildings_pct'] * agent.loc['pv_power_density_w_per_sqft']/1000.0
         agent.loc['max_pv_size'] = min(max_size_load, max_size_roof)
-    
+
         dynamic_sizing = True #False
 
         if dynamic_sizing:
@@ -128,7 +128,6 @@ def calc_system_size_and_financial_performance(agent):
         # else:
         #     batt_powers = np.zeros(1)
         batt_powers = np.zeros(1)
-        
         # Calculate the estimation parameters for each PV size
         est_params_df = pd.DataFrame(index=pv_sizes)
         est_params_df['estimator_params'] = 'temp'
@@ -139,13 +138,13 @@ def calc_system_size_and_financial_performance(agent):
         # Create df with all combinations of solar+storage sizes
         system_df = pd.DataFrame(gFuncs.cartesian([pv_sizes, batt_powers]), columns=['pv', 'batt'])
         system_df['est_bills'] = None
-        
+
         pv_kwh_by_year = np.array(map(lambda x: sum(x), np.split(np.array(pv_cf_profile), agent.loc['timesteps_per_year'])))
         pv_kwh_by_year = np.concatenate([(pv_kwh_by_year - ( pv_kwh_by_year * agent.loc['pv_deg'] * i)) for i in range(1, agent.loc['economic_lifetime']+1)])
         system_df['kwh_by_timestep'] = system_df['pv'].apply(lambda x: x * pv_kwh_by_year)
-        
+
         n_sys = len(system_df)
-        
+
         for i in system_df.index:    
             pv_size = system_df['pv'][i].copy()
             load_and_pv_profile = load_profile - pv_size*pv_cf_profile
@@ -167,7 +166,7 @@ def calc_system_size_and_financial_performance(agent):
             else:
                 bill_with_PV, _ = tFuncs.bill_calculator(load_and_pv_profile, tariff, export_tariff)
                 system_df.loc[i, 'est_bills'] = bill_with_PV  
-                
+        
         # Calculate bill savings cash flow
         # elec_price_multiplier is the scalar increase in the cost of electricity since 2016, when the tariffs were curated
         # elec_price_escalator is this agent's assumption about how the price of electricity will change in the future.
@@ -178,20 +177,21 @@ def calc_system_size_and_financial_performance(agent):
         degradation = (np.zeros(agent['economic_lifetime']+1) + 1 - agent['pv_deg'])**range(agent['economic_lifetime']+1)
         est_bill_savings = est_bill_savings * escalator * degradation
         system_df['est_bill_savings'] = est_bill_savings[:, 1]
-            
+        
         # simple representation of 70% minimum of batt charging from PV in order to
         # qualify for the ITC. Here, if batt kW is greater than 25% of PV kW, no ITC.
         batt_chg_frac = np.where(system_df['pv'] >= system_df['batt']*4.0, 1.0, 0)
-        
+
         # commenting out the cash_incentives part for NARIS and making it have the value zero
-#        if agent['year'] <= 2016: 
-#            cash_incentives = np.array(system_df['pv']) * agent['pv_price_per_kw'] * 0.3
-#        else: 
-#            cash_incentives = np.array([0])  
+        #        if agent['year'] <= 2016: 
+        #            cash_incentives = np.array(system_df['pv']) * agent['pv_price_per_kw'] * 0.3
+        #        else: 
+        #            cash_incentives = np.array([0])  
         cash_incentives = np.array([0])
         #=========================================================================#
         # Determine financial performance of each system size
         #=========================================================================#  
+
         cf_results_est = fFuncs.cashflow_constructor(est_bill_savings, 
                              np.array(system_df['pv']), agent['pv_price_per_kw'], agent['pv_om_per_kw'],
                              np.array(system_df['batt'])*batt_ratio, np.array(system_df['batt']), 
@@ -203,34 +203,34 @@ def calc_system_size_and_financial_performance(agent):
                              agent['economic_lifetime'], agent['inflation'], 
                              agent['down_payment'], agent['loan_rate'], agent['loan_term'],
                              cash_incentives=cash_incentives)
-                        
+                     
         system_df['npv'] = cf_results_est['npv']
-       
+
         #=========================================================================#
         # Select system size and business model for this agent
         #=========================================================================# 
         index_of_best_fin_perform_ho = system_df['npv'].idxmax()
         opt_pv_size = system_df['pv'][index_of_best_fin_perform_ho].copy()
         opt_batt_power = system_df['batt'][index_of_best_fin_perform_ho].copy()
-        
+
         opt_batt_cap = opt_batt_power*batt_ratio
         batt.set_cap_and_power(opt_batt_cap, opt_batt_power) 
         # load_and_pv_profile = load_profile - opt_pv_size*pv_cf_profile
-        
+
         if opt_pv_size<=agent['nem_system_size_limit_kw']:
             export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
             export_tariff.periods_8760 = tariff.e_tou_8760
             export_tariff.prices = tariff.e_prices_no_tier
         else:
             export_tariff.set_constant_sell_price(agent['wholesale_elec_usd_per_kwh'])
-    
+
         # add system size class
         system_size_breaks = [0.0, 2.5, 5.0, 10.0, 20.0, 50.0, 100.0, 250.0, 500.0, 750.0, 1000.0, 1500.0, 3000.0]
-        
+
         #=========================================================================#
         # Determine dispatch trajectory for chosen system size
         #=========================================================================#     
-        
+
         accurate_results = dFuncs.determine_optimal_dispatch(load_profile, opt_pv_size*pv_cf_profile, batt, tariff, export_tariff, estimated=False, d_inc_n=d_inc_n_acc, DP_inc=DP_inc_acc)
         opt_bill = accurate_results['bill_under_dispatch']   
         agent['fy_bill_with_sys'] = opt_bill * agent['elec_price_multiplier']
@@ -239,18 +239,18 @@ def calc_system_size_and_financial_performance(agent):
         opt_bill_savings = np.zeros([1, agent['economic_lifetime']+1])
         opt_bill_savings[:, 1:] = (original_bill - opt_bill)
         opt_bill_savings = opt_bill_savings * agent['elec_price_multiplier'] * escalator * degradation
-        
+
         # If the batt kW is less than 25% of the PV kW, apply the ITC
         if opt_pv_size >= opt_batt_power*4:
             batt_chg_frac = 1.0
         else:
             batt_chg_frac = 0.0
-    
+
         # commenting out the cash_incentives part for NARIS and making it have the value zero
-#        if agent['year'] <= 2016: cash_incentives = np.array([opt_pv_size * agent['pv_price_per_kw'] * 0.3])
-#        else: cash_incentives = np.array([0])
+        #        if agent['year'] <= 2016: cash_incentives = np.array([opt_pv_size * agent['pv_price_per_kw'] * 0.3])
+        #        else: cash_incentives = np.array([0])
         cash_incentives = np.array([0])
-        
+
         cf_results_opt = fFuncs.cashflow_constructor(opt_bill_savings, 
                          opt_pv_size, agent['pv_price_per_kw'], agent['pv_om_per_kw'],
                          opt_batt_cap, opt_batt_power, 
@@ -273,13 +273,13 @@ def calc_system_size_and_financial_performance(agent):
         agent['npv'] = cf_results_opt['npv'][0]
         agent['cash_flow'] = cf_results_opt['cf'][0]
         agent['batt_dispatch_profile'] = accurate_results['batt_dispatch_profile']
-        
+
         agent['bill_savings'] = opt_bill_savings
         agent['aep'] = agent['pv_kw'] * agent['naep']
         agent['cf'] = agent['naep']/8760
         agent['system_size_factors'] = np.where(agent['pv_kw'] == 0, 0, pd.cut([agent['pv_kw']], system_size_breaks))[0]
         agent['export_tariff_results'] = original_results
-
+        
     except Exception as e:
         print "failed in calc_system_size_and_financial_performance"
         print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e), e)

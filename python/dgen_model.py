@@ -152,8 +152,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         cores=None
                     else: 
                         cores=model_settings.local_cores
-                    
-                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, cores=cores)
+
+                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, cores=1)
 
                     solar_agents.df['agent_id'] = solar_agents.df.index.values
 
