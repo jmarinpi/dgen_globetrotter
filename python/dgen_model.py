@@ -198,7 +198,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     if i == 0:
                         complete_df = df_write
                     else:
-                        pd.concat([complete_df, df_write])
+                        complete_df = pd.concat([complete_df, df_write])
 
             #==============================================================================
             #    Outputs & Visualization
