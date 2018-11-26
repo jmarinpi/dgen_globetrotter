@@ -15,7 +15,7 @@ From a command line window, navigate to the diffusion/python folder, then:
 	3. Activate the environment
 		$ source env/bin/activate
 	3. Load the required Python packages:
-		$ pip install -r requitements.txt
+		$ pip install -r requirements.txt
 
 
 To Run the Model
