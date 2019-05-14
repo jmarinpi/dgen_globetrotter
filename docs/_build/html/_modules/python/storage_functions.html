@@ -1,0 +1,485 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>python.storage_functions &mdash; dGen Mexico 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> dGen Mexico
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../source/tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/api.html">dGen Code Base</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/input_data.html">Input Data</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dGen Mexico</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>python.storage_functions</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for python.storage_functions</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">utility_functions</span> <span class="k">as</span> <span class="nn">utilfunc</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">config</span>
+
+<span class="c1"># Import from support function repo</span>
+<span class="kn">import</span> <span class="nn">dispatch_functions</span> <span class="k">as</span> <span class="nn">dFuncs</span>
+<span class="kn">import</span> <span class="nn">tariff_functions</span> <span class="k">as</span> <span class="nn">tFuncs</span>
+<span class="kn">import</span> <span class="nn">financial_functions</span> <span class="k">as</span> <span class="nn">fFuncs</span>
+
+<span class="c1">#==============================================================================</span>
+<span class="c1"># Load logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">utilfunc</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+<span class="c1">#==============================================================================</span>
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="calc_system_size_and_financial_performance"><a class="viewcode-back" href="../../source/api.html#python.storage_functions.calc_system_size_and_financial_performance">[docs]</a><span class="k">def</span> <span class="nf">calc_system_size_and_financial_performance</span><span class="p">(</span><span class="n">agent</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function accepts the characteristics of a single agent and</span>
+<span class="sd">    evaluates the financial performance of a set of solar+storage</span>
+<span class="sd">    system sizes. The system size with the highest NPV is selected.</span>
+<span class="sd">            </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    agent : pandas.Series</span>
+<span class="sd">        Single agent (row) from an agent dataframe.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.Series</span>
+<span class="sd">        Agent with system size, business model and corresponding financial performance.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#=========================================================================#</span>
+    <span class="c1"># Setup</span>
+    <span class="c1">#=========================================================================#</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">VERBOSE</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="s2">&quot;</span><span class="se">\t\t\t\t</span><span class="s2">Running system size calculations for&quot;</span><span class="p">,</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;tariff_class&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">]</span>
+        <span class="c1"># Set resolution of dispatcher    </span>
+        <span class="n">d_inc_n_est</span> <span class="o">=</span> <span class="mi">10</span>    
+        <span class="n">DP_inc_est</span> <span class="o">=</span> <span class="mi">12</span>
+        <span class="n">d_inc_n_acc</span> <span class="o">=</span> <span class="mi">20</span>     
+        <span class="n">DP_inc_acc</span> <span class="o">=</span> <span class="mi">12</span>
+
+        <span class="c1"># Extract load profile</span>
+        <span class="n">load_profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;consumption_hourly&#39;</span><span class="p">])</span>    
+        <span class="n">agent</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;timesteps_per_year&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># Misc. calculations</span>
+
+        <span class="c1"># Set the interconnection limit according to sectors (residential &lt;= 50 KW and commercial\industrial &lt;=500 KW)</span>
+        <span class="c1"># Values set according to the &quot;Interconnection Manual for generating plants with capacity less than 0.5 MW&quot;</span>
+        
+        <span class="k">if</span> <span class="n">agent</span><span class="o">.</span><span class="n">sector_abbr</span> <span class="o">==</span> <span class="s1">&#39;res&#39;</span><span class="p">:</span>
+            <span class="n">interconnect_limit_kw</span> <span class="o">=</span> <span class="mi">50</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">interconnect_limit_kw</span> <span class="o">=</span> <span class="mi">500</span>
+            
+        <span class="n">pv_cf_profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;solar_cf_profile&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="mf">1e3</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;naep&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">pv_cf_profile</span><span class="p">))</span>    
+
+        <span class="c1"># Create battery object</span>
+        <span class="n">batt</span> <span class="o">=</span> <span class="n">dFuncs</span><span class="o">.</span><span class="n">Battery</span><span class="p">()</span>
+        <span class="n">batt_ratio</span> <span class="o">=</span> <span class="mf">3.0</span>
+
+        <span class="n">tariff</span> <span class="o">=</span> <span class="n">tFuncs</span><span class="o">.</span><span class="n">Tariff</span><span class="p">(</span><span class="n">dict_obj</span><span class="o">=</span><span class="n">agent</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;tariff_dict&#39;</span><span class="p">])</span>
+
+        <span class="c1"># Create export tariff object</span>
+        <span class="k">if</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;nem_system_size_limit_kw&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">export_tariff</span> <span class="o">=</span> <span class="n">tFuncs</span><span class="o">.</span><span class="n">Export_Tariff</span><span class="p">(</span><span class="n">full_retail_nem</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">export_tariff</span><span class="o">.</span><span class="n">periods_8760</span> <span class="o">=</span> <span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span>
+            <span class="n">export_tariff</span><span class="o">.</span><span class="n">prices</span> <span class="o">=</span> <span class="n">tariff</span><span class="o">.</span><span class="n">e_prices_no_tier</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">export_tariff</span> <span class="o">=</span> <span class="n">tFuncs</span><span class="o">.</span><span class="n">Export_Tariff</span><span class="p">(</span><span class="n">full_retail_nem</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+        <span class="n">original_bill</span><span class="p">,</span> <span class="n">original_results</span> <span class="o">=</span> <span class="n">tFuncs</span><span class="o">.</span><span class="n">bill_calculator</span><span class="p">(</span><span class="n">load_profile</span><span class="p">,</span> <span class="n">tariff</span><span class="p">,</span> <span class="n">export_tariff</span><span class="p">)</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;fy_bill_without_sys&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">original_bill</span> <span class="o">*</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;elec_price_multiplier&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;fy_bill_without_sys&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> 
+            <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;fy_bill_without_sys&#39;</span><span class="p">]</span><span class="o">=</span><span class="mf">1.0</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;fy_elec_cents_per_kwh_without_sys&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;fy_bill_without_sys&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;load_per_customer_in_bin_kwh&#39;</span><span class="p">]</span>
+
+        <span class="c1">#=========================================================================#</span>
+        <span class="c1"># Estimate bill savings revenue from a set of solar+storage system sizes</span>
+        <span class="c1">#=========================================================================#    </span>
+        <span class="c1"># Set PV sizes to evaluate</span>
+        <span class="c1">#    pv_inc = 1</span>
+        <span class="c1">#    pv_sizes = np.linspace(0, agent[&#39;max_pv_size&#39;]*0.95, pv_inc)</span>
+
+        <span class="c1"># set up developable_roof_sqft according to the average US statistics from the LiDAR rooftop Data (see Ben&#39;s values below)</span>
+
+        <span class="c1">#The average area for small solar-suitable buildings in the U.S. is 52.1 m2. For context, at 160 W/m2 this is about 8.3 kW. </span>
+        <span class="c1">#For the purpose of this study we will assume all residential buildings are small. </span>
+        <span class="c1">#The average area for medium and large solar-suitable buildings in the U.S. is 4280.6 m2. For context, at 160 W/m2 this is about 684.8 kW. </span>
+        <span class="c1">#For the purpose of this study we will assume all commercial and industrial buildings are either large or medium. </span>
+
+        <span class="c1">#Derating factor already used in core_attributes i.e. developable_buildings_pct=0.6</span>
+
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;developable_roof_sqft&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;res&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mf">10.7639</span> <span class="o">*</span> <span class="mf">52.1</span><span class="p">),</span>
+                                                    <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;com&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mf">10.7639</span> <span class="o">*</span> <span class="mf">317.6</span><span class="p">),</span>
+                                                                                            <span class="p">(</span><span class="mf">10.7639</span> <span class="o">*</span> <span class="mi">688</span><span class="p">)</span>
+                                                            <span class="p">)</span>
+                                                        <span class="p">)</span>
+                                            <span class="p">)</span>
+
+        <span class="n">max_size_load</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;load_per_customer_in_bin_kwh&#39;</span><span class="p">]</span><span class="o">/</span><span class="n">agent</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;naep&#39;</span><span class="p">]</span>
+        <span class="n">max_size_roof</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;developable_roof_sqft&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">agent</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;developable_buildings_pct&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">agent</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;pv_power_density_w_per_sqft&#39;</span><span class="p">]</span><span class="o">/</span><span class="mf">1000.0</span>
+        <span class="n">agent</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;max_pv_size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">max_size_load</span><span class="p">,</span> <span class="n">max_size_roof</span><span class="p">)</span>
+
+        <span class="n">dynamic_sizing</span> <span class="o">=</span> <span class="kc">True</span> <span class="c1">#False</span>
+
+        <span class="k">if</span> <span class="n">dynamic_sizing</span><span class="p">:</span>
+            <span class="c1"># Size the PV system based on the optimal NPV value. Default is to search over 10% increments of generation to load ratios. This adds to the model run time.</span>
+            <span class="c1"># TODO: There are likely more efficient ways to find the optimal PV size, such as a Newton-Ralphson or curve-fitting method</span>
+            <span class="c1"># TODO: Add dynamic_sizing switch to config file and the allowable sizing increments</span>
+            <span class="n">pv_sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span> <span class="o">*</span> <span class="n">agent</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;max_pv_size&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Size the PV system depending on NEM availability, either to 95% of load w/NEM, or 50% w/o NEM. In both cases, roof size is a constraint.</span>
+            <span class="k">if</span> <span class="n">export_tariff</span><span class="o">.</span><span class="n">full_retail_nem</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                <span class="n">pv_sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">min</span><span class="p">(</span><span class="n">max_size_load</span> <span class="o">*</span> <span class="mf">0.95</span><span class="p">,</span> <span class="n">max_size_roof</span><span class="p">)])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">pv_sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">min</span><span class="p">(</span><span class="n">max_size_load</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">max_size_roof</span><span class="p">)])</span>
+                
+        <span class="c1"># Set battery sizes to evaluate</span>
+        <span class="c1"># Only evaluate a battery if there are demand charges, TOU energy charges, or no NEM</span>
+        <span class="c1"># batt_inc = 3</span>
+        <span class="c1"># if tariff.d_flat_exists or tariff.d_tou_exists or tariff.e_max_difference&gt;0.02 or export_tariff.full_retail_nem==False:</span>
+        <span class="c1">#     batt_powers = np.linspace(0, np.array(agent[&#39;max_demand_kw&#39;]) * 0.2, batt_inc)</span>
+        <span class="c1"># else:</span>
+        <span class="c1">#     batt_powers = np.zeros(1)</span>
+        <span class="n">batt_powers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># Calculate the estimation parameters for each PV size</span>
+        <span class="n">est_params_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">pv_sizes</span><span class="p">)</span>
+        <span class="n">est_params_df</span><span class="p">[</span><span class="s1">&#39;estimator_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;temp&#39;</span>
+        <span class="k">for</span> <span class="n">pv_size</span> <span class="ow">in</span> <span class="n">pv_sizes</span><span class="p">:</span>
+            <span class="n">load_and_pv_profile</span> <span class="o">=</span> <span class="n">load_profile</span> <span class="o">-</span> <span class="n">pv_size</span><span class="o">*</span><span class="n">pv_cf_profile</span>
+            <span class="n">est_params_df</span><span class="o">.</span><span class="n">set_value</span><span class="p">(</span><span class="n">pv_size</span><span class="p">,</span> <span class="s1">&#39;estimator_params&#39;</span><span class="p">,</span> <span class="n">dFuncs</span><span class="o">.</span><span class="n">calc_estimator_params</span><span class="p">(</span><span class="n">load_and_pv_profile</span><span class="p">,</span> <span class="n">tariff</span><span class="p">,</span> <span class="n">export_tariff</span><span class="p">,</span> <span class="n">batt</span><span class="o">.</span><span class="n">eta_charge</span><span class="p">,</span> <span class="n">batt</span><span class="o">.</span><span class="n">eta_discharge</span><span class="p">))</span>
+            
+        <span class="c1"># Create df with all combinations of solar+storage sizes</span>
+        <span class="n">system_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">dFuncs</span><span class="o">.</span><span class="n">cartesian</span><span class="p">([</span><span class="n">pv_sizes</span><span class="p">,</span> <span class="n">batt_powers</span><span class="p">]),</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;pv&#39;</span><span class="p">,</span> <span class="s1">&#39;batt&#39;</span><span class="p">])</span>
+        <span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;est_bills&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">pv_kwh_by_year</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pv_cf_profile</span><span class="p">),</span> <span class="n">agent</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;timesteps_per_year&#39;</span><span class="p">])))</span>
+        <span class="n">pv_kwh_by_year</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([(</span><span class="n">pv_kwh_by_year</span> <span class="o">-</span> <span class="p">(</span> <span class="n">pv_kwh_by_year</span> <span class="o">*</span> <span class="n">agent</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;pv_deg&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">i</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">agent</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;economic_lifetime&#39;</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)])</span>
+        <span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;kwh_by_timestep&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;pv&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="n">pv_kwh_by_year</span><span class="p">)</span>
+
+        <span class="n">n_sys</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">system_df</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">system_df</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>    
+            <span class="n">pv_size</span> <span class="o">=</span> <span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;pv&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">load_and_pv_profile</span> <span class="o">=</span> <span class="n">load_profile</span> <span class="o">-</span> <span class="n">pv_size</span><span class="o">*</span><span class="n">pv_cf_profile</span>
+            
+            <span class="k">if</span> <span class="n">pv_size</span><span class="o">&lt;=</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;nem_system_size_limit_kw&#39;</span><span class="p">]:</span>
+                <span class="n">export_tariff</span> <span class="o">=</span> <span class="n">tFuncs</span><span class="o">.</span><span class="n">Export_Tariff</span><span class="p">(</span><span class="n">full_retail_nem</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">export_tariff</span><span class="o">.</span><span class="n">periods_8760</span> <span class="o">=</span> <span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span>
+                <span class="n">export_tariff</span><span class="o">.</span><span class="n">prices</span> <span class="o">=</span> <span class="n">tariff</span><span class="o">.</span><span class="n">e_prices_no_tier</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">export_tariff</span><span class="o">.</span><span class="n">set_constant_sell_price</span><span class="p">(</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;wholesale_elec_usd_per_kwh&#39;</span><span class="p">])</span>
+                
+            <span class="n">batt_power</span> <span class="o">=</span> <span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;batt&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">batt</span><span class="o">.</span><span class="n">set_cap_and_power</span><span class="p">(</span><span class="n">batt_power</span><span class="o">*</span><span class="n">batt_ratio</span><span class="p">,</span> <span class="n">batt_power</span><span class="p">)</span>  
+            
+            <span class="k">if</span> <span class="n">batt_power</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">estimator_params</span> <span class="o">=</span> <span class="n">est_params_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;pv&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="s1">&#39;estimator_params&#39;</span><span class="p">]</span>
+                <span class="n">estimated_results</span> <span class="o">=</span> <span class="n">dFuncs</span><span class="o">.</span><span class="n">determine_optimal_dispatch</span><span class="p">(</span><span class="n">load_profile</span><span class="p">,</span> <span class="n">pv_size</span><span class="o">*</span><span class="n">pv_cf_profile</span><span class="p">,</span> <span class="n">batt</span><span class="p">,</span> <span class="n">tariff</span><span class="p">,</span> <span class="n">export_tariff</span><span class="p">,</span> <span class="n">estimator_params</span><span class="o">=</span><span class="n">estimator_params</span><span class="p">,</span> <span class="n">estimated</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">DP_inc</span><span class="o">=</span><span class="n">DP_inc_est</span><span class="p">,</span> <span class="n">d_inc_n</span><span class="o">=</span><span class="n">d_inc_n_est</span><span class="p">,</span> <span class="n">estimate_demand_levels</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">system_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s1">&#39;est_bills&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">estimated_results</span><span class="p">[</span><span class="s1">&#39;bill_under_dispatch&#39;</span><span class="p">]</span>  
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">bill_with_PV</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">tFuncs</span><span class="o">.</span><span class="n">bill_calculator</span><span class="p">(</span><span class="n">load_and_pv_profile</span><span class="p">,</span> <span class="n">tariff</span><span class="p">,</span> <span class="n">export_tariff</span><span class="p">)</span>
+                <span class="n">system_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s1">&#39;est_bills&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">bill_with_PV</span>  
+        
+        <span class="c1"># Calculate bill savings cash flow</span>
+        <span class="c1"># elec_price_multiplier is the scalar increase in the cost of electricity since 2016, when the tariffs were curated</span>
+        <span class="c1"># elec_price_escalator is this agent&#39;s assumption about how the price of electricity will change in the future.</span>
+        <span class="n">avg_est_bill_savings</span> <span class="o">=</span> <span class="p">(</span><span class="n">original_bill</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;est_bills&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="n">n_sys</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;elec_price_multiplier&#39;</span><span class="p">]</span>
+        <span class="n">est_bill_savings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_sys</span><span class="p">,</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;economic_lifetime&#39;</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">est_bill_savings</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">avg_est_bill_savings</span>
+        <span class="n">escalator</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;economic_lifetime&#39;</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;elec_price_escalator&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="nb">range</span><span class="p">(</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;economic_lifetime&#39;</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">degradation</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;economic_lifetime&#39;</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;pv_deg&#39;</span><span class="p">])</span><span class="o">**</span><span class="nb">range</span><span class="p">(</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;economic_lifetime&#39;</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">est_bill_savings</span> <span class="o">=</span> <span class="n">est_bill_savings</span> <span class="o">*</span> <span class="n">escalator</span> <span class="o">*</span> <span class="n">degradation</span>
+        <span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;est_bill_savings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">est_bill_savings</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+        
+        <span class="c1"># simple representation of 70% minimum of batt charging from PV in order to</span>
+        <span class="c1"># qualify for the ITC. Here, if batt kW is greater than 25% of PV kW, no ITC.</span>
+        <span class="n">batt_chg_frac</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;pv&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;batt&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># commenting out the cash_incentives part for NARIS and making it have the value zero</span>
+        <span class="c1">#        if agent[&#39;year&#39;] &lt;= 2016: </span>
+        <span class="c1">#            cash_incentives = np.array(system_df[&#39;pv&#39;]) * agent[&#39;pv_price_per_kw&#39;] * 0.3</span>
+        <span class="c1">#        else: </span>
+        <span class="c1">#            cash_incentives = np.array([0])  </span>
+        <span class="n">cash_incentives</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
+        <span class="c1">#=========================================================================#</span>
+        <span class="c1"># Determine financial performance of each system size</span>
+        <span class="c1">#=========================================================================#  </span>
+
+        <span class="n">cf_results_est</span> <span class="o">=</span> <span class="n">fFuncs</span><span class="o">.</span><span class="n">cashflow_constructor</span><span class="p">(</span><span class="n">est_bill_savings</span><span class="p">,</span> 
+                             <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;pv&#39;</span><span class="p">]),</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;pv_price_per_kw&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;pv_om_per_kw&#39;</span><span class="p">],</span>
+                             <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;batt&#39;</span><span class="p">])</span><span class="o">*</span><span class="n">batt_ratio</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;batt&#39;</span><span class="p">]),</span> 
+                             <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;batt_price_per_kw&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;batt_price_per_kwh&#39;</span><span class="p">],</span> 
+                             <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;batt_om_per_kw&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;batt_om_per_kwh&#39;</span><span class="p">],</span>
+                             <span class="n">batt_chg_frac</span><span class="p">,</span>
+                             <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;itc_fraction&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;deprec_sch&#39;</span><span class="p">],</span> 
+                             <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;tax_rate&#39;</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;real_discount&#39;</span><span class="p">],</span>  
+                             <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;economic_lifetime&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;inflation&#39;</span><span class="p">],</span> 
+                             <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;down_payment&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;loan_rate&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;loan_term&#39;</span><span class="p">],</span>
+                             <span class="n">cash_incentives</span><span class="o">=</span><span class="n">cash_incentives</span><span class="p">)</span>
+                     
+        <span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;npv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cf_results_est</span><span class="p">[</span><span class="s1">&#39;npv&#39;</span><span class="p">]</span>
+
+        <span class="c1">#=========================================================================#</span>
+        <span class="c1"># Select system size and business model for this agent</span>
+        <span class="c1">#=========================================================================# </span>
+        <span class="n">index_of_best_fin_perform_ho</span> <span class="o">=</span> <span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;npv&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()</span>
+        <span class="n">opt_pv_size</span> <span class="o">=</span> <span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;pv&#39;</span><span class="p">][</span><span class="n">index_of_best_fin_perform_ho</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">opt_batt_power</span> <span class="o">=</span> <span class="n">system_df</span><span class="p">[</span><span class="s1">&#39;batt&#39;</span><span class="p">][</span><span class="n">index_of_best_fin_perform_ho</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="n">opt_batt_cap</span> <span class="o">=</span> <span class="n">opt_batt_power</span><span class="o">*</span><span class="n">batt_ratio</span>
+        <span class="n">batt</span><span class="o">.</span><span class="n">set_cap_and_power</span><span class="p">(</span><span class="n">opt_batt_cap</span><span class="p">,</span> <span class="n">opt_batt_power</span><span class="p">)</span> 
+        <span class="c1"># load_and_pv_profile = load_profile - opt_pv_size*pv_cf_profile</span>
+
+        <span class="k">if</span> <span class="n">opt_pv_size</span><span class="o">&lt;=</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;nem_system_size_limit_kw&#39;</span><span class="p">]:</span>
+            <span class="n">export_tariff</span> <span class="o">=</span> <span class="n">tFuncs</span><span class="o">.</span><span class="n">Export_Tariff</span><span class="p">(</span><span class="n">full_retail_nem</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">export_tariff</span><span class="o">.</span><span class="n">periods_8760</span> <span class="o">=</span> <span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span>
+            <span class="n">export_tariff</span><span class="o">.</span><span class="n">prices</span> <span class="o">=</span> <span class="n">tariff</span><span class="o">.</span><span class="n">e_prices_no_tier</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">export_tariff</span><span class="o">.</span><span class="n">set_constant_sell_price</span><span class="p">(</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;wholesale_elec_usd_per_kwh&#39;</span><span class="p">])</span>
+
+        <span class="c1"># add system size class</span>
+        <span class="n">system_size_breaks</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mf">250.0</span><span class="p">,</span> <span class="mf">500.0</span><span class="p">,</span> <span class="mf">750.0</span><span class="p">,</span> <span class="mf">1000.0</span><span class="p">,</span> <span class="mf">1500.0</span><span class="p">,</span> <span class="mf">3000.0</span><span class="p">]</span>
+
+        <span class="c1">#=========================================================================#</span>
+        <span class="c1"># Determine dispatch trajectory for chosen system size</span>
+        <span class="c1">#=========================================================================#     </span>
+
+        <span class="n">accurate_results</span> <span class="o">=</span> <span class="n">dFuncs</span><span class="o">.</span><span class="n">determine_optimal_dispatch</span><span class="p">(</span><span class="n">load_profile</span><span class="p">,</span> <span class="n">opt_pv_size</span><span class="o">*</span><span class="n">pv_cf_profile</span><span class="p">,</span> <span class="n">batt</span><span class="p">,</span> <span class="n">tariff</span><span class="p">,</span> <span class="n">export_tariff</span><span class="p">,</span> <span class="n">estimated</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">d_inc_n</span><span class="o">=</span><span class="n">d_inc_n_acc</span><span class="p">,</span> <span class="n">DP_inc</span><span class="o">=</span><span class="n">DP_inc_acc</span><span class="p">)</span>
+        <span class="n">opt_bill</span> <span class="o">=</span> <span class="n">accurate_results</span><span class="p">[</span><span class="s1">&#39;bill_under_dispatch&#39;</span><span class="p">]</span>   
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;fy_bill_with_sys&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">opt_bill</span> <span class="o">*</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;elec_price_multiplier&#39;</span><span class="p">]</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;fy_bill_savings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;fy_bill_without_sys&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;fy_bill_with_sys&#39;</span><span class="p">]</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;fy_bill_savings_frac&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;fy_bill_savings&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;fy_bill_without_sys&#39;</span><span class="p">]</span>
+        <span class="n">opt_bill_savings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;economic_lifetime&#39;</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">opt_bill_savings</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">(</span><span class="n">original_bill</span> <span class="o">-</span> <span class="n">opt_bill</span><span class="p">)</span>
+        <span class="n">opt_bill_savings</span> <span class="o">=</span> <span class="n">opt_bill_savings</span> <span class="o">*</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;elec_price_multiplier&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">escalator</span> <span class="o">*</span> <span class="n">degradation</span>
+
+        <span class="c1"># If the batt kW is less than 25% of the PV kW, apply the ITC</span>
+        <span class="k">if</span> <span class="n">opt_pv_size</span> <span class="o">&gt;=</span> <span class="n">opt_batt_power</span><span class="o">*</span><span class="mi">4</span><span class="p">:</span>
+            <span class="n">batt_chg_frac</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">batt_chg_frac</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="c1"># commenting out the cash_incentives part for NARIS and making it have the value zero</span>
+        <span class="c1">#        if agent[&#39;year&#39;] &lt;= 2016: cash_incentives = np.array([opt_pv_size * agent[&#39;pv_price_per_kw&#39;] * 0.3])</span>
+        <span class="c1">#        else: cash_incentives = np.array([0])</span>
+        <span class="n">cash_incentives</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="n">cf_results_opt</span> <span class="o">=</span> <span class="n">fFuncs</span><span class="o">.</span><span class="n">cashflow_constructor</span><span class="p">(</span><span class="n">opt_bill_savings</span><span class="p">,</span> 
+                         <span class="n">opt_pv_size</span><span class="p">,</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;pv_price_per_kw&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;pv_om_per_kw&#39;</span><span class="p">],</span>
+                         <span class="n">opt_batt_cap</span><span class="p">,</span> <span class="n">opt_batt_power</span><span class="p">,</span> 
+                         <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;batt_price_per_kw&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;batt_price_per_kwh&#39;</span><span class="p">],</span> 
+                         <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;batt_om_per_kw&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;batt_om_per_kwh&#39;</span><span class="p">],</span>
+                         <span class="n">batt_chg_frac</span><span class="p">,</span>
+                         <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;itc_fraction&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;deprec_sch&#39;</span><span class="p">],</span> 
+                         <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;tax_rate&#39;</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;real_discount&#39;</span><span class="p">],</span>  
+                         <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;economic_lifetime&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;inflation&#39;</span><span class="p">],</span> 
+                         <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;down_payment&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;loan_rate&#39;</span><span class="p">],</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;loan_term&#39;</span><span class="p">],</span>
+                         <span class="n">cash_incentives</span><span class="o">=</span><span class="n">cash_incentives</span><span class="p">)</span> 
+                         
+        <span class="c1">#=========================================================================#</span>
+        <span class="c1"># Package results</span>
+        <span class="c1">#=========================================================================# </span>
+                   
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;pv_kw&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">opt_pv_size</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;batt_kw&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">opt_batt_power</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;batt_kwh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">opt_batt_cap</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;npv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cf_results_opt</span><span class="p">[</span><span class="s1">&#39;npv&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;cash_flow&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cf_results_opt</span><span class="p">[</span><span class="s1">&#39;cf&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;batt_dispatch_profile&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">accurate_results</span><span class="p">[</span><span class="s1">&#39;batt_dispatch_profile&#39;</span><span class="p">]</span>
+
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;bill_savings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">opt_bill_savings</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;aep&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;pv_kw&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;naep&#39;</span><span class="p">]</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;cf&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;naep&#39;</span><span class="p">]</span><span class="o">/</span><span class="mi">8760</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;system_size_factors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;pv_kw&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">cut</span><span class="p">([</span><span class="n">agent</span><span class="p">[</span><span class="s1">&#39;pv_kw&#39;</span><span class="p">]],</span> <span class="n">system_size_breaks</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">agent</span><span class="p">[</span><span class="s1">&#39;export_tariff_results&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">original_results</span>
+        
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s2">&quot;failed in calc_system_size_and_financial_performance&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error on line </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tb_lineno</span><span class="p">),</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">e</span><span class="p">)</span>
+        <span class="n">agent</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="s1">&#39;agent_that_failed.pkl&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">agent</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, NREL
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

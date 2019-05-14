@@ -1,0 +1,816 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>python.agent_mutation.elec &mdash; dGen Mexico 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> dGen Mexico
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/api.html">dGen Code Base</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../source/input_data.html">Input Data</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">dGen Mexico</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../agent_mutation.html">python.agent_mutation</a> &raquo;</li>
+        
+      <li>python.agent_mutation.elec</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for python.agent_mutation.elec</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Edited Monday Nov 5, 218</span>
+<span class="sd">@author: tkwasnik</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">decorators</span>
+<span class="kn">import</span> <span class="nn">utility_functions</span> <span class="k">as</span> <span class="nn">utilfunc</span>
+
+
+<span class="c1"># GLOBAL SETTINGS</span>
+<span class="c1"># load logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">utilfunc</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+
+<div class="viewcode-block" id="aggregate_outputs_solar"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.aggregate_outputs_solar">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">aggregate_outputs_solar</span><span class="p">(</span><span class="n">agent_df</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">is_first_year</span><span class="p">,</span>
+                            <span class="n">scenario_settings</span><span class="p">,</span>
+                            <span class="n">interyear_results_aggregations</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Aggregate agent-level results into ba-level results for the given year.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    agent_df : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+<span class="sd">    year : int</span>
+<span class="sd">        modelled year</span>
+<span class="sd">    is_first_year : bool</span>
+<span class="sd">        is first year indicator</span>
+<span class="sd">    scenario_settings : :class:`python.settings.ScenarioSettings`</span>
+<span class="sd">        scenario settings loaded from input sheet and csv&#39;s</span>
+<span class="sd">    interyear_results_aggregations : pandas.DataFrame</span>
+<span class="sd">        aggregated pandas dataframe from previous year</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    interyear_results_aggregations : pandas.DataFrame</span>
+<span class="sd">        aggregated agent attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># Unpack results dict from previous years</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="k">if</span> <span class="n">interyear_results_aggregations</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ba_cum_pv_mw</span> <span class="o">=</span> <span class="n">interyear_results_aggregations</span><span class="p">[</span><span class="s1">&#39;ba_cum_pv_mw&#39;</span><span class="p">]</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># Set up objects</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">ba_list</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">agent_df</span><span class="p">[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">]))</span>
+
+    <span class="n">col_list_8760</span> <span class="o">=</span> <span class="nb">list</span><span class="p">([</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;year&#39;</span><span class="p">])</span>
+    <span class="n">hour_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">8761</span><span class="p">))</span>
+    <span class="n">col_list_8760</span> <span class="o">=</span> <span class="n">col_list_8760</span> <span class="o">+</span> <span class="n">hour_list</span>
+
+    <span class="k">if</span> <span class="n">is_first_year</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="c1"># PV and batt capacities</span>
+        <span class="n">ba_cum_pv_mw</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">ba_list</span><span class="p">)</span>
+
+    <span class="c1"># Set up for groupby</span>
+    <span class="n">agent_df</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">agent_df</span><span class="p">))</span>
+    <span class="n">agent_df_to_group</span> <span class="o">=</span> <span class="n">agent_df</span><span class="p">[[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;index&#39;</span><span class="p">]]</span>
+    <span class="n">agents_grouped</span> <span class="o">=</span> <span class="n">agent_df_to_group</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">aggregate</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># Aggregate PV and Batt capacity by reeds region</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">agent_cum_capacities</span> <span class="o">=</span> <span class="n">agent_df</span><span class="p">[[</span> <span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;pv_kw_cum&#39;</span><span class="p">]]</span>
+    <span class="n">ba_cum_pv_kw_year</span> <span class="o">=</span> <span class="n">agent_cum_capacities</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">ba_cum_pv_kw_year</span><span class="p">[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ba_cum_pv_kw_year</span><span class="o">.</span><span class="n">index</span>
+    <span class="n">ba_cum_pv_mw</span><span class="p">[</span><span class="n">year</span><span class="p">]</span> <span class="o">=</span> <span class="n">ba_cum_pv_kw_year</span><span class="p">[</span><span class="s1">&#39;pv_kw_cum&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mf">1000.0</span>
+    <span class="n">ba_cum_pv_mw</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">out_scen_path</span> <span class="o">+</span> <span class="s1">&#39;/dpv_MW_by_ba_and_year.csv&#39;</span><span class="p">,</span> <span class="n">index_label</span><span class="o">=</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">)</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># Aggregate PV generation profiles and calculate capacity factor profiles</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># DPV CF profiles are only calculated for the last year, since they change</span>
+    <span class="c1"># negligibly from year-to-year. A ten-year degradation is applied, to</span>
+    <span class="c1"># approximate the age of a mature fleet.</span>
+    <span class="k">if</span> <span class="n">year</span><span class="o">==</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">model_years</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="n">pv_gen_by_agent</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">agent_df</span><span class="p">[</span><span class="s1">&#39;solar_cf_profile&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1e3</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">agent_df</span><span class="p">[</span><span class="s1">&#39;pv_kw_cum&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">agent_df</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Sum each agent&#39;s profile into a total dispatch in each BA</span>
+        <span class="n">pv_gen_by_ba</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">ba_list</span><span class="p">),</span> <span class="mi">8760</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">ba_n</span><span class="p">,</span> <span class="n">ba</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ba_list</span><span class="p">):</span>
+            <span class="n">list_of_agent_indicies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">agents_grouped</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">ba</span><span class="p">,</span> <span class="s1">&#39;index&#39;</span><span class="p">])</span>
+            <span class="n">pv_gen_by_ba</span><span class="p">[</span><span class="n">ba_n</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span>  <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">pv_gen_by_agent</span><span class="p">[</span><span class="n">list_of_agent_indicies</span><span class="p">,</span> <span class="p">:],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Apply ten-year degradation</span>
+        <span class="n">pv_deg_rate</span> <span class="o">=</span> <span class="n">agent_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">agent_df</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;pv_deg&#39;</span><span class="p">]</span>
+        <span class="n">pv_gen_by_ba</span> <span class="o">=</span> <span class="n">pv_gen_by_ba</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">pv_deg_rate</span><span class="p">)</span><span class="o">**</span><span class="mi">10</span>
+
+        <span class="c1"># Change the numpy array into pandas dataframe</span>
+        <span class="n">pv_gen_by_ba_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">pv_gen_by_ba</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">hour_list</span><span class="p">)</span>
+        <span class="n">pv_gen_by_ba_df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">ba_list</span>
+
+        <span class="c1"># Convert generation into capacity factor by diving by total capacity</span>
+        <span class="n">pv_cf_by_ba</span> <span class="o">=</span> <span class="n">pv_gen_by_ba_df</span><span class="p">[</span><span class="n">hour_list</span><span class="p">]</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">ba_cum_pv_mw</span><span class="p">[</span><span class="n">year</span><span class="p">]</span><span class="o">*</span><span class="mf">1000.0</span><span class="p">,</span> <span class="s1">&#39;index&#39;</span><span class="p">)</span>
+        <span class="n">pv_cf_by_ba</span><span class="p">[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ba_list</span>
+
+        <span class="c1"># write output</span>
+        <span class="n">pv_cf_by_ba</span> <span class="o">=</span> <span class="n">pv_cf_by_ba</span><span class="p">[[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">hour_list</span><span class="p">]</span>
+        <span class="n">pv_cf_by_ba</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">out_scen_path</span> <span class="o">+</span> <span class="s1">&#39;/dpv_cf_by_ba.csv&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">interyear_results_aggregations</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ba_cum_pv_mw&#39;</span><span class="p">:</span><span class="n">ba_cum_pv_mw</span><span class="p">}</span>
+
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># Package interyear results</span>
+    <span class="c1">#==========================================================================================================</span>
+
+    <span class="k">return</span> <span class="n">interyear_results_aggregations</span></div>
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="apply_elec_price_multiplier_and_escalator"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.apply_elec_price_multiplier_and_escalator">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">apply_elec_price_multiplier_and_escalator</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">elec_price_change_traj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Obtain a single scalar multiplier for each agent, that is the cost of</span>
+<span class="sd">    electricity relative to 2016 (when the tariffs were curated).</span>
+<span class="sd">    Also calculate the average increase in the price of electricity over the</span>
+<span class="sd">    past ten years, which will be the escalator that they use to project</span>
+<span class="sd">    electricity changes in their bill calculations.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+<span class="sd">    year : int</span>
+<span class="sd">        modelled year</span>
+<span class="sd">    elec_price_change_traj : pandas.DataFrame</span>
+<span class="sd">        contains elec_price_multiplier field by country, control region, and sector</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    That many customers will not differentiate between real and nomianl,</span>
+<span class="sd">    and therefore many would overestimate the real escalation of electriicty</span>
+<span class="sd">    prices.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="n">elec_price_multiplier</span> <span class="o">=</span> <span class="n">elec_price_change_traj</span><span class="p">[</span><span class="n">elec_price_change_traj</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">]</span><span class="o">==</span><span class="n">year</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="n">horizon_year</span> <span class="o">=</span> <span class="n">year</span><span class="o">-</span><span class="mi">10</span>
+
+    <span class="n">elec_price_escalator_df</span> <span class="o">=</span> <span class="n">elec_price_multiplier</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">horizon_year</span> <span class="ow">in</span> <span class="n">elec_price_change_traj</span><span class="o">.</span><span class="n">year</span><span class="o">.</span><span class="n">values</span><span class="p">:</span>
+        <span class="n">elec_price_escalator_df</span><span class="p">[</span><span class="s1">&#39;historical&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">elec_price_change_traj</span><span class="p">[</span><span class="n">elec_price_change_traj</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">]</span><span class="o">==</span><span class="n">horizon_year</span><span class="p">][</span><span class="s1">&#39;elec_price_multiplier&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">first_year</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">elec_price_change_traj</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">])</span>
+        <span class="n">first_year_df</span> <span class="o">=</span> <span class="n">elec_price_change_traj</span><span class="p">[</span><span class="n">elec_price_change_traj</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">]</span><span class="o">==</span><span class="n">first_year</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="n">missing_years</span> <span class="o">=</span> <span class="n">first_year</span> <span class="o">-</span> <span class="n">horizon_year</span>
+        <span class="n">elec_price_escalator_df</span><span class="p">[</span><span class="s1">&#39;historical&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">first_year_df</span><span class="p">[</span><span class="s1">&#39;elec_price_multiplier&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">0.99</span><span class="o">**</span><span class="n">missing_years</span>
+
+    <span class="n">elec_price_escalator_df</span><span class="p">[</span><span class="s1">&#39;elec_price_escalator&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">elec_price_escalator_df</span><span class="p">[</span><span class="s1">&#39;elec_price_multiplier&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">elec_price_escalator_df</span><span class="p">[</span><span class="s1">&#39;historical&#39;</span><span class="p">])</span><span class="o">**</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="mi">10</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span>
+
+    <span class="c1"># Set lower bound of escalator at 0, assuming that potential customers would not evaluate declining electricity costs</span>
+    <span class="n">elec_price_escalator_df</span><span class="p">[</span><span class="s1">&#39;elec_price_escalator&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">elec_price_escalator_df</span><span class="p">[</span><span class="s1">&#39;elec_price_escalator&#39;</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">elec_price_multiplier</span><span class="p">[[</span><span class="s1">&#39;elec_price_multiplier&#39;</span><span class="p">,</span> <span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">]],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">])</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">elec_price_escalator_df</span><span class="p">[[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;elec_price_escalator&#39;</span><span class="p">]],</span>
+                         <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">])</span>
+
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="apply_export_tariff_params"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.apply_export_tariff_params">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">apply_export_tariff_params</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">net_metering_df</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add net metering system size limitation to each agent</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+<span class="sd">    year : int</span>
+<span class="sd">        modelled year</span>
+<span class="sd">    net_metering_df : pandas.DataFrame</span>
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        net_metering_df.nem_system_size_limit_kw</span>
+<span class="sd">        net_metering_df.year_end_excess_sell_rate_usd_per_kwh</span>
+<span class="sd">        net_metering_df.hourly_excess_sell_rate_usd_per_kwh</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">net_metering_df</span><span class="p">[[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;nem_system_size_limit_kw&#39;</span><span class="p">]],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">])</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="apply_wholesale_elec_prices"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.apply_wholesale_elec_prices">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">apply_wholesale_elec_prices</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add control region and sector specific wholesale electricity prices to each agent</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+<span class="sd">    df : pandas.DataFrame</span>
+<span class="sd">        includes joinable wholesale_elec_usd_per_kwh field</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">df</span><span class="p">[[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span><span class="s1">&#39;wholesale_elec_usd_per_kwh&#39;</span><span class="p">,</span><span class="s1">&#39;year&#39;</span><span class="p">]],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">,</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">])</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="apply_pv_specs"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.apply_pv_specs">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">apply_pv_specs</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">pv_specs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add the year&#39;s PV specifications, including pv capitial and OM costs, degredation, and power density by year and sector</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+<span class="sd">    pv_specs : pandas.DataFrame</span>
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pv_specs.pv_power_density_w_per_sqft</span>
+<span class="sd">        pv_specs.pv_deg</span>
+<span class="sd">        pv_specs.pv_price_per_kw</span>
+<span class="sd">        pv_specs.pv_om_per_kw</span>
+<span class="sd">        pv_specs.pv_variable_om_per_kw</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">pv_specs</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;year&#39;</span><span class="p">])</span>
+
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># apply the capital cost multipliers</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;pv_price_per_kw&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;pv_price_per_kw&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;cap_cost_multiplier&#39;</span><span class="p">])</span>
+
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="apply_storage_specs"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.apply_storage_specs">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">apply_storage_specs</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">batt_price_traj</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">scenario_settings</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add the year&#39;s Battery specifications</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+<span class="sd">    year : int</span>
+<span class="sd">        modelled year</span>
+<span class="sd">    scenario_settings : :class:`python.settings.ScenarioSettings`</span>
+<span class="sd">        scenario settings loaded from input sheet and csv&#39;s</span>
+<span class="sd">    batt_price_traj : pandas.DataFrame</span>
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        batt_price_traj.batt_price_per_kwh</span>
+<span class="sd">        batt_price_traj.batt_price_per_kw</span>
+<span class="sd">        batt_price_traj.batt_om_per_kw</span>
+<span class="sd">        batt_price_traj.batt_om_per_kwh</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">batt_price_traj</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;year&#39;</span><span class="p">])</span>
+    <span class="k">del</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;batt_om_per_kwh&#39;</span><span class="p">]</span>
+    <span class="k">del</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;batt_om_per_kw&#39;</span><span class="p">]</span>
+
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># Add replacement cost payments to base O&amp;M</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">storage_replace_values</span> <span class="o">=</span> <span class="n">batt_price_traj</span><span class="p">[</span><span class="n">batt_price_traj</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">]</span><span class="o">==</span><span class="n">year</span><span class="o">+</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">storage_options</span><span class="p">[</span><span class="s1">&#39;batt_replacement_yr&#39;</span><span class="p">]]</span>
+    <span class="n">storage_replace_values</span><span class="p">[</span><span class="s1">&#39;kw_replace_price&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">storage_replace_values</span><span class="p">[</span><span class="s1">&#39;batt_price_per_kw&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">storage_options</span><span class="p">[</span><span class="s1">&#39;batt_replacement_frac_kw&#39;</span><span class="p">]</span>
+    <span class="n">storage_replace_values</span><span class="p">[</span><span class="s1">&#39;kwh_replace_price&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">storage_replace_values</span><span class="p">[</span><span class="s1">&#39;batt_price_per_kwh&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">storage_options</span><span class="p">[</span><span class="s1">&#39;batt_replacement_frac_kwh&#39;</span><span class="p">]</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># Calculate the present value of the replacements</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">replace_discount</span> <span class="o">=</span> <span class="mf">0.08</span> <span class="c1"># Use a different discount rate to represent the discounting of the third party doing the replacing</span>
+    <span class="n">replace_fraction</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span><span class="o">+</span><span class="n">replace_discount</span><span class="p">)</span><span class="o">**</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">storage_options</span><span class="p">[</span><span class="s1">&#39;batt_replacement_yr&#39;</span><span class="p">]</span>
+    <span class="n">storage_replace_values</span><span class="p">[</span><span class="s1">&#39;kw_replace_present&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">storage_replace_values</span><span class="p">[</span><span class="s1">&#39;kw_replace_price&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">replace_fraction</span>
+    <span class="n">storage_replace_values</span><span class="p">[</span><span class="s1">&#39;kwh_replace_present&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">storage_replace_values</span><span class="p">[</span><span class="s1">&#39;kwh_replace_price&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">replace_fraction</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># Calculate the level of annual payments whose present value equals the present value of a replacement</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">storage_replace_values</span><span class="p">[</span><span class="s1">&#39;batt_om_per_kw&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">storage_replace_values</span><span class="p">[</span><span class="s1">&#39;kw_replace_present&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">replace_discount</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">replace_discount</span><span class="p">)</span><span class="o">**</span><span class="mi">20</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="mi">1</span><span class="o">+</span><span class="n">replace_discount</span><span class="p">)</span><span class="o">**</span><span class="mi">20</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">storage_replace_values</span><span class="p">[</span><span class="s1">&#39;batt_om_per_kwh&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">storage_replace_values</span><span class="p">[</span><span class="s1">&#39;kwh_replace_present&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">replace_discount</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">replace_discount</span><span class="p">)</span><span class="o">**</span><span class="mi">20</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="mi">1</span><span class="o">+</span><span class="n">replace_discount</span><span class="p">)</span><span class="o">**</span><span class="mi">20</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">storage_replace_values</span><span class="p">[[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;batt_om_per_kwh&#39;</span><span class="p">,</span> <span class="s1">&#39;batt_om_per_kw&#39;</span><span class="p">]],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">])</span>
+
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># Apply battery replacement year</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;batt_replace_yr&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">storage_options</span><span class="p">[</span><span class="s1">&#39;batt_replacement_yr&#39;</span><span class="p">]</span>
+
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="apply_financial_params"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.apply_financial_params">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">apply_financial_params</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">financing_terms</span><span class="p">,</span> <span class="n">inflation_rate</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    apply_financial_params</span>
+
+<span class="sd">    Add the year&#39;s financial parameters including</span>
+<span class="sd">    depreciation schedule (array  for years 0,1,2,3,4,5), Solar ITC fraction, Solar ITC min size kw, Solar ITC max size kw,</span>
+<span class="sd">    years of loan term, loan rate, down payment percent, real discount percent, tax rate and economic lifetime</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+<span class="sd">    inflation_rate : float</span>
+<span class="sd">        inflation rate percent</span>
+<span class="sd">    financing_terms : pandas.DataFrame</span>
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        financing_terms.deprec_sch</span>
+<span class="sd">        financing_terms.itc_fraction</span>
+<span class="sd">        financing_terms.min_size_kw</span>
+<span class="sd">        financing_terms.max_size_kw</span>
+<span class="sd">        financing_terms.loan_term</span>
+<span class="sd">        financing_terms.loan_rate</span>
+<span class="sd">        financing_terms.down_payment</span>
+<span class="sd">        financing_terms.real_discount</span>
+<span class="sd">        financing_terms.tax_rate</span>
+<span class="sd">        financing_terms.economic_lifetime</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes joined on</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">financing_terms</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">])</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;inflation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">inflation_rate</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="apply_load_growth"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.apply_load_growth">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">apply_load_growth</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">load_growth_df</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply load growth trajactories by country, control region and year</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+<span class="sd">    load_growth_df : pandas.DataFrame</span>
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        load_growth_df.load_multiplier</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">load_growth_df</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">])</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># for res, load growth translates to kwh_per_customer change</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;load_per_customer_in_bin_kwh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;res&#39;</span><span class="p">,</span>
+                                                <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;load_per_customer_in_bin_kwh_initial&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;load_multiplier&#39;</span><span class="p">],</span>
+                                                <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;load_per_customer_in_bin_kwh_initial&#39;</span><span class="p">])</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># for C&amp;I, load growth translates to customer count change</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;customers_in_bin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">]</span><span class="o">!=</span><span class="s1">&#39;res&#39;</span><span class="p">,</span>
+                                                <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;customers_in_bin_initial&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;load_multiplier&#39;</span><span class="p">],</span>
+                                                <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;customers_in_bin_initial&#39;</span><span class="p">])</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># for all sectors, total kwh_in_bin changes</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;load_in_bin_kwh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;load_in_bin_kwh_initial&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;load_multiplier&#39;</span><span class="p">]</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="calculate_developable_customers_and_load"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.calculate_developable_customers_and_load">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">calculate_developable_customers_and_load</span><span class="p">(</span><span class="n">dataframe</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate cumulative developebale customers and load</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;developable_customers_in_bin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;developable_buildings_pct&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;customers_in_bin&#39;</span><span class="p">]</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;developable_load_in_bin_kwh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;developable_buildings_pct&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;load_in_bin_kwh&#39;</span><span class="p">]</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="apply_scale_normalized_load_profiles"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.apply_scale_normalized_load_profiles">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">apply_scale_normalized_load_profiles</span><span class="p">(</span><span class="n">dataframe</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Scale the normalized load based on agent&#39;s per captia cumulative energy consumption</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">scale_array_sum</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">array_col</span><span class="p">,</span> <span class="n">scale_col</span><span class="p">):</span>
+        <span class="n">hourly_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">array_col</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
+        <span class="n">row</span><span class="p">[</span><span class="n">array_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">hourly_array</span> <span class="o">/</span> \
+        <span class="n">hourly_array</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">scale_col</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">row</span>
+
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># scale the normalized profile to sum to the total load</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">scale_array_sum</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;consumption_hourly_initial&#39;</span><span class="p">,</span> <span class="s1">&#39;load_per_customer_in_bin_kwh&#39;</span><span class="p">))</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;consumption_hourly&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;consumption_hourly_initial&#39;</span><span class="p">]</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="apply_carbon_intensities"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.apply_carbon_intensities">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">apply_carbon_intensities</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">carbon_intensities</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply carbon intensities by country and control region and sector</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+<span class="sd">    carbon_intensities : pandas.DataFrame</span>
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        carbon_intensities.carbon_price_cents_per_kwh</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">carbon_intensities</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;control_reg_id&#39;</span><span class="p">])</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="estimate_initial_market_shares"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.estimate_initial_market_shares">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">estimate_initial_market_shares</span><span class="p">(</span><span class="n">dataframe</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimates initial market penetration of DPV and number of adopters at the state level</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># record input columns</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">in_cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dataframe</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># find the total number of customers in each state (by technology and sector)</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">state_total_developable_customers</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;tariff_class&#39;</span><span class="p">,</span> <span class="s1">&#39;state_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;tech&#39;</span><span class="p">,</span> <span class="s1">&#39;developable_customers_in_bin&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+        <span class="p">[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;tariff_class&#39;</span><span class="p">,</span> <span class="s1">&#39;state_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;tech&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">state_total_agents</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;tariff_class&#39;</span><span class="p">,</span> <span class="s1">&#39;state_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;tech&#39;</span><span class="p">,</span> <span class="s1">&#39;developable_customers_in_bin&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+        <span class="p">[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;tariff_class&#39;</span><span class="p">,</span> <span class="s1">&#39;state_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;tech&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># rename the final columns</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">state_total_developable_customers</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">state_total_developable_customers</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+        <span class="s1">&#39;developable_customers_in_bin&#39;</span><span class="p">,</span> <span class="s1">&#39;developable_customers_in_state&#39;</span><span class="p">)</span>
+    <span class="n">state_total_agents</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">state_total_agents</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+        <span class="s1">&#39;developable_customers_in_bin&#39;</span><span class="p">,</span> <span class="s1">&#39;agent_count&#39;</span><span class="p">)</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># merge together</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">state_denominators</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">state_total_developable_customers</span><span class="p">,</span> <span class="n">state_total_agents</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span>
+                                  <span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;state_id&#39;</span><span class="p">,</span> <span class="s1">&#39;tariff_class&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;tech&#39;</span><span class="p">])</span>
+
+    <span class="n">state_denominators</span><span class="o">.</span><span class="n">control_reg_id</span>  <span class="o">=</span> <span class="n">state_denominators</span><span class="o">.</span><span class="n">control_reg_id</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># merge back to the main dataframe</span>
+    <span class="c1">#==========================================================================================================</span>
+
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">state_denominators</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span>
+        <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;tariff_class&#39;</span><span class="p">,</span> <span class="s1">&#39;state_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;tech&#39;</span><span class="p">])</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># determine the portion of initial load and systems that should be allocated to each agent</span>
+    <span class="c1"># (when there are no developable agnets in the state, simply apportion evenly to all agents)</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;portion_of_state&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;developable_customers_in_state&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
+                                             <span class="n">dataframe</span><span class="p">[</span>
+                                                 <span class="s1">&#39;developable_customers_in_bin&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;developable_customers_in_state&#39;</span><span class="p">],</span>
+                                             <span class="mf">1.</span> <span class="o">/</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;agent_count&#39;</span><span class="p">])</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># apply the agent&#39;s portion to the total to calculate starting capacity and systems</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;number_of_adopters_last_year&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;portion_of_state&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;pv_systems_count&#39;</span><span class="p">]</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;pv_kw_cum_last_year&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;portion_of_state&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;pv_capacity_mw&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1000.0</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;batt_kw_cum_last_year&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;batt_kwh_cum_last_year&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;market_share_last_year&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;developable_customers_in_bin&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+                                                   <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;number_of_adopters_last_year&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;developable_customers_in_bin&#39;</span><span class="p">])</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;market_value_last_year&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;pv_price_per_kw&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;pv_kw_cum_last_year&#39;</span><span class="p">]</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># reproduce these columns as &quot;initial&quot; columns too</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;initial_number_of_adopters&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;number_of_adopters_last_year&#39;</span><span class="p">]</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;initial_pv_kw&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;pv_kw_cum_last_year&#39;</span><span class="p">]</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;initial_market_share&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;market_share_last_year&#39;</span><span class="p">]</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;initial_market_value&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="c1"># isolate the return columns</span>
+    <span class="c1">#==========================================================================================================</span>
+    <span class="n">return_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;initial_number_of_adopters&#39;</span><span class="p">,</span> <span class="s1">&#39;initial_pv_kw&#39;</span><span class="p">,</span> <span class="s1">&#39;initial_market_share&#39;</span><span class="p">,</span> <span class="s1">&#39;initial_market_value&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;number_of_adopters_last_year&#39;</span><span class="p">,</span> <span class="s1">&#39;pv_kw_cum_last_year&#39;</span><span class="p">,</span> <span class="s1">&#39;batt_kw_cum_last_year&#39;</span><span class="p">,</span> <span class="s1">&#39;batt_kwh_cum_last_year&#39;</span><span class="p">,</span> <span class="s1">&#39;market_share_last_year&#39;</span><span class="p">,</span> <span class="s1">&#39;market_value_last_year&#39;</span><span class="p">]</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="n">return_cols</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="n">return_cols</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">out_cols</span> <span class="o">=</span> <span class="n">in_cols</span> <span class="o">+</span> <span class="n">return_cols</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dataframe</span><span class="p">[</span><span class="n">out_cols</span><span class="p">]</span></div>
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="apply_market_last_year"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.apply_market_last_year">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">apply_market_last_year</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">market_last_year_df</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimates initial market penetration of DPV and number of adopters at the state level</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+<span class="sd">    market_last_year_df : pandas.DataFrame</span>
+<span class="sd">        last year&#39;s number of adopters and percent adoption at the state level</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">market_last_year_df</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;tech&#39;</span><span class="p">,</span> <span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;tariff_class&#39;</span><span class="p">,</span> <span class="s1">&#39;state_id&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">])</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="estimate_total_generation"><a class="viewcode-back" href="../../../source/python.agent_mutation.html#python.agent_mutation.elec.estimate_total_generation">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">estimate_total_generation</span><span class="p">(</span><span class="n">dataframe</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimates total energy generated from DPV in a year</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        agent attributes for the given year</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        agent attributes with new attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;total_gen_twh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">((</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;number_of_adopters&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;initial_number_of_adopters&#39;</span><span class="p">])</span> <span class="o">*</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;aep&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e-9</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">0.23</span> <span class="o">*</span> <span class="mi">8760</span> <span class="o">*</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;initial_pv_kw&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e-6</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, NREL
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

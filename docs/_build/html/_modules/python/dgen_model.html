@@ -1,0 +1,422 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>python.dgen_model &mdash; dGen Mexico 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> dGen Mexico
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../source/tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/api.html">dGen Code Base</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/input_data.html">Input Data</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dGen Mexico</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>python.dgen_model</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for python.dgen_model</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This is the main module of the Distributed Generation Market Demand Model</span>
+<span class="sd">created by the National Renewable Energy Lab (NREL). </span>
+
+<span class="sd">Running this module requires a properly installed environment with applicable scenario files. </span>
+<span class="sd">Sample scenario files can be found in `reference_data/example_data` and include an .xlsm file as well </span>
+<span class="sd">as a folder of .csv files.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># before doing anything, check model dependencies</span>
+<span class="kn">import</span> <span class="nn">prerun_test</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">storage_functions</span> <span class="k">as</span> <span class="nn">sFuncs</span>
+<span class="c1"># ---------------------------------------------</span>
+<span class="c1"># order of the next 3 needs to be maintained</span>
+<span class="c1"># otherwise the logger may not work correctly</span>
+<span class="c1"># (I think the order needs to follow the order</span>
+<span class="c1"># in which each module is used in __main__)</span>
+<span class="c1"># ---------------------------------------------</span>
+<span class="kn">import</span> <span class="nn">utility_functions</span> <span class="k">as</span> <span class="nn">utilfunc</span>
+<span class="kn">from</span> <span class="nn">agents</span> <span class="k">import</span> <span class="n">Agents</span>
+<span class="kn">import</span> <span class="nn">settings</span>
+<span class="kn">import</span> <span class="nn">agent_mutation</span>
+<span class="kn">import</span> <span class="nn">diffusion_functions</span>
+<span class="kn">import</span> <span class="nn">financial_functions</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+
+<span class="c1">#==============================================================================</span>
+<span class="c1"># raise  numpy and pandas warnings as exceptions</span>
+<span class="c1">#==============================================================================</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s1">&#39;mode.chained_assignment&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<span class="c1">#==============================================================================</span>
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../source/api.html#python.dgen_model.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">mode</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">resume_year</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">endyear</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ReEDS_inputs</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the economic adoption of distributed generation resources on an agent-level basis.</span>
+
+<span class="sd">    Model output is saved to a `/runs` file within the dGen directory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># =====================================================================</span>
+        <span class="c1"># SET UP THE MODEL TO RUN</span>
+        <span class="c1"># =====================================================================</span>
+        <span class="c1"># initialize Model Settings object</span>
+        <span class="c1"># (this controls settings that apply to all scenarios to be executed)</span>
+        <span class="n">model_settings</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">init_model_settings</span><span class="p">()</span>
+        <span class="n">prerun_test</span><span class="o">.</span><span class="n">check_dependencies</span><span class="p">()</span>
+
+        <span class="c1"># make output directory</span>
+        <span class="c1"># create the logger and stamp with git hash</span>
+        <span class="n">logger</span> <span class="o">=</span> <span class="n">utilfunc</span><span class="o">.</span><span class="n">get_logger</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">model_settings</span><span class="o">.</span><span class="n">out_dir</span><span class="p">,</span> <span class="s1">&#39;dg_model.log&#39;</span><span class="p">))</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Model version is git commit </span><span class="si">{:}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">model_settings</span><span class="o">.</span><span class="n">git_hash</span><span class="p">))</span>
+
+        <span class="c1"># =====================================================================</span>
+        <span class="c1"># LOOP OVER SCENARIOS</span>
+        <span class="c1"># =====================================================================</span>
+
+        <span class="n">out_subfolders</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;solar&#39;</span><span class="p">:</span> <span class="p">[]}</span> 
+ 
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">scenario_file</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">model_settings</span><span class="o">.</span><span class="n">input_scenarios</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;============================================&#39;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;============================================&#39;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Running Scenario </span><span class="si">{i}</span><span class="s2"> of </span><span class="si">{n}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="o">=</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span><span class="n">n</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">model_settings</span><span class="o">.</span><span class="n">input_scenarios</span><span class="p">)))</span>
+            
+            <span class="c1"># initialize ScenarioSettings object</span>
+            <span class="c1"># (this controls settings that apply only to this specific scenario)</span>
+            <span class="n">scenario_settings</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">init_scenario_settings</span><span class="p">(</span><span class="n">scenario_file</span><span class="p">,</span> <span class="n">model_settings</span><span class="p">)</span>
+
+            <span class="c1"># log summary high level secenario settings</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Scenario Settings:&#39;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Scenario Name: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">scenario_name</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Sectors: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">sector_data</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Technologies: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">techs</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Years: </span><span class="si">%s</span><span class="s1"> - </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">start_year</span><span class="p">,</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">end_year</span><span class="p">))</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Results Path: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">out_scen_path</span><span class="p">))</span>
+
+            <span class="c1">#==========================================================================================================</span>
+            <span class="c1"># CREATE AGENTS</span>
+            <span class="c1">#==========================================================================================================</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;-------------- Agent Preparation ---------------&quot;</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">generate_agents</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Creating Agents&#39;</span><span class="p">)</span>
+                <span class="n">solar_agents</span> <span class="o">=</span> <span class="n">Agents</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">init_solar_agents</span><span class="p">(</span><span class="n">scenario_settings</span><span class="p">))</span>
+                
+                <span class="c1"># Write base agents to disk</span>
+                <span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">out_scen_path</span> <span class="o">+</span> <span class="s1">&#39;/agent_df_base.pkl&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Loading </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">agents_file_name</span><span class="p">)</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">agents_file_name</span><span class="p">,</span><span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">solar_agents</span> <span class="o">=</span> <span class="n">Agents</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
+                
+            <span class="c1"># Get set of columns that define agent&#39;s immutable attributes</span>
+            <span class="n">cols_base</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+
+            <span class="c1">#==============================================================================</span>
+            <span class="c1"># TECHNOLOGY DEPLOYMENT</span>
+            <span class="c1">#==============================================================================</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;-------------- Yearly Analysis ---------------&quot;</span><span class="p">)</span>
+            <span class="n">complete_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">techs</span> <span class="o">==</span> <span class="p">[</span><span class="s1">&#39;solar&#39;</span><span class="p">]:</span>
+                <span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;tech&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;solar&#39;</span>
+
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">year</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">model_years</span><span class="p">):</span>
+
+                    <span class="n">is_first_year</span> <span class="o">=</span>  <span class="n">year</span> <span class="o">==</span> <span class="n">model_settings</span><span class="o">.</span><span class="n">start_year</span>
+
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Working on </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">year</span><span class="p">)</span>
+
+                    <span class="c1"># determine any non-base columns and drop them</span>
+                    <span class="n">cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+                    <span class="n">cols_to_drop</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">cols</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cols_base</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cols_to_drop</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">cols_to_drop</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+                    <span class="c1"># copy the core agent object and set their year</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">year</span>
+
+                    <span class="c1"># get and apply load growth</span>
+                    <span class="n">load_growth_yearly</span> <span class="o">=</span>  <span class="n">scenario_settings</span><span class="o">.</span><span class="n">get_load_growth</span><span class="p">(</span><span class="n">year</span><span class="p">)</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">apply_load_growth</span><span class="p">,</span> <span class="p">(</span><span class="n">load_growth_yearly</span><span class="p">))</span>
+                    
+                    <span class="c1"># Normalize the hourly load profile to updated total load which includes load growth multiplier</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">apply_scale_normalized_load_profiles</span><span class="p">)</span>
+                    
+                    <span class="c1"># Get and apply net metering parameters</span>
+                    <span class="n">net_metering_yearly</span> <span class="o">=</span>  <span class="n">scenario_settings</span><span class="o">.</span><span class="n">get_nem_settings</span><span class="p">(</span><span class="n">year</span><span class="p">)</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">apply_export_tariff_params</span><span class="p">,</span> <span class="p">(</span><span class="n">net_metering_yearly</span><span class="p">))</span>
+                    
+                    <span class="c1"># Apply each agent&#39;s electricity price change and assumption about increases</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">apply_elec_price_multiplier_and_escalator</span><span class="p">,</span> <span class="p">[</span> <span class="n">year</span><span class="p">,</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">get_rate_escalations</span><span class="p">()])</span>
+                    
+                    <span class="c1"># Apply PV Specs                    </span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">apply_pv_specs</span><span class="p">,</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">get_pv_specs</span><span class="p">())</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">apply_storage_specs</span><span class="p">,</span> <span class="p">[</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">get_batt_price_trajectories</span><span class="p">(),</span> <span class="n">year</span><span class="p">,</span> <span class="n">scenario_settings</span><span class="p">])</span>
+                    
+                    <span class="c1"># Apply financial terms</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">apply_financial_params</span><span class="p">,</span> <span class="p">[</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">get_financing_terms</span><span class="p">(),</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">financial_options</span><span class="p">[</span><span class="s1">&#39;annual_inflation_pct&#39;</span><span class="p">]])</span>
+                    
+                    <span class="c1"># Apply carbon intensities</span>
+                    <span class="n">carbon_intensities_yearly</span> <span class="o">=</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">get_carbon_intensities</span><span class="p">(</span><span class="n">year</span><span class="p">)</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">apply_carbon_intensities</span><span class="p">,</span> <span class="n">carbon_intensities_yearly</span><span class="p">)</span>
+                    
+                    <span class="c1"># Apply wholesale electricity prices</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">apply_wholesale_elec_prices</span><span class="p">,</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">get_wholesale_elec_prices</span><span class="p">())</span>
+                    
+                    <span class="c1"># Size S+S system and calculate electric bills</span>
+                    <span class="k">if</span> <span class="s1">&#39;ix&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> 
+                        <span class="n">cores</span><span class="o">=</span><span class="kc">None</span>
+                    <span class="k">else</span><span class="p">:</span> 
+                        <span class="n">cores</span><span class="o">=</span><span class="n">model_settings</span><span class="o">.</span><span class="n">local_cores</span>
+
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_row</span><span class="p">(</span><span class="n">sFuncs</span><span class="o">.</span><span class="n">calc_system_size_and_financial_performance</span><span class="p">,</span> <span class="n">cores</span><span class="o">=</span><span class="n">cores</span><span class="p">)</span>
+
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;agent_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span>
+
+                    <span class="c1"># Calculate the financial performance of the S+S systems </span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">financial_functions</span><span class="o">.</span><span class="n">calc_financial_performance</span><span class="p">)</span>
+
+                    <span class="c1"># Calculate Maximum Market Share</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">financial_functions</span><span class="o">.</span><span class="n">calc_max_market_share</span><span class="p">,</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">get_max_market_share</span><span class="p">())</span>
+
+                    <span class="c1"># determine &quot;developable&quot; population</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">calculate_developable_customers_and_load</span><span class="p">)</span>
+
+                    <span class="c1"># Apply market_last_year</span>
+                    <span class="k">if</span> <span class="n">is_first_year</span><span class="p">:</span>
+                        <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">estimate_initial_market_shares</span><span class="p">)</span>
+                        <span class="n">market_last_year_df</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">apply_market_last_year</span><span class="p">,</span> <span class="n">market_last_year_df</span><span class="p">)</span>
+
+                    <span class="c1"># Calculate diffusion based on economics and bass diffusion</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="p">,</span> <span class="n">market_last_year_df</span> <span class="o">=</span> <span class="n">diffusion_functions</span><span class="o">.</span><span class="n">calc_diffusion_solar</span><span class="p">(</span><span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="p">,</span> <span class="n">is_first_year</span><span class="p">,</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">get_bass_params</span><span class="p">())</span>
+                    
+                    <span class="c1"># Estimate total generation</span>
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">on_frame</span><span class="p">(</span><span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">estimate_total_generation</span><span class="p">)</span>
+
+                    <span class="c1"># Aggregate results</span>
+                    <span class="n">scenario_settings</span><span class="o">.</span><span class="n">output_batt_dispatch_profiles</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">if</span> <span class="n">is_first_year</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+                        <span class="n">interyear_results_aggregations</span> <span class="o">=</span> <span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">aggregate_outputs_solar</span><span class="p">(</span><span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">is_first_year</span><span class="p">,</span> <span class="n">scenario_settings</span><span class="p">)</span> 
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">interyear_results_aggregations</span> <span class="o">=</span> <span class="n">agent_mutation</span><span class="o">.</span><span class="n">elec</span><span class="o">.</span><span class="n">aggregate_outputs_solar</span><span class="p">(</span><span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">is_first_year</span><span class="p">,</span> <span class="n">scenario_settings</span><span class="p">,</span> <span class="n">interyear_results_aggregations</span><span class="p">)</span>
+
+                    <span class="c1">#==========================================================================================================</span>
+                    <span class="c1"># WRITE AGENT DF AS PICKLES FOR POST-PROCESSING</span>
+                    <span class="c1">#==========================================================================================================</span>
+                    
+                    <span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">out_scen_path</span> <span class="o">+</span> <span class="s1">&#39;/agent_df_</span><span class="si">%s</span><span class="s1">.pkl&#39;</span> <span class="o">%</span> <span class="n">year</span><span class="p">)</span>
+                    
+                    <span class="c1"># Write Outputs to the database</span>
+                    <span class="n">drop_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;consumption_hourly_initial&#39;</span><span class="p">,</span><span class="s1">&#39;generation_hourly&#39;</span><span class="p">,</span><span class="s1">&#39;bill_savings&#39;</span><span class="p">,</span> <span class="s1">&#39;consumption_hourly&#39;</span><span class="p">,</span> <span class="s1">&#39;solar_cf_profile&#39;</span><span class="p">,</span> <span class="s1">&#39;tariff_dict&#39;</span><span class="p">,</span> <span class="s1">&#39;deprec_sch&#39;</span><span class="p">,</span> <span class="s1">&#39;batt_dispatch_profile&#39;</span><span class="p">]</span> <span class="c1">#dropping because are arrays or json</span>
+                    <span class="n">df_write</span> <span class="o">=</span> <span class="n">solar_agents</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">drop_fields</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">complete_df</span> <span class="o">=</span> <span class="n">df_write</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">complete_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">complete_df</span><span class="p">,</span> <span class="n">df_write</span><span class="p">])</span>
+
+            <span class="c1">#==============================================================================</span>
+            <span class="c1">#    Outputs &amp; Visualization</span>
+            <span class="c1">#==============================================================================</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;---------Saving Model Results---------&quot;</span><span class="p">)</span>
+            
+            <span class="n">complete_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">out_scen_path</span> <span class="o">+</span> <span class="s1">&#39;/agent_outputs.csv&#39;</span> <span class="p">)</span>
+            
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;-------------Model Run Complete-------------&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Completed in: </span><span class="si">%.1f</span><span class="s1"> seconds&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">model_settings</span><span class="o">.</span><span class="n">model_init</span><span class="p">))</span>
+
+
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s1">&#39;logger&#39;</span> <span class="ow">in</span> <span class="nb">locals</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="fm">__str__</span><span class="p">(),</span> <span class="n">exc_info</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Error on line </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tb_lineno</span><span class="p">),</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;logger&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">locals</span><span class="p">():</span>
+            <span class="k">raise</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s1">&#39;logger&#39;</span> <span class="ow">in</span> <span class="nb">locals</span><span class="p">():</span>
+            <span class="n">utilfunc</span><span class="o">.</span><span class="n">shutdown_log</span><span class="p">(</span><span class="n">logger</span><span class="p">)</span>
+            <span class="n">utilfunc</span><span class="o">.</span><span class="n">code_profiler</span><span class="p">(</span><span class="n">model_settings</span><span class="o">.</span><span class="n">out_dir</span><span class="p">)</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Constructor for dgen_model.main()&quot;&quot;&quot;</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, NREL
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

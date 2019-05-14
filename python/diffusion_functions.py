@@ -1,18 +1,12 @@
+# -*- coding: utf-8 -*-
 """
-Name: diffusion_functions
-Purpose: Contains functions to calculate diffusion of distributed wind model
+Module contains functions to calculate the bass diffusion of distributed generation adoption.
 
-    (1) Determine maximum market size as a function of payback time;
-    (2) Parameterize Bass diffusion curve with diffusion rates (p, q) set by 
-        payback time;
-    (3) Determine current stage (equivaluent time) of diffusion based on existing 
-        market and current economics 
-    (3) Calculate new market share by stepping forward on diffusion curve.
-
-
-Author: bsigrin & edrury
-Last Revision: 3/26/14
-
+On an agent-level basis :py:mod:`diffusion_functions`:
+    (1) Determines maximum market size as a function of payback time
+    (2) Parameterizes the Bass diffusion curve with diffusion rates (p, q) set by payback time
+    (3) Determines the current stage (equivaluent time) of diffusion based on existing market and current economics 
+    (4) Calculates the new market share by stepping forward on diffusion curve.
 """
 
 import numpy as np
@@ -29,19 +23,34 @@ logger = utilfunc.get_logger()
 # ^^^^  Diffusion Calculator  ^^^^
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calc_diffusion_solar(df, is_first_year, bass_params, override_p_value = None, override_q_value = None, override_teq_yr1_value = None):
+    """
+    Calculates the market share (ms) added in the solve year.
+    
+    Market share must be less than max market share (mms) except  when initial ms is greater than the calculated mms.
+    For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to decrease if economics deterioriate.
+    Using the calculated market share, relevant quantities are updated.
 
-    ''' Calculates the market share (ms) added in the solve year. Market share must be less
-        than max market share (mms) except initial ms is greater than the calculated mms.
-        For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to
-        decrease if economics deterioriate. Using the calculated 
-        market share, relevant quantities are updated.
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe.
+    is_first_year : bool
+        Passed to :func:`diffusion_functions.calc_diffusion_market_share` to determine the increment of `teq`
+    bass_params : pandas.DataFrame
+        DataFrame generally derived from :func:`settings.get_bass_params`, includes the following attributes: `control_reg_id`, `country_abbr`, `sector_abbr`, `state_id`, `p`, `q`, `teq_yr1`, `tech`.
+    override_p_values : float , optional
+        Value to override bass diffusion `p` coefficient of innovation with.
+    overide_q_values : float, optional
+        Value to override bass diffusion `q` coefficient of immitation with.
+    override_teq_yr1_value : float, optional
+        Value to override bass diffusion `teq_yr1` value representing the number of years since diffusion began for the first year of observation.
 
-        IN: df - pd dataframe - Main dataframe
-        
-        OUT: df - pd dataframe - Main dataframe
-            market_last_year - pd dataframe - market to inform diffusion in next year
-    '''
+    Returns
+    -------    
+    pandas.DataFrame
+            Dataframe contains `market_last_year` column to inform diffusion in next year.
 
+    """
     df = df.reset_index()
     bass_params = bass_params[bass_params['tech']=='solar']    
     
@@ -94,20 +103,36 @@ def calc_diffusion_solar(df, is_first_year, bass_params, override_p_value = None
     return df, market_last_year
 
 def calc_diffusion_market_share(df, is_first_year):
-    ''' Calculate the fraction of overall population that have adopted the 
-        technology in the current period. Note that this does not specify the 
-        actual new adoption fraction without knowing adoption in the previous period. 
+    """
+    Calculate the fraction of overall population that have adopted the technology in the current period.
 
-        IN: payback_period - numpy array - payback in years
-            max_market_share - numpy array - maximum market share as decimal
-            current_market_share - numpy array - current market share as decimal
-                        
-        OUT: new_market_share - numpy array - fraction of overall population 
-                                                that have adopted the technology
-    '''
-    # The relative economic attractiveness controls the p,q values in Bass diffusion
-    # Current assumption is that only payback and MBS are being used, that pp is bounded [0-30] and MBS bounded [0-120]
-       
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Attributes
+        ----------
+        df.payback_period : numpy.ndarray
+            Payback period in years.
+        df.max_market_share : numpy.ndarray
+            Maximum market share as decimal percentage.
+        df.current_market_share : numpy.ndarray
+            Current market share as decimal percentage.
+    is_first_year : bool
+        If `True`, the new equivalent time (`teq2`) is equal to the original `teq_yr1` plus the increment defined in `teq`.
+        Otherwise, `teq2` is equal to `teq` plus 2 years. 
+
+    Returns
+    -------
+    numpy.ndarray
+        The fraction of overall population that have adopted the technology
+    
+    Note
+    ----
+    1) This does not specify the actual new adoption fraction without knowing adoption in the previous period. 
+    2) The relative economic attractiveness controls the p, q value in the Bass diffusion model.
+    3) The current assumption is that only payback and MBS are being used, that pp is bounded [0-30] and MBS is bounded [0-120].
+
+    """    
     df = calc_equiv_time(df); # find the 'equivalent time' on the newly scaled diffusion curve
     if is_first_year == True:
         df['teq2'] = df['teq'] + df['teq_yr1']
@@ -122,14 +147,28 @@ def calc_diffusion_market_share(df, is_first_year):
     return df
 
 def set_bass_param(df, bass_params, override_p_value, override_q_value, override_teq_yr1_value):
-    ''' Set the p & q parameters which define the Bass diffusion curve.
-    p is the coefficient of innovation, external influence or advertising effect. 
-    q is the coefficient of imitation, internal influence or word-of-mouth effect.
+    """
+    Set the `p` & `q` parameters which define the Bass diffusion curve.
 
-        IN: scaled_metric_value - numpy array - scaled value of economic attractiveness [0-1]
-        OUT: p,q - numpy arrays - Bass diffusion parameters
-    '''
-      
+    `p` is the coefficient of innovation, external influence or advertising effect.
+    `q` is the coefficient of imitation, internal influence or word-of-mouth effect.
+
+    `p` & `q` values defined by :func:`diffusion_functions.bass_diffusion` can be overrode.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Attributes
+        ----------
+        df.scaled_metric_value : numpy.ndarray
+            Scaled value of economic attractiveness (range of 0 - 1)
+    
+    Returns
+    -------
+    pandas.DataFrame
+        Input dataframe with `p` and `q` columns addded. 
+
+    """
     # set p and q values
     df = pd.merge(df, bass_params, how = 'left', on  = ['state_id','sector_abbr', 'tech'])
     
@@ -144,33 +183,58 @@ def set_bass_param(df, bass_params, override_p_value, override_q_value, override
     
 
 def bass_diffusion(df):
-    ''' Calculate the fraction of population that diffuse into the max_market_share.
-        Note that this is different than the fraction of population that will 
-        adopt, which is the max market share
+    """
+    Calculate the fraction of population that diffuse into the max_market_share.
 
-        IN: p,q - numpy arrays - Bass diffusion parameters
-            t - numpy array - Number of years since diffusion began
-            
-            
-        OUT: new_adopt_fraction - numpy array - fraction of overall population 
-                                                that will adopt the technology
-    '''
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Attributes
+        ----------
+        df.p : numpy.ndarray
+            Bass diffusion parameter defining the coeffieicent of innovation.
+        df.q : numpy.ndarray
+            Bass diffusion parameter definint the coefficient of imitation.
+        df.t : numpy.ndarray
+            Number of years since the diffusion model began.
+    
+    Returns
+    -------
+    DataFrame
+        Input dataframe with `new_adopt_fraction` column added. `new_adopt_fraction` represents the proportion of the overall population that will adopt the technology.
+
+    Note
+    ----
+    This is different than the fraction of population that will adopt, which is the max market share.
+    """
     df['f'] = np.e**(-1*(df['p'] + df['q']) * df['teq2'])
     df['new_adopt_fraction'] = (1-df['f']) / (1 + (df['q']/df['p'])*df['f']) # Bass Diffusion - cumulative adoption
     return df
     
 def calc_equiv_time(df):
-    ''' Calculate the "equivalent time" on the diffusion curve. This defines the
-    gradient of adoption.
+    """
+    Calculate the "equivalent time" on the diffusion curve. This defines the gradient of adoption.
 
-        IN: msly - numpy array - market share last year [at end of the previous solve] as decimal
-            mms - numpy array - maximum market share as decimal
-            p,q - numpy arrays - Bass diffusion parameters
-            
-        OUT: t_eq - numpy array - Equivalent number of years after diffusion 
-                                  started on the diffusion curve
-    '''
-    
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Attributes
+        ----------
+            df.msly : numpy.ndarray
+                Market share last year [at end of the previous solve] as decimal
+            df.mms : numpy.ndarray
+                Maximum market share as a decimal percentage.
+            df.p : numpy.ndarray
+                Bass diffusion parameter defining the coefficient of innovation.
+            df.q : numpy.ndarray
+                Bass diffusion paramter defining the coefficient of imitation.
+        
+    Returns
+    -------
+    pandas.DataFrame
+        Input dataframe with `teq` column added. `teq` is the equivalent number of years after diffusion started on the diffusion curve.
+
+    """
     df['mms_fix_zeros'] = np.where(df['max_market_share'] == 0, 1e-9, df['max_market_share'])
     df['ratio'] = np.where(df['market_share_last_year'] > df['mms_fix_zeros'], 0, df['market_share_last_year']/df['mms_fix_zeros'])
    #ratio=msly/mms;  # ratio of adoption at present to adoption at terminal period

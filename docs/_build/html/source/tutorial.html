@@ -1,0 +1,262 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Tutorial &mdash; dGen Mexico 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Example Use Cases" href="examples.html" />
+    <link rel="prev" title="Welcome to dGen Mexico’s documentation!" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> dGen Mexico
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#setting-parameters-in-an-xlsm-microsoft-excel-file">1) Setting parameters in an <code class="file docutils literal notranslate"><span class="pre">.xlsm</span></code> (Microsoft Excel) file.</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#placing-or-editing-csv-data-files">2) Placing or editing <code class="file docutils literal notranslate"><span class="pre">.csv</span></code> data files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-the-model-through-a-command-line-interface-cli-or-interactive-development-environment-e-g-a-jupyter-notebook">3) Running the model through a command line interface (CLI) or interactive development environment (e.g. a Jupyter Notebook)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interpreting-results">4) Interpreting Results</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">dGen Code Base</a></li>
+<li class="toctree-l1"><a class="reference internal" href="input_data.html">Input Data</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">dGen Mexico</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Tutorial</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/source/tutorial.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="tutorial">
+<h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
+<p>High-level utilization of dGen can be done in four steps:</p>
+<div class="section" id="setting-parameters-in-an-xlsm-microsoft-excel-file">
+<h2>1) Setting parameters in an <code class="file docutils literal notranslate"><span class="pre">.xlsm</span></code> (Microsoft Excel) file.<a class="headerlink" href="#setting-parameters-in-an-xlsm-microsoft-excel-file" title="Permalink to this headline">¶</a></h2>
+<p>A file with default values is provided by dGen, located at <code class="file docutils literal notranslate"><span class="pre">reference_data/example_data/mex_high_costs.xlsm</span></code>. Opening this file in Excel reveals several sheets (tabs). The ‘Main’ tab is the most direct way to change high-level parameters, Including the Analysis End Year, the Sectors (markets) to run analysis for, Load Growth projections, Rate Structure and Escalation, Market Adoption Curves, Carbon Pricing Schemes, and Net Metering Schemes. Advanced users running custom scenarios can also point dGen towards a custom Pre-Generated Agents file in the <strong>Main</strong> tab.</p>
+<p>Other tabs include Market Projections, which contains a table of macro-economic projections including an Annual Inflation value, and yearly parameters for Carbon Price, (if a price is identified in ‘Main’), and Sectoral Rate Escalations (based on a 2015 base year).</p>
+<p>The <strong>Financing</strong> Tab includes financing assumptions for specific projects. These include Loan Tenor (length), Loan Rates, Down Payments, Discount Rates, and Tax Rates. An additional table in the ‘Financing’ tab includes Sectoral Depreciation schedules.</p>
+<p>The <strong>Storage</strong> tab contains battery storage benchmark prices on a per kWh and per kW installed basis for each sector.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">dGen’s Storage Module (<a class="reference internal" href="api.html#module-python.storage_functions" title="python.storage_functions"><code class="xref py py-func docutils literal notranslate"><span class="pre">python.storage_functions()</span></code></a>) is currently disabled as it was not included in the scope of Mexico implementation.</p>
+</div>
+<p>The <strong>Solar</strong> tab contains PV system benchmark prices on a a per kW installed basis for each sector. Fixed and Variable Annual Operations and Maintenance (O&amp;M), PV Degradation rates can also be set. Power Density assumes that technological advances will lead to increased cell efficiencies, this doesn’t directly affect system costs, but does allow agents with smaller roofs to adopt a higher capacity if economic.</p>
+<p>Once modified with the user’s desired parameters, this file (or an alternative) should be copied into the <code class="file docutils literal notranslate"><span class="pre">input_data/</span></code> folder. When initializing dGen, each scenario file within <code class="file docutils literal notranslate"><span class="pre">input_data/</span></code> will be run, one after another.</p>
+</div>
+<div class="section" id="placing-or-editing-csv-data-files">
+<h2>2) Placing or editing <code class="file docutils literal notranslate"><span class="pre">.csv</span></code> data files<a class="headerlink" href="#placing-or-editing-csv-data-files" title="Permalink to this headline">¶</a></h2>
+<p>Along with the <cite>.xlsm</cite> file in <code class="file docutils literal notranslate"><span class="pre">input_data/</span></code>, dGen requires a folder containing a number of <code class="file docutils literal notranslate"><span class="pre">.csv</span></code> files with specific data. Like <code class="file docutils literal notranslate"><span class="pre">mex_high_costs.xlsm</span></code>, a default set of files is available in <code class="file docutils literal notranslate"><span class="pre">reference_data/example_data/mex_high_costs</span></code>. More details on these files and their contents are available in the <cite>Scenario Data</cite> section of this documentation. The <code class="file docutils literal notranslate"><span class="pre">mex_high_costs/</span></code> folder, or an alternative, must be copied into <code class="file docutils literal notranslate"><span class="pre">input_data/</span></code> alongside <code class="file docutils literal notranslate"><span class="pre">mex_high_costs.xlsm</span></code>.</p>
+</div>
+<div class="section" id="running-the-model-through-a-command-line-interface-cli-or-interactive-development-environment-e-g-a-jupyter-notebook">
+<h2>3) Running the model through a command line interface (CLI) or interactive development environment (e.g. a Jupyter Notebook)<a class="headerlink" href="#running-the-model-through-a-command-line-interface-cli-or-interactive-development-environment-e-g-a-jupyter-notebook" title="Permalink to this headline">¶</a></h2>
+<p>Once the correct environment is installed and the correct scenario data has been placed within <code class="file docutils literal notranslate"><span class="pre">input_data/</span></code>, the model is ready to be initialized.</p>
+<p>Running the model on the <strong>command line</strong> involves moving to the <code class="file docutils literal notranslate"><span class="pre">python/</span></code> directory within the dGen package. From inside the <code class="file docutils literal notranslate"><span class="pre">python/</span></code> folder, activate the virtualenv set-up during installation. Finally, run the model as a python directive.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>#enter python directory
+$ cd &lt;your path here&gt;/dgen_mexico/python
+
+#activate the installed environment
+$ source env/Scripts/activate  #or conda activate env
+
+#run the model
+(env)$ python dgen_model.py #run the model
+</pre></div>
+</div>
+<p>As the model run is progressing, the status will be logged to the screen. This information allows the user to see which Scenario and Year are currently being run.</p>
+<p>Some users might find it helpful to run dGen within an interactive development environment, such as a Jupyter Notebook. If you do not have Jupyter installed, follow the <a class="reference external" href="https://jupyter.readthedocs.io/en/latest/install.html#id3">Installing Jupiter using Anaconda and conda</a> instructions.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">You will likely not see anything printed to the screen while running dGen from within an IDE.</p>
+</div>
+</div>
+<div class="section" id="interpreting-results">
+<h2>4) Interpreting Results<a class="headerlink" href="#interpreting-results" title="Permalink to this headline">¶</a></h2>
+<p>After running the model, a <code class="file docutils literal notranslate"><span class="pre">runs/</span></code> folder has been created within dGen, a results folder with a timestamp for the date and time that the model was initialized contains a folder for each scenario that was run. Opening the scenario folder contains the following files:</p>
+<ul class="simple">
+<li><strong>dpv_MW_by_ba_and_year.csv</strong> contains the installed MW capacity of distributed photovoltaics by year for each control area.</li>
+<li><strong>dpv_cf_by_ba.csv</strong> contains an hourly profile (8760) for the last model year of the distributed photovoltaic capacity factor.</li>
+<li><strong>agent_outputs.csv</strong> contains the output agent dataframe, which allows users to view agnate-by-agent outcomes for dpv adoption. Multiple years of model runs have been appended on as additional rows.</li>
+<li><strong>agent_df_base.pkl</strong> is a python pickled file containing the input agent dataframe.</li>
+<li><strong>Copies of the input files</strong> including an <code class="file docutils literal notranslate"><span class="pre">.xlsm</span></code> and an <code class="file docutils literal notranslate"><span class="pre">input_data/</span></code> folder containing <code class="file docutils literal notranslate"><span class="pre">.csv</span></code> files, described in <a class="reference internal" href="input_data.html#input-data"><span class="std std-ref">Input Data</span></a></li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="examples.html" class="btn btn-neutral float-right" title="Example Use Cases" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../index.html" class="btn btn-neutral float-left" title="Welcome to dGen Mexico’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, NREL
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

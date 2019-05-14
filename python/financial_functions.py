@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Oct 11 10:27:48 2016
-
-@author: pgagnon
+Functions to construct cashflow timelines for agents and calculate the financial performance of projects.
 """
 
 import numpy as np
@@ -19,17 +17,19 @@ logger = utilfunc.get_logger()
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calc_financial_performance(dataframe):
-    '''
-    Calculates the economic value of adoption given the metric chosen. Residential buyers
-    use simple payback, non-residential buyers use time-to-double, leasers use monthly bill savings
+    """
+    Function to calculate the payback period and join it on the agent dataframe.
     
-        IN:
-            df    
-        
-        OUT:
-            metric_value - pd series - series of values given the business_model and sector
-    '''
+    Parameters
+    ----------
+    dataframe : pandas.DataFrame
+        Agent dataframe
     
+    Returns
+    -------
+    pandas.DataFrame
+        Agent dataframe with `payback_period` joined on dataframe
+    """
 #    dataframe = dataframe.reset_index()
 
     cfs = np.vstack(dataframe['cash_flow']).astype(np.float)    
@@ -53,6 +53,24 @@ def calc_financial_performance(dataframe):
 
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
 def calc_max_market_share(dataframe, max_market_share_df):
+    """
+    Calculates the maximum marketshare available for each agent. 
+
+    Parameters
+    ----------
+    dataframe : pandas.DataFrame
+        Attributes
+        ----------
+        metric_value : float
+            
+    max_market_share_df : pandas.DataFrame
+        Set by :meth:`settings.ScenarioSettings.get_max_marketshare`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Input DataFrame with `max_market_share` and `metric` columns joined on.
+    """
 
     in_cols = list(dataframe.columns)
     dataframe = dataframe.reset_index()
@@ -93,19 +111,22 @@ def calc_max_market_share(dataframe, max_market_share_df):
 
     return dataframe[out_cols]
 
-
-
-#==============================================================================
-
 def calc_ttd(cfs):
-    ''' Calculate time to double investment based on the MIRR. This is used for
-    the commercial and industrial sectors.
+    """
+    Calculate time to double investment based on the MIRR. 
     
-    IN: cfs - numpy array - project cash flows ($/yr)
+    This is used for the commercial and industrial sectors.
+    
+    Parameters
+    ----------
+    cfs : numpy.ndarray
+        Project cash flows ($/yr).
 
-    OUT: ttd - numpy array - Time to double investment (years) 
-    
-    '''
+    Returns
+    -------
+    ttd : numpy.ndarray
+        Time to double investment (years).
+    """
     irrs = virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5)
     # suppress errors due to irrs of nan
     with np.errstate(invalid = 'ignore'):
@@ -120,7 +141,6 @@ def calc_ttd(cfs):
     
     return ttd.round(decimals = 1) # must be rounded to nearest 0.1 to join with max_market_share
 
-
 #%%
 def cashflow_constructor(bill_savings, 
                          pv_size, pv_price, pv_om,
@@ -133,44 +153,153 @@ def cashflow_constructor(bill_savings,
                          analysis_years, inflation, 
                          down_payment_fraction, loan_rate, loan_term, 
                          cash_incentives=np.array([0]), ibi=np.array([0]), cbi=np.array([0]), pbi=np.array([[0]])):
-    '''
-    Accepts financial assumptions and returns the cash flows for the projects.
-    Vectorized.
+    """
+    Calculate the system cash flows based on the capex, opex, bill savings, incentives, tax implications, and other factors
     
-    Inputs:
-    -bill_savings is a cash flow of the annual bill savings over the lifetime
-     of the system, including changes to the price or structure of electricity, 
-     in present-year dollars (i.e., excluding inflation).
-     Need to construct this beforehand, to either simulate degradation or make 
-     assumptions about degradation.
-    -ibi is up front investment based incentive
-    -cbi is up front capacity based incentive
-    -batt_chg_frac is the fraction of the battery's energy that it gets from
-     a co-hosted PV system. Used for ITC calculation.
+    Parameters
+    ----------
+    bill_savings : "numpy.ndarray"
+        Annual bill savings ($/yr) from system adoption from 1st year through system lifetime
+    pv_size : "numpy.float64"
+        system capacity selected by agent (kW)
+    pv_price : "float"
+        system capex ($/kW)
+    pv_om : "float"
+        system operation and maintanence cost ($/kW)
+    batt_cap : "numpy.float64"
+        energy capacity of battery selected (kWh)
+    batt_power : "numpy.float64"
+        demand capacity of battery selected (kW)
+    batt_cost_per_kw : "float"
+        capex of battery per kW installed ($/kW)
+    batt_cost_per_kwh : "float"
+        capex of battery per kWh installed ($/kWh)
+    batt_om_per_kw : "float"
+        opex of battery per kW installed ($/kW-yr)
+    batt_om_per_kwh : "float"
+        opex of battery per kW installed ($/kWh-yr)
+    batt_chg_frac : "int"
+        fraction of the battery's energy that it gets from a co-hosted PV system. Used for ITC calculation.
+    sector : "str"
+        agent sector
+    itc : "float"
+        fraction of capex offset by federal investment tax credit
+    deprec_sched : "list"
+        fraction of capex eligible for tax-based depreciation
+    fed_tax_rate : "float"
+        average tax rate as fraction from federal taxes
+    state_tax_rate : "int"
+        average tax rate as fraction from state taxes
+    real_d : "float"
+        annua discount rate in real terms
+    analysis_years : "int"
+        number of years to use in economic analysis
+    inflation : "float"
+        annual average inflation rate as fraction e.g. 0.025
+    down_payment_fraction : "int"
+        fraction of capex used as system down payment
+    loan_rate_real : "float"
+        real interest rate for debt payments
+    loan_term : "int"
+        number of years for loan term
+    cash_incentives : "numpy.ndarray"
+        array describing eligible cash-based incentives e.g. $
+    ibi : "numpy.ndarray"
+        array describing eligible investment-based incentives e.g. 0.2
+    cbi : "numpy.ndarray"
+        array describing eligible one-time capacity-based incentives e.g. $/kW
+    pbi : "numpy.ndarray"
+        array describing eligible ongoing performance-based incentives e.g $/kWh-yr
     
-    Things that would be nice to add:
-    -Sales tax basis and rate
-    -note that sales tax goes into depreciable basis
-    -Propery taxes (res can deduct from income taxes, I think)
-    -insurance
-    -add pre-tax cash flow
-    -add residential mortgage option
-    -add carbon tax revenue
-
-    To Do:
-    -More exhaustive checking. I have confirmed basic formulations against SAM, but there are many permutations that haven't been checked.
-    -make incentives reduce depreciable basis
-    -add a flag for high incentive levels
-    -battery price schedule, for replacements
-    -improve inverter replacement
-    -improve battery replacement
-    -add inflation adjustment for replacement prices
-    -improve deprec schedule handling
-    -Make financing unique to each agent
-    -Make battery replacements depreciation an input, with default of 7 year MACRS
-    -Have a better way to deal with capacity vs effective capacity and battery costs
-    -make it so it can accept different loan terms
-    '''
+    Returns
+    -------
+    cf : 'dtype
+        Annual cash flows of project investment ($/yr)
+    cf_discounted : 'dtype'
+        Annual discounted cash flows of project investment ($/yr)
+    npv : 'dtype'
+        Net present value ($) of project investment using WACC
+    bill_savings : 'dtype'
+        Nominal cash flow of the annual bill savings over the lifetime of the system
+    after_tax_bill_savings : 'dtype'
+        Effective after-tax bill savings (electricity costs are tax-deductible for commercial entities)
+    pv_cost : 'dtype'
+        Capex of system in ($)
+    batt_cost : 'dtype'
+        Capex of battery in ($)
+    installed_cost : 'dtype'
+        Combined capex of system + battery
+    up_front_cost : 'dtype
+        Capex in 0th year as down payment
+    batt_om_cf : 'dtype'
+        Annual cashflows of battery opex
+    operating_expenses : 'dtype'
+        Combined annual opex of system + battery ($/yr) 
+    pv_itc_value : 'dtype'
+        Absolute value of investment tax credit for system ($)
+    batt_itc_value : 'dtype'
+        Absolute value of investment tax credit for battery ($)
+    itc_value : 'dtype'
+        Absolute value of investment tax credit for combined system + battery ($)
+    deprec_basis : 'dtype'
+        Absolute value of depreciable basis of system ($)
+    deprec_deductions : 'dtype'
+        Annual amount of depreciable capital in given year ($) 
+    initial_debt : 'dtype'
+        Amount of debt for loan ($)
+    annual_principal_and_interest_payment : 'dtype'
+        Annual amount of debt service payment, principal + interest ($)
+    debt_balance : 'dtype'
+        Annual amount of debt remaining in given year ($)
+    interest_payments : 'dtype'
+        Annual amount of interest payment in given year ($)
+    principal_and_interest_payments : 'dtype'
+        Array of annual principal and interest payments ($)
+    total_taxable_income : 'dtype'
+        Amount of stateincome from incentives eligible for taxes
+    state_deductions : 'dtype'
+        Reduction to state taxable income from interest, operating expenses, or bill savings depending on sector
+    total_taxable_state_income_less_deductions : 'dtype'
+        Total taxable state income less any applicable deductions
+    state_income_taxes : 'dtype'
+        Amount of state income tax i.e. net taxable income by tax rate
+    fed_deductions : 'dtype'
+        Reduction to federal taxable income from interest, operating expenses, or bill savings depending on sector
+    total_taxable_fed_income_less_deductions : 'dtype'
+        Total taxable federal income less any applicable deductions
+    fed_income_taxes : 'dtype'
+        Amount of federal income tax i.e. net taxable income by tax rate
+    interest_payments_tax_savings : 'dtype'
+        Amount of tax savings from deductions of interest payments
+    operating_expenses_tax_savings : 'dtype'
+        Amount of tax savings from deductions of operating expenses
+    deprec_deductions_tax_savings : 'dtype'
+        Amount of tax savings from deductions of capital depreciation
+    elec_OM_deduction_decrease_tax_liability : 'dtype'
+        Amount of tax savings from deductions of electricity costs as deductible business expense
+    
+    Todo
+    ----
+    1)  Sales tax basis and rate
+    2)  note that sales tax goes into depreciable basis
+    3)  Propery taxes (res can deduct from income taxes, I think)
+    4)  insurance
+    5)  add pre-tax cash flow
+    6)  add residential mortgage option
+    7)  add carbon tax revenue
+    8)  More exhaustive checking. I have confirmed basic formulations against SAM, but there are many permutations that haven't been checked.
+    9)  make incentives reduce depreciable basis
+    10) add a flag for high incentive levels
+    11) battery price schedule, for replacements
+    12) improve inverter replacement
+    13) improve battery replacement
+    14) add inflation adjustment for replacement prices
+    15) improve deprec schedule handling
+    16) Make financing unique to each agent
+    17) Make battery replacements depreciation an input, with default of 7 year MACRS
+    18) Have a better way to deal with capacity vs effective capacity and battery costs
+    19) Make it so it can accept different loan terms
+    """
 
     #################### Massage inputs ########################################
     # If given just a single value for an agent-specific variable, repeat that
@@ -381,19 +510,24 @@ def cashflow_constructor(bill_savings,
 #==============================================================================
      
 def calc_payback_vectorized(cfs, tech_lifetime):
-    '''payback calculator
+    """
+    Payback calculator.
+
     Can be either simple payback or discounted payback, depending on whether
-     the input cash flow is discounted.    
+    the input cash flow is discounted.    
     
-    Author: Ben Sigrin    
+    Parameters
+    ----------
+    cfs : numpy.ndarray
+        Project cash flows ($/yr).
+    tech_lifetime : int
+        Lifetime of technology used for project.
     
-    Inputs:
-    -cfs - numpy array - project cash flows ($/yr)
-    
-    Outputs: 
-    pp - numpy array - interpolated payback period (years)
-    
-    '''
+    Returns
+    -------
+    pp : numpy.ndarray
+        Interpolated payback period (years)
+    """
     
     years = np.array([np.arange(0, tech_lifetime)] * cfs.shape[0])
     
@@ -420,26 +554,38 @@ def calc_payback_vectorized(cfs, tech_lifetime):
     
 #%%
 def virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5):
-    ''' Vectorized IRR calculator. First calculate a 3D array of the discounted
-    cash flows along cash flow series, time period, and discount rate. Sum over time to 
+    """
+    Vectorized IRR calculator. 
+    
+    First calculate a 3D array of the discounted cash flows along cash flow series, time period, and discount rate. Sum over time to 
     collapse to a 2D array which gives the NPV along a range of discount rates 
     for each cash flow series. Next, find crossover where NPV is zero--corresponds
-    to the lowest real IRR value. For performance, negative IRRs are not calculated
-    -- returns "-1", and values are only calculated to an acceptable precision.
+    to the lowest real IRR value. 
     
-    IN:
-        cfs - numpy 2d array - rows are cash flow series, cols are time periods
-        precision - level of accuracy for the inner IRR band eg 0.005%
-        rmin - lower bound of the inner IRR band eg 0%
-        rmax1 - upper bound of the inner IRR band eg 30%
-        rmax2 - upper bound of the outer IRR band. eg 50% Values in the outer 
-                band are calculated to 1% precision, IRRs outside the upper band 
-                return the rmax2 value
-    OUT:
-        r - numpy column array of IRRs for cash flow series
-        
-    M Gleason, B Sigrin - NREL 2014
-    '''
+    Parameters
+    ----------
+    cfs : numpy.ndarray
+        Rows are cash flow series, cols are time periods
+    precision : float
+        Level of accuracy for the inner IRR band, default value 0.005%
+    rmin : float
+        Lower bound of the inner IRR band default value 0%
+    rmax1 : float
+        Upper bound of the inner IRR band default value 30%
+    rmax2 : float
+        upper bound of the outer IRR band. e.g. 50% Values in the outer 
+        band are calculated to 1% precision, IRRs outside the upper band 
+        return the rmax2 value.
+    
+    Returns
+    -------
+    numpy.ndarray
+        IRRs for cash flow series
+
+    Notes
+    -----
+    For performance, negative IRRs are not calculated, returns "-1" and values are only calculated to an acceptable precision.
+    """
     
     if cfs.ndim == 1: 
         cfs = cfs.reshape(1,len(cfs))

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Edited Monday Nov 5, 218
-@author: tkwasnik
+Module to intialize agents class along with methods to apply functions to the dataframe on row or frame. 
 """
 
 import concurrent.futures as cf
@@ -17,22 +16,35 @@ class Agents(object):
     def __init__(self, agents_df):
         """
         Initialize Agents Class
+        
         Parameters
         ----------
-        agents_df : 'pd.df'
+        agents_df : pandas.DataFrame
             Pandas Dataframe containing agents and their attributes.
-            Index = agent ids, columns = agent attributes
+            The index should be the agent ids, and columns should be individual agent attributes.
 
         Returns
         -------
-        agent_df : 'pd.df'
+        agent_df : pandas.DataFrame
             Agents DataFrame
-        agent_ids : 'ndarray'
+        agent_ids : numpy.ndarray
             Array of agent ids
-        agent_attrs : 'ndarray'
+        agent_attrs : numpy.ndarray
             Array of agent attributes
-        attrs_types : 'pd.Series'
+        attrs_types : pandas.Series
             Array of dtypes for each attribute
+
+        Attributes
+        ----------
+        df : pandas.DataFrame
+            The agents_df object
+        ids : pandas.Index
+            The index of the agents_df object
+        attrs : pandas.DataFrame.columns
+            the columns of the agents_df object
+        types : data-types
+            the datatypes of the agents_df columns
+
         """
         self.df = agents_df
         self.ids = agents_df.index
@@ -77,16 +89,17 @@ class Agents(object):
     def __add__(self, df):
         """
         Add agents to agents
+
         Parameters
         ----------
-        df : 'pd.df'
+        df : pandas.DataFrame
             Pandas Dataframe containing agents to be added
 
         Returns
         -------
-        agent_df : 'pd.df'
+        agent_df : pandas.DataFrame
             Updated Agents DataFrame
-        agent_ids : 'ndarray'
+        agent_ids : numpy.ndarray
             Updated array of agent ids
         """
         # df_attrs = df.columns
@@ -100,18 +113,19 @@ class Agents(object):
     def add_attrs(self, attr_df, on=None):
         """
         Add attributes to agents
+
         Parameters
         ----------
-        df : 'pd.df'
+        df : pandas.DataFrame
             Pandas Dataframe containing new attributes for agents
-        on : 'object'
-            Pandas on kwarg, if None join on index
+        on : str or None
+            Pandas `on` kwarg, if None join on index
 
         Returns
         -------
-        agent_df : 'pd.df'
+        agent_df : pandas.DataFrame
             Updated Agents DataFrame
-        attrs_types : 'pd.Series'
+        attrs_types : pandas.Series
             Updated attribute types
         """
         if on is None:
@@ -125,15 +139,17 @@ class Agents(object):
     def on_row(self, func, cores=None, in_place=True, **kwargs):
         """
         Apply function to agents on an agent by agent basis. Function should
-        return a df to be merged onto the original df.
+        return a df to be merged onto the original df. Can utilize multiple cores when
+        a function is embarrassingly parallel. Number of cores is defined by :py:const:`config.LOCAL_CORES`.
+
         Parameters
         ----------
-        func : 'function'
+        func : function
             Function to be applied to each agent
             Must take a pd.Series as the arguement
-        cores : 'int'
+        cores : int
             Number of cores to use for computation
-        in_place : 'bool'
+        in_place : bool
             If true, set self.df = results of compute
             else return results of compute
         **kwargs
@@ -141,7 +157,7 @@ class Agents(object):
 
         Returns
         -------
-        results_df : 'pd.df'
+        results_df : pandas.DataFrame
             Dataframe of agents after application of func
         """
 #        self.df.reset_index(inplace=True)
@@ -177,22 +193,23 @@ class Agents(object):
     def on_frame(self, func, func_args=None, in_place=True, **kwargs):
         """
         Apply function to agents using agent.df
+
         Parameters
         ----------
-        func : 'function'
+        func : function
             Function to be applied to agent.df
-            Must take a pd.df as the arguement
-        func_args : 'object'
+            Must take a `pandas.DataFrame` as the arguement
+        func_args : list of str or None
             args for func
-        in_place : 'bool'
-            If true, set self.df = results of compute
+        in_place : bool
+            If true, set `self.df` to the results of compute,
             else return results of compute
         **kwargs
             Any kwargs for func
 
         Returns
         -------
-        results_df : 'pd.df'
+        results_df : pandas.DataFrame
             Dataframe of agents after application of func
         """
         if func_args is None:
@@ -211,14 +228,11 @@ class Agents(object):
     def to_pickle(self, file_name):
         """
         Save agents to pickle file
+
         Parameters
         ----------
-        file_name : 'sting'
+        file_name : str
             File name for agents pickle file
-
-        Returns
-        -------
-
         """
         if not file_name.endswith('.pkl'):
             file_name = file_name + '.pkl'
@@ -233,23 +247,24 @@ class Solar_Agents(Agents):
     def __init__(self, agents_df, scenario_df):
         """
         Initialize Solar Agents Class
+
         Parameters
         ----------
-        agents_df : 'pd.df'
+        agents_df : pandas.DataFrame
             Pandas Dataframe containing agents and their attributes.
-            Index = agent ids, columns = agent attributes
-        scenario_df : 'pd.df'
+            The index should be the agent ids, and columns should be individual agent attributes.
+        scenario_df : pandas.DataFrame
             Pandas Dataframe containing scenario/solar specific attributes
 
         Returns
         -------
-        agent_df : 'pd.df'
+        agent_df : pandas.DataFrame
             Agents DataFrame
-        agent_ids : 'ndarray'
+        agent_ids : numpy.ndarray
             Array of agent ids
-        agent_attrs : 'ndarray'
+        agent_attrs : numpy.ndarray
             Array of agent attributes
-        attrs_types : 'pd.Series'
+        attrs_types : pd.Series
             Array of dtypes for each attribute
         """
         Agents.__init__(self, agents_df)

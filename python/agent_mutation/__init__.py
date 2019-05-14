@@ -44,5 +44,8 @@ def init_solar_agents(scenario_settings):
                                'load_per_customer_in_bin_kwh':'load_per_customer_in_bin_kwh_initial',
                                'load_in_bin_kwh':'load_in_bin_kwh_initial',
                                'consumption_hourly':'consumption_hourly_initial'}, inplace=True)
+    
+    #only include agents matching the sector provided in the excel input
+    agents_df = agents_df.loc[agents_df['sector_abbr'].isin(scenario_settings.sectors)]
 
     return agents_df

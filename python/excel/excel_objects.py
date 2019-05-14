@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jul  9 12:09:03 2015
-
-@author: mgleason
 """
 import numpy as np
 import pandas as pd

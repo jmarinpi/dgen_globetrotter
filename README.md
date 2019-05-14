@@ -1,7 +1,7 @@
-diffusion
-=========
 
-Repository for the Distributed Wind Diffusion Model.
+dGen - Mexico
+=========
+Repository for the Distributed Generation Market Demand (dGen) - Mexico Model.
 
 
 To Run the Model on Mac or Linux
@@ -13,7 +13,7 @@ From a command line window, navigate to the diffusion/python folder, then:
 	2. Set up a new environment
 		$ virtualenv env
 	3. Activate the environment
-		$ source env/bin/activate
+		$ source env/Scripts/activate
 	3. Load the required Python packages:
 		$ pip install -r requirements.txt
 

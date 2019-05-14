@@ -1,10 +1,11 @@
-"""
-Distributed Generation Market Demand Model (dGen)
-National Renewable Energy Lab
 # -*- coding: utf-8 -*-
+"""
+This is the main module of the Distributed Generation Market Demand Model
+created by the National Renewable Energy Lab (NREL). 
 
-Edited Monday Nov 5, 218
-@author: tkwasnik
+Running this module requires a properly installed environment with applicable scenario files. 
+Sample scenario files can be found in `reference_data/example_data` and include an .xlsm file as well 
+as a folder of .csv files.
 """
 
 # before doing anything, check model dependencies
@@ -35,9 +36,12 @@ import pickle
 pd.set_option('mode.chained_assignment', None)
 #==============================================================================
 
-
 def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
+    """
+    Compute the economic adoption of distributed generation resources on an agent-level basis.
 
+    Model output is saved to a `/runs` file within the dGen directory.
+    """
     try:
         # =====================================================================
         # SET UP THE MODEL TO RUN
@@ -223,4 +227,5 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             utilfunc.code_profiler(model_settings.out_dir)
 
 if __name__ == '__main__':
+    """Constructor for dgen_model.main()"""
     main()

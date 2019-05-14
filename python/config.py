@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Edited Monday Nov 5, 218
-@author: tkwasnik
+This module contains variables that can be changed, but are not exposed to non-expert users.
 """
 import os
 import multiprocessing
 
 #==============================================================================
-# these are all variables that we can change, but don't want to expose to non-expert users
+
 #==============================================================================
 
 SECTORS = ['res','com','ind']
@@ -28,4 +27,9 @@ START_YEAR = 2016
 #==============================================================================
 #   local cores
 #==============================================================================
-LOCAL_CORES = multiprocessing.cpu_count()
+LOCAL_CORES = multiprocessing.cpu_count() / 2
+
+#==============================================================================
+#   silence some output
+#==============================================================================
+VERBOSE = False

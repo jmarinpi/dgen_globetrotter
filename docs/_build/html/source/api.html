@@ -1,0 +1,2154 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>dGen Code Base &mdash; dGen Mexico 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="python.agent_mutation package" href="python.agent_mutation.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> dGen Mexico
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">dGen Code Base</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="python.agent_mutation.html">python.agent_mutation package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="python.excel.html">python.excel package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python.agents">python.agents module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python.config">python.config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python.decorators">python.decorators module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python.dgen_model">python.dgen_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python.diffusion_functions">python.diffusion_functions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python.dispatch_functions">python.dispatch_functions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python.financial_functions">python.financial_functions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python.settings">python.settings module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python.storage_functions">python.storage_functions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python.tariff_functions">python.tariff_functions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python.utility_functions">python.utility_functions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="input_data.html">Input Data</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">dGen Mexico</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>dGen Code Base</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/source/api.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="dgen-code-base">
+<h1>dGen Code Base<a class="headerlink" href="#dgen-code-base" title="Permalink to this headline">¶</a></h1>
+<p>The dGen source code is located within the <code class="file docutils literal notranslate"><span class="pre">python/</span></code> directory. This page contains information on the classes, functions, attributes, and methods used by dGen. This page is useful for debugging errors, or examining how different elements interact incase a special run is desired.</p>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="python.agent_mutation.html">python.agent_mutation package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="python.agent_mutation.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python.agent_mutation.html#module-python.agent_mutation.elec">python.agent_mutation.elec module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python.agent_mutation.html#module-python.agent_mutation">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="python.excel.html">python.excel package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="python.excel.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python.excel.html#module-python.excel.excel_objects">python.excel.excel_objects module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python.excel.html#module-python.excel">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-python.agents">
+<span id="python-agents-module"></span><h2>python.agents module<a class="headerlink" href="#module-python.agents" title="Permalink to this headline">¶</a></h2>
+<p>Module to intialize agents class along with methods to apply functions to the dataframe on row or frame.</p>
+<dl class="class">
+<dt id="python.agents.Agents">
+<em class="property">class </em><code class="descclassname">python.agents.</code><code class="descname">Agents</code><span class="sig-paren">(</span><em>agents_df</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agents.html#Agents"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agents.Agents" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Agents class instance</p>
+<dl class="method">
+<dt id="python.agents.Agents.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>agents_df</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agents.html#Agents.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agents.Agents.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize Agents Class</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>agents_df</strong> (<em>pandas.DataFrame</em>) – Pandas Dataframe containing agents and their attributes.
+The index should be the agent ids, and columns should be individual agent attributes.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li><strong>agent_df</strong> (<em>pandas.DataFrame</em>) – Agents DataFrame</li>
+<li><strong>agent_ids</strong> (<em>numpy.ndarray</em>) – Array of agent ids</li>
+<li><strong>agent_attrs</strong> (<em>numpy.ndarray</em>) – Array of agent attributes</li>
+<li><strong>attrs_types</strong> (<em>pandas.Series</em>) – Array of dtypes for each attribute</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="python.agents.Agents.df">
+<code class="descname">df</code><a class="headerlink" href="#python.agents.Agents.df" title="Permalink to this definition">¶</a></dt>
+<dd><p>The agents_df object</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">pandas.DataFrame</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.agents.Agents.ids">
+<code class="descname">ids</code><a class="headerlink" href="#python.agents.Agents.ids" title="Permalink to this definition">¶</a></dt>
+<dd><p>The index of the agents_df object</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">pandas.Index</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.agents.Agents.attrs">
+<code class="descname">attrs</code><a class="headerlink" href="#python.agents.Agents.attrs" title="Permalink to this definition">¶</a></dt>
+<dd><p>the columns of the agents_df object</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">pandas.DataFrame.columns</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.agents.Agents.types">
+<code class="descname">types</code><a class="headerlink" href="#python.agents.Agents.types" title="Permalink to this definition">¶</a></dt>
+<dd><p>the datatypes of the agents_df columns</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">data-types</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="method">
+<dt id="python.agents.Agents.add_attrs">
+<code class="descname">add_attrs</code><span class="sig-paren">(</span><em>attr_df</em>, <em>on=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agents.html#Agents.add_attrs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agents.Agents.add_attrs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add attributes to agents</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>df</strong> (<em>pandas.DataFrame</em>) – Pandas Dataframe containing new attributes for agents</li>
+<li><strong>on</strong> (<em>str</em><em> or </em><em>None</em>) – Pandas <cite>on</cite> kwarg, if None join on index</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>agent_df</strong> (<em>pandas.DataFrame</em>) – Updated Agents DataFrame</li>
+<li><strong>attrs_types</strong> (<em>pandas.Series</em>) – Updated attribute types</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.agents.Agents.check_types">
+<code class="descname">check_types</code><a class="headerlink" href="#python.agents.Agents.check_types" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check to see if attribute types have changed</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.agents.Agents.on_frame">
+<code class="descname">on_frame</code><span class="sig-paren">(</span><em>func</em>, <em>func_args=None</em>, <em>in_place=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agents.html#Agents.on_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agents.Agents.on_frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply function to agents using agent.df</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>func</strong> (<em>function</em>) – Function to be applied to agent.df
+Must take a <cite>pandas.DataFrame</cite> as the arguement</li>
+<li><strong>func_args</strong> (<em>list of str</em><em> or </em><em>None</em>) – args for func</li>
+<li><strong>in_place</strong> (<em>bool</em>) – If true, set <cite>self.df</cite> to the results of compute,
+else return results of compute</li>
+<li><strong>**kwargs</strong> – Any kwargs for func</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>results_df</strong> – Dataframe of agents after application of func</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">pandas.DataFrame</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.agents.Agents.on_row">
+<code class="descname">on_row</code><span class="sig-paren">(</span><em>func</em>, <em>cores=None</em>, <em>in_place=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agents.html#Agents.on_row"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agents.Agents.on_row" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply function to agents on an agent by agent basis. Function should
+return a df to be merged onto the original df. Can utilize multiple cores when
+a function is embarrassingly parallel. Number of cores is defined by <code class="xref py py-const docutils literal notranslate"><span class="pre">config.LOCAL_CORES</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>func</strong> (<em>function</em>) – Function to be applied to each agent
+Must take a pd.Series as the arguement</li>
+<li><strong>cores</strong> (<em>int</em>) – Number of cores to use for computation</li>
+<li><strong>in_place</strong> (<em>bool</em>) – If true, set self.df = results of compute
+else return results of compute</li>
+<li><strong>**kwargs</strong> – Any kwargs for func</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>results_df</strong> – Dataframe of agents after application of func</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">pandas.DataFrame</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.agents.Agents.to_pickle">
+<code class="descname">to_pickle</code><span class="sig-paren">(</span><em>file_name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agents.html#Agents.to_pickle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agents.Agents.to_pickle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save agents to pickle file</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>file_name</strong> (<em>str</em>) – File name for agents pickle file</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.agents.Agents.update_attrs">
+<code class="descname">update_attrs</code><a class="headerlink" href="#python.agents.Agents.update_attrs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update agent class attributes</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="python.agents.Solar_Agents">
+<em class="property">class </em><code class="descclassname">python.agents.</code><code class="descname">Solar_Agents</code><span class="sig-paren">(</span><em>agents_df</em>, <em>scenario_df</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agents.html#Solar_Agents"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agents.Solar_Agents" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#python.agents.Agents" title="python.agents.Agents"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.agents.Agents</span></code></a></p>
+<p>Solar Agents class instance</p>
+<dl class="method">
+<dt id="python.agents.Solar_Agents.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>agents_df</em>, <em>scenario_df</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agents.html#Solar_Agents.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agents.Solar_Agents.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize Solar Agents Class</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>agents_df</strong> (<em>pandas.DataFrame</em>) – Pandas Dataframe containing agents and their attributes.
+The index should be the agent ids, and columns should be individual agent attributes.</li>
+<li><strong>scenario_df</strong> (<em>pandas.DataFrame</em>) – Pandas Dataframe containing scenario/solar specific attributes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>agent_df</strong> (<em>pandas.DataFrame</em>) – Agents DataFrame</li>
+<li><strong>agent_ids</strong> (<em>numpy.ndarray</em>) – Array of agent ids</li>
+<li><strong>agent_attrs</strong> (<em>numpy.ndarray</em>) – Array of agent attributes</li>
+<li><strong>attrs_types</strong> (<em>pd.Series</em>) – Array of dtypes for each attribute</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-python.config">
+<span id="python-config-module"></span><h2>python.config module<a class="headerlink" href="#module-python.config" title="Permalink to this headline">¶</a></h2>
+<p>This module contains variables that can be changed, but are not exposed to non-expert users.</p>
+</div>
+<div class="section" id="module-python.decorators">
+<span id="python-decorators-module"></span><h2>python.decorators module<a class="headerlink" href="#module-python.decorators" title="Permalink to this headline">¶</a></h2>
+<p>Module of accessory decorators, mainly for logging purposes.</p>
+<dl class="class">
+<dt id="python.decorators.fn_timer">
+<em class="property">class </em><code class="descclassname">python.decorators.</code><code class="descname">fn_timer</code><span class="sig-paren">(</span><em>logger=None</em>, <em>verbose=True</em>, <em>tab_level=0</em>, <em>prefix=''</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/decorators.html#fn_timer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.decorators.fn_timer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Decorater class for profiling the run-time of functions.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-python.dgen_model">
+<span id="python-dgen-model-module"></span><h2>python.dgen_model module<a class="headerlink" href="#module-python.dgen_model" title="Permalink to this headline">¶</a></h2>
+<p>This is the main module of the Distributed Generation Market Demand Model
+created by the National Renewable Energy Lab (NREL).</p>
+<p>Running this module requires a properly installed environment with applicable scenario files.
+Sample scenario files can be found in <cite>reference_data/example_data</cite> and include an .xlsm file as well
+as a folder of .csv files.</p>
+<dl class="function">
+<dt id="python.dgen_model.main">
+<code class="descclassname">python.dgen_model.</code><code class="descname">main</code><span class="sig-paren">(</span><em>mode=None</em>, <em>resume_year=None</em>, <em>endyear=None</em>, <em>ReEDS_inputs=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/dgen_model.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.dgen_model.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the economic adoption of distributed generation resources on an agent-level basis.</p>
+<p>Model output is saved to a <cite>/runs</cite> file within the dGen directory.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-python.diffusion_functions">
+<span id="python-diffusion-functions-module"></span><h2>python.diffusion_functions module<a class="headerlink" href="#module-python.diffusion_functions" title="Permalink to this headline">¶</a></h2>
+<p>Module contains functions to calculate the bass diffusion of distributed generation adoption.</p>
+<dl class="docutils">
+<dt>On an agent-level basis <code class="xref py py-mod docutils literal notranslate"><span class="pre">diffusion_functions</span></code>:</dt>
+<dd><ol class="first last arabic simple">
+<li>Determines maximum market size as a function of payback time</li>
+<li>Parameterizes the Bass diffusion curve with diffusion rates (p, q) set by payback time</li>
+<li>Determines the current stage (equivaluent time) of diffusion based on existing market and current economics</li>
+<li>Calculates the new market share by stepping forward on diffusion curve.</li>
+</ol>
+</dd>
+</dl>
+<dl class="function">
+<dt id="python.diffusion_functions.bass_diffusion">
+<code class="descclassname">python.diffusion_functions.</code><code class="descname">bass_diffusion</code><span class="sig-paren">(</span><em>df</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/diffusion_functions.html#bass_diffusion"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.diffusion_functions.bass_diffusion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the fraction of population that diffuse into the max_market_share.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>df</strong> (<em>pandas.DataFrame</em>) – <dl class="attribute">
+<dt id="python.diffusion_functions.df.p">
+<code class="descclassname">df.</code><code class="descname">p</code><a class="headerlink" href="#python.diffusion_functions.df.p" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bass diffusion parameter defining the coeffieicent of innovation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.diffusion_functions.df.q">
+<code class="descclassname">df.</code><code class="descname">q</code><a class="headerlink" href="#python.diffusion_functions.df.q" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bass diffusion parameter definint the coefficient of imitation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.diffusion_functions.df.t">
+<code class="descclassname">df.</code><code class="descname">t</code><a class="headerlink" href="#python.diffusion_functions.df.t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of years since the diffusion model began.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Input dataframe with <cite>new_adopt_fraction</cite> column added. <cite>new_adopt_fraction</cite> represents the proportion of the overall population that will adopt the technology.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">DataFrame</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This is different than the fraction of population that will adopt, which is the max market share.</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.diffusion_functions.calc_diffusion_market_share">
+<code class="descclassname">python.diffusion_functions.</code><code class="descname">calc_diffusion_market_share</code><span class="sig-paren">(</span><em>df</em>, <em>is_first_year</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/diffusion_functions.html#calc_diffusion_market_share"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.diffusion_functions.calc_diffusion_market_share" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the fraction of overall population that have adopted the technology in the current period.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>df</strong> (<em>pandas.DataFrame</em>) – <dl class="attribute">
+<dt id="python.diffusion_functions.df.payback_period">
+<code class="descclassname">df.</code><code class="descname">payback_period</code><a class="headerlink" href="#python.diffusion_functions.df.payback_period" title="Permalink to this definition">¶</a></dt>
+<dd><p>Payback period in years.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.diffusion_functions.df.max_market_share">
+<code class="descclassname">df.</code><code class="descname">max_market_share</code><a class="headerlink" href="#python.diffusion_functions.df.max_market_share" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum market share as decimal percentage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.diffusion_functions.df.current_market_share">
+<code class="descclassname">df.</code><code class="descname">current_market_share</code><a class="headerlink" href="#python.diffusion_functions.df.current_market_share" title="Permalink to this definition">¶</a></dt>
+<dd><p>Current market share as decimal percentage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</li>
+<li><strong>is_first_year</strong> (<em>bool</em>) – If <cite>True</cite>, the new equivalent time (<cite>teq2</cite>) is equal to the original <cite>teq_yr1</cite> plus the increment defined in <cite>teq</cite>.
+Otherwise, <cite>teq2</cite> is equal to <cite>teq</cite> plus 2 years.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The fraction of overall population that have adopted the technology</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">numpy.ndarray</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ol class="last arabic simple">
+<li>This does not specify the actual new adoption fraction without knowing adoption in the previous period.</li>
+<li>The relative economic attractiveness controls the p, q value in the Bass diffusion model.</li>
+<li>The current assumption is that only payback and MBS are being used, that pp is bounded [0-30] and MBS is bounded [0-120].</li>
+</ol>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.diffusion_functions.calc_diffusion_solar">
+<code class="descclassname">python.diffusion_functions.</code><code class="descname">calc_diffusion_solar</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/diffusion_functions.html#calc_diffusion_solar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.diffusion_functions.calc_diffusion_solar" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the market share (ms) added in the solve year.</p>
+<p>Market share must be less than max market share (mms) except  when initial ms is greater than the calculated mms.
+For this circumstance, no diffusion allowed until mms &gt; ms. Also, do not allow ms to decrease if economics deterioriate.
+Using the calculated market share, relevant quantities are updated.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>df</strong> (<em>pandas.DataFrame</em>) – Input dataframe.</li>
+<li><strong>is_first_year</strong> (<em>bool</em>) – Passed to <code class="xref py py-func docutils literal notranslate"><span class="pre">diffusion_functions.calc_diffusion_market_share()</span></code> to determine the increment of <cite>teq</cite></li>
+<li><strong>bass_params</strong> (<em>pandas.DataFrame</em>) – DataFrame generally derived from <code class="xref py py-func docutils literal notranslate"><span class="pre">settings.get_bass_params()</span></code>, includes the following attributes: <cite>control_reg_id</cite>, <cite>country_abbr</cite>, <cite>sector_abbr</cite>, <cite>state_id</cite>, <cite>p</cite>, <cite>q</cite>, <cite>teq_yr1</cite>, <cite>tech</cite>.</li>
+<li><strong>override_p_values</strong> (<em>float</em><em> , </em><em>optional</em>) – Value to override bass diffusion <cite>p</cite> coefficient of innovation with.</li>
+<li><strong>overide_q_values</strong> (<em>float</em><em>, </em><em>optional</em>) – Value to override bass diffusion <cite>q</cite> coefficient of immitation with.</li>
+<li><strong>override_teq_yr1_value</strong> (<em>float</em><em>, </em><em>optional</em>) – Value to override bass diffusion <cite>teq_yr1</cite> value representing the number of years since diffusion began for the first year of observation.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dataframe contains <cite>market_last_year</cite> column to inform diffusion in next year.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">pandas.DataFrame</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.diffusion_functions.calc_equiv_time">
+<code class="descclassname">python.diffusion_functions.</code><code class="descname">calc_equiv_time</code><span class="sig-paren">(</span><em>df</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/diffusion_functions.html#calc_equiv_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.diffusion_functions.calc_equiv_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the “equivalent time” on the diffusion curve. This defines the gradient of adoption.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>df</strong> (<em>pandas.DataFrame</em>) – <dl class="attribute">
+<dt id="python.diffusion_functions.df.msly">
+<code class="descclassname">df.</code><code class="descname">msly</code><a class="headerlink" href="#python.diffusion_functions.df.msly" title="Permalink to this definition">¶</a></dt>
+<dd><p>Market share last year [at end of the previous solve] as decimal</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.diffusion_functions.df.mms">
+<code class="descclassname">df.</code><code class="descname">mms</code><a class="headerlink" href="#python.diffusion_functions.df.mms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum market share as a decimal percentage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<code class="descclassname">df.</code><code class="descname">p</code></dt>
+<dd><p>Bass diffusion parameter defining the coefficient of innovation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<code class="descclassname">df.</code><code class="descname">q</code></dt>
+<dd><p>Bass diffusion paramter defining the coefficient of imitation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Input dataframe with <cite>teq</cite> column added. <cite>teq</cite> is the equivalent number of years after diffusion started on the diffusion curve.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">pandas.DataFrame</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.diffusion_functions.set_bass_param">
+<code class="descclassname">python.diffusion_functions.</code><code class="descname">set_bass_param</code><span class="sig-paren">(</span><em>df</em>, <em>bass_params</em>, <em>override_p_value</em>, <em>override_q_value</em>, <em>override_teq_yr1_value</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/diffusion_functions.html#set_bass_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.diffusion_functions.set_bass_param" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the <cite>p</cite> &amp; <cite>q</cite> parameters which define the Bass diffusion curve.</p>
+<p><cite>p</cite> is the coefficient of innovation, external influence or advertising effect.
+<cite>q</cite> is the coefficient of imitation, internal influence or word-of-mouth effect.</p>
+<p><cite>p</cite> &amp; <cite>q</cite> values defined by <code class="xref py py-func docutils literal notranslate"><span class="pre">diffusion_functions.bass_diffusion()</span></code> can be overrode.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>df</strong> (<em>pandas.DataFrame</em>) – <dl class="attribute">
+<dt id="python.diffusion_functions.df.scaled_metric_value">
+<code class="descclassname">df.</code><code class="descname">scaled_metric_value</code><a class="headerlink" href="#python.diffusion_functions.df.scaled_metric_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scaled value of economic attractiveness (range of 0 - 1)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Input dataframe with <cite>p</cite> and <cite>q</cite> columns addded.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">pandas.DataFrame</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-python.dispatch_functions">
+<span id="python-dispatch-functions-module"></span><h2>python.dispatch_functions module<a class="headerlink" href="#module-python.dispatch_functions" title="Permalink to this headline">¶</a></h2>
+<p>Currently battery storage functions are not utilizied.</p>
+<dl class="class">
+<dt id="python.dispatch_functions.Battery">
+<em class="property">class </em><code class="descclassname">python.dispatch_functions.</code><code class="descname">Battery</code><span class="sig-paren">(</span><em>nameplate_cap=0.0</em>, <em>nameplate_power=0.0</em>, <em>SOC_min=0.2</em>, <em>eta_charge=0.91</em>, <em>eta_discharge=0.91</em>, <em>cycles=0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/dispatch_functions.html#Battery"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.dispatch_functions.Battery" title="Permalink to this definition">¶</a></dt>
+<dd><div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<p class="last">Degradation functions were just rough estimations from a slide deck, and currently have a disjoint at transition.</p>
+</div>
+<dl class="method">
+<dt id="python.dispatch_functions.Battery.set_cap_and_power">
+<code class="descname">set_cap_and_power</code><span class="sig-paren">(</span><em>nameplate_cap</em>, <em>nameplate_power</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/dispatch_functions.html#Battery.set_cap_and_power"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.dispatch_functions.Battery.set_cap_and_power" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.dispatch_functions.Battery.set_cycle_deg">
+<code class="descname">set_cycle_deg</code><span class="sig-paren">(</span><em>cycles</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/dispatch_functions.html#Battery.set_cycle_deg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.dispatch_functions.Battery.set_cycle_deg" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="python.dispatch_functions.calc_estimator_params">
+<code class="descclassname">python.dispatch_functions.</code><code class="descname">calc_estimator_params</code><span class="sig-paren">(</span><em>load_and_pv_profile</em>, <em>tariff</em>, <em>export_tariff</em>, <em>eta_charge</em>, <em>eta_discharge</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/dispatch_functions.html#calc_estimator_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.dispatch_functions.calc_estimator_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create four 12-length vectors, weekend/weekday and
+cost/revenue. They are a summation of each day’s 12 hours of lowest/highest
+cost electricity.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>load_and_pv_profile</strong> (<em>numpy.ndarray</em>) – 8760 array of the agent’s load_profile - pv_profile</li>
+<li><strong>t</strong> (<a class="reference internal" href="#python.tariff_functions.Tariff" title="python.tariff_functions.Tariff"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.tariff_functions.Tariff</span></code></a>) – Tariff class object</li>
+<li><strong>export_tariff</strong> (<a class="reference internal" href="#python.tariff_functions.Export_Tariff" title="python.tariff_functions.Export_Tariff"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.tariff_functions.Export_Tariff</span></code></a>) – Export tariff class object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ol class="last arabic simple">
+<li>TOU windows are aligned with when the battery would be dispatching for demand peak shaving.</li>
+<li>The battery will be able to dispatch fully and recharge fully every 24 hour cycle.</li>
+</ol>
+</div>
+<div class="admonition-todo admonition" id="index-1">
+<p class="first admonition-title">Todo</p>
+<ol class="last arabic simple">
+<li>Bring back consideration of tiers.</li>
+<li>Consider coming up with a better method that captures exportation, CPP, etc
+Maybe? Or just confirm a simple estimation works with our dGen set,
+and use the accurate dispatch for any other analysis.</li>
+</ol>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.dispatch_functions.calc_min_possible_demands_vector">
+<code class="descclassname">python.dispatch_functions.</code><code class="descname">calc_min_possible_demands_vector</code><span class="sig-paren">(</span><em>res</em>, <em>load_and_pv_profile</em>, <em>pv_profile</em>, <em>d_periods_month</em>, <em>batt</em>, <em>t</em>, <em>month</em>, <em>restrict_charge_to_pv_gen</em>, <em>batt_start_level</em>, <em>estimate_demand_levels</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/dispatch_functions.html#calc_min_possible_demands_vector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.dispatch_functions.calc_min_possible_demands_vector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Currently battery storage functions are not utilizied.</p>
+<p>Function that determines the minimum possible demands that this battery can achieve for a particular month.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>t</strong> (<a class="reference internal" href="#python.tariff_functions.Tariff" title="python.tariff_functions.Tariff"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.tariff_functions.Tariff</span></code></a>) – Tariff class object</li>
+<li><strong>batt</strong> (<a class="reference internal" href="#python.dispatch_functions.Battery" title="python.dispatch_functions.Battery"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.dispatch_functions.Battery</span></code></a>) – Battery class object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-todo admonition" id="index-2">
+<p class="first admonition-title">Todo</p>
+<p class="last">Add a vector of forced discharges, for demand response representation</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.dispatch_functions.cartesian">
+<code class="descclassname">python.dispatch_functions.</code><code class="descname">cartesian</code><span class="sig-paren">(</span><em>arrays</em>, <em>out=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/dispatch_functions.html#cartesian"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.dispatch_functions.cartesian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a cartesian product of input arrays.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>arrays</strong> (<em>list of numpy.ndarray</em>) – 1-D arrays to form the cartesian product of.</li>
+<li><strong>out</strong> (<em>numpy.ndarray</em>) – Array to place the cartesian product in.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> – 2-D array of shape (M, len(arrays)) containing cartesian products
+formed of input arrays.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">numpy.ndarray</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cartesian</span><span class="p">(([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">]))</span>
+<span class="go">array([[1, 4, 6],</span>
+<span class="go">       [1, 4, 7],</span>
+<span class="go">       [1, 5, 6],</span>
+<span class="go">       [1, 5, 7],</span>
+<span class="go">       [2, 4, 6],</span>
+<span class="go">       [2, 4, 7],</span>
+<span class="go">       [2, 5, 6],</span>
+<span class="go">       [2, 5, 7],</span>
+<span class="go">       [3, 4, 6],</span>
+<span class="go">       [3, 4, 7],</span>
+<span class="go">       [3, 5, 6],</span>
+<span class="go">       [3, 5, 7]])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.dispatch_functions.determine_cheapest_possible_of_given_demand_levels">
+<code class="descclassname">python.dispatch_functions.</code><code class="descname">determine_cheapest_possible_of_given_demand_levels</code><span class="sig-paren">(</span><em>load_and_pv_profile</em>, <em>pv_profile</em>, <em>unique_periods</em>, <em>d_combinations</em>, <em>d_combo_n</em>, <em>Dn_month</em>, <em>d_periods_index</em>, <em>batt</em>, <em>restrict_charge_to_pv_gen</em>, <em>batt_start_level</em>, <em>tariff</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/dispatch_functions.html#determine_cheapest_possible_of_given_demand_levels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.dispatch_functions.determine_cheapest_possible_of_given_demand_levels" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="python.dispatch_functions.determine_optimal_dispatch">
+<code class="descclassname">python.dispatch_functions.</code><code class="descname">determine_optimal_dispatch</code><span class="sig-paren">(</span><em>load_profile</em>, <em>pv_profile</em>, <em>batt</em>, <em>t</em>, <em>export_tariff</em>, <em>d_inc_n=50</em>, <em>DP_inc=50</em>, <em>estimator_params=None</em>, <em>estimated=False</em>, <em>restrict_charge_to_pv_gen=False</em>, <em>estimate_demand_levels=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/dispatch_functions.html#determine_optimal_dispatch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.dispatch_functions.determine_optimal_dispatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function that determines the optimal dispatch for a battery, and determines the resulting first year bill with the system.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>load_profile</strong> (<em>numpy.ndarray</em>) – Original load profile prior to modification by PV or storage</li>
+<li><strong>pv_profile</strong> (<em>numpy.ndarray</em>) – PV profile of equal length to the <cite>load_profile</cite></li>
+<li><strong>t</strong> (<a class="reference internal" href="#python.tariff_functions.Tariff" title="python.tariff_functions.Tariff"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.tariff_functions.Tariff</span></code></a>) – Tariff class object</li>
+<li><strong>batt</strong> (<a class="reference internal" href="#python.dispatch_functions.Battery" title="python.dispatch_functions.Battery"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.dispatch_functions.Battery</span></code></a>) – Battery class object</li>
+<li><strong>export_tariff</strong> (<a class="reference internal" href="#python.tariff_functions.Export_Tariff" title="python.tariff_functions.Export_Tariff"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.tariff_functions.Export_Tariff</span></code></a>) – Export tariff class object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">In the battery level matrices, 0 index corresponds to an empty battery, and
+the highest index corresponds to a full battery</p>
+</div>
+<div class="admonition-todo admonition" id="index-3">
+<p class="first admonition-title">Todo</p>
+<ol class="last arabic simple">
+<li>Having cost-to-go equal cost of filling the battery at the end may not be
+working.</li>
+<li>Have warnings for classes of errors. Same for bill calculator, such as when
+net load in a given period is negative either have warnings, or outright nans, when an illegal move is chosen</li>
+<li>If there are no demand charges, don’t calc &amp; don’t have a limit on
+demand_max_profile for the following dispatch.</li>
+</ol>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.dispatch_functions.estimate_annual_arbitrage_profit">
+<code class="descclassname">python.dispatch_functions.</code><code class="descname">estimate_annual_arbitrage_profit</code><span class="sig-paren">(</span><em>power</em>, <em>capacity</em>, <em>eta_charge</em>, <em>eta_discharge</em>, <em>cost_sum</em>, <em>revenue_sum</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/dispatch_functions.html#estimate_annual_arbitrage_profit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.dispatch_functions.estimate_annual_arbitrage_profit" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function uses the 12x24 marginal energy costs from calc_estimator_params to estimate the potential arbitrage value of a battery.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>power</strong> (<em>float</em>) – Inherited from <a class="reference internal" href="#python.dispatch_functions.Battery" title="python.dispatch_functions.Battery"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.dispatch_functions.Battery</span></code></a></li>
+<li><strong>capacity</strong> (<em>float</em>) – Inherited from <a class="reference internal" href="#python.dispatch_functions.Battery" title="python.dispatch_functions.Battery"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.dispatch_functions.Battery</span></code></a></li>
+<li><strong>eta_charge</strong> (<em>float</em>) – Inherited from <a class="reference internal" href="#python.dispatch_functions.Battery" title="python.dispatch_functions.Battery"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.dispatch_functions.Battery</span></code></a></li>
+<li><strong>eta_discharge</strong> (<em>float</em>) – Inherited from <a class="reference internal" href="#python.dispatch_functions.Battery" title="python.dispatch_functions.Battery"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.dispatch_functions.Battery</span></code></a></li>
+<li><strong>cost_sum</strong> (<em>numpy.ndarray</em>) – 12-length sorted vector of summed energy costs for charging in the cheapest 12 hours of each day</li>
+<li><strong>revenue_sum</strong> (<em>numpy.ndarray</em>) – 12-length sorted vector of summed energy revenue for discharging in the most expensive 12 hours of each day</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-todo admonition" id="index-4">
+<p class="first admonition-title">Todo</p>
+<p class="last">Restrict action if cap &gt; (12 * power)</p>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="module-python.financial_functions">
+<span id="python-financial-functions-module"></span><h2>python.financial_functions module<a class="headerlink" href="#module-python.financial_functions" title="Permalink to this headline">¶</a></h2>
+<p>Functions to construct cashflow timelines for agents and calculate the financial performance of projects.</p>
+<dl class="function">
+<dt id="python.financial_functions.calc_financial_performance">
+<code class="descclassname">python.financial_functions.</code><code class="descname">calc_financial_performance</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/financial_functions.html#calc_financial_performance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.financial_functions.calc_financial_performance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to calculate the payback period and join it on the agent dataframe.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – Agent dataframe</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Agent dataframe with <cite>payback_period</cite> joined on dataframe</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">pandas.DataFrame</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.financial_functions.calc_max_market_share">
+<code class="descclassname">python.financial_functions.</code><code class="descname">calc_max_market_share</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/financial_functions.html#calc_max_market_share"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.financial_functions.calc_max_market_share" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the maximum marketshare available for each agent.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – <dl class="attribute">
+<dt id="python.financial_functions.metric_value">
+<code class="descclassname">python.financial_functions.</code><code class="descname">metric_value</code><a class="headerlink" href="#python.financial_functions.metric_value" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">float</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</li>
+<li><strong>max_market_share_df</strong> (<em>pandas.DataFrame</em>) – Set by <code class="xref py py-meth docutils literal notranslate"><span class="pre">settings.ScenarioSettings.get_max_marketshare()</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Input DataFrame with <cite>max_market_share</cite> and <cite>metric</cite> columns joined on.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">pandas.DataFrame</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.financial_functions.calc_payback_vectorized">
+<code class="descclassname">python.financial_functions.</code><code class="descname">calc_payback_vectorized</code><span class="sig-paren">(</span><em>cfs</em>, <em>tech_lifetime</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/financial_functions.html#calc_payback_vectorized"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.financial_functions.calc_payback_vectorized" title="Permalink to this definition">¶</a></dt>
+<dd><p>Payback calculator.</p>
+<p>Can be either simple payback or discounted payback, depending on whether
+the input cash flow is discounted.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cfs</strong> (<em>numpy.ndarray</em>) – Project cash flows ($/yr).</li>
+<li><strong>tech_lifetime</strong> (<em>int</em>) – Lifetime of technology used for project.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>pp</strong> – Interpolated payback period (years)</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">numpy.ndarray</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.financial_functions.calc_ttd">
+<code class="descclassname">python.financial_functions.</code><code class="descname">calc_ttd</code><span class="sig-paren">(</span><em>cfs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/financial_functions.html#calc_ttd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.financial_functions.calc_ttd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate time to double investment based on the MIRR.</p>
+<p>This is used for the commercial and industrial sectors.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cfs</strong> (<em>numpy.ndarray</em>) – Project cash flows ($/yr).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>ttd</strong> – Time to double investment (years).</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.financial_functions.cashflow_constructor">
+<code class="descclassname">python.financial_functions.</code><code class="descname">cashflow_constructor</code><span class="sig-paren">(</span><em>bill_savings</em>, <em>pv_size</em>, <em>pv_price</em>, <em>pv_om</em>, <em>batt_cap</em>, <em>batt_power</em>, <em>batt_cost_per_kw</em>, <em>batt_cost_per_kwh</em>, <em>batt_om_per_kw</em>, <em>batt_om_per_kwh</em>, <em>batt_chg_frac</em>, <em>sector</em>, <em>itc</em>, <em>deprec_sched</em>, <em>fed_tax_rate</em>, <em>state_tax_rate</em>, <em>real_d</em>, <em>analysis_years</em>, <em>inflation</em>, <em>down_payment_fraction</em>, <em>loan_rate</em>, <em>loan_term</em>, <em>cash_incentives=array([0])</em>, <em>ibi=array([0])</em>, <em>cbi=array([0])</em>, <em>pbi=array([[0]])</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/financial_functions.html#cashflow_constructor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.financial_functions.cashflow_constructor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the system cash flows based on the capex, opex, bill savings, incentives, tax implications, and other factors</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>bill_savings</strong> (<em>&quot;numpy.ndarray&quot;</em>) – Annual bill savings ($/yr) from system adoption from 1st year through system lifetime</li>
+<li><strong>pv_size</strong> (<em>&quot;numpy.float64&quot;</em>) – system capacity selected by agent (kW)</li>
+<li><strong>pv_price</strong> (<em>&quot;float&quot;</em>) – system capex ($/kW)</li>
+<li><strong>pv_om</strong> (<em>&quot;float&quot;</em>) – system operation and maintanence cost ($/kW)</li>
+<li><strong>batt_cap</strong> (<em>&quot;numpy.float64&quot;</em>) – energy capacity of battery selected (kWh)</li>
+<li><strong>batt_power</strong> (<em>&quot;numpy.float64&quot;</em>) – demand capacity of battery selected (kW)</li>
+<li><strong>batt_cost_per_kw</strong> (<em>&quot;float&quot;</em>) – capex of battery per kW installed ($/kW)</li>
+<li><strong>batt_cost_per_kwh</strong> (<em>&quot;float&quot;</em>) – capex of battery per kWh installed ($/kWh)</li>
+<li><strong>batt_om_per_kw</strong> (<em>&quot;float&quot;</em>) – opex of battery per kW installed ($/kW-yr)</li>
+<li><strong>batt_om_per_kwh</strong> (<em>&quot;float&quot;</em>) – opex of battery per kW installed ($/kWh-yr)</li>
+<li><strong>batt_chg_frac</strong> (<em>&quot;int&quot;</em>) – fraction of the battery’s energy that it gets from a co-hosted PV system. Used for ITC calculation.</li>
+<li><strong>sector</strong> (<em>&quot;str&quot;</em>) – agent sector</li>
+<li><strong>itc</strong> (<em>&quot;float&quot;</em>) – fraction of capex offset by federal investment tax credit</li>
+<li><strong>deprec_sched</strong> (<em>&quot;list&quot;</em>) – fraction of capex eligible for tax-based depreciation</li>
+<li><strong>fed_tax_rate</strong> (<em>&quot;float&quot;</em>) – average tax rate as fraction from federal taxes</li>
+<li><strong>state_tax_rate</strong> (<em>&quot;int&quot;</em>) – average tax rate as fraction from state taxes</li>
+<li><strong>real_d</strong> (<em>&quot;float&quot;</em>) – annua discount rate in real terms</li>
+<li><strong>analysis_years</strong> (<em>&quot;int&quot;</em>) – number of years to use in economic analysis</li>
+<li><strong>inflation</strong> (<em>&quot;float&quot;</em>) – annual average inflation rate as fraction e.g. 0.025</li>
+<li><strong>down_payment_fraction</strong> (<em>&quot;int&quot;</em>) – fraction of capex used as system down payment</li>
+<li><strong>loan_rate_real</strong> (<em>&quot;float&quot;</em>) – real interest rate for debt payments</li>
+<li><strong>loan_term</strong> (<em>&quot;int&quot;</em>) – number of years for loan term</li>
+<li><strong>cash_incentives</strong> (<em>&quot;numpy.ndarray&quot;</em>) – array describing eligible cash-based incentives e.g. $</li>
+<li><strong>ibi</strong> (<em>&quot;numpy.ndarray&quot;</em>) – array describing eligible investment-based incentives e.g. 0.2</li>
+<li><strong>cbi</strong> (<em>&quot;numpy.ndarray&quot;</em>) – array describing eligible one-time capacity-based incentives e.g. $/kW</li>
+<li><strong>pbi</strong> (<em>&quot;numpy.ndarray&quot;</em>) – array describing eligible ongoing performance-based incentives e.g $/kWh-yr</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>cf</strong> (<em>‘dtype</em>) – Annual cash flows of project investment ($/yr)</li>
+<li><strong>cf_discounted</strong> (<em>‘dtype’</em>) – Annual discounted cash flows of project investment ($/yr)</li>
+<li><strong>npv</strong> (<em>‘dtype’</em>) – Net present value ($) of project investment using WACC</li>
+<li><strong>bill_savings</strong> (<em>‘dtype’</em>) – Nominal cash flow of the annual bill savings over the lifetime of the system</li>
+<li><strong>after_tax_bill_savings</strong> (<em>‘dtype’</em>) – Effective after-tax bill savings (electricity costs are tax-deductible for commercial entities)</li>
+<li><strong>pv_cost</strong> (<em>‘dtype’</em>) – Capex of system in ($)</li>
+<li><strong>batt_cost</strong> (<em>‘dtype’</em>) – Capex of battery in ($)</li>
+<li><strong>installed_cost</strong> (<em>‘dtype’</em>) – Combined capex of system + battery</li>
+<li><strong>up_front_cost</strong> (<em>‘dtype</em>) – Capex in 0th year as down payment</li>
+<li><strong>batt_om_cf</strong> (<em>‘dtype’</em>) – Annual cashflows of battery opex</li>
+<li><strong>operating_expenses</strong> (<em>‘dtype’</em>) – Combined annual opex of system + battery ($/yr)</li>
+<li><strong>pv_itc_value</strong> (<em>‘dtype’</em>) – Absolute value of investment tax credit for system ($)</li>
+<li><strong>batt_itc_value</strong> (<em>‘dtype’</em>) – Absolute value of investment tax credit for battery ($)</li>
+<li><strong>itc_value</strong> (<em>‘dtype’</em>) – Absolute value of investment tax credit for combined system + battery ($)</li>
+<li><strong>deprec_basis</strong> (<em>‘dtype’</em>) – Absolute value of depreciable basis of system ($)</li>
+<li><strong>deprec_deductions</strong> (<em>‘dtype’</em>) – Annual amount of depreciable capital in given year ($)</li>
+<li><strong>initial_debt</strong> (<em>‘dtype’</em>) – Amount of debt for loan ($)</li>
+<li><strong>annual_principal_and_interest_payment</strong> (<em>‘dtype’</em>) – Annual amount of debt service payment, principal + interest ($)</li>
+<li><strong>debt_balance</strong> (<em>‘dtype’</em>) – Annual amount of debt remaining in given year ($)</li>
+<li><strong>interest_payments</strong> (<em>‘dtype’</em>) – Annual amount of interest payment in given year ($)</li>
+<li><strong>principal_and_interest_payments</strong> (<em>‘dtype’</em>) – Array of annual principal and interest payments ($)</li>
+<li><strong>total_taxable_income</strong> (<em>‘dtype’</em>) – Amount of stateincome from incentives eligible for taxes</li>
+<li><strong>state_deductions</strong> (<em>‘dtype’</em>) – Reduction to state taxable income from interest, operating expenses, or bill savings depending on sector</li>
+<li><strong>total_taxable_state_income_less_deductions</strong> (<em>‘dtype’</em>) – Total taxable state income less any applicable deductions</li>
+<li><strong>state_income_taxes</strong> (<em>‘dtype’</em>) – Amount of state income tax i.e. net taxable income by tax rate</li>
+<li><strong>fed_deductions</strong> (<em>‘dtype’</em>) – Reduction to federal taxable income from interest, operating expenses, or bill savings depending on sector</li>
+<li><strong>total_taxable_fed_income_less_deductions</strong> (<em>‘dtype’</em>) – Total taxable federal income less any applicable deductions</li>
+<li><strong>fed_income_taxes</strong> (<em>‘dtype’</em>) – Amount of federal income tax i.e. net taxable income by tax rate</li>
+<li><strong>interest_payments_tax_savings</strong> (<em>‘dtype’</em>) – Amount of tax savings from deductions of interest payments</li>
+<li><strong>operating_expenses_tax_savings</strong> (<em>‘dtype’</em>) – Amount of tax savings from deductions of operating expenses</li>
+<li><strong>deprec_deductions_tax_savings</strong> (<em>‘dtype’</em>) – Amount of tax savings from deductions of capital depreciation</li>
+<li><strong>elec_OM_deduction_decrease_tax_liability</strong> (<em>‘dtype’</em>) – Amount of tax savings from deductions of electricity costs as deductible business expense</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-todo admonition" id="index-5">
+<p class="first admonition-title">Todo</p>
+<ol class="last arabic simple">
+<li>Sales tax basis and rate</li>
+<li>note that sales tax goes into depreciable basis</li>
+<li>Propery taxes (res can deduct from income taxes, I think)</li>
+<li>insurance</li>
+<li>add pre-tax cash flow</li>
+<li>add residential mortgage option</li>
+<li>add carbon tax revenue</li>
+<li>More exhaustive checking. I have confirmed basic formulations against SAM, but there are many permutations that haven’t been checked.</li>
+<li>make incentives reduce depreciable basis</li>
+<li>add a flag for high incentive levels</li>
+<li>battery price schedule, for replacements</li>
+<li>improve inverter replacement</li>
+<li>improve battery replacement</li>
+<li>add inflation adjustment for replacement prices</li>
+<li>improve deprec schedule handling</li>
+<li>Make financing unique to each agent</li>
+<li>Make battery replacements depreciation an input, with default of 7 year MACRS</li>
+<li>Have a better way to deal with capacity vs effective capacity and battery costs</li>
+<li>Make it so it can accept different loan terms</li>
+</ol>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.financial_functions.virr">
+<code class="descclassname">python.financial_functions.</code><code class="descname">virr</code><span class="sig-paren">(</span><em>cfs</em>, <em>precision=0.005</em>, <em>rmin=0</em>, <em>rmax1=0.3</em>, <em>rmax2=0.5</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/financial_functions.html#virr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.financial_functions.virr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vectorized IRR calculator.</p>
+<p>First calculate a 3D array of the discounted cash flows along cash flow series, time period, and discount rate. Sum over time to
+collapse to a 2D array which gives the NPV along a range of discount rates
+for each cash flow series. Next, find crossover where NPV is zero–corresponds
+to the lowest real IRR value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cfs</strong> (<em>numpy.ndarray</em>) – Rows are cash flow series, cols are time periods</li>
+<li><strong>precision</strong> (<em>float</em>) – Level of accuracy for the inner IRR band, default value 0.005%</li>
+<li><strong>rmin</strong> (<em>float</em>) – Lower bound of the inner IRR band default value 0%</li>
+<li><strong>rmax1</strong> (<em>float</em>) – Upper bound of the inner IRR band default value 30%</li>
+<li><strong>rmax2</strong> (<em>float</em>) – upper bound of the outer IRR band. e.g. 50% Values in the outer
+band are calculated to 1% precision, IRRs outside the upper band
+return the rmax2 value.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">IRRs for cash flow series</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">numpy.ndarray</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>For performance, negative IRRs are not calculated, returns “-1” and values are only calculated to an acceptable precision.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-python.settings">
+<span id="python-settings-module"></span><h2>python.settings module<a class="headerlink" href="#module-python.settings" title="Permalink to this headline">¶</a></h2>
+<p>Settings class objects.</p>
+<dl class="class">
+<dt id="python.settings.ModelSettings">
+<em class="property">class </em><code class="descclassname">python.settings.</code><code class="descname">ModelSettings</code><a class="reference internal" href="../_modules/python/settings.html#ModelSettings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ModelSettings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class containing the model settings parameters</p>
+<dl class="attribute">
+<dt id="python.settings.ModelSettings.model_init">
+<code class="descname">model_init</code><a class="headerlink" href="#python.settings.ModelSettings.model_init" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">float</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.settings.ModelSettings.cdata">
+<code class="descname">cdata</code><a class="headerlink" href="#python.settings.ModelSettings.cdata" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.settings.ModelSettings.out_dir">
+<code class="descname">out_dir</code><a class="headerlink" href="#python.settings.ModelSettings.out_dir" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.settings.ModelSettings.start_year">
+<code class="descname">start_year</code><a class="headerlink" href="#python.settings.ModelSettings.start_year" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">int</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.settings.ModelSettings.input_scenarios">
+<code class="descname">input_scenarios</code><a class="headerlink" href="#python.settings.ModelSettings.input_scenarios" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.settings.ModelSettings.git_hash">
+<code class="descname">git_hash</code><a class="headerlink" href="#python.settings.ModelSettings.git_hash" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.settings.ModelSettings.model_path">
+<code class="descname">model_path</code><a class="headerlink" href="#python.settings.ModelSettings.model_path" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.settings.ModelSettings.local_cores">
+<code class="descname">local_cores</code><a class="headerlink" href="#python.settings.ModelSettings.local_cores" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">int</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.settings.ModelSettings.used_scenario_names">
+<code class="descname">used_scenario_names</code><a class="headerlink" href="#python.settings.ModelSettings.used_scenario_names" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ModelSettings.check_scenario_name">
+<code class="descname">check_scenario_name</code><span class="sig-paren">(</span><em>scenario_settings</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ModelSettings.check_scenario_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ModelSettings.check_scenario_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if <cite>ModelSettings.scenario_name</cite> is in <cite>ModelSettings.used_scenario_names</cite></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ModelSettings.get">
+<code class="descname">get</code><span class="sig-paren">(</span><em>attr</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ModelSettings.get"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ModelSettings.get" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ModelSettings.set">
+<code class="descname">set</code><span class="sig-paren">(</span><em>attr</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ModelSettings.set"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ModelSettings.set" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ModelSettings.validate">
+<code class="descname">validate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ModelSettings.validate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ModelSettings.validate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ModelSettings.validate_property">
+<code class="descname">validate_property</code><span class="sig-paren">(</span><em>property_name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ModelSettings.validate_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ModelSettings.validate_property" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if property is not null</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="python.settings.ScenarioSettings">
+<em class="property">class </em><code class="descclassname">python.settings.</code><code class="descname">ScenarioSettings</code><span class="sig-paren">(</span><em>input_scenario</em>, <em>model_settings</em>, <em>time_step_increment=2</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Storage of all scenario specific inputs</p>
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.collapse_sectors">
+<code class="descname">collapse_sectors</code><span class="sig-paren">(</span><em>df</em>, <em>columns</em>, <em>adders=[]</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.collapse_sectors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.collapse_sectors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Split each row into groups by sector, then stack the groups</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.get_bass_params">
+<code class="descname">get_bass_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.get_bass_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.get_bass_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.get_batt_price_trajectories">
+<code class="descname">get_batt_price_trajectories</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.get_batt_price_trajectories"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.get_batt_price_trajectories" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.get_carbon_intensities">
+<code class="descname">get_carbon_intensities</code><span class="sig-paren">(</span><em>year</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.get_carbon_intensities"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.get_carbon_intensities" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.get_financing_terms">
+<code class="descname">get_financing_terms</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.get_financing_terms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.get_financing_terms" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.get_load_growth">
+<code class="descname">get_load_growth</code><span class="sig-paren">(</span><em>year</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.get_load_growth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.get_load_growth" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.get_max_market_share">
+<code class="descname">get_max_market_share</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.get_max_market_share"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.get_max_market_share" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.get_nem_settings">
+<code class="descname">get_nem_settings</code><span class="sig-paren">(</span><em>year</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.get_nem_settings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.get_nem_settings" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.get_pv_specs">
+<code class="descname">get_pv_specs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.get_pv_specs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.get_pv_specs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.get_rate_escalations">
+<code class="descname">get_rate_escalations</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.get_rate_escalations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.get_rate_escalations" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.get_wholesale_elec_prices">
+<code class="descname">get_wholesale_elec_prices</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.get_wholesale_elec_prices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.get_wholesale_elec_prices" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="python.settings.ScenarioSettings.input_csv_folder">
+<code class="descname">input_csv_folder</code><a class="headerlink" href="#python.settings.ScenarioSettings.input_csv_folder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Location of input csv files</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.loadFromDataFrame">
+<code class="descname">loadFromDataFrame</code><span class="sig-paren">(</span><em>table_name</em>, <em>df</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.loadFromDataFrame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.loadFromDataFrame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Accept a dataframe from the input spreadsheet and load it into the scenario settings</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.load_avoided_costs">
+<code class="descname">load_avoided_costs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.load_avoided_costs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.load_avoided_costs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.load_bass_params">
+<code class="descname">load_bass_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.load_bass_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.load_bass_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.load_carbon_intensities">
+<code class="descname">load_carbon_intensities</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.load_carbon_intensities"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.load_carbon_intensities" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.load_core_agent_attributes">
+<code class="descname">load_core_agent_attributes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.load_core_agent_attributes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.load_core_agent_attributes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.load_electric_rates_json">
+<code class="descname">load_electric_rates_json</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.load_electric_rates_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.load_electric_rates_json" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.load_load_growth">
+<code class="descname">load_load_growth</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.load_load_growth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.load_load_growth" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.load_max_market_share">
+<code class="descname">load_max_market_share</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.load_max_market_share"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.load_max_market_share" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.load_nem_settings">
+<code class="descname">load_nem_settings</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.load_nem_settings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.load_nem_settings" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.load_normalized_hourly_resource_solar">
+<code class="descname">load_normalized_hourly_resource_solar</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.load_normalized_hourly_resource_solar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.load_normalized_hourly_resource_solar" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.load_normalized_load_profiles">
+<code class="descname">load_normalized_load_profiles</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.load_normalized_load_profiles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.load_normalized_load_profiles" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.load_rate_escalations">
+<code class="descname">load_rate_escalations</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.load_rate_escalations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.load_rate_escalations" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.load_wholesale_electricity">
+<code class="descname">load_wholesale_electricity</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.load_wholesale_electricity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.load_wholesale_electricity" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="python.settings.ScenarioSettings.model_years">
+<code class="descname">model_years</code><a class="headerlink" href="#python.settings.ScenarioSettings.model_years" title="Permalink to this definition">¶</a></dt>
+<dd><p>Range of years to model</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.validate">
+<code class="descname">validate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.validate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.validate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.write_folders">
+<code class="descname">write_folders</code><span class="sig-paren">(</span><em>model_settings</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.write_folders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.write_folders" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make output folders for the run</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.settings.ScenarioSettings.write_inputs">
+<code class="descname">write_inputs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#ScenarioSettings.write_inputs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.ScenarioSettings.write_inputs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Export key attributes to output folder</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="python.settings.SectorInputs">
+<em class="property">class </em><code class="descclassname">python.settings.</code><code class="descname">SectorInputs</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#SectorInputs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.SectorInputs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Storage of sector-specific scenario inputs</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.settings.check_type">
+<code class="descclassname">python.settings.</code><code class="descname">check_type</code><span class="sig-paren">(</span><em>obj</em>, <em>expected_type</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#check_type"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.check_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="python.settings.init_model_settings">
+<code class="descclassname">python.settings.</code><code class="descname">init_model_settings</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#init_model_settings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.init_model_settings" title="Permalink to this definition">¶</a></dt>
+<dd><p>initialize Model Settings object (this controls settings that apply to all scenarios to be executed)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.settings.init_scenario_settings">
+<code class="descclassname">python.settings.</code><code class="descname">init_scenario_settings</code><span class="sig-paren">(</span><em>scenario_file</em>, <em>model_settings</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#init_scenario_settings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.init_scenario_settings" title="Permalink to this definition">¶</a></dt>
+<dd><p>load scenario specific data and configure output settings</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.settings.load_scenario_to_inputSheet">
+<code class="descclassname">python.settings.</code><code class="descname">load_scenario_to_inputSheet</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/settings.html#load_scenario_to_inputSheet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.settings.load_scenario_to_inputSheet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Aggregate agent-level results into ba-level results for the given year.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>xls_file</strong> (<em>str</em>) – Filepath in the input_scenarios folder.</li>
+<li><strong>model_settings</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">settings.ModelSettings</span></code>) – Global model settings tariff object.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Scenario specific settings and model data loaded from the excel spreadsheet and the associated input csv data folder.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#python.settings.ScenarioSettings" title="python.settings.ScenarioSettings">settings.ScenarioSettings</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-python.storage_functions">
+<span id="python-storage-functions-module"></span><h2>python.storage_functions module<a class="headerlink" href="#module-python.storage_functions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="python.storage_functions.calc_system_size_and_financial_performance">
+<code class="descclassname">python.storage_functions.</code><code class="descname">calc_system_size_and_financial_performance</code><span class="sig-paren">(</span><em>agent</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/storage_functions.html#calc_system_size_and_financial_performance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.storage_functions.calc_system_size_and_financial_performance" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function accepts the characteristics of a single agent and
+evaluates the financial performance of a set of solar+storage
+system sizes. The system size with the highest NPV is selected.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>agent</strong> (<em>pandas.Series</em>) – Single agent (row) from an agent dataframe.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Agent with system size, business model and corresponding financial performance.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">pandas.Series</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-python.tariff_functions">
+<span id="python-tariff-functions-module"></span><h2>python.tariff_functions module<a class="headerlink" href="#module-python.tariff_functions" title="Permalink to this headline">¶</a></h2>
+<p>Functions for determining the tariff</p>
+<dl class="class">
+<dt id="python.tariff_functions.Export_Tariff">
+<em class="property">class </em><code class="descclassname">python.tariff_functions.</code><code class="descname">Export_Tariff</code><span class="sig-paren">(</span><em>full_retail_nem=True</em>, <em>prices=array([[ 0.]])</em>, <em>levels=array([[ 0.]])</em>, <em>periods_8760=array([0</em>, <em>0</em>, <em>0</em>, <em>...</em>, <em>0</em>, <em>0</em>, <em>0])</em>, <em>period_tou_n=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#Export_Tariff"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.Export_Tariff" title="Permalink to this definition">¶</a></dt>
+<dd><p>Structure of compensation for exported generation.</p>
+<p>Currently only two styles: full-retail NEM, and instantanous TOU energy value.</p>
+<dl class="method">
+<dt id="python.tariff_functions.Export_Tariff.set_constant_sell_price">
+<code class="descname">set_constant_sell_price</code><span class="sig-paren">(</span><em>price</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#Export_Tariff.set_constant_sell_price"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.Export_Tariff.set_constant_sell_price" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="python.tariff_functions.Tariff">
+<em class="property">class </em><code class="descclassname">python.tariff_functions.</code><code class="descname">Tariff</code><span class="sig-paren">(</span><em>start_day=6</em>, <em>urdb_id=None</em>, <em>json_file_name=None</em>, <em>dict_obj=None</em>, <em>api_key=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#Tariff"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.Tariff" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="python.tariff_functions.Tariff.urdb_id">
+<code class="descname">urdb_id</code><a class="headerlink" href="#python.tariff_functions.Tariff.urdb_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>id for utility rate database. US, not international.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.eia_id">
+<code class="descname">eia_id</code><a class="headerlink" href="#python.tariff_functions.Tariff.eia_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>The EIA assigned ID number for the utility associated with this tariff</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.name">
+<code class="descname">name</code><a class="headerlink" href="#python.tariff_functions.Tariff.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>tariff name</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.utility">
+<code class="descname">utility</code><a class="headerlink" href="#python.tariff_functions.Tariff.utility" title="Permalink to this definition">¶</a></dt>
+<dd><p>Name of utility this tariff is associated with</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.fixed_charge">
+<code class="descname">fixed_charge</code><a class="headerlink" href="#python.tariff_functions.Tariff.fixed_charge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fixed monthly charge in $/mo.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.peak_kW_capacity_max">
+<code class="descname">peak_kW_capacity_max</code><a class="headerlink" href="#python.tariff_functions.Tariff.peak_kW_capacity_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>The annual maximum kW of demand that a customer can have and still be on this tariff</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.peak_kW_capacity_min">
+<code class="descname">peak_kW_capacity_min</code><a class="headerlink" href="#python.tariff_functions.Tariff.peak_kW_capacity_min" title="Permalink to this definition">¶</a></dt>
+<dd><p>The annula minimum kW of demand that a customer can have and still be on this tariff</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.kWh_useage_max">
+<code class="descname">kWh_useage_max</code><a class="headerlink" href="#python.tariff_functions.Tariff.kWh_useage_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>The maximum kWh of average monthly consumption that a customer can have and still be on this tariff</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.kWh_useage_min">
+<code class="descname">kWh_useage_min</code><a class="headerlink" href="#python.tariff_functions.Tariff.kWh_useage_min" title="Permalink to this definition">¶</a></dt>
+<dd><p>The minimum kWh of average monthly consumption that a customer can have and still be on this tariff</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.sector">
+<code class="descname">sector</code><a class="headerlink" href="#python.tariff_functions.Tariff.sector" title="Permalink to this definition">¶</a></dt>
+<dd><p>residential, commercial, or industrial</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.comments">
+<code class="descname">comments</code><a class="headerlink" href="#python.tariff_functions.Tariff.comments" title="Permalink to this definition">¶</a></dt>
+<dd><p>comments from the urdb</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.description">
+<code class="descname">description</code><a class="headerlink" href="#python.tariff_functions.Tariff.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>tariff description from urdb</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.source">
+<code class="descname">source</code><a class="headerlink" href="#python.tariff_functions.Tariff.source" title="Permalink to this definition">¶</a></dt>
+<dd><p>uri for the source of the tariff</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.uri">
+<code class="descname">uri</code><a class="headerlink" href="#python.tariff_functions.Tariff.uri" title="Permalink to this definition">¶</a></dt>
+<dd><p>link the the urdb page</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.voltage_category">
+<code class="descname">voltage_category</code><a class="headerlink" href="#python.tariff_functions.Tariff.voltage_category" title="Permalink to this definition">¶</a></dt>
+<dd><p>secondary, primary, transmission</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.d_flat_exists">
+<code class="descname">d_flat_exists</code><a class="headerlink" href="#python.tariff_functions.Tariff.d_flat_exists" title="Permalink to this definition">¶</a></dt>
+<dd><p>Boolean of whether there is a flat (not tou) demand charge component. Flat demand is also called monthly or seasonal demand.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.d_flat_n">
+<code class="descname">d_flat_n</code><a class="headerlink" href="#python.tariff_functions.Tariff.d_flat_n" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of unique flat demand period constructions. Does NOT correspond to width of d_flat_x constructs.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.d_flat_prices">
+<code class="descname">d_flat_prices</code><a class="headerlink" href="#python.tariff_functions.Tariff.d_flat_prices" title="Permalink to this definition">¶</a></dt>
+<dd><p>The prices of each tier/period combination for flat demand. Rows are tiers, columns are months. Differs from TOU, where columns are periods.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.d_flat_levels">
+<code class="descname">d_flat_levels</code><a class="headerlink" href="#python.tariff_functions.Tariff.d_flat_levels" title="Permalink to this definition">¶</a></dt>
+<dd><p>The limit (total kW) of each of each tier/period combination for flat demand. Rows are tiers, columns are months. Differs from TOU, where columns are periods.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.d_tou_exists">
+<code class="descname">d_tou_exists</code><a class="headerlink" href="#python.tariff_functions.Tariff.d_tou_exists" title="Permalink to this definition">¶</a></dt>
+<dd><p>Boolean of whether there is a tou (not flat) demand charge component</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.d_tou_n">
+<code class="descname">d_tou_n</code><a class="headerlink" href="#python.tariff_functions.Tariff.d_tou_n" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of unique tou demand periods. Minimum of 1, since I’m counting nocharge periods still as a period.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.d_tou_prices">
+<code class="descname">d_tou_prices</code><a class="headerlink" href="#python.tariff_functions.Tariff.d_tou_prices" title="Permalink to this definition">¶</a></dt>
+<dd><p>The prices of each tier/period combination for tou demand. Rows are tiers, columns are periods.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.d_tou_levels">
+<code class="descname">d_tou_levels</code><a class="headerlink" href="#python.tariff_functions.Tariff.d_tou_levels" title="Permalink to this definition">¶</a></dt>
+<dd><p>The limit (total kW) of each of each tier/period combination for tou demand. Rows are tiers, columns are periods.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.e_exists">
+<code class="descname">e_exists</code><a class="headerlink" href="#python.tariff_functions.Tariff.e_exists" title="Permalink to this definition">¶</a></dt>
+<dd><p>Boolean of whether there is a flat (not tou) demand charge component</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.e_tou_exists">
+<code class="descname">e_tou_exists</code><a class="headerlink" href="#python.tariff_functions.Tariff.e_tou_exists" title="Permalink to this definition">¶</a></dt>
+<dd><p>Boolean of whether there is a flat (not tou) demand charge component</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.e_n">
+<code class="descname">e_n</code><a class="headerlink" href="#python.tariff_functions.Tariff.e_n" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of unique energy periods. Minimum of 1, since I’m counting nocharge periods still as a period.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.e_prices">
+<code class="descname">e_prices</code><a class="headerlink" href="#python.tariff_functions.Tariff.e_prices" title="Permalink to this definition">¶</a></dt>
+<dd><p>The prices of each tier/period combination for flat demand. Rows are tiers, columns are periods.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.e_levels">
+<code class="descname">e_levels</code><a class="headerlink" href="#python.tariff_functions.Tariff.e_levels" title="Permalink to this definition">¶</a></dt>
+<dd><p>The limit (total kWh) of each of each tier/period combination for energy. Rows are tiers, columns are periods.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.e_wkday_12by24">
+<code class="descname">e_wkday_12by24</code><a class="headerlink" href="#python.tariff_functions.Tariff.e_wkday_12by24" title="Permalink to this definition">¶</a></dt>
+<dd><p>12 by 24 period definition for weekday energy. Rows are months, columns are hours.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.e_wkend_12by24">
+<code class="descname">e_wkend_12by24</code><a class="headerlink" href="#python.tariff_functions.Tariff.e_wkend_12by24" title="Permalink to this definition">¶</a></dt>
+<dd><p>12 by 24 period definition for weekend energy. Rows are months, columns are hours.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.d_wkday_12by24">
+<code class="descname">d_wkday_12by24</code><a class="headerlink" href="#python.tariff_functions.Tariff.d_wkday_12by24" title="Permalink to this definition">¶</a></dt>
+<dd><p>12 by 24 period definition for weekday energy. Rows are months, columns are hours.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.d_wkend_12by24">
+<code class="descname">d_wkend_12by24</code><a class="headerlink" href="#python.tariff_functions.Tariff.d_wkend_12by24" title="Permalink to this definition">¶</a></dt>
+<dd><p>12 by 24 period definition for weekend energy. Rows are months, columns are hours.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.d_tou_8760">
+<code class="descname">d_tou_8760</code><a class="headerlink" href="#python.tariff_functions.Tariff.d_tou_8760" title="Permalink to this definition">¶</a></dt>
+<dd><p>8760 of tou demand prices.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.e_tou_8760">
+<code class="descname">e_tou_8760</code><a class="headerlink" href="#python.tariff_functions.Tariff.e_tou_8760" title="Permalink to this definition">¶</a></dt>
+<dd><p>8760 of tou energy prices.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.e_prices_no_tier">
+<code class="descname">e_prices_no_tier</code><a class="headerlink" href="#python.tariff_functions.Tariff.e_prices_no_tier" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.e_max_difference">
+<code class="descname">e_max_difference</code><a class="headerlink" href="#python.tariff_functions.Tariff.e_max_difference" title="Permalink to this definition">¶</a></dt>
+<dd><p>The maximum energy price differential within any single day</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.energy_rate_unit">
+<code class="descname">energy_rate_unit</code><a class="headerlink" href="#python.tariff_functions.Tariff.energy_rate_unit" title="Permalink to this definition">¶</a></dt>
+<dd><p>kWh or kWh/day, for guiding the bill calculations later</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.Tariff.demand_rate_unit">
+<code class="descname">demand_rate_unit</code><a class="headerlink" href="#python.tariff_functions.Tariff.demand_rate_unit" title="Permalink to this definition">¶</a></dt>
+<dd><p>kW or kW/day, for guiding the bill calculations later</p>
+</dd></dl>
+
+<div class="admonition-todo admonition" id="index-6">
+<p class="first admonition-title">Todo</p>
+<p class="last">Peak_kW_capacity and other scalar variables may be being imported as tuples.
+this may have been solved now, but general unit check would be good.</p>
+</div>
+<dl class="method">
+<dt id="python.tariff_functions.Tariff.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>start_day=6</em>, <em>urdb_id=None</em>, <em>json_file_name=None</em>, <em>dict_obj=None</em>, <em>api_key=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#Tariff.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.Tariff.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a Tariff Function object based on a urdb id, a .csv file, or a blank tariff is created.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.tariff_functions.Tariff.define_d_flat">
+<code class="descname">define_d_flat</code><span class="sig-paren">(</span><em>d_flat_levels</em>, <em>d_flat_prices</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#Tariff.define_d_flat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.Tariff.define_d_flat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define flat demand charge periods, levels, and prices.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.tariff_functions.Tariff.define_d_tou">
+<code class="descname">define_d_tou</code><span class="sig-paren">(</span><em>d_wkday_12by24</em>, <em>d_wkend_12by24</em>, <em>d_tou_levels</em>, <em>d_tou_prices</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#Tariff.define_d_tou"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.Tariff.define_d_tou" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define TOU demand charge periods, levels, and prices</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.tariff_functions.Tariff.define_e">
+<code class="descname">define_e</code><span class="sig-paren">(</span><em>e_wkday_12by24</em>, <em>e_wkend_12by24</em>, <em>e_levels</em>, <em>e_prices</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#Tariff.define_e"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.Tariff.define_e" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define energy periods, levels, and prices</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="python.tariff_functions.Tariff.write_json">
+<code class="descname">write_json</code><span class="sig-paren">(</span><em>json_file_name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#Tariff.write_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.Tariff.write_json" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write the current class object to a json file</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>json_file_name</strong> (<em>str</em>) – Path to output file.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="python.tariff_functions.bill_calculator">
+<code class="descclassname">python.tariff_functions.</code><code class="descname">bill_calculator</code><span class="sig-paren">(</span><em>load_profile</em>, <em>tariff</em>, <em>export_tariff</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#bill_calculator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.bill_calculator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Not vectorized for now. Next step will be pass in multiple profiles for the same tariff
+2 styles of NEM: Full retail and fixed schedule value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>load_profile</strong> (<em>8760 profile of agent</em>) – </li>
+<li><strong>tariff</strong> (<a class="reference internal" href="#python.tariff_functions.Tariff" title="python.tariff_functions.Tariff"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.tariff_functions.Tariff</span></code></a>) – Tariff class object</li>
+<li><strong>export_tariff</strong> (<a class="reference internal" href="#python.tariff_functions.Export_Tariff" title="python.tariff_functions.Export_Tariff"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.tariff_functions.Export_Tariff</span></code></a>) – Export tariff class object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-todo admonition" id="index-7">
+<p class="first admonition-title">Todo</p>
+<ol class="last arabic simple">
+<li>Both energy and demand calcs (anything that uses piecewise calculator) doesn’t go below zero, because piecewise isn’t built to.
+Therefore, credit can’t be earned in one period and applied to another.</li>
+<li>My current approach sums for all periods, not just those in a month. Potentially inefficient, if it was dynamic it would be cheaper, but less clear.</li>
+<li>Make this flexible for different hours increments (which will require more robust approach for power vs energy units)</li>
+<li>Not sure what happens if there is no energy component in the tariff, at the moment</li>
+<li>I haven’t checked the TOU export credit option yet.</li>
+<li>I don’t make any type of check about what day of the week this calculator assumes your load profile is starting on <cite>e_period_charges</cite> wasn’t being built for non-NEM</li>
+</ol>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.tariff_functions.build_8760_from_12by24s">
+<code class="descclassname">python.tariff_functions.</code><code class="descname">build_8760_from_12by24s</code><span class="sig-paren">(</span><em>wkday_12by24</em>, <em>wkend_12by24</em>, <em>start_day=6</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#build_8760_from_12by24s"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.build_8760_from_12by24s" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct long-df (8760) from a weekday and weekend 12by24</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>wkday_12by24</strong> (<em>numpy.ndarray</em>) – </li>
+<li><strong>wkend_12by24</strong> (<em>numpy.ndarray</em>) – </li>
+<li><strong>start_day</strong> (<em>int</em>) – Start day of 6 (default) equates to a Sunday.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.tariff_functions.design_tariff_for_portfolio">
+<code class="descclassname">python.tariff_functions.</code><code class="descname">design_tariff_for_portfolio</code><span class="sig-paren">(</span><em>agent_df</em>, <em>avg_rev</em>, <em>peak_hour_indicies</em>, <em>summer_month_indicies</em>, <em>rev_f_d</em>, <em>rev_f_e</em>, <em>rev_f_fixed</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#design_tariff_for_portfolio"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.design_tariff_for_portfolio" title="Permalink to this definition">¶</a></dt>
+<dd><p>Builds a tariff that would extract a given $/kWh from a portfolio of customers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>agent_df</strong> (<em>pandas.DataFrame</em>) – <p>Dataframe of agents</p>
+<dl class="attribute">
+<dt id="python.tariff_functions.agent_df.load_profile">
+<code class="descclassname">agent_df.</code><code class="descname">load_profile</code><a class="headerlink" href="#python.tariff_functions.agent_df.load_profile" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="python.tariff_functions.agent_df.weight">
+<code class="descclassname">agent_df.</code><code class="descname">weight</code><a class="headerlink" href="#python.tariff_functions.agent_df.weight" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">numpy.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</li>
+<li><strong>avg_rev</strong> (<em>float</em>) – $/kWh that the tariff would extract from the given portfolio of customers.</li>
+<li><strong>rev_f_d</strong> (<em>array-like</em>) – Revenue strucutre for demand charges.
+Format is [fraction of total revenue, fraction that comes from tou charges, fraction that comes from flat charges]
+ex: [0.4875, 0.5, 0.5]</li>
+<li><strong>rev_f_d</strong> – Revenue strucutre for energy charges.
+Format is [fraction of total revenue, fraction that comes from off-peak hours, fraction that comes from on-peak hours]
+ex: [0.4875, 0.20, 0.8]</li>
+<li><strong>rev_f_fixed</strong> (<em>array-like</em>) – [fraction of revenue from fixed monthly charges].
+ex: [0.025]</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ol class="last arabic simple">
+<li>Peak hours are the same between demand and energy.</li>
+<li>Peak hours only occur during the summer.</li>
+</ol>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.tariff_functions.download_tariffs_from_urdb">
+<code class="descclassname">python.tariff_functions.</code><code class="descname">download_tariffs_from_urdb</code><span class="sig-paren">(</span><em>api_key</em>, <em>sector=None</em>, <em>utility=None</em>, <em>print_progress=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#download_tariffs_from_urdb"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.download_tariffs_from_urdb" title="Permalink to this definition">¶</a></dt>
+<dd><p>API request for URDB rates.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>api_key</strong> (<em>str</em>) – Each user should get their own URDB API key: <a class="reference external" href="http://en.openei.org/services/api/signup/">http://en.openei.org/services/api/signup/</a></li>
+<li><strong>sector</strong> (<em>str</em>) – One of Residential, Commercial, Industrial, Lighting</li>
+<li><strong>utility</strong> (<em>str</em><em>, </em><em>optional</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dataframe of URDB rates.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">pandas.DataFrame</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.tariff_functions.filter_tariff_df">
+<code class="descclassname">python.tariff_functions.</code><code class="descname">filter_tariff_df</code><span class="sig-paren">(</span><em>tariff_df, keyword_list=None, keyword_list_file=None, demand_units_to_exclude=['hp', 'kVA', 'kW daily', 'hp daily', 'kVA daily'], remove_expired=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#filter_tariff_df"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.filter_tariff_df" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filter tariffs based on inclusion (e.g. keywords), or exclusion (e.g. demand units)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>tariff_df</strong> (<em>pandas.DataFrame</em>) – dataframe of URDB tariffs created by <a class="reference internal" href="#python.tariff_functions.download_tariffs_from_urdb" title="python.tariff_functions.download_tariffs_from_urdb"><code class="xref py py-func docutils literal notranslate"><span class="pre">download_tariffs_from_urdb()</span></code></a>.</li>
+<li><strong>keyword_list</strong> (<em>list of str</em><em>, </em><em>optional</em>) – list of keywords to search for in rate structure.</li>
+<li><strong>keyword_list_file</strong> (<em>str</em>) – filepath to .txt file containing keywords to search for.</li>
+<li><strong>demand_units_to_exclude</strong> (<em>list of str</em>) – exclude rates from URDB database if the units are contained in this list. Default values are <cite>hp</cite>,`kVA`,`kW daily`,`hp daily`,`kVA daily`</li>
+<li><strong>remove_expired</strong> (<em>bool</em>) – exclude expired rates. Default is <cite>True</cite>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.tariff_functions.load_config_params">
+<code class="descclassname">python.tariff_functions.</code><code class="descname">load_config_params</code><span class="sig-paren">(</span><em>config_file_name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#load_config_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.load_config_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Each user should fill in a config_template.json file.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.tariff_functions.tiered_calc_vec">
+<code class="descclassname">python.tariff_functions.</code><code class="descname">tiered_calc_vec</code><span class="sig-paren">(</span><em>values</em>, <em>levels</em>, <em>prices</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/tariff_functions.html#tiered_calc_vec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.tariff_functions.tiered_calc_vec" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-python.utility_functions">
+<span id="python-utility-functions-module"></span><h2>python.utility_functions module<a class="headerlink" href="#module-python.utility_functions" title="Permalink to this headline">¶</a></h2>
+<p>Assorted accessory functions.</p>
+<dl class="class">
+<dt id="python.utility_functions.Timer">
+<em class="property">class </em><code class="descclassname">python.utility_functions.</code><code class="descname">Timer</code><a class="reference internal" href="../_modules/python/utility_functions.html#Timer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.utility_functions.Timer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="python.utility_functions.code_profiler">
+<code class="descclassname">python.utility_functions.</code><code class="descname">code_profiler</code><span class="sig-paren">(</span><em>out_dir</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/utility_functions.html#code_profiler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.utility_functions.code_profiler" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="python.utility_functions.current_datetime">
+<code class="descclassname">python.utility_functions.</code><code class="descname">current_datetime</code><span class="sig-paren">(</span><em>format='%Y_%m_%d_%Hh%Mm%Ss'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/utility_functions.html#current_datetime"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.utility_functions.current_datetime" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="python.utility_functions.get_epoch_time">
+<code class="descclassname">python.utility_functions.</code><code class="descname">get_epoch_time</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/utility_functions.html#get_epoch_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.utility_functions.get_epoch_time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="python.utility_functions.get_formatted_time">
+<code class="descclassname">python.utility_functions.</code><code class="descname">get_formatted_time</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/utility_functions.html#get_formatted_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.utility_functions.get_formatted_time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="python.utility_functions.get_git_hash">
+<code class="descclassname">python.utility_functions.</code><code class="descname">get_git_hash</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/utility_functions.html#get_git_hash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.utility_functions.get_git_hash" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="python.utility_functions.get_logger">
+<code class="descclassname">python.utility_functions.</code><code class="descname">get_logger</code><span class="sig-paren">(</span><em>log_file_path=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/utility_functions.html#get_logger"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.utility_functions.get_logger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="python.utility_functions.parse_command_args">
+<code class="descclassname">python.utility_functions.</code><code class="descname">parse_command_args</code><span class="sig-paren">(</span><em>argv</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/utility_functions.html#parse_command_args"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.utility_functions.parse_command_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to parse the command line arguments</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>h</strong> (<em>str</em>) – help ‘dg_model.py -i &lt;Initiate Model?&gt; -y &lt;year&gt;’</li>
+<li><strong>i</strong> (<em>str</em>) – Initiate model for 2010 and quit</li>
+<li><strong>y</strong> (<em>int</em>) – Resume model solve in passed year</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>init_model</strong> (<em>bool</em>) – Should model initiate?</li>
+<li><strong>resume_year</strong> (<em>float</em>) – Year model should resume</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="python.utility_functions.shutdown_log">
+<code class="descclassname">python.utility_functions.</code><code class="descname">shutdown_log</code><span class="sig-paren">(</span><em>logger</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/utility_functions.html#shutdown_log"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.utility_functions.shutdown_log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-python">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-python" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="python.agent_mutation.html" class="btn btn-neutral float-right" title="python.agent_mutation package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, NREL
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

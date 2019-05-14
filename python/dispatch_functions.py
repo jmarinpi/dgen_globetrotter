@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Oct 10 19:45:23 2016
-
-@author: pgagnon
+Currently battery storage functions are not utilizied. 
 """
 
 import numpy as np
@@ -15,14 +13,14 @@ def cartesian(arrays, out=None):
 
     Parameters
     ----------
-    arrays : list of array-like
+    arrays : list of numpy.ndarray
         1-D arrays to form the cartesian product of.
-    out : ndarray
+    out : numpy.ndarray
         Array to place the cartesian product in.
 
     Returns
     -------
-    out : ndarray
+    out : numpy.ndarray
         2-D array of shape (M, len(arrays)) containing cartesian products
         formed of input arrays.
 
@@ -60,12 +58,12 @@ def cartesian(arrays, out=None):
     return out    
 
 class Battery:
-    '''
-    To Do:
-    -degradation functions were just rough estimations from a slide deck, and
-     currently have a disjoint at transition
+    """
+    Todo
+    ----
+    Degradation functions were just rough estimations from a slide deck, and currently have a disjoint at transition.
      
-    '''
+    """
     
     def __init__(self, nameplate_cap=0.0, nameplate_power=0.0, SOC_min=0.2, eta_charge=0.91, eta_discharge=0.91, cycles=0):
         self.SOC_min = SOC_min 
@@ -90,7 +88,6 @@ class Battery:
         
         
     def set_cycle_deg(self, cycles):
-    
         if cycles < 2300:
             deg_coeff = (-7.5e-12*cycles**3 + 4.84e-8*cycles**2 - 0.0001505*cycles + 0.9997)
         else:
@@ -102,35 +99,36 @@ class Battery:
 
 #%%
 def determine_optimal_dispatch(load_profile, pv_profile, batt, t, export_tariff, d_inc_n=50, DP_inc=50, estimator_params=None, estimated=False, restrict_charge_to_pv_gen=False, estimate_demand_levels=False):
-    '''
-    Function that determines the optimal dispatch of the battery, and in the
-    process determines the resulting first year bill with the system.
+    """
+    Function that determines the optimal dispatch for a battery, and determines the resulting first year bill with the system.
     
-    INPUTS:
-    estimate_toggle: Boolean. False means run DP to get accurate energy savings
-                     and dispatch trajectory. True means estimate the energy
-                     savings, and don't get the dispatch trajectory.
-                     
-    load_profile: Original load profile prior to modification by PV or storage
+    Parameters
+    ----------               
+    load_profile : numpy.ndarray
+        Original load profile prior to modification by PV or storage
+    pv_profile : numpy.ndarray
+        PV profile of equal length to the `load_profile`
+    t : :class:`python.tariff_functions.Tariff`
+        Tariff class object
+    batt : :class:`python.dispatch_functions.Battery`
+        Battery class object
+    export_tariff : :class:`python.tariff_functions.Export_Tariff`
+        Export tariff class object
     
-    t: tariff class object
-    b: battery class object
+    Note
+    ----
+    In the battery level matrices, 0 index corresponds to an empty battery, and 
+    the highest index corresponds to a full battery
     
-    NOTES:
-    -in the battery level matrices, 0 index corresponds to an empty battery, and 
-     the highest index corresponds to a full battery
-    
-    To Do:
-    -Having cost-to-go equal cost of filling the battery at the end may not be
-     working.
-    -have warnings for classes of errors. Same for bill calculator, such as when
-     net load in a given period is negative
-    -either have warnings, or outright nans, when an illegal move is chosen
-    -If there are no demand charges, don't calc & don't have a limit on 
-     demand_max_profile for the following dispatch.
-    
-    
-    '''
+    Todo
+    ----
+    1)  Having cost-to-go equal cost of filling the battery at the end may not be
+        working.
+    2)  Have warnings for classes of errors. Same for bill calculator, such as when
+        net load in a given period is negative either have warnings, or outright nans, when an illegal move is chosen
+    3)  If there are no demand charges, don't calc & don't have a limit on 
+        demand_max_profile for the following dispatch.
+    """
     load_and_pv_profile = load_profile - pv_profile
     
     if batt.effective_cap == 0.0:
@@ -363,24 +361,32 @@ def determine_optimal_dispatch(load_profile, pv_profile, batt, t, export_tariff,
     
 #%% Energy Arbitrage Value Estimator
 def calc_estimator_params(load_and_pv_profile, tariff, export_tariff, eta_charge, eta_discharge):
-    '''
-    This function creates four 12-length vectors, weekend/weekday and 
+    """
+    Create four 12-length vectors, weekend/weekday and 
     cost/revenue. They are a summation of each day's 12 hours of lowest/highest
     cost electricity.
+
+    Parameters
+    ----------
+    load_and_pv_profile : numpy.ndarray
+        8760 array of the agent's load_profile - pv_profile
+    t : :class:`python.tariff_functions.Tariff`
+        Tariff class object
+    export_tariff : :class:`python.tariff_functions.Export_Tariff`
+        Export tariff class object
+
+    Note
+    ----
+    1) TOU windows are aligned with when the battery would be dispatching for demand peak shaving.
+    2) The battery will be able to dispatch fully and recharge fully every 24 hour cycle.
     
-    Assumptions:
-        -TOU windows are aligned with when the battery would be dispatching for
-         demand peak shaving.
-        -The battery will be able to dispatch fully and recharge fully every 24
-         hour cycle.
-    
-    To Do:
-        -Bring back consideration of tiers.
-        -Consider coming up with a better method that captures exportation, CPP, etc
-         Maybe? Or just confirm a simple estimation works with our dGen set, 
-         and use the accurate dispatch for any other analysis.
-    
-    '''
+    Todo
+    ----
+    1)  Bring back consideration of tiers.
+    2)  Consider coming up with a better method that captures exportation, CPP, etc
+        Maybe? Or just confirm a simple estimation works with our dGen set, 
+        and use the accurate dispatch for any other analysis.
+    """
     
     # Calculate baseline energy costs with the given load+pv profile
     _, tariff_results = tFuncs.bill_calculator(load_and_pv_profile, tariff, export_tariff)
@@ -419,21 +425,28 @@ def calc_estimator_params(load_and_pv_profile, tariff, export_tariff, eta_charge
     
 #%%
 def estimate_annual_arbitrage_profit(power, capacity, eta_charge, eta_discharge, cost_sum, revenue_sum):
-
-    '''
-    This function uses the 12x24 marginal energy costs from calc_estimator_params
-    to estimate the potential arbitrage value of a battery.
+    """
+    This function uses the 12x24 marginal energy costs from calc_estimator_params to estimate the potential arbitrage value of a battery.
     
-    Inputs:
-    -cost_sum: 12-length sorted vector of summed energy costs for charging in
-     the cheapest 12 hours of each day
-    -revenue_sum: 12-length sorted vector of summed energy revenue for
-     discharging in the most expensive 12 hours of each day
+    Parameters
+    ----------
+    power : float
+        Inherited from :class:`python.dispatch_functions.Battery`
+    capacity : float
+        Inherited from :class:`python.dispatch_functions.Battery`
+    eta_charge : float
+        Inherited from :class:`python.dispatch_functions.Battery`
+    eta_discharge: float
+        Inherited from :class:`python.dispatch_functions.Battery`
+    cost_sum : numpy.ndarray
+        12-length sorted vector of summed energy costs for charging in the cheapest 12 hours of each day
+    revenue_sum : numpy.ndarray
+        12-length sorted vector of summed energy revenue for discharging in the most expensive 12 hours of each day
     
-    
-    To Do
-        -restrict action if cap > 12*power
-    '''
+    Todo
+    ----
+    Restrict action if cap > (12 * power)
+    """
     
     charge_blocks = np.zeros(12)
     charge_blocks[:int(np.floor(capacity/eta_charge/power))] = power
@@ -455,18 +468,22 @@ def estimate_annual_arbitrage_profit(power, capacity, eta_charge, eta_discharge,
     
 #%%
 def calc_min_possible_demands_vector(res, load_and_pv_profile, pv_profile, d_periods_month, batt, t, month, restrict_charge_to_pv_gen, batt_start_level, estimate_demand_levels):
-    '''
-    Function that determines the minimum possible demands that this battery 
-    can achieve for a particular month.
+    """
+    Currently battery storage functions are not utilizied. 
+
+    Function that determines the minimum possible demands that this battery can achieve for a particular month.
     
-    Inputs:
-    b: battery class object
-    t: tariff class object
+    Parameters
+    ----------
+    t : :class:`python.tariff_functions.Tariff`
+        Tariff class object
+    batt : :class:`python.dispatch_functions.Battery`
+        Battery class object
     
-    to-do:
-    add a vector of forced discharges, for demand response representation
-    
-    '''
+    Todo
+    ----
+    Add a vector of forced discharges, for demand response representation
+    """
     # Recast d_periods_month vector into d_periods_index, which is in terms of increasing integers starting at zero
     try:
         unique_periods = np.unique(d_periods_month)

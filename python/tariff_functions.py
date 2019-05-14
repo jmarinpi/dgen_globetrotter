@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Sep 30 11:26:58 2016
-
-@author: pgagnon
-
-To Do:
+Functions for determining the tariff
 """
 
 import requests as req
@@ -32,57 +28,92 @@ def load_config_params(config_file_name):
 #%%
 class Tariff:
     """
-    Tariff Attributes:
-    -urdb_id: id for utility rate database. US, not international. 
-    -eia_id: The EIA assigned ID number for the utility associated with this tariff           
-    -name: tariff name
-    -utility: Name of utility this tariff is associated with
-    -fixed_charge: Fixed monthly charge in $/mo.
-    -peak_kW_capacity_max: The annual maximum kW of demand that a customer can have and still be on this tariff
-    -peak_kW_capacity_min: The annula minimum kW of demand that a customer can have and still be on this tariff
-    -kWh_useage_max: The maximum kWh of average monthly consumption that a customer can have and still be on this tariff
-    -kWh_useage_min: The minimum kWh of average monthly consumption that a customer can have and still be on this tariff
-    -sector: residential, commercial, or industrial
-    -comments: comments from the urdb
-    -description: tariff description from urdb
-    -source: uri for the source of the tariff
-    -uri: link the the urdb page
-    -voltage_category: secondary, primary, transmission        
-    -d_flat_exists: Boolean of whether there is a flat (not tou) demand charge component. Flat demand is also called monthly or seasonal demand. 
-    -d_flat_n: Number of unique flat demand period constructions. Does NOT correspond to width of d_flat_x constructs.
-    -d_flat_prices: The prices of each tier/period combination for flat demand. Rows are tiers, columns are months. Differs from TOU, where columns are periods.
-    -d_flat_levels: The limit (total kW) of each of each tier/period combination for flat demand. Rows are tiers, columns are months. Differs from TOU, where columns are periods.
-    -d_tou_exists = Boolean of whether there is a tou (not flat) demand charge component
-    -d_tou_n = Number of unique tou demand periods. Minimum of 1, since I'm counting no-charge periods still as a period.
-    -d_tou_prices = The prices of each tier/period combination for tou demand. Rows are tiers, columns are periods.    
-    -d_tou_levels = The limit (total kW) of each of each tier/period combination for tou demand. Rows are tiers, columns are periods.
-    -e_exists = Boolean of whether there is a flat (not tou) demand charge component
-    -e_tou_exists = Boolean of whether there is a flat (not tou) demand charge component
-    -e_n = Number of unique energy periods. Minimum of 1, since I'm counting no-charge periods still as a period.
-    -e_prices = The prices of each tier/period combination for flat demand. Rows are tiers, columns are periods.    
-    -e_levels = The limit (total kWh) of each of each tier/period combination for energy. Rows are tiers, columns are periods.
-    -e_wkday_12by24: 12 by 24 period definition for weekday energy. Rows are months, columns are hours.
-    -e_wkend_12by24: 12 by 24 period definition for weekend energy. Rows are months, columns are hours.
-    -d_wkday_12by24: 12 by 24 period definition for weekday energy. Rows are months, columns are hours.
-    -d_wkend_12by24: 12 by 24 period definition for weekend energy. Rows are months, columns are hours.
-    -d_tou_8760
-    -e_tou_8760
-    -e_prices_no_tier
-    -e_max_difference: The maximum energy price differential within any single day
-    -energy_rate_unit: kWh or kWh/day - for guiding the bill calculations later
-    -demand_rate_unit: kW or kW/day - for guiding the bill calculations later
+    Attributes
+    ----------
+    urdb_id
+        id for utility rate database. US, not international. 
+    eia_id
+        The EIA assigned ID number for the utility associated with this tariff           
+    name
+        tariff name
+    utility
+        Name of utility this tariff is associated with
+    fixed_charge
+        Fixed monthly charge in $/mo.
+    peak_kW_capacity_max
+        The annual maximum kW of demand that a customer can have and still be on this tariff
+    peak_kW_capacity_min
+        The annula minimum kW of demand that a customer can have and still be on this tariff
+    kWh_useage_max
+        The maximum kWh of average monthly consumption that a customer can have and still be on this tariff
+    kWh_useage_min
+        The minimum kWh of average monthly consumption that a customer can have and still be on this tariff
+    sector
+        residential, commercial, or industrial
+    comments
+        comments from the urdb
+    description
+        tariff description from urdb
+    source
+        uri for the source of the tariff
+    uri
+        link the the urdb page
+    voltage_category
+        secondary, primary, transmission        
+    d_flat_exists
+        Boolean of whether there is a flat (not tou) demand charge component. Flat demand is also called monthly or seasonal demand. 
+    d_flat_n
+        Number of unique flat demand period constructions. Does NOT correspond to width of d_flat_x constructs.
+    d_flat_prices
+        The prices of each tier/period combination for flat demand. Rows are tiers, columns are months. Differs from TOU, where columns are periods.
+    d_flat_levels
+        The limit (total kW) of each of each tier/period combination for flat demand. Rows are tiers, columns are months. Differs from TOU, where columns are periods.
+    d_tou_exists
+        Boolean of whether there is a tou (not flat) demand charge component
+    d_tou_n
+        Number of unique tou demand periods. Minimum of 1, since I'm counting nocharge periods still as a period.
+    d_tou_prices
+        The prices of each tier/period combination for tou demand. Rows are tiers, columns are periods.    
+    d_tou_levels
+        The limit (total kW) of each of each tier/period combination for tou demand. Rows are tiers, columns are periods.
+    e_exists
+        Boolean of whether there is a flat (not tou) demand charge component
+    e_tou_exists
+        Boolean of whether there is a flat (not tou) demand charge component
+    e_n
+        Number of unique energy periods. Minimum of 1, since I'm counting nocharge periods still as a period.
+    e_prices
+        The prices of each tier/period combination for flat demand. Rows are tiers, columns are periods.    
+    e_levels
+        The limit (total kWh) of each of each tier/period combination for energy. Rows are tiers, columns are periods.
+    e_wkday_12by24
+        12 by 24 period definition for weekday energy. Rows are months, columns are hours.
+    e_wkend_12by24
+        12 by 24 period definition for weekend energy. Rows are months, columns are hours.
+    d_wkday_12by24
+        12 by 24 period definition for weekday energy. Rows are months, columns are hours.
+    d_wkend_12by24
+        12 by 24 period definition for weekend energy. Rows are months, columns are hours.
+    d_tou_8760
+        8760 of tou demand prices.
+    e_tou_8760
+        8760 of tou energy prices.
+    e_prices_no_tier
+    e_max_difference
+        The maximum energy price differential within any single day
+    energy_rate_unit
+        kWh or kWh/day, for guiding the bill calculations later
+    demand_rate_unit
+        kW or kW/day, for guiding the bill calculations later
     
-    
-    To Do
-    -peak_kW_capacity and other scalar variables may be being imported as tuples.
-     this may have been solved now, but general unit check would be good.
+    Todo
+    ----
+    Peak_kW_capacity and other scalar variables may be being imported as tuples.
+    this may have been solved now, but general unit check would be good.
     """
         
     def __init__(self, start_day=6, urdb_id=None, json_file_name=None, dict_obj=None, api_key=None):
-                   
-        #######################################################################
-        ##### If given no urdb id or csv file name, create blank tariff #######
-        #######################################################################
+        "Create a Tariff Function object based on a urdb id, a .csv file, or a blank tariff is created."            
         dict_obj['eia_id'] = "0"           
         if urdb_id==None and json_file_name==None and dict_obj==None:
             # Default values for a blank tariff
@@ -367,7 +398,6 @@ class Tariff:
         # If given a json input argument, construct a tariff from that file
         #######################################################################    
         elif json_file_name != None:
-            
             obj_text = codecs.open(json_file_name, 'r', encoding='utf-8').read()
             d = json.loads(obj_text)
             for fieldname in d.keys():
@@ -533,12 +563,15 @@ class Tariff:
             self.e_prices_no_tier = np.array(dict_obj['e_prices_no_tier']) # simplification until something better is implemented
             self.e_max_difference = dict_obj['e_max_difference']
             
-    
-    #######################################################################
-    # Write the current class object to a json file
-    #######################################################################     
     def write_json(self, json_file_name):
-        
+        """
+        Write the current class object to a json file
+
+        Parameters
+        ----------
+        json_file_name : str
+            Path to output file.
+        """
         d = self.__dict__
                 
         d_prep_for_json = d.copy()
@@ -550,12 +583,11 @@ class Tariff:
         
         with open(json_file_name, 'w') as fp:
             json.dump(d_prep_for_json, fp)
-            
-    #######################################################################
-    # Define TOU demand charge periods, levels, and prices
-    #######################################################################             
+                     
     def define_d_tou(self, d_wkday_12by24, d_wkend_12by24, d_tou_levels, d_tou_prices):
-        
+        """
+        Define TOU demand charge periods, levels, and prices
+        """
         self.d_tou_levels = d_tou_levels
         self.d_tou_prices = d_tou_prices
         self.d_wkday_12by24 = d_wkday_12by24
@@ -565,12 +597,11 @@ class Tariff:
         else: self.d_tou_exists = True
                 
         self.d_tou_8760 = build_8760_from_12by24s(d_wkday_12by24, d_wkend_12by24, self.start_day)
-
-
-    #######################################################################
-    # Define Flat demand charge periods, levels, and prices
-    #######################################################################             
+       
     def define_d_flat(self, d_flat_levels, d_flat_prices):
+        """
+        Define flat demand charge periods, levels, and prices. 
+        """
         
         # If it is only handed one value for levels and prices, it assumes that
         # value applies to all months
@@ -586,12 +617,11 @@ class Tariff:
 
         if np.all(d_flat_prices==0): self.d_flat_exists = False
         else: self.d_flat_exists = True
-            
-
-    #######################################################################
-    # Define energy periods, levels, and prices
-    #######################################################################             
+              
     def define_e(self, e_wkday_12by24, e_wkend_12by24, e_levels, e_prices):
+        """
+        Define energy periods, levels, and prices
+        """
         
         self.e_levels = e_levels
         self.e_prices = e_prices
@@ -628,16 +658,16 @@ class Tariff:
 #%%     
 class Export_Tariff:
     """
-    Structure of compensation for exported generation. Currently only two 
-    styles: full-retail NEM, and instantanous TOU energy value. 
-    """
+    Structure of compensation for exported generation.
     
+    Currently only two styles: full-retail NEM, and instantanous TOU energy value. 
+    """
     def __init__(self, full_retail_nem=True, 
                  prices = np.zeros([1, 1], float),
                  levels = np.zeros([1, 1], float),
                  periods_8760 = np.zeros(8760, int),
                  period_tou_n = 1):
-     
+
         self.full_retail_nem = full_retail_nem
         self.prices = prices     
         self.levels = levels
@@ -678,15 +708,24 @@ def bill_calculator(load_profile, tariff, export_tariff):
     Not vectorized for now. Next step will be pass in multiple profiles for the same tariff
     2 styles of NEM: Full retail and fixed schedule value. 
 
-    To-do
-    -Both energy and demand calcs (anything that uses piecewise calculator) doesn't go below zero, because piecewise isn't built to.
+    Parameters
+    ----------
+    load_profile : 8760 profile of agent
+    tariff : :class:`python.tariff_functions.Tariff`
+        Tariff class object
+    export_tariff : :class:`python.tariff_functions.Export_Tariff`
+        Export tariff class object
+
+
+    Todo
+    ----
+    1)  Both energy and demand calcs (anything that uses piecewise calculator) doesn't go below zero, because piecewise isn't built to.
         Therefore, credit can't be earned in one period and applied to another. 
-    -My current approach sums for all periods, not just those in a month. Potentially inefficient, if it was dynamic it would be cheaper, but less clear.
-    -Make this flexible for different hours increments (which will require more robust approach for power vs energy units)
-    -Not sure what happens if there is no energy component in the tariff, at the moment    
-    -I haven't checked the TOU export credit option yet.
-    -I don't make any type of check about what day of the week this calculator assumes your load profile is starting on
-    -e_period_charges wasn't being built for non-NEM
+    2)  My current approach sums for all periods, not just those in a month. Potentially inefficient, if it was dynamic it would be cheaper, but less clear.
+    3)  Make this flexible for different hours increments (which will require more robust approach for power vs energy units)
+    4)  Not sure what happens if there is no energy component in the tariff, at the moment    
+    5)  I haven't checked the TOU export credit option yet.
+    6)  I don't make any type of check about what day of the week this calculator assumes your load profile is starting on `e_period_charges` wasn't being built for non-NEM
     """
     
     n_months = 12
@@ -701,7 +740,6 @@ def bill_calculator(load_profile, tariff, export_tariff):
     for month, hours in enumerate(month_hours):
         month_index[month_hours[month-1]:hours] = month-1
         
-    
     #=========================================================================#
     ################## Calculate TOU Demand Charges ###########################
     #=========================================================================#
@@ -876,16 +914,26 @@ def bill_calculator(load_profile, tariff, export_tariff):
     
     return annual_bill, results_dict
 
-    
 #%%
 # Bulk Downloader from URDB API
 def download_tariffs_from_urdb(api_key, sector=None, utility=None, print_progress=False):
-    '''
-    Each user should get their own URDB API key: http://en.openei.org/services/api/signup/
+    """
+    API request for URDB rates. 
     
-    Sectors: Residential, Commercial, Industrial, Lighting
-    
-    '''
+    Parameters
+    ----------
+    api_key : str
+        Each user should get their own URDB API key: http://en.openei.org/services/api/signup/
+    sector : str
+        One of Residential, Commercial, Industrial, Lighting
+    utility : str, optional
+
+    Return
+    ------
+    pandas.DataFrame
+        Dataframe of URDB rates.
+
+    """
         
     fields = ['utility',
               'eiaid',
@@ -956,10 +1004,8 @@ def download_tariffs_from_urdb(api_key, sector=None, utility=None, print_progres
             
             chunk_count += len(tariff_list)
             if print_progress==True: print chunk_count
-        
-        
+
     return tariffs
-    
     
 #%%
 # Filter tariff_df by a list of keywords in the tariff names, and unit types
@@ -968,13 +1014,23 @@ def filter_tariff_df(tariff_df,
                      keyword_list=None,
                      keyword_list_file=None,
                      demand_units_to_exclude=['hp', 'kVA', 'kW daily', 'hp daily', 'kVA daily'], 
-                     remove_expired=True):
-                         
-    '''
-    TODO: Bring in energy rate unit filtering
-    energy_units_to_exclude=['kWh/kW', 'kWh/hp', 'kWh/kVA', 'kWh daily', 'kWh/kW daily', 'kWh/hp daily', 'kWh/kVA daily'], 
-    
-    '''
+                     remove_expired=True):              
+    """
+    Filter tariffs based on inclusion (e.g. keywords), or exclusion (e.g. demand units)
+
+    Parameters
+    ----------
+    tariff_df : pandas.DataFrame
+        dataframe of URDB tariffs created by :func:`download_tariffs_from_urdb`.
+    keyword_list : list of str, optional
+        list of keywords to search for in rate structure.
+    keyword_list_file : str
+        filepath to .txt file containing keywords to search for.
+    demand_units_to_exclude : list of str
+        exclude rates from URDB database if the units are contained in this list. Default values are `hp`,`kVA`,`kW daily`,`hp daily`,`kVA daily`
+    remove_expired : bool
+        exclude expired rates. Default is `True`.
+    """
     
     if keyword_list_file != None:
         keyword_list = []
@@ -1009,13 +1065,19 @@ def filter_tariff_df(tariff_df,
                              
     return included_tariffs, excluded_tariffs, keyword_count_df
     
-    
 #%%
 # Create 8760 from two 12x24's
 def build_8760_from_12by24s(wkday_12by24, wkend_12by24, start_day=6):
-    '''
-    Start day of 6 equates to a Sunday
-    '''
+    """
+    Construct long-df (8760) from a weekday and weekend 12by24
+
+    Parameters
+    ----------
+    wkday_12by24 : numpy.ndarray
+    wkend_12by24 : numpy.ndarray
+    start_day : int
+        Start day of 6 (default) equates to a Sunday.
+    """
     
     month_hours = np.array([0, 744, 1416, 2160, 2880, 3624, 4344, 5088, 5832, 6552, 7296, 8016, 8760], int)
     
@@ -1040,31 +1102,38 @@ def build_8760_from_12by24s(wkday_12by24, wkend_12by24, start_day=6):
 
 #%%
 def design_tariff_for_portfolio(agent_df, avg_rev, peak_hour_indicies, summer_month_indicies, rev_f_d, rev_f_e, rev_f_fixed):
-    '''
-    Builds a tariff that would extract a given $/kWh from a portfolio of 
-    customers.
+    """
+    Builds a tariff that would extract a given $/kWh from a portfolio of customers.
     
-    Inputs:
-        - agent_df: Dataframe of agents. Must contain load_profile and its 
-                    weight in the portfolio.
-        - avg_rev: $/kWh that the tariff would extract from the given portfolio
-                    of customers.
-        - rev_f_d: revenue strucutre for demand charges. Format is [fraction of
-                    total revenue, fraction that comes from tou charges, 
-                    fraction that comes from flat charges]
-                    ex: [0.4875, 0.5, 0.5]
-        - rev_f_d: revenue strucutre for energy charges. Format is [fraction of
-                    total revenue, fraction that comes from off-peak hours, 
-                    fraction that comes from on-peak hours]
-                    ex: [0.4875, 0.20, 0.8]
-        - rev_f_fixed: [fraction of revenue from fixed monthly charges].
-                    ex: [0.025]
-        
-    Assumptions:
-        - peak hours are the same between demand and energy.
-        - peak hours only occur during the summer
+    Parameters
+    ----------
+    agent_df : pandas.DataFrame
+        Dataframe of agents
 
-    '''
+        Attributes
+        ----------
+        agent_df.load_profile : numpy.ndarray
+        agent_df.weight : numpy.ndarray
+
+    avg_rev : float
+        $/kWh that the tariff would extract from the given portfolio of customers.
+    rev_f_d : array-like
+        Revenue strucutre for demand charges.
+        Format is [fraction of total revenue, fraction that comes from tou charges, fraction that comes from flat charges]
+        ex: [0.4875, 0.5, 0.5]
+    rev_f_d : array-like
+        Revenue strucutre for energy charges. 
+        Format is [fraction of total revenue, fraction that comes from off-peak hours, fraction that comes from on-peak hours]
+        ex: [0.4875, 0.20, 0.8]
+    rev_f_fixed : array-like
+        [fraction of revenue from fixed monthly charges].
+        ex: [0.025]
+        
+    Note
+    ----
+    1)  Peak hours are the same between demand and energy.
+    2)  Peak hours only occur during the summer.
+    """
     
     # Construct the 12x24 matricies for the given peak hours
     d_wkend_12by24 = np.zeros([12,24], int)

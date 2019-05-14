@@ -1,40 +1,46 @@
 # -*- coding: utf-8 -*-
 """
-Edited Monday Nov 5, 218
-@author: tkwasnik
+
 """
 
 import numpy as np
 import pandas as pd
 import utility_functions as utilfunc
 import sys
+import config
 
 # Import from support function repo
 import dispatch_functions as dFuncs
 import tariff_functions as tFuncs
 import financial_functions as fFuncs
-import general_functions as gFuncs
 
 #==============================================================================
 # Load logger
 logger = utilfunc.get_logger()
 #==============================================================================
-
 #%%
 def calc_system_size_and_financial_performance(agent):
-    '''
-    Purpose: This function accepts the characteristics of a single agent and
-            evaluates the financial performance of a set of solar+storage
-            system sizes. The system size with the highest NPV is selected.
+    """
+    This function accepts the characteristics of a single agent and
+    evaluates the financial performance of a set of solar+storage
+    system sizes. The system size with the highest NPV is selected.
             
-    Returns: Selected system size and business model and corresponding
-            financial performance.
-    '''
+    Parameters
+    ----------
+    agent : pandas.Series
+        Single agent (row) from an agent dataframe.
+
+    Returns
+    -------
+    pandas.Series
+        Agent with system size, business model and corresponding financial performance.
+    """
     #=========================================================================#
     # Setup
     #=========================================================================#
     try:
-        print "\t\t\t\tRunning system size calculations for", agent['state'], agent['tariff_class'], agent['sector_abbr']
+        if config.VERBOSE:
+            print "\t\t\t\tRunning system size calculations for", agent['state'], agent['tariff_class'], agent['sector_abbr']
         # Set resolution of dispatcher    
         d_inc_n_est = 10    
         DP_inc_est = 12
@@ -49,7 +55,7 @@ def calc_system_size_and_financial_performance(agent):
 
         # Set the interconnection limit according to sectors (residential <= 50 KW and commercial\industrial <=500 KW)
         # Values set according to the "Interconnection Manual for generating plants with capacity less than 0.5 MW"
-
+        
         if agent.sector_abbr == 'res':
             interconnect_limit_kw = 50
         else:
@@ -136,7 +142,7 @@ def calc_system_size_and_financial_performance(agent):
             est_params_df.set_value(pv_size, 'estimator_params', dFuncs.calc_estimator_params(load_and_pv_profile, tariff, export_tariff, batt.eta_charge, batt.eta_discharge))
             
         # Create df with all combinations of solar+storage sizes
-        system_df = pd.DataFrame(gFuncs.cartesian([pv_sizes, batt_powers]), columns=['pv', 'batt'])
+        system_df = pd.DataFrame(dFuncs.cartesian([pv_sizes, batt_powers]), columns=['pv', 'batt'])
         system_df['est_bills'] = None
 
         pv_kwh_by_year = np.array(map(lambda x: sum(x), np.split(np.array(pv_cf_profile), agent.loc['timesteps_per_year'])))

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Edited Monday Nov 5, 218
-@author: tkwasnik
+Module of accessory decorators, mainly for logging purposes.
+
 """
 
 import time
 from functools import wraps
         
 class fn_timer(object):
-    
+    """Decorater class for profiling the run-time of functions."""
     def __init__(self, logger = None, verbose = True, tab_level = 0, prefix = ''):
         self.verbose = verbose
         self.tabs = '\t' * tab_level

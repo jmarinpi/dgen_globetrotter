@@ -1,0 +1,823 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>python.financial_functions &mdash; dGen Mexico 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> dGen Mexico
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../source/tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/api.html">dGen Code Base</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/input_data.html">Input Data</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dGen Mexico</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>python.financial_functions</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for python.financial_functions</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Functions to construct cashflow timelines for agents and calculate the financial performance of projects.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="n">np</span><span class="o">.</span><span class="n">seterr</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">utility_functions</span> <span class="k">as</span> <span class="nn">utilfunc</span>
+<span class="kn">import</span> <span class="nn">decorators</span>
+
+<span class="c1">#==============================================================================</span>
+<span class="c1"># Load logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">utilfunc</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+<span class="c1">#==============================================================================</span>
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="calc_financial_performance"><a class="viewcode-back" href="../../source/api.html#python.financial_functions.calc_financial_performance">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">calc_financial_performance</span><span class="p">(</span><span class="n">dataframe</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function to calculate the payback period and join it on the agent dataframe.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        Agent dataframe</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        Agent dataframe with `payback_period` joined on dataframe</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<span class="c1">#    dataframe = dataframe.reset_index()</span>
+
+    <span class="n">cfs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;cash_flow&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>    
+    
+    <span class="c1"># calculate payback period</span>
+    <span class="n">tech_lifetime</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">cfs</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">payback</span> <span class="o">=</span> <span class="n">calc_payback_vectorized</span><span class="p">(</span><span class="n">cfs</span><span class="p">,</span> <span class="n">tech_lifetime</span><span class="p">)</span>
+    <span class="c1"># calculate time to double</span>
+    <span class="n">ttd</span> <span class="o">=</span> <span class="n">calc_ttd</span><span class="p">(</span><span class="n">cfs</span><span class="p">)</span>
+
+    <span class="n">metric_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;res&#39;</span><span class="p">,</span> <span class="n">payback</span><span class="p">,</span> <span class="n">ttd</span><span class="p">)</span>
+
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;metric_value&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">metric_value</span>
+    
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dataframe</span></div>
+    
+<span class="c1">#%%</span>
+
+
+<div class="viewcode-block" id="calc_max_market_share"><a class="viewcode-back" href="../../source/api.html#python.financial_functions.calc_max_market_share">[docs]</a><span class="nd">@decorators</span><span class="o">.</span><span class="n">fn_timer</span><span class="p">(</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logger</span><span class="p">,</span> <span class="n">tab_level</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">calc_max_market_share</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">max_market_share_df</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the maximum marketshare available for each agent. </span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        metric_value : float</span>
+<span class="sd">            </span>
+<span class="sd">    max_market_share_df : pandas.DataFrame</span>
+<span class="sd">        Set by :meth:`settings.ScenarioSettings.get_max_marketshare`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        Input DataFrame with `max_market_share` and `metric` columns joined on.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">in_cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dataframe</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;business_model&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;host_owned&#39;</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;metric&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;payback_period&#39;</span>
+    
+    <span class="c1"># Convert metric value to integer as a primary key, then bound within max market share ranges</span>
+    <span class="n">max_payback</span> <span class="o">=</span> <span class="n">max_market_share_df</span><span class="p">[</span><span class="n">max_market_share_df</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="s1">&#39;payback_period&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">metric_value</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">min_payback</span> <span class="o">=</span> <span class="n">max_market_share_df</span><span class="p">[</span><span class="n">max_market_share_df</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="s1">&#39;payback_period&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">metric_value</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">max_mbs</span> <span class="o">=</span> <span class="n">max_market_share_df</span><span class="p">[</span><span class="n">max_market_share_df</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="s1">&#39;percent_monthly_bill_savings&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">metric_value</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">min_mbs</span> <span class="o">=</span> <span class="n">max_market_share_df</span><span class="p">[</span><span class="n">max_market_share_df</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="s1">&#39;percent_monthly_bill_savings&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">metric_value</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    
+    <span class="c1"># copy the metric valeus to a new column to store an edited version</span>
+    <span class="n">metric_value_bounded</span> <span class="o">=</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;metric_value&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    
+    <span class="c1"># where the metric value exceeds the corresponding max market curve bounds, set the value to the corresponding bound</span>
+    <span class="n">metric_value_bounded</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">dataframe</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="s1">&#39;payback_period&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;metric_value&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">min_payback</span><span class="p">))]</span> <span class="o">=</span> <span class="n">min_payback</span>
+    <span class="n">metric_value_bounded</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">dataframe</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="s1">&#39;payback_period&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;metric_value&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">max_payback</span><span class="p">))]</span> <span class="o">=</span> <span class="n">max_payback</span>    
+    <span class="n">metric_value_bounded</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">dataframe</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="s1">&#39;percent_monthly_bill_savings&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;metric_value&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">min_mbs</span><span class="p">))]</span> <span class="o">=</span> <span class="n">min_mbs</span>
+    <span class="n">metric_value_bounded</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">dataframe</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="s1">&#39;percent_monthly_bill_savings&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;metric_value&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">max_mbs</span><span class="p">))]</span> <span class="o">=</span> <span class="n">max_mbs</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;metric_value_bounded&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">metric_value_bounded</span>
+
+    <span class="c1"># scale and round to nearest int    </span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;metric_value_as_factor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;metric_value_bounded&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">)</span>
+    <span class="c1"># add a scaled key to the max_market_share dataframe too</span>
+    <span class="n">max_market_share_df</span><span class="p">[</span><span class="s1">&#39;metric_value_as_factor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">max_market_share_df</span><span class="p">[</span><span class="s1">&#39;metric_value&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Join the max_market_share table and dataframe in order to select the ultimate mms based on the metric value. </span>
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">max_market_share_df</span><span class="p">[[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;max_market_share&#39;</span><span class="p">,</span> <span class="s1">&#39;metric&#39;</span><span class="p">,</span> <span class="s1">&#39;metric_value_as_factor&#39;</span><span class="p">,</span> <span class="s1">&#39;business_model&#39;</span><span class="p">]],</span> <span class="n">how</span> <span class="o">=</span> <span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;metric&#39;</span><span class="p">,</span><span class="s1">&#39;metric_value_as_factor&#39;</span><span class="p">,</span><span class="s1">&#39;business_model&#39;</span><span class="p">])</span>
+    
+    <span class="c1"># Derate the maximum market share for commercial and industrial customers in leased buildings by (2/3)</span>
+    <span class="c1"># based on the owner occupancy status (1 = owner-occupied, 2 = leased)</span>
+    <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;max_market_share&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">dataframe</span><span class="o">.</span><span class="n">owner_occupancy_status</span> <span class="o">==</span> <span class="mi">2</span><span class="p">,</span> <span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;max_market_share&#39;</span><span class="p">]</span><span class="o">/</span><span class="mi">3</span><span class="p">,</span><span class="n">dataframe</span><span class="p">[</span><span class="s1">&#39;max_market_share&#39;</span><span class="p">])</span>
+    
+    <span class="n">out_cols</span> <span class="o">=</span> <span class="n">in_cols</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;max_market_share&#39;</span><span class="p">,</span> <span class="s1">&#39;metric&#39;</span><span class="p">]</span>    
+    <span class="n">dataframe</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dataframe</span><span class="p">[</span><span class="n">out_cols</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="calc_ttd"><a class="viewcode-back" href="../../source/api.html#python.financial_functions.calc_ttd">[docs]</a><span class="k">def</span> <span class="nf">calc_ttd</span><span class="p">(</span><span class="n">cfs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate time to double investment based on the MIRR. </span>
+<span class="sd">    </span>
+<span class="sd">    This is used for the commercial and industrial sectors.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cfs : numpy.ndarray</span>
+<span class="sd">        Project cash flows ($/yr).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ttd : numpy.ndarray</span>
+<span class="sd">        Time to double investment (years).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">irrs</span> <span class="o">=</span> <span class="n">virr</span><span class="p">(</span><span class="n">cfs</span><span class="p">,</span> <span class="n">precision</span> <span class="o">=</span> <span class="mf">0.005</span><span class="p">,</span> <span class="n">rmin</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rmax1</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">rmax2</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span>
+    <span class="c1"># suppress errors due to irrs of nan</span>
+    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+        <span class="n">irrs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">irrs</span><span class="o">&lt;=</span><span class="mi">0</span><span class="p">,</span><span class="mf">1e-6</span><span class="p">,</span><span class="n">irrs</span><span class="p">)</span>
+    <span class="n">ttd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">irrs</span><span class="p">)</span>
+    <span class="n">ttd</span><span class="p">[</span><span class="n">ttd</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">ttd</span><span class="p">[</span><span class="n">ttd</span> <span class="o">&gt;</span> <span class="mi">30</span><span class="p">]</span> <span class="o">=</span> <span class="mf">30.1</span>
+    <span class="c1"># also deal with ttd of nan by setting to max payback period (this should only occur when cashflows = 0)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ttd</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">cfs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;np.nan found in ttd for non-zero cashflows&quot;</span><span class="p">)</span>
+    <span class="n">ttd</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ttd</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">30.1</span>
+    
+    <span class="k">return</span> <span class="n">ttd</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">decimals</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="c1"># must be rounded to nearest 0.1 to join with max_market_share</span></div>
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="cashflow_constructor"><a class="viewcode-back" href="../../source/api.html#python.financial_functions.cashflow_constructor">[docs]</a><span class="k">def</span> <span class="nf">cashflow_constructor</span><span class="p">(</span><span class="n">bill_savings</span><span class="p">,</span> 
+                         <span class="n">pv_size</span><span class="p">,</span> <span class="n">pv_price</span><span class="p">,</span> <span class="n">pv_om</span><span class="p">,</span>
+                         <span class="n">batt_cap</span><span class="p">,</span> <span class="n">batt_power</span><span class="p">,</span> 
+                         <span class="n">batt_cost_per_kw</span><span class="p">,</span> <span class="n">batt_cost_per_kwh</span><span class="p">,</span> 
+                         <span class="n">batt_om_per_kw</span><span class="p">,</span> <span class="n">batt_om_per_kwh</span><span class="p">,</span>
+                         <span class="n">batt_chg_frac</span><span class="p">,</span>
+                         <span class="n">sector</span><span class="p">,</span> <span class="n">itc</span><span class="p">,</span> <span class="n">deprec_sched</span><span class="p">,</span> 
+                         <span class="n">fed_tax_rate</span><span class="p">,</span> <span class="n">state_tax_rate</span><span class="p">,</span> <span class="n">real_d</span><span class="p">,</span>  
+                         <span class="n">analysis_years</span><span class="p">,</span> <span class="n">inflation</span><span class="p">,</span> 
+                         <span class="n">down_payment_fraction</span><span class="p">,</span> <span class="n">loan_rate</span><span class="p">,</span> <span class="n">loan_term</span><span class="p">,</span> 
+                         <span class="n">cash_incentives</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">]),</span> <span class="n">ibi</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">]),</span> <span class="n">cbi</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">]),</span> <span class="n">pbi</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">0</span><span class="p">]])):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the system cash flows based on the capex, opex, bill savings, incentives, tax implications, and other factors</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    bill_savings : &quot;numpy.ndarray&quot;</span>
+<span class="sd">        Annual bill savings ($/yr) from system adoption from 1st year through system lifetime</span>
+<span class="sd">    pv_size : &quot;numpy.float64&quot;</span>
+<span class="sd">        system capacity selected by agent (kW)</span>
+<span class="sd">    pv_price : &quot;float&quot;</span>
+<span class="sd">        system capex ($/kW)</span>
+<span class="sd">    pv_om : &quot;float&quot;</span>
+<span class="sd">        system operation and maintanence cost ($/kW)</span>
+<span class="sd">    batt_cap : &quot;numpy.float64&quot;</span>
+<span class="sd">        energy capacity of battery selected (kWh)</span>
+<span class="sd">    batt_power : &quot;numpy.float64&quot;</span>
+<span class="sd">        demand capacity of battery selected (kW)</span>
+<span class="sd">    batt_cost_per_kw : &quot;float&quot;</span>
+<span class="sd">        capex of battery per kW installed ($/kW)</span>
+<span class="sd">    batt_cost_per_kwh : &quot;float&quot;</span>
+<span class="sd">        capex of battery per kWh installed ($/kWh)</span>
+<span class="sd">    batt_om_per_kw : &quot;float&quot;</span>
+<span class="sd">        opex of battery per kW installed ($/kW-yr)</span>
+<span class="sd">    batt_om_per_kwh : &quot;float&quot;</span>
+<span class="sd">        opex of battery per kW installed ($/kWh-yr)</span>
+<span class="sd">    batt_chg_frac : &quot;int&quot;</span>
+<span class="sd">        fraction of the battery&#39;s energy that it gets from a co-hosted PV system. Used for ITC calculation.</span>
+<span class="sd">    sector : &quot;str&quot;</span>
+<span class="sd">        agent sector</span>
+<span class="sd">    itc : &quot;float&quot;</span>
+<span class="sd">        fraction of capex offset by federal investment tax credit</span>
+<span class="sd">    deprec_sched : &quot;list&quot;</span>
+<span class="sd">        fraction of capex eligible for tax-based depreciation</span>
+<span class="sd">    fed_tax_rate : &quot;float&quot;</span>
+<span class="sd">        average tax rate as fraction from federal taxes</span>
+<span class="sd">    state_tax_rate : &quot;int&quot;</span>
+<span class="sd">        average tax rate as fraction from state taxes</span>
+<span class="sd">    real_d : &quot;float&quot;</span>
+<span class="sd">        annua discount rate in real terms</span>
+<span class="sd">    analysis_years : &quot;int&quot;</span>
+<span class="sd">        number of years to use in economic analysis</span>
+<span class="sd">    inflation : &quot;float&quot;</span>
+<span class="sd">        annual average inflation rate as fraction e.g. 0.025</span>
+<span class="sd">    down_payment_fraction : &quot;int&quot;</span>
+<span class="sd">        fraction of capex used as system down payment</span>
+<span class="sd">    loan_rate_real : &quot;float&quot;</span>
+<span class="sd">        real interest rate for debt payments</span>
+<span class="sd">    loan_term : &quot;int&quot;</span>
+<span class="sd">        number of years for loan term</span>
+<span class="sd">    cash_incentives : &quot;numpy.ndarray&quot;</span>
+<span class="sd">        array describing eligible cash-based incentives e.g. $</span>
+<span class="sd">    ibi : &quot;numpy.ndarray&quot;</span>
+<span class="sd">        array describing eligible investment-based incentives e.g. 0.2</span>
+<span class="sd">    cbi : &quot;numpy.ndarray&quot;</span>
+<span class="sd">        array describing eligible one-time capacity-based incentives e.g. $/kW</span>
+<span class="sd">    pbi : &quot;numpy.ndarray&quot;</span>
+<span class="sd">        array describing eligible ongoing performance-based incentives e.g $/kWh-yr</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    cf : &#39;dtype</span>
+<span class="sd">        Annual cash flows of project investment ($/yr)</span>
+<span class="sd">    cf_discounted : &#39;dtype&#39;</span>
+<span class="sd">        Annual discounted cash flows of project investment ($/yr)</span>
+<span class="sd">    npv : &#39;dtype&#39;</span>
+<span class="sd">        Net present value ($) of project investment using WACC</span>
+<span class="sd">    bill_savings : &#39;dtype&#39;</span>
+<span class="sd">        Nominal cash flow of the annual bill savings over the lifetime of the system</span>
+<span class="sd">    after_tax_bill_savings : &#39;dtype&#39;</span>
+<span class="sd">        Effective after-tax bill savings (electricity costs are tax-deductible for commercial entities)</span>
+<span class="sd">    pv_cost : &#39;dtype&#39;</span>
+<span class="sd">        Capex of system in ($)</span>
+<span class="sd">    batt_cost : &#39;dtype&#39;</span>
+<span class="sd">        Capex of battery in ($)</span>
+<span class="sd">    installed_cost : &#39;dtype&#39;</span>
+<span class="sd">        Combined capex of system + battery</span>
+<span class="sd">    up_front_cost : &#39;dtype</span>
+<span class="sd">        Capex in 0th year as down payment</span>
+<span class="sd">    batt_om_cf : &#39;dtype&#39;</span>
+<span class="sd">        Annual cashflows of battery opex</span>
+<span class="sd">    operating_expenses : &#39;dtype&#39;</span>
+<span class="sd">        Combined annual opex of system + battery ($/yr) </span>
+<span class="sd">    pv_itc_value : &#39;dtype&#39;</span>
+<span class="sd">        Absolute value of investment tax credit for system ($)</span>
+<span class="sd">    batt_itc_value : &#39;dtype&#39;</span>
+<span class="sd">        Absolute value of investment tax credit for battery ($)</span>
+<span class="sd">    itc_value : &#39;dtype&#39;</span>
+<span class="sd">        Absolute value of investment tax credit for combined system + battery ($)</span>
+<span class="sd">    deprec_basis : &#39;dtype&#39;</span>
+<span class="sd">        Absolute value of depreciable basis of system ($)</span>
+<span class="sd">    deprec_deductions : &#39;dtype&#39;</span>
+<span class="sd">        Annual amount of depreciable capital in given year ($) </span>
+<span class="sd">    initial_debt : &#39;dtype&#39;</span>
+<span class="sd">        Amount of debt for loan ($)</span>
+<span class="sd">    annual_principal_and_interest_payment : &#39;dtype&#39;</span>
+<span class="sd">        Annual amount of debt service payment, principal + interest ($)</span>
+<span class="sd">    debt_balance : &#39;dtype&#39;</span>
+<span class="sd">        Annual amount of debt remaining in given year ($)</span>
+<span class="sd">    interest_payments : &#39;dtype&#39;</span>
+<span class="sd">        Annual amount of interest payment in given year ($)</span>
+<span class="sd">    principal_and_interest_payments : &#39;dtype&#39;</span>
+<span class="sd">        Array of annual principal and interest payments ($)</span>
+<span class="sd">    total_taxable_income : &#39;dtype&#39;</span>
+<span class="sd">        Amount of stateincome from incentives eligible for taxes</span>
+<span class="sd">    state_deductions : &#39;dtype&#39;</span>
+<span class="sd">        Reduction to state taxable income from interest, operating expenses, or bill savings depending on sector</span>
+<span class="sd">    total_taxable_state_income_less_deductions : &#39;dtype&#39;</span>
+<span class="sd">        Total taxable state income less any applicable deductions</span>
+<span class="sd">    state_income_taxes : &#39;dtype&#39;</span>
+<span class="sd">        Amount of state income tax i.e. net taxable income by tax rate</span>
+<span class="sd">    fed_deductions : &#39;dtype&#39;</span>
+<span class="sd">        Reduction to federal taxable income from interest, operating expenses, or bill savings depending on sector</span>
+<span class="sd">    total_taxable_fed_income_less_deductions : &#39;dtype&#39;</span>
+<span class="sd">        Total taxable federal income less any applicable deductions</span>
+<span class="sd">    fed_income_taxes : &#39;dtype&#39;</span>
+<span class="sd">        Amount of federal income tax i.e. net taxable income by tax rate</span>
+<span class="sd">    interest_payments_tax_savings : &#39;dtype&#39;</span>
+<span class="sd">        Amount of tax savings from deductions of interest payments</span>
+<span class="sd">    operating_expenses_tax_savings : &#39;dtype&#39;</span>
+<span class="sd">        Amount of tax savings from deductions of operating expenses</span>
+<span class="sd">    deprec_deductions_tax_savings : &#39;dtype&#39;</span>
+<span class="sd">        Amount of tax savings from deductions of capital depreciation</span>
+<span class="sd">    elec_OM_deduction_decrease_tax_liability : &#39;dtype&#39;</span>
+<span class="sd">        Amount of tax savings from deductions of electricity costs as deductible business expense</span>
+<span class="sd">    </span>
+<span class="sd">    Todo</span>
+<span class="sd">    ----</span>
+<span class="sd">    1)  Sales tax basis and rate</span>
+<span class="sd">    2)  note that sales tax goes into depreciable basis</span>
+<span class="sd">    3)  Propery taxes (res can deduct from income taxes, I think)</span>
+<span class="sd">    4)  insurance</span>
+<span class="sd">    5)  add pre-tax cash flow</span>
+<span class="sd">    6)  add residential mortgage option</span>
+<span class="sd">    7)  add carbon tax revenue</span>
+<span class="sd">    8)  More exhaustive checking. I have confirmed basic formulations against SAM, but there are many permutations that haven&#39;t been checked.</span>
+<span class="sd">    9)  make incentives reduce depreciable basis</span>
+<span class="sd">    10) add a flag for high incentive levels</span>
+<span class="sd">    11) battery price schedule, for replacements</span>
+<span class="sd">    12) improve inverter replacement</span>
+<span class="sd">    13) improve battery replacement</span>
+<span class="sd">    14) add inflation adjustment for replacement prices</span>
+<span class="sd">    15) improve deprec schedule handling</span>
+<span class="sd">    16) Make financing unique to each agent</span>
+<span class="sd">    17) Make battery replacements depreciation an input, with default of 7 year MACRS</span>
+<span class="sd">    18) Have a better way to deal with capacity vs effective capacity and battery costs</span>
+<span class="sd">    19) Make it so it can accept different loan terms</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#################### Massage inputs ########################################</span>
+    <span class="c1"># If given just a single value for an agent-specific variable, repeat that</span>
+    <span class="c1"># variable for each agent. This assumes that the variable is intended to be</span>
+    <span class="c1"># applied to each agent. </span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">bill_savings</span><span class="p">))</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span> <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">analysis_years</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span> <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">bill_savings</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">analysis_years</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">n_agents</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">sector</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">sector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">sector</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">fed_tax_rate</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">fed_tax_rate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">fed_tax_rate</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">state_tax_rate</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">state_tax_rate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">state_tax_rate</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">itc</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">itc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">itc</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">pv_size</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">pv_size</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">pv_size</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">pv_price</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">pv_price</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">pv_price</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">pv_om</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">pv_om</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">pv_om</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">batt_cap</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">batt_cap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">batt_cap</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">batt_power</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">batt_power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">batt_power</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">batt_cost_per_kw</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">batt_cost_per_kw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">batt_cost_per_kw</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">batt_cost_per_kwh</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">batt_cost_per_kwh</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">batt_cost_per_kwh</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">batt_chg_frac</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">batt_chg_frac</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">batt_chg_frac</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">batt_om_per_kw</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">batt_om_per_kw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">batt_om_per_kw</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">batt_om_per_kwh</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">batt_om_per_kwh</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">batt_om_per_kwh</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">real_d</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">real_d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">real_d</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">down_payment_fraction</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">down_payment_fraction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">down_payment_fraction</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">loan_rate</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">loan_rate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">loan_rate</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">ibi</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">ibi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">ibi</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">cbi</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">cbi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">cbi</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)</span> 
+    
+    
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">pbi</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_agents</span> <span class="ow">or</span> <span class="n">n_agents</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span> <span class="n">pbi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">pbi</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">)[:,</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="n">deprec_sched</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">deprec_sched</span><span class="p">])</span>
+
+    <span class="c1">#################### Setup #########################################</span>
+    <span class="n">effective_tax_rate</span> <span class="o">=</span> <span class="n">fed_tax_rate</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">state_tax_rate</span><span class="p">)</span> <span class="o">+</span> <span class="n">state_tax_rate</span>
+    <span class="n">nom_d</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">real_d</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">inflation</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">cf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> 
+    <span class="n">inflation_adjustment</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">inflation</span><span class="p">)</span><span class="o">**</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">analysis_years</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1">#################### Bill Savings #########################################</span>
+    <span class="c1"># For C&amp;I customers, bill savings are reduced by the effective tax rate,</span>
+    <span class="c1"># assuming the cost of electricity could have otherwise been counted as an</span>
+    <span class="c1"># O&amp;M expense to reduce federal and state taxable income.</span>
+    <span class="n">bill_savings</span> <span class="o">=</span> <span class="n">bill_savings</span><span class="o">*</span><span class="n">inflation_adjustment</span> <span class="c1"># Adjust for inflation</span>
+    <span class="n">after_tax_bill_savings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">after_tax_bill_savings</span> <span class="o">=</span> <span class="p">(</span><span class="n">bill_savings</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">sector</span><span class="o">!=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span><span class="o">*</span><span class="n">effective_tax_rate</span><span class="p">))</span><span class="o">.</span><span class="n">T</span> <span class="c1"># reduce value of savings because they could have otherwise be written off as operating expenses</span>
+
+    <span class="n">cf</span> <span class="o">+=</span> <span class="n">bill_savings</span>
+    
+    <span class="c1">#################### Installed Costs ######################################</span>
+    <span class="c1"># Assumes that cash incentives, IBIs, and CBIs will be monetized in year 0,</span>
+    <span class="c1"># reducing the up front installed cost that determines debt levels. </span>
+    <span class="n">pv_cost</span> <span class="o">=</span> <span class="n">pv_size</span><span class="o">*</span><span class="n">pv_price</span>     <span class="c1"># assume pv_price includes initial inverter purchase</span>
+    <span class="n">batt_cost</span> <span class="o">=</span> <span class="n">batt_power</span><span class="o">*</span><span class="n">batt_cost_per_kw</span> <span class="o">+</span> <span class="n">batt_cap</span><span class="o">*</span><span class="n">batt_cost_per_kwh</span>
+    <span class="n">installed_cost</span> <span class="o">=</span> <span class="n">pv_cost</span> <span class="o">+</span> <span class="n">batt_cost</span>
+    <span class="n">net_installed_cost</span> <span class="o">=</span> <span class="n">installed_cost</span> <span class="o">-</span> <span class="n">cash_incentives</span> <span class="o">-</span> <span class="n">ibi</span> <span class="o">-</span> <span class="n">cbi</span>
+    <span class="n">up_front_cost</span> <span class="o">=</span> <span class="n">net_installed_cost</span> <span class="o">*</span> <span class="n">down_payment_fraction</span>
+    <span class="n">cf</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">-=</span> <span class="n">up_front_cost</span>
+    
+    
+    <span class="c1">#################### Operating Expenses ###################################</span>
+    <span class="c1"># Nominally includes O&amp;M, replacement costs, fuel, insurance, and property </span>
+    <span class="c1"># tax - although currently only includes O&amp;M and replacements.</span>
+    <span class="c1"># All operating expenses increase with inflation</span>
+    <span class="n">operating_expenses_cf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">batt_om_cf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="c1"># Battery O&amp;M (replacement costs added to base O&amp;M when costs were ingested)</span>
+    <span class="n">batt_om_cf</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">(</span><span class="n">batt_power</span><span class="o">*</span><span class="n">batt_om_per_kw</span> <span class="o">+</span> <span class="n">batt_cap</span><span class="o">*</span><span class="n">batt_om_per_kwh</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_agents</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># PV O&amp;M</span>
+    <span class="n">operating_expenses_cf</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pv_om</span> <span class="o">*</span> <span class="n">pv_size</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_agents</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="n">operating_expenses_cf</span> <span class="o">+=</span> <span class="n">batt_om_cf</span>
+    <span class="n">operating_expenses_cf</span> <span class="o">=</span> <span class="n">operating_expenses_cf</span><span class="o">*</span><span class="n">inflation_adjustment</span>
+    <span class="n">cf</span> <span class="o">-=</span> <span class="n">operating_expenses_cf</span>
+    
+    <span class="c1">#################### Federal ITC #########################################</span>
+    <span class="n">pv_itc_value</span> <span class="o">=</span> <span class="n">pv_cost</span> <span class="o">*</span> <span class="n">itc</span>
+    <span class="n">batt_itc_value</span> <span class="o">=</span> <span class="n">batt_cost</span> <span class="o">*</span> <span class="n">itc</span> <span class="o">*</span> <span class="n">batt_chg_frac</span> <span class="o">*</span> <span class="p">(</span><span class="n">batt_chg_frac</span><span class="o">&gt;=</span><span class="mf">0.75</span><span class="p">)</span>
+    <span class="n">itc_value</span> <span class="o">=</span> <span class="n">pv_itc_value</span> <span class="o">+</span> <span class="n">batt_itc_value</span>
+    <span class="c1"># itc value added in fed_tax_savings_or_liability</span>
+    
+    
+    
+    
+    <span class="c1">#################### Depreciation #########################################</span>
+    <span class="c1"># Per SAM, depreciable basis is sum of total installed cost and total </span>
+    <span class="c1"># construction financing costs, less 50% of ITC and any incentives that</span>
+    <span class="c1"># reduce the depreciable basis.</span>
+    <span class="n">deprec_deductions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">deprec_basis</span> <span class="o">=</span> <span class="n">installed_cost</span> <span class="o">-</span> <span class="n">itc_value</span><span class="o">*</span><span class="mf">0.5</span> 
+    <span class="n">deprec_deductions</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:</span><span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">deprec_sched</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">deprec_basis</span> <span class="o">*</span> <span class="n">deprec_sched</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="c1"># to be used later in fed tax calcs</span>
+    
+    <span class="c1">#################### Debt cash flow #######################################</span>
+    <span class="c1"># Deduct loan interest payments from state &amp; federal income taxes for res </span>
+    <span class="c1"># mortgage and C&amp;I. No deduction for res loan.</span>
+    <span class="c1"># note that the debt balance in year0 is different from principal if there </span>
+    <span class="c1"># are any ibi or cbi. Not included here yet.</span>
+    <span class="c1"># debt balance, interest payment, principal payment, total payment</span>
+    
+    <span class="n">initial_debt</span> <span class="o">=</span> <span class="n">net_installed_cost</span> <span class="o">-</span> <span class="n">up_front_cost</span>
+    <span class="n">annual_principal_and_interest_payment</span> <span class="o">=</span> <span class="n">initial_debt</span> <span class="o">*</span> <span class="p">(</span><span class="n">loan_rate</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">loan_rate</span><span class="p">)</span><span class="o">**</span><span class="n">loan_term</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="mi">1</span><span class="o">+</span><span class="n">loan_rate</span><span class="p">)</span><span class="o">**</span><span class="n">loan_term</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">debt_balance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">interest_payments</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">principal_and_interest_payments</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    
+    <span class="n">debt_balance</span><span class="p">[:,:</span><span class="n">loan_term</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">initial_debt</span><span class="o">*</span><span class="p">((</span><span class="mi">1</span><span class="o">+</span><span class="n">loan_rate</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_agents</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span><span class="o">**</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">loan_term</span><span class="p">))</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span> <span class="o">-</span> <span class="p">(</span><span class="n">annual_principal_and_interest_payment</span><span class="o">*</span><span class="p">(((</span><span class="mi">1</span><span class="o">+</span><span class="n">loan_rate</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_agents</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">loan_term</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span><span class="o">/</span><span class="n">loan_rate</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_agents</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>  
+    <span class="n">interest_payments</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">(</span><span class="n">debt_balance</span><span class="p">[:,:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">loan_rate</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">principal_and_interest_payments</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:</span><span class="n">loan_term</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">annual_principal_and_interest_payment</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_agents</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="n">cf</span> <span class="o">-=</span> <span class="n">principal_and_interest_payments</span>
+    
+        
+    <span class="c1">#################### State Income Tax #########################################</span>
+    <span class="c1"># Per SAM, taxable income is CBIs and PBIs (but not IBIs)</span>
+    <span class="c1"># Assumes no state depreciation</span>
+    <span class="c1"># Assumes that revenue from DG is not taxable income</span>
+    <span class="n">total_taxable_income</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">total_taxable_income</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">cbi</span>
+    <span class="n">total_taxable_income</span><span class="p">[:,:</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">pbi</span><span class="p">)[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">+=</span> <span class="n">pbi</span>
+    
+    <span class="n">state_deductions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">state_deductions</span> <span class="o">+=</span> <span class="p">(</span><span class="n">interest_payments</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="p">(</span><span class="n">sector</span><span class="o">!=</span><span class="s1">&#39;res&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">state_deductions</span> <span class="o">+=</span> <span class="p">(</span><span class="n">operating_expenses_cf</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="p">(</span><span class="n">sector</span><span class="o">!=</span><span class="s1">&#39;res&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">state_deductions</span> <span class="o">-=</span> <span class="p">(</span><span class="n">bill_savings</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="p">(</span><span class="n">sector</span><span class="o">!=</span><span class="s1">&#39;res&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+    
+    <span class="n">total_taxable_state_income_less_deductions</span> <span class="o">=</span> <span class="n">total_taxable_income</span> <span class="o">-</span> <span class="n">state_deductions</span>
+    <span class="n">state_income_taxes</span> <span class="o">=</span> <span class="p">(</span><span class="n">total_taxable_state_income_less_deductions</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">state_tax_rate</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    
+    <span class="n">state_tax_savings_or_liability</span> <span class="o">=</span> <span class="o">-</span><span class="n">state_income_taxes</span>
+    
+    <span class="n">cf</span> <span class="o">+=</span> <span class="n">state_tax_savings_or_liability</span>
+        
+    <span class="c1">################## Federal Income Tax #########################################</span>
+    <span class="c1"># Assumes all deductions are federal</span>
+    <span class="n">fed_deductions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">fed_deductions</span> <span class="o">+=</span> <span class="p">(</span><span class="n">interest_payments</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="p">(</span><span class="n">sector</span><span class="o">!=</span><span class="s1">&#39;res&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">fed_deductions</span> <span class="o">+=</span> <span class="p">(</span><span class="n">deprec_deductions</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="p">(</span><span class="n">sector</span><span class="o">!=</span><span class="s1">&#39;res&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">fed_deductions</span> <span class="o">+=</span> <span class="n">state_income_taxes</span>
+    <span class="n">fed_deductions</span> <span class="o">+=</span> <span class="p">(</span><span class="n">operating_expenses_cf</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="p">(</span><span class="n">sector</span><span class="o">!=</span><span class="s1">&#39;res&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">fed_deductions</span> <span class="o">-=</span> <span class="p">(</span><span class="n">bill_savings</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="p">(</span><span class="n">sector</span><span class="o">!=</span><span class="s1">&#39;res&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+    
+    <span class="n">total_taxable_fed_income_less_deductions</span> <span class="o">=</span> <span class="n">total_taxable_income</span> <span class="o">-</span> <span class="n">fed_deductions</span>
+    <span class="n">fed_income_taxes</span> <span class="o">=</span> <span class="p">(</span><span class="n">total_taxable_fed_income_less_deductions</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">fed_tax_rate</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    
+    <span class="n">fed_tax_savings_or_liability_less_itc</span> <span class="o">=</span> <span class="o">-</span><span class="n">fed_income_taxes</span>
+    
+    <span class="n">cf</span> <span class="o">+=</span> <span class="n">fed_tax_savings_or_liability_less_itc</span>
+    <span class="n">cf</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">itc_value</span>
+    
+    
+    <span class="c1">######################## Packaging tax outputs ############################</span>
+    <span class="n">interest_payments_tax_savings</span> <span class="o">=</span> <span class="p">(</span><span class="n">interest_payments</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">effective_tax_rate</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">operating_expenses_tax_savings</span> <span class="o">=</span> <span class="p">(</span><span class="n">operating_expenses_cf</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">effective_tax_rate</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">deprec_deductions_tax_savings</span> <span class="o">=</span> <span class="p">(</span><span class="n">deprec_deductions</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">fed_tax_rate</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>    
+    <span class="n">elec_OM_deduction_decrease_tax_liability</span> <span class="o">=</span> <span class="p">(</span><span class="n">bill_savings</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">effective_tax_rate</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    
+    <span class="c1">########################### Post Processing ###############################</span>
+      
+    <span class="n">powers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+    <span class="n">powers</span><span class="p">[:,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">analysis_years</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">discounts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+    <span class="n">discounts</span><span class="p">[:,:]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">nom_d</span><span class="p">))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_agents</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">cf_discounted</span> <span class="o">=</span> <span class="n">cf</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">discounts</span><span class="p">,</span> <span class="n">powers</span><span class="p">)</span>
+    <span class="n">npv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cf_discounted</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    
+    
+    <span class="c1">########################### Package Results ###############################</span>
+    
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;cf&#39;</span><span class="p">:</span><span class="n">cf</span><span class="p">,</span>
+               <span class="s1">&#39;cf_discounted&#39;</span><span class="p">:</span><span class="n">cf_discounted</span><span class="p">,</span>
+               <span class="s1">&#39;npv&#39;</span><span class="p">:</span><span class="n">npv</span><span class="p">,</span>
+               <span class="s1">&#39;bill_savings&#39;</span><span class="p">:</span><span class="n">bill_savings</span><span class="p">,</span>
+               <span class="s1">&#39;after_tax_bill_savings&#39;</span><span class="p">:</span><span class="n">after_tax_bill_savings</span><span class="p">,</span>
+               <span class="s1">&#39;pv_cost&#39;</span><span class="p">:</span><span class="n">pv_cost</span><span class="p">,</span>
+               <span class="s1">&#39;batt_cost&#39;</span><span class="p">:</span><span class="n">batt_cost</span><span class="p">,</span>
+               <span class="s1">&#39;installed_cost&#39;</span><span class="p">:</span><span class="n">installed_cost</span><span class="p">,</span>
+               <span class="s1">&#39;up_front_cost&#39;</span><span class="p">:</span><span class="n">up_front_cost</span><span class="p">,</span>
+               <span class="s1">&#39;batt_om_cf&#39;</span><span class="p">:</span><span class="n">batt_om_cf</span><span class="p">,</span>              
+               <span class="s1">&#39;operating_expenses&#39;</span><span class="p">:</span><span class="n">operating_expenses_cf</span><span class="p">,</span>
+               <span class="s1">&#39;pv_itc_value&#39;</span><span class="p">:</span><span class="n">pv_itc_value</span><span class="p">,</span>
+               <span class="s1">&#39;batt_itc_value&#39;</span><span class="p">:</span><span class="n">batt_itc_value</span><span class="p">,</span>
+               <span class="s1">&#39;itc_value&#39;</span><span class="p">:</span><span class="n">itc_value</span><span class="p">,</span>
+               <span class="s1">&#39;deprec_basis&#39;</span><span class="p">:</span><span class="n">deprec_basis</span><span class="p">,</span>
+               <span class="s1">&#39;deprec_deductions&#39;</span><span class="p">:</span><span class="n">deprec_deductions</span><span class="p">,</span>
+               <span class="s1">&#39;initial_debt&#39;</span><span class="p">:</span><span class="n">initial_debt</span><span class="p">,</span>
+               <span class="s1">&#39;annual_principal_and_interest_payment&#39;</span><span class="p">:</span><span class="n">annual_principal_and_interest_payment</span><span class="p">,</span>
+               <span class="s1">&#39;debt_balance&#39;</span><span class="p">:</span><span class="n">debt_balance</span><span class="p">,</span>
+               <span class="s1">&#39;interest_payments&#39;</span><span class="p">:</span><span class="n">interest_payments</span><span class="p">,</span>
+               <span class="s1">&#39;principal_and_interest_payments&#39;</span><span class="p">:</span><span class="n">principal_and_interest_payments</span><span class="p">,</span>
+               <span class="s1">&#39;total_taxable_income&#39;</span><span class="p">:</span><span class="n">total_taxable_income</span><span class="p">,</span>
+               <span class="s1">&#39;state_deductions&#39;</span><span class="p">:</span><span class="n">state_deductions</span><span class="p">,</span>
+               <span class="s1">&#39;total_taxable_state_income_less_deductions&#39;</span><span class="p">:</span><span class="n">total_taxable_state_income_less_deductions</span><span class="p">,</span>
+               <span class="s1">&#39;state_income_taxes&#39;</span><span class="p">:</span><span class="n">state_income_taxes</span><span class="p">,</span>
+               <span class="s1">&#39;fed_deductions&#39;</span><span class="p">:</span><span class="n">fed_deductions</span><span class="p">,</span>
+               <span class="s1">&#39;total_taxable_fed_income_less_deductions&#39;</span><span class="p">:</span><span class="n">total_taxable_fed_income_less_deductions</span><span class="p">,</span>
+               <span class="s1">&#39;fed_income_taxes&#39;</span><span class="p">:</span><span class="n">fed_income_taxes</span><span class="p">,</span>
+               <span class="s1">&#39;interest_payments_tax_savings&#39;</span><span class="p">:</span><span class="n">interest_payments_tax_savings</span><span class="p">,</span>
+               <span class="s1">&#39;operating_expenses_tax_savings&#39;</span><span class="p">:</span><span class="n">operating_expenses_tax_savings</span><span class="p">,</span>
+               <span class="s1">&#39;deprec_deductions_tax_savings&#39;</span><span class="p">:</span><span class="n">deprec_deductions_tax_savings</span><span class="p">,</span>
+               <span class="s1">&#39;elec_OM_deduction_decrease_tax_liability&#39;</span><span class="p">:</span><span class="n">elec_OM_deduction_decrease_tax_liability</span><span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">results</span></div>
+
+    
+<span class="c1">#==============================================================================</span>
+     
+<div class="viewcode-block" id="calc_payback_vectorized"><a class="viewcode-back" href="../../source/api.html#python.financial_functions.calc_payback_vectorized">[docs]</a><span class="k">def</span> <span class="nf">calc_payback_vectorized</span><span class="p">(</span><span class="n">cfs</span><span class="p">,</span> <span class="n">tech_lifetime</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Payback calculator.</span>
+
+<span class="sd">    Can be either simple payback or discounted payback, depending on whether</span>
+<span class="sd">    the input cash flow is discounted.    </span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cfs : numpy.ndarray</span>
+<span class="sd">        Project cash flows ($/yr).</span>
+<span class="sd">    tech_lifetime : int</span>
+<span class="sd">        Lifetime of technology used for project.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pp : numpy.ndarray</span>
+<span class="sd">        Interpolated payback period (years)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">years</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">tech_lifetime</span><span class="p">)]</span> <span class="o">*</span> <span class="n">cfs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    
+    <span class="n">cum_cfs</span> <span class="o">=</span> <span class="n">cfs</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>   
+    <span class="n">no_payback</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">cum_cfs</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">cum_cfs</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">instant_payback</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">cum_cfs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">neg_to_pos_years</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">cum_cfs</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="n">base_years</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">neg_to_pos_years</span><span class="p">,</span> <span class="n">years</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># replace values of -1 with 30</span>
+    <span class="n">base_years_fix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">base_years</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">tech_lifetime</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">base_years</span><span class="p">)</span>
+    <span class="n">base_year_mask</span> <span class="o">=</span> <span class="n">years</span> <span class="o">==</span> <span class="n">base_years_fix</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    
+    <span class="c1"># base year values</span>
+    <span class="n">base_year_values</span> <span class="o">=</span> <span class="n">cum_cfs</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">base_year_mask</span><span class="p">]</span>
+    <span class="n">next_year_values</span> <span class="o">=</span> <span class="n">cum_cfs</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:][</span><span class="n">base_year_mask</span><span class="p">]</span>
+    <span class="n">frac_years</span> <span class="o">=</span> <span class="n">base_year_values</span><span class="o">/</span><span class="p">(</span><span class="n">base_year_values</span> <span class="o">-</span> <span class="n">next_year_values</span><span class="p">)</span>
+    <span class="n">pp_year</span> <span class="o">=</span> <span class="n">base_years_fix</span> <span class="o">+</span> <span class="n">frac_years</span>
+    <span class="n">pp_precise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">no_payback</span><span class="p">,</span> <span class="n">tech_lifetime</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">instant_payback</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">pp_year</span><span class="p">))</span>
+    
+    <span class="n">pp_final</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pp_precise</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">decimals</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">pp_final</span></div>
+    
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="virr"><a class="viewcode-back" href="../../source/api.html#python.financial_functions.virr">[docs]</a><span class="k">def</span> <span class="nf">virr</span><span class="p">(</span><span class="n">cfs</span><span class="p">,</span> <span class="n">precision</span> <span class="o">=</span> <span class="mf">0.005</span><span class="p">,</span> <span class="n">rmin</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rmax1</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">rmax2</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Vectorized IRR calculator. </span>
+<span class="sd">    </span>
+<span class="sd">    First calculate a 3D array of the discounted cash flows along cash flow series, time period, and discount rate. Sum over time to </span>
+<span class="sd">    collapse to a 2D array which gives the NPV along a range of discount rates </span>
+<span class="sd">    for each cash flow series. Next, find crossover where NPV is zero--corresponds</span>
+<span class="sd">    to the lowest real IRR value. </span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cfs : numpy.ndarray</span>
+<span class="sd">        Rows are cash flow series, cols are time periods</span>
+<span class="sd">    precision : float</span>
+<span class="sd">        Level of accuracy for the inner IRR band, default value 0.005%</span>
+<span class="sd">    rmin : float</span>
+<span class="sd">        Lower bound of the inner IRR band default value 0%</span>
+<span class="sd">    rmax1 : float</span>
+<span class="sd">        Upper bound of the inner IRR band default value 30%</span>
+<span class="sd">    rmax2 : float</span>
+<span class="sd">        upper bound of the outer IRR band. e.g. 50% Values in the outer </span>
+<span class="sd">        band are calculated to 1% precision, IRRs outside the upper band </span>
+<span class="sd">        return the rmax2 value.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        IRRs for cash flow series</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    For performance, negative IRRs are not calculated, returns &quot;-1&quot; and values are only calculated to an acceptable precision.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="n">cfs</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span> 
+        <span class="n">cfs</span> <span class="o">=</span> <span class="n">cfs</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">cfs</span><span class="p">))</span>
+
+    <span class="c1"># Range of time periods</span>
+    <span class="n">years</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">cfs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    
+    <span class="c1"># Range of the discount rates</span>
+    <span class="n">rates_length1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">rmax1</span> <span class="o">-</span> <span class="n">rmin</span><span class="p">)</span><span class="o">/</span><span class="n">precision</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">rates_length2</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">rmax2</span> <span class="o">-</span> <span class="n">rmax1</span><span class="p">)</span><span class="o">/</span><span class="mf">0.01</span><span class="p">)</span>
+    <span class="n">rates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rates_length1</span> <span class="o">+</span> <span class="n">rates_length2</span><span class="p">,))</span>
+    <span class="n">rates</span><span class="p">[:</span><span class="n">rates_length1</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.3</span><span class="p">,</span><span class="n">rates_length1</span><span class="p">)</span>
+    <span class="n">rates</span><span class="p">[</span><span class="n">rates_length1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.31</span><span class="p">,</span><span class="mf">0.5</span><span class="p">,</span><span class="n">rates_length2</span><span class="p">)</span>
+
+    <span class="c1"># Discount rate multiplier rows are years, cols are rates</span>
+    <span class="n">drm</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">rates</span><span class="p">)</span><span class="o">**-</span><span class="n">years</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+
+    <span class="c1"># Calculate discounted cfs   </span>
+    <span class="n">discounted_cfs</span> <span class="o">=</span> <span class="n">cfs</span><span class="p">[:,:,</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">drm</span>
+    
+    <span class="c1"># Calculate NPV array by summing over discounted cashflows</span>
+    <span class="n">npv</span> <span class="o">=</span> <span class="n">discounted_cfs</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># Convert npv into boolean for positives (0) and negatives (1)</span>
+    <span class="n">signs</span> <span class="o">=</span> <span class="n">npv</span> <span class="o">&lt;</span> <span class="mi">0</span>
+    
+    <span class="c1"># Find the pairwise differences in boolean values</span>
+    <span class="c1"># sign crosses over, the pairwise diff will be True</span>
+    <span class="n">crossovers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">signs</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># Extract the irr from the first crossover for each row</span>
+    <span class="n">irr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">masked_equal</span><span class="p">(</span><span class="n">rates</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">*</span> <span class="n">crossovers</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># deal with negative irrs</span>
+    <span class="n">negative_irrs</span> <span class="o">=</span> <span class="n">cfs</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">negative_irrs</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">irr</span><span class="p">)</span>
+    
+    <span class="c1"># where the implied irr exceeds 0.5, simply cap it at 0.5</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">irr</span><span class="o">.</span><span class="n">mask</span> <span class="o">*</span> <span class="p">(</span><span class="n">negative_irrs</span> <span class="o">==</span> <span class="kc">False</span><span class="p">),</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+
+    <span class="c1"># where cashflows are all zero, set irr to nan</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">cfs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">r</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, NREL
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

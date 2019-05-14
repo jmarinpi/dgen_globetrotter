@@ -7,6 +7,11 @@
 # ignore DS_Stores
 *.DS_Store
 
+#
+runs/
+input_agents/
+env/
+python/env/
 
 # ignore PyCharm files
 .idea/

@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Sep 17 10:51:51 2015
-
-@author: mgleason
+Assorted accessory functions. 
 """
 
 import getopt
@@ -22,7 +20,6 @@ import os
 
 
 def get_logger(log_file_path=None):
-
     colorama.init()
     formatter = colorlog.ColoredFormatter("%(log_color)s%(levelname)-8s:%(reset)s %(white)s%(message)s",
                                           datefmt=None,
@@ -44,7 +41,6 @@ def get_logger(log_file_path=None):
 
 
 def get_git_hash():
-
     try:
         fp = os.path.dirname(os.path.abspath(__file__))
         cmd = "cd %s;" % fp + "git log --pretty=format:'%h' -n 1"
@@ -104,18 +100,25 @@ class Timer:
 #       Miscellaneous Functions
 #==============================================================================
 def parse_command_args(argv):
-    ''' Function to parse the command line arguments
-    IN:
+    """
+    Function to parse the command line arguments
 
-    -h : help 'dg_model.py -i <Initiate Model?> -y <year>'
-    -i : Initiate model for 2010 and quit
-    -y: or year= : Resume model solve in passed year
+    Parameters
+    ----------
+    h : str
+        help 'dg_model.py -i <Initiate Model?> -y <year>'
+    i : str
+        Initiate model for 2010 and quit
+    y : int
+        Resume model solve in passed year
 
-    OUT:
-
-    init_model - Boolean - Should model initiate?
-    resume_year - Float - year model should resume
-    '''
+    Return
+    ------
+    init_model : bool
+        Should model initiate?
+    resume_year : float
+        Year model should resume
+    """
 
     resume_year = None
     init_model = False
@@ -137,14 +140,10 @@ def parse_command_args(argv):
 
 
 def get_epoch_time():
-
     epoch_time = time.time()
-
     return epoch_time
 
 
 def get_formatted_time():
-
     formatted_time = time.strftime('%Y%m%d_%H%M%S')
-
     return formatted_time
