@@ -56,6 +56,6 @@ dr_df['real_discount'] = dr_df.apply(capital_inflation_to_dr, axis = 1)
 print('mean discount rate', dr_df['real_discount'].mean())
 
 
-dr_df_out = dr_df[['state_id','real_discount']]
+dr_df_out = dr_df[['state_id','sector_abbr','real_discount']]
 
 dr_df_out.to_csv('/Users/skoebric/Documents/NREL-GitHub/dGen/naris_mx/input_scenarios/mex_high_costs/discount_rates.csv', index=False)
