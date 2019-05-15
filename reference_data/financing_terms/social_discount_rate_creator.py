@@ -29,21 +29,33 @@ state_id_dict = dict(zip(state_names, state_ids))
 
 irs['state_id'] = irs['state'].map(state_id_dict)
 
-res_scaler = MinMaxScaler((.09, .15))
-irs['res_dr'] = res_scaler.fit_transform(irs['2015'].values.reshape(-1,1))
+res_scaler = MinMaxScaler((.12, .20))
+irs['res_capital'] = res_scaler.fit_transform(irs['2015'].values.reshape(-1,1))
 
-com_scaler = MinMaxScaler((.085, .13))
-irs['com_dr'] = res_scaler.fit_transform(irs['2015'].values.reshape(-1,1))
+com_scaler = MinMaxScaler((.10, .15))
+irs['com_capital'] = com_scaler.fit_transform(irs['2015'].values.reshape(-1,1))
 
-ind_scaler = MinMaxScaler((.08, .11))
-irs['ind_dr'] = res_scaler.fit_transform(irs['2015'].values.reshape(-1,1))
+ind_scaler = MinMaxScaler((.09, .12))
+irs['ind_capital'] = ind_scaler.fit_transform(irs['2015'].values.reshape(-1,1))
 
 dr_dfs = []
 for i in ['res','com','ind']:
-    dfloc = irs[['state_id','res_dr']]
-    dfloc.columns = ['state_id','real_discount']
+    dfloc = irs[['state_id','state',f'{i}_capital']]
+    dfloc.columns = ['state_id','state','capital_cost']
     dfloc['sector_abbr'] = i
     dr_dfs.append(dfloc)
-dr_df = pd.concat(dr_dfs, axis ='rows')
 
-dr_df.to_csv('/Users/skoebric/Documents/NREL-GitHub/dGen/naris_mx/input_scenarios/mex_high_costs/discount_rates.csv', index=False)
+dr_df = pd.concat(dr_dfs, axis ='rows')
+dr_df['inflation'] = 0.0395
+
+def capital_inflation_to_dr(row):
+    dr = (row['capital_cost'] - row['inflation']) / (row['inflation'] + 1)
+    return dr
+
+dr_df['real_discount'] = dr_df.apply(capital_inflation_to_dr, axis = 1)
+print('mean discount rate', dr_df['real_discount'].mean())
+
+
+dr_df_out = dr_df[['state_id','real_discount']]
+
+dr_df_out.to_csv('/Users/skoebric/Documents/NREL-GitHub/dGen/naris_mx/input_scenarios/mex_high_costs/discount_rates.csv', index=False)
