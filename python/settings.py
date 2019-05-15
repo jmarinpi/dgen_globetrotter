@@ -486,7 +486,7 @@ class ScenarioSettings:
 
           if table_name == "input_main_financial_trajecories":
                self.financing_terms = df
-               rename_set = {'loan_term_{}':'loan_term', 'loan_rate_{}':'loan_rate', 'down_payment_{}':'down_payment', 'real_discount_{}':'real_discount','tax_rate_{}':'tax_rate','itc_fraction_{}':'itc_fraction'}
+               rename_set = {'loan_term_{}':'loan_term', 'loan_rate_{}':'loan_rate', 'down_payment_{}':'down_payment','tax_rate_{}':'tax_rate','itc_fraction_{}':'itc_fraction'}
                adders = ['economic_lifetime']
                result = self.collapse_sectors(df, rename_set, adders)
                result['tech']='solar'
@@ -652,6 +652,11 @@ class ScenarioSettings:
                columns = ['control_reg_id', 'country_abbr','sector_abbr', 'year']
                self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on= columns)
 
+     def load_discount_rate(self):
+          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'discount_rates.csv'), index_col=None)
+          print df
+          self.core_agent_attributes = pd.merge(self.core_agent_attributes, df, on=['state_id','sector_abbr'])
+
      def load_avoided_costs(self):
           df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'avoided_cost_rates.csv'),index_col=None)
           ids = ['country_abbr','control_reg_id']
@@ -711,7 +716,7 @@ class ScenarioSettings:
           return self.storage_trajectories[['year', 'sector_abbr','batt_price_per_kwh','batt_price_per_kw','batt_om_per_kw','batt_om_per_kwh']]
 
      def get_financing_terms(self):
-          return self.financial_trajectories[['year','sector_abbr','deprec_sch','itc_fraction','min_size_kw','max_size_kw','loan_term','loan_rate','down_payment','real_discount','tax_rate','economic_lifetime']]
+          return self.financial_trajectories[['year','sector_abbr','deprec_sch','itc_fraction','min_size_kw','max_size_kw','loan_term','loan_rate','down_payment','tax_rate','economic_lifetime']]
 
      def get_rate_escalations(self):
           return self.control_reg_trajectories[['control_reg_id', 'country_abbr','sector_abbr','elec_price_multiplier','year']]
