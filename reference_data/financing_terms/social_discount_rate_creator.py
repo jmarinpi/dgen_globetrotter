@@ -29,13 +29,13 @@ state_id_dict = dict(zip(state_names, state_ids))
 
 irs['state_id'] = irs['state'].map(state_id_dict)
 
-res_scaler = MinMaxScaler((9, 15))
+res_scaler = MinMaxScaler((.09, .15))
 irs['res_dr'] = res_scaler.fit_transform(irs['2015'].values.reshape(-1,1))
 
-com_scaler = MinMaxScaler((8.5, 13))
+com_scaler = MinMaxScaler((.085, .13))
 irs['com_dr'] = res_scaler.fit_transform(irs['2015'].values.reshape(-1,1))
 
-ind_scaler = MinMaxScaler((8, 11))
+ind_scaler = MinMaxScaler((.08, .11))
 irs['ind_dr'] = res_scaler.fit_transform(irs['2015'].values.reshape(-1,1))
 
 dr_dfs = []
