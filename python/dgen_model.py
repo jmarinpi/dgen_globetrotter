@@ -96,7 +96,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info('Loading %s' % scenario_settings.agents_file_name)
                 with open(scenario_settings.agents_file_name,"r") as f:
                     solar_agents = Agents(pickle.load(f))
-                
+
             # Get set of columns that define agent's immutable attributes
             cols_base = list(solar_agents.df.columns.values)
 
@@ -163,6 +163,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Calculate the financial performance of the S+S systems 
                     solar_agents.on_frame(financial_functions.calc_financial_performance)
+                    print ' ******************'
+                    print solar_agents.df[['state_id','real_discount','loan_rate','down_payment','npv','metric_value']]
 
                     # Calculate Maximum Market Share
                     solar_agents.on_frame(financial_functions.calc_max_market_share, scenario_settings.get_max_market_share())

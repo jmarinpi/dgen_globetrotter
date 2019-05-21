@@ -38,9 +38,14 @@ def calc_system_size_and_financial_performance(agent):
     #=========================================================================#
     # Setup
     #=========================================================================#
+
     try:
         if config.VERBOSE:
-            print "\t\t\t\tRunning system size calculations for", agent['state'], agent['tariff_class'], agent['sector_abbr']
+            print ' '
+            print "\tRunning system size calculations for", agent['state'], agent['tariff_class'], agent['sector_abbr']
+            print 'real_discount', agent['real_discount']
+            print 'loan_rate', agent['loan_rate']
+            print 'down_payment', agent['down_payment']
         # Set resolution of dispatcher    
         d_inc_n_est = 10    
         DP_inc_est = 12
@@ -80,7 +85,12 @@ def calc_system_size_and_financial_performance(agent):
 
 
         original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
+        print 'original_bill', original_bill
+
         agent['fy_bill_without_sys'] = original_bill * agent['elec_price_multiplier']
+
+        print 'multiplied original bill', agent['fy_bill_without_sys']
+
         if agent['fy_bill_without_sys'] == 0: 
             agent['fy_bill_without_sys']=1.0
         agent['fy_elec_cents_per_kwh_without_sys'] = agent['fy_bill_without_sys'] / agent['load_per_customer_in_bin_kwh']
@@ -111,7 +121,8 @@ def calc_system_size_and_financial_performance(agent):
         max_size_load = agent.loc['load_per_customer_in_bin_kwh']/agent.loc['naep']
         max_size_roof = agent.loc['developable_roof_sqft'] * agent.loc['developable_buildings_pct'] * agent.loc['pv_power_density_w_per_sqft']/1000.0
         agent.loc['max_pv_size'] = min(max_size_load, max_size_roof)
-
+        print 'max_size_load', max_size_load
+        print 'max_size_roof', max_size_roof
         dynamic_sizing = True #False
 
         if dynamic_sizing:
@@ -212,11 +223,17 @@ def calc_system_size_and_financial_performance(agent):
                      
         system_df['npv'] = cf_results_est['npv']
 
+        print system_df[['est_bills','est_bill_savings','npv']]
+        print '---------------------------------------------------'
+
         #=========================================================================#
         # Select system size and business model for this agent
         #=========================================================================# 
         index_of_best_fin_perform_ho = system_df['npv'].idxmax()
         opt_pv_size = system_df['pv'][index_of_best_fin_perform_ho].copy()
+
+        print 'opt_pv_size', opt_pv_size
+
         opt_batt_power = system_df['batt'][index_of_best_fin_perform_ho].copy()
 
         opt_batt_cap = opt_batt_power*batt_ratio
@@ -267,7 +284,7 @@ def calc_system_size_and_financial_performance(agent):
                          agent['tax_rate'], 0, agent['real_discount'],  
                          agent['economic_lifetime'], agent['inflation'], 
                          agent['down_payment'], agent['loan_rate'], agent['loan_term'],
-                         cash_incentives=cash_incentives) 
+                         cash_incentives=cash_incentives, print_statements = True) 
                          
         #=========================================================================#
         # Package results

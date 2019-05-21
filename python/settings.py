@@ -652,8 +652,8 @@ class ScenarioSettings:
                columns = ['control_reg_id', 'country_abbr','sector_abbr', 'year']
                self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on= columns)
 
-     def load_discount_rate(self):
-          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'discount_rates.csv'), index_col=None)
+     def load_financing_rates(self):
+          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'financing_rates.csv'), index_col=None)
           print df
           self.core_agent_attributes = pd.merge(self.core_agent_attributes, df, on=['state_id','sector_abbr'])
 
@@ -716,7 +716,7 @@ class ScenarioSettings:
           return self.storage_trajectories[['year', 'sector_abbr','batt_price_per_kwh','batt_price_per_kw','batt_om_per_kw','batt_om_per_kwh']]
 
      def get_financing_terms(self):
-          return self.financial_trajectories[['year','sector_abbr','deprec_sch','itc_fraction','min_size_kw','max_size_kw','loan_term','loan_rate','down_payment','tax_rate','economic_lifetime']]
+          return self.financial_trajectories[['year','sector_abbr','deprec_sch','itc_fraction','min_size_kw','max_size_kw','loan_term','tax_rate','economic_lifetime']]
 
      def get_rate_escalations(self):
           return self.control_reg_trajectories[['control_reg_id', 'country_abbr','sector_abbr','elec_price_multiplier','year']]

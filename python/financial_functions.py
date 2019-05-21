@@ -152,7 +152,7 @@ def cashflow_constructor(bill_savings,
                          fed_tax_rate, state_tax_rate, real_d,  
                          analysis_years, inflation, 
                          down_payment_fraction, loan_rate, loan_term, 
-                         cash_incentives=np.array([0]), ibi=np.array([0]), cbi=np.array([0]), pbi=np.array([[0]])):
+                         cash_incentives=np.array([0]), ibi=np.array([0]), cbi=np.array([0]), pbi=np.array([[0]]), print_statements = False):
     """
     Calculate the system cash flows based on the capex, opex, bill savings, incentives, tax implications, and other factors
     
@@ -336,6 +336,12 @@ def cashflow_constructor(bill_savings,
     #################### Setup #########################################
     effective_tax_rate = fed_tax_rate * (1 - state_tax_rate) + state_tax_rate
     nom_d = (1 + real_d) * (1 + inflation) - 1
+
+    if print_statements:
+        print 'nom_d'
+        print nom_d
+        print ' '
+
     cf = np.zeros(shape) 
     inflation_adjustment = (1+inflation)**np.arange(analysis_years+1)
     
@@ -344,21 +350,54 @@ def cashflow_constructor(bill_savings,
     # assuming the cost of electricity could have otherwise been counted as an
     # O&M expense to reduce federal and state taxable income.
     bill_savings = bill_savings*inflation_adjustment # Adjust for inflation
+
     after_tax_bill_savings = np.zeros(shape)
     after_tax_bill_savings = (bill_savings.T * (1 - (sector!='res')*effective_tax_rate)).T # reduce value of savings because they could have otherwise be written off as operating expenses
 
     cf += bill_savings
+    if print_statements:
+        print 'bill savings cf'
+        print np.sum(cf,1)
+        print ' '
     
     #################### Installed Costs ######################################
     # Assumes that cash incentives, IBIs, and CBIs will be monetized in year 0,
     # reducing the up front installed cost that determines debt levels. 
+
+    # print 'pv_price'
+    # print pv_price
+    # print ' '
+
+    # print 'pv_size'
+    # print pv_size
+    # print ' '
+
     pv_cost = pv_size*pv_price     # assume pv_price includes initial inverter purchase
+
+    if print_statements:
+        print 'pv_cost'
+        print pv_cost
+        print ' '
+
     batt_cost = batt_power*batt_cost_per_kw + batt_cap*batt_cost_per_kwh
     installed_cost = pv_cost + batt_cost
+
     net_installed_cost = installed_cost - cash_incentives - ibi - cbi
     up_front_cost = net_installed_cost * down_payment_fraction
     cf[:,0] -= up_front_cost
-    
+
+    # print 'net_installed_cost'
+    # print net_installed_cost
+    # print ' '
+
+    # print 'up front cost'
+    # print up_front_cost
+    # print ' '
+
+    if print_statements:
+        print 'bill savings minus up front cost'
+        print np.sum(cf,1)
+        print ' '
     
     #################### Operating Expenses ###################################
     # Nominally includes O&M, replacement costs, fuel, insurance, and property 
@@ -384,8 +423,7 @@ def cashflow_constructor(bill_savings,
     # itc value added in fed_tax_savings_or_liability
     
     
-    
-    
+
     #################### Depreciation #########################################
     # Per SAM, depreciable basis is sum of total installed cost and total 
     # construction financing costs, less 50% of ITC and any incentives that
@@ -403,16 +441,42 @@ def cashflow_constructor(bill_savings,
     # debt balance, interest payment, principal payment, total payment
     
     initial_debt = net_installed_cost - up_front_cost
+
+    if print_statements:
+        print 'initial_debt'
+        print initial_debt
+        print ' '
+
     annual_principal_and_interest_payment = initial_debt * (loan_rate*(1+loan_rate)**loan_term) / ((1+loan_rate)**loan_term - 1)
+
+    if print_statements:
+        print 'annual_principal_and_interest_payment'
+        print annual_principal_and_interest_payment
+        print ' '
+
     debt_balance = np.zeros(shape)
     interest_payments = np.zeros(shape)
     principal_and_interest_payments = np.zeros(shape)
     
     debt_balance[:,:loan_term] = (initial_debt*((1+loan_rate.reshape(n_agents,1))**np.arange(loan_term)).T).T - (annual_principal_and_interest_payment*(((1+loan_rate).reshape(n_agents,1)**np.arange(loan_term) - 1.0)/loan_rate.reshape(n_agents,1)).T).T  
     interest_payments[:,1:] = (debt_balance[:,:-1].T * loan_rate).T
+
+    # print 'interest_payments'
+    # print interest_payments
+    # print ' '
+
     principal_and_interest_payments[:,1:loan_term+1] = annual_principal_and_interest_payment.reshape(n_agents, 1)
+
+    # print 'principal_and_interest_payments'
+    # print principal_and_interest_payments
+    # print ' '
     
     cf -= principal_and_interest_payments
+
+    if print_statements:
+        print 'cf minus principal and intereset payments'
+        print np.sum(cf,1)
+        print ' '
     
         
     #################### State Income Tax #########################################
@@ -463,11 +527,34 @@ def cashflow_constructor(bill_savings,
       
     powers = np.zeros(shape, int)
     powers[:,:] = np.array(range(analysis_years+1))
+
     discounts = np.zeros(shape, float)
     discounts[:,:] = (1/(1+nom_d)).reshape(n_agents, 1)
+
+    if print_statements:
+        print 'discounts'
+        print np.mean(discounts,1)
+        print ' '
+
     cf_discounted = cf * np.power(discounts, powers)
+
+    if print_statements:
+        print 'cf not discounted'
+        print cf
+        print ' ' 
+
+    if print_statements:
+        print 'cf_discounted'
+        print cf_discounted
+        print ' '
+
     npv = np.sum(cf_discounted, 1)
     
+    if print_statements:
+        print 'npv'
+        print npv
+        print ' '
+
     
     ########################### Package Results ###############################
     
