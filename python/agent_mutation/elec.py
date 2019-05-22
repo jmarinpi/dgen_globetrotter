@@ -46,10 +46,13 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
     #==========================================================================================================
     if interyear_results_aggregations != None:
         ba_cum_pv_mw = interyear_results_aggregations['ba_cum_pv_mw']
+    
     #==========================================================================================================
     # Set up objects
     #==========================================================================================================
     ba_list = np.unique(np.array(agent_df['control_reg_id']))
+    # print 'ba_list'
+    # print ba_list
 
     col_list_8760 = list(['control_reg_id', 'year'])
     hour_list = list(np.arange(1,8761))
@@ -92,6 +95,10 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
 
         # Change the numpy array into pandas dataframe
         pv_gen_by_ba_df = pd.DataFrame(pv_gen_by_ba, columns=hour_list)
+
+        # print pv_gen_by_ba_df
+        # print 'pv_gen_by_ba_df'
+
         pv_gen_by_ba_df.index = ba_list
 
         # Convert generation into capacity factor by diving by total capacity

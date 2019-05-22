@@ -46,6 +46,7 @@ def calc_system_size_and_financial_performance(agent):
             print 'real_discount', agent['real_discount']
             print 'loan_rate', agent['loan_rate']
             print 'down_payment', agent['down_payment']
+
         # Set resolution of dispatcher    
         d_inc_n_est = 10    
         DP_inc_est = 12
@@ -94,6 +95,7 @@ def calc_system_size_and_financial_performance(agent):
         if agent['fy_bill_without_sys'] == 0: 
             agent['fy_bill_without_sys']=1.0
         agent['fy_elec_cents_per_kwh_without_sys'] = agent['fy_bill_without_sys'] / agent['load_per_customer_in_bin_kwh']
+
 
         #=========================================================================#
         # Estimate bill savings revenue from a set of solar+storage system sizes

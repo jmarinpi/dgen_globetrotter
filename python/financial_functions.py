@@ -33,9 +33,15 @@ def calc_financial_performance(dataframe):
 #    dataframe = dataframe.reset_index()
 
     cfs = np.vstack(dataframe['cash_flow']).astype(np.float)    
+
+    print '** in calc_financial_performance **'
     
     # calculate payback period
     tech_lifetime = np.shape(cfs)[1] - 1
+
+    print 'tech_lifetime'
+    print tech_lifetime
+
     payback = calc_payback_vectorized(cfs, tech_lifetime)
     # calculate time to double
     ttd = calc_ttd(cfs)
@@ -45,7 +51,7 @@ def calc_financial_performance(dataframe):
     dataframe['metric_value'] = metric_value
     
     dataframe = dataframe.set_index('agent_id')
-
+    print '\n'
     return dataframe
     
 #%%
@@ -95,18 +101,19 @@ def calc_max_market_share(dataframe, max_market_share_df):
     dataframe['metric_value_bounded'] = metric_value_bounded
 
     # scale and round to nearest int    
-    dataframe['metric_value_as_factor'] = (dataframe['metric_value_bounded'] * 100).round().astype('int')
+    dataframe['metric_value_as_factor'] = [int(round(i,1) * 100) for i in dataframe['metric_value_bounded']]
     # add a scaled key to the max_market_share dataframe too
-    max_market_share_df['metric_value_as_factor'] = (max_market_share_df['metric_value'] * 100).round().astype('int')
+    max_market_share_df['metric_value_as_factor'] = [int(round(float(i), 1) * 100) for i in max_market_share_df['metric_value']]
 
     # Join the max_market_share table and dataframe in order to select the ultimate mms based on the metric value. 
-    dataframe = pd.merge(dataframe, max_market_share_df[['sector_abbr', 'max_market_share', 'metric', 'metric_value_as_factor', 'business_model']], how = 'left', on = ['sector_abbr', 'metric','metric_value_as_factor','business_model'])
-    
+    dataframe = pd.merge(dataframe, max_market_share_df[['sector_abbr', 'max_market_share','metric_value_as_factor', 'metric', 'business_model']], how = 'left', on = ['sector_abbr','metric_value_as_factor','metric', 'business_model'])
+
     # Derate the maximum market share for commercial and industrial customers in leased buildings by (2/3)
     # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
     dataframe['max_market_share'] = np.where(dataframe.owner_occupancy_status == 2, dataframe['max_market_share']/3,dataframe['max_market_share'])
     
-    out_cols = in_cols + ['max_market_share', 'metric']    
+    # out_cols = in_cols + ['max_market_share', 'metric']    
+    out_cols = in_cols + ['max_market_share', 'metric_value_as_factor', 'metric', 'metric_value_bounded']
     dataframe = dataframe.set_index('agent_id')
 
     return dataframe[out_cols]
@@ -335,12 +342,8 @@ def cashflow_constructor(bill_savings,
 
     #################### Setup #########################################
     effective_tax_rate = fed_tax_rate * (1 - state_tax_rate) + state_tax_rate
-    nom_d = (1 + real_d) * (1 + inflation) - 1
-
-    if print_statements:
-        print 'nom_d'
-        print nom_d
-        print ' '
+    
+    # nom_d = (1 + real_d) * (1 + inflation) - 1
 
     cf = np.zeros(shape) 
     inflation_adjustment = (1+inflation)**np.arange(analysis_years+1)
@@ -383,8 +386,19 @@ def cashflow_constructor(bill_savings,
     installed_cost = pv_cost + batt_cost
 
     net_installed_cost = installed_cost - cash_incentives - ibi - cbi
+
+    #calculate the wacc in place of nom_d, still need to figure out taxes write offs for mexico!
+    wacc = (((down_payment_fraction*net_installed_cost)/net_installed_cost) * real_d) + ((((1-down_payment_fraction)*net_installed_cost)/net_installed_cost) * loan_rate)
+    
+    if print_statements:
+        print 'wacc'
+        print wacc
+        print ' '
+
+
     up_front_cost = net_installed_cost * down_payment_fraction
-    cf[:,0] -= up_front_cost
+    cf[:,0] -= net_installed_cost #all installation costs upfront for WACC
+    # cf[:,0] -= up_front_cost
 
     # print 'net_installed_cost'
     # print net_installed_cost
@@ -460,21 +474,40 @@ def cashflow_constructor(bill_savings,
     
     debt_balance[:,:loan_term] = (initial_debt*((1+loan_rate.reshape(n_agents,1))**np.arange(loan_term)).T).T - (annual_principal_and_interest_payment*(((1+loan_rate).reshape(n_agents,1)**np.arange(loan_term) - 1.0)/loan_rate.reshape(n_agents,1)).T).T  
     interest_payments[:,1:] = (debt_balance[:,:-1].T * loan_rate).T
+    
+    if print_statements:
+        print 'interest_payments'
+        print interest_payments
+        print ' '
 
-    # print 'interest_payments'
-    # print interest_payments
-    # print ' '
+        print 'sum of interst_payments'
+        print np.sum(interest_payments)
+        print ' '
+
+        print 'net_installed_cost'
+        print net_installed_cost
+        print ' '
+
+        print 'sum of net_installed_cost and interest payments'
+        print net_installed_cost + np.sum(interest_payments)
+        print ' '
 
     principal_and_interest_payments[:,1:loan_term+1] = annual_principal_and_interest_payment.reshape(n_agents, 1)
 
-    # print 'principal_and_interest_payments'
-    # print principal_and_interest_payments
-    # print ' '
-    
-    cf -= principal_and_interest_payments
+    if print_statements:
+        print 'principal_and_interest_payments'
+        print principal_and_interest_payments
+        print ' '
+
+        print 'sum of principal and interest payments, and upfront cost'
+        print np.sum(principal_and_interest_payments) + up_front_cost
+        print ' '
+
+    # cf -= principal_and_interest_payments
+    cf -= interest_payments
 
     if print_statements:
-        print 'cf minus principal and intereset payments'
+        print 'cf minus intrest payments'
         print np.sum(cf,1)
         print ' '
     
@@ -529,7 +562,7 @@ def cashflow_constructor(bill_savings,
     powers[:,:] = np.array(range(analysis_years+1))
 
     discounts = np.zeros(shape, float)
-    discounts[:,:] = (1/(1+nom_d)).reshape(n_agents, 1)
+    discounts[:,:] = (1/(1+wacc)).reshape(n_agents, 1)
 
     if print_statements:
         print 'discounts'
@@ -537,6 +570,7 @@ def cashflow_constructor(bill_savings,
         print ' '
 
     cf_discounted = cf * np.power(discounts, powers)
+    cf_discounted = np.nan_to_num(cf_discounted)
 
     if print_statements:
         print 'cf not discounted'
@@ -619,21 +653,36 @@ def calc_payback_vectorized(cfs, tech_lifetime):
     years = np.array([np.arange(0, tech_lifetime)] * cfs.shape[0])
     
     cum_cfs = cfs.cumsum(axis = 1)   
+    print 'cum_cfs'
+    print cum_cfs
     no_payback = np.logical_or(cum_cfs[:, -1] <= 0, np.all(cum_cfs <= 0, axis = 1))
     instant_payback = np.all(cum_cfs > 0, axis = 1)
     neg_to_pos_years = np.diff(np.sign(cum_cfs)) > 0
     base_years = np.amax(np.where(neg_to_pos_years, years, -1), axis = 1)
-    
+
     # replace values of -1 with 30
     base_years_fix = np.where(base_years == -1, tech_lifetime - 1, base_years)
     base_year_mask = years == base_years_fix[:, np.newaxis]
+
+    print 'base_years_fix'
+    print base_years_fix
     
     # base year values
     base_year_values = cum_cfs[:, :-1][base_year_mask]
     next_year_values = cum_cfs[:, 1:][base_year_mask]
+
+    print 'base_year_values'
+    print base_year_values
     frac_years = base_year_values/(base_year_values - next_year_values)
+
+    print 'frac_years'
+    print frac_years
+
     pp_year = base_years_fix + frac_years
     pp_precise = np.where(no_payback, tech_lifetime, np.where(instant_payback, 0, pp_year))
+
+    print 'pp_precise'
+    print pp_precise
     
     pp_final = np.array(pp_precise).round(decimals = 3)
     

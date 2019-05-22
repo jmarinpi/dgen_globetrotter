@@ -654,7 +654,6 @@ class ScenarioSettings:
 
      def load_financing_rates(self):
           df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'financing_rates.csv'), index_col=None)
-          print df
           self.core_agent_attributes = pd.merge(self.core_agent_attributes, df, on=['state_id','sector_abbr'])
 
      def load_avoided_costs(self):

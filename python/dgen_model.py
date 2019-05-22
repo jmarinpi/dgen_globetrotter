@@ -163,11 +163,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Calculate the financial performance of the S+S systems 
                     solar_agents.on_frame(financial_functions.calc_financial_performance)
-                    print ' ******************'
-                    print solar_agents.df[['state_id','real_discount','loan_rate','down_payment','npv','metric_value']]
 
                     # Calculate Maximum Market Share
                     solar_agents.on_frame(financial_functions.calc_max_market_share, scenario_settings.get_max_market_share())
+                    print ' ******************'
+                    print solar_agents.df[['state_id','real_discount','loan_rate','down_payment','npv','metric_value','max_market_share']]
 
                     # determine "developable" population
                     solar_agents.on_frame(agent_mutation.elec.calculate_developable_customers_and_load)
