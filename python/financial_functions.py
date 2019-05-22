@@ -342,6 +342,10 @@ def cashflow_constructor(bill_savings,
 
     #################### Setup #########################################
     effective_tax_rate = fed_tax_rate * (1 - state_tax_rate) + state_tax_rate
+
+    if print_statements:
+        print 'effective_tax_rate'
+        print effective_tax_rate
     
     # nom_d = (1 + real_d) * (1 + inflation) - 1
 
@@ -367,14 +371,6 @@ def cashflow_constructor(bill_savings,
     # Assumes that cash incentives, IBIs, and CBIs will be monetized in year 0,
     # reducing the up front installed cost that determines debt levels. 
 
-    # print 'pv_price'
-    # print pv_price
-    # print ' '
-
-    # print 'pv_size'
-    # print pv_size
-    # print ' '
-
     pv_cost = pv_size*pv_price     # assume pv_price includes initial inverter purchase
 
     if print_statements:
@@ -388,19 +384,24 @@ def cashflow_constructor(bill_savings,
     net_installed_cost = installed_cost - cash_incentives - ibi - cbi
 
     #calculate the wacc in place of nom_d, still need to figure out taxes write offs for mexico!
+
     wacc = (((down_payment_fraction*net_installed_cost)/net_installed_cost) * real_d) + ((((1-down_payment_fraction)*net_installed_cost)/net_installed_cost) * loan_rate)
-    
+    # elif sector[0] is in ['com','ind']:
+    #     wacc = (((down_payment_fraction*net_installed_cost)/net_installed_cost) * real_d) + (((((1-down_payment_fraction)*net_installed_cost)/net_installed_cost) * loan_rate)*(1-TAXRATE))
+    # print wacc
+
+
+    up_front_cost = net_installed_cost * down_payment_fraction
     if print_statements:
         print 'wacc'
         print wacc
         print ' '
 
 
-    up_front_cost = net_installed_cost * down_payment_fraction
     cf[:,0] -= net_installed_cost #all installation costs upfront for WACC
     # cf[:,0] -= up_front_cost
 
-    # print 'net_installed_cost'
+    # print 'net_installed_cost' 
     # print net_installed_cost
     # print ' '
 
@@ -504,7 +505,7 @@ def cashflow_constructor(bill_savings,
         print ' '
 
     # cf -= principal_and_interest_payments
-    cf -= interest_payments
+    # cf -= interest_payments  #already included in the WACC
 
     if print_statements:
         print 'cf minus intrest payments'
@@ -529,6 +530,9 @@ def cashflow_constructor(bill_savings,
     state_income_taxes = (total_taxable_state_income_less_deductions.T * state_tax_rate).T
     
     state_tax_savings_or_liability = -state_income_taxes
+    if print_statements:
+        print 'state_tax_savings'
+        print state_tax_savings_or_liability
     
     cf += state_tax_savings_or_liability
         
@@ -545,13 +549,16 @@ def cashflow_constructor(bill_savings,
     fed_income_taxes = (total_taxable_fed_income_less_deductions.T * fed_tax_rate).T
     
     fed_tax_savings_or_liability_less_itc = -fed_income_taxes
+    if print_statements:
+        print 'federal_tax_savings'
+        print fed_tax_savings_or_liability_less_itc
     
     cf += fed_tax_savings_or_liability_less_itc
     cf[:,1] += itc_value
     
     
     ######################## Packaging tax outputs ############################
-    interest_payments_tax_savings = (interest_payments.T * effective_tax_rate).T
+    # interest_payments_tax_savings = (interest_payments.T * effective_tax_rate).T
     operating_expenses_tax_savings = (operating_expenses_cf.T * effective_tax_rate).T
     deprec_deductions_tax_savings = (deprec_deductions.T * fed_tax_rate).T    
     elec_OM_deduction_decrease_tax_liability = (bill_savings.T * effective_tax_rate).T
@@ -620,7 +627,7 @@ def cashflow_constructor(bill_savings,
                'fed_deductions':fed_deductions,
                'total_taxable_fed_income_less_deductions':total_taxable_fed_income_less_deductions,
                'fed_income_taxes':fed_income_taxes,
-               'interest_payments_tax_savings':interest_payments_tax_savings,
+            #    'interest_payments_tax_savings':interest_payments_tax_savings,
                'operating_expenses_tax_savings':operating_expenses_tax_savings,
                'deprec_deductions_tax_savings':deprec_deductions_tax_savings,
                'elec_OM_deduction_decrease_tax_liability':elec_OM_deduction_decrease_tax_liability}
@@ -653,8 +660,6 @@ def calc_payback_vectorized(cfs, tech_lifetime):
     years = np.array([np.arange(0, tech_lifetime)] * cfs.shape[0])
     
     cum_cfs = cfs.cumsum(axis = 1)   
-    print 'cum_cfs'
-    print cum_cfs
     no_payback = np.logical_or(cum_cfs[:, -1] <= 0, np.all(cum_cfs <= 0, axis = 1))
     instant_payback = np.all(cum_cfs > 0, axis = 1)
     neg_to_pos_years = np.diff(np.sign(cum_cfs)) > 0
@@ -663,26 +668,14 @@ def calc_payback_vectorized(cfs, tech_lifetime):
     # replace values of -1 with 30
     base_years_fix = np.where(base_years == -1, tech_lifetime - 1, base_years)
     base_year_mask = years == base_years_fix[:, np.newaxis]
-
-    print 'base_years_fix'
-    print base_years_fix
     
     # base year values
     base_year_values = cum_cfs[:, :-1][base_year_mask]
     next_year_values = cum_cfs[:, 1:][base_year_mask]
-
-    print 'base_year_values'
-    print base_year_values
     frac_years = base_year_values/(base_year_values - next_year_values)
-
-    print 'frac_years'
-    print frac_years
 
     pp_year = base_years_fix + frac_years
     pp_precise = np.where(no_payback, tech_lifetime, np.where(instant_payback, 0, pp_year))
-
-    print 'pp_precise'
-    print pp_precise
     
     pp_final = np.array(pp_precise).round(decimals = 3)
     

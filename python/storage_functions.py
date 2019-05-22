@@ -225,16 +225,14 @@ def calc_system_size_and_financial_performance(agent):
                      
         system_df['npv'] = cf_results_est['npv']
 
-        print system_df[['est_bills','est_bill_savings','npv']]
-        print '---------------------------------------------------'
+        # print system_df[['est_bills','est_bill_savings','npv']]
+        # print '---------------------------------------------------'
 
         #=========================================================================#
         # Select system size and business model for this agent
         #=========================================================================# 
         index_of_best_fin_perform_ho = system_df['npv'].idxmax()
         opt_pv_size = system_df['pv'][index_of_best_fin_perform_ho].copy()
-
-        print 'opt_pv_size', opt_pv_size
 
         opt_batt_power = system_df['batt'][index_of_best_fin_perform_ho].copy()
 
@@ -286,7 +284,7 @@ def calc_system_size_and_financial_performance(agent):
                          agent['tax_rate'], 0, agent['real_discount'],  
                          agent['economic_lifetime'], agent['inflation'], 
                          agent['down_payment'], agent['loan_rate'], agent['loan_term'],
-                         cash_incentives=cash_incentives, print_statements = True) 
+                         cash_incentives=cash_incentives, print_statements = False) 
                          
         #=========================================================================#
         # Package results
