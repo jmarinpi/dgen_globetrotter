@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue May 14 15:15:36 2019
+Created on Wed May 22 16:45:27 2019
 
 @author: skoebric
-
-Used to scale the discount rate for states based on a social recesion index, which compares the economic development
 """
-#%%
 import pandas as pd
 import unicodedata
 from sklearn.preprocessing import MinMaxScaler
@@ -23,39 +20,44 @@ irs['State'] = irs['State'].apply(remove_accents)
 irs['state'] = [i.replace(' ', '') for i in irs['State']]
 
 core_attributes = pd.read_csv('/Users/skoebric/Documents/NREL-GitHub/dGen/naris_mx/input_scenarios/mex_high_costs/agent_core_attributes_all.csv')
-state_ids = set(core_attributes['state_id'])
-state_names = set(core_attributes['state'])
-state_id_dict = dict(zip(state_names, state_ids))
+state_id_dict = dict(zip(core_attributes['state'], core_attributes['state_id']))
 
 irs['state_id'] = irs['state'].map(state_id_dict)
 
-res_scaler = MinMaxScaler((.10, .30))
-irs['res_capital'] = res_scaler.fit_transform(irs['2015'].values.reshape(-1,1))
+output_df = irs[['state','state_id']]
+output_df['input_value'] = irs['2015'] #most recent irs value
 
-com_scaler = MinMaxScaler((.10, .20))
-irs['com_capital'] = com_scaler.fit_transform(irs['2015'].values.reshape(-1,1))
+#scale discount rates
+res_dr_scaler = MinMaxScaler((.09, .3))
+output_df['res_discount_rate'] = res_dr_scaler.fit_transform(output_df['input_value'].values.reshape(-1,1))
 
-ind_scaler = MinMaxScaler((.10, .20))
-irs['ind_capital'] = ind_scaler.fit_transform(irs['2015'].values.reshape(-1,1))
+com_dr_scaler = MinMaxScaler((.09, .15))
+output_df['com_discount_rate'] = com_dr_scaler.fit_transform(output_df['input_value'].values.reshape(-1,1))
 
-dr_dfs = []
+ind_dr_scaler = MinMaxScaler((.09, .125))
+output_df['ind_discount_rate'] = ind_dr_scaler.fit_transform(output_df['input_value'].values.reshape(-1,1))
+
+#scale loan rates
+res_loan_scaler = MinMaxScaler((.05, .1))
+output_df['res_loan_rate'] = res_loan_scaler.fit_transform(output_df['input_value'].values.reshape(-1,1))
+
+com_loan_scaler = MinMaxScaler((.05, .085))
+output_df['com_loan_rate'] = com_loan_scaler.fit_transform(output_df['input_value'].values.reshape(-1,1))
+
+ind_loan_scaler = MinMaxScaler((.05, .07))
+output_df['ind_loan_rate'] = ind_loan_scaler.fit_transform(output_df['input_value'].values.reshape(-1,1))
+
+#disaggregate sectors
+output_dfs = []
 for i in ['res','com','ind']:
-    dfloc = irs[['state_id','state',f'{i}_capital']]
-    dfloc.columns = ['state_id','state','capital_cost']
+    dfloc = output_df[['state_id','state',f'{i}_loan_rate',f'{i}_discount_rate']]
+    dfloc.columns = ['state_id','state','loan_rate','discount_rate']
     dfloc['sector_abbr'] = i
-    dr_dfs.append(dfloc)
+    output_dfs.append(dfloc)
 
-dr_df = pd.concat(dr_dfs, axis ='rows')
-dr_df['inflation'] = 0.0395
+output_df = pd.concat(output_dfs, axis ='rows')
 
-def capital_inflation_to_dr(row):
-    dr = (row['capital_cost'] - row['inflation']) / (row['inflation'] + 1)
-    return dr
-
-dr_df['real_discount'] = dr_df.apply(capital_inflation_to_dr, axis = 1)
-print('mean discount rate', dr_df['real_discount'].mean())
+output_df['down_payment'] = 0.2
 
 
-dr_df_out = dr_df[['state_id','sector_abbr','real_discount']]
-
-dr_df_out.to_csv('/Users/skoebric/Documents/NREL-GitHub/dGen/naris_mx/input_scenarios/mex_high_costs/discount_rates.csv', index=False)
+output_df.to_csv('/Users/skoebric/Documents/NREL-GitHub/dGen/naris_mx/input_scenarios/mex_high_costs/financing_rates.csv', index=False)
