@@ -73,7 +73,7 @@ def calc_system_size_and_financial_performance(agent):
         # Create battery object
         batt = dFuncs.Battery()
         batt_ratio = 3.0
-
+        
         tariff = tFuncs.Tariff(dict_obj=agent.loc['tariff_dict'])
 
         # Create export tariff object
@@ -86,11 +86,13 @@ def calc_system_size_and_financial_performance(agent):
 
 
         original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
-        print 'original_bill', original_bill
+        if config.VERBOSE:
+            print 'original_bill', original_bill
 
         agent['fy_bill_without_sys'] = original_bill * agent['elec_price_multiplier']
-
-        print 'multiplied original bill', agent['fy_bill_without_sys']
+        
+        if config.VERBOSE:
+            print 'multiplied original bill', agent['fy_bill_without_sys']
 
         if agent['fy_bill_without_sys'] == 0: 
             agent['fy_bill_without_sys']=1.0
@@ -123,8 +125,9 @@ def calc_system_size_and_financial_performance(agent):
         max_size_load = agent.loc['load_per_customer_in_bin_kwh']/agent.loc['naep']
         max_size_roof = agent.loc['developable_roof_sqft'] * agent.loc['developable_buildings_pct'] * agent.loc['pv_power_density_w_per_sqft']/1000.0
         agent.loc['max_pv_size'] = min(max_size_load, max_size_roof)
-        print 'max_size_load', max_size_load
-        print 'max_size_roof', max_size_roof
+        if config.VERBOSE:
+            print 'max_size_load', max_size_load
+            print 'max_size_roof', max_size_roof
         dynamic_sizing = True #False
 
         if dynamic_sizing:
@@ -306,6 +309,8 @@ def calc_system_size_and_financial_performance(agent):
     except Exception as e:
         print "failed in calc_system_size_and_financial_performance"
         print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e), e)
+        print('agent that failed')
+        print(agent)
         agent.to_pickle('agent_that_failed.pkl')
 
     return agent

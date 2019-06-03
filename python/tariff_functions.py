@@ -499,7 +499,6 @@ class Tariff:
             if 'demand_rate_unit' in dict_obj: self.demand_rate_unit = dict_obj['demand_rate_unit']
             if 'energy_rate_unit' in dict_obj: self.energy_rate_unit = dict_obj['energy_rate_unit']
             
-            
             ###################### Flat Demand Structure ########################
             self.d_flat_exists = dict_obj['d_flat_exists']
             self.d_flat_prices = np.array(dict_obj['d_flat_prices'])
@@ -530,21 +529,22 @@ class Tariff:
             self.e_prices = np.array(dict_obj['e_prices'])   
             self.e_levels = np.array(dict_obj['e_levels'])
             
-                
             ######################## Schedules ###########################
             self.e_wkday_12by24 = np.array(dict_obj['e_wkday_12by24'])
             self.e_wkend_12by24 = np.array(dict_obj['e_wkend_12by24'])
             self.d_wkday_12by24 = np.array(dict_obj['d_wkday_12by24'])
             self.d_wkend_12by24 = np.array(dict_obj['d_wkend_12by24'])
-            
+
             # If the 12by24 has a period that isn't defined in the tiers,
             # set that period to the 0th tier.
             max_e_period_in_matrix = np.max([self.e_wkday_12by24, self.e_wkend_12by24])
+
             max_e_period_in_prices = np.shape(self.e_prices)[1]
+
             for period in np.arange(max_e_period_in_prices, max_e_period_in_matrix+1, 1):
                 self.e_wkday_12by24[self.e_wkday_12by24==period] = 0
                 self.e_wkend_12by24[self.e_wkend_12by24==period] = 0
-                
+
             # If the 12by24 has a period that isn't defined in the tiers,
             # set that period to the 0th tier.
             max_d_period_in_matrix = np.max([self.d_wkday_12by24, self.d_wkend_12by24])
@@ -553,7 +553,6 @@ class Tariff:
                 self.d_wkday_12by24[self.d_wkday_12by24==period] = 0
                 self.d_wkend_12by24[self.d_wkend_12by24==period] = 0
                    
-            
             ################### 12x24s as 8760s Schedule ########################
             # Build 8760's. Note that any ingested 8760's will be ignored                              
             self.d_tou_8760 = build_8760_from_12by24s(self.d_wkday_12by24, self.d_wkend_12by24, self.start_day)
@@ -686,19 +685,22 @@ def tiered_calc_vec(values, levels, prices):
     # Vectorized piecewise function calculator
     values = np.asarray(values)
     levels = np.asarray(levels)
-    prices = np.asarray(prices)
+    prices = np.asarray(prices)[0]
     y = np.zeros(values.shape)
-    
+
     # Tier 1
 # commenting the line below to account for the exported generation (-ve values) also receiving NEM incentives
 #    y += ((values >= 0) & (values < levels[:][:][0])) * (values*prices[:][:][0])
-    y += ((values < levels[:][:][0])) * (values*prices[:][:][0])
+
+
+    addition = ((values < levels[:][:][0])) * (values*prices[:][:][0])
+    y = y + ((values < levels[:][:][0])) * (values*prices[:][:][0])
 
     # Tiers 2 and beyond    
     for tier in np.arange(1,np.size(levels,0)):
-        y += ((values >= levels[:][:][tier-1]) & (values < levels[:][:][tier])) * (
+
+        y = y + ((values >= levels[:][:][tier-1]) & (values < levels[:][:][tier])) * (
             ((values-levels[:][:][tier-1])*prices[:][:][tier]) + levels[:][:][tier-1]*prices[:][:][tier-1])  
-    
     return y
 
 #%%
@@ -775,6 +777,7 @@ def bill_calculator(load_profile, tariff, export_tariff):
         flat_maxs = np.max(load_distributed, axis=0)
         
         flat_charges = tiered_calc_vec(flat_maxs, tariff.d_flat_levels, tariff.d_flat_prices)  
+
     else:
         flat_charges = np.zeros([n_months])
         flat_maxs = np.zeros(0)
@@ -797,13 +800,14 @@ def bill_calculator(load_profile, tariff, export_tariff):
     else:
         coincident_monthly_charges = np.zeros(12)
         coincident_demand_levels = None
-    
+
     #=========================================================================#
     #################### Calculate Energy Charges #############################
     #=========================================================================#
     # Calculate energy charges without full retail NEM
     if tariff.e_exists and tariff.e_n!=0:
         if export_tariff.full_retail_nem == False:
+
             imported_profile = np.clip(load_profile, 0, 1e99)
             exported_profile = np.clip(load_profile, -1e99, 0)
     
@@ -844,21 +848,23 @@ def bill_calculator(load_profile, tariff, export_tariff):
             # placeholder        
             e_period_charges = "placeholder"
             e_period_sums = "placeholder"
-         
+
         # Calculate energy charges with full retail NEM 
         else:
+
             # Calculate imported energy charges with full retail NEM
             # Cast the TOU periods into a boolean matrix
             e_period_matrix = np.zeros([len(tariff.e_tou_8760), tariff.e_n*n_months], bool)
             e_period_matrix[range(len(tariff.e_tou_8760)),tariff.e_tou_8760+month_index*tariff.e_n] = True
-            
+
             # Determine the energy consumed in each period of each month of each year netting exported electricity
             load_distributed = load_profile[np.newaxis, :].T*e_period_matrix
             e_period_sums = np.sum(load_distributed, axis=0)
+
             
             # Calculate the cost of TOU energy charges netting exported electricity
             e_period_charges = tiered_calc_vec(e_period_sums, np.tile(tariff.e_levels, 12), np.tile(tariff.e_prices, 12))
-            
+
             e_month_total_net_charges = np.zeros([n_months])
             for month in range(n_months):
                 e_month_total_net_charges[month] = np.sum(e_period_charges[(month*tariff.e_n):(month*tariff.e_n + tariff.e_n)])
@@ -866,14 +872,13 @@ def bill_calculator(load_profile, tariff, export_tariff):
             # Determine the value of NEM
             # Calculate imported energy charges with zero exported electricity
             imported_profile = np.clip(load_profile, 0, 1e99)
-    
+
             # Determine the energy consumed in each period of each month of each year - without exported electricity
             imported_load_distributed = imported_profile[np.newaxis, :].T*e_period_matrix
             e_period_sums_imported = np.sum(imported_load_distributed, axis=0)
             
             # Calculate the cost of TOU energy charges without exported electricity
             e_period_imported_charges = tiered_calc_vec(e_period_sums_imported, np.tile(tariff.e_levels, 12), np.tile(tariff.e_prices, 12))
-            
             e_month_total_import_charges = np.zeros([n_months])
             for month in range(n_months):
                 e_month_total_import_charges[month] = np.sum(e_period_imported_charges[(month*tariff.e_n):(month*tariff.e_n + tariff.e_n)])

@@ -122,6 +122,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # copy the core agent object and set their year
                     solar_agents.df['year'] = year
+                    print 'line 125', solar_agents.df
 
                     # get and apply load growth
                     load_growth_yearly =  scenario_settings.get_load_growth(year)

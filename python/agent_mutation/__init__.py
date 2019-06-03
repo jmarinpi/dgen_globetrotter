@@ -27,7 +27,6 @@ def init_solar_agents(scenario_settings):
     scenario_settings.load_core_agent_attributes()
 
     scenario_settings.load_financing_rates()
-    print scenario_settings.core_agent_attributes
     
     # =========================================================================
     # GET NORMALIZED LOAD PROFILES
