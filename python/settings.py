@@ -767,14 +767,15 @@ def init_model_settings():
     return model_settings
 
 def init_scenario_settings(scenario_file, model_settings):
-    """load scenario specific data and configure output settings"""
-    try:
-        scenario_settings = load_scenario_to_inputSheet(scenario_file, model_settings)
-        scenario_settings.write_folders(model_settings)
-        scenario_settings.write_inputs()
-        scenario_settings.validate()
+     """load scenario specific data and configure output settings"""
+#     try:
+     scenario_settings = load_scenario_to_inputSheet(scenario_file, model_settings)
+     scenario_settings.write_folders(model_settings)
+     scenario_settings.write_inputs()
+     scenario_settings.validate()
 
-    except Exception, e:
-        raise Exception('\tLoading failed with the following error: %s' % e)
+#     except Exception, e:
+#         print e
+#         raise Exception('\tLoading failed with the following error: %s' % e)
 
-    return scenario_settings
+     return scenario_settings 
