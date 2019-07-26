@@ -129,7 +129,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     # Normalize the hourly load profile to updated total load which includes load growth multiplier
                     solar_agents.on_frame(agent_mutation.elec.apply_scale_normalized_load_profiles)
-                    
+
                     # Get and apply net metering parameters
                     net_metering_yearly =  scenario_settings.get_nem_settings(year)
                     solar_agents.on_frame(agent_mutation.elec.apply_export_tariff_params, (net_metering_yearly))
@@ -140,17 +140,17 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply PV Specs                    
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_specs, scenario_settings.get_pv_specs())
                     solar_agents.on_frame(agent_mutation.elec.apply_storage_specs, [scenario_settings.get_batt_price_trajectories(), year, scenario_settings])
-                    
+
                     # Apply financial terms
                     solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [scenario_settings.get_financing_terms(), scenario_settings.financial_options['annual_inflation_pct']])
                     
                     # Apply carbon intensities
                     carbon_intensities_yearly = scenario_settings.get_carbon_intensities(year)
                     solar_agents.on_frame(agent_mutation.elec.apply_carbon_intensities, carbon_intensities_yearly)
-                    
+
                     # Apply wholesale electricity prices
                     solar_agents.on_frame(agent_mutation.elec.apply_wholesale_elec_prices, scenario_settings.get_wholesale_elec_prices())
-                    
+
                     # Size S+S system and calculate electric bills
                     if 'ix' not in os.name: 
                         cores=None
@@ -158,18 +158,16 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         cores=model_settings.local_cores
 
                     solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, cores=cores)
-
                     solar_agents.df['agent_id'] = solar_agents.df.index.values
 
                     # Calculate the financial performance of the S+S systems 
                     solar_agents.on_frame(financial_functions.calc_financial_performance)
-
                     # Calculate Maximum Market Share
                     solar_agents.on_frame(financial_functions.calc_max_market_share, scenario_settings.get_max_market_share())
-                    print ' ******************'
-                    min_df = solar_agents.df[['state_id','real_discount','loan_rate','down_payment','npv','metric_value','max_market_share']]
-                    print min_df
-                    min_df.to_csv(scenario_settings.out_scen_path + '/min_df.csv' )
+                    # print ' ******************'
+                    # min_df = solar_agents.df[['state_id','real_discount','loan_rate','down_payment','npv','metric_value','max_market_share']]
+                    # print min_df
+                    # min_df.to_csv(scenario_settings.out_scen_path + '/min_df.csv' )
 
                     # determine "developable" population
                     solar_agents.on_frame(agent_mutation.elec.calculate_developable_customers_and_load)
@@ -183,6 +181,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Calculate diffusion based on economics and bass diffusion
                     solar_agents.df, market_last_year_df = diffusion_functions.calc_diffusion_solar(solar_agents.df, is_first_year, scenario_settings.get_bass_params())
+
                     
                     # Estimate total generation
                     solar_agents.on_frame(agent_mutation.elec.estimate_total_generation)

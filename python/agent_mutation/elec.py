@@ -603,9 +603,14 @@ def apply_market_last_year(dataframe, market_last_year_df):
     dataframe : pandas.DataFrame
         agent attributes with new attributes
     """
+    # market_last_year_df = market_last_year_df.drop_duplicates()
     dataframe = dataframe.reset_index()
-    dataframe = pd.merge(dataframe, market_last_year_df, how = 'left', on = ['tech', 'control_reg_id', 'tariff_class', 'state_id', 'country_abbr', 'sector_abbr'])
-    dataframe = dataframe.set_index('agent_id')
+    # dataframe = dataframe.drop_duplicates(subset=['agent_id','year'])
+
+    dataframe = dataframe.merge(market_last_year_df, how = 'left', on = ['agent_id','tech', 'control_reg_id', 'tariff_id','state_id', 'country_abbr', 'sector_abbr'])
+    # print('dataframe len within apply_market_last_year', dataframe.shape)
+    # dataframe = dataframe.drop_duplicates(subset=['agent_id','year'])
+    dataframe = dataframe.set_index('agent_id',drop=True)
 
     return dataframe
 

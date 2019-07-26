@@ -657,15 +657,15 @@ class ScenarioSettings:
           self.core_agent_attributes = pd.merge(self.core_agent_attributes, df, on=['state_id','sector_abbr'])
 
      def load_avoided_costs(self):
-          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'avoided_cost_rates.csv'),index_col=None)
-          ids = ['country_abbr','control_reg_id']
+          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'avoided_cost_rates.csv'), encoding='utf-8-sig',index_col=None)
+          ids = ['country_abbr', 'control_reg_id']
           years = [i for i in df.columns if i not in ids]
           result = pd.DataFrame()
           for year in years:
-            tmp = df[ids+[year]]
-            tmp['year'] = int(year)
-            tmp.rename(columns={year:'hourly_excess_sell_rate_usd_per_kwh'},inplace=True)
-            result = pd.concat([result,tmp])
+               tmp = df[ids+[year]]
+               tmp['year'] = int(year)
+               tmp.rename(columns={year:'hourly_excess_sell_rate_usd_per_kwh'},inplace=True)
+               result = pd.concat([result,tmp])
           return result
 
      def load_wholesale_electricity(self):

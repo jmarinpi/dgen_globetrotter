@@ -12,6 +12,8 @@ runs/
 input_agents/
 env/
 python/env/
+analysis/
 
 # ignore PyCharm files
 .idea/
+

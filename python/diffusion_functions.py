@@ -57,6 +57,7 @@ def calc_diffusion_solar(df, is_first_year, bass_params, override_p_value = None
     # set p/q/teq_yr1 params  
     bass_params = bass_params[['control_reg_id','sector_abbr','state_id', 'p', 'q', 'teq_yr1']]  
     df = pd.merge(df, bass_params, how = 'left', on  = ['control_reg_id','sector_abbr','state_id'])
+    print('diffusion_functions line 60', df.shape)
     
     # calc diffusion market share
     df = calc_diffusion_market_share(df, is_first_year)
@@ -86,8 +87,7 @@ def calc_diffusion_solar(df, is_first_year, bass_params, override_p_value = None
     df['batt_kw_cum'] = df['batt_kw_cum_last_year'] + df['new_batt_kw']
     df['batt_kwh_cum'] = df['batt_kwh_cum_last_year'] + df['new_batt_kwh']
 
-    df = df.set_index('agent_id')
-    market_last_year = df[['control_reg_id', 'state_id', 'tariff_class', 'country_abbr', 'sector_abbr', 'tech',
+    market_last_year = df[['agent_id','control_reg_id', 'state_id', 'tariff_id', 'country_abbr', 'sector_abbr', 'tech',
                             'market_share', 'max_market_share', 'number_of_adopters',
                             'market_value', 'initial_number_of_adopters', 'initial_pv_kw', 'initial_market_share', 'initial_market_value',
                             'pv_kw_cum', 'new_pv_kw', 'batt_kw_cum', 'batt_kwh_cum']]
