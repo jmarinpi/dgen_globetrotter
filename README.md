@@ -1,7 +1,7 @@
 
-dGen - Mexico
+dGen - International (Globetrotter)
 =========
-Repository for the Distributed Generation Market Demand (dGen) - Mexico Model.
+Master repository for international serverless versions of dGen. Ideally, this should act as a development branch for all international versions, with agnositic implementation and localization present in input sheets, and config flags if necessary. 
 
 
 To Run the Model on Mac or Linux
