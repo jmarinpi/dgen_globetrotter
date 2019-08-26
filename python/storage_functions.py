@@ -307,10 +307,13 @@ def calc_system_size_and_financial_performance(agent):
         agent['export_tariff_results'] = original_results
         
     except Exception as e:
+        print(' ')
+        print('--------------------------------------------')
         print "failed in calc_system_size_and_financial_performance"
         print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e), e)
         print('agent that failed')
         print(agent)
+        print('--------------------------------------------')
         agent.to_pickle('agent_that_failed.pkl')
 
     return agent
