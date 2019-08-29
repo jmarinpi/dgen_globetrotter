@@ -387,15 +387,17 @@ def calc_estimator_params(load_and_pv_profile, tariff, export_tariff, eta_charge
         Maybe? Or just confirm a simple estimation works with our dGen set, 
         and use the accurate dispatch for any other analysis.
     """
-    
+
     # Calculate baseline energy costs with the given load+pv profile
     _, tariff_results = tFuncs.bill_calculator(load_and_pv_profile, tariff, export_tariff)
+
     e_chrgs_with_PV = tariff_results['e_charges']
     
     # Estimate the marginal retail energy costs of each hour
     e_value_8760 = np.average(tariff.e_prices, 0)[tariff.e_tou_8760]
+
     e_value_8760[load_and_pv_profile<=0] = export_tariff.prices[export_tariff.periods_8760][load_and_pv_profile<=0]
-    
+
     # Reshape into 365 24-hour day vectors and then sort by increasing cost
     e_value_365_24 = e_value_8760.reshape((365,24), order='C')
     e_value_365_24_sorted = np.sort(e_value_365_24)
@@ -420,7 +422,7 @@ def calc_estimator_params(load_and_pv_profile, tariff, export_tariff, eta_charge
     results = {'e_chrgs_with_PV':e_chrgs_with_PV,
                 'cost_sum':cost_sum,
                 'revenue_sum':revenue_sum}
-    
+
     return results
     
 #%%

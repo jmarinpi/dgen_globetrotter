@@ -1,0 +1,4 @@
+Units: annual average cents/kWh of electricity. 
+Non-weighted average (i.e., a given hour's price is weighted the same regardless of how much electricity was consumed in that hour)
+
+Source: http://informacioninteligente10.xm.com.co/transacciones/_layouts/xlviewer.aspx?id=/transacciones/Historico%20Transacciones/Precios/Precio_Bolsa_Nacional_($kwh)_2017.xlsx&Source=http%3A%2F%2Finformacioninteligente10%2Exm%2Ecom%2Eco%2Ftransacciones%2FPaginas%2FHistoricoTransacciones%2Easpx%3F%26%26p_SortBehavior%3D0%26p_FileLeafRef%3DPrecio%255fOferta%255f%2528%2524kWh%2529%255f2005%252exlsx%26%26RootFolder%3D%252ftransacciones%252fHistorico%2520Transacciones%252fPrecios%26PageFirstRow%3D1%26%26View%3D%7B75B6225D-9047-44EC-8EC5-DEA7F7AA139C%7D&DefaultItemOpen=1&DefaultItemOpen=1

@@ -37,7 +37,7 @@ def calc_diffusion_solar(df, is_first_year, bass_params, override_p_value = None
     is_first_year : bool
         Passed to :func:`diffusion_functions.calc_diffusion_market_share` to determine the increment of `teq`
     bass_params : pandas.DataFrame
-        DataFrame generally derived from :func:`settings.get_bass_params`, includes the following attributes: `control_reg_id`, `country_abbr`, `sector_abbr`, `state_id`, `p`, `q`, `teq_yr1`, `tech`.
+        DataFrame generally derived from :func:`settings.get_bass_params`, includes the following attributes: `control_reg_id`, `sector_abbr`, `state_id`, `p`, `q`, `teq_yr1`, `tech`.
     override_p_values : float , optional
         Value to override bass diffusion `p` coefficient of innovation with.
     overide_q_values : float, optional
@@ -87,7 +87,7 @@ def calc_diffusion_solar(df, is_first_year, bass_params, override_p_value = None
     df['batt_kw_cum'] = df['batt_kw_cum_last_year'] + df['new_batt_kw']
     df['batt_kwh_cum'] = df['batt_kwh_cum_last_year'] + df['new_batt_kwh']
 
-    market_last_year = df[['agent_id','control_reg_id', 'state_id', 'tariff_id', 'country_abbr', 'sector_abbr', 'tech',
+    market_last_year = df[['agent_id','control_reg_id', 'state_id', 'tariff_id', 'sector_abbr', 'tech',
                             'market_share', 'max_market_share', 'number_of_adopters',
                             'market_value', 'initial_number_of_adopters', 'initial_pv_kw', 'initial_market_share', 'initial_market_value',
                             'pv_kw_cum', 'new_pv_kw', 'batt_kw_cum', 'batt_kwh_cum']]

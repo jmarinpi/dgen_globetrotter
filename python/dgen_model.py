@@ -15,7 +15,7 @@ import os
 import pandas as pd
 import numpy as np
 import sys
-import storage_functions as sFuncs
+import financial_functions as fFuncs
 # ---------------------------------------------
 # order of the next 3 needs to be maintained
 # otherwise the logger may not work correctly
@@ -89,6 +89,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             if scenario_settings.generate_agents:
                 logger.info('\tCreating Agents')
                 solar_agents = Agents(agent_mutation.init_solar_agents(scenario_settings))
+                print('line 92')
+                print(solar_agents.df.shape)
+                print(' ')
                 
                 # Write base agents to disk
                 solar_agents.df.to_pickle(scenario_settings.out_scen_path + '/agent_df_base.pkl')
@@ -96,10 +99,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                 logger.info('Loading %s' % scenario_settings.agents_file_name)
                 with open(scenario_settings.agents_file_name,"r") as f:
                     solar_agents = Agents(pickle.load(f))
-
+                
             # Get set of columns that define agent's immutable attributes
             cols_base = list(solar_agents.df.columns.values)
 
+            
             #==============================================================================
             # TECHNOLOGY DEPLOYMENT
             #==============================================================================
@@ -129,7 +133,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     
                     # Normalize the hourly load profile to updated total load which includes load growth multiplier
                     solar_agents.on_frame(agent_mutation.elec.apply_scale_normalized_load_profiles)
-
+               
                     # Get and apply net metering parameters
                     net_metering_yearly =  scenario_settings.get_nem_settings(year)
                     solar_agents.on_frame(agent_mutation.elec.apply_export_tariff_params, (net_metering_yearly))
@@ -143,31 +147,29 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # Apply financial terms
                     solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [scenario_settings.get_financing_terms(), scenario_settings.financial_options['annual_inflation_pct']])
-                    
+
                     # Apply carbon intensities
                     carbon_intensities_yearly = scenario_settings.get_carbon_intensities(year)
                     solar_agents.on_frame(agent_mutation.elec.apply_carbon_intensities, carbon_intensities_yearly)
 
                     # Apply wholesale electricity prices
                     solar_agents.on_frame(agent_mutation.elec.apply_wholesale_elec_prices, scenario_settings.get_wholesale_elec_prices())
-
+                    
                     # Size S+S system and calculate electric bills
                     if 'ix' not in os.name: 
                         cores=None
                     else: 
                         cores=model_settings.local_cores
+                    
+                    solar_agents.on_row(fFuncs.calc_system_size_and_financial_performance, cores=cores)
 
-                    solar_agents.on_row(sFuncs.calc_system_size_and_financial_performance, cores=cores)
                     solar_agents.df['agent_id'] = solar_agents.df.index.values
 
                     # Calculate the financial performance of the S+S systems 
                     solar_agents.on_frame(financial_functions.calc_financial_performance)
+
                     # Calculate Maximum Market Share
                     solar_agents.on_frame(financial_functions.calc_max_market_share, scenario_settings.get_max_market_share())
-                    # print ' ******************'
-                    # min_df = solar_agents.df[['state_id','real_discount','loan_rate','down_payment','npv','metric_value','max_market_share']]
-                    # print min_df
-                    # min_df.to_csv(scenario_settings.out_scen_path + '/min_df.csv' )
 
                     # determine "developable" population
                     solar_agents.on_frame(agent_mutation.elec.calculate_developable_customers_and_load)
@@ -182,7 +184,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Calculate diffusion based on economics and bass diffusion
                     solar_agents.df, market_last_year_df = diffusion_functions.calc_diffusion_solar(solar_agents.df, is_first_year, scenario_settings.get_bass_params())
 
-                    
                     # Estimate total generation
                     solar_agents.on_frame(agent_mutation.elec.estimate_total_generation)
 
@@ -193,15 +194,26 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     else:
                         interyear_results_aggregations = agent_mutation.elec.aggregate_outputs_solar(solar_agents.df, year, is_first_year, scenario_settings, interyear_results_aggregations)
 
+                    # --- Check to ensure that agent_df isn't growing (i.e. merges are failing silently) --- 
+                    print('Length of agent_df', len(solar_agents.df))
+                    print('Number of unique agents', len(set(solar_agents.df.index)))
+
+                    df_print = solar_agents.df.copy()
+                    df_print = df_print.loc[df_print['year']==year]
+                    df_print = df_print.groupby(['sector_abbr'])['pv_kw_cum'].sum()
+                    
                     #==========================================================================================================
                     # WRITE AGENT DF AS PICKLES FOR POST-PROCESSING
                     #==========================================================================================================
                     
-                    solar_agents.df.to_pickle(scenario_settings.out_scen_path + '/agent_df_%s.pkl' % year)
-                    
                     # Write Outputs to the database
-                    drop_fields = ['consumption_hourly_initial','generation_hourly','bill_savings', 'consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile'] #dropping because are arrays or json
+                    drop_fields = ['consumption_hourly_initial','solar_cf_profile','bill_savings', 'consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile'] #dropping because are arrays or json
                     df_write = solar_agents.df.drop(drop_fields, axis=1)
+                    
+                    write_annual = False
+                    if write_annual:
+                        df_write.to_pickle(scenario_settings.out_scen_path + '/agent_df_%s.pkl' % year)
+                        
                     if i == 0:
                         complete_df = df_write
                     else:
@@ -221,7 +233,9 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
     except Exception, e:
         if 'logger' in locals():
             logger.error(e.__str__(), exc_info = True)
-            logger.info('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e), e)
+            logger.info('Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
+            logger.info('Type of error {}'.format(type(e)))
+            logger.info('Error Text: {}'.format(e))
         if 'logger' not in locals():
             raise
     finally:

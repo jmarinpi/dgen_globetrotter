@@ -269,7 +269,7 @@ class ScenarioSettings:
           self.scenarios = {
                'load_growth_scenario_name': None,
                'carbon_price_scenario_name': None,
-               'nem_scenario_name':None
+               'compensation_scenario_name':None
                }
           self.random_seed_generator = None
           self.start_year = model_settings.start_year
@@ -325,7 +325,7 @@ class ScenarioSettings:
                           'scenario_folder',
                               'scenarios.load_growth_scenario_name',
                               'scenarios.carbon_price_scenario_name',
-                              'scenarios.nem_scenario_name',
+                              'scenarios.compensation_scenario_name',
                               'tech_mode'] + sector_strs,
                int: ['start_year','end_year'],
                list: ['sectors']
@@ -421,7 +421,7 @@ class ScenarioSettings:
                self.end_year = values.get('end_year')
                self.scenarios['load_growth_scenario_name'] = values.get('load_growth_scenario')
                self.scenarios['carbon_price_scenario_name'] = values.get('carbon_price')
-               self.scenarios['nem_scenario_name'] = values.get('nem_scenario')
+               self.scenarios['compensation_scenario_name'] = values.get('nem_scenario')
                sector_selection = values.get('markets')
                self.sector_data = {}
                if sector_selection == 'All':
@@ -445,6 +445,7 @@ class ScenarioSettings:
                self.load_rate_escalations()
                self.load_bass_params()
                self.load_wholesale_electricity()
+               self.load_avoided_costs()
                self.load_nem_settings()
 
           if table_name == "input_main_market_inflation":
@@ -486,12 +487,12 @@ class ScenarioSettings:
 
           if table_name == "input_main_financial_trajecories":
                self.financing_terms = df
-               rename_set = {'loan_term_{}':'loan_term', 'loan_rate_{}':'loan_rate', 'down_payment_{}':'down_payment','tax_rate_{}':'tax_rate','itc_fraction_{}':'itc_fraction'}
+               rename_set = {'loan_term_{}':'loan_term', 'tax_rate_{}':'tax_rate','itc_fraction_{}':'itc_fraction'}
                adders = ['economic_lifetime']
                result = self.collapse_sectors(df, rename_set, adders)
                result['tech']='solar'
-               result['min_size_kw']= -1
-               result['max_size_kw']= None
+               # result['min_size_kw']= -1
+               # result['max_size_kw']= None
                if self.financial_trajectories.empty:
                     self.financial_trajectories = result
                else:
@@ -511,68 +512,113 @@ class ScenarioSettings:
 
           return
 
+     def load_nem_settings(self):
+          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'nem_settings.csv'),index_col=None)
+     
+          # --- Check available columns in loaded csv ---
+          if 'state_id' in df.columns:
+               on = 'state_id'
+          elif 'control_reg_id' in df.columns:
+               on = 'control_reg_id'
+          elif 'tariff_class' in df.columns:
+               on = 'tariff_class'
+          else:
+               raise KeyError("'state_id' and 'control_reg_id' not in nem_settings.csv columns")
+
+          if self.control_reg_trajectories.empty:
+               self.control_reg_trajectories = df
+          else:
+               columns = [on, 'sector_abbr', 'year']
+               self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on=columns)
+
      def load_core_agent_attributes(self):
           self.core_agent_attributes = pd.DataFrame()
           tmp = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder, 'agent_core_attributes_all.csv'),index_col=None)
+          tmp = tmp.sample(frac=SAMPLE_PCT) #sample (i.e. for test runs) a smaller agent_df, defined in config
           tmp['agent_id']= range(tmp.shape[0])
           for t in self.techs:
                tmp['tech'] = t
           self.core_agent_attributes = pd.concat([self.core_agent_attributes,tmp])
           if 'solar' in self.techs:
                df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder, 'pv_state_starting_capacities.csv'),index_col=None)
-               self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['control_reg_id','state_id','sector_abbr','tariff_class','country_abbr'])
+               self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['control_reg_id','state_id','sector_abbr','tariff_class'])
+          
           # There was a problem where an agent was being generated that had no customers in the bin, but load in the bin
           # This is a temporary patch to get the model to run in this scenario\
           self.core_agent_attributes['customers_in_bin'] = np.where(self.core_agent_attributes['customers_in_bin']==0, 1, self.core_agent_attributes['customers_in_bin'])
           self.core_agent_attributes['load_per_customer_in_bin_kwh'] = np.where(self.core_agent_attributes['load_per_customer_in_bin_kwh']==0, 1, self.core_agent_attributes['load_per_customer_in_bin_kwh'])
 
      def load_normalized_load_profiles(self):
-          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder, 'normalized_load.csv'),index_col=None)
-          df['scale_offset_load'] = 1e9
-          df['consumption_hourly'] = df['kwh'].apply(lambda x: [float(y) for y in x[1:-1].split(',')])
-          del df['kwh']
+          df = pd.read_json(os.path.join(self.input_csv_folder, 'normalized_load.json'))
+          df = df.rename(columns={'kwh':'consumption_hourly'})
 
-          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['control_reg_id','country_abbr'])
+          # --- Check available columns in loaded csv ---
+          if 'state_id' in df.columns:
+               on = 'state_id'
+          elif 'control_reg_id' in df.columns:
+               on = 'control_reg_id'
+          elif 'tariff_class' in df.columns:
+               on = 'tariff_class'
+          else:
+               raise KeyError("'state_id' and 'control_reg_id' not in normalized_load.csv columns")
 
-          in_cols = self.core_agent_attributes.columns
+          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=[on])
 
-          def scale_array_precision(row, array_col, prec_offset_col):
-               row[array_col] = np.array(
-               row[array_col], dtype='float64') / row[prec_offset_col]
-               return row
+          # in_cols = self.core_agent_attributes.columns
 
-          def scale_array_sum(row, array_col, scale_col):
-               hourly_array = np.array(row[array_col], dtype='float64')
-               row[array_col] = hourly_array / \
-               hourly_array.sum() * np.float64(row[scale_col])
-               return row
+          # def scale_array_precision(row, array_col, prec_offset_col):
+          #      row[array_col] = np.array(
+          #      row[array_col], dtype='float64') / row[prec_offset_col]
+          #      return row
 
-          # apply the scale offset to convert values to float with correct precision
-          self.core_agent_attributes = self.core_agent_attributes.apply(scale_array_precision, axis=1, args=('consumption_hourly', 'scale_offset_load'))
+          # def scale_array_sum(row, array_col, scale_col):
+          #      hourly_array = np.array(row[array_col], dtype='float64')
+          #      row[array_col] = hourly_array / hourly_array.sum() * np.float64(row[scale_col])
+          #      return row
 
-          # scale the normalized profile to sum to the total load
-          self.core_agent_attributes = self.core_agent_attributes.apply(scale_array_sum, axis=1, args=('consumption_hourly', 'load_per_customer_in_bin_kwh'))
+          # # apply the scale offset to convert values to float with correct precision
+          # self.core_agent_attributes = self.core_agent_attributes.apply(scale_array_precision, axis=1, args=('consumption_hourly', 'scale_offset_load'))
 
-          # subset to only the desired output columns
-          out_cols = list(in_cols.values)
-          self.core_agent_attributes = self.core_agent_attributes[out_cols]
+          # # scale the normalized profile to sum to the total load
+          # self.core_agent_attributes = self.core_agent_attributes.apply(scale_array_sum, axis=1, args=('consumption_hourly', 'load_per_customer_in_bin_kwh'))
 
+          # # subset to only the desired output columns
+          # out_cols = list(in_cols.values)
+          # self.core_agent_attributes = self.core_agent_attributes[out_cols]
+
+     def load_interconnection_settings(self):
+          """Load maximum interconnection limits from csv"""
+          df = pd.read_csv(os.path.join(self.input_csv_folder, 'interconnection_limits.csv'), index_col=None)
+          df = [['control_reg_id','state_id','interconnection_limit_kw']]
+          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['state_id','control_reg_id'])
 
      def load_normalized_hourly_resource_solar(self):
-          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'solar_resource_hourly.csv'),index_col=None)
-          df['generation_hourly'] = df['cf'].apply(lambda x: [float(y) for y in x[1:-1].split(',')])
-          del df['cf']
-          df = df[['state_id','generation_hourly']]
-          if 'solar' in self.techs:
-               df['scale_offset_solar'] = 1e3
-               self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['state_id'])
+          df = pd.read_json(os.path.join(self.input_csv_folder,'solar_resource_hourly.json'))
+          df = df.rename(columns={'cf':'solar_cf_profile'})
+
+          # --- Check available columns in loaded csv ---
+          if 'state_id' in df.columns:
+               on = 'state_id'
+          elif 'control_reg_id' in df.columns:
+               on = 'control_reg_id'
+          elif 'tariff_class' in df.columns:
+               on = 'tariff_class'
           else:
-               self.core_agent_attributes['scale_offset'] = None
-               self.core_agent_attributes['generation_hourly'] = None
-          self.core_agent_attributes['solar_cf_profile'] = self.core_agent_attributes['generation_hourly']
+               raise KeyError("'state_id' and 'control_reg_id' not in solar_resource_hourly.json columns")
+
+          df = df[[on,'solar_cf_profile']]
+          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=[on])
+
+          # if 'solar' in self.techs:
+          #      df['scale_offset_solar'] = 1e3
+          #      self.core_agent_attributes = self.core_agent_attributes.merge(df, on=[on])
+          # else:
+          #      self.core_agent_attributes['scale_offset'] = None
+          #      self.core_agent_attributes['generation_hourly'] = None
+          # self.core_agent_attributes['solar_cf_profile'] = self.core_agent_attributes['generation_hourly']
 
      def load_electric_rates_json(self):
-          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'urdb3_rates.csv'),index_col=None)
+          df = pd.read_json(os.path.join(self.input_csv_folder,'urdb3_rates.json'))
           df = df[['rate_id_alias','rate_json']]
           self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['rate_id_alias'])
           self.core_agent_attributes.rename(columns={'rate_json':'tariff_dict', 'rate_id_alias':'tariff_id'}, inplace=True)
@@ -588,7 +634,7 @@ class ScenarioSettings:
 
           if self.scenarios['carbon_price_scenario_name'] == 'No Carbon Price':
                set_zero = True
-          ids = ['country_abbr','control_reg_id']
+          ids = ['control_reg_id']
           years = [i for i in df.columns if i not in ids]
           result = pd.DataFrame()
           for year in years:
@@ -602,7 +648,7 @@ class ScenarioSettings:
           result = result.merge(self.market_trajectories[['year','carbon_dollars_per_ton','sector_abbr']], on=['year'])
           result['carbon_price_cents_per_kwh'] = result['t_co2_per_kwh'] * 100 * result['carbon_dollars_per_ton']
 
-          self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on=['country_abbr','control_reg_id','year','sector_abbr'])
+          self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on=['control_reg_id','year','sector_abbr'])
 
      def load_max_market_share(self):
           view = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'max_market_share_settings.csv'),index_col=None)
@@ -630,35 +676,38 @@ class ScenarioSettings:
           if self.control_reg_trajectories.empty:
                self.control_reg_trajectories = view
           else:
-               columns = ['control_reg_id', 'country_abbr','sector_abbr', 'year']
+               columns = ['control_reg_id', 'sector_abbr', 'year']
                self.control_reg_trajectories = self.control_reg_trajectories.merge(view, on=columns)
 
-     def load_nem_settings(self):
+     def load_compensation_settings(self):
           df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'nem_settings.csv'),index_col=None)
-          if self.scenarios['nem_scenario_name'] == 'Avoided Cost':
-            join = self.load_avoided_costs()
-            cols = ['control_reg_id', 'country_abbr', 'year']
 
-          if self.scenarios['nem_scenario_name'] == 'State Wholesale':
-            join = self.get_wholesale_elec_prices()
-            join.rename(columns={"wholesale_elec_usd_per_kwh":"hourly_excess_sell_rate_usd_per_kwh"},inplace=True)
-            cols = ['control_reg_id', 'country_abbr', 'year','sector_abbr']
+          # --- Load Correct Scenario Settings --- 
+          if self.scenarios['compensation_scenario_name'] == 'Buy All Sell All':
+               self.core_agent_attributes['compensation_style'] = 'Buy All Sell All'
+          elif self.scenarios['compensation_scenario_name'] == 'Net Billing (Wholesale)':
+               self.core_agent_attributes['compensation_style'] = 'Net Billing (Wholesale)'
+          elif self.scenarios['compensation_scenario_name'] == 'Net Billing (Avoided Cost)':
+               self.core_agent_attributes['compensation_style'] = 'Net Billing (Avoided Cost)'
+          elif self.scenarios['compensation_scenario_name'] == 'Net Metering':
+               self.core_agent_attributes['compensation_style'] = 'Net Metering'
 
-          df = df.merge(join, on=cols)
-
-          if self.control_reg_trajectories.empty:
-               self.control_reg_trajectories = df
-          else:
-               columns = ['control_reg_id', 'country_abbr','sector_abbr', 'year']
-               self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on= columns)
 
      def load_financing_rates(self):
           df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'financing_rates.csv'), index_col=None)
-          self.core_agent_attributes = pd.merge(self.core_agent_attributes, df, on=['state_id','sector_abbr'])
+
+          # --- Check available columns in loaded csv ---
+          if 'state_id' in df.columns:
+               on = 'state_id'
+          elif 'control_reg_id' in df.columns:
+               on = 'control_reg_id'
+          else:
+               raise KeyError("'state_id' and 'control_reg_id' not in financing_rates.csv columns")
+          self.core_agent_attributes = pd.merge(self.core_agent_attributes, df, on=[on,'sector_abbr'])
 
      def load_avoided_costs(self):
           df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'avoided_cost_rates.csv'), encoding='utf-8-sig',index_col=None)
-          ids = ['country_abbr', 'control_reg_id']
+          ids = ['control_reg_id']
           years = [i for i in df.columns if i not in ids]
           result = pd.DataFrame()
           for year in years:
@@ -666,11 +715,16 @@ class ScenarioSettings:
                tmp['year'] = int(year)
                tmp.rename(columns={year:'hourly_excess_sell_rate_usd_per_kwh'},inplace=True)
                result = pd.concat([result,tmp])
-          return result
+          
+          if self.control_reg_trajectories.empty:
+               self.control_reg_trajectories = result
+          else:
+               columns = ['control_reg_id', 'year']
+               self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on=columns)
 
      def load_wholesale_electricity(self):
           df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'wholesale_rates.csv'),index_col=None)
-          ids = ['country_abbr','control_reg_id']
+          ids = ['control_reg_id']
           years = [i for i in df.columns if i not in ids]
           result = pd.DataFrame()
           for year in years:
@@ -682,8 +736,8 @@ class ScenarioSettings:
           if self.control_reg_trajectories.empty:
                self.control_reg_trajectories = result
           else:
-               columns = ['control_reg_id', 'country_abbr', 'year']
-               self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on= columns)
+               columns = ['control_reg_id', 'year']
+               self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on=columns)
 
      def load_rate_escalations(self):
           view = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'rate_escalations.csv'),index_col=None)
@@ -696,12 +750,12 @@ class ScenarioSettings:
           if self.control_reg_trajectories.empty:
                self.control_reg_trajectories = view
           else:
-               columns = ['control_reg_id', 'country_abbr','sector_abbr', 'year']
+               columns = ['control_reg_id', 'sector_abbr', 'year']
                self.control_reg_trajectories = self.control_reg_trajectories.merge(view, on= columns)
 
      def load_bass_params(self):
           view = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'pv_bass.csv'),index_col=None)
-          columns = ['control_reg_id','state','country_abbr','sector_abbr']
+          columns = ['control_reg_id','state','sector_abbr']
 
           if self.state_start_conditions.empty:
                self.state_start_conditions = view
@@ -715,28 +769,28 @@ class ScenarioSettings:
           return self.storage_trajectories[['year', 'sector_abbr','batt_price_per_kwh','batt_price_per_kw','batt_om_per_kw','batt_om_per_kwh']]
 
      def get_financing_terms(self):
-          return self.financial_trajectories[['year','sector_abbr','deprec_sch','itc_fraction','min_size_kw','max_size_kw','loan_term','tax_rate','economic_lifetime']]
+          return self.financial_trajectories[['year','sector_abbr','deprec_sch','loan_term','itc_fraction','tax_rate','economic_lifetime']]
 
      def get_rate_escalations(self):
-          return self.control_reg_trajectories[['control_reg_id', 'country_abbr','sector_abbr','elec_price_multiplier','year']]
+          return self.control_reg_trajectories[['control_reg_id', 'sector_abbr','elec_price_multiplier','year']]
 
      def get_wholesale_elec_prices(self):
-          return self.control_reg_trajectories[['control_reg_id', 'country_abbr','sector_abbr','wholesale_elec_usd_per_kwh','year']]
+          return self.control_reg_trajectories[['control_reg_id', 'sector_abbr','wholesale_elec_usd_per_kwh','year']]
 
      def get_load_growth(self,year):
-          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['control_reg_id', 'country_abbr','sector_abbr','load_multiplier']]
+          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['control_reg_id', 'sector_abbr','load_multiplier']]
 
      def get_nem_settings(self,year):
-          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['country_abbr','control_reg_id','sector_abbr','nem_system_size_limit_kw','year_end_excess_sell_rate_usd_per_kwh','hourly_excess_sell_rate_usd_per_kwh']]
+          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['control_reg_id','sector_abbr','nem_system_size_limit_kw','wholesale_elec_usd_per_kwh','hourly_excess_sell_rate_usd_per_kwh']]
 
      def get_carbon_intensities(self,year):
-          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['control_reg_id', 'country_abbr','sector_abbr','carbon_price_cents_per_kwh']]
+          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['control_reg_id', 'sector_abbr','carbon_price_cents_per_kwh']]
 
      def get_max_market_share(self):
           return self.market_share_parameters
 
      def get_bass_params(self):
-          return self.state_start_conditions[['control_reg_id', 'country_abbr','sector_abbr','state_id','p','q','teq_yr1','tech']]
+          return self.state_start_conditions[['control_reg_id', 'sector_abbr','state_id','p','q','teq_yr1','tech']]
 
 def init_model_settings():
     """initialize Model Settings object (this controls settings that apply to all scenarios to be executed)"""

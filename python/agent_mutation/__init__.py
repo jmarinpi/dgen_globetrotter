@@ -25,7 +25,6 @@ def init_solar_agents(scenario_settings):
     # =========================================================================
     
     scenario_settings.load_core_agent_attributes()
-
     scenario_settings.load_financing_rates()
     
     # =========================================================================
@@ -33,10 +32,13 @@ def init_solar_agents(scenario_settings):
     # =========================================================================
     
     scenario_settings.load_normalized_load_profiles()
+
     scenario_settings.load_normalized_hourly_resource_solar()
     scenario_settings.load_electric_rates_json()
+    scenario_settings.load_compensation_settings()
     
     agents_df = scenario_settings.core_agent_attributes
+
 
     #==============================================================================
     # Set initial year columns. Initial columns do not change, whereas non-initial are adjusted each year

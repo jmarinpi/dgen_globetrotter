@@ -168,9 +168,9 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
     # Set lower bound of escalator at 0, assuming that potential customers would not evaluate declining electricity costs
     elec_price_escalator_df['elec_price_escalator'] = np.maximum(elec_price_escalator_df['elec_price_escalator'], 0)
 
-    dataframe = pd.merge(dataframe, elec_price_multiplier[['elec_price_multiplier', 'control_reg_id', 'country_abbr', 'sector_abbr']], how='left', on=['control_reg_id', 'country_abbr', 'sector_abbr'])
-    dataframe = pd.merge(dataframe, elec_price_escalator_df[['control_reg_id', 'country_abbr', 'sector_abbr', 'elec_price_escalator']],
-                         how='left', on=['control_reg_id', 'country_abbr', 'sector_abbr'])
+    dataframe = pd.merge(dataframe, elec_price_multiplier[['elec_price_multiplier', 'control_reg_id', 'sector_abbr']], how='left', on=['control_reg_id', 'sector_abbr'])
+    dataframe = pd.merge(dataframe, elec_price_escalator_df[['control_reg_id', 'sector_abbr', 'elec_price_escalator']],
+                         how='left', on=['control_reg_id', 'sector_abbr'])
 
     dataframe = dataframe.set_index('agent_id')
 
@@ -226,7 +226,7 @@ def apply_wholesale_elec_prices(dataframe, df):
     """
 
     dataframe = dataframe.reset_index()
-    dataframe = pd.merge(dataframe, df[['control_reg_id', 'country_abbr','sector_abbr','wholesale_elec_usd_per_kwh','year']], how='left', on=['year','control_reg_id', 'country_abbr','sector_abbr'])
+    dataframe = pd.merge(dataframe, df[['control_reg_id', 'sector_abbr','wholesale_elec_usd_per_kwh','year']], how='left', on=['year','control_reg_id', 'sector_abbr'])
     dataframe = dataframe.set_index('agent_id')
 
     return dataframe
@@ -391,7 +391,7 @@ def apply_load_growth(dataframe, load_growth_df):
         agent attributes with new attributes
     """
     dataframe = dataframe.reset_index()
-    dataframe = pd.merge(dataframe, load_growth_df, how='left', on=['control_reg_id', 'country_abbr', 'sector_abbr'])
+    dataframe = pd.merge(dataframe, load_growth_df, how='left', on=['control_reg_id', 'sector_abbr'])
     #==========================================================================================================
     # for res, load growth translates to kwh_per_customer change
     #==========================================================================================================
@@ -492,7 +492,7 @@ def apply_carbon_intensities(dataframe, carbon_intensities):
         agent attributes with new attributes
     """
     dataframe = dataframe.reset_index()
-    dataframe = pd.merge(dataframe, carbon_intensities, how='left', on=['country_abbr','sector_abbr', 'control_reg_id'])
+    dataframe = pd.merge(dataframe, carbon_intensities, how='left', on=['sector_abbr', 'control_reg_id'])
     dataframe = dataframe.set_index('agent_id')
 
     return dataframe
@@ -524,10 +524,10 @@ def estimate_initial_market_shares(dataframe):
     #==========================================================================================================
     # find the total number of customers in each state (by technology and sector)
     #==========================================================================================================
-    state_total_developable_customers = dataframe[['control_reg_id', 'tariff_class', 'state_id', 'country_abbr', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
-        ['control_reg_id', 'tariff_class', 'state_id', 'country_abbr', 'sector_abbr', 'tech']).sum().reset_index()
-    state_total_agents = dataframe[['control_reg_id', 'tariff_class', 'state_id', 'country_abbr', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
-        ['control_reg_id', 'tariff_class', 'state_id', 'country_abbr', 'sector_abbr', 'tech']).count().reset_index()
+    state_total_developable_customers = dataframe[['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
+        ['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech']).sum().reset_index()
+    state_total_agents = dataframe[['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
+        ['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech']).count().reset_index()
     #==========================================================================================================
     # rename the final columns
     #==========================================================================================================
@@ -539,7 +539,7 @@ def estimate_initial_market_shares(dataframe):
     # merge together
     #==========================================================================================================
     state_denominators = pd.merge(state_total_developable_customers, state_total_agents, how='left', on=[
-                                  'control_reg_id', 'state_id', 'tariff_class', 'country_abbr', 'sector_abbr', 'tech'])
+                                  'control_reg_id', 'state_id', 'tariff_class', 'sector_abbr', 'tech'])
 
     state_denominators.control_reg_id  = state_denominators.control_reg_id.astype(str)
     #==========================================================================================================
@@ -547,7 +547,7 @@ def estimate_initial_market_shares(dataframe):
     #==========================================================================================================
 
     dataframe = pd.merge(dataframe, state_denominators, how='left',
-        on=['control_reg_id', 'tariff_class', 'state_id', 'country_abbr', 'sector_abbr', 'tech'])
+        on=['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech'])
     #==========================================================================================================
     # determine the portion of initial load and systems that should be allocated to each agent
     # (when there are no developable agnets in the state, simply apportion evenly to all agents)
@@ -607,7 +607,7 @@ def apply_market_last_year(dataframe, market_last_year_df):
     dataframe = dataframe.reset_index()
     # dataframe = dataframe.drop_duplicates(subset=['agent_id','year'])
 
-    dataframe = dataframe.merge(market_last_year_df, how = 'left', on = ['agent_id','tech', 'control_reg_id', 'tariff_id','state_id', 'country_abbr', 'sector_abbr'])
+    dataframe = dataframe.merge(market_last_year_df, how = 'left', on = ['agent_id','tech', 'control_reg_id', 'tariff_id','state_id', 'sector_abbr'])
     # print('dataframe len within apply_market_last_year', dataframe.shape)
     # dataframe = dataframe.drop_duplicates(subset=['agent_id','year'])
     dataframe = dataframe.set_index('agent_id',drop=True)

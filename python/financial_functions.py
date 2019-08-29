@@ -1,7 +1,391 @@
 # -*- coding: utf-8 -*-
-"""
-Functions to construct cashflow timelines for agents and calculate the financial performance of projects.
-"""
+
+import numpy as np
+import pandas as pd
+import utility_functions as utilfunc
+import sys
+import config
+
+# Import from support function repo
+import dispatch_functions as dFuncs
+import tariff_functions as tFuncs
+
+#==============================================================================
+# Load logger
+logger = utilfunc.get_logger()
+#==============================================================================
+#%%
+def calc_system_size_and_financial_performance(agent):
+    """
+    This function accepts the characteristics of a single agent and
+    evaluates the financial performance of a set of solar+storage
+    system sizes. The system size with the highest NPV is selected.
+            
+    Parameters
+    ----------
+    agent : pandas.Series
+        Single agent (row) from an agent dataframe.
+
+    Returns
+    -------
+    pandas.Series
+        Agent with system size, business model and corresponding financial performance.
+    """
+    #=========================================================================#
+    # Setup
+    #=========================================================================#
+
+    try:
+        if config.VERBOSE:
+            print ' '
+            print "\tRunning system size calculations for", agent['state'], agent['tariff_class'], agent['sector_abbr']
+            print 'real_discount', agent['discount_rate']
+            print 'loan_rate', agent['loan_rate']
+            print 'down_payment', agent['down_payment']
+
+        # Set resolution of dispatcher    
+        d_inc_n_est = 10    
+        DP_inc_est = 12
+        d_inc_n_acc = 20     
+        DP_inc_acc = 12
+
+        # Extract load profile
+        load_profile = np.array(agent['consumption_hourly'])    
+        agent.loc['timesteps_per_year'] = 1
+
+        # Extract load profile TODO: See Paritosh's SS19 Implementation for better memory usage
+        pv_cf_profile = np.array(agent['solar_cf_profile']) / 1e3
+        agent['naep'] = float(np.sum(pv_cf_profile))   
+
+        # Create battery object
+        batt = dFuncs.Battery()
+        batt_ratio = 3.0 
+        
+        tariff = tFuncs.Tariff(dict_obj=agent.loc['tariff_dict']) #TODO: map this from tariff_dict object for better memory usage
+
+        # Create export tariff object
+        if agent['nem_system_size_limit_kw'] != 0:
+            export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
+            export_tariff.periods_8760 = tariff.e_tou_8760
+            export_tariff.prices = tariff.e_prices_no_tier
+        else:
+            export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
+
+
+        original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
+        if config.VERBOSE:
+            print 'original_bill', original_bill
+
+        agent['first_year_elec_bill_without_system'] = original_bill * agent['elec_price_multiplier']
+        
+        if config.VERBOSE:
+            print 'multiplied original bill', agent['first_year_elec_bill_without_system']
+
+        if agent['first_year_elec_bill_without_system'] == 0: 
+            agent['first_year_elec_bill_without_system']=1.0
+        agent['first_year_elec_cents_per_kwh_without_system'] = agent['first_year_elec_bill_without_system'] / agent['load_per_customer_in_bin_kwh']
+
+
+        #=========================================================================#
+        # Estimate bill savings revenue from a set of solar+storage system sizes
+        #=========================================================================#    
+
+        max_size_load = agent.loc['load_per_customer_in_bin_kwh']/agent.loc['naep']
+        max_size_roof = agent.loc['developable_roof_sqft'] * agent.loc['developable_buildings_pct'] * agent.loc['pv_power_density_w_per_sqft']/1000.0
+        agent.loc['max_pv_size'] = min([max_size_load, max_size_roof, agent.loc['interconnection_limit']])
+        if config.VERBOSE:
+            print 'max_size_load', max_size_load
+            print 'max_size_roof', max_size_roof
+        dynamic_sizing = True #False
+
+        if dynamic_sizing:
+            pv_sizes = np.arange(0, 1.1, 0.1) * agent.loc['max_pv_size']
+        else:
+            # Size the PV system depending on NEM availability, either to 95% of load w/NEM, or 50% w/o NEM. In both cases, roof size is a constraint.
+            if export_tariff.full_retail_nem==True:
+                pv_sizes = np.array([min(max_size_load * 0.95, max_size_roof)])
+            else:
+                pv_sizes = np.array([min(max_size_load * 0.5, max_size_roof)])
+                
+
+        batt_powers = np.zeros(1)
+
+        # Calculate the estimation parameters for each PV size
+        est_params_df = pd.DataFrame(index=pv_sizes)
+        est_params_df['estimator_params'] = 'temp'
+
+        for pv_size in pv_sizes:
+            load_and_pv_profile = load_profile - pv_size*pv_cf_profile
+            est_params_df.set_value(pv_size, 'estimator_params', dFuncs.calc_estimator_params(load_and_pv_profile, tariff, export_tariff, batt.eta_charge, batt.eta_discharge))
+            
+        # Create df with all combinations of solar+storage sizes
+        system_df = pd.DataFrame(dFuncs.cartesian([pv_sizes, batt_powers]), columns=['pv', 'batt_kw'])
+        system_df['est_bills'] = None
+
+        pv_kwh_by_year = np.array(map(lambda x: sum(x), np.split(np.array(pv_cf_profile), agent.loc['timesteps_per_year'])))
+        pv_kwh_by_year = np.concatenate([(pv_kwh_by_year - ( pv_kwh_by_year * agent.loc['pv_deg'] * i)) for i in range(1, agent.loc['economic_lifetime']+1)])
+        system_df['kwh_by_timestep'] = system_df['pv'].apply(lambda x: x * pv_kwh_by_year)
+
+        n_sys = len(system_df)
+
+        for i in system_df.index:    
+            pv_size = system_df['pv'][i].copy()
+            load_and_pv_profile = load_profile - pv_size*pv_cf_profile
+
+            # for buy all sell all agents: calculate value of generation based on wholesale prices and subtract from original bill
+            if agent.loc['compensation_style'] == 'Buy All Sell All':
+                sell_all = np.sum(pv_size * pv_cf_profile * agent.loc['wholesale_elec_use_per_kwh'])
+                system_df.loc[i, 'est_bills'] = original_bill - sell_all
+            
+            # for net billing agents: if system size within policy limits, set sell rate to wholesale price -- otherwise, set sell rate to 0
+            elif (agent.loc['compensation_style'] == 'Net Billing (Wholesale)') or (agent.loc['compensation_style'] == 'Net Billing (Avoided Cost)'):
+                export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
+                if pv_size<=agent.loc['nem_system_size_limit_kw']:
+                    if agent.loc['compensation_style'] == 'Net Billing (Wholesale)':
+                        export_tariff.set_constant_sell_price(agent.loc['wholesale_elec_usd_per_kwh'])
+                    elif agent.loc['compensation_style'] == 'Net Billing (Avoided Cost)':
+                        export_tariff.set_constant_sell_price(agent.loc['hourly_excess_sell_rate_usd_per_kwh'])
+                else:
+                    export_tariff.set_constant_sell_price(0.)
+        
+                batt_power = system_df['batt_kw'][i].copy()
+                batt.set_cap_and_power(batt_power*batt_ratio, batt_power)
+
+                if batt_power > 0:
+                    estimator_params = est_params_df.loc[system_df['pv'][i].copy(), 'estimator_params']
+                    estimated_results = dFuncs.determine_optimal_dispatch(load_profile, pv_size*pv_cf_profile, batt, tariff, export_tariff, estimator_params=estimator_params, estimated=True, DP_inc=DP_inc_est, d_inc_n=d_inc_n_est, estimate_demand_levels=True)
+                    system_df.loc[i, 'est_bills'] = estimated_results['bill_under_dispatch']  
+                else:
+                    bill_with_PV, _ = tFuncs.bill_calculator(load_and_pv_profile, tariff, export_tariff)
+                    system_df.loc[i, 'est_bills'] = bill_with_PV  #+ one_time_charge
+        
+            # for net metering agents: if system size within policy limits, set full_retail_nem=True -- otherwise set export value to wholesale price
+            elif agent.loc['compensation_style'] == 'Net Metering':
+                
+                if pv_size<=agent.loc['nem_system_size_limit_kw']:
+                    export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
+                    export_tariff.periods_8760 = tariff.e_tou_8760
+                    export_tariff.prices = tariff.e_prices_no_tier
+                else:
+                    export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
+                    export_tariff.set_constant_sell_price(agent.loc['wholesale_elec_usd_per_kwh'])
+        
+                batt_power = system_df['batt_kw'][i].copy()
+                batt.set_cap_and_power(batt_power*batt_ratio, batt_power)  
+        
+                if batt_power > 0:
+                    estimator_params = est_params_df.loc[system_df['pv'][i].copy(), 'estimator_params']
+                    estimated_results = dFuncs.determine_optimal_dispatch(load_profile, pv_size*pv_cf_profile, batt, tariff, export_tariff, estimator_params=estimator_params, estimated=True, DP_inc=DP_inc_est, d_inc_n=d_inc_n_est, estimate_demand_levels=True)
+                    system_df.loc[i, 'est_bills'] = estimated_results['bill_under_dispatch']  
+                else:
+                    bill_with_PV, _ = tFuncs.bill_calculator(load_and_pv_profile, tariff, export_tariff)
+                    system_df.loc[i, 'est_bills'] = bill_with_PV  #+ one_time_charge
+                
+            # for agents with no compensation mechanism: set sell rate to 0 and calculate bill with net load profile
+            else:
+                
+                export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
+                export_tariff.set_constant_sell_price(0.)
+                
+                batt_power = system_df['batt_kw'][i].copy()
+                batt.set_cap_and_power(batt_power*batt_ratio, batt_power)  
+        
+                if batt_power > 0:
+                    estimator_params = est_params_df.loc[system_df['pv'][i].copy(), 'estimator_params']
+                    estimated_results = dFuncs.determine_optimal_dispatch(load_profile, pv_size*pv_cf_profile, batt, tariff, export_tariff, estimator_params=estimator_params, estimated=True, DP_inc=DP_inc_est, d_inc_n=d_inc_n_est, estimate_demand_levels=True)
+                    system_df.loc[i, 'est_bills'] = estimated_results['bill_under_dispatch']  
+                else:
+                    bill_with_PV, _ = tFuncs.bill_calculator(load_and_pv_profile, tariff, export_tariff)
+                    system_df.loc[i, 'est_bills'] = bill_with_PV #+ one_time_charge
+        
+        # Calculate bill savings cash flow
+        # elec_price_multiplier is the scalar increase in the cost of electricity since 2016, when the tariffs were curated
+        # elec_price_escalator is this agent's assumption about how the price of electricity will change in the future.
+        avg_est_bill_savings = (original_bill - np.array(system_df['est_bills'])).reshape([n_sys, 1]) * agent['elec_price_multiplier']
+        est_bill_savings = np.zeros([n_sys, agent['economic_lifetime']+1])
+        est_bill_savings[:,1:] = avg_est_bill_savings
+        escalator = (np.zeros(agent['economic_lifetime']+1) + agent['elec_price_escalator'] + 1)**range(agent['economic_lifetime']+1)
+        degradation = (np.zeros(agent['economic_lifetime']+1) + 1 - agent['pv_deg'])**range(agent['economic_lifetime']+1)
+        est_bill_savings = est_bill_savings * escalator * degradation
+        system_df['est_bill_savings'] = est_bill_savings[:, 1]
+        
+        # simple representation of 70% minimum of batt charging from PV in order to
+        # qualify for the ITC. Here, if batt kW is greater than 25% of PV kW, no ITC.
+        batt_chg_frac = np.where(system_df['pv'] >= system_df['batt_kw']*4.0, 1.0, 0)
+
+        #=========================================================================#
+        # Determine financial performance of each system size
+        #=========================================================================#  
+
+        cash_incentives = np.array([0]*system_df.shape[0])
+
+        if 'state_incentives' in agent.index:
+            investment_incentives = calculate_investment_based_incentives(system_df, agent)
+            capacity_based_incentives = calculate_capacity_based_incentives(system_df, agent)
+
+            default_expiration = datetime.date(agent.loc['year'] + agent.loc['economic_lifetime'],1,1)
+            pbi_by_timestep_functions = {
+                                        "default":
+                                                {   'function':eqn_flat_rate,
+                                                    'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'],
+                                                    'default_params':[0, agent.loc['economic_lifetime'], default_expiration],
+                                                    'additional_params':[agent.loc['year'], agent.loc['timesteps_per_year']]},
+                                        "SREC":
+                                                {   'function':eqn_linear_decay_to_zero,
+                                                    'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'],
+                                                    'default_params':[0, 10, default_expiration],
+                                                    'additional_params':[agent.loc['year'], agent.loc['timesteps_per_year']]}
+                                        }
+            production_based_incentives =  calculate_production_based_incentives(system_df, agent, function_templates=pbi_by_timestep_functions)
+
+        else:
+            investment_incentives = np.zeros(system_df.shape[0])
+            capacity_based_incentives = np.zeros(system_df.shape[0])
+            production_based_incentives = np.tile(np.array([0]*agent.loc['economic_lifetime']), (system_df.shape[0],1))
+
+        cf_results_est = cashflow_constructor(bill_savings=est_bill_savings, 
+                            pv_size=np.array(system_df['pv']), pv_price=agent.loc['pv_price_per_kw'], pv_om=agent.loc['pv_om_per_kw'],
+                            batt_cap=np.array(system_df['batt_kw'])*batt_ratio, batt_power=np.array(system_df['batt_kw']),
+                            batt_cost_per_kw=agent.loc['batt_price_per_kw'], batt_cost_per_kwh=agent.loc['batt_price_per_kwh'],
+                            batt_om_per_kw=agent.loc['batt_om_per_kw'], batt_om_per_kwh=agent.loc['batt_om_per_kwh'],
+                            batt_chg_frac=batt_chg_frac,
+                            sector=agent.loc['sector_abbr'], itc=agent.loc['itc_fraction'], deprec_sched=agent.loc['deprec_sch'],
+                            fed_tax_rate=agent['tax_rate'], state_tax_rate=0, real_d=agent['discount_rate'],
+                            analysis_years=agent.loc['economic_lifetime'], inflation=agent.loc['inflation'],
+                            down_payment_fraction=agent.loc['down_payment'], loan_rate=agent.loc['loan_rate'], loan_term=agent.loc['loan_term'],
+                            cash_incentives=cash_incentives,ibi=investment_incentives, cbi=capacity_based_incentives, pbi=production_based_incentives)
+                        
+        system_df['npv'] = cf_results_est['npv']
+
+        #=========================================================================#
+        # Select system size and business model for this agent
+        #=========================================================================# 
+        index_of_best_fin_perform_ho = system_df['npv'].idxmax()
+       
+        opt_pv_size = system_df['pv'][index_of_best_fin_perform_ho].copy()
+        opt_batt_power = system_df['batt_kw'][index_of_best_fin_perform_ho].copy()
+        
+        opt_batt_cap = opt_batt_power*batt_ratio
+        batt.set_cap_and_power(opt_batt_cap, opt_batt_power) 
+
+        tariff = tFuncs.Tariff(dict_obj=agent.loc['tariff_dict'])
+    
+        # for buy all sell all agents: calculate value of generation based on wholesale prices and subtract from original bill
+        if agent.loc['compensation_style'] == 'Buy All Sell All':
+            sell_all = np.sum(opt_pv_size * pv_cf_profile * agent.loc['wholesale_elec_usd_per_kwh'])
+            opt_bill = original_bill - sell_all
+            # package into "dummy" dispatch results dictionary
+            accurate_results = {'bill_under_dispatch' : opt_bill, 'batt_dispatch_profile' : np.zeros(len(load_profile))}
+
+        # for net billing agents: if system size within policy limits, set sell rate to wholesale price -- otherwise, set sell rate to 0
+        elif (agent.loc['compensation_style'] == 'Net Billing (Wholesale)') or (agent.loc['compensation_style'] == 'Net Billing (Avoided Cost)'):
+            export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
+            if opt_pv_size<=agent.loc['nem_system_size_limit_kw']:
+                if agent.loc['compensation_style'] == 'Net Billing (Wholesale)':
+                        export_tariff.set_constant_sell_price(agent.loc['wholesale_elec_usd_per_kwh'])
+                elif agent.loc['compensation_style'] == 'Net Billing (Avoided Cost)':
+                    export_tariff.set_constant_sell_price(agent.loc['hourly_excess_sell_rate_usd_per_kwh'])
+            else:
+                export_tariff.set_constant_sell_price(0.)
+            accurate_results = dFuncs.determine_optimal_dispatch(load_profile, opt_pv_size*pv_cf_profile, batt, tariff, export_tariff, estimated=False, d_inc_n=d_inc_n_acc, DP_inc=DP_inc_acc)
+    
+        # for net metering agents: if system size within policy limits, set full_retail_nem=True -- otherwise set export value to wholesale price
+        elif agent.loc['compensation_style'] == 'Net Metering':  
+            export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
+            if opt_pv_size<=agent.loc['nem_system_size_limit_kw']:
+                export_tariff = tFuncs.Export_Tariff(full_retail_nem=True)
+                export_tariff.periods_8760 = tariff.e_tou_8760
+                export_tariff.prices = tariff.e_prices_no_tier
+            else:
+                export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
+                export_tariff.set_constant_sell_price(agent.loc['wholesale_elec_usd_per_kwh'])
+            accurate_results = dFuncs.determine_optimal_dispatch(load_profile, opt_pv_size*pv_cf_profile, batt, tariff, export_tariff, estimated=False, d_inc_n=d_inc_n_acc, DP_inc=DP_inc_acc)
+
+        else:
+            export_tariff = tFuncs.Export_Tariff(full_retail_nem=False)
+            export_tariff.set_constant_sell_price(0.)
+            accurate_results = dFuncs.determine_optimal_dispatch(load_profile, opt_pv_size*pv_cf_profile, batt, tariff, export_tariff, estimated=False, d_inc_n=d_inc_n_acc, DP_inc=DP_inc_acc)
+
+        # add system size class
+        system_size_breaks = [0.0, 2.5, 5.0, 10.0, 20.0, 50.0, 100.0, 250.0, 500.0, 750.0, 1000.0, 1500.0, 3000.0]
+
+        #=========================================================================#
+        # Determine dispatch trajectory for chosen system size
+        #=========================================================================#     
+        opt_bill = accurate_results['bill_under_dispatch'] #+ one_time_charge
+        agent.loc['first_year_elec_bill_with_system'] = opt_bill * agent.loc['elec_price_multiplier']
+        agent.loc['first_year_elec_bill_savings'] = agent.loc['first_year_elec_bill_without_system'] - agent.loc['first_year_elec_bill_with_system']
+        agent.loc['first_year_elec_bill_savings_frac'] = agent.loc['first_year_elec_bill_savings'] / agent.loc['first_year_elec_bill_without_system']
+        opt_bill_savings = np.zeros([1, agent.loc['economic_lifetime'] + 1])
+        opt_bill_savings[:, 1:] = (original_bill - opt_bill)
+        opt_bill_savings = opt_bill_savings * agent.loc['elec_price_multiplier'] * escalator * degradation
+
+        # If the batt kW is less than 25% of the PV kW, apply the ITC
+        if opt_pv_size >= opt_batt_power*4:
+            batt_chg_frac = 1.0
+        else:
+            batt_chg_frac = 0.0
+
+        cash_incentives = np.array([cash_incentives[index_of_best_fin_perform_ho]])
+        investment_incentives = np.array([investment_incentives[index_of_best_fin_perform_ho]])
+        capacity_based_incentives = np.array([capacity_based_incentives[index_of_best_fin_perform_ho]])
+        production_based_incentives = np.array(production_based_incentives[index_of_best_fin_perform_ho])
+
+        cf_results_opt = cashflow_constructor(bill_savings=opt_bill_savings, 
+                     pv_size=opt_pv_size, pv_price=agent.loc['pv_price_per_kw'], pv_om=agent.loc['pv_om_per_kw'],
+                     batt_cap=opt_batt_cap, batt_power=opt_batt_power,
+                     batt_cost_per_kw=agent.loc['batt_price_per_kw'], batt_cost_per_kwh=agent.loc['batt_price_per_kwh'],
+                     batt_om_per_kw=agent['batt_om_per_kw'], batt_om_per_kwh=agent['batt_om_per_kwh'],
+                     batt_chg_frac=batt_chg_frac,
+                     sector=agent.loc['sector_abbr'], itc=agent.loc['itc_fraction'], deprec_sched=agent.loc['deprec_sch'],
+                     fed_tax_rate=agent.loc['tax_rate'], state_tax_rate=0, real_d=agent.loc['discount_rate'],
+                     analysis_years=agent.loc['economic_lifetime'], inflation=agent.loc['inflation'],
+                     down_payment_fraction=agent.loc['down_payment'], loan_rate=agent.loc['loan_rate'], loan_term=agent.loc['loan_term'],
+                     cash_incentives=cash_incentives, ibi=investment_incentives, cbi=capacity_based_incentives, pbi=production_based_incentives)
+                     
+        #=========================================================================#
+        # Package results
+        #=========================================================================# 
+                   
+        agent['pv_kw'] = opt_pv_size
+        agent['batt_kw'] = opt_batt_power
+        agent['batt_kwh'] = opt_batt_cap
+        agent['npv'] = cf_results_opt['npv'][0]
+        agent['cash_flow'] = cf_results_opt['cf'][0]
+        agent['batt_dispatch_profile'] = accurate_results['batt_dispatch_profile']
+
+        agent['bill_savings'] = opt_bill_savings
+        agent['aep'] = agent['pv_kw'] * agent['naep']
+        agent['cf'] = agent['naep']/8760
+        agent['system_size_factors'] = np.where(agent['pv_kw'] == 0, 0, pd.cut([agent['pv_kw']], system_size_breaks))[0]
+        agent['export_tariff_results'] = original_results
+        
+    except Exception as e:
+        print(' ')
+        print('--------------------------------------------')
+        print "failed in calc_system_size_and_financial_performance"
+        print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e), e)
+        print('agent that failed')
+        print(agent)
+        print('--------------------------------------------')
+        agent.to_pickle('agent_that_failed.pkl')
+
+    return agent
+
+#%%
+def check_incentive_constraints(incentive_data, temp, system_costs):
+    raise NotImplementedError("Not implemented yet, would require a dict on the agent called 'state_incentives', see SS19 branch.")
+
+# %%
+def calculate_investment_based_incentives(system_df, agent):
+    raise NotImplementedError("Not implemented yet, would require a dict on the agent called 'state_incentives', see SS19 branch.")
+#%%
+def calculate_capacity_based_incentives(system_df, agent):
+    raise NotImplementedError("Not implemented yet, would require a dict on the agent called 'state_incentives', see SS19 branch.")
+#%%
+def calculate_production_based_incentives(system_df, agent, function_templates={}):
+    raise NotImplementedError("Not implemented yet, would require a dict on the agent called 'state_incentives', see SS19 branch.")
+
 
 import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
@@ -39,9 +423,6 @@ def calc_financial_performance(dataframe):
     # calculate payback period
     tech_lifetime = np.shape(cfs)[1] - 1
 
-    print 'tech_lifetime'
-    print tech_lifetime
-
     payback = calc_payback_vectorized(cfs, tech_lifetime)
     # calculate time to double
     ttd = calc_ttd(cfs)
@@ -51,7 +432,6 @@ def calc_financial_performance(dataframe):
     dataframe['metric_value'] = metric_value
     
     dataframe = dataframe.set_index('agent_id')
-    print '\n'
     return dataframe
     
 #%%
@@ -61,7 +441,6 @@ def calc_financial_performance(dataframe):
 def calc_max_market_share(dataframe, max_market_share_df):
     """
     Calculates the maximum marketshare available for each agent. 
-
     Parameters
     ----------
     dataframe : pandas.DataFrame
@@ -71,7 +450,6 @@ def calc_max_market_share(dataframe, max_market_share_df):
             
     max_market_share_df : pandas.DataFrame
         Set by :meth:`settings.ScenarioSettings.get_max_marketshare`.
-
     Returns
     -------
     pandas.DataFrame
@@ -128,7 +506,6 @@ def calc_ttd(cfs):
     ----------
     cfs : numpy.ndarray
         Project cash flows ($/yr).
-
     Returns
     -------
     ttd : numpy.ndarray
@@ -159,7 +536,7 @@ def cashflow_constructor(bill_savings,
                          fed_tax_rate, state_tax_rate, real_d,  
                          analysis_years, inflation, 
                          down_payment_fraction, loan_rate, loan_term, 
-                         cash_incentives=np.array([0]), ibi=np.array([0]), cbi=np.array([0]), pbi=np.array([[0]]), print_statements = False):
+                         cash_incentives=np.array([0]), ibi=np.array([0]), cbi=np.array([0]), pbi=np.array([[0]]), print_statements=False):
     """
     Calculate the system cash flows based on the capex, opex, bill savings, incentives, tax implications, and other factors
     
@@ -308,47 +685,71 @@ def cashflow_constructor(bill_savings,
     19) Make it so it can accept different loan terms
     """
 
-    #################### Massage inputs ########################################
+        #################### Massage inputs ########################################
     # If given just a single value for an agent-specific variable, repeat that
     # variable for each agent. This assumes that the variable is intended to be
-    # applied to each agent. 
-    if np.size(np.shape(bill_savings)) == 1: shape = (1, analysis_years+1)
-    else: shape = (np.shape(bill_savings)[0], analysis_years+1)
+    # applied to each agent.
+
+    if np.size(np.shape(bill_savings)) == 1:
+        shape = (1, analysis_years + 1)
+    else:
+        shape = (np.shape(bill_savings)[0], analysis_years + 1)
+
     n_agents = shape[0]
 
-    if np.size(sector) != n_agents or n_agents==1: sector = np.repeat(sector, n_agents) 
-    if np.size(fed_tax_rate) != n_agents or n_agents==1: fed_tax_rate = np.repeat(fed_tax_rate, n_agents) 
-    if np.size(state_tax_rate) != n_agents or n_agents==1: state_tax_rate = np.repeat(state_tax_rate, n_agents) 
-    if np.size(itc) != n_agents or n_agents==1: itc = np.repeat(itc, n_agents) 
-    if np.size(pv_size) != n_agents or n_agents==1: pv_size = np.repeat(pv_size, n_agents) 
-    if np.size(pv_price) != n_agents or n_agents==1: pv_price = np.repeat(pv_price, n_agents) 
-    if np.size(pv_om) != n_agents or n_agents==1: pv_om = np.repeat(pv_om, n_agents) 
-    if np.size(batt_cap) != n_agents or n_agents==1: batt_cap = np.repeat(batt_cap, n_agents) 
-    if np.size(batt_power) != n_agents or n_agents==1: batt_power = np.repeat(batt_power, n_agents) 
-    if np.size(batt_cost_per_kw) != n_agents or n_agents==1: batt_cost_per_kw = np.repeat(batt_cost_per_kw, n_agents) 
-    if np.size(batt_cost_per_kwh) != n_agents or n_agents==1: batt_cost_per_kwh = np.repeat(batt_cost_per_kwh, n_agents) 
-    if np.size(batt_chg_frac) != n_agents or n_agents==1: batt_chg_frac = np.repeat(batt_chg_frac, n_agents) 
-    if np.size(batt_om_per_kw) != n_agents or n_agents==1: batt_om_per_kw = np.repeat(batt_om_per_kw, n_agents) 
-    if np.size(batt_om_per_kwh) != n_agents or n_agents==1: batt_om_per_kwh = np.repeat(batt_om_per_kwh, n_agents) 
-    if np.size(real_d) != n_agents or n_agents==1: real_d = np.repeat(real_d, n_agents) 
-    if np.size(down_payment_fraction) != n_agents or n_agents==1: down_payment_fraction = np.repeat(down_payment_fraction, n_agents) 
-    if np.size(loan_rate) != n_agents or n_agents==1: loan_rate = np.repeat(loan_rate, n_agents) 
-    if np.size(ibi) != n_agents or n_agents==1: ibi = np.repeat(ibi, n_agents) 
-    if np.size(cbi) != n_agents or n_agents==1: cbi = np.repeat(cbi, n_agents) 
-    
-    
-    if np.size(pbi) != n_agents or n_agents==1: pbi = np.repeat(pbi, n_agents)[:,np.newaxis]
-    deprec_sched = np.array([deprec_sched])
+    if np.size(sector) != n_agents or n_agents == 1: 
+        sector = np.repeat(sector, n_agents)
+    if np.size(fed_tax_rate) != n_agents or n_agents == 1: 
+        fed_tax_rate = np.repeat(fed_tax_rate, n_agents)
+    if np.size(state_tax_rate) != n_agents or n_agents == 1: 
+        state_tax_rate = np.repeat(state_tax_rate, n_agents)
+    if np.size(itc) != n_agents or n_agents == 1: 
+        itc = np.repeat(itc, n_agents)
+    if np.size(pv_size) != n_agents or n_agents == 1: 
+        pv_size = np.repeat(pv_size, n_agents)
+    if np.size(pv_price) != n_agents or n_agents == 1: 
+        pv_price = np.repeat(pv_price, n_agents)
+    if np.size(pv_om) != n_agents or n_agents == 1: 
+        pv_om = np.repeat(pv_om, n_agents)
+    if np.size(batt_cap) != n_agents or n_agents == 1: 
+        batt_cap = np.repeat(batt_cap, n_agents)
+    if np.size(batt_power) != n_agents or n_agents == 1: 
+        batt_power = np.repeat(batt_power, n_agents)
+    if np.size(batt_cost_per_kw) != n_agents or n_agents == 1: 
+        batt_cost_per_kw = np.repeat(batt_cost_per_kw, n_agents)
+    if np.size(batt_cost_per_kwh) != n_agents or n_agents == 1: 
+        batt_cost_per_kwh = np.repeat(batt_cost_per_kwh,n_agents)
+    if np.size(batt_chg_frac) != n_agents or n_agents == 1: 
+        batt_chg_frac = np.repeat(batt_chg_frac, n_agents)
+    if np.size(batt_om_per_kw) != n_agents or n_agents == 1: 
+        batt_om_per_kw = np.repeat(batt_om_per_kw, n_agents)
+    if np.size(batt_om_per_kwh) != n_agents or n_agents == 1: 
+        batt_om_per_kwh = np.repeat(batt_om_per_kwh, n_agents)
+    if np.size(real_d) != n_agents or n_agents == 1: 
+        real_d = np.repeat(real_d, n_agents)
+    if np.size(down_payment_fraction) != n_agents or n_agents == 1: 
+        down_payment_fraction = np.repeat(down_payment_fraction, n_agents)
+    if np.size(loan_rate) != n_agents or n_agents == 1:
+        loan_rate = np.repeat(loan_rate, n_agents)
+    if np.size(ibi) != n_agents or n_agents == 1:
+        ibi = np.repeat(ibi, n_agents)
+    if np.size(cbi) != n_agents or n_agents == 1:
+        cbi = np.repeat(cbi, n_agents)
+    if len(pbi) != n_agents:
+        if len(pbi) > 0:
+            pbi = np.tile(pbi[0], (n_agents, 1))
+        else:
+            pbi = np.tile(np.array([0] * analysis_years), (n_agents, 1))
+
+    if np.array(deprec_sched).ndim == 1 or n_agents == 1:
+        deprec_sched = np.array(deprec_sched)
 
     #################### Setup #########################################
     effective_tax_rate = fed_tax_rate * (1 - state_tax_rate) + state_tax_rate
-
     if print_statements:
         print 'effective_tax_rate'
         print effective_tax_rate
-    
-    # nom_d = (1 + real_d) * (1 + inflation) - 1
-
+        print ' '
     cf = np.zeros(shape) 
     inflation_adjustment = (1+inflation)**np.arange(analysis_years+1)
     
@@ -372,24 +773,16 @@ def cashflow_constructor(bill_savings,
     # reducing the up front installed cost that determines debt levels. 
 
     pv_cost = pv_size*pv_price     # assume pv_price includes initial inverter purchase
-
+    batt_cost = batt_power*batt_cost_per_kw + batt_cap*batt_cost_per_kwh
+    installed_cost = pv_cost + batt_cost
     if print_statements:
-        print 'pv_cost'
+        print 'installed_cost'
         print pv_cost
         print ' '
 
-    batt_cost = batt_power*batt_cost_per_kw + batt_cap*batt_cost_per_kwh
-    installed_cost = pv_cost + batt_cost
-
     net_installed_cost = installed_cost - cash_incentives - ibi - cbi
 
-    #calculate the wacc in place of nom_d, still need to figure out taxes write offs for mexico!
-
     wacc = (((down_payment_fraction*net_installed_cost)/net_installed_cost) * real_d) + ((((1-down_payment_fraction)*net_installed_cost)/net_installed_cost) * loan_rate)
-    # elif sector[0] is in ['com','ind']:
-    #     wacc = (((down_payment_fraction*net_installed_cost)/net_installed_cost) * real_d) + (((((1-down_payment_fraction)*net_installed_cost)/net_installed_cost) * loan_rate)*(1-TAXRATE))
-    # print wacc
-
 
     up_front_cost = net_installed_cost * down_payment_fraction
     if print_statements:
@@ -397,18 +790,7 @@ def cashflow_constructor(bill_savings,
         print wacc
         print ' '
 
-
     cf[:,0] -= net_installed_cost #all installation costs upfront for WACC
-    # cf[:,0] -= up_front_cost
-
-    # print 'net_installed_cost' 
-    # print net_installed_cost
-    # print ' '
-
-    # print 'up front cost'
-    # print up_front_cost
-    # print ' '
-
     if print_statements:
         print 'bill savings minus up front cost'
         print np.sum(cf,1)
@@ -430,23 +812,33 @@ def cashflow_constructor(bill_savings,
     operating_expenses_cf += batt_om_cf
     operating_expenses_cf = operating_expenses_cf*inflation_adjustment
     cf -= operating_expenses_cf
+    if print_statements:
+        print 'minus operating expenses'
+        print cf
+        print ' '
     
     #################### Federal ITC #########################################
     pv_itc_value = pv_cost * itc
     batt_itc_value = batt_cost * itc * batt_chg_frac * (batt_chg_frac>=0.75)
     itc_value = pv_itc_value + batt_itc_value
     # itc value added in fed_tax_savings_or_liability
-    
-    
+    if print_statements:
+        print 'itc value'
+        print itc_value
+        print ' '
 
     #################### Depreciation #########################################
     # Per SAM, depreciable basis is sum of total installed cost and total 
     # construction financing costs, less 50% of ITC and any incentives that
     # reduce the depreciable basis.
     deprec_deductions = np.zeros(shape)
-    deprec_basis = installed_cost - itc_value*0.5 
-    deprec_deductions[:,1:np.size(deprec_sched,1)+1] = (deprec_basis * deprec_sched.T).T
+    deprec_basis = installed_cost - itc_value * 0.5
+    deprec_deductions[:, 1: np.size(deprec_sched) + 1] = np.array([x * deprec_sched.T for x in deprec_basis])
     # to be used later in fed tax calcs
+    if print_statements:
+        print 'deprec_deductions'
+        print deprec_deductions
+        print ' '
     
     #################### Debt cash flow #######################################
     # Deduct loan interest payments from state & federal income taxes for res 
@@ -456,14 +848,12 @@ def cashflow_constructor(bill_savings,
     # debt balance, interest payment, principal payment, total payment
     
     initial_debt = net_installed_cost - up_front_cost
-
     if print_statements:
         print 'initial_debt'
         print initial_debt
         print ' '
 
     annual_principal_and_interest_payment = initial_debt * (loan_rate*(1+loan_rate)**loan_term) / ((1+loan_rate)**loan_term - 1)
-
     if print_statements:
         print 'annual_principal_and_interest_payment'
         print annual_principal_and_interest_payment
@@ -475,51 +865,42 @@ def cashflow_constructor(bill_savings,
     
     debt_balance[:,:loan_term] = (initial_debt*((1+loan_rate.reshape(n_agents,1))**np.arange(loan_term)).T).T - (annual_principal_and_interest_payment*(((1+loan_rate).reshape(n_agents,1)**np.arange(loan_term) - 1.0)/loan_rate.reshape(n_agents,1)).T).T  
     interest_payments[:,1:] = (debt_balance[:,:-1].T * loan_rate).T
-    
     if print_statements:
         print 'interest_payments'
         print interest_payments
         print ' '
-
         print 'sum of interst_payments'
         print np.sum(interest_payments)
         print ' '
-
         print 'net_installed_cost'
         print net_installed_cost
         print ' '
-
         print 'sum of net_installed_cost and interest payments'
         print net_installed_cost + np.sum(interest_payments)
         print ' '
 
     principal_and_interest_payments[:,1:loan_term+1] = annual_principal_and_interest_payment.reshape(n_agents, 1)
-
     if print_statements:
         print 'principal_and_interest_payments'
         print principal_and_interest_payments
         print ' '
-
         print 'sum of principal and interest payments, and upfront cost'
         print np.sum(principal_and_interest_payments) + up_front_cost
         print ' '
-
-    # cf -= principal_and_interest_payments
-    # cf -= interest_payments  #already included in the WACC
-
-    if print_statements:
         print 'cf minus intrest payments'
         print np.sum(cf,1)
         print ' '
     
-        
     #################### State Income Tax #########################################
     # Per SAM, taxable income is CBIs and PBIs (but not IBIs)
     # Assumes no state depreciation
     # Assumes that revenue from DG is not taxable income
+    # total_taxable_income = np.zeros(shape)
+    # total_taxable_income[:,1] = cbi
+    # total_taxable_income[:,:np.shape(pbi)[1]] += pbi
     total_taxable_income = np.zeros(shape)
-    total_taxable_income[:,1] = cbi
-    total_taxable_income[:,:np.shape(pbi)[1]] += pbi
+    total_taxable_income[:, 1] = cbi
+    total_taxable_income[:, 1:] += pbi
     
     state_deductions = np.zeros(shape)
     state_deductions += (interest_payments.T * (sector!='res')).T
@@ -570,7 +951,6 @@ def cashflow_constructor(bill_savings,
 
     discounts = np.zeros(shape, float)
     discounts[:,:] = (1/(1+wacc)).reshape(n_agents, 1)
-
     if print_statements:
         print 'discounts'
         print np.mean(discounts,1)
@@ -578,7 +958,6 @@ def cashflow_constructor(bill_savings,
 
     cf_discounted = cf * np.power(discounts, powers)
     cf_discounted = np.nan_to_num(cf_discounted)
-
     if print_statements:
         print 'cf not discounted'
         print cf
@@ -590,7 +969,6 @@ def cashflow_constructor(bill_savings,
         print ' '
 
     npv = np.sum(cf_discounted, 1)
-    
     if print_statements:
         print 'npv'
         print npv
@@ -640,7 +1018,6 @@ def cashflow_constructor(bill_savings,
 def calc_payback_vectorized(cfs, tech_lifetime):
     """
     Payback calculator.
-
     Can be either simple payback or discounted payback, depending on whether
     the input cash flow is discounted.    
     
@@ -710,7 +1087,6 @@ def virr(cfs, precision = 0.005, rmin = 0, rmax1 = 0.3, rmax2 = 0.5):
     -------
     numpy.ndarray
         IRRs for cash flow series
-
     Notes
     -----
     For performance, negative IRRs are not calculated, returns "-1" and values are only calculated to an acceptable precision.
