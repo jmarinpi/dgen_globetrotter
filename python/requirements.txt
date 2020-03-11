@@ -1,0 +1,9 @@
+colorama
+colorlog
+matplotlib
+numpy
+openpyxl=2.3.2
+pandas
+psutil
+psycopg2
+sqlalchemy

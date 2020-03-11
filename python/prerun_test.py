@@ -9,31 +9,9 @@ class UninstalledError(Exception):
 
 def check_dependencies():
     #Python
-    requirements = ['collections',
-                    'colorama',
-                    'colorlog',
-                    'datetime',
-                    'decorators',
-                    'functools',
-                    'getopt',
-                    'glob',
-                    'gzip',
-                    'json',
-                    'logging',
-                    'matplotlib',
-                    'multiprocessing',
-                    'numpy=1.11.1',
-                    'openpyxl=2.3.2',
-                    'os',
-                    'pandas=0.18.1',
-                    'pickle',
-                    'psutil',
-                    'scoop=0.7.1',
-                    'shutil',
-                    'subprocess',
-                    'sys',
-                    'time']
-
+    f = open('requirements.txt', 'r')
+    requirements = [l.replace('\n', '') for l in f.readlines()]
+    f.close()
     for requirement in requirements:
         if '=' in requirement:
             package, version = requirement.split('=')
@@ -44,9 +22,9 @@ def check_dependencies():
         try:
             installed = __import__(package)
         except:
-            raise UninstalledError('%s is not installed.' % package)
+            raise UninstalledError('{0} is not installed.'.format(package))
         # check the version
-        if version <> '':
-            if version <> installed.__version__:
+        if version != '':
+            if version != installed.__version__:
                 raise VersionError(
-                    'Version for %s is not equal to %s' % (package, version))
+                    'Version for {0} is not equal to {1}'.format(package, version))

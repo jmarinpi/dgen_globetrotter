@@ -63,7 +63,7 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
         ba_cum_pv_mw = pd.DataFrame(index=ba_list)
 
     # Set up for groupby
-    agent_df['index'] = range(len(agent_df))
+    agent_df['index'] = list(range(len(agent_df)))
     agent_df_to_group = agent_df[['control_reg_id', 'index']]
     agents_grouped = agent_df_to_group.groupby(['control_reg_id']).aggregate(lambda x: tuple(x))
     #==========================================================================================================
@@ -525,9 +525,9 @@ def estimate_initial_market_shares(dataframe):
     # find the total number of customers in each state (by technology and sector)
     #==========================================================================================================
     state_total_developable_customers = dataframe[['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
-        ['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech']).sum().reset_index()
+        ['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech'], as_index=False).sum()
     state_total_agents = dataframe[['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
-        ['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech']).count().reset_index()
+        ['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech'], as_index=False).count()
     #==========================================================================================================
     # rename the final columns
     #==========================================================================================================
@@ -542,10 +542,10 @@ def estimate_initial_market_shares(dataframe):
                                   'control_reg_id', 'state_id', 'tariff_class', 'sector_abbr', 'tech'])
 
     state_denominators.control_reg_id  = state_denominators.control_reg_id.astype(str)
+    state_denominators['control_reg_id'] = state_denominators['control_reg_id'].astype('int')
     #==========================================================================================================
     # merge back to the main dataframe
     #==========================================================================================================
-
     dataframe = pd.merge(dataframe, state_denominators, how='left',
         on=['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech'])
     #==========================================================================================================
@@ -580,8 +580,6 @@ def estimate_initial_market_shares(dataframe):
                    'number_of_adopters_last_year', 'pv_kw_cum_last_year', 'batt_kw_cum_last_year', 'batt_kwh_cum_last_year', 'market_share_last_year', 'market_value_last_year']
     dataframe[return_cols] = dataframe[return_cols].fillna(0)
     out_cols = in_cols + return_cols
-    dataframe = dataframe.set_index('agent_id')
-
     return dataframe[out_cols]
 
 

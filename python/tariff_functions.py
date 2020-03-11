@@ -16,9 +16,9 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 #%%
 # Load configuration file, if one exists.
 def load_config_params(config_file_name):
-    '''
+    """
     Each user should fill in a config_template.json file.
-    '''
+    """
     
     config = json.load(file('config.json','r'))
     
@@ -187,7 +187,7 @@ class Tariff:
         elif urdb_id != None:
 
             if api_key == None: 
-                print "No URDB API key defined."
+                print("No URDB API key defined.")
             
             input_params = {'version':3,
                         'format':'json',
@@ -400,7 +400,7 @@ class Tariff:
         elif json_file_name != None:
             obj_text = codecs.open(json_file_name, 'r', encoding='utf-8').read()
             d = json.loads(obj_text)
-            for fieldname in d.keys():
+            for fieldname in list(d.keys()):
                 if isinstance(d[fieldname], list):
                     d[fieldname] = np.array(d[fieldname])
                 
@@ -576,7 +576,7 @@ class Tariff:
         d_prep_for_json = d.copy()
         
         # change ndarray dtypes to lists, since json doesn't know ndarrays
-        for fieldname in d_prep_for_json.keys():
+        for fieldname in list(d_prep_for_json.keys()):
             if isinstance(d_prep_for_json[fieldname], np.ndarray):
                 d_prep_for_json[fieldname] = d_prep_for_json[fieldname].tolist()
         
@@ -734,7 +734,7 @@ def bill_calculator(load_profile, tariff, export_tariff):
     n_timesteps = 8760
 
     if len(tariff.d_tou_8760) != 8760: 
-        print 'Warning: Non-8760 profiles are not yet supported by the bill calculator'
+        print('Warning: Non-8760 profiles are not yet supported by the bill calculator')
     
     # 8760 vector of month numbers
     month_hours = np.array([0, 744, 1416, 2160, 2880, 3624, 4344, 5088, 5832, 6552, 7296, 8016, 8760], int)
@@ -748,7 +748,7 @@ def bill_calculator(load_profile, tariff, export_tariff):
     if tariff.d_tou_exists == True:
         # Cast the TOU periods into a boolean matrix
         period_matrix = np.zeros([n_timesteps, tariff.d_tou_n*n_months], bool)
-        period_matrix[range(n_timesteps),tariff.d_tou_8760+month_index*tariff.d_tou_n] = True
+        period_matrix[list(range(n_timesteps)),tariff.d_tou_8760+month_index*tariff.d_tou_n] = True
         
         # Determine the max demand in each period of each month of each year
         load_distributed = load_profile[np.newaxis, :].T*period_matrix
@@ -770,7 +770,7 @@ def bill_calculator(load_profile, tariff, export_tariff):
     if tariff.d_flat_exists == True:
         # Cast the seasons into a boolean matrix
         flat_matrix = np.zeros([n_timesteps, n_months], bool)
-        flat_matrix[range(n_timesteps),month_index] = True
+        flat_matrix[list(range(n_timesteps)),month_index] = True
         
         # Determine the max demand in each month of each year
         load_distributed = load_profile[np.newaxis, :].T*flat_matrix
@@ -814,7 +814,7 @@ def bill_calculator(load_profile, tariff, export_tariff):
             # Calculate fixed schedule export_tariff 
             # Cast the TOU periods into a boolean matrix
             e_period_export_matrix = np.zeros([len(export_tariff.periods_8760), export_tariff.period_tou_n*n_months], bool)
-            e_period_export_matrix[range(len(export_tariff.periods_8760)),export_tariff.periods_8760+month_index*export_tariff.period_tou_n] = True
+            e_period_export_matrix[list(range(len(export_tariff.periods_8760))),export_tariff.periods_8760+month_index*export_tariff.period_tou_n] = True
             
             # Determine the energy consumed in each period of each month of each year
             load_distributed = exported_profile[np.newaxis, :].T*e_period_export_matrix
@@ -830,7 +830,7 @@ def bill_calculator(load_profile, tariff, export_tariff):
             # Calculate imported energy charges. 
             # Cast the TOU periods into a boolean matrix
             e_period_import_matrix = np.zeros([len(tariff.e_tou_8760), tariff.e_n*n_months], bool)
-            e_period_import_matrix[range(len(tariff.e_tou_8760)),tariff.e_tou_8760+month_index*tariff.e_n] = True
+            e_period_import_matrix[list(range(len(tariff.e_tou_8760))),tariff.e_tou_8760+month_index*tariff.e_n] = True
             
             # Determine the max demand in each period of each month of each year
             load_distributed = imported_profile[np.newaxis, :].T*e_period_import_matrix
@@ -855,7 +855,7 @@ def bill_calculator(load_profile, tariff, export_tariff):
             # Calculate imported energy charges with full retail NEM
             # Cast the TOU periods into a boolean matrix
             e_period_matrix = np.zeros([len(tariff.e_tou_8760), tariff.e_n*n_months], bool)
-            e_period_matrix[range(len(tariff.e_tou_8760)),tariff.e_tou_8760+month_index*tariff.e_n] = True
+            e_period_matrix[list(range(len(tariff.e_tou_8760))),tariff.e_tou_8760+month_index*tariff.e_n] = True
 
             # Determine the energy consumed in each period of each month of each year netting exported electricity
             load_distributed = load_profile[np.newaxis, :].T*e_period_matrix
@@ -984,7 +984,7 @@ def download_tariffs_from_urdb(api_key, sector=None, utility=None, print_progres
         if len(tariff_list) == 0:
             flag = False
         else:
-            tariff_chunk = pd.DataFrame(index=range(500), columns=fields)
+            tariff_chunk = pd.DataFrame(index=list(range(500)), columns=fields)
             for count, tariff in enumerate(tariff_list):
                 if 'utility' in tariff: tariff_chunk.loc[count, 'utility'] = tariff['utility'].encode('utf-8')
                 if 'eiaid' in tariff: tariff_chunk.loc[count, 'eiaid'] = tariff['eiaid']
@@ -1008,7 +1008,7 @@ def download_tariffs_from_urdb(api_key, sector=None, utility=None, print_progres
             offset += len(tariff_list)
             
             chunk_count += len(tariff_list)
-            if print_progress==True: print chunk_count
+            if print_progress==True: print(chunk_count)
 
     return tariffs
     
@@ -1046,7 +1046,7 @@ def filter_tariff_df(tariff_df,
     elif keyword_list != None:
         keyword_list = keyword_list
     else:
-        print 'enter a keyword_list or keyword_list_file'
+        print('enter a keyword_list or keyword_list_file')
     
     tariffs_to_exclude = np.zeros(len(tariff_df), bool)
     keyword_count_df = pd.DataFrame(index=keyword_list)
@@ -1160,7 +1160,7 @@ def design_tariff_for_portfolio(agent_df, avg_rev, peak_hour_indicies, summer_mo
         month_index[month_hours[month-1]:hours] = month-1
     
     period_matrix = np.zeros([8760, d_tou_n*12], bool)
-    period_matrix[range(8760),d_tou_8760+month_index*d_tou_n] = True
+    period_matrix[list(range(8760)),d_tou_8760+month_index*d_tou_n] = True
     
     # Define the dataframes that energy and demand values will be recorded in
     bld_peak_demands = pd.DataFrame()

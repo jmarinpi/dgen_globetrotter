@@ -51,10 +51,10 @@ def cartesian(arrays, out=None):
 
     m = n / arrays[0].size
     out[:,0] = np.repeat(arrays[0], m)
-    if arrays[1:]:
-        cartesian(arrays[1:], out=out[0:m,1:])
-        for j in xrange(1, arrays[0].size):
-            out[j*m:(j+1)*m,1:] = out[0:m,1:]
+    # if arrays[1:]:
+    #     cartesian(arrays[1:], out=out[0:m,1:])
+        # for j in range(1, arrays[0].size):
+        #     out[j*m:(j+1)*m,1:] = out[0:m,1:]
     return out    
 
 class Battery:
@@ -209,8 +209,8 @@ def determine_optimal_dispatch(load_profile, pv_profile, batt, t, export_tariff,
             # to charge slowly, all else being equal
             adjuster = np.zeros(batt_charge_limits_len, float)
             base_adjustment = 0.0000001            
-            adjuster[np.arange(batt_discharge_limit,-1,-1)] = base_adjustment * np.array(range(batt_discharge_limit+1))*np.array(range(batt_discharge_limit+1)) / (batt_discharge_limit*batt_discharge_limit)
-            adjuster[batt_discharge_limit:] = base_adjustment * np.array(range(batt_charge_limit+1))*np.array(range(batt_charge_limit+1)) / (batt_charge_limit*batt_charge_limit)
+            adjuster[np.arange(batt_discharge_limit,-1,-1)] = base_adjustment * np.array(list(range(batt_discharge_limit+1)))*np.array(list(range(batt_discharge_limit+1))) / (batt_discharge_limit*batt_discharge_limit)
+            adjuster[batt_discharge_limit:] = base_adjustment * np.array(list(range(batt_charge_limit+1)))*np.array(list(range(batt_charge_limit+1))) / (batt_charge_limit*batt_charge_limit)
 
             
             # Initialize some objects for later use in the DP
@@ -235,7 +235,7 @@ def determine_optimal_dispatch(load_profile, pv_profile, batt, t, export_tariff,
             # can reach.
             # Each row is the set of options for a single battery state
             option_indicies = np.zeros((DP_inc+1, batt_charge_limits_len), int)
-            option_indicies[:,:] = range(batt_charge_limits_len)
+            option_indicies[:,:] = list(range(batt_charge_limits_len))
             for n in range(DP_inc+1):
                 option_indicies[n,:] += n - batt_discharge_limit
             option_indicies[option_indicies<0] = 0 # Cannot discharge below "empty"
@@ -246,7 +246,7 @@ def determine_optimal_dispatch(load_profile, pv_profile, batt, t, export_tariff,
             
             for hour in np.arange(np.size(load_and_pv_profile)-2, -1, -1):
                 if hour == 4873:
-                    print "full stop"
+                    print("full stop")
                 # Rows correspond to each possible battery state
                 # Columns are options for where this particular battery state could go to
                 # Index is hour+1 because the DP decisions are on a given hour, looking ahead to the next hour. 
@@ -294,7 +294,7 @@ def determine_optimal_dispatch(load_profile, pv_profile, batt, t, export_tariff,
                 #The indicies of the results correspond to the battery's movement. So the (approximate) middle option is the do-nothing option   
                 #Subtract the negative half of the charge vector, to get the movement relative to the row under consideration        
                 DP_choices[:,hour] = np.argmin(total_option_costs,1) - batt_discharge_limit # adjust by discharge?
-                selected_net_loads[:,hour] = net_loads[range(DP_inc+1),np.argmin(total_option_costs,1)]
+                selected_net_loads[:,hour] = net_loads[list(range(DP_inc+1)),np.argmin(total_option_costs,1)]
                 
                 
             #=================================================================#
@@ -558,8 +558,8 @@ def calc_min_possible_demands_vector(res, load_and_pv_profile, pv_profile, d_per
         return cheapest_d_states,  d_max_vector, batt_level_profile
 
     except Exception as e:
-            print e
-            print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e), e)
+            print(e)
+            print(('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e), e))
     
 #%%
 def determine_cheapest_possible_of_given_demand_levels(load_and_pv_profile, pv_profile, unique_periods, d_combinations, d_combo_n, Dn_month, d_periods_index,  batt, restrict_charge_to_pv_gen, batt_start_level, tariff):
