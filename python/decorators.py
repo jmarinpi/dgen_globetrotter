@@ -26,6 +26,6 @@ class fn_timer(object):
                     if self.logger is not None:
                         self.logger.info(msg)
                     else:
-                        print msg
+                        print(msg)
                 return result
             return function_timer

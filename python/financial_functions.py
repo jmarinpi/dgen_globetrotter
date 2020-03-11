@@ -36,12 +36,14 @@ def calc_system_size_and_financial_performance(agent):
     #=========================================================================#
 
     try:
+        in_cols = list(agent.index)
+
         if config.VERBOSE:
-            print ' '
-            print "\tRunning system size calculations for", agent['state'], agent['tariff_class'], agent['sector_abbr']
-            print 'real_discount', agent['discount_rate']
-            print 'loan_rate', agent['loan_rate']
-            print 'down_payment', agent['down_payment']
+            logger.info(' ')
+            logger.info("\tRunning system size calculations for: {}, {}, {}".format(agent['state'], agent['tariff_class'], agent['sector_abbr']))
+            logger.info('real_discount: {}'.format(agent['discount_rate']))
+            logger.info('loan_rate: {}'.format(agent['loan_rate']))
+            logger.info('down_payment: {}'.format(agent['down_payment']))
 
         # Set resolution of dispatcher    
         d_inc_n_est = 10    
@@ -74,12 +76,12 @@ def calc_system_size_and_financial_performance(agent):
 
         original_bill, original_results = tFuncs.bill_calculator(load_profile, tariff, export_tariff)
         if config.VERBOSE:
-            print 'original_bill', original_bill
+            logger.info('original_bill: {}'.format(original_bill))
 
         agent['first_year_elec_bill_without_system'] = original_bill * agent['elec_price_multiplier']
         
         if config.VERBOSE:
-            print 'multiplied original bill', agent['first_year_elec_bill_without_system']
+            logger.info('multiplied original bill: {}'.format(agent['first_year_elec_bill_without_system']))
 
         if agent['first_year_elec_bill_without_system'] == 0: 
             agent['first_year_elec_bill_without_system']=1.0
@@ -92,10 +94,10 @@ def calc_system_size_and_financial_performance(agent):
 
         max_size_load = agent.loc['load_per_customer_in_bin_kwh']/agent.loc['naep']
         max_size_roof = agent.loc['developable_roof_sqft'] * agent.loc['developable_buildings_pct'] * agent.loc['pv_power_density_w_per_sqft']/1000.0
-        agent.loc['max_pv_size'] = min([max_size_load, max_size_roof, agent.loc['interconnection_limit']])
+        agent.loc['max_pv_size'] = min([max_size_load, max_size_roof, agent.loc['nem_system_size_limit_kw']])
         if config.VERBOSE:
-            print 'max_size_load', max_size_load
-            print 'max_size_roof', max_size_roof
+            logger.info('max_size_load: {}'.format(max_size_load))
+            logger.info('max_size_roof: {}'.format(max_size_roof))
         dynamic_sizing = True #False
 
         if dynamic_sizing:
@@ -116,13 +118,13 @@ def calc_system_size_and_financial_performance(agent):
 
         for pv_size in pv_sizes:
             load_and_pv_profile = load_profile - pv_size*pv_cf_profile
-            est_params_df.set_value(pv_size, 'estimator_params', dFuncs.calc_estimator_params(load_and_pv_profile, tariff, export_tariff, batt.eta_charge, batt.eta_discharge))
+            est_params_df.at[pv_size, 'estimator_params'] = dFuncs.calc_estimator_params(load_and_pv_profile, tariff, export_tariff, batt.eta_charge, batt.eta_discharge)
             
         # Create df with all combinations of solar+storage sizes
         system_df = pd.DataFrame(dFuncs.cartesian([pv_sizes, batt_powers]), columns=['pv', 'batt_kw'])
         system_df['est_bills'] = None
 
-        pv_kwh_by_year = np.array(map(lambda x: sum(x), np.split(np.array(pv_cf_profile), agent.loc['timesteps_per_year'])))
+        pv_kwh_by_year = np.array([sum(x) for x in np.split(np.array(pv_cf_profile), agent.loc['timesteps_per_year'])])
         pv_kwh_by_year = np.concatenate([(pv_kwh_by_year - ( pv_kwh_by_year * agent.loc['pv_deg'] * i)) for i in range(1, agent.loc['economic_lifetime']+1)])
         system_df['kwh_by_timestep'] = system_df['pv'].apply(lambda x: x * pv_kwh_by_year)
 
@@ -204,8 +206,8 @@ def calc_system_size_and_financial_performance(agent):
         avg_est_bill_savings = (original_bill - np.array(system_df['est_bills'])).reshape([n_sys, 1]) * agent['elec_price_multiplier']
         est_bill_savings = np.zeros([n_sys, agent['economic_lifetime']+1])
         est_bill_savings[:,1:] = avg_est_bill_savings
-        escalator = (np.zeros(agent['economic_lifetime']+1) + agent['elec_price_escalator'] + 1)**range(agent['economic_lifetime']+1)
-        degradation = (np.zeros(agent['economic_lifetime']+1) + 1 - agent['pv_deg'])**range(agent['economic_lifetime']+1)
+        escalator = (np.zeros(agent['economic_lifetime']+1) + agent['elec_price_escalator'] + 1)**list(range(agent['economic_lifetime']+1))
+        degradation = (np.zeros(agent['economic_lifetime']+1) + 1 - agent['pv_deg'])**list(range(agent['economic_lifetime']+1))
         est_bill_savings = est_bill_savings * escalator * degradation
         system_df['est_bill_savings'] = est_bill_savings[:, 1]
         
@@ -359,15 +361,20 @@ def calc_system_size_and_financial_performance(agent):
         agent['cf'] = agent['naep']/8760
         agent['system_size_factors'] = np.where(agent['pv_kw'] == 0, 0, pd.cut([agent['pv_kw']], system_size_breaks))[0]
         agent['export_tariff_results'] = original_results
+
+        out_cols = list(agent.index)
+        new_cols = [i for i in out_cols if i not in in_cols] + ['agent_id']
+        agent = agent.loc[agent.index.isin(new_cols)]
+
         
     except Exception as e:
-        print(' ')
-        print('--------------------------------------------')
-        print "failed in calc_system_size_and_financial_performance"
-        print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e), e)
-        print('agent that failed')
-        print(agent)
-        print('--------------------------------------------')
+        logger.info(' ')
+        logger.info('--------------------------------------------')
+        logger.info("failed in calc_system_size_and_financial_performance")
+        logger.info(('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e), e))
+        logger.info('agent that failed')
+        logger.info(agent)
+        logger.info('--------------------------------------------')
         agent.to_pickle('agent_that_failed.pkl')
 
     return agent
@@ -418,7 +425,7 @@ def calc_financial_performance(dataframe):
 
     cfs = np.vstack(dataframe['cash_flow']).astype(np.float)    
 
-    print '** in calc_financial_performance **'
+    logger.info('** in calc_financial_performance **')
     
     # calculate payback period
     tech_lifetime = np.shape(cfs)[1] - 1
@@ -492,8 +499,6 @@ def calc_max_market_share(dataframe, max_market_share_df):
     
     # out_cols = in_cols + ['max_market_share', 'metric']    
     out_cols = in_cols + ['max_market_share', 'metric_value_as_factor', 'metric', 'metric_value_bounded']
-    dataframe = dataframe.set_index('agent_id')
-
     return dataframe[out_cols]
 
 def calc_ttd(cfs):
@@ -747,9 +752,9 @@ def cashflow_constructor(bill_savings,
     #################### Setup #########################################
     effective_tax_rate = fed_tax_rate * (1 - state_tax_rate) + state_tax_rate
     if print_statements:
-        print 'effective_tax_rate'
-        print effective_tax_rate
-        print ' '
+        logger.info('effective_tax_rate')
+        logger.info(effective_tax_rate)
+        logger.info(' ')
     cf = np.zeros(shape) 
     inflation_adjustment = (1+inflation)**np.arange(analysis_years+1)
     
@@ -764,9 +769,9 @@ def cashflow_constructor(bill_savings,
 
     cf += bill_savings
     if print_statements:
-        print 'bill savings cf'
-        print np.sum(cf,1)
-        print ' '
+        logger.info('bill savings cf')
+        logger.info(np.sum(cf,1))
+        logger.info(' ')
     
     #################### Installed Costs ######################################
     # Assumes that cash incentives, IBIs, and CBIs will be monetized in year 0,
@@ -776,9 +781,9 @@ def cashflow_constructor(bill_savings,
     batt_cost = batt_power*batt_cost_per_kw + batt_cap*batt_cost_per_kwh
     installed_cost = pv_cost + batt_cost
     if print_statements:
-        print 'installed_cost'
-        print pv_cost
-        print ' '
+        logger.info('installed_cost')
+        logger.info(pv_cost)
+        logger.info(' ')
 
     net_installed_cost = installed_cost - cash_incentives - ibi - cbi
 
@@ -786,15 +791,15 @@ def cashflow_constructor(bill_savings,
 
     up_front_cost = net_installed_cost * down_payment_fraction
     if print_statements:
-        print 'wacc'
-        print wacc
-        print ' '
+        logger.info('wacc')
+        logger.info(wacc)
+        logger.info(' ')
 
     cf[:,0] -= net_installed_cost #all installation costs upfront for WACC
     if print_statements:
-        print 'bill savings minus up front cost'
-        print np.sum(cf,1)
-        print ' '
+        logger.info('bill savings minus up front cost')
+        logger.info(np.sum(cf,1))
+        logger.info(' ')
     
     #################### Operating Expenses ###################################
     # Nominally includes O&M, replacement costs, fuel, insurance, and property 
@@ -813,9 +818,9 @@ def cashflow_constructor(bill_savings,
     operating_expenses_cf = operating_expenses_cf*inflation_adjustment
     cf -= operating_expenses_cf
     if print_statements:
-        print 'minus operating expenses'
-        print cf
-        print ' '
+        logger.info('minus operating expenses')
+        logger.info(cf)
+        logger.info(' ')
     
     #################### Federal ITC #########################################
     pv_itc_value = pv_cost * itc
@@ -823,9 +828,9 @@ def cashflow_constructor(bill_savings,
     itc_value = pv_itc_value + batt_itc_value
     # itc value added in fed_tax_savings_or_liability
     if print_statements:
-        print 'itc value'
-        print itc_value
-        print ' '
+        logger.info('itc value')
+        logger.info(itc_value)
+        logger.info(' ')
 
     #################### Depreciation #########################################
     # Per SAM, depreciable basis is sum of total installed cost and total 
@@ -836,9 +841,9 @@ def cashflow_constructor(bill_savings,
     deprec_deductions[:, 1: np.size(deprec_sched) + 1] = np.array([x * deprec_sched.T for x in deprec_basis])
     # to be used later in fed tax calcs
     if print_statements:
-        print 'deprec_deductions'
-        print deprec_deductions
-        print ' '
+        logger.info('deprec_deductions')
+        logger.info(deprec_deductions)
+        logger.info(' ')
     
     #################### Debt cash flow #######################################
     # Deduct loan interest payments from state & federal income taxes for res 
@@ -849,15 +854,15 @@ def cashflow_constructor(bill_savings,
     
     initial_debt = net_installed_cost - up_front_cost
     if print_statements:
-        print 'initial_debt'
-        print initial_debt
-        print ' '
+        logger.info('initial_debt')
+        logger.info(initial_debt)
+        logger.info(' ')
 
     annual_principal_and_interest_payment = initial_debt * (loan_rate*(1+loan_rate)**loan_term) / ((1+loan_rate)**loan_term - 1)
     if print_statements:
-        print 'annual_principal_and_interest_payment'
-        print annual_principal_and_interest_payment
-        print ' '
+        logger.info('annual_principal_and_interest_payment')
+        logger.info(annual_principal_and_interest_payment)
+        logger.info(' ')
 
     debt_balance = np.zeros(shape)
     interest_payments = np.zeros(shape)
@@ -866,30 +871,30 @@ def cashflow_constructor(bill_savings,
     debt_balance[:,:loan_term] = (initial_debt*((1+loan_rate.reshape(n_agents,1))**np.arange(loan_term)).T).T - (annual_principal_and_interest_payment*(((1+loan_rate).reshape(n_agents,1)**np.arange(loan_term) - 1.0)/loan_rate.reshape(n_agents,1)).T).T  
     interest_payments[:,1:] = (debt_balance[:,:-1].T * loan_rate).T
     if print_statements:
-        print 'interest_payments'
-        print interest_payments
-        print ' '
-        print 'sum of interst_payments'
-        print np.sum(interest_payments)
-        print ' '
-        print 'net_installed_cost'
-        print net_installed_cost
-        print ' '
-        print 'sum of net_installed_cost and interest payments'
-        print net_installed_cost + np.sum(interest_payments)
-        print ' '
+        logger.info('interest_payments')
+        logger.info(interest_payments)
+        logger.info(' ')
+        logger.info('sum of interst_payments')
+        logger.info(np.sum(interest_payments))
+        logger.info(' ')
+        logger.info('net_installed_cost')
+        logger.info(net_installed_cost)
+        logger.info(' ')
+        logger.info('sum of net_installed_cost and interest payments')
+        logger.info(net_installed_cost + np.sum(interest_payments))
+        logger.info(' ')
 
     principal_and_interest_payments[:,1:loan_term+1] = annual_principal_and_interest_payment.reshape(n_agents, 1)
     if print_statements:
-        print 'principal_and_interest_payments'
-        print principal_and_interest_payments
-        print ' '
-        print 'sum of principal and interest payments, and upfront cost'
-        print np.sum(principal_and_interest_payments) + up_front_cost
-        print ' '
-        print 'cf minus intrest payments'
-        print np.sum(cf,1)
-        print ' '
+        logger.info('principal_and_interest_payments')
+        logger.info(principal_and_interest_payments)
+        logger.info(' ')
+        logger.info('sum of principal and interest payments, and upfront cost')
+        logger.info(np.sum(principal_and_interest_payments) + up_front_cost)
+        logger.info(' ')
+        logger.info('cf minus intrest payments')
+        logger.info(np.sum(cf,1))
+        logger.info(' ')
     
     #################### State Income Tax #########################################
     # Per SAM, taxable income is CBIs and PBIs (but not IBIs)
@@ -912,8 +917,8 @@ def cashflow_constructor(bill_savings,
     
     state_tax_savings_or_liability = -state_income_taxes
     if print_statements:
-        print 'state_tax_savings'
-        print state_tax_savings_or_liability
+        logger.info('state_tax_savings')
+        logger.info(state_tax_savings_or_liability)
     
     cf += state_tax_savings_or_liability
         
@@ -931,8 +936,8 @@ def cashflow_constructor(bill_savings,
     
     fed_tax_savings_or_liability_less_itc = -fed_income_taxes
     if print_statements:
-        print 'federal_tax_savings'
-        print fed_tax_savings_or_liability_less_itc
+        logger.info('federal_tax_savings')
+        logger.info(fed_tax_savings_or_liability_less_itc)
     
     cf += fed_tax_savings_or_liability_less_itc
     cf[:,1] += itc_value
@@ -947,32 +952,32 @@ def cashflow_constructor(bill_savings,
     ########################### Post Processing ###############################
       
     powers = np.zeros(shape, int)
-    powers[:,:] = np.array(range(analysis_years+1))
+    powers[:,:] = np.array(list(range(analysis_years+1)))
 
     discounts = np.zeros(shape, float)
     discounts[:,:] = (1/(1+wacc)).reshape(n_agents, 1)
     if print_statements:
-        print 'discounts'
-        print np.mean(discounts,1)
-        print ' '
+        logger.info('discounts')
+        logger.info(np.mean(discounts,1))
+        logger.info(' ')
 
     cf_discounted = cf * np.power(discounts, powers)
     cf_discounted = np.nan_to_num(cf_discounted)
     if print_statements:
-        print 'cf not discounted'
-        print cf
-        print ' ' 
+        logger.info('cf not discounted')
+        logger.info(cf)
+        logger.info(' ') 
 
     if print_statements:
-        print 'cf_discounted'
-        print cf_discounted
-        print ' '
+        logger.info('cf_discounted')
+        logger.info(cf_discounted)
+        logger.info(' ')
 
     npv = np.sum(cf_discounted, 1)
     if print_statements:
-        print 'npv'
-        print npv
-        print ' '
+        logger.info('npv')
+        logger.info(npv)
+        logger.info(' ')
 
     
     ########################### Package Results ###############################

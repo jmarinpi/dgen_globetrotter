@@ -6,6 +6,7 @@ import os
 import multiprocessing
 from config import *
 import glob
+import ast
 from excel.excel_objects import FancyNamedRange, ExcelError
 import pandas as pd
 import numpy as np
@@ -76,17 +77,18 @@ def load_scenario_to_inputSheet(xls_file, model_settings):
      #==========================================================================================================
      # Loop through tables from the mapping_file spreadsheet and convert named ranges to pandas dataframes before loading into scenario settings
      #==========================================================================================================
+
           for table, range_name, transpose, melt,columns in mappings.itertuples(index=False):
                fnr = FancyNamedRange(wb, range_name)
                if transpose == True:
                     fnr.__transpose_values__()
                if melt == True:
                     fnr.__melt__()
-               scenarioSettings.loadFromDataFrame(table, fnr.to_df(columns= columns))
+               scenarioSettings.loadFromDataFrame(table, fnr.to_df(columns=columns))
           scenarioSettings.validate()
 
           return scenarioSettings
-     except ExcelError, e:
+     except ExcelError as e:
           raise ExcelError(e)
 
 class ModelSettings(object):
@@ -154,31 +156,31 @@ class ModelSettings(object):
                # check type
                try:
                     check_type(self.get(property_name), float)
-               except TypeError, e:
+               except TypeError as e:
                     raise TypeError('Invalid %s: %s' % (property_name, e))
 
           elif property_name == 'cdate':
                # check type
                try:
                     check_type(self.get(property_name), str)
-               except TypeError, e:
+               except TypeError as e:
                     raise TypeError('Invalid %s: %s' % (property_name, e))
 
           elif property_name == 'out_dir':
                # check type
                try:
                     check_type(self.get(property_name), str)
-               except TypeError, e:
+               except TypeError as e:
                     raise TypeError('Invalid %s: %s' % (property_name, e))
 
           elif property_name == 'start_year':
                # check type
                try:
                     check_type(self.get(property_name), int)
-               except TypeError, e:
+               except TypeError as e:
                     raise TypeError('Invalid %s: %s' % (property_name, e))
                # assert equals 2016
-               if self.start_year <> 2016:
+               if self.start_year != 2016:
                     raise ValueError(
                     'Invalid %s: must be set to 2016' % property_name)
 
@@ -186,7 +188,7 @@ class ModelSettings(object):
                # check type
                try:
                     check_type(self.get(property_name), list)
-               except TypeError, e:
+               except TypeError as e:
                     raise TypeError('Invalid %s: %s' % (property_name, e))
                if len(self.input_scenarios) == 0:
                     raise ValueError(
@@ -196,21 +198,21 @@ class ModelSettings(object):
                # check type
                try:
                     check_type(self.get(property_name), str)
-               except TypeError, e:
+               except TypeError as e:
                     raise TypeError('Invalid %s: %s' % (property_name, e))
 
           elif property_name == 'role':
                # check type
                try:
                     check_type(self.get(property_name), str)
-               except TypeError, e:
+               except TypeError as e:
                     raise TypeError('Invalid %s: %s' % (property_name, e))
 
           elif property_name == 'model_path':
                # check type
                try:
                     check_type(self.get(property_name), str)
-               except TypeError, e:
+               except TypeError as e:
                     raise TypeError('Invalid %s: %s' % (property_name, e))
                # check the path exists
                if os.path.exists(self.model_path) == False:
@@ -220,7 +222,7 @@ class ModelSettings(object):
                # check type
                try:
                     check_type(self.get(property_name), int)
-               except TypeError, e:
+               except TypeError as e:
                     raise TypeError('Invalid %s: %s' % (property_name, e))
 
                # check if too large
@@ -228,16 +230,12 @@ class ModelSettings(object):
                     raise ValueError(
                     'Invalid %s: value exceeds number of CPUs on local machine' % property_name)
 
-          elif property_name == 'input_agent_dir':
-
-               if not os.path.exists(self.input_agent_dir):
-                    raise TypeError('Invalid %s: %s' % (property_name, "{} does not exist".format(self.input_agent_dir)))
 
           else:
-               print 'No validation method for property %s exists.' % property_name
+               print('No validation method for property %s exists.' % property_name)
 
      def validate(self):
-          property_names = self.__dict__.keys()
+          property_names = list(self.__dict__.keys())
           for property_name in property_names:
                self.validate_property(property_name)
 
@@ -293,7 +291,7 @@ class ScenarioSettings:
      def model_years(self):
           """Range of years to model"""
           if self.start_year and self.end_year:
-               return range(self.start_year, self.end_year + 1, self.time_step_increment)
+               return list(range(self.start_year, self.end_year + 1, self.time_step_increment))
           else:
                return []
 
@@ -304,7 +302,9 @@ class ScenarioSettings:
 
           def check_type(obj, expected_type):
                if expected_type == str:
-                    failed = not (isinstance(obj, str) or isinstance(obj, unicode))
+                    failed = not (isinstance(obj, str))
+               elif expected_type == int:
+                    failed = not isinstance(int(obj), expected_type)
                else:
                     failed = not isinstance(obj, expected_type)
                if failed:
@@ -333,7 +333,7 @@ class ScenarioSettings:
           #==========================================================================================================
           # Loop through and validate all inputs
           #==========================================================================================================
-          for data_type,attributes in check_data_types.items():
+          for data_type,attributes in list(check_data_types.items()):
                for a in attributes:
                     if '.' in a:
                          levels = a.split('.')
@@ -345,7 +345,7 @@ class ScenarioSettings:
                          v = getattr(self,a)
                     try:
                          check_type(v, data_type)
-                    except TypeError, e:
+                    except TypeError as e:
                          raise TypeError('Invalid %s: %s' % (a, e))
           #==========================================================================================================
           # Check other one-off checks
@@ -356,11 +356,10 @@ class ScenarioSettings:
                raise ValueError('Invalid: end_year must be <= 2050' )
           if os.path.exists(self.input_scenario) == False:
                raise ValueError('Invalid %s: does not exist' % self.input_scenario)
-          if os.path.exists(os.path.join('../input_agents',self.agents_file_name)) == False:
-               raise ValueError('Invalid %s: does not exist' % os.path.join('../input_agents',self.agents_file_name))
+
           # make sure starts at 2016
           self.model_years.sort()
-          if self.model_years[0] <> 2016:
+          if self.model_years[0] != 2016:
                raise ValueError('Invalid %s: Must begin with 2016.' % 'model_years')
           # last year must be <= 2050
           if self.model_years[-1] > 2050:
@@ -395,11 +394,11 @@ class ScenarioSettings:
           adders  = ['year'] + adders
           result = pd.DataFrame()
           for sector in self.sectors:
-               rename_set = {k.format(sector):v for k,v in columns.items()}
-               tmp = df[rename_set.keys() + adders]
+               rename_set = {k.format(sector):v for k,v in list(columns.items())}
+               tmp = df[list(rename_set.keys()) + adders]
                tmp.rename(columns=rename_set, inplace=True)
                tmp['sector_abbr'] = sector
-               result = pd.concat([result,tmp])
+               result = pd.concat([result,tmp], sort=False)
           return result
 
      def loadFromDataFrame(self,table_name,df):
@@ -411,7 +410,6 @@ class ScenarioSettings:
               # determine if agents need to be generated or loaded from an existing pickle
               #==========================================================================================================
                if str(values.get('agents_file')).replace(' ','') not in ['None','','0']:
-                  self.agents_file_name = os.path.join('../input_agents',values.get('agents_file'))
                   self.generate_agents = False
               #==========================================================================================================
               # parse other key attributes
@@ -513,7 +511,7 @@ class ScenarioSettings:
           return
 
      def load_nem_settings(self):
-          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'nem_settings.csv'),index_col=None)
+          df = pd.read_csv(os.path.join(self.input_csv_folder,'nem_settings.csv'),index_col=None)
      
           # --- Check available columns in loaded csv ---
           if 'state_id' in df.columns:
@@ -533,14 +531,14 @@ class ScenarioSettings:
 
      def load_core_agent_attributes(self):
           self.core_agent_attributes = pd.DataFrame()
-          tmp = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder, 'agent_core_attributes_all.csv'),index_col=None)
+          tmp = pd.read_csv(os.path.join(self.input_csv_folder, 'agent_core_attributes_all.csv'), index_col=None)
           tmp = tmp.sample(frac=SAMPLE_PCT) #sample (i.e. for test runs) a smaller agent_df, defined in config
-          tmp['agent_id']= range(tmp.shape[0])
+          tmp['agent_id']= list(range(tmp.shape[0]))
           for t in self.techs:
                tmp['tech'] = t
-          self.core_agent_attributes = pd.concat([self.core_agent_attributes,tmp])
+          self.core_agent_attributes = pd.concat([self.core_agent_attributes,tmp], sort=False)
           if 'solar' in self.techs:
-               df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder, 'pv_state_starting_capacities.csv'),index_col=None)
+               df = pd.read_csv(os.path.join(self.input_csv_folder, 'pv_state_starting_capacities.csv'),index_col=None)
                self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['control_reg_id','state_id','sector_abbr','tariff_class'])
           
           # There was a problem where an agent was being generated that had no customers in the bin, but load in the bin
@@ -549,7 +547,11 @@ class ScenarioSettings:
           self.core_agent_attributes['load_per_customer_in_bin_kwh'] = np.where(self.core_agent_attributes['load_per_customer_in_bin_kwh']==0, 1, self.core_agent_attributes['load_per_customer_in_bin_kwh'])
 
      def load_normalized_load_profiles(self):
-          df = pd.read_json(os.path.join(self.input_csv_folder, 'normalized_load.json'))
+          if os.path.exists(os.path.join(self.input_csv_folder, 'normalized_load.json')):
+               df = pd.read_json(os.path.join(self.input_csv_folder, 'normalized_load.json'))
+          elif os.path.exists(os.path.join(self.input_csv_folder, 'normalized_load.csv')):
+               df = pd.read_csv(os.path.join(self.input_csv_folder, 'normalized_load.csv'))
+               df['kwh'] = df['kwh'].apply(ast.literal_eval)
           df = df.rename(columns={'kwh':'consumption_hourly'})
 
           # --- Check available columns in loaded csv ---
@@ -593,7 +595,11 @@ class ScenarioSettings:
           self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['state_id','control_reg_id'])
 
      def load_normalized_hourly_resource_solar(self):
-          df = pd.read_json(os.path.join(self.input_csv_folder,'solar_resource_hourly.json'))
+          if os.path.exists(os.path.join(self.input_csv_folder,'solar_resource_hourly.json')):
+               df = pd.read_json(os.path.join(self.input_csv_folder,'solar_resource_hourly.json'))
+          elif os.path.exists(os.path.join(self.input_csv_folder,'solar_resource_hourly.csv')):
+               df = pd.read_csv(os.path.join(self.input_csv_folder,'solar_resource_hourly.csv'))
+               df['cf'] = df['cf'].apply(ast.literal_eval)
           df = df.rename(columns={'cf':'solar_cf_profile'})
 
           # --- Check available columns in loaded csv ---
@@ -609,16 +615,11 @@ class ScenarioSettings:
           df = df[[on,'solar_cf_profile']]
           self.core_agent_attributes = self.core_agent_attributes.merge(df, on=[on])
 
-          # if 'solar' in self.techs:
-          #      df['scale_offset_solar'] = 1e3
-          #      self.core_agent_attributes = self.core_agent_attributes.merge(df, on=[on])
-          # else:
-          #      self.core_agent_attributes['scale_offset'] = None
-          #      self.core_agent_attributes['generation_hourly'] = None
-          # self.core_agent_attributes['solar_cf_profile'] = self.core_agent_attributes['generation_hourly']
-
      def load_electric_rates_json(self):
-          df = pd.read_json(os.path.join(self.input_csv_folder,'urdb3_rates.json'))
+          if os.path.exists(os.path.join(self.input_csv_folder,'urdb3_rates.json')):
+               df = pd.read_json(os.path.join(self.input_csv_folder,'urdb3_rates.json'))
+          elif os.path.exists(os.path.join(self.input_csv_folder,'urdb3_rates.csv')):
+               df = pd.read_csv(os.path.join(self.input_csv_folder,'urdb3_rates.csv'))
           df = df[['rate_id_alias','rate_json']]
           self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['rate_id_alias'])
           self.core_agent_attributes.rename(columns={'rate_json':'tariff_dict', 'rate_id_alias':'tariff_id'}, inplace=True)
@@ -627,10 +628,10 @@ class ScenarioSettings:
      def load_carbon_intensities(self):
           set_zero = False
           if self.scenarios['carbon_price_scenario_name'] == 'Price Based On State Carbon Intensity':
-               df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'carbon_intensities_grid.csv'),index_col=None)
+               df = pd.read_csv(os.path.join(self.input_csv_folder,'carbon_intensities_grid.csv'),index_col=None)
 
           elif self.scenarios['carbon_price_scenario_name'] in ['Price Based On NG Offset','No Carbon Price']:
-               df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'carbon_intensities_ng.csv'),index_col=None)
+               df = pd.read_csv(os.path.join(self.input_csv_folder,'carbon_intensities_ng.csv'),index_col=None)
 
           if self.scenarios['carbon_price_scenario_name'] == 'No Carbon Price':
                set_zero = True
@@ -643,7 +644,7 @@ class ScenarioSettings:
               tmp[year] = 0
             tmp['year'] = int(year)
             tmp.rename(columns={year:'t_co2_per_kwh'},inplace=True)
-            result = pd.concat([result,tmp])
+            result = pd.concat([result,tmp], sort=False)
 
           result = result.merge(self.market_trajectories[['year','carbon_dollars_per_ton','sector_abbr']], on=['year'])
           result['carbon_price_cents_per_kwh'] = result['t_co2_per_kwh'] * 100 * result['carbon_dollars_per_ton']
@@ -651,10 +652,10 @@ class ScenarioSettings:
           self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on=['control_reg_id','year','sector_abbr'])
 
      def load_max_market_share(self):
-          view = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'max_market_share_settings.csv'),index_col=None)
+          view = pd.read_csv(os.path.join(self.input_csv_folder,'max_market_share_settings.csv'),index_col=None)
 
           mms_filter = []
-          for sector,settings  in self.sector_data.items():
+          for sector,settings  in list(self.sector_data.items()):
                mms_filter.append( list((view['sector_abbr'] == sector) & ( view['source'] == settings.max_market_curve_name ) & (view['business_model'] == 'host_owned')))
                mms_filter.append( list((view['sector_abbr'] == sector) & ( view['source'] == "NREL" ) & (view['business_model'] == 'tpo')))
 
@@ -663,13 +664,13 @@ class ScenarioSettings:
           df_selection = df[(df['metric_value']==30) & (df['metric']=='payback_period') & (df['business_model']=='host_owned')]
           df_selection['metric_value'] = 30.1
           df_selection['max_market_share'] = 0
-          self.market_share_parameters = pd.concat([df,df_selection])
+          self.market_share_parameters = pd.concat([df,df_selection], sort=False)
 
      def load_load_growth(self):
-          view = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'load_growth_projections.csv'),index_col=None)
+          view = pd.read_csv(os.path.join(self.input_csv_folder,'load_growth_projections.csv'),index_col=None)
           view.rename(columns={'scenario':'load_growth_scenario'}, inplace=True)
           re_filter = []
-          for sector,settings  in self.sector_data.items():
+          for sector,settings  in list(self.sector_data.items()):
                re_filter.append( list((view['sector_abbr'] == settings.sector_abbr.lower()) & ( view['load_growth_scenario'] == self.scenarios['load_growth_scenario_name']) ))
           view = view[np.any(re_filter,axis=0)]
 
@@ -680,7 +681,7 @@ class ScenarioSettings:
                self.control_reg_trajectories = self.control_reg_trajectories.merge(view, on=columns)
 
      def load_compensation_settings(self):
-          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'nem_settings.csv'),index_col=None)
+          df = pd.read_csv(os.path.join(self.input_csv_folder,'nem_settings.csv'),index_col=None)
 
           # --- Load Correct Scenario Settings --- 
           if self.scenarios['compensation_scenario_name'] == 'Buy All Sell All':
@@ -694,7 +695,7 @@ class ScenarioSettings:
 
 
      def load_financing_rates(self):
-          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'financing_rates.csv'), index_col=None)
+          df = pd.read_csv(os.path.join(self.input_csv_folder,'financing_rates.csv'), index_col=None)
 
           # --- Check available columns in loaded csv ---
           if 'state_id' in df.columns:
@@ -706,7 +707,7 @@ class ScenarioSettings:
           self.core_agent_attributes = pd.merge(self.core_agent_attributes, df, on=[on,'sector_abbr'])
 
      def load_avoided_costs(self):
-          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'avoided_cost_rates.csv'), encoding='utf-8-sig',index_col=None)
+          df = pd.read_csv(os.path.join(self.input_csv_folder,'avoided_cost_rates.csv'), encoding='utf-8-sig',index_col=None)
           ids = ['control_reg_id']
           years = [i for i in df.columns if i not in ids]
           result = pd.DataFrame()
@@ -714,7 +715,7 @@ class ScenarioSettings:
                tmp = df[ids+[year]]
                tmp['year'] = int(year)
                tmp.rename(columns={year:'hourly_excess_sell_rate_usd_per_kwh'},inplace=True)
-               result = pd.concat([result,tmp])
+               result = pd.concat([result,tmp], sort=False)
           
           if self.control_reg_trajectories.empty:
                self.control_reg_trajectories = result
@@ -723,7 +724,7 @@ class ScenarioSettings:
                self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on=columns)
 
      def load_wholesale_electricity(self):
-          df = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'wholesale_rates.csv'),index_col=None)
+          df = pd.read_csv(os.path.join(self.input_csv_folder,'wholesale_rates.csv'),index_col=None)
           ids = ['control_reg_id']
           years = [i for i in df.columns if i not in ids]
           result = pd.DataFrame()
@@ -731,7 +732,7 @@ class ScenarioSettings:
             tmp = df[ids+[year]]
             tmp['year'] = int(year)
             tmp.rename(columns={year:'wholesale_elec_usd_per_kwh'},inplace=True)
-            result = pd.concat([result,tmp])
+            result = pd.concat([result,tmp], sort=False)
 
           if self.control_reg_trajectories.empty:
                self.control_reg_trajectories = result
@@ -740,10 +741,10 @@ class ScenarioSettings:
                self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on=columns)
 
      def load_rate_escalations(self):
-          view = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'rate_escalations.csv'),index_col=None)
+          view = pd.read_csv(os.path.join(self.input_csv_folder,'rate_escalations.csv'),index_col=None)
           view.rename(columns={'escalation_factor':'elec_price_multiplier'}, inplace=True)
           re_filter = []
-          for sector,settings  in self.sector_data.items():
+          for sector,settings  in list(self.sector_data.items()):
                re_filter.append( list((view['sector_abbr'] == settings.sector_abbr.lower()) & ( view['source'] == settings.rate_escalation_name ) ))
           view = view[np.any(re_filter,axis=0)]
 
@@ -754,7 +755,7 @@ class ScenarioSettings:
                self.control_reg_trajectories = self.control_reg_trajectories.merge(view, on= columns)
 
      def load_bass_params(self):
-          view = pd.DataFrame.from_csv(os.path.join(self.input_csv_folder,'pv_bass.csv'),index_col=None)
+          view = pd.read_csv(os.path.join(self.input_csv_folder,'pv_bass.csv'),index_col=None)
           columns = ['control_reg_id','state','sector_abbr']
 
           if self.state_start_conditions.empty:
@@ -803,12 +804,12 @@ def init_model_settings():
     model_settings.set('local_cores', LOCAL_CORES)
     model_settings.set('model_init', utilfunc.get_epoch_time())
     datetime = utilfunc.get_formatted_time()
-    print(datetime)
-    output_dir = str(raw_input('Run name (default of formatted_time):')) or datetime
+
+    output_dir = datetime #str(input('Run name (default of formatted_time):')) or datetime
     print(output_dir)
+
     model_settings.set('cdate', datetime)
     model_settings.set('out_dir',  '%s/runs/results_%s' % (os.path.dirname(os.getcwd()), output_dir))
-    model_settings.set('input_agent_dir', '%s/input_agents' % os.path.dirname(os.getcwd()))
     model_settings.set('git_hash', utilfunc.get_git_hash())
     model_settings.set('input_scenarios', [s for s in glob.glob("../input_scenarios/*.xls*") if not '~$' in s])
 
@@ -822,14 +823,9 @@ def init_model_settings():
 
 def init_scenario_settings(scenario_file, model_settings):
      """load scenario specific data and configure output settings"""
-#     try:
+
      scenario_settings = load_scenario_to_inputSheet(scenario_file, model_settings)
      scenario_settings.write_folders(model_settings)
      scenario_settings.write_inputs()
      scenario_settings.validate()
-
-#     except Exception, e:
-#         print e
-#         raise Exception('\tLoading failed with the following error: %s' % e)
-
      return scenario_settings 

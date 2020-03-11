@@ -44,9 +44,9 @@ def get_git_hash():
     try:
         fp = os.path.dirname(os.path.abspath(__file__))
         cmd = "cd %s;" % fp + "git log --pretty=format:'%h' -n 1"
-        git_hash = subprocess.check_output(cmd, shell=True)
-    except Exception, e:
-        print e
+        git_hash = subprocess.check_output(cmd, shell=True).decode("utf-8") 
+    except Exception as e:
+        print(e)
         git_hash = 'unknown'
 
     return git_hash
@@ -126,11 +126,11 @@ def parse_command_args(argv):
     try:
         opts, args = getopt.getopt(argv, "hiy:", ["year="])
     except getopt.GetoptError:
-        print 'Command line argument not recognized, please use: dg_model.py -i -y <year>'
+        print('Command line argument not recognized, please use: dg_model.py -i -y <year>')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print 'dg_model.py -i <Initiate Model?> -y <year>'
+            print('dg_model.py -i <Initiate Model?> -y <year>')
             sys.exit()
         elif opt in ("-i"):
             init_model = True

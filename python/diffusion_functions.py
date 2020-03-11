@@ -57,7 +57,7 @@ def calc_diffusion_solar(df, is_first_year, bass_params, override_p_value = None
     # set p/q/teq_yr1 params  
     bass_params = bass_params[['control_reg_id','sector_abbr','state_id', 'p', 'q', 'teq_yr1']]  
     df = pd.merge(df, bass_params, how = 'left', on  = ['control_reg_id','sector_abbr','state_id'])
-    print('diffusion_functions line 60', df.shape)
+    print(('diffusion_functions line 60', df.shape))
     
     # calc diffusion market share
     df = calc_diffusion_market_share(df, is_first_year)

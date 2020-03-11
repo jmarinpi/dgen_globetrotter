@@ -75,7 +75,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('Scenario Settings:')
             logger.info('\tScenario Name: %s' % scenario_settings.scenario_name)
 
-            logger.info('\tSectors: %s' % scenario_settings.sector_data.keys())
+            logger.info('\tSectors: %s' % list(scenario_settings.sector_data.keys()))
             logger.info('\tTechnologies: %s' % scenario_settings.techs)
             logger.info('\tYears: %s - %s' % (scenario_settings.start_year, scenario_settings.end_year))
 
@@ -89,9 +89,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             if scenario_settings.generate_agents:
                 logger.info('\tCreating Agents')
                 solar_agents = Agents(agent_mutation.init_solar_agents(scenario_settings))
-                print('line 92')
-                print(solar_agents.df.shape)
-                print(' ')
+                logger.info('   {} agents in input csv'.format(len(solar_agents)))
                 
                 # Write base agents to disk
                 solar_agents.df.to_pickle(scenario_settings.out_scen_path + '/agent_df_base.pkl')
@@ -195,8 +193,8 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         interyear_results_aggregations = agent_mutation.elec.aggregate_outputs_solar(solar_agents.df, year, is_first_year, scenario_settings, interyear_results_aggregations)
 
                     # --- Check to ensure that agent_df isn't growing (i.e. merges are failing silently) --- 
-                    print('Length of agent_df', len(solar_agents.df))
-                    print('Number of unique agents', len(set(solar_agents.df.index)))
+                    print(('Length of agent_df', len(solar_agents.df)))
+                    print(('Number of unique agents', len(set(solar_agents.df.index))))
 
                     df_print = solar_agents.df.copy()
                     df_print = df_print.loc[df_print['year']==year]
@@ -217,7 +215,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     if i == 0:
                         complete_df = df_write
                     else:
-                        complete_df = pd.concat([complete_df, df_write])
+                        complete_df = pd.concat([complete_df, df_write], sort=False)
 
             #==============================================================================
             #    Outputs & Visualization
@@ -230,7 +228,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             logger.info('Completed in: %.1f seconds' % (time.time() - model_settings.model_init))
 
 
-    except Exception, e:
+    except Exception as e:
         if 'logger' in locals():
             logger.error(e.__str__(), exc_info = True)
             logger.info('Error on line {}'.format(sys.exc_info()[-1].tb_lineno))

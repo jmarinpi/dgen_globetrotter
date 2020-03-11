@@ -4,10 +4,10 @@ Edited Monday Nov 5, 218
 @author: tkwasnik
 """
 
-import elec
+from . import elec
 
 def init_solar_agents(scenario_settings):
-    '''initiate solar agents
+    """initiate solar agents
         
         Loads and merges state DPV capacity in 2015, load profiles, hourly solar resource, and electric rates with core agent attributes.
 
@@ -18,27 +18,23 @@ def init_solar_agents(scenario_settings):
         
         Outputs:
         -agents_df - pandas dataframe - core initial agent attributes
-    '''
+    """
 
     # =========================================================================
     # LOAD CORE AGENT ATTRIBUTES
     # =========================================================================
-    
     scenario_settings.load_core_agent_attributes()
     scenario_settings.load_financing_rates()
     
     # =========================================================================
     # GET NORMALIZED LOAD PROFILES
     # =========================================================================
-    
     scenario_settings.load_normalized_load_profiles()
-
     scenario_settings.load_normalized_hourly_resource_solar()
     scenario_settings.load_electric_rates_json()
     scenario_settings.load_compensation_settings()
     
     agents_df = scenario_settings.core_agent_attributes
-
 
     #==============================================================================
     # Set initial year columns. Initial columns do not change, whereas non-initial are adjusted each year

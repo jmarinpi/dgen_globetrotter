@@ -135,7 +135,7 @@ class FancyNamedRange(object):
         
     def __cell_value__(self, cell, floats = True):
         
-        if floats == True and cell.data_type == 'n' and type(cell.value) <> datetime.datetime:
+        if floats == True and cell.data_type == 'n' and type(cell.value) != datetime.datetime:
             if cell.value is None:
                 cell_value = 0.0
             else:
@@ -167,7 +167,7 @@ class FancyNamedRange(object):
         rec_array = np.rec.fromarrays(cols)
         if colnames_included == True:
             names = cell_values(self.cell_array[0, :], floats = False)
-            rec_array.dtype.names = map(str, list(names))
+            rec_array.dtype.names = list(map(str, list(names)))
         
         return rec_array
     
@@ -176,7 +176,7 @@ class FancyNamedRange(object):
         df = pd.DataFrame(self.rec_array)
         if colnames_included == False:
             ncols = df.shape[1]
-            df.columns = range(0, ncols)
+            df.columns = list(range(0, ncols))
         
         return df
         
