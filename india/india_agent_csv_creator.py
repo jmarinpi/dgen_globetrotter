@@ -13,7 +13,15 @@ TODO:
     - move agent creation into dgen_model based on params in config? 
 """
 
+# --- Python Battery Imports ---
+import os
+import unicodedata
+
+# --- External Library Imports ---
 import pandas as pd
+
+# --- Module Imports ---
+#import config
 
 #%%
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -150,16 +158,56 @@ Columns
     sector_abbr (str) : the sector of the agent
     control_reg_id (int) : integer representation of control_reg
     load_multiplier (float) : load growth relative to 2014
+
+Methodology
+-----------
+    Take ReEDS Load Time Slice Hourly Load by State, average by year
+    
+Assumptions 
+-----------
+    Currently assumes that all sectors have the same load growth. Could use 'CEA_historic_consumption_by_sector.csv' to normalize this by sector.
 """
 
-# --- Create Dataframe from permutations, as values are all similar ---
-load_growth_df = pd.DataFrame().from_records(itertools.product(['Low','Planning','High'],range(2015,2051), ['res','com','ind'], list(set(agent_df['control_reg_id']))))
-load_growth_df.columns = ['scenario','year','sector_abbr','control_reg_id']
+import pandas as pd
+import numpy as np
 
-load_growth_df.loc[load_growth_df['scenario'] == 'Low', 'load_multiplier'] = config.LOW_LOAD_GROWTH
-load_growth_df.loc[load_growth_df['scenario'] == 'Planning', 'load_multiplier'] = config.PLANNING_LOAD_GROWTH
-load_growth_df.loc[load_growth_df['scenario'] == 'High', 'load_multiplier'] = config.HIGH_LOAD_GROWTH
-#TODO see if this has to be cumulatively multiplied? 
+reeds_load = pd.read_csv('ReEDS_load.csv', names=['state','hour','year','value'])
+
+# --- Group by year ---
+reeds_load = reeds_load.groupby(['state','year'], as_index=False)['value'].mean()
+
+# --- Pivot Wide ---
+reeds_load = pd.pivot_table(reeds_load, index='state', columns='year', values='value')
+
+# --- Convert to pct diff ---
+reeds_load = reeds_load.pct_change(axis=1)
+
+# --- Add missing years ---
+for y in range(2014,2018,1): # not in df
+    reeds_load[y] = np.nan
+
+for y in range(2048,2051,1): # not in df
+    reeds_load[y] = np.nan
+    
+reeds_load.sort_index(axis=1, inplace=True)
+
+# --- Add Previous Years --
+reeds_load = reeds_load.fillna(method='bfill', axis=1).fillna(method='ffill', axis=1)
+
+# --- Calculate cumulative product ---
+reeds_load += 1
+reeds_load = reeds_load.cumprod(axis=1)
+
+# --- Convert back to long_df ---
+load_growth = reeds_load.copy()
+load_growth.reset_index(inplace=True)
+load_growth = load_growth.melt(id_vars=['state'], var_name=['year'], value_name='new_load_growth')
+
+for c in ['residential', 'commercial', 'industrial', 'agriculture']:
+    load_growth[c] = load_growth['new_load_growth']
+load_growth.drop('new_load_growth', axis='columns', inplace=True)
+
+load_growth = load_growth.melt(id_vars=['state','year'], var_name='sector_abbr', value_name='load_growth')
 
 load_growth.to_csv(os.path.join('input_scenarios','india_base','financing_rates.csv'), index=False)
 
