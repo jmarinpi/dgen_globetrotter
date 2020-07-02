@@ -1,0 +1,73 @@
+region_name,state_name,utility_name,con_residential_pct,con_commercial_pct,con_irrigation_pct,con_industrial_pct,con_other_pct,consumption_gwh_2016,forecast_consumption_gwh_2026,annual_growth_rate,losses_2016,forecast_losses_2026
+islands,andaman_nicobar_islands,ANDAMAN NICOBAR,0.523,0.247,0,0.063,0.167,266,518,0.069,0.192,0.18
+southern_region,andhra_pradesh,EPDCL,0.267,0.1,0.133,0.419,0.081,17753,35623,0.072,0.085,0.0785
+southern_region,andhra_pradesh,SPDCL,0.257,0.082,0.328,0.27,0.063,31072,65478,0.077,0.1132,0.0951
+north_eastern_region,arunachal_pradesh,ARUNACHAL,0.45,0.106,0,0.253,0.191,441,1803,0.151,0.4886,0.2886
+north_eastern_region,assam,ASSAM,0.498,0.129,0.009,0.259,0.105,6689,16819,0.097,0.2421,0.1621
+eastern_region,bihar,SBPDCL,0.405,0.095,0.029,0.229,0.241,8262,24396,0.114,0.36,0.15
+eastern_region,bihar,NBPDCL,0.626,0.094,0.025,0.113,0.141,5949,20896,0.134,0.28,0.15
+northern_region,chandigarh,CHANDIGARH,0.456,0.313,0.001,0.154,0.076,1579,2328,0.04,0.1583,0.1554
+western_region,chhattisgarh,CHHATTISGARH,0.288,0.077,0.201,0.368,0.066,21075,42942,0.074,0.2126,0.1468
+western_region,dadra_nagar_haveli,DADRA NAGAR HAVELI,0.019,0.005,0.002,0.972,0.002,6021,11374,0.066,0.0808,0.0808
+western_region,daman_diu,DAMAN DIU,0.059,0.028,0.001,0.904,0.007,1757,3120,0.059,0.1178,0.1129
+northern_region,nct_of_delhi,NDMC,0.197,0.724,0,0,0.079,1379,1657,0.019,0.1382,0.1282
+northern_region,nct_of_delhi,BYPL,0.562,0.303,0,0.048,0.087,5906,8945,0.042,0.1864,0.1414
+northern_region,nct_of_delhi,BRPL,0.582,0.269,0.001,0.046,0.102,11049,16094,0.038,0.137,0.102
+northern_region,nct_of_delhi,TPDDL,0.443,0.171,0.001,0.295,0.09,8370,11467,0.032,0.097,0.093
+northern_region,nct_of_delhi,MES,0,0,0,0,1,226,304,0.03,0.0943,0.0943
+western_region,goa,GOA,0.274,0.112,0.007,0.535,0.072,3574,5951,0.052,0.1361,0.1209
+western_region,gujarat,MGVCL,0.241,0.006,0.125,0.446,0.182,10184,20013,0.07,0.1522,0.1038
+western_region,gujarat,DGVCL,0.166,0.003,0.05,0.687,0.094,16622,35291,0.078,0.0922,0.0897
+western_region,gujarat,UGVCL,0.101,0.002,0.457,0.318,0.122,20347,38135,0.065,0.1086,0.0911
+western_region,gujarat,PGVCL,0.144,0.004,0.306,0.383,0.162,26011,49011,0.065,0.2147,0.13
+western_region,gujarat,TORRENT,0.337,0.167,0.001,0.461,0.034,10580,16717,0.047,0.0663,0.0663
+northern_region,haryana,DHBVN,0.221,0.126,0.287,0.29,0.077,20711,44423,0.079,0.22,0.15
+northern_region,haryana,UHBVN,0.208,0.089,0.309,0.327,0.067,15055,26968,0.06,0.2977,0.15
+northern_region,himachal_pradesh,HIMACHAL PRADESH,0.246,0.079,0.006,0.576,0.092,8355,12621,0.042,0.124,0.117
+northern_region,jammu_kashmir,JAMU KASHMIR,0.414,0.13,0.04,0.194,0.223,7902,19604,0.095,0.4575,0.2075
+eastern_region,jharkhand,DVC,0,0.009,0,0.896,0.094,6115,9742,0.048,0.035,0.03
+eastern_region,jharkhand,TATA STEEL,0.114,0.025,0,0.723,0.138,3010,3752,0.022,0.04,0.04
+eastern_region,jharkhand,JBVNL,0.537,0.054,0.012,0.272,0.124,9132,20782,0.086,0.3025,0.1625
+southern_region,karnataka,BESCOM,0.262,0.185,0.254,0.226,0.074,26002,41290,0.047,0.1648,0.1148
+southern_region,karnataka,CESCOM,0.179,0.072,0.448,0.171,0.13,6170,13540,0.082,0.1592,0.1392
+southern_region,karnataka,GESCOM,0.184,0.057,0.498,0.181,0.08,6767,10790,0.048,0.1875,0.1375
+southern_region,karnataka,HESCOM,0.147,0.051,0.585,0.122,0.094,11177,21514,0.068,0.1793,0.15
+southern_region,karnataka,MESCOM,0.305,0.166,0.289,0.18,0.06,4604,8307,0.061,0.1419,0.1319
+southern_region,kerala,KERALA,0.506,0.165,0.015,0.203,0.111,20791,33718,0.05,0.1425,0.13
+islands,lakshadweep,LAKSHADWEEP,0.73,0.239,0,0.008,0.023,48,67,0.034,0.074,0.0741
+western_region,madhya_pradesh,CENTRAL,0.227,0.049,0.413,0.175,0.135,16891,33371,0.07,0.222,0.129
+western_region,madhya_pradesh,EASTERN,0.243,0.061,0.37,0.21,0.116,15778,32543,0.075,0.2081,0.1187
+western_region,madhya_pradesh,WESTERN,0.203,0.05,0.44,0.188,0.119,19363,40154,0.076,0.2058,0.1166
+western_region,maharashtra,BEST,0.429,0.491,0,0.063,0.016,4541,5206,0.014,0.0573,0.0473
+western_region,maharashtra,TATA,0.7,0.293,0,0.233,0.404,4073,6647,0.05,0.0111,0.0385
+western_region,maharashtra,RELIANCE,0.549,0.317,0,0.097,0.037,10380,13427,0.026,0.0931,0.0895
+western_region,maharashtra,MSEDCL,0.194,0.066,0.288,0.313,0.139,105135,189134,0.06,0.1232,0.1181
+north_eastern_region,manipur,MANIPUR,0.53,0.061,0.006,0.04,0.363,807,2565,0.123,0.3322,0.2022
+north_eastern_region,meghalaya,MEGHALAYA,0.344,0.071,0,0.45,0.135,1402,2382,0.054,0.3036,0.2204
+north_eastern_region,mizoram,MIZORAM,0.655,0.107,0,0.026,0.211,392,1080,0.107,0.3031,0.1489
+north_eastern_region,nagaland,NAGALAND,0.585,0.126,0,0.099,0.19,588,1159,0.07,0.261,0.221
+eastern_region,odisha,CESU,0.446,0.17,0.008,0.264,0.112,6166,11633,0.066,0.3193,0.1893
+eastern_region,odisha,SOUTHCO,0.62,0.099,0.017,0.16,0.102,2451,4269,0.057,0.3373,0.1553
+eastern_region,odisha,WESCO,0.28,0.072,0.025,0.537,0.086,5079,7589,0.041,0.3315,0.2115
+eastern_region,odisha,NESCO,0.378,0.071,0.018,0.424,0.11,3905,6625,0.054,0.291,0.191
+southern_region,puducherry,PUDUCHERRY,0.281,0.082,0.022,0.463,0.152,2583,3887,0.042,0.136,0.1262
+northern_region,punjab,PUNJAB,0.292,0.084,0.279,0.308,0.036,43600,79889,0.062,0.181,0.151
+northern_region,rajasthan,AVVNL,0.24,0.079,0.373,0.259,0.049,14177,27423,0.068,0.263,0.1185
+northern_region,rajasthan,JDVVNL,0.181,0.064,0.567,0.117,0.071,18204,42038,0.087,0.2346,0.1437
+northern_region,rajasthan,JVVNL,0.247,0.108,0.311,0.262,0.071,19589,36590,0.064,0.2992,0.1331
+eastern_region,sikkim,SIKKIM,0.329,0.13,0,0.466,0.076,317,626,0.07,0.333,0.213
+southern_region,tamil_nadu,TAMIL NADU,0.296,0.113,0.145,0.371,0.075,84654,154071,0.062,0.1926,0.14
+southern_region,telangana,NPDCL,0.225,0.071,0.436,0.127,0.141,12528,32715,0.101,0.153,0.133
+southern_region,telangana,SPDCL,0.245,0.074,0.24,0.333,0.107,32081,56999,0.059,0.135,0.123
+north_eastern_region,tripura,TRIPURA,0.561,0.087,0.045,0.057,0.25,895,1576,0.058,0.2857,0.1757
+northern_region,uttar_pradesh,MVVNL,0.493,0.146,0.148,0.148,0.066,14136,35405,0.096,0.251,0.161
+northern_region,uttar_pradesh,PUVVNL,0.4777,0.157,0.195,0.096,0.076,17972,34248,0.067,0.26,0.18
+northern_region,uttar_pradesh,PVVNL,0.383,0.132,0.159,0.267,0.059,24752,48254,0.069,0.253,0.183
+northern_region,uttar_pradesh,DVVNL,0.273,0.075,0.208,0.146,0.298,20035,36613,0.062,0.299,0.189
+northern_region,uttar_pradesh,NPC,0.187,0.101,0.014,0.618,0.08,1544,4009,0.1,0.0856,0.095
+northern_region,uttarakhand,UTTARKHAND,0.233,0.107,0.013,0.558,0.089,11155,22062,0.071,0.1715,0.1515
+eastern_region,west_bengal,CESC,0.467,0.214,0,0.223,0.096,9525,12546,0.028,0.143,0.143
+eastern_region,west_bengal,DPL,0.047,0.048,0,0.896,0.009,1825,3001,0.051,0.052,0.052
+eastern_region,west_bengal,IPCL,0.01,0.057,0,0.913,0.021,818,1281,0.046,0.055,0.045
+eastern_region,west_bengal,WBSEDCL,0.417,0.148,0.064,0.293,0.77,25328,37558,0.04,0.288,0.198
+eastern_region,west_bengal,DVC,0,0,0,0.968,0.032,7213,18462,0.099,0.035,0.03
