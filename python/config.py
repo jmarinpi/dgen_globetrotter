@@ -8,7 +8,7 @@ import multiprocessing
 #==============================================================================
 
 #==============================================================================
-
+SCENARIOS = ['col_test']
 SECTORS = ['res','com','ind']
 SECTOR_NAMES = {'res':'Residential','com':'Commercial','ind':'Industrial'}
 TECHS = [['solar']]
@@ -80,3 +80,11 @@ IND_NEM_KW_LIMIT = 10000
 LOW_RATE_ESCALATION = 0.005
 PLANNING_RATE_ESCALATION = 0.01
 HIGH_RATE_ESCALATION = 0.02
+
+#==============================================================================
+#  Runtime Tests
+#==============================================================================
+NULL_COLUMN_EXCEPTIONS = ['state_incentives', 'pct_state_incentives', 'batt_dispatch_profile', 'export_tariff_results','carbon_price_cents_per_kwh']
+                        # 'market_share_last_year', 'max_market_share_last_year', 'adopters_cum_last_year', 'market_value_last_year', 'initial_number_of_adopters', 'initial_pv_kw', 'initial_market_share', 'initial_market_value', 'system_kw_cum_last_year', 'new_system_kw', 'batt_kw_cum_last_year', 'batt_kwh_cum_last_year',
+CHANGED_DTYPES_EXCEPTIONS = []
+MISSING_COLUMN_EXCEPTIONS = []

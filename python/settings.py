@@ -409,7 +409,7 @@ class ScenarioSettings:
               #==========================================================================================================
               # determine if agents need to be generated or loaded from an existing pickle
               #==========================================================================================================
-               if str(values.get('agents_file')).replace(' ','') not in ['None','','0']:
+               if str(values.get('agents_file')).replace(' ','') not in ['None','','0', 'nan']:
                   self.generate_agents = False
               #==========================================================================================================
               # parse other key attributes
@@ -811,7 +811,14 @@ def init_model_settings():
     model_settings.set('cdate', datetime)
     model_settings.set('out_dir',  '%s/runs/results_%s' % (os.path.dirname(os.getcwd()), output_dir))
     model_settings.set('git_hash', utilfunc.get_git_hash())
-    model_settings.set('input_scenarios', [s for s in glob.glob("../input_scenarios/*.xls*") if not '~$' in s])
+    
+    # --- check for scenarios listed in config ---
+    input_scenarios = [s for s in glob.glob("../input_scenarios/*.xls*") if not '~$' in s]
+    if SCENARIOS == None:
+        pass
+    else:
+        input_scenarios = [s for s in input_scenarios if s.split('/')[-1].split('.xls')[0] in SCENARIOS]
+    model_settings.set('input_scenarios', input_scenarios)
 
     #==========================================================================================================
     # validate model settings and make the ouput directory

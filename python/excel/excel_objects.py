@@ -14,8 +14,10 @@ class FancyNamedRange(object):
     
     def __init__(self, workbook, range_name):
         
-        self.base = self.__base__(workbook, range_name)
-
+        self.wb = workbook
+        
+        self.base = self.__base__(range_name)
+        
         self.worksheets = self.__worksheets__()
         
         self.count_worksheets = self.__count_destination_components__(self.worksheets)
@@ -27,12 +29,14 @@ class FancyNamedRange(object):
         self.cell_ranges = self.__cell_ranges__()
         
         self.count_cell_ranges = self.__count_destination_components__(self.cell_ranges)
+
         if self.count_cell_ranges > 1:
             raise NotImplementedError("Named Ranges spanning multiple, non-contiguous cell ranges  are not currently supported")
         
         self.cell_range = self.cell_ranges[0]        
         
         self.topleft = self.__topleft__()
+
         self.bottomright = self.__bottomright__()
         
         self.cells = self.__cells__()
@@ -42,7 +46,6 @@ class FancyNamedRange(object):
         self.rec_array = self.__rec_array__()
         
         self.data_frame = self.__data_frame__()
-    
 
     def __colnames_included__(self):
         self.rec_array = self.__rec_array__(colnames_included = True)
@@ -62,39 +65,31 @@ class FancyNamedRange(object):
         self.rec_array = self.__rec_array__()
         self.data_frame = self.__data_frame__()
 
-    def __base__(self, workbook, range_name):
+    def __base__(self, range_name):
         
         # get the named range object
-        base = workbook.get_named_range(range_name)
+        base = self.wb.defined_names[range_name]
         
         # raise an error if the named range doesn't exist
         if base == None:
-            raise ExcelError('%s named range does not exist.' % range_name)    
+            raise ExcelError('{} named range does not exist.'.format(range_name))
         
         return base    
     
     def __worksheets__(self):
-        
-        worksheets =  list(np.array(self.base.destinations)[:,0])
-        
+        worksheets = list(np.array([(a, b) for a, b in self.base.destinations])[:,0])
         return worksheets
         
     def __cell_ranges__(self):
-        
-        cell_ranges = list(np.array(self.base.destinations)[:,1])
-        
+        cell_ranges = list(np.array([(a, b) for a, b in self.base.destinations])[:,1])
         return cell_ranges
         
     
     def __count_destination_components__(self, destination_component):
-        
         count = len(list(set(destination_component)))
-        
         return count
     
-    
     def __topleft__(self):
-        
         if ':' in self.cell_ranges[0]:
             coordinates = self.cell_ranges[0].split(':')[0]
         else:
@@ -103,7 +98,6 @@ class FancyNamedRange(object):
         return coordinates
         
     def __bottomright__(self):
-        
         if ':' in self.cell_ranges[0]:
             coordinates = self.cell_ranges[0].split(':')[1]
         else:
@@ -114,19 +108,14 @@ class FancyNamedRange(object):
     def contents_to_array(self):
         pass
     
-    
     def __columns__(self):
-        
         self.topleft.split('$')
         
     def __cells__(self):
-        
-        cells = [cell for cell in self.worksheet[self.topleft : self.bottomright]]
-        
+        cells = [cell for cell in self.wb[self.worksheet][self.topleft : self.bottomright]]
         return cells
     
     def __cell_array__(self):
-        
         cell_array = np.array(self.cells)
         if cell_array.shape == ():
             cell_array = cell_array.reshape((1,1))
@@ -134,10 +123,9 @@ class FancyNamedRange(object):
         return cell_array
         
     def __cell_value__(self, cell, floats = True):
-        
         if floats == True and cell.data_type == 'n' and type(cell.value) != datetime.datetime:
             if cell.value is None:
-                cell_value = 0.0
+                cell_value = float(np.nan)
             else:
                 cell_value = float(cell.value)
         else:
@@ -149,7 +137,6 @@ class FancyNamedRange(object):
         return cell_value
     
     def __rec_array__(self, colnames_included = False):
-        
         cell_values = np.vectorize(self.__cell_value__)
         
         if colnames_included == True:
@@ -172,7 +159,6 @@ class FancyNamedRange(object):
         return rec_array
     
     def __data_frame__(self, colnames_included = False):
-        
         df = pd.DataFrame(self.rec_array)
         if colnames_included == False:
             ncols = df.shape[1]
@@ -181,10 +167,28 @@ class FancyNamedRange(object):
         return df
         
     def first_value(self):
-        
-        first_value = self.data_frame.ix[0][0]
+        first_value = self.data_frame.iloc[0][0]
 
         return first_value
+
+    def to_stringIO(self, transpose = False, columns = None, index = False, header = False):
+        s = StringIO()
+        
+        if columns == None:
+            columns = self.data_frame.columns
+        
+        if transpose:
+            out_df = self.data_frame[columns].T
+        else:
+            out_df = self.data_frame[columns]
+
+        try:
+            out_df.to_csv(s, delimiter = ',', index = index, header = header)
+        except:
+            out_df.to_csv(s, index=index, header=header)
+        s.seek(0)
+        
+        return s
 
     def to_df(self, transpose = False, columns = None):
         

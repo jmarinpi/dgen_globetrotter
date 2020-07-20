@@ -2,7 +2,7 @@ colorama
 colorlog
 matplotlib
 numpy
-openpyxl=2.3.2
+openpyxl
 pandas
 psutil
 psycopg2

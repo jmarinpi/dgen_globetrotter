@@ -1,0 +1,21 @@
+name: dg3n
+channels:
+  - defaults
+  - conda-forge
+  - NREL
+  - nrel
+dependencies:
+  - colorama
+  - numpy
+  - sqlalchemy
+  - python=3
+  - time
+  - colorlog
+  - matplotlib
+  - psutil
+  - pandas
+  - psycopg2
+  - spyder
+  - openpyxl
+  - xlrd
+  - jupyter

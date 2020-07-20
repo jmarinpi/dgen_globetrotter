@@ -174,7 +174,6 @@ def make_agent_count(sector_dist):
         for sector, pct in d.items():
             agent_count[geo][sector] = round(AGENTS_PER_GEOGRAPHY * sector_dist[geo][sector])
     return agent_count
-    
 
 def make_district_dist(census):
     """ dict of district hh by geography/district. """

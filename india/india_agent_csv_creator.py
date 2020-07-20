@@ -69,30 +69,17 @@ Columns
 
 """
 --- avoided_cost_rates.csv ---
+Net Metering avoided cost. Creates 'hourly_excess_sell_rate_usd_per_kwh'. 
 
 Columns
 -------
-    2014-2050 (float) : TODO what is this?
+    2014-2050 (float) : Used if 'compensation_style' == 'Net Billing (Avoided Cost)', should be retail rate. 
 """
 
-"""
---- carbon_intensities_grid.csv ---
-
-Columns
--------
-    2014-2050 (float) : TODO how is this used? 
-"""
-
-"""
---- carbon_intensities_ng.csv ---
-
-Columns
--------
-    2014-2050 (float) : TODO how is this used? 
-"""
 
 """
 --- wholesale_rates.csv ---
+Net Billing avoided cost. Creates 'wholesale_elec_usd_per_kwh'.
 
 Columns
 -------
@@ -147,7 +134,6 @@ def financing_rates(agent_df):
     finance_df.to_csv(os.path.join('input_scenarios','india_base','financing_rates.csv'), index=False)
 
 #%%
-
 def load_growth(agent_df):
     """
     Create csv with annual load growth pct by geography.
