@@ -15,7 +15,6 @@ TODO:
 
 # --- Python Battery Imports ---
 import os
-import unicodedata
 import itertools
 
 # --- External Library Imports ---
@@ -24,69 +23,55 @@ import numpy as np
 
 # --- Module Imports ---
 import config
+import helper
 
-#%%
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~ Set-up ~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~ Functions ~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-# --- Define Helper Functions ---
+def wholesale_rates():
+    """
+    Net Billing avoided cost. Creates 'wholesale_elec_usd_per_kwh'. 
+    Used if 'compensation_style' == 'Net Billing (Wholesale)'
+        
 
-def remove_accents(input_str):
-    nfkd_form = unicodedata.normalize('NFKD', input_str)
-    return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
+    Columns
+    -------
+    state_id (int) : lookup from census data
+    2014-2050 (float) : annual value
+    """
+    
+    reeds = pd.read_csv('reeds_output_margcost_state.csv')
+    reeds.columns = ['state_name','year','scenario','variable','cost']
+    reeds = reeds.loc[reeds['scenario'] == 'Base']
+    reeds = reeds.loc[reeds['variable'] == 'mc.total']
+    
+    # --- pivot to wide ---
+    pivoted = reeds.pivot_table(index=['state_name'], columns=['year'], values='cost')
+    pivoted = pivoted.reset_index(drop=False)
+    pivoted['state_name'] = pivoted['state_name'].apply(helper.sanitize_string)
+    pivoted['state_name'] = pivoted['state_name'].replace('delhi', 'nct_of_delhi')
+    pivoted.loc[pivoted['state_name'] != 'telangana']
+    
+    # --- add in earlier years ---
+    annual_diff = (pivoted[2018] - pivoted[2017]) / pivoted[2018]
+    for y_index, y in enumerate([2014,2015,2016]):
+        pivoted[y] = pivoted[2017] * (1 - annual_diff)**(3-y_index)
+        
+    # --- add in later years ---
+    annual_diff = (pivoted[2047] - pivoted[2046]) / pivoted[2047]
+    for y_index, y in enumerate([2048,2049,2050]):
+        pivoted[y] = pivoted[2047] * (1 + annual_diff)**(y_index + 1)
+    
+    # --- add state_id ---
+    state_id_lookup = pd.read_csv(os.path.join('india_census','state_id_lookup.csv'))
+    state_id_lookup = dict(zip(state_id_lookup['state_name'], state_id_lookup['state_id']))
+    pivoted['state_id'] = pivoted['state_name'].map(state_id_lookup)
+    
+    # --- reorder columns ---
+    wholesale_rates = pivoted[['state_id'] + list(range(2014,2051))]
+    wholesale_rates.to_csv(os.path.join('india_base','wholesale_rates.csv'), index=False)
 
-#%%
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~ Create Agents ~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-"""
---- agent_core_attributes_all.csv ---
-
-Columns
--------
-    control_reg (str) : Usually the utility or balancing authority
-    control_reg_id (int) : integer representation of control_reg
-    state (str) : Usually the sub-federal political geography, sometimes a sub-sub feder (i.e. county)
-    state_id (int) : integer representation of state
-    sector_abbr (str) : the sector of the agent
-    tariff_class (str) : the tariff class (particularly relevant in countries with crosssubsidization)
-    rate_id_alias (int) : integer representation of rate in urdb format
-    customers_in_bin (int) : customers represented by agent
-    load_in_bin_kwh (int) : annual kWh represented by agent
-    load_per_customer_in_bin_kwh (int) : load_in_bin_kwh / customers_in_bin
-    avg_monthly_kwh (int) : load_in_bin_kwh / 12
-    max_demand_kw (float) : peak demand (kW) from agent
-    owner_occupancy_status (bool 1/0) : rental, or owner occupied
-    cap_cost_multiplier (float) : multiplier on installation cost for geography/agent
-    developable_buildings_pct (float) : pct of customers represented by agent that can install solar
-    bldg_size_class	(str) : 'small' how is this used? TODO
-    developable_roof_sqft (int) : total installable rooftop area TODO move this to a seperate csv? 
-    social_indicator (float) : a linear scaler indicating social development within a given region
-        for instance, see 'hdi' for Mexico
-"""
-
-"""
---- avoided_cost_rates.csv ---
-Net Metering avoided cost. Creates 'hourly_excess_sell_rate_usd_per_kwh'. 
-
-Columns
--------
-    2014-2050 (float) : Used if 'compensation_style' == 'Net Billing (Avoided Cost)', should be retail rate. 
-"""
-
-
-"""
---- wholesale_rates.csv ---
-Net Billing avoided cost. Creates 'wholesale_elec_usd_per_kwh'.
-
-Columns
--------
-    2014-2050 (float) : TODO how is this used? 
-"""
-
-#%%
 def financing_rates(agent_df):
     """
     Create .csv with discount rates by sector/geography, scaled by a social indicator score.
@@ -131,9 +116,9 @@ def financing_rates(agent_df):
     finance_df.loc[finance_df['sector_abbr'] == 'ind', 'down_payment'] = ((config.IND_MAX_DP - config.IND_MIN_DP)/(social_max - social_min)) * (finance_df['social_indicator'] - social_max) + config.IND_MIN_DP
 
     # --- Write to csv ---
-    finance_df.to_csv(os.path.join('input_scenarios','india_base','financing_rates.csv'), index=False)
+    finance_df.to_csv(os.path.join('india_base','financing_rates.csv'), index=False)
 
-#%%
+
 def load_growth(agent_df):
     """
     Create csv with annual load growth pct by geography.
@@ -193,9 +178,9 @@ def load_growth(agent_df):
 
     load_growth = load_growth.melt(id_vars=['state','year'], var_name='sector_abbr', value_name='load_growth')
 
-    load_growth.to_csv(os.path.join('input_scenarios','india_base','financing_rates.csv'), index=False)
+    load_growth.to_csv(os.path.join('india_base','financing_rates.csv'), index=False)
 
-#%%
+
 def nem_settings(agent_df):
     """
     Create nem_settings.csv based on config variables. 
@@ -215,38 +200,8 @@ def nem_settings(agent_df):
     nem_df.loc[nem_df['sector_abbr']=='res', 'nem_system_size_limit_kw'] = config.RES_NEM_KW_LIMIT
     nem_df.loc[nem_df['sector_abbr']=='com', 'nem_system_size_limit_kw'] = config.COM_NEM_KW_LIMIT
     nem_df.loc[nem_df['sector_abbr']=='ind', 'nem_system_size_limit_kw'] = config.IND_NEM_KW_LIMIT
-    nem_df.to_csv(os.path.join('input_scenarios','base','nem_settings.csv'), index = False)
-
-#%%
-
-"""
---- pv_bass.csv ---
-
-Columns
--------
-    control_reg_id (int) : integer representation of control_reg
-    state_id (int) : integer representation of state
-    sector_abbr (str) : the sector of the agent
-    p (float) : bass innovator parameter
-    q (float) : bass immitator parameter
-    teq_yr1 (int) : number of years since technology adoption at year 1
-    tech (str) : the technology
-"""
-
-"""
---- pv_state_starting_capacities.csv ---
-
-Columns
--------
-    control_reg_id (int) : integer representation of control_reg
-    state_id (int) : integer representation of state
-    sector_abbr (str) : the sector of the agent
-    tariff_class (str) : the tariff class (particularly relevant in countries with crosssubsidization)
-    pv_capacity_mw (int) : existing PV capacity in the state/tariff
-    pv_systems_count (int) : existing number of PV systems
-"""
-
-#%%
+    nem_df.to_csv(os.path.join('india_base','nem_settings.csv'), index = False)
+    
 def rate_escalations(agent_df):
     """
     Create rate_escalations.csv based on compound increase of config values. 
@@ -275,9 +230,26 @@ def rate_escalations(agent_df):
         return esc
 
     rate_esc_df['escalation_factor'] = rate_esc_df.apply(escalation_factor_applier, axis = 1)
-    rate_esc_df.to_csv('input_scenarios/base/rate_escalations.csv', index = False)
+    rate_esc_df.to_csv(os.path.join('india_base','rate_escalations.csv'), index = False)
 
-#%%
+
+
+"""
+--- pv_state_starting_capacities.csv ---
+
+Columns
+-------
+    control_reg_id (int) : integer representation of control_reg
+    state_id (int) : integer representation of state
+    sector_abbr (str) : the sector of the agent
+    tariff_class (str) : the tariff class (particularly relevant in countries with crosssubsidization)
+    pv_capacity_mw (int) : existing PV capacity in the state/tariff
+    pv_systems_count (int) : existing number of PV systems
+"""
+
+
+
+
 """
 --- solar_resource_hourly.csv OR .json ---
 
@@ -304,4 +276,17 @@ Columns
 -------
     control_reg_id (int) : integer representation of control_reg
     kwh (set/list) : 8760 of load normalized between TODO what is this normalized between?
+
 """
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~ Functions ~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+agents = pd.read_csv('india_agents.csv')
+wholesale_rates()
+financing_rates(agents)
+load_growth()
+nem_settings()
+rate_escalations()
+

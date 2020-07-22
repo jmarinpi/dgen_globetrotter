@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
-import unicodedata
+import helper
 
 pd.options.mode.chained_assignment = None
 
@@ -29,21 +29,6 @@ AGENTS_PER_GEOGRAPHY = 2000
 COM_SIZE_MWH = 1000
 IND_SIZE_MWH = 10000
 
-def sanitize_string(input_str):
-    nfkd_form = unicodedata.normalize('NFKD', input_str)
-    s = u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
-    s = s.lower()
-    s = s.replace(' ','_')
-    s = s.replace('/','_')
-    s = s.replace('&','')
-    s = s.replace('(','_')
-    s = s.replace(')','_')
-    s = s.replace('____','_')
-    s = s.replace('___','_')
-    s = s.replace('__','_')
-    if s[0] == '_': s = s[1:]
-    if s[-1] == '_': s = s[:-1]
-    return s
 
 #%%
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -259,7 +244,7 @@ def initialize_agents(agent_count):
     for geo, d in agent_count.items(): #consistent number of agents between geographies, with distribution by load in sector
         for sector, n_agents in d.items():
             for n in range(n_agents):
-                agent = pd.DataFrame({GEOGRAPHY:[geo], 'sector':[sector], 'geo_sector_n_agents':n_agents})
+                agent = pd.DataFrame({GEOGRAPHY:[geo], 'sector_abbr':[sector], 'geo_sector_n_agents':n_agents})
                 agents = agents.append(agent)
     agents.reset_index(drop=True, inplace=True)  
     return agents
@@ -268,7 +253,7 @@ def assign_distribution(agents, distribution, col_name):
     # - proportionally assign district 
     for geo in agents[GEOGRAPHY].unique():
         for sector in ['res','com','agg','ind']:
-            agents.loc[(agents[GEOGRAPHY] == geo) & (agents['sector'] == sector), col_name] = distribution[geo][sector]
+            agents.loc[(agents[GEOGRAPHY] == geo) & (agents['sector_abbr'] == sector), col_name] = distribution[geo][sector]
     return agents
 
 def clean_agents(agents):
@@ -281,7 +266,7 @@ def test_load(agents, load_count):
     for geo in agents[GEOGRAPHY].unique():
         for sector in ['res','com','agg','ind']:
             load_con = load_count[geo][sector]
-            load_df = agents.loc[(agents['sector'] == sector) & (agents[GEOGRAPHY] == geo)]
+            load_df = agents.loc[(agents['sector_abbr'] == sector) & (agents[GEOGRAPHY] == geo)]
             load_agents = (load_df['load_kwh_per_customer_in_bin'] * load_df['customers_in_bin']).sum()
             diff_pct = (load_agents - load_con) / load_con
             if load_con > 0:
@@ -298,6 +283,23 @@ def plot_normal_distribution():
     count_hh, bins, ignored = ax.hist(dist, n_agents) #construct histogram with bins equal to n agents
     ax.set_xlabel('load')
     ax.set_ylabel('customers in bin')
+    
+def map_geo_ids(agents):
+    state_id_lookup = pd.read_csv(os.path.join('india_census','state_id_lookup.csv'))
+    state_id_lookup = dict(zip(state_id_lookup['state_name'],state_id_lookup['state_id']))
+    district_id_lookup = pd.read_csv(os.path.join('india_census','district_id_lookup.csv'))
+    district_id_lookup = dict(zip(district_id_lookup['district_name'], district_id_lookup['district_id']))
+    agents['state_id'] = agents['state_name'].map(state_id_lookup)
+    agents['district_id'] = agents['district_name'].map(district_id_lookup)
+    return agents
+
+def map_hdi(agents):
+    hdi = pd.read_csv(os.path.join('india_UN_HDI.csv'))[['Region','2018']]
+    hdi.columns = ['state_name', 'social_indicator']
+    hdi['state_name'] = hdi['state_name'].apply(helper.sanitize_string)
+    agents = agents.merge(hdi)
+    return agents
+    
 
 #%%
     
@@ -307,8 +309,8 @@ census = load_census()
     
 # --- Make Distributions ---
 load_count = make_load_count(con)
-sector_dist_load = make_sector_dist(con)
-agent_count = make_agent_count(sector_dist)
+sector_dist_load = make_sector_dist_load(con)
+agent_count = make_agent_count(sector_dist_load)
 hh_count = make_hh_count(census)
 district_dist = make_district_dist(census)
 roof_dist = make_roof_dist(census, agent_count, developable_sqft_mu, developable_sqft_sigma)
@@ -329,7 +331,11 @@ agents = assign_distribution(agents, customers_in_bin_dist, 'customers_in_bin')
 
 # --- Clean up ---
 agents = clean_agents(agents)
+agents = map_geo_ids(agents)
+agents = map_hdi(agents)
 
 # --- Save agents ---
 agents.to_csv('india_agents.csv')
+
+#%%
 
