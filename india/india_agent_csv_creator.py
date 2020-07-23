@@ -16,6 +16,7 @@ TODO:
 # --- Python Battery Imports ---
 import os
 import itertools
+import json
 
 # --- External Library Imports ---
 import pandas as pd
@@ -28,6 +29,7 @@ import shapely
 # --- Module Imports ---
 import config
 import helper
+import agent_sampling as samp
 
 pd.options.mode.chained_assignment = None
 
@@ -47,7 +49,7 @@ def wholesale_rates():
     2014-2050 (float) : annual value
     """
     
-    reeds = pd.read_csv('reeds_output_margcost_state.csv')
+    reeds = pd.read_csv(os.path.join('reference_data','reeds_output_margcost_state.csv'))
     reeds.columns = ['state_name','year','scenario','variable','cost']
     reeds = reeds.loc[reeds['scenario'] == 'Base']
     reeds = reeds.loc[reeds['variable'] == 'mc.total']
@@ -70,9 +72,12 @@ def wholesale_rates():
         pivoted[y] = pivoted[2047] * (1 + annual_diff)**(y_index + 1)
     
     # --- add state_id ---
-    state_id_lookup = pd.read_csv(os.path.join('india_census','state_id_lookup.csv'))
+    state_id_lookup = pd.read_csv(os.path.join('reference_data', 'india_census','state_id_lookup.csv'))
     state_id_lookup = dict(zip(state_id_lookup['state_name'], state_id_lookup['state_id']))
     pivoted['state_id'] = pivoted['state_name'].map(state_id_lookup)
+    
+    # --- currency conversion ---
+    pivoted[list(range(2014,2051))] = pivoted[list(range(2014,2051))] / config.RUPPES_TO_USD
     
     # --- reorder columns ---
     wholesale_rates = pivoted[['state_id'] + list(range(2014,2051))]
@@ -145,7 +150,7 @@ def load_growth(agent_df):
     Currently assumes that all sectors have the same load growth. Could use 'CEA_historic_consumption_by_sector.csv' to normalize this by sector.
     """
 
-    reeds_load = pd.read_csv('ReEDS_load.csv', names=['state','hour','year','value'])
+    reeds_load = pd.read_csv(os.path.join('reference_data','ReEDS_load.csv'), names=['state','hour','year','value'])
 
     # --- Group by year ---
     reeds_load = reeds_load.groupby(['state','year'], as_index=False)['value'].mean()
@@ -247,21 +252,21 @@ def pv_state_starting_capacities():
         pv_capacity_mw (int) : existing PV capacity in the state/tariff
         pv_systems_count (int) : existing number of PV systems
     """
-    df_sec_natl_cumulative_q3 = pd.read_csv('Historical India PV Install (National).csv').loc[:4].set_index('Cumulative Capacity').drop('Source',axis=1) #SOURCE: BNEF
+    df_sec_natl_cumulative_q3 = pd.read_csv(os.path.join('reference_data','Historical India PV Install (National).csv')).loc[:4].set_index('Cumulative Capacity').drop('Source',axis=1) #SOURCE: BNEF
     df_sec_natl_cumulative_q3.columns = df_sec_natl_cumulative_q3.columns.astype(int)
     df_sec_natl_cumulative_share_q3 = df_sec_natl_cumulative_q3.loc[['Commercial Q3','Residential Q3','Industrial Q3','Total Rooftop Q3']].astype(float)/df_sec_natl_cumulative_q3.loc['Total Installed Q3'].astype(float).sum(axis=0)
     
-    df_sec_natl_cumulative_q4 = pd.read_csv('Historical India PV Install (National).csv').loc[5:9].set_index('Cumulative Capacity').drop('Source',axis=1) #SOURCE: BNEF
+    df_sec_natl_cumulative_q4 = pd.read_csv(os.path.join('reference_data','Historical India PV Install (National).csv')).loc[5:9].set_index('Cumulative Capacity').drop('Source',axis=1) #SOURCE: BNEF
     df_sec_natl_cumulative_q4.columns = df_sec_natl_cumulative_q4.columns.astype(int)
     df_sec_natl_cumulative_share_q4 = df_sec_natl_cumulative_q4.loc[['Commercial Q4','Residential Q4','Industrial Q4','Total Rooftop Q4']].astype(float)/df_sec_natl_cumulative_q4.loc['Total Installed Q4'].astype(float).sum(axis=0)
 
-    df_natl_cumulative_q3 = pd.read_csv('Historical India PV Install (National).csv', index_col=0).loc['Total Installed Q3'].drop('Source')
+    df_natl_cumulative_q3 = pd.read_csv(os.path.join('reference_data','Historical India PV Install (National).csv'), index_col=0).loc['Total Installed Q3'].drop('Source')
     df_natl_cumulative_q3.index = df_natl_cumulative_q3.index.astype(int)
 
-    df_natl_cumulative_q4 = pd.read_csv('Historical India PV Install (National).csv', index_col=0).loc['Average Total Installed'].drop('Source')
+    df_natl_cumulative_q4 = pd.read_csv(os.path.join('reference_data','Historical India PV Install (National).csv'), index_col=0).loc['Average Total Installed'].drop('Source')
     df_natl_cumulative_q4.index = df_natl_cumulative_q4.index.astype(int)
 
-    df_region_cumulative_q4 = pd.read_csv('Cumulative Installed Capacity by State.csv').set_index('State') #SOURCE: MNRE Q4
+    df_region_cumulative_q4 = pd.read_csv(os.path.join('reference_data','Cumulative Installed Capacity by State.csv')).set_index('State') #SOURCE: MNRE Q4
     region_cumulative_totals_q4 = df_region_cumulative_q4.sum(axis=0)
     df_region_cumulative_q4.columns = df_region_cumulative_q4.columns.astype(int)
     df_region_cumulative_share_q4 = df_region_cumulative_q4/region_cumulative_totals_q4.sum()
@@ -284,7 +289,7 @@ def pv_state_starting_capacities():
     df_cumulative_northeast_share_q3 = df_cumulative_northeast_q3/df_cumulative_northeast_q3.sum(axis=0)
     
     for sector in sectors:
-        df_sec_region_q3 =  pd.read_excel('Residential and Commercial Installed Capacity by State.xlsx', sheet_name="%s" % sector).set_index('Unnamed: 0') #SOURCE: Bridge to India Q3
+        df_sec_region_q3 =  pd.read_excel(os.path.join('reference_data','Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="%s" % sector).set_index('Unnamed: 0') #SOURCE: Bridge to India Q3
         df_sec_region_q3.columns = df_sec_region_q3.columns.astype(int)
         
         sec_northeast_total_q3 = df_sec_region_q3.loc['North East']
@@ -324,11 +329,8 @@ def pv_state_starting_capacities():
         for reg in india_regions:
             df_sec_starting_capacities.loc[reg, 'pv_capacity_mw'] = df_sec_by_region.loc[reg,2014]
             
-#         df_sec_by_region.to_csv('C:\\Users\\aramdas\\Documents\\DGen\\India\\Cumulative %s PV Installed Capacity by State.csv' % (sector)) #SOURCE: MNRE Q4
-
-#         df_starting_capacities = pd.concat([df_starting_capacities, df_sec_starting_capacities], axis=0)
         
-        df_state_id = pd.read_csv('state_id_lookup.csv').set_index('state_name') #SOURCE: MNRE Q4
+        df_state_id = pd.read_csv(os.path.join('reference_data','state_id_lookup.csv')).set_index('state_name') #SOURCE: MNRE Q4
         df_state_id = df_state_id.rename(index={'andaman_nicobar_islands':'andaman_and_nicobar_islands','nct_of_delhi':'delhi','jammu_kashmir':'jammu_and_kashmir'})
 
         df_starting_capacities_all = pd.DataFrame()
@@ -340,7 +342,7 @@ def pv_state_starting_capacities():
         df_starting_capacities['tariff_class']=''
          
         df_starting_capacities['state_name'] = df_starting_capacities['state_name'].apply(helper.sanitize_string)
-        state_id_lookup = pd.read_csv(os.path.join('india_census','state_id_lookup.csv'))
+        state_id_lookup = pd.read_csv(os.path.join('reference_data', 'india_census','state_id_lookup.csv'))
         state_id_lookup = dict(zip(state_id_lookup['state_name'] ,state_id_lookup['state_id']))
         df_starting_capacities['state_id'] = df_starting_capacities['state_name'].map(state_id_lookup)
         df_starting_capacities['state_id'] = df_starting_capacities['state_id']
@@ -373,10 +375,10 @@ def solar_resource_profiles(agents):
     #     for table in tables:
     #         if 'profile' in table:
     #             profile = pd.DataFrame(h5[table][:])
-    #             profile.to_pickle(os.path.join('solar_resource_pickles',f'{table}.pkl'))
+    #             profile.to_pickle(os.path.join('reference_data', 'solar_resource_pickles',f'{table}.pkl'))
 
     # --- load resource meta table ---
-    meta = pd.read_pickle(os.path.join('solar_resource_pickles','meta.pkl'))
+    meta = pd.read_pickle(os.path.join('reference_data', 'solar_resource_pickles','meta.pkl'))
     
     # --- find tilt ---
     def find_tilt(lat, array=[15,25,35,45,55]):
@@ -397,7 +399,12 @@ def solar_resource_profiles(agents):
     resource = agents.drop_duplicates(subset=['district_id'], keep='first')
     resource['geometry'] = resource['centroid']
     resource = resource[['geometry','district_id']]
-    resource['geometry'] = resource['geometry'].apply(lambda x: shapely.wkt.loads(x))
+
+    try: #if column is text
+        resource['geometry'] = resource['geometry'].apply(lambda x: shapely.wkt.loads(x))
+    except Exception as e:
+        pass
+    
     resource = gpd.GeoDataFrame(resource)
     
     # --- find nearest resource region for each district ---
@@ -410,7 +417,7 @@ def solar_resource_profiles(agents):
             return match
         
         else:
-            print('nearest point worker failed on', resource_point.x, resource_point.y)
+            print('nearest point worker failed on', point.x, point.y)
             return np.nan
     
     
@@ -421,7 +428,7 @@ def solar_resource_profiles(agents):
     
     # --- load resource data for each district ---
     def load_resource_data(row):
-        fp = os.path.join('solar_resource_pickles',f"pv_a{row['azimuth']}_t{row['tilt']}_cf_profile.pkl")
+        fp = os.path.join('reference_data', 'solar_resource_pickles',f"pv_a{row['azimuth']}_t{row['tilt']}_cf_profile.pkl")
         cf = pd.read_pickle(fp)
         profile = np.array(cf[row['resource_id']], dtype='int16')
         return profile
@@ -431,30 +438,117 @@ def solar_resource_profiles(agents):
     resource = resource[['district_id','resource_id','tilt','azimuth','cf']]
     resource.to_csv(os.path.join('india_base','solar_resource_profiles.csv'))
 
-"""
---- urdb3_rates.csv OR .json ---
+def urdb_tariff(agents):
+    """
+    Currently using a sample tariff based on the sector, with zero scaling by utility. 
+    
+    Columns
+    -------
+        rate_id_alias (int) : integer representation of rate_id
+        rate_json (json) : json representation of rate
+    """
+    
+    # --- initialize tariff df ---
+    urdb_df = pd.DataFrame()
+    
+    # --- load sample tariff --- 
+    sample_tariff = pd.read_pickle(os.path.join('reference_data','sample_tariff_dict.pkl'))
+        
+    for rate_id in agents['rate_id_alias'].unique():
+        
+        sector, geo = rate_id.split('#')
+        
+        # --- differentiate tariff data --- #TODO: differentiate based on geography
+        if sector == 'res':
+            e_levels = [[100], [1e20]]
+            e_prices = [[0.04], [0.05]]
+        if sector == 'com':
+            e_levels = [[100], [1e20]]
+            e_prices = [[0.04], [0.05]]
+        if sector == 'ind':
+            e_levels = [[100], [1e20]]
+            e_prices = [[0.04], [0.05]]
+        if sector == 'agg':
+            e_levels = [[100], [1e20]]
+            e_prices = [[0.04], [0.05]]
+            
+        tariff = sample_tariff.copy()
+        tariff['e_levels'] = e_levels
+        tariff['e_prices'] = e_prices
+        
+        # --- jsonify tariff and write to df ---
+        tariff = json.dumps(tariff)
+        tariff_row = pd.DataFrame({'rate_id_alias':[rate_id], 'rate_json':[tariff]})
+        urdb_df = urdb_df.append(tariff_row)
 
-Columns
--------
-    rate_id_alias (int) : integer representation of rate_id
-    rate_json (json) : json representation of rate
-"""
+    # --- Save the df to a json ---
+    urdb_df.reset_index(inplace=True, drop=True)
+    urdb_df.to_json(os.path.join('india_base','urdb3_rates.json'))
+    
 
-"""
---- normalized_load.csv OR .json ---
-
-Columns
--------
-    state_id (int) : integer representation of state
-    kwh (set/list) : 8760 of load normalized between TODO what is this normalized between?
-
-"""
+def normalized_load():
+    """
+    Dummy data using Colombia 8760s, with ind copy for agg. Normalized to 300000 kWh per year.
+    
+    Columns
+    -------
+        state_id (int) : integer representation of state
+        kwh (set/list) : 8760 of load normalized between TODO what is this normalized between?
+    
+    """
+    sample_load = pd.read_json('/Users/skoebric/Documents/NREL-GitHub/dgen_globetrotter/input_scenarios/col_test/normalized_load.json')
+    
+    sample_load = sample_load.loc[sample_load['tariff_class'].isin(['estrato_3', 'comercial','industrial'])]
+    sample_load.columns = ['sector_abbr','kwh']
+    sample_load['sector_abbr'] = ['res','com','ind']
+    sample_load = sample_load.append(pd.DataFrame({'sector_abbr':['agg'], 'kwh':sample_load.loc[sample_load['sector_abbr'] == 'ind', 'kwh']}))
+    sample_load.reset_index(inplace=True, drop=True)
+    sample_load.to_json(os.path.join('india_base','normalized_load.json'))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~ Functions ~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~ Create Agents ~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+# --- Load Files ---
+con = samp.load_con()
+census = samp.load_census()
+    
+# --- Make Distributions ---
+load_count = samp.make_load_count(con)
+sector_dist_load = samp.make_sector_dist_load(con)
+agent_count = samp.make_agent_count(sector_dist_load)
+hh_count = samp.make_hh_count(census)
+district_dist = samp.make_district_dist(census, agent_count)
+roof_dist = samp.make_roof_dist(census, agent_count, samp.developable_sqft_mu, samp.developable_sqft_sigma)
+customers_in_bin_dist, load_per_customer_in_bin_dist = samp.make_load_dist(census, agent_count,
+                                                                      hh_count, load_count,
+                                                                      samp.customers_per_hh_by_sector,
+                                                                      samp.all_geo_sigma_load)
+
+# --- Initialize Agents ---
+agents = samp.initialize_agents(agent_count)
+
+# --- Apply Distributions ---
+agents = samp.assign_distribution(agents, district_dist, 'district_name')
+agents = samp.assign_distribution(agents, roof_dist, 'developable_roof_sqft')
+agents = samp.assign_distribution(agents, load_per_customer_in_bin_dist, 'load_kwh_per_customer_in_bin')
+agents = samp.assign_distribution(agents, customers_in_bin_dist, 'customers_in_bin')
+
+
+# --- Clean up ---
+agents = samp.map_geo_ids(agents)
+agents = samp.map_tariff_ids(agents)
+agents = samp.map_hdi(agents)
+agents = samp.merge_district_geometry(agents)
+agents = samp.clean_agents(agents)
+
+# --- Save agents ---
+agents.to_csv('india_core_agent_attributes.csv')
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~ Create CSVs ~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-agents = pd.read_csv('india_agents.csv')
 wholesale_rates()
 financing_rates(agents)
 load_growth(agents)
@@ -462,6 +556,9 @@ nem_settings(agents)
 rate_escalations(agents)
 pv_state_starting_capacities()
 solar_resource_profiles(agents)
+urdb_tariff(agents)
+normalized_load()
 
+#%%
 
 

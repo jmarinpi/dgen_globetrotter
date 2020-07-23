@@ -35,7 +35,7 @@ pd.options.mode.chained_assignment = None
 def load_con():
     """ Load csv with India consumption. """
     # total consumption by geography/sector
-    con = pd.read_csv('discom_consumption.csv')
+    con = pd.read_csv(os.path.join('reference_data', 'discom_consumption.csv'))
     assert config.GEOGRAPHY in con.columns
     
     # --- Group Consumption by State ---
@@ -62,7 +62,7 @@ def load_con():
 
 def load_census():
     # population by district
-    census = pd.read_csv(os.path.join('india_census','india_district_pop_2011.csv'))
+    census = pd.read_csv(os.path.join('reference_data','india_census','india_district_pop_2011.csv'))
     return census
 
 #%%
@@ -156,7 +156,7 @@ def make_agent_count(sector_dist):
             agent_count[geo][sector] = round(config.AGENTS_PER_GEOGRAPHY * sector_dist[geo][sector])
     return agent_count
 
-def make_district_dist(census):
+def make_district_dist(census, agent_count):
     """ dict of district hh by geography/district. """
     district_cols = [config.GEOGRAPHY, 'district_name', 'households']
     district_pct = census[district_cols]
@@ -281,16 +281,16 @@ def plot_normal_distribution():
     ax.set_ylabel('customers in bin')
     
 def map_geo_ids(agents):
-    state_id_lookup = pd.read_csv(os.path.join('india_census','state_id_lookup.csv'))
+    state_id_lookup = pd.read_csv(os.path.join('reference_data', 'india_census','state_id_lookup.csv'))
     state_id_lookup = dict(zip(state_id_lookup['state_name'],state_id_lookup['state_id']))
-    district_id_lookup = pd.read_csv(os.path.join('india_census','district_id_lookup.csv'))
+    district_id_lookup = pd.read_csv(os.path.join('reference_data','india_census','district_id_lookup.csv'))
     district_id_lookup = dict(zip(district_id_lookup['district_name'], district_id_lookup['district_id']))
     agents['state_id'] = agents['state_name'].map(state_id_lookup)
     agents['district_id'] = agents['district_name'].map(district_id_lookup)
     return agents
 
 def map_hdi(agents):
-    hdi = pd.read_csv(os.path.join('india_UN_HDI.csv'))[['Region','2018']]
+    hdi = pd.read_csv(os.path.join('reference_data','india_UN_HDI.csv'))[['Region','2018']]
     hdi.columns = ['state_name', 'social_indicator']
     hdi['state_name'] = hdi['state_name'].apply(helper.sanitize_string)
     agents = agents.merge(hdi)
@@ -299,7 +299,7 @@ def map_hdi(agents):
 
 def merge_district_geometry(agents):
     # --- load district shapefile ---
-    districts = gpd.read_file(os.path.join('districts_shapefile', 'India_Districts_ADM2_GADM.shp'))
+    districts = gpd.read_file(os.path.join('reference_data','districts_shapefile', 'India_Districts_ADM2_GADM.shp'))
     districts = districts[['NAME_1','NAME_2','VARNAME_2','geometry']]
     districts.columns = ['state_name','district_name','var_district_name','geometry']
     
@@ -324,10 +324,8 @@ def merge_district_geometry(agents):
     
         index = FuzzySet()
         
-        print('indexing...')
         for c in clean_list:
             index.add(c)
-        print('done indexing')
         
         out_list = []
         for f in fuzzy_list:
@@ -349,43 +347,16 @@ def merge_district_geometry(agents):
     
     return agents
 
-
-#%%
+def map_tariff_ids(agents):
+    """
+    Map tariff details such as tiers, prices, demand charges, and other info. Not used much yet. 
+    """
     
-# --- Load Files ---
-con = load_con()
-census = load_census()
+    agents['rate_id_alias'] = agents['sector_abbr'] + '#' + agents[config.GEOGRAPHY]
+    return agents
+
     
-# --- Make Distributions ---
-load_count = make_load_count(con)
-sector_dist_load = make_sector_dist_load(con)
-agent_count = make_agent_count(sector_dist_load)
-hh_count = make_hh_count(census)
-district_dist = make_district_dist(census)
-roof_dist = make_roof_dist(census, agent_count, developable_sqft_mu, developable_sqft_sigma)
-customers_in_bin_dist, load_per_customer_in_bin_dist = make_load_dist(census, agent_count,
-                                                                      hh_count, load_count,
-                                                                      customers_per_hh_by_sector,
-                                                                      all_geo_sigma_load)
 
-# --- Initialize Agents ---
-agents = initialize_agents(agent_count)
-
-# --- Apply Distributions ---
-agents = assign_distribution(agents, district_dist, 'district_name')
-agents = assign_distribution(agents, roof_dist, 'developable_roof_sqft')
-agents = assign_distribution(agents, load_per_customer_in_bin_dist, 'load_kwh_per_customer_in_bin')
-agents = assign_distribution(agents, customers_in_bin_dist, 'customers_in_bin')
-
-
-# --- Clean up ---
-agents = map_geo_ids(agents)
-agents = map_hdi(agents)
-agents = merge_district_geometry(agents)
-agents = clean_agents(agents)
-
-# --- Save agents ---
-agents.to_csv('india_agents.csv')
 
 
 
