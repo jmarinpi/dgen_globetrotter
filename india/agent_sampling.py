@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 import os
 import helper
+import geopandas as gpd
+import config
+
 
 pd.options.mode.chained_assignment = None
 
@@ -11,8 +14,7 @@ pd.options.mode.chained_assignment = None
 
 # Columns
 # -------
-#     control_reg (str) : Usually the utility or balancing authority
-#     control_reg_id (int) : integer representation of control_reg
+
 #     state (str) : Usually the sub-federal political geography, sometimes a sub-sub feder (i.e. county)
 #     state_id (int) : integer representation of state
 #     sector_abbr (str) : the sector of the agent
@@ -22,12 +24,6 @@ pd.options.mode.chained_assignment = None
 #     load_per_customer_in_bin_kwh (int) : load_in_bin_kwh / customers_in_bin
 #     developable_roof_sqft (int) : total installable rooftop area TODO move this to a seperate csv? 
 # """
-
-# --- CONFIG VARS ---
-GEOGRAPHY = 'state_name'
-AGENTS_PER_GEOGRAPHY = 2000
-COM_SIZE_MWH = 1000
-IND_SIZE_MWH = 10000
 
 
 #%%
@@ -40,7 +36,7 @@ def load_con():
     """ Load csv with India consumption. """
     # total consumption by geography/sector
     con = pd.read_csv('discom_consumption.csv')
-    assert GEOGRAPHY in con.columns
+    assert config.GEOGRAPHY in con.columns
     
     # --- Group Consumption by State ---
     for sector in ['residential','commercial','irrigation','industrial']:
@@ -60,7 +56,7 @@ def load_con():
         'forecast_losses_2026':'mean'
         }
     
-    con = con.groupby(GEOGRAPHY, as_index=False).agg(agg_funcs)
+    con = con.groupby(config.GEOGRAPHY, as_index=False).agg(agg_funcs)
     
     return con
 
@@ -128,15 +124,15 @@ def make_load_count(con):
     load_count *= 1000000 #gwh to kwh
     load_count = load_count.round(0)
     load_count.columns = ['res','com','agg','ind'] 
-    load_count.index = con[GEOGRAPHY]
+    load_count.index = con[config.GEOGRAPHY]
     load_count = load_count.to_dict('index')
     return load_count
 
 def make_hh_count(census):
     """ dict of n households by geography. """
-    district_cols = [GEOGRAPHY, 'district_name', 'households']
+    district_cols = [config.GEOGRAPHY, 'district_name', 'households']
     hh_count = census[district_cols]
-    hh_count = hh_count.groupby(GEOGRAPHY)['households'].sum()
+    hh_count = hh_count.groupby(config.GEOGRAPHY)['households'].sum()
     hh_count = hh_count.to_dict()
     return hh_count
 
@@ -147,7 +143,7 @@ def make_sector_dist_load(con):
     for c in sector_gwh_columns: #convert to percents normalized to 1
         sector_dist[c] = sector_dist[c] / con[sector_gwh_columns].sum(axis=1)
     sector_dist.columns = ['res','com','agg','ind'] 
-    sector_dist.index = con[GEOGRAPHY]
+    sector_dist.index = con[config.GEOGRAPHY]
     sector_dist = sector_dist.to_dict('index')
     return sector_dist
 
@@ -157,21 +153,21 @@ def make_agent_count(sector_dist):
     for geo, d in sector_dist.items():
         agent_count[geo] = {}
         for sector, pct in d.items():
-            agent_count[geo][sector] = round(AGENTS_PER_GEOGRAPHY * sector_dist[geo][sector])
+            agent_count[geo][sector] = round(config.AGENTS_PER_GEOGRAPHY * sector_dist[geo][sector])
     return agent_count
 
 def make_district_dist(census):
     """ dict of district hh by geography/district. """
-    district_cols = [GEOGRAPHY, 'district_name', 'households']
+    district_cols = [config.GEOGRAPHY, 'district_name', 'households']
     district_pct = census[district_cols]
-    district_pct['total_hh'] = district_pct.groupby(GEOGRAPHY)['households'].transform('sum')
+    district_pct['total_hh'] = district_pct.groupby(config.GEOGRAPHY)['households'].transform('sum')
     district_pct['hh_pct'] = district_pct['households'] / district_pct['total_hh']
-    district_pct = district_pct.pivot(index=GEOGRAPHY, columns='district_name', values='hh_pct')
+    district_pct = district_pct.pivot(index=config.GEOGRAPHY, columns='district_name', values='hh_pct')
     district_pct = district_pct.to_dict('index')
     for geo, d in district_pct.items(): #get rid of nans
         district_pct[geo] = {k:v for k,v in d.items() if v > 0}
     district_dist = {}
-    for geo in census[GEOGRAPHY].unique():
+    for geo in census[config.GEOGRAPHY].unique():
         district_dist[geo] = {}
         for sector in ['res','com','agg','ind']:
             n_agents = agent_count[geo][sector]
@@ -190,7 +186,7 @@ def make_district_dist(census):
 def make_roof_dist(census, agent_count, developable_sqft_mu, developable_sqft_sigma):
     """ dict of developable_roof_sqft by geography/sector based on normal distribution. """
     developable_sqft_dist = {}
-    for geo in census[GEOGRAPHY].unique():
+    for geo in census[config.GEOGRAPHY].unique():
         developable_sqft_dist[geo] = {}
         for sector in ['res','com','agg','ind']:
             n_agents = agent_count[geo][sector]
@@ -207,7 +203,7 @@ def make_load_dist(census, agent_count, hh_count, load_count,
     """ dict of load_per_customer_in_bin_kwh by geography/sector. """
     customers_in_bin_dist = {}
     load_per_customer_in_bin_dist = {}
-    for geo in census[GEOGRAPHY].unique():
+    for geo in census[config.GEOGRAPHY].unique():
         load_per_customer_in_bin_dist[geo] = {}
         customers_in_bin_dist[geo] = {}
         for sector in ['res','com','agg','ind']:
@@ -244,16 +240,16 @@ def initialize_agents(agent_count):
     for geo, d in agent_count.items(): #consistent number of agents between geographies, with distribution by load in sector
         for sector, n_agents in d.items():
             for n in range(n_agents):
-                agent = pd.DataFrame({GEOGRAPHY:[geo], 'sector_abbr':[sector], 'geo_sector_n_agents':n_agents})
+                agent = pd.DataFrame({config.GEOGRAPHY:[geo], 'sector_abbr':[sector], 'geo_sector_n_agents':n_agents})
                 agents = agents.append(agent)
     agents.reset_index(drop=True, inplace=True)  
     return agents
 
 def assign_distribution(agents, distribution, col_name):
     # - proportionally assign district 
-    for geo in agents[GEOGRAPHY].unique():
+    for geo in agents[config.GEOGRAPHY].unique():
         for sector in ['res','com','agg','ind']:
-            agents.loc[(agents[GEOGRAPHY] == geo) & (agents['sector_abbr'] == sector), col_name] = distribution[geo][sector]
+            agents.loc[(agents[config.GEOGRAPHY] == geo) & (agents['sector_abbr'] == sector), col_name] = distribution[geo][sector]
     return agents
 
 def clean_agents(agents):
@@ -263,10 +259,10 @@ def clean_agents(agents):
 
 def test_load(agents, load_count):
     """ Test that load in agents equals load in load_count dict between geography/sectors. """
-    for geo in agents[GEOGRAPHY].unique():
+    for geo in agents[config.GEOGRAPHY].unique():
         for sector in ['res','com','agg','ind']:
             load_con = load_count[geo][sector]
-            load_df = agents.loc[(agents['sector_abbr'] == sector) & (agents[GEOGRAPHY] == geo)]
+            load_df = agents.loc[(agents['sector_abbr'] == sector) & (agents[config.GEOGRAPHY] == geo)]
             load_agents = (load_df['load_kwh_per_customer_in_bin'] * load_df['customers_in_bin']).sum()
             diff_pct = (load_agents - load_con) / load_con
             if load_con > 0:
@@ -301,6 +297,59 @@ def map_hdi(agents):
     return agents
     
 
+def merge_district_geometry(agents):
+    # --- load district shapefile ---
+    districts = gpd.read_file(os.path.join('districts_shapefile', 'India_Districts_ADM2_GADM.shp'))
+    districts = districts[['NAME_1','NAME_2','VARNAME_2','geometry']]
+    districts.columns = ['state_name','district_name','var_district_name','geometry']
+    
+    # --- clean state and district columns ---
+    districts['state_name'] = districts['state_name'].apply(helper.sanitize_string)
+    districts['district_name'] = districts['district_name'].apply(helper.sanitize_string)
+    
+    # --- create fuzzy list for string matching
+    districts['fuzzy_str'] = districts['state_name'] + '_' + districts['district_name']
+    
+    # --- create clean list for string matchibng ---
+    agents['clean_str'] = agents['state_name'] + '_' + agents['district_name']
+    
+    from cfuzzyset import cFuzzySet as FuzzySet
+    def fuzzy_address_matcher(fuzzy_list, clean_list, thresh=0.5):
+    
+        if isinstance(fuzzy_list, pd.Series):
+            fuzzy_list = fuzzy_list.tolist()
+        
+        if isinstance(clean_list, pd.Series):
+            clean_list = clean_list.unique().tolist()
+    
+        index = FuzzySet()
+        
+        print('indexing...')
+        for c in clean_list:
+            index.add(c)
+        print('done indexing')
+        
+        out_list = []
+        for f in fuzzy_list:
+            result = index.get(f)
+            out_list.append(result[0][1])
+        
+        return out_list
+    
+    # --- fuzzy string matching ---
+    districts['clean_str'] = fuzzy_address_matcher(districts['fuzzy_str'], agents['clean_str'])
+    
+    # --- merge geometry onto agents ---
+    agents = agents.merge(districts[['clean_str','geometry']], on='clean_str')
+    agents.drop(['clean_str'], axis='columns')
+    
+    # --- find centroid for each agent ---
+    agents['centroid'] = [i.centroid for i in agents['geometry']]
+    agents.drop(['geometry'], axis='columns')
+    
+    return agents
+
+
 #%%
     
 # --- Load Files ---
@@ -330,12 +379,14 @@ agents = assign_distribution(agents, customers_in_bin_dist, 'customers_in_bin')
 
 
 # --- Clean up ---
-agents = clean_agents(agents)
 agents = map_geo_ids(agents)
 agents = map_hdi(agents)
+agents = merge_district_geometry(agents)
+agents = clean_agents(agents)
 
 # --- Save agents ---
 agents.to_csv('india_agents.csv')
 
-#%%
+
+
 
