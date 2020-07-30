@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import decorators
 import utility_functions as utilfunc
+import config
 
 
 # GLOBAL SETTINGS
@@ -50,11 +51,11 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
     #==========================================================================================================
     # Set up objects
     #==========================================================================================================
-    ba_list = np.unique(np.array(agent_df['control_reg_id']))
+    ba_list = np.unique(np.array(agent_df[config.BA_COLUMN]))
     # print 'ba_list'
     # print ba_list
 
-    col_list_8760 = list(['control_reg_id', 'year'])
+    col_list_8760 = list([config.BA_COLUMN, 'year'])
     hour_list = list(np.arange(1,8761))
     col_list_8760 = col_list_8760 + hour_list
 
@@ -64,16 +65,16 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
 
     # Set up for groupby
     agent_df['index'] = list(range(len(agent_df)))
-    agent_df_to_group = agent_df[['control_reg_id', 'index']]
-    agents_grouped = agent_df_to_group.groupby(['control_reg_id']).aggregate(lambda x: tuple(x))
+    agent_df_to_group = agent_df[[config.BA_COLUMN, 'index']]
+    agents_grouped = agent_df_to_group.groupby([config.BA_COLUMN]).aggregate(lambda x: tuple(x))
     #==========================================================================================================
     # Aggregate PV and Batt capacity by reeds region
     #==========================================================================================================
-    agent_cum_capacities = agent_df[[ 'control_reg_id', 'pv_kw_cum']]
-    ba_cum_pv_kw_year = agent_cum_capacities.groupby(by='control_reg_id').sum()
-    ba_cum_pv_kw_year['control_reg_id'] = ba_cum_pv_kw_year.index
+    agent_cum_capacities = agent_df[[ config.BA_COLUMN, 'pv_kw_cum']]
+    ba_cum_pv_kw_year = agent_cum_capacities.groupby(by=config.BA_COLUMN).sum()
+    ba_cum_pv_kw_year[config.BA_COLUMN] = ba_cum_pv_kw_year.index
     ba_cum_pv_mw[year] = ba_cum_pv_kw_year['pv_kw_cum'] / 1000.0
-    ba_cum_pv_mw.round(3).to_csv(scenario_settings.out_scen_path + '/dpv_MW_by_ba_and_year.csv', index_label='control_reg_id')
+    ba_cum_pv_mw.round(3).to_csv(scenario_settings.out_scen_path + '/dpv_MW_by_ba_and_year.csv', index_label=config.BA_COLUMN)
     #==========================================================================================================
     # Aggregate PV generation profiles and calculate capacity factor profiles
     #==========================================================================================================
@@ -103,10 +104,10 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
 
         # Convert generation into capacity factor by diving by total capacity
         pv_cf_by_ba = pv_gen_by_ba_df[hour_list].divide(ba_cum_pv_mw[year]*1000.0, 'index')
-        pv_cf_by_ba['control_reg_id'] = ba_list
+        pv_cf_by_ba[config.BA_COLUMN] = ba_list
 
         # write output
-        pv_cf_by_ba = pv_cf_by_ba[['control_reg_id'] + hour_list]
+        pv_cf_by_ba = pv_cf_by_ba[[config.BA_COLUMN] + hour_list]
         pv_cf_by_ba.round(3).to_csv(scenario_settings.out_scen_path + '/dpv_cf_by_ba.csv', index=False)
 
     interyear_results_aggregations = {'ba_cum_pv_mw':ba_cum_pv_mw}
@@ -168,9 +169,9 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
     # Set lower bound of escalator at 0, assuming that potential customers would not evaluate declining electricity costs
     elec_price_escalator_df['elec_price_escalator'] = np.maximum(elec_price_escalator_df['elec_price_escalator'], 0)
 
-    dataframe = pd.merge(dataframe, elec_price_multiplier[['elec_price_multiplier', 'control_reg_id', 'sector_abbr']], how='left', on=['control_reg_id', 'sector_abbr'])
-    dataframe = pd.merge(dataframe, elec_price_escalator_df[['control_reg_id', 'sector_abbr', 'elec_price_escalator']],
-                         how='left', on=['control_reg_id', 'sector_abbr'])
+    dataframe = pd.merge(dataframe, elec_price_multiplier[['elec_price_multiplier', config.BA_COLUMN, 'sector_abbr']], how='left', on=[config.BA_COLUMN, 'sector_abbr'])
+    dataframe = pd.merge(dataframe, elec_price_escalator_df[[config.BA_COLUMN, 'sector_abbr', 'elec_price_escalator']],
+                         how='left', on=[config.BA_COLUMN, 'sector_abbr'])
 
     dataframe = dataframe.set_index('agent_id')
 
@@ -201,7 +202,7 @@ def apply_export_tariff_params(dataframe, net_metering_df):
         agent attributes with new attributes
     """
     dataframe = dataframe.reset_index()
-    dataframe = pd.merge(dataframe, net_metering_df[['control_reg_id', 'sector_abbr', 'nem_system_size_limit_kw']], how='left', on=['control_reg_id', 'sector_abbr'])
+    dataframe = pd.merge(dataframe, net_metering_df[[config.BA_COLUMN, 'sector_abbr', 'nem_system_size_limit_kw']], how='left', on=[config.BA_COLUMN, 'sector_abbr'])
     dataframe = dataframe.set_index('agent_id')
 
     return dataframe
@@ -226,7 +227,7 @@ def apply_wholesale_elec_prices(dataframe, df):
     """
 
     dataframe = dataframe.reset_index()
-    dataframe = pd.merge(dataframe, df[['control_reg_id', 'sector_abbr','wholesale_elec_usd_per_kwh','year']], how='left', on=['year','control_reg_id', 'sector_abbr'])
+    dataframe = pd.merge(dataframe, df[[config.BA_COLUMN, 'sector_abbr','wholesale_elec_usd_per_kwh','year']], how='left', on=['year',config.BA_COLUMN, 'sector_abbr'])
     dataframe = dataframe.set_index('agent_id')
 
     return dataframe
@@ -391,7 +392,7 @@ def apply_load_growth(dataframe, load_growth_df):
         agent attributes with new attributes
     """
     dataframe = dataframe.reset_index()
-    dataframe = pd.merge(dataframe, load_growth_df, how='left', on=['control_reg_id', 'sector_abbr'])
+    dataframe = pd.merge(dataframe, load_growth_df, how='left', on=[config.BA_COLUMN, 'sector_abbr'])
     #==========================================================================================================
     # for res, load growth translates to kwh_per_customer change
     #==========================================================================================================
@@ -496,10 +497,10 @@ def estimate_initial_market_shares(dataframe):
     #==========================================================================================================
     # find the total number of customers in each state (by technology and sector)
     #==========================================================================================================
-    state_total_developable_customers = dataframe[['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
-        ['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech'], as_index=False).sum()
-    state_total_agents = dataframe[['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
-        ['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech'], as_index=False).count()
+    state_total_developable_customers = dataframe[[config.BA_COLUMN, 'tariff_class', 'state_id', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
+        [config.BA_COLUMN, 'tariff_class', 'state_id', 'sector_abbr', 'tech'], as_index=False).sum()
+    state_total_agents = dataframe[[config.BA_COLUMN, 'tariff_class', 'state_id', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
+        [config.BA_COLUMN, 'tariff_class', 'state_id', 'sector_abbr', 'tech'], as_index=False).count()
     #==========================================================================================================
     # rename the final columns
     #==========================================================================================================
@@ -511,15 +512,15 @@ def estimate_initial_market_shares(dataframe):
     # merge together
     #==========================================================================================================
     state_denominators = pd.merge(state_total_developable_customers, state_total_agents, how='left', on=[
-                                  'control_reg_id', 'state_id', 'tariff_class', 'sector_abbr', 'tech'])
+                                  config.BA_COLUMN, 'state_id', 'tariff_class', 'sector_abbr', 'tech'])
 
-    state_denominators.control_reg_id  = state_denominators.control_reg_id.astype(str)
-    state_denominators['control_reg_id'] = state_denominators['control_reg_id'].astype('int')
+    state_denominatorsconfig.BA_COLUMN = state_denominatorsconfig.BA_COLUMNastype(str)
+    state_denominators[config.BA_COLUMN] = state_denominators[config.BA_COLUMN].astype('int')
     #==========================================================================================================
     # merge back to the main dataframe
     #==========================================================================================================
     dataframe = pd.merge(dataframe, state_denominators, how='left',
-        on=['control_reg_id', 'tariff_class', 'state_id', 'sector_abbr', 'tech'])
+        on=[config.BA_COLUMN, 'tariff_class', 'state_id', 'sector_abbr', 'tech'])
     #==========================================================================================================
     # determine the portion of initial load and systems that should be allocated to each agent
     # (when there are no developable agnets in the state, simply apportion evenly to all agents)
@@ -577,7 +578,7 @@ def apply_market_last_year(dataframe, market_last_year_df):
     dataframe = dataframe.reset_index()
     # dataframe = dataframe.drop_duplicates(subset=['agent_id','year'])
 
-    dataframe = dataframe.merge(market_last_year_df, how = 'left', on = ['agent_id','tech', 'control_reg_id', 'tariff_id','state_id', 'sector_abbr'])
+    dataframe = dataframe.merge(market_last_year_df, how = 'left', on = ['agent_id','tech', config.BA_COLUMN, 'tariff_id','state_id', 'sector_abbr'])
     # print('dataframe len within apply_market_last_year', dataframe.shape)
     # dataframe = dataframe.drop_duplicates(subset=['agent_id','year'])
     dataframe = dataframe.set_index('agent_id',drop=True)

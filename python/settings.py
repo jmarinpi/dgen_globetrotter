@@ -506,7 +506,7 @@ class ScenarioSettings:
 
      def _find_geography_column_to_merge_on(self, df):
           on = []
-          for cat in ['district_id','state_id','control_reg_id','tariff_class','sector_abbr','tariff_id', 'year']:
+          for cat in ['district_id','state_id','control_reg_id','tariff_id','sector_abbr','year']:
                if cat in df.columns:
                     on.append(cat)
           return on
@@ -517,7 +517,7 @@ class ScenarioSettings:
           self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on=on)
 
      def load_core_agent_attributes(self):
-          df = pd.read_csv(os.path.join(self.input_csv_folder, 'agent_core_attributes_all.csv'))
+          df = pd.read_csv(os.path.join(self.input_csv_folder, 'agent_core_attributes.csv'), index_col=None)
           df = df.sample(frac=SAMPLE_PCT)
           df['agent_id'] = list(range(df.shape[0]))
           self.core_agent_attributes = df
@@ -549,6 +549,7 @@ class ScenarioSettings:
           elif os.path.exists(os.path.join(self.input_csv_folder,'solar_resource_hourly.csv')):
                df = pd.read_csv(os.path.join(self.input_csv_folder,'solar_resource_hourly.csv'))
                df['cf'] = df['cf'].apply(ast.literal_eval)
+
           df = df.rename(columns={'cf':'solar_cf_profile'})
 
           on = self._find_geography_column_to_merge_on(df)
@@ -565,7 +566,6 @@ class ScenarioSettings:
           
           on = self._find_geography_column_to_merge_on(df)
           self.core_agent_attributes = self.core_agent_attributes.merge(df, on=on)
-
 
      def load_max_market_share(self):
           df = pd.read_csv(os.path.join(self.input_csv_folder,'max_market_share_settings.csv'), index_col=None)
@@ -591,19 +591,22 @@ class ScenarioSettings:
                self.control_reg_trajectories = df
           else:
                on = self._find_geography_column_to_merge_on(df)
-               self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on=columns)
+               self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on=on)
 
 
      def load_financing_rates(self):
           df = pd.read_csv(os.path.join(self.input_csv_folder,'financing_rates.csv'), index_col=None)
+          df = df.drop('social_indicator', axis='columns')
           on = self._find_geography_column_to_merge_on(df)
           self.core_agent_attributes = pd.merge(self.core_agent_attributes, df, on=on)
 
      def load_avoided_costs(self):
           df = pd.read_csv(os.path.join(self.input_csv_folder,'avoided_cost_rates.csv'), encoding='utf-8-sig',index_col=None)
           on = self._find_geography_column_to_merge_on(df)
-          df.melt('control_reg_id',var_name='year', value_name='hourly_excess_sell_rate_usd_per_kwh')
-          
+          df = df.melt(on[0],var_name='year', value_name='hourly_excess_sell_rate_usd_per_kwh')
+          on.append('year')
+          df['year'] = df['year'].astype(int)
+
           if self.control_reg_trajectories.empty:
                self.control_reg_trajectories = df
           else:
@@ -612,12 +615,14 @@ class ScenarioSettings:
      def load_wholesale_electricity(self):
           df = pd.read_csv(os.path.join(self.input_csv_folder,'wholesale_rates.csv'),index_col=None)
           on = self._find_geography_column_to_merge_on(df)
-          df.melt('control_reg_id',var_name='year', value_name='wholesale_elec_usd_per_kwh')
+          df = df.melt(on[0],var_name='year', value_name='wholesale_elec_usd_per_kwh')
+          on.append('year')
+          df['year'] = df['year'].astype(int)
 
           if self.control_reg_trajectories.empty:
-               self.control_reg_trajectories = result
+               self.control_reg_trajectories = df
           else:
-               self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on=on)
+               self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on=on)
 
      def load_rate_escalations(self):
           df = pd.read_csv(os.path.join(self.input_csv_folder,'rate_escalations.csv'),index_col=None)
@@ -643,31 +648,39 @@ class ScenarioSettings:
                self.state_start_conditions = self.state_start_conditions.merge(df, on=on)
 
      def get_pv_specs(self):
-          return self.pv_trajectories[['year','sector_abbr','pv_power_density_w_per_sqft','pv_deg','pv_price_per_kw','pv_om_per_kw','pv_variable_om_per_kw']]
+          on = self._find_geography_column_to_merge_on(self.pv_trajectories)
+          return self.pv_trajectories[on + ['pv_power_density_w_per_sqft','pv_deg','pv_price_per_kw','pv_om_per_kw','pv_variable_om_per_kw']]
 
      def get_batt_price_trajectories(self):
-          return self.storage_trajectories[['year', 'sector_abbr','batt_price_per_kwh','batt_price_per_kw','batt_om_per_kw','batt_om_per_kwh']]
+          on = self._find_geography_column_to_merge_on(self.storage_trajectories)
+          return self.storage_trajectories[on+['batt_price_per_kwh','batt_price_per_kw','batt_om_per_kw','batt_om_per_kwh']]
 
      def get_financing_terms(self):
-          return self.financial_trajectories[['year','sector_abbr','deprec_sch','loan_term','itc_fraction','tax_rate','economic_lifetime']]
+          on = self._find_geography_column_to_merge_on(self.financial_trajectories)
+          return self.financial_trajectories[on+['deprec_sch','loan_term','itc_fraction','tax_rate','economic_lifetime']]
 
      def get_rate_escalations(self):
-          return self.control_reg_trajectories[['control_reg_id', 'sector_abbr','elec_price_multiplier','year']]
+          on = self._find_geography_column_to_merge_on(self.control_reg_trajectories)
+          return self.control_reg_trajectories[on+['elec_price_multiplier','year']]
 
      def get_wholesale_elec_prices(self):
-          return self.control_reg_trajectories[['control_reg_id', 'sector_abbr','wholesale_elec_usd_per_kwh','year']]
+          on = self._find_geography_column_to_merge_on(self.control_reg_trajectories)
+          return self.control_reg_trajectories[on+['wholesale_elec_usd_per_kwh']]
 
      def get_load_growth(self,year):
-          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['control_reg_id', 'sector_abbr','load_multiplier']]
+          on = self._find_geography_column_to_merge_on(self.control_reg_trajectories)
+          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][on+['load_multiplier']]
 
      def get_nem_settings(self,year):
-          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['control_reg_id','sector_abbr','nem_system_size_limit_kw','wholesale_elec_usd_per_kwh','hourly_excess_sell_rate_usd_per_kwh']]
+          on = self._find_geography_column_to_merge_on(self.control_reg_trajectories)
+          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][on+['nem_system_size_limit_kw','wholesale_elec_usd_per_kwh','hourly_excess_sell_rate_usd_per_kwh']]
 
      def get_max_market_share(self):
           return self.market_share_parameters
 
      def get_bass_params(self):
-          return self.state_start_conditions[['control_reg_id', 'sector_abbr','state_id','p','q','teq_yr1','tech']]
+          on = self._find_geography_column_to_merge_on(self.state_start_conditions)
+          return self.state_start_conditions[on+['p','q','teq_yr1','tech']]
 
 def init_model_settings():
     """initialize Model Settings object (this controls settings that apply to all scenarios to be executed)"""

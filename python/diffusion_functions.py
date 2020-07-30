@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 import utility_functions as utilfunc
 import decorators
+import config
 
 #==============================================================================
 # Load logger
@@ -37,7 +38,7 @@ def calc_diffusion_solar(df, is_first_year, bass_params, override_p_value = None
     is_first_year : bool
         Passed to :func:`diffusion_functions.calc_diffusion_market_share` to determine the increment of `teq`
     bass_params : pandas.DataFrame
-        DataFrame generally derived from :func:`settings.get_bass_params`, includes the following attributes: `control_reg_id`, `sector_abbr`, `state_id`, `p`, `q`, `teq_yr1`, `tech`.
+        DataFrame generally derived from :func:`settings.get_bass_params`, includes the following attributes: config.BA_COLUMN, `sector_abbr`, `state_id`, `p`, `q`, `teq_yr1`, `tech`.
     override_p_values : float , optional
         Value to override bass diffusion `p` coefficient of innovation with.
     overide_q_values : float, optional
@@ -55,8 +56,8 @@ def calc_diffusion_solar(df, is_first_year, bass_params, override_p_value = None
     bass_params = bass_params[bass_params['tech']=='solar']    
     
     # set p/q/teq_yr1 params  
-    bass_params = bass_params[['control_reg_id','sector_abbr','state_id', 'p', 'q', 'teq_yr1']]  
-    df = pd.merge(df, bass_params, how = 'left', on  = ['control_reg_id','sector_abbr','state_id'])
+    bass_params = bass_params[[config.BA_COLUMN,'sector_abbr', 'p', 'q', 'teq_yr1']]  
+    df = pd.merge(df, bass_params, how = 'left', on  = [config.BA_COLUMN,'sector_abbr','state_id'])
     print(('diffusion_functions line 60', df.shape))
     
     # calc diffusion market share
@@ -87,7 +88,7 @@ def calc_diffusion_solar(df, is_first_year, bass_params, override_p_value = None
     df['batt_kw_cum'] = df['batt_kw_cum_last_year'] + df['new_batt_kw']
     df['batt_kwh_cum'] = df['batt_kwh_cum_last_year'] + df['new_batt_kwh']
 
-    market_last_year = df[['agent_id','control_reg_id', 'state_id', 'tariff_id', 'sector_abbr', 'tech',
+    market_last_year = df[['agent_id', config.BA_COLUMN, 'tariff_id', 'sector_abbr', 'tech',
                             'market_share', 'max_market_share', 'number_of_adopters',
                             'market_value', 'initial_number_of_adopters', 'initial_pv_kw', 'initial_market_share', 'initial_market_value',
                             'pv_kw_cum', 'new_pv_kw', 'batt_kw_cum', 'batt_kwh_cum']]
@@ -170,7 +171,7 @@ def set_bass_param(df, bass_params, override_p_value, override_q_value, override
 
     """
     # set p and q values
-    df = pd.merge(df, bass_params, how = 'left', on  = ['state_id','sector_abbr', 'tech'])
+    df = pd.merge(df, bass_params, how = 'left', on  = [config.BA_COLUMN,'sector_abbr', 'tech'])
     
     # if override values were provided for p, q, or teq_yr1, apply them to all agents
     if override_p_value is not None:

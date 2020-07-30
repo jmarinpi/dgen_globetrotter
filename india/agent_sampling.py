@@ -253,7 +253,8 @@ def assign_distribution(agents, distribution, col_name):
     return agents
 
 def clean_agents(agents):
-    agents = agents.loc[(agents['customers_in_bin'] > 0) & (agents['load_kwh_per_customer_in_bin'] > 0)] # drop agents without load or customers
+    agents = agents.loc[(agents['customers_in_bin'] > 0) & (agents['load_per_customer_in_bin_kwh'] > 0)] # drop agents without load or customers
+    agents['load_in_bin_kwh'] = agents['customers_in_bin'] * agents['load_per_customer_in_bin_kwh']
     return agents
     
 
@@ -263,7 +264,7 @@ def test_load(agents, load_count):
         for sector in ['res','com','agg','ind']:
             load_con = load_count[geo][sector]
             load_df = agents.loc[(agents['sector_abbr'] == sector) & (agents[config.GEOGRAPHY] == geo)]
-            load_agents = (load_df['load_kwh_per_customer_in_bin'] * load_df['customers_in_bin']).sum()
+            load_agents = (load_df['load_per_customer_in_bin_kwh'] * load_df['customers_in_bin']).sum()
             diff_pct = (load_agents - load_con) / load_con
             if load_con > 0:
                 assert abs(diff_pct) < 0.02
@@ -352,7 +353,7 @@ def map_tariff_ids(agents):
     Map tariff details such as tiers, prices, demand charges, and other info. Not used much yet. 
     """
     
-    agents['rate_id_alias'] = agents['sector_abbr'] + '#' + agents[config.GEOGRAPHY]
+    agents['tariff_id'] = agents['sector_abbr'] + '#' + agents[config.GEOGRAPHY]
     return agents
 
     

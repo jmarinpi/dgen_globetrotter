@@ -13,6 +13,7 @@ SECTORS = ['res','com','ind']
 SECTOR_NAMES = {'res':'Residential','com':'Commercial','ind':'Industrial'}
 TECHS = [['solar']]
 TECH_MODES = ['elec']
+BA_COLUMN = 'state_id' #geo id column that data is available at such as control_reg_id, state_id, district_id etc. 
 
 #==============================================================================
 #   get the path of the current file

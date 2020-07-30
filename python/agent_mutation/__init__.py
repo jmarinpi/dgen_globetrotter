@@ -21,6 +21,7 @@ def init_solar_agents(scenario_settings):
     """
 
     scenario_settings.load_core_agent_attributes()
+    scenario_settings.load_starting_capacities()
     scenario_settings.load_financing_rates()
     scenario_settings.load_normalized_load_profiles()
     scenario_settings.load_normalized_hourly_resource_solar()
@@ -32,7 +33,7 @@ def init_solar_agents(scenario_settings):
                                'load_per_customer_in_bin_kwh':'load_per_customer_in_bin_kwh_initial',
                                'load_in_bin_kwh':'load_in_bin_kwh_initial',
                                'consumption_hourly':'consumption_hourly_initial'}, inplace=True)
-    
+    breakpoint()
     #only include agents matching the sector provided in the excel input
     agents_df = agents_df.loc[agents_df['sector_abbr'].isin(scenario_settings.sectors)]
 

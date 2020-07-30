@@ -268,7 +268,7 @@ def pv_state_starting_capacities():
         state_id (int) : integer representation of state
         state_id (int) : integer representation of state
         sector_abbr (str) : the sector of the agent
-        tariff_class (str) : the tariff class (particularly relevant in countries with crosssubsidization)
+        tariff_id (str) : the tariff class (particularly relevant in countries with crosssubsidization)
         pv_capacity_mw (int) : existing PV capacity in the state/tariff
         pv_systems_count (int) : existing number of PV systems
     """
@@ -343,7 +343,7 @@ def pv_state_starting_capacities():
    
         df_sec_by_region = df_sec_region_q4
         
-        df_sec_starting_capacities = pd.DataFrame(index=india_regions,columns=['state_id','state_id','sector_abbr','tariff_class','pv_capacity_mw','pv_systems_count'])
+        df_sec_starting_capacities = pd.DataFrame(index=india_regions,columns=['state_id','state_id','sector_abbr','tariff_id','pv_capacity_mw','pv_systems_count'])
         df_sec_starting_capacities['sector_abbr']=sector.lower()[:3]
         
         for reg in india_regions:
@@ -355,7 +355,6 @@ def pv_state_starting_capacities():
         df_starting_capacities = df_sec_by_region[['state_name',2014]]
         df_starting_capacities = df_starting_capacities.rename(columns={2014:'pv_capacity_mw'})
         df_starting_capacities['sector_abbr']=sector.lower()[:3]
-        df_starting_capacities['tariff_class']=''
          
         df_starting_capacities['state_name'] = df_starting_capacities['state_name'].apply(helper.sanitize_string)
         df_starting_capacities['state_id'] = df_starting_capacities['state_name'].map(state_id_lookup)
@@ -369,8 +368,8 @@ def pv_state_starting_capacities():
             avg_system_size=200
         
         df_starting_capacities['pv_systems_count']=df_starting_capacities['pv_capacity_mw']*1e6/avg_system_size
-        df_starting_capacities = df_starting_capacities[['state_id','state_name','state_id','sector_abbr','tariff_class','pv_capacity_mw','pv_systems_count']]
-        df_starting_capacities_all=pd.concat([df_starting_capacities_all,df_starting_capacities],axis=  0)
+        df_starting_capacities = df_starting_capacities[['state_id','sector_abbr','pv_capacity_mw','pv_systems_count']]
+        df_starting_capacities_all=pd.concat([df_starting_capacities_all,df_starting_capacities],axis=0)
 
     df_starting_capacities_all.to_csv(os.path.join('india_base','pv_state_starting_capacities.csv'), index = False)
 
@@ -450,7 +449,7 @@ def solar_resource_profiles(agents):
     resource['cf'] = resource.apply(load_resource_data, axis=1)
     
     resource = resource[['district_id','resource_id','tilt','azimuth','cf']]
-    resource.to_csv(os.path.join('india_base','solar_resource_profiles.csv'))
+    resource.to_json(os.path.join('india_base','solar_resource_hourly.json'))
 
 def urdb_tariff(agents):
     """
@@ -458,7 +457,7 @@ def urdb_tariff(agents):
     
     Columns
     -------
-        rate_id_alias (int) : integer representation of rate_id
+        tariff_id (int) : integer representation of rate_id
         rate_json (json) : json representation of rate
     """
     
@@ -468,7 +467,7 @@ def urdb_tariff(agents):
     # --- load sample tariff --- 
     sample_tariff = pd.read_pickle(os.path.join('reference_data','sample_tariff_dict.pkl'))
         
-    for rate_id in agents['rate_id_alias'].unique():
+    for rate_id in agents['tariff_id'].unique():
         
         sector, geo = rate_id.split('#')
         
@@ -492,7 +491,7 @@ def urdb_tariff(agents):
         
         # --- jsonify tariff and write to df ---
         tariff = json.dumps(tariff)
-        tariff_row = pd.DataFrame({'rate_id_alias':[rate_id], 'rate_json':[tariff]})
+        tariff_row = pd.DataFrame({'tariff_id':[rate_id], 'rate_json':[tariff]})
         urdb_df = urdb_df.append(tariff_row)
 
     # --- Save the df to a json ---
@@ -511,8 +510,8 @@ def normalized_load():
     
     """
     sample_load = pd.read_json(os.path.join(os.pardir, 'input_scenarios','col_test','normalized_load.json'))
-    
-    sample_load = sample_load.loc[sample_load['tariff_class'].isin(['estrato_3', 'comercial','industrial'])]
+    sample_load = sample_load.rename({'tariff_class':'tariff_id'}, axis='columns')
+    sample_load = sample_load.loc[sample_load['tariff_id'].isin(['estrato_3', 'comercial','industrial'])]
     sample_load.columns = ['sector_abbr','kwh']
     sample_load['sector_abbr'] = ['res','com','ind']
     sample_load = sample_load.append(pd.DataFrame({'sector_abbr':['agg'], 'kwh':sample_load.loc[sample_load['sector_abbr'] == 'ind', 'kwh']}))
@@ -549,7 +548,6 @@ customers_in_bin_dist, load_per_customer_in_bin_dist = samp.make_load_dist(censu
                                                                       hh_count, load_count,
                                                                       samp.customers_per_hh_by_sector,
                                                                       samp.all_geo_sigma_load)
-
 # --- Initialize Agents ---
 print('........initializing agents')
 agents = samp.initialize_agents(agent_count)
@@ -560,7 +558,7 @@ agents = samp.assign_distribution(agents, district_dist, 'district_name')
 print('........creating rooftop distribution')
 agents = samp.assign_distribution(agents, roof_dist, 'developable_roof_sqft')
 print('........creating load distribution')
-agents = samp.assign_distribution(agents, load_per_customer_in_bin_dist, 'load_kwh_per_customer_in_bin')
+agents = samp.assign_distribution(agents, load_per_customer_in_bin_dist, 'load_per_customer_in_bin_kwh')
 print('........creating customers distribution')
 agents = samp.assign_distribution(agents, customers_in_bin_dist, 'customers_in_bin')
 
@@ -577,7 +575,7 @@ agents = samp.clean_agents(agents)
 
 # --- Save agents ---
 print('........saving agents as csv')
-agents.to_csv('india_core_agent_attributes.csv')
+agents.to_csv(os.path.join('india_base','agent_core_attributes.csv'), index=False)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~ Create CSVs ~~~~~~~~~~~~~~~~~~
