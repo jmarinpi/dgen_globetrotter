@@ -17,6 +17,7 @@ TODO:
 import os
 import itertools
 import json
+from distutils.dir_util import copy_tree
 
 # --- External Library Imports ---
 import pandas as pd
@@ -27,7 +28,7 @@ from shapely.geometry import Point, shape
 import shapely
 
 # --- Module Imports ---
-import config
+import agent_config as config
 import helper
 import agent_sampling as samp
 
@@ -36,6 +37,10 @@ pd.options.mode.chained_assignment = None
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~ Functions ~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# --- read lookups ---
+state_id_lookup = pd.read_csv(os.path.join('reference_data', 'india_census','state_id_lookup.csv'))
+state_id_lookup = dict(zip(state_id_lookup['state_name'], state_id_lookup['state_id']))
 
 def wholesale_rates():
     """
@@ -72,8 +77,6 @@ def wholesale_rates():
         pivoted[y] = pivoted[2047] * (1 + annual_diff)**(y_index + 1)
     
     # --- add state_id ---
-    state_id_lookup = pd.read_csv(os.path.join('reference_data', 'india_census','state_id_lookup.csv'))
-    state_id_lookup = dict(zip(state_id_lookup['state_name'], state_id_lookup['state_id']))
     pivoted['state_id'] = pivoted['state_name'].map(state_id_lookup)
     
     # --- currency conversion ---
@@ -173,22 +176,35 @@ def load_growth(agent_df):
     # --- Add Previous Years --
     reeds_load = reeds_load.fillna(method='bfill', axis=1).fillna(method='ffill', axis=1)
 
+    long_dfs = []
     # --- Calculate cumulative product ---
-    reeds_load += 1
-    reeds_load = reeds_load.cumprod(axis=1)
+    for scenario, multiplier in zip(['Low','Planning','High'],[config.LOW_LOAD_GROWTH, config.PLANNING_LOAD_GROWTH, config.HIGH_LOAD_GROWTH]):
+        reeds_load += 1
+        reeds_load *= multiplier
+        reeds_load = reeds_load.cumprod(axis=1)
 
-    # --- Convert back to long_df ---
-    load_growth = reeds_load.copy()
-    load_growth.reset_index(inplace=True)
-    load_growth = load_growth.melt(id_vars=['state'], var_name=['year'], value_name='new_load_growth')
+        # --- Convert back to long_df ---
+        load_growth = reeds_load.copy()
+        load_growth.reset_index(inplace=True)
+        load_growth = load_growth.melt(id_vars=['state'], var_name=['year'], value_name='new_load_growth')
 
-    for c in ['residential', 'commercial', 'industrial', 'agriculture']:
-        load_growth[c] = load_growth['new_load_growth']
-    load_growth.drop('new_load_growth', axis='columns', inplace=True)
+        for c in ['residential', 'commercial', 'industrial', 'agriculture']:
+            load_growth[c] = load_growth['new_load_growth'] #TODO: implement sector specific load growth
+        load_growth.drop('new_load_growth', axis='columns', inplace=True)
 
-    load_growth = load_growth.melt(id_vars=['state','year'], var_name='sector_abbr', value_name='load_growth')
+        load_growth = load_growth.melt(id_vars=['state','year'], var_name='sector_abbr', value_name='load_multiplier')
+        load_growth['scenario'] = scenario
+        long_dfs.append(load_growth)
 
-    load_growth.to_csv(os.path.join('india_base','financing_rates.csv'), index=False)
+    load_growth = pd.concat(long_dfs, axis='rows')
+
+    # --- map state_id ---
+    load_growth['state'] = load_growth['state'].apply(helper.sanitize_string)
+    load_growth['state_id'] = load_growth['state'].map(state_id_lookup)
+    load_growth.drop(['state'], axis='columns')
+    load_growth['sector_abbr'] = load_growth['sector_abbr'].map({'residential':'res','commercial':'com', 'industrial':'ind', 'agricutlure':'agg'})
+
+    load_growth.to_csv(os.path.join('india_base','load_growth_projections.csv'), index=False)
 
 
 def nem_settings(agent_df):
@@ -209,6 +225,10 @@ def nem_settings(agent_df):
     nem_df.loc[nem_df['sector_abbr']=='res', 'nem_system_size_limit_kw'] = config.RES_NEM_KW_LIMIT
     nem_df.loc[nem_df['sector_abbr']=='com', 'nem_system_size_limit_kw'] = config.COM_NEM_KW_LIMIT
     nem_df.loc[nem_df['sector_abbr']=='ind', 'nem_system_size_limit_kw'] = config.IND_NEM_KW_LIMIT
+
+    # --- Define Compensation Style for each State --- #TODO: update this based on cstep data
+    nem_df['compensation_style'] = 'Net Metering'
+
     nem_df.to_csv(os.path.join('india_base','nem_settings.csv'), index = False)
     
 def rate_escalations(agent_df):
@@ -329,10 +349,6 @@ def pv_state_starting_capacities():
         for reg in india_regions:
             df_sec_starting_capacities.loc[reg, 'pv_capacity_mw'] = df_sec_by_region.loc[reg,2014]
             
-        
-        df_state_id = pd.read_csv(os.path.join('reference_data','state_id_lookup.csv')).set_index('state_name') #SOURCE: MNRE Q4
-        df_state_id = df_state_id.rename(index={'andaman_nicobar_islands':'andaman_and_nicobar_islands','nct_of_delhi':'delhi','jammu_kashmir':'jammu_and_kashmir'})
-
         df_starting_capacities_all = pd.DataFrame()
         df_sec_by_region = df_sec_by_region.reset_index().rename(columns={'Unnamed: 0':'state_name'})
         
@@ -342,8 +358,6 @@ def pv_state_starting_capacities():
         df_starting_capacities['tariff_class']=''
          
         df_starting_capacities['state_name'] = df_starting_capacities['state_name'].apply(helper.sanitize_string)
-        state_id_lookup = pd.read_csv(os.path.join('reference_data', 'india_census','state_id_lookup.csv'))
-        state_id_lookup = dict(zip(state_id_lookup['state_name'] ,state_id_lookup['state_id']))
         df_starting_capacities['state_id'] = df_starting_capacities['state_name'].map(state_id_lookup)
         df_starting_capacities['state_id'] = df_starting_capacities['state_id']
         
@@ -493,10 +507,10 @@ def normalized_load():
     Columns
     -------
         state_id (int) : integer representation of state
-        kwh (set/list) : 8760 of load normalized between TODO what is this normalized between?
+        kwh (set/list) : 8760 of load
     
     """
-    sample_load = pd.read_json('/Users/skoebric/Documents/NREL-GitHub/dgen_globetrotter/input_scenarios/col_test/normalized_load.json')
+    sample_load = pd.read_json(os.path.join(os.pardir, 'input_scenarios','col_test','normalized_load.json'))
     
     sample_load = sample_load.loc[sample_load['tariff_class'].isin(['estrato_3', 'comercial','industrial'])]
     sample_load.columns = ['sector_abbr','kwh']
@@ -505,59 +519,92 @@ def normalized_load():
     sample_load.reset_index(inplace=True, drop=True)
     sample_load.to_json(os.path.join('india_base','normalized_load.json'))
 
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~ Create Agents ~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
+
+print('.....creating agents')
 # --- Load Files ---
+print('........loading consumption data')
 con = samp.load_con()
+print('........loading census data')
 census = samp.load_census()
     
 # --- Make Distributions ---
+print('........counting load')
 load_count = samp.make_load_count(con)
+print('........sampling sectors')
 sector_dist_load = samp.make_sector_dist_load(con)
+print('........sampling agent count')
 agent_count = samp.make_agent_count(sector_dist_load)
+print('........sampling household count')
 hh_count = samp.make_hh_count(census)
+print('........sampling district count')
 district_dist = samp.make_district_dist(census, agent_count)
+print('........sampling roof size')
 roof_dist = samp.make_roof_dist(census, agent_count, samp.developable_sqft_mu, samp.developable_sqft_sigma)
+print('........sampling load')
 customers_in_bin_dist, load_per_customer_in_bin_dist = samp.make_load_dist(census, agent_count,
                                                                       hh_count, load_count,
                                                                       samp.customers_per_hh_by_sector,
                                                                       samp.all_geo_sigma_load)
 
 # --- Initialize Agents ---
+print('........initializing agents')
 agents = samp.initialize_agents(agent_count)
 
 # --- Apply Distributions ---
+print('........creating district distribution')
 agents = samp.assign_distribution(agents, district_dist, 'district_name')
+print('........creating rooftop distribution')
 agents = samp.assign_distribution(agents, roof_dist, 'developable_roof_sqft')
+print('........creating load distribution')
 agents = samp.assign_distribution(agents, load_per_customer_in_bin_dist, 'load_kwh_per_customer_in_bin')
+print('........creating customers distribution')
 agents = samp.assign_distribution(agents, customers_in_bin_dist, 'customers_in_bin')
 
 
 # --- Clean up ---
+print('........mapping distributions')
 agents = samp.map_geo_ids(agents)
 agents = samp.map_tariff_ids(agents)
 agents = samp.map_hdi(agents)
+print('........merging geographies')
 agents = samp.merge_district_geometry(agents)
+print('........cleaning up agents')
 agents = samp.clean_agents(agents)
 
 # --- Save agents ---
+print('........saving agents as csv')
 agents.to_csv('india_core_agent_attributes.csv')
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~ Create CSVs ~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+print('....creating scenario csvs')
+print('........wholesale rates')
 wholesale_rates()
+print('........financing rates')
 financing_rates(agents)
+print('........load growth')
 load_growth(agents)
+print('........nem settings')
 nem_settings(agents)
+print('........rate escalations')
 rate_escalations(agents)
+print('........pv starting capacities')
 pv_state_starting_capacities()
+print('........solar resource profiles')
 solar_resource_profiles(agents)
+print('........urdb tariffs')
 urdb_tariff(agents)
+print('........normalized load')
 normalized_load()
+
+# --- copy files to input_scenarios in pdir ---
+print('....copying csvs to input_scenarios')
+copy_tree('india_base/', os.path.join(os.pardir, 'input_scenarios','india_base/'))
 
 #%%
 

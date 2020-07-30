@@ -7,3 +7,4 @@ pandas
 psutil
 psycopg2
 sqlalchemy
+fuzzyset

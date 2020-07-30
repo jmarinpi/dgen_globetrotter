@@ -473,34 +473,6 @@ def apply_scale_normalized_load_profiles(dataframe):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def apply_carbon_intensities(dataframe, carbon_intensities):
-    """
-    Apply carbon intensities by country and control region and sector
-
-    Parameters
-    ----------
-    dataframe : pandas.DataFrame
-        agent attributes for the given year
-    carbon_intensities : pandas.DataFrame
-        Attributes
-        ----------
-        carbon_intensities.carbon_price_cents_per_kwh
-
-    Returns
-    -------
-    pandas.DataFrame
-        agent attributes with new attributes
-    """
-    dataframe = dataframe.reset_index()
-    dataframe = pd.merge(dataframe, carbon_intensities, how='left', on=['sector_abbr', 'control_reg_id'])
-    dataframe = dataframe.set_index('agent_id')
-
-    return dataframe
-
-
-
-#%%
-@decorators.fn_timer(logger=logger, tab_level=2, prefix='')
 def estimate_initial_market_shares(dataframe):
     """
     Estimates initial market penetration of DPV and number of adopters at the state level

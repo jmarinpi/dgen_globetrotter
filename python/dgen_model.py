@@ -146,10 +146,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply financial terms
                     solar_agents.on_frame(agent_mutation.elec.apply_financial_params, [scenario_settings.get_financing_terms(), scenario_settings.financial_options['annual_inflation_pct']])
 
-                    # Apply carbon intensities
-                    carbon_intensities_yearly = scenario_settings.get_carbon_intensities(year)
-                    solar_agents.on_frame(agent_mutation.elec.apply_carbon_intensities, carbon_intensities_yearly)
-
                     # Apply wholesale electricity prices
                     solar_agents.on_frame(agent_mutation.elec.apply_wholesale_elec_prices, scenario_settings.get_wholesale_elec_prices())
                     

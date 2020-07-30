@@ -266,7 +266,6 @@ class ScenarioSettings:
           self.sector_data = {}
           self.scenarios = {
                'load_growth_scenario_name': None,
-               'carbon_price_scenario_name': None,
                'compensation_scenario_name':None
                }
           self.random_seed_generator = None
@@ -285,7 +284,7 @@ class ScenarioSettings:
      @property
      def input_csv_folder(self):
           """Location of input csv files"""
-          return os.path.join('../input_scenarios',self.scenario_folder)
+          return os.path.join(os.pardir, 'input_scenarios',self.scenario_folder)
 
      @property
      def model_years(self):
@@ -324,7 +323,6 @@ class ScenarioSettings:
                str: [     'scenario_name',
                           'scenario_folder',
                               'scenarios.load_growth_scenario_name',
-                              'scenarios.carbon_price_scenario_name',
                               'scenarios.compensation_scenario_name',
                               'tech_mode'] + sector_strs,
                int: ['start_year','end_year'],
@@ -375,19 +373,19 @@ class ScenarioSettings:
           """Make output folders for the run"""
           self.scenario_name = model_settings.check_scenario_name(self)
           self.out_scen_path = os.path.join(self.out_dir, self.scenario_name)
-          self.dir_to_write_input_data = self.out_scen_path + '/input_data'
+          self.dir_to_write_input_data = os.path.join(self.out_scen_path, 'input_data')
           os.makedirs(self.out_scen_path)
           os.makedirs(self.dir_to_write_input_data)
           shutil.copy(self.input_scenario, self.out_scen_path)
 
      def write_inputs(self):
           """Export key attributes to output folder"""
-          self.pv_trajectories.to_csv(self.dir_to_write_input_data + '/pv_trajectories.csv', index=False)
-          self.storage_trajectories.to_csv(self.dir_to_write_input_data + '/storage_trajectories.csv', index=False)
-          self.financial_trajectories.to_csv(self.dir_to_write_input_data + '/financial_trajectories.csv', index=False)
-          self.control_reg_trajectories.to_csv(self.dir_to_write_input_data + '/control_reg_trajectories.csv', index=False)
-          self.market_trajectories.to_csv(self.dir_to_write_input_data + '/market_trajectories.csv', index=False)
-          self.state_start_conditions.to_csv(self.dir_to_write_input_data + '/state_start_conditions.csv', index=False)
+          self.pv_trajectories.to_csv(os.path.join(self.dir_to_write_input_data, 'pv_trajectories.csv'), index=False)
+          self.storage_trajectories.to_csv(os.path.join(self.dir_to_write_input_data, 'storage_trajectories.csv'), index=False)
+          self.financial_trajectories.to_csv(os.path.join(self.dir_to_write_input_data, 'financial_trajectories.csv'), index=False)
+          self.control_reg_trajectories.to_csv(os.path.join(self.dir_to_write_input_data, 'control_reg_trajectories.csv'), index=False)
+          self.market_trajectories.to_csv(os.path.join(self.dir_to_write_input_data, 'market_trajectories.csv'), index=False)
+          self.state_start_conditions.to_csv(os.path.join(self.dir_to_write_input_data, 'state_start_conditions.csv'), index=False)
 
      def collapse_sectors(self, df, columns, adders =[]):
           """Split each row into groups by sector, then stack the groups"""
@@ -418,7 +416,6 @@ class ScenarioSettings:
                self.scenario_folder = values.get('scenario_folder')
                self.end_year = values.get('end_year')
                self.scenarios['load_growth_scenario_name'] = values.get('load_growth_scenario')
-               self.scenarios['carbon_price_scenario_name'] = values.get('carbon_price')
                self.scenarios['compensation_scenario_name'] = values.get('nem_scenario')
                sector_selection = values.get('markets')
                self.sector_data = {}
@@ -497,7 +494,7 @@ class ScenarioSettings:
                     self.financial_trajectories = self.financial_trajectories.merge(result, on=['year','sector_abbr'])
 
           if table_name =="input_main_market_projections":
-               adders = ['default_rate_escalations','carbon_dollars_per_ton']
+               adders = ['default_rate_escalations']
                rename_set = {'user_defined_{}_rate_escalations':'user_defined_rate_escalations'}
                result = self.collapse_sectors(df, rename_set, adders)
                if self.market_trajectories.empty:
@@ -505,46 +502,30 @@ class ScenarioSettings:
                else:
                     self.market_trajectories = self.market_trajectories.merge(result, on=['year','sector_abbr'])
 
-          if 'carbon_dollars_per_ton' in self.market_trajectories.columns and 'carbon_price_cents_per_kwh' not in self.control_reg_trajectories.columns:
-               self.load_carbon_intensities()
-
           return
+
+     def _find_geography_column_to_merge_on(self, df):
+          on = []
+          for cat in ['district_id','state_id','control_reg_id','tariff_class','sector_abbr','tariff_id', 'year']:
+               if cat in df.columns:
+                    on.append(cat)
+          return on
 
      def load_nem_settings(self):
           df = pd.read_csv(os.path.join(self.input_csv_folder,'nem_settings.csv'),index_col=None)
-     
-          # --- Check available columns in loaded csv ---
-          if 'state_id' in df.columns:
-               on = 'state_id'
-          elif 'control_reg_id' in df.columns:
-               on = 'control_reg_id'
-          elif 'tariff_class' in df.columns:
-               on = 'tariff_class'
-          else:
-               raise KeyError("'state_id' and 'control_reg_id' not in nem_settings.csv columns")
-
-          if self.control_reg_trajectories.empty:
-               self.control_reg_trajectories = df
-          else:
-               columns = [on, 'sector_abbr', 'year']
-               self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on=columns)
+          on = self._find_geography_column_to_merge_on(df)
+          self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on=on)
 
      def load_core_agent_attributes(self):
-          self.core_agent_attributes = pd.DataFrame()
-          tmp = pd.read_csv(os.path.join(self.input_csv_folder, 'agent_core_attributes_all.csv'), index_col=None)
-          tmp = tmp.sample(frac=SAMPLE_PCT) #sample (i.e. for test runs) a smaller agent_df, defined in config
-          tmp['agent_id']= list(range(tmp.shape[0]))
-          for t in self.techs:
-               tmp['tech'] = t
-          self.core_agent_attributes = pd.concat([self.core_agent_attributes,tmp], sort=False)
-          if 'solar' in self.techs:
-               df = pd.read_csv(os.path.join(self.input_csv_folder, 'pv_state_starting_capacities.csv'),index_col=None)
-               self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['control_reg_id','state_id','sector_abbr','tariff_class'])
-          
-          # There was a problem where an agent was being generated that had no customers in the bin, but load in the bin
-          # This is a temporary patch to get the model to run in this scenario\
-          self.core_agent_attributes['customers_in_bin'] = np.where(self.core_agent_attributes['customers_in_bin']==0, 1, self.core_agent_attributes['customers_in_bin'])
-          self.core_agent_attributes['load_per_customer_in_bin_kwh'] = np.where(self.core_agent_attributes['load_per_customer_in_bin_kwh']==0, 1, self.core_agent_attributes['load_per_customer_in_bin_kwh'])
+          df = pd.read_csv(os.path.join(self.input_csv_folder, 'agent_core_attributes_all.csv'))
+          df = df.sample(frac=SAMPLE_PCT)
+          df['agent_id'] = list(range(df.shape[0]))
+          self.core_agent_attributes = df
+
+     def load_starting_capacities(self):
+          df = pd.read_csv(os.path.join(self.input_csv_folder, 'pv_state_starting_capacities.csv'),index_col=None)
+          on = self._find_geography_column_to_merge_on(df)
+          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=on)
 
      def load_normalized_load_profiles(self):
           if os.path.exists(os.path.join(self.input_csv_folder, 'normalized_load.json')):
@@ -554,45 +535,13 @@ class ScenarioSettings:
                df['kwh'] = df['kwh'].apply(ast.literal_eval)
           df = df.rename(columns={'kwh':'consumption_hourly'})
 
-          # --- Check available columns in loaded csv ---
-          if 'state_id' in df.columns:
-               on = 'state_id'
-          elif 'control_reg_id' in df.columns:
-               on = 'control_reg_id'
-          elif 'tariff_class' in df.columns:
-               on = 'tariff_class'
-          else:
-               raise KeyError("'state_id' and 'control_reg_id' not in normalized_load.csv columns")
-
-          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=[on])
-
-          # in_cols = self.core_agent_attributes.columns
-
-          # def scale_array_precision(row, array_col, prec_offset_col):
-          #      row[array_col] = np.array(
-          #      row[array_col], dtype='float64') / row[prec_offset_col]
-          #      return row
-
-          # def scale_array_sum(row, array_col, scale_col):
-          #      hourly_array = np.array(row[array_col], dtype='float64')
-          #      row[array_col] = hourly_array / hourly_array.sum() * np.float64(row[scale_col])
-          #      return row
-
-          # # apply the scale offset to convert values to float with correct precision
-          # self.core_agent_attributes = self.core_agent_attributes.apply(scale_array_precision, axis=1, args=('consumption_hourly', 'scale_offset_load'))
-
-          # # scale the normalized profile to sum to the total load
-          # self.core_agent_attributes = self.core_agent_attributes.apply(scale_array_sum, axis=1, args=('consumption_hourly', 'load_per_customer_in_bin_kwh'))
-
-          # # subset to only the desired output columns
-          # out_cols = list(in_cols.values)
-          # self.core_agent_attributes = self.core_agent_attributes[out_cols]
+          on = self._find_geography_column_to_merge_on(df)
+          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=on)
 
      def load_interconnection_settings(self):
-          """Load maximum interconnection limits from csv"""
           df = pd.read_csv(os.path.join(self.input_csv_folder, 'interconnection_limits.csv'), index_col=None)
-          df = [['control_reg_id','state_id','interconnection_limit_kw']]
-          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['state_id','control_reg_id'])
+          on = self._find_geography_column_to_merge_on(df)
+          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=on)
 
      def load_normalized_hourly_resource_solar(self):
           if os.path.exists(os.path.join(self.input_csv_folder,'solar_resource_hourly.json')):
@@ -602,64 +551,31 @@ class ScenarioSettings:
                df['cf'] = df['cf'].apply(ast.literal_eval)
           df = df.rename(columns={'cf':'solar_cf_profile'})
 
-          # --- Check available columns in loaded csv ---
-          if 'state_id' in df.columns:
-               on = 'state_id'
-          elif 'control_reg_id' in df.columns:
-               on = 'control_reg_id'
-          elif 'tariff_class' in df.columns:
-               on = 'tariff_class'
-          else:
-               raise KeyError("'state_id' and 'control_reg_id' not in solar_resource_hourly.json columns")
-
-          df = df[[on,'solar_cf_profile']]
-          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=[on])
+          on = self._find_geography_column_to_merge_on(df)
+          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=on)
 
      def load_electric_rates_json(self):
           if os.path.exists(os.path.join(self.input_csv_folder,'urdb3_rates.json')):
                df = pd.read_json(os.path.join(self.input_csv_folder,'urdb3_rates.json'))
           elif os.path.exists(os.path.join(self.input_csv_folder,'urdb3_rates.csv')):
                df = pd.read_csv(os.path.join(self.input_csv_folder,'urdb3_rates.csv'))
-          df = df[['rate_id_alias','rate_json']]
-          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=['rate_id_alias'])
-          self.core_agent_attributes.rename(columns={'rate_json':'tariff_dict', 'rate_id_alias':'tariff_id'}, inplace=True)
-          self.core_agent_attributes['tariff_dict'] = self.core_agent_attributes['tariff_dict'].apply(lambda x: json.loads(x))
 
-     def load_carbon_intensities(self):
-          set_zero = False
-          if self.scenarios['carbon_price_scenario_name'] == 'Price Based On State Carbon Intensity':
-               df = pd.read_csv(os.path.join(self.input_csv_folder,'carbon_intensities_grid.csv'),index_col=None)
+          df.rename(columns={'rate_json':'tariff_dict', 'rate_id_alias':'tariff_id'}, inplace=True)
+          df['tariff_dict'] = df['tariff_dict'].apply(lambda x: json.loads(x))
+          
+          on = self._find_geography_column_to_merge_on(df)
+          self.core_agent_attributes = self.core_agent_attributes.merge(df, on=on)
 
-          elif self.scenarios['carbon_price_scenario_name'] in ['Price Based On NG Offset','No Carbon Price']:
-               df = pd.read_csv(os.path.join(self.input_csv_folder,'carbon_intensities_ng.csv'),index_col=None)
-
-          if self.scenarios['carbon_price_scenario_name'] == 'No Carbon Price':
-               set_zero = True
-          ids = ['control_reg_id']
-          years = [i for i in df.columns if i not in ids]
-          result = pd.DataFrame()
-          for year in years:
-            tmp = df[ids+[year]]
-            if set_zero:
-              tmp[year] = 0
-            tmp['year'] = int(year)
-            tmp.rename(columns={year:'t_co2_per_kwh'},inplace=True)
-            result = pd.concat([result,tmp], sort=False)
-
-          result = result.merge(self.market_trajectories[['year','carbon_dollars_per_ton','sector_abbr']], on=['year'])
-          result['carbon_price_cents_per_kwh'] = result['t_co2_per_kwh'] * 100 * result['carbon_dollars_per_ton']
-
-          self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on=['control_reg_id','year','sector_abbr'])
 
      def load_max_market_share(self):
-          view = pd.read_csv(os.path.join(self.input_csv_folder,'max_market_share_settings.csv'),index_col=None)
+          df = pd.read_csv(os.path.join(self.input_csv_folder,'max_market_share_settings.csv'), index_col=None)
 
           mms_filter = []
           for sector,settings  in list(self.sector_data.items()):
-               mms_filter.append( list((view['sector_abbr'] == sector) & ( view['source'] == settings.max_market_curve_name ) & (view['business_model'] == 'host_owned')))
-               mms_filter.append( list((view['sector_abbr'] == sector) & ( view['source'] == "NREL" ) & (view['business_model'] == 'tpo')))
+               mms_filter.append( list((df['sector_abbr'] == sector) & ( df['source'] == settings.max_market_curve_name ) & (df['business_model'] == 'host_owned')))
+               mms_filter.append( list((df['sector_abbr'] == sector) & ( df['source'] == "NREL" ) & (df['business_model'] == 'tpo')))
 
-          df = view[np.any(mms_filter,axis=0)]
+          df = df[np.any(mms_filter,axis=0)]
 
           df_selection = df[(df['metric_value']==30) & (df['metric']=='payback_period') & (df['business_model']=='host_owned')]
           df_selection['metric_value'] = 30.1
@@ -667,101 +583,64 @@ class ScenarioSettings:
           self.market_share_parameters = pd.concat([df,df_selection], sort=False)
 
      def load_load_growth(self):
-          view = pd.read_csv(os.path.join(self.input_csv_folder,'load_growth_projections.csv'),index_col=None)
-          view.rename(columns={'scenario':'load_growth_scenario'}, inplace=True)
-          re_filter = []
-          for sector,settings  in list(self.sector_data.items()):
-               re_filter.append( list((view['sector_abbr'] == settings.sector_abbr.lower()) & ( view['load_growth_scenario'] == self.scenarios['load_growth_scenario_name']) ))
-          view = view[np.any(re_filter,axis=0)]
+          df = pd.read_csv(os.path.join(self.input_csv_folder,'load_growth_projections.csv'),index_col=None)
+          df.rename(columns={'scenario':'load_growth_scenario'}, inplace=True)
+          df = df.loc[df['load_growth_scenario'] == self.scenarios['load_growth_scenario_name']]
 
           if self.control_reg_trajectories.empty:
-               self.control_reg_trajectories = view
+               self.control_reg_trajectories = df
           else:
-               columns = ['control_reg_id', 'sector_abbr', 'year']
-               self.control_reg_trajectories = self.control_reg_trajectories.merge(view, on=columns)
-
-     def load_compensation_settings(self):
-          df = pd.read_csv(os.path.join(self.input_csv_folder,'nem_settings.csv'),index_col=None)
-
-          # --- Load Correct Scenario Settings --- 
-          if self.scenarios['compensation_scenario_name'] == 'Buy All Sell All':
-               self.core_agent_attributes['compensation_style'] = 'Buy All Sell All'
-          elif self.scenarios['compensation_scenario_name'] == 'Net Billing (Wholesale)':
-               self.core_agent_attributes['compensation_style'] = 'Net Billing (Wholesale)'
-          elif self.scenarios['compensation_scenario_name'] == 'Net Billing (Avoided Cost)':
-               self.core_agent_attributes['compensation_style'] = 'Net Billing (Avoided Cost)'
-          elif self.scenarios['compensation_scenario_name'] == 'Net Metering':
-               self.core_agent_attributes['compensation_style'] = 'Net Metering'
+               on = self._find_geography_column_to_merge_on(df)
+               self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on=columns)
 
 
      def load_financing_rates(self):
           df = pd.read_csv(os.path.join(self.input_csv_folder,'financing_rates.csv'), index_col=None)
-
-          # --- Check available columns in loaded csv ---
-          if 'state_id' in df.columns:
-               on = 'state_id'
-          elif 'control_reg_id' in df.columns:
-               on = 'control_reg_id'
-          else:
-               raise KeyError("'state_id' and 'control_reg_id' not in financing_rates.csv columns")
-          self.core_agent_attributes = pd.merge(self.core_agent_attributes, df, on=[on,'sector_abbr'])
+          on = self._find_geography_column_to_merge_on(df)
+          self.core_agent_attributes = pd.merge(self.core_agent_attributes, df, on=on)
 
      def load_avoided_costs(self):
           df = pd.read_csv(os.path.join(self.input_csv_folder,'avoided_cost_rates.csv'), encoding='utf-8-sig',index_col=None)
-          ids = ['control_reg_id']
-          years = [i for i in df.columns if i not in ids]
-          result = pd.DataFrame()
-          for year in years:
-               tmp = df[ids+[year]]
-               tmp['year'] = int(year)
-               tmp.rename(columns={year:'hourly_excess_sell_rate_usd_per_kwh'},inplace=True)
-               result = pd.concat([result,tmp], sort=False)
+          on = self._find_geography_column_to_merge_on(df)
+          df.melt('control_reg_id',var_name='year', value_name='hourly_excess_sell_rate_usd_per_kwh')
           
           if self.control_reg_trajectories.empty:
-               self.control_reg_trajectories = result
+               self.control_reg_trajectories = df
           else:
-               columns = ['control_reg_id', 'year']
-               self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on=columns)
+               self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on=on)
 
      def load_wholesale_electricity(self):
           df = pd.read_csv(os.path.join(self.input_csv_folder,'wholesale_rates.csv'),index_col=None)
-          ids = ['control_reg_id']
-          years = [i for i in df.columns if i not in ids]
-          result = pd.DataFrame()
-          for year in years:
-            tmp = df[ids+[year]]
-            tmp['year'] = int(year)
-            tmp.rename(columns={year:'wholesale_elec_usd_per_kwh'},inplace=True)
-            result = pd.concat([result,tmp], sort=False)
+          on = self._find_geography_column_to_merge_on(df)
+          df.melt('control_reg_id',var_name='year', value_name='wholesale_elec_usd_per_kwh')
 
           if self.control_reg_trajectories.empty:
                self.control_reg_trajectories = result
           else:
-               columns = ['control_reg_id', 'year']
-               self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on=columns)
+               self.control_reg_trajectories = self.control_reg_trajectories.merge(result, on=on)
 
      def load_rate_escalations(self):
-          view = pd.read_csv(os.path.join(self.input_csv_folder,'rate_escalations.csv'),index_col=None)
-          view.rename(columns={'escalation_factor':'elec_price_multiplier'}, inplace=True)
+          df = pd.read_csv(os.path.join(self.input_csv_folder,'rate_escalations.csv'),index_col=None)
+          df.rename(columns={'escalation_factor':'elec_price_multiplier'}, inplace=True)
           re_filter = []
           for sector,settings  in list(self.sector_data.items()):
-               re_filter.append( list((view['sector_abbr'] == settings.sector_abbr.lower()) & ( view['source'] == settings.rate_escalation_name ) ))
-          view = view[np.any(re_filter,axis=0)]
+               re_filter.append( list((df['sector_abbr'] == settings.sector_abbr.lower()) & ( df['source'] == settings.rate_escalation_name ) ))
+          df = df[np.any(re_filter,axis=0)]
 
           if self.control_reg_trajectories.empty:
-               self.control_reg_trajectories = view
+               self.control_reg_trajectories = df
           else:
-               columns = ['control_reg_id', 'sector_abbr', 'year']
-               self.control_reg_trajectories = self.control_reg_trajectories.merge(view, on= columns)
+               on = self._find_geography_column_to_merge_on(df)
+               self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on=on)
 
      def load_bass_params(self):
-          view = pd.read_csv(os.path.join(self.input_csv_folder,'pv_bass.csv'),index_col=None)
-          columns = ['control_reg_id','state','sector_abbr']
+          df = pd.read_csv(os.path.join(self.input_csv_folder,'pv_bass.csv'),index_col=None)
+          on = self._find_geography_column_to_merge_on(df)
 
           if self.state_start_conditions.empty:
-               self.state_start_conditions = view
+               self.state_start_conditions = df
           else:
-               self.state_start_conditions = self.state_start_conditions.merge(view, on= columns)
+               self.state_start_conditions = self.state_start_conditions.merge(df, on=on)
 
      def get_pv_specs(self):
           return self.pv_trajectories[['year','sector_abbr','pv_power_density_w_per_sqft','pv_deg','pv_price_per_kw','pv_om_per_kw','pv_variable_om_per_kw']]
@@ -784,9 +663,6 @@ class ScenarioSettings:
      def get_nem_settings(self,year):
           return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['control_reg_id','sector_abbr','nem_system_size_limit_kw','wholesale_elec_usd_per_kwh','hourly_excess_sell_rate_usd_per_kwh']]
 
-     def get_carbon_intensities(self,year):
-          return self.control_reg_trajectories[self.control_reg_trajectories['year']==year][['control_reg_id', 'sector_abbr','carbon_price_cents_per_kwh']]
-
      def get_max_market_share(self):
           return self.market_share_parameters
 
@@ -806,14 +682,13 @@ def init_model_settings():
     datetime = utilfunc.get_formatted_time()
 
     output_dir = datetime #str(input('Run name (default of formatted_time):')) or datetime
-    print(output_dir)
 
     model_settings.set('cdate', datetime)
     model_settings.set('out_dir',  '%s/runs/results_%s' % (os.path.dirname(os.getcwd()), output_dir))
     model_settings.set('git_hash', utilfunc.get_git_hash())
     
     # --- check for scenarios listed in config ---
-    input_scenarios = [s for s in glob.glob("../input_scenarios/*.xls*") if not '~$' in s]
+    input_scenarios = [s for s in glob.glob(os.path.join(os.pardir,'input_scenarios','*.xls*')) if not '~$' in s]
     if SCENARIOS == None:
         pass
     else:

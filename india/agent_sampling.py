@@ -3,7 +3,7 @@ import numpy as np
 import os
 import helper
 import geopandas as gpd
-import config
+import agent_config as config
 
 
 pd.options.mode.chained_assignment = None
