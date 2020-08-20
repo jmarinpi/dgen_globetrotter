@@ -492,10 +492,10 @@ def calc_max_market_share(dataframe, max_market_share_df):
 
     # Join the max_market_share table and dataframe in order to select the ultimate mms based on the metric value. 
     dataframe = pd.merge(dataframe, max_market_share_df[['sector_abbr', 'max_market_share','metric_value_as_factor', 'metric', 'business_model']], how = 'left', on = ['sector_abbr','metric_value_as_factor','metric', 'business_model'])
-
+    print(dataframe.columns)
     # Derate the maximum market share for commercial and industrial customers in leased buildings by (2/3)
     # based on the owner occupancy status (1 = owner-occupied, 2 = leased)
-    dataframe['max_market_share'] = np.where(dataframe.owner_occupancy_status == 2, dataframe['max_market_share']/3,dataframe['max_market_share'])
+    dataframe['max_market_share'] = np.where(dataframe['owner_occupancy_status'] == 2, dataframe['max_market_share']/3,dataframe['max_market_share'])
     
     # out_cols = in_cols + ['max_market_share', 'metric']    
     out_cols = in_cols + ['max_market_share', 'metric_value_as_factor', 'metric', 'metric_value_bounded']

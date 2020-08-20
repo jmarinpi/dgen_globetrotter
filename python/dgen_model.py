@@ -127,6 +127,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
 
                     # get and apply load growth
                     load_growth_yearly =  scenario_settings.get_load_growth(year)
+                    
                     solar_agents.on_frame(agent_mutation.elec.apply_load_growth, (load_growth_yearly))
                     
                     # Normalize the hourly load profile to updated total load which includes load growth multiplier
@@ -139,6 +140,11 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply each agent's electricity price change and assumption about increases
                     solar_agents.on_frame(agent_mutation.elec.apply_elec_price_multiplier_and_escalator, [ year, scenario_settings.get_rate_escalations()])
                     
+                    solar_agents.df['cap_cost_multiplier']=1
+                    solar_agents.df['developable_buildings_pct']=1
+                    solar_agents.df['compensation_style']='Net Metering'
+                    solar_agents.df['owner_occupancy_status']=1
+                    solar_agents.df['tech']='solar'
                     # Apply PV Specs                    
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_specs, scenario_settings.get_pv_specs())
                     solar_agents.on_frame(agent_mutation.elec.apply_storage_specs, [scenario_settings.get_batt_price_trajectories(), year, scenario_settings])

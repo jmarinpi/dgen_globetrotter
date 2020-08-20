@@ -150,15 +150,18 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
     """
 
     dataframe = dataframe.reset_index()
-
+   
     elec_price_multiplier = elec_price_change_traj[elec_price_change_traj['year']==year].reset_index()
-
+    
     horizon_year = year-10
 
     elec_price_escalator_df = elec_price_multiplier.copy()
     if horizon_year in elec_price_change_traj.year.values:
+        
         elec_price_escalator_df['historical'] = elec_price_change_traj[elec_price_change_traj['year']==horizon_year]['elec_price_multiplier'].values
+        
     else:
+        
         first_year = np.min(elec_price_change_traj['year'])
         first_year_df = elec_price_change_traj[elec_price_change_traj['year']==first_year].reset_index()
         missing_years = first_year - horizon_year
@@ -168,7 +171,6 @@ def apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change
 
     # Set lower bound of escalator at 0, assuming that potential customers would not evaluate declining electricity costs
     elec_price_escalator_df['elec_price_escalator'] = np.maximum(elec_price_escalator_df['elec_price_escalator'], 0)
-
     dataframe = pd.merge(dataframe, elec_price_multiplier[['elec_price_multiplier', config.BA_COLUMN, 'sector_abbr']], how='left', on=[config.BA_COLUMN, 'sector_abbr'])
     dataframe = pd.merge(dataframe, elec_price_escalator_df[[config.BA_COLUMN, 'sector_abbr', 'elec_price_escalator']],
                          how='left', on=[config.BA_COLUMN, 'sector_abbr'])
@@ -258,10 +260,11 @@ def apply_pv_specs(dataframe, pv_specs):
     """
     dataframe = dataframe.reset_index()
     dataframe = pd.merge(dataframe, pv_specs, how='left', on=['sector_abbr', 'year'])
-
+    
     #==========================================================================================================
     # apply the capital cost multipliers
     #==========================================================================================================
+    
     dataframe['pv_price_per_kw'] = (dataframe['pv_price_per_kw'] * dataframe['cap_cost_multiplier'])
 
     dataframe = dataframe.set_index('agent_id')
@@ -392,6 +395,7 @@ def apply_load_growth(dataframe, load_growth_df):
         agent attributes with new attributes
     """
     dataframe = dataframe.reset_index()
+    del dataframe['year']
     dataframe = pd.merge(dataframe, load_growth_df, how='left', on=[config.BA_COLUMN, 'sector_abbr'])
     #==========================================================================================================
     # for res, load growth translates to kwh_per_customer change
@@ -410,6 +414,7 @@ def apply_load_growth(dataframe, load_growth_df):
     #==========================================================================================================
     dataframe['load_in_bin_kwh'] = dataframe['load_in_bin_kwh_initial'] * dataframe['load_multiplier']
     dataframe = dataframe.set_index('agent_id')
+    
     return dataframe
 
 
@@ -493,14 +498,14 @@ def estimate_initial_market_shares(dataframe):
     #==========================================================================================================
     in_cols = list(dataframe.columns)
     dataframe = dataframe.reset_index()
-
+    
     #==========================================================================================================
     # find the total number of customers in each state (by technology and sector)
     #==========================================================================================================
-    state_total_developable_customers = dataframe[[config.BA_COLUMN, 'tariff_class', 'state_id', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
-        [config.BA_COLUMN, 'tariff_class', 'state_id', 'sector_abbr', 'tech'], as_index=False).sum()
-    state_total_agents = dataframe[[config.BA_COLUMN, 'tariff_class', 'state_id', 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
-        [config.BA_COLUMN, 'tariff_class', 'state_id', 'sector_abbr', 'tech'], as_index=False).count()
+    state_total_developable_customers = dataframe[[config.BA_COLUMN, 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
+        [config.BA_COLUMN,'sector_abbr', 'tech'], as_index=False).sum()
+    state_total_agents = dataframe[[config.BA_COLUMN, 'sector_abbr', 'tech', 'developable_customers_in_bin']].groupby(
+        [config.BA_COLUMN, 'sector_abbr', 'tech'], as_index=False).count()
     #==========================================================================================================
     # rename the final columns
     #==========================================================================================================
@@ -512,15 +517,15 @@ def estimate_initial_market_shares(dataframe):
     # merge together
     #==========================================================================================================
     state_denominators = pd.merge(state_total_developable_customers, state_total_agents, how='left', on=[
-                                  config.BA_COLUMN, 'state_id', 'tariff_class', 'sector_abbr', 'tech'])
+                                  config.BA_COLUMN, 'sector_abbr', 'tech'])
 
-    state_denominatorsconfig.BA_COLUMN = state_denominatorsconfig.BA_COLUMNastype(str)
+    # state_denominatorsconfig.BA_COLUMN = state_denominatorsconfig.BA_COLUMNastype(str)
     state_denominators[config.BA_COLUMN] = state_denominators[config.BA_COLUMN].astype('int')
     #==========================================================================================================
     # merge back to the main dataframe
     #==========================================================================================================
     dataframe = pd.merge(dataframe, state_denominators, how='left',
-        on=[config.BA_COLUMN, 'tariff_class', 'state_id', 'sector_abbr', 'tech'])
+        on=[config.BA_COLUMN, 'sector_abbr', 'tech'])
     #==========================================================================================================
     # determine the portion of initial load and systems that should be allocated to each agent
     # (when there are no developable agnets in the state, simply apportion evenly to all agents)

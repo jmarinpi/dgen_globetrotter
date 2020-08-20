@@ -639,7 +639,9 @@ class ScenarioSettings:
                self.control_reg_trajectories = self.control_reg_trajectories.merge(df, on=on)
 
      def load_bass_params(self):
+          print(self.input_csv_folder)
           df = pd.read_csv(os.path.join(self.input_csv_folder,'pv_bass.csv'),index_col=None)
+          print(df)
           on = self._find_geography_column_to_merge_on(df)
 
           if self.state_start_conditions.empty:
@@ -661,7 +663,7 @@ class ScenarioSettings:
 
      def get_rate_escalations(self):
           on = self._find_geography_column_to_merge_on(self.control_reg_trajectories)
-          return self.control_reg_trajectories[on+['elec_price_multiplier','year']]
+          return self.control_reg_trajectories[on+['elec_price_multiplier']]
 
      def get_wholesale_elec_prices(self):
           on = self._find_geography_column_to_merge_on(self.control_reg_trajectories)
@@ -680,6 +682,7 @@ class ScenarioSettings:
 
      def get_bass_params(self):
           on = self._find_geography_column_to_merge_on(self.state_start_conditions)
+          print(self.state_start_conditions)
           return self.state_start_conditions[on+['p','q','teq_yr1','tech']]
 
 def init_model_settings():

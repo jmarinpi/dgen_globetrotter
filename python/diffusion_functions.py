@@ -53,6 +53,7 @@ def calc_diffusion_solar(df, is_first_year, bass_params, override_p_value = None
 
     """
     df = df.reset_index()
+
     bass_params = bass_params[bass_params['tech']=='solar']    
     
     # set p/q/teq_yr1 params  
