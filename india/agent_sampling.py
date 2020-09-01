@@ -72,48 +72,14 @@ def load_census():
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # --- Assign Distribution Parameters (from SS19 as fill in if India data not available) ---
-    
-# SQL statement to get weighted average of developable roof sqft (U.S.) by sector
-# SELECT year, sector_abbr, ROUND(SUM(developable_roof_sqft * customers_in_bin) / SUM(customers_in_bin),1) as weighted_avg
-# FROM "10_ss20_mid_case".agent_outputs
-# WHERE year = 2020
-# GROUP BY year, sector_abbr
-# ORDER BY weighted_avg, year
-developable_sqft_mu = {'res':385, 'com':6378, 'ind':5329, 'agg': 20000} #20000 sqft ~ 0.5 acre for agg 
 
-# SELECT year, sector_abbr, ROUND(SQRT(SUM(customers_in_bin*POWER(developable_roof_sqft,2))/SUM(customers_in_bin) - POWER(SUM(customers_in_bin*developable_roof_sqft)/SUM(customers_in_bin), 2)),0) as weighted_std
-# FROM "10_ss20_mid_case".agent_outputs
-# WHERE year = 2020
-# GROUP BY year, sector_abbr
-# ORDER BY weighted_std, year					  
-developable_sqft_sigma = {'res':363, 'com':12526, 'agg': 20000, 'ind':13758} # SS19 std developable sqft by sector\
+# see exploring_roofs.ipynb
+developable_sqft_mu = {'res':149.33, 'com':1155.37, 'ind':15169.55, 'agg': 20000} #20000 sqft ~ 0.5 acre for agg 				  
+developable_sqft_sigma = {'res':91.45, 'com':1075.19, 'ind':10717.58, 'agg': 20000} # SS19 std developable sqft by sector\
 
-# WITH std_table AS (
-# 	SELECT year, sector_abbr,
-# 		SQRT(SUM(customers_in_bin*POWER(CAST(load_kwh_per_customer_in_bin as float),2))/SUM(customers_in_bin) - POWER(SUM(customers_in_bin*CAST(load_kwh_per_customer_in_bin as float))/SUM(customers_in_bin), 2)) as weighted_std
-# 	FROM "10_ss20_mid_case".agent_outputs
-# 	WHERE year = 2020
-# 	GROUP BY year, sector_abbr),
-# 	
-# 	mean_table AS(
-# 	SELECT year, sector_abbr,
-# 		SUM(CAST(load_kwh_per_customer_in_bin as float) * customers_in_bin) / SUM(customers_in_bin) as weighted_avg
-#  	FROM "10_ss20_mid_case".agent_outputs
-# 	WHERE year = 2020
-# 	GROUP BY year, sector_abbr)
-
-# SELECT s.sector_abbr, s.weighted_std / m.weighted_avg as pct
-# FROM std_table as s
-# 	INNER JOIN mean_table as m
-# 	ON s.year = m.year AND s.sector_abbr = m.sector_abbr
-# all_geo_sigma_load = {'res':0.58, 'com':2.5, 'agg':0, 'ind':6.10} # SS19 std load by sector / SS19 avg load by sector
-all_geo_sigma_load = {'res':0.1, 'com':0.1, 'agg':0.1, 'ind':0.1} #TODO: the SS19 values make no sense. need to visualize them to understand if a normal distribution is the right way to model this
-
-# SELECT sector_abbr, year, SUM(customers_in_bin)
-# FROM "10_ss20_mid_case".agent_outputs
-# WHERE year = 2020
-# GROUP BY year, sector_abbr
-customers_per_hh_by_sector = {'res':1, 'com':0.07, 'agg':0.01, 'ind':0.01} # SS19 customers_in_bin sum by sector / SS19 residential customers_in_bin
+# see exploring_consumption.ipynb
+all_geo_sigma_load = {'res':0.155456, 'com':1.5009, 'agg':3.4689, 'ind':0.611545}
+customers_per_hh_by_sector = {'res':1.8, 'com':0.282, 'agg':0.004, 'ind':0.0032} # SS19 customers_in_bin sum by sector / SS19 residential customers_in_bin
 
 # --- Functions to make distributions ---
 
@@ -193,6 +159,7 @@ def make_roof_dist(census, agent_count, developable_sqft_mu, developable_sqft_si
             dist = np.random.normal(loc=developable_sqft_mu[sector], #create distribution of rootop sizes for the geography/sector
                                     scale=developable_sqft_sigma[sector],
                                     size=n_agents)
+            dist = abs(dist)
             lower_bound = developable_sqft_mu[sector] * 0.1
             dist = np.clip(dist, lower_bound, None) #clip lower bound of developable roof sqft at 10 percent of average for sector
             developable_sqft_dist[geo][sector] = dist
@@ -215,6 +182,7 @@ def make_load_dist(census, agent_count, hh_count, load_count,
                 mu_load = n_load / n_customers #average annual kwh per customer across entire distribution
                 sigma_load = all_geo_sigma_load[sector] * mu_load #std of annual kwh per customer across entire distribution
                 dist = np.random.normal(mu_load, sigma_load, size=n_customers) # create distribution
+                dist = abs(dist)
                 count_hh, load_bins = np.histogram(dist, bins=n_agents) #create histogram with number of agents as bins
                 load_bins = [(sum([load_bins[i], load_bins[i+1]]) / 2) for i in range(len(load_bins)-1)] #center bins as mean between edges
                 load_dist = np.clip(load_bins, 0, None) #clip lower bound of developable roof sqft at 10 percent of average for sector
