@@ -77,7 +77,6 @@ def load_scenario_to_inputSheet(xls_file, model_settings):
      #==========================================================================================================
      # Loop through tables from the mapping_file spreadsheet and convert named ranges to pandas dataframes before loading into scenario settings
      #==========================================================================================================
-
           for table, range_name, transpose, melt,columns in mappings.itertuples(index=False):
                fnr = FancyNamedRange(wb, range_name)
                if transpose == True:
@@ -423,6 +422,7 @@ class ScenarioSettings:
                    self.sectors = SECTORS
                else:
                    self.sectors = [i for i in SECTORS if i in sector_selection.lower()]
+
                for s in self.sectors:
                    sector = SectorInputs(s)
                    sector.rate_structure_name = values.get(s + '_rate_structure')

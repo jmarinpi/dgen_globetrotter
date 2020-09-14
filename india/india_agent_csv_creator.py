@@ -226,7 +226,7 @@ def nem_settings(agent_df):
     nem_df.loc[nem_df['sector_abbr']=='com', 'nem_system_size_limit_kw'] = config.COM_NEM_KW_LIMIT
     nem_df.loc[nem_df['sector_abbr']=='ind', 'nem_system_size_limit_kw'] = config.IND_NEM_KW_LIMIT
 
-    # --- Define Compensation Style for each State --- #TODO: update this based on cstep data
+    # --- Define Compensation Style for each State ---
     nem_df['compensation_style'] = 'Net Metering'
 
     nem_df.to_csv(os.path.join('india_base','nem_settings.csv'), index = False)
@@ -280,106 +280,60 @@ def pv_state_starting_capacities():
         pv_capacity_mw (int) : existing PV capacity in the state/tariff
         pv_systems_count (int) : existing number of PV systems
     """
-    df_sec_natl_cumulative_q3 = pd.read_csv(os.path.join('reference_data','Historical India PV Install (National).csv')).loc[:4].set_index('Cumulative Capacity').drop('Source',axis=1) #SOURCE: BNEF
-    df_sec_natl_cumulative_q3.columns = df_sec_natl_cumulative_q3.columns.astype(int)
-    df_sec_natl_cumulative_share_q3 = df_sec_natl_cumulative_q3.loc[['Commercial Q3','Residential Q3','Industrial Q3','Total Rooftop Q3']].astype(float)/df_sec_natl_cumulative_q3.loc['Total Installed Q3'].astype(float).sum(axis=0)
-    
-    df_sec_natl_cumulative_q4 = pd.read_csv(os.path.join('reference_data','Historical India PV Install (National).csv')).loc[5:9].set_index('Cumulative Capacity').drop('Source',axis=1) #SOURCE: BNEF
-    df_sec_natl_cumulative_q4.columns = df_sec_natl_cumulative_q4.columns.astype(int)
-    df_sec_natl_cumulative_share_q4 = df_sec_natl_cumulative_q4.loc[['Commercial Q4','Residential Q4','Industrial Q4','Total Rooftop Q4']].astype(float)/df_sec_natl_cumulative_q4.loc['Total Installed Q4'].astype(float).sum(axis=0)
+    # --- Load MNRE data with differentiation by state_name and make long ---
+    by_state = pd.read_csv(os.path.join('reference_data','Cumulative Installed Capacity by State.csv'))
+    by_state = by_state.melt(id_vars=['State'])
+    by_state.columns = ['state_name', 'year','mnre_mw']
 
-    df_natl_cumulative_q3 = pd.read_csv(os.path.join('reference_data','Historical India PV Install (National).csv'), index_col=0).loc['Total Installed Q3'].drop('Source')
-    df_natl_cumulative_q3.index = df_natl_cumulative_q3.index.astype(int)
+    # --- Calculate percent by state_name in MNRE by year---
+    g = by_state.groupby(['state_name','year'])['mnre_mw'].sum()
+    by_state_pct = g / g.groupby('year').transform('sum')
+    by_state_pct.name = 'pct_state'
+    by_state_pct = by_state_pct.reset_index()
+    by_state = by_state.merge(by_state_pct, on=['year','state_name'])
 
-    df_natl_cumulative_q4 = pd.read_csv(os.path.join('reference_data','Historical India PV Install (National).csv'), index_col=0).loc['Average Total Installed'].drop('Source')
-    df_natl_cumulative_q4.index = df_natl_cumulative_q4.index.astype(int)
+    # --- Read in 2019 adoption by sector and state, excluding some states ---
+    res = pd.read_excel(os.path.join('reference_data','Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="Residential")
+    com = pd.read_excel(os.path.join('reference_data','Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="Commercial")
+    ind = pd.read_excel(os.path.join('reference_data','Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="Industrial")
+    res['sector_abbr'] = 'res'
+    com['sector_abbr'] = 'com'
+    ind['sector_abbr'] = 'ind'
+    by_sector = pd.concat([res, com, ind], axis='rows')
+    by_sector.rename({'Unnamed: 0':'state_name', 2019:'sector_mw'}, axis='columns', inplace=True)
+    by_sector = by_sector[['state_name', 'sector_mw', 'sector_abbr']]
 
-    df_region_cumulative_q4 = pd.read_csv(os.path.join('reference_data','Cumulative Installed Capacity by State.csv')).set_index('State') #SOURCE: MNRE Q4
-    region_cumulative_totals_q4 = df_region_cumulative_q4.sum(axis=0)
-    df_region_cumulative_q4.columns = df_region_cumulative_q4.columns.astype(int)
-    df_region_cumulative_share_q4 = df_region_cumulative_q4/region_cumulative_totals_q4.sum()
+    # --- Calcualte percent by state_name and sector ---
+    g = by_sector.groupby(['state_name','sector_abbr'])['sector_mw'].sum()
+    by_sector_pct = g / g.groupby(['state_name']).transform('sum')
+    by_sector_pct.name = 'pct_sector'
+    by_sector_pct = by_sector_pct.reset_index()
 
-    india_regions = df_region_cumulative_q4.index.tolist()
-    df_region_cumulative_q3 = pd.DataFrame(index=india_regions)
-    for year in range(2017,2020):
-        df_region_cumulative_q3[year] = df_region_cumulative_share_q4[year]*df_natl_cumulative_q3[year]
+    # --- Fill in nans with mean by sector ---
+    nan_mean_dict = {}
+    nan_mean_dict['res'] = by_sector_pct.loc[by_sector_pct['sector_abbr'] == 'res', 'pct_sector'].mean()
+    nan_mean_dict['com'] = by_sector_pct.loc[by_sector_pct['sector_abbr'] == 'com', 'pct_sector'].mean()
+    nan_mean_dict['ind'] = by_sector_pct.loc[by_sector_pct['sector_abbr'] == 'ind', 'pct_sector'].mean()
+    null_mask = (by_sector_pct['pct_sector'].isnull())
+    by_sector_pct.loc[null_mask, 'pct_sector'] = by_sector_pct.loc[null_mask, 'sector_abbr'].map(nan_mean_dict) 
 
-    northeast_states = ['Manipur', 'Assam', 'Meghalaya','Tripura', 'Mizoram', 'Nagaland', 'Sikkim', 'Arunachal Pradesh']
-    territories = ['Andaman and Nicobar Islands','Chandigarh','Dadra Nagar Haveli','Daman Diu','Delhi','Jammu and Kashmir','Puducherry']
-    states = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand',
-              'Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan',
-              'Sikkim','Tamil Nadu','Telangana','Tripura','Uttarakhand','Uttar Pradesh','West Bengal']
-    sectors = ['Residential','Commercial','Industrial']
+    # --- Merge state and sector tables together, and compute compound adoption ---
+    merged = pd.merge(by_state, by_sector_pct, on=['state_name'], how='outer')
+    merged.dropna(inplace=True)
+    merged['pv_capacity_mw'] = merged['pct_sector'] * merged['mnre_mw']
 
-    df_starting_capacities = pd.DataFrame()
-    
-    df_cumulative_northeast_q3 = df_region_cumulative_q3.loc[northeast_states] #q3
-    df_cumulative_northeast_share_q3 = df_cumulative_northeast_q3/df_cumulative_northeast_q3.sum(axis=0)
-    
-    for sector in sectors:
-        df_sec_region_q3 =  pd.read_excel(os.path.join('reference_data','Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="%s" % sector).set_index('Unnamed: 0') #SOURCE: Bridge to India Q3
-        df_sec_region_q3.columns = df_sec_region_q3.columns.astype(int)
-        
-        sec_northeast_total_q3 = df_sec_region_q3.loc['North East']
-        df_sec_region_northeast_q3 = df_sec_region_q3.loc[northeast_states]  
+    # --- Calculate number of adopters from cumulative capacity ---
+    system_size_dict = {'res':10, 'com':100, 'ind':200}
+    merged['pv_system_count'] = merged['pv_capacity_mw'] / merged['sector_abbr'].map(system_size_dict)
 
-        for year in range(2017,2020):
-            df_sec_region_northeast_q3[year] = (df_cumulative_northeast_share_q3[year]*sec_northeast_total_q3[year]).round(1)
-       
-        df_sec_region_q3.loc[(df_sec_region_q3.index.isin(df_sec_region_northeast_q3.index))] = df_sec_region_northeast_q3
-        df_sec_region_q3 = df_sec_region_q3.drop('North East', axis=0)     
-        
-        df_sec_nans = df_sec_region_q3.loc[(df_sec_region_q3[year].isnull())]
+    # --- Map on state_id ---
+    merged['state_name'] = merged['state_name'].apply(helper.sanitize_string)
+    merged['state_id'] = merged['state_name'].map(state_id_lookup)
 
-        for year in range(2017,2020):
-            for state in df_sec_nans.index:
-                df_sec_nans.loc[state,year] = df_sec_natl_cumulative_q3.loc['%s Q3' % (sector),year]*df_region_cumulative_share_q4.loc[state, year]
-  
-        df_sec_region_q3.loc[(df_sec_region_q3.index.isin(df_sec_nans.index))] = df_sec_nans
-        df_sec_region_share = df_sec_region_q3/df_sec_region_q3.sum()
-        
-        df_sec_region_q4 = pd.DataFrame(index=df_sec_region_q3.index)
-         
-        for year in range(2014,2020):
-            if year<2015:
-                df_sec_natl_cumulative_q4.loc['%s Q4' % (sector),year] = df_sec_natl_cumulative_share_q4.loc['%s Q4' % (sector),2015]*df_natl_cumulative_q4[year]
-                df_sec_region_q4[year] = df_sec_region_share[2017]*df_sec_natl_cumulative_q4.loc['%s Q4' % (sector), year]
-            elif year<2017:
-                df_sec_region_q4[year] = df_sec_region_share[2017]*df_sec_natl_cumulative_q4.loc['%s Q4' % (sector), year]
-            else:
-                df_sec_region_q4[year] = df_sec_region_share[year]*df_sec_natl_cumulative_q4.loc['%s Q4' % (sector), year]
-   
-        df_sec_by_region = df_sec_region_q4
-        
-        df_sec_starting_capacities = pd.DataFrame(index=india_regions,columns=['state_id','state_id','sector_abbr','tariff_id','pv_capacity_mw','pv_systems_count'])
-        df_sec_starting_capacities['sector_abbr']=sector.lower()[:3]
-        
-        for reg in india_regions:
-            df_sec_starting_capacities.loc[reg, 'pv_capacity_mw'] = df_sec_by_region.loc[reg,2014]
-            
-        df_starting_capacities_all = pd.DataFrame()
-        df_sec_by_region = df_sec_by_region.reset_index().rename(columns={'Unnamed: 0':'state_name'})
-        
-        df_starting_capacities = df_sec_by_region[['state_name',2014]]
-        df_starting_capacities = df_starting_capacities.rename(columns={2014:'pv_capacity_mw'})
-        df_starting_capacities['sector_abbr']=sector.lower()[:3]
-         
-        df_starting_capacities['state_name'] = df_starting_capacities['state_name'].apply(helper.sanitize_string)
-        df_starting_capacities['state_id'] = df_starting_capacities['state_name'].map(state_id_lookup)
-        df_starting_capacities['state_id'] = df_starting_capacities['state_id']
-        
-        if sector=='Residential':
-            avg_system_size=10
-        elif sector=='Commercial':
-            avg_system_size=100
-        else:
-            avg_system_size=200
-        
-        df_starting_capacities['pv_systems_count']=df_starting_capacities['pv_capacity_mw']*1e6/avg_system_size
-        df_starting_capacities = df_starting_capacities[['state_id','sector_abbr','pv_capacity_mw','pv_systems_count']]
-        df_starting_capacities_all=pd.concat([df_starting_capacities_all,df_starting_capacities],axis=0)
-
-    df_starting_capacities_all.to_csv(os.path.join('india_base','pv_state_starting_capacities.csv'), index = False)
+    # --- Clean up and output ---
+    merged = merged.loc[merged['year'] == merged['year'].max()]
+    merged = merged[['state_id','sector_abbr','pv_capacity_mw','pv_system_count']]
+    merged.to_csv(os.path.join('india_base','pv_state_starting_capacities.csv'), index=False)
 
 
 def solar_resource_profiles(agents):
@@ -440,7 +394,6 @@ def solar_resource_profiles(agents):
         else:
             print('nearest point worker failed on', point.x, point.y)
             return np.nan
-    
     
     resource['geometry'] = resource['geometry'].apply(nearest_point_worker)
     
@@ -561,28 +514,30 @@ print('........initializing agents')
 agents = samp.initialize_agents(agent_count)
 
 # --- Apply Distributions ---
-print('........creating district distribution')
+print('........creating district distribution', 'agents shape:', agents.shape)
 agents = samp.assign_distribution(agents, district_dist, 'district_name')
-print('........creating rooftop distribution')
+print('........creating rooftop distribution', 'agents shape:', agents.shape)
 agents = samp.assign_distribution(agents, roof_dist, 'developable_roof_sqft')
-print('........creating load distribution')
+print('........creating load distribution', 'agents shape:', agents.shape)
 agents = samp.assign_distribution(agents, load_per_customer_in_bin_dist, 'load_per_customer_in_bin_kwh')
-print('........creating customers distribution')
+print('........creating customers distribution', 'agents shape:', agents.shape)
 agents = samp.assign_distribution(agents, customers_in_bin_dist, 'customers_in_bin')
 
 
 # --- Clean up ---
-print('........mapping distributions')
+print('........mapping distributions', 'agents shape:', agents.shape)
 agents = samp.map_geo_ids(agents)
 agents = samp.map_tariff_ids(agents)
 agents = samp.map_hdi(agents)
-print('........merging geographies')
+print('........merging geographies', 'agents shape:', agents.shape)
 agents = samp.merge_district_geometry(agents)
-print('........cleaning up agents')
+print('........cleaning up agents', 'agents shape:', agents.shape)
 agents = samp.clean_agents(agents)
 
 # --- Save agents ---
-print('........saving agents as csv')
+print('........saving agents as csv', 'agents shape:', agents.shape)
+agents['compensation_style'] = 'Net Metering'
+agents['tech'] = 'solar'
 agents.to_csv(os.path.join('india_base','agent_core_attributes.csv'), index=False)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

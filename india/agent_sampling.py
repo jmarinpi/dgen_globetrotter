@@ -211,6 +211,9 @@ def initialize_agents(agent_count):
                 agent = pd.DataFrame({config.GEOGRAPHY:[geo], 'sector_abbr':[sector], 'geo_sector_n_agents':n_agents})
                 agents = agents.append(agent)
     agents.reset_index(drop=True, inplace=True)  
+    agents['owner_occupancy_status'] = 1
+    agents['developable_buildings_pct'] = 1
+    agents['cap_cost_multiplier'] = 1
     return agents
 
 def assign_distribution(agents, distribution, col_name):
@@ -262,10 +265,10 @@ def map_hdi(agents):
     hdi = pd.read_csv(os.path.join('reference_data','india_UN_HDI.csv'))[['Region','2018']]
     hdi.columns = ['state_name', 'social_indicator']
     hdi['state_name'] = hdi['state_name'].apply(helper.sanitize_string)
-    agents = agents.merge(hdi)
+    agents = agents.merge(hdi, on=['state_name'], how='left')
+    agents['social_indicator'] = agents['social_indicator'].fillna(hdi['social_indicator'].mean())
     return agents
     
-
 def merge_district_geometry(agents):
     # --- load district shapefile ---
     districts = gpd.read_file(os.path.join('reference_data','districts_shapefile', 'India_Districts_ADM2_GADM.shp'))
@@ -276,11 +279,14 @@ def merge_district_geometry(agents):
     districts['state_name'] = districts['state_name'].apply(helper.sanitize_string)
     districts['district_name'] = districts['district_name'].apply(helper.sanitize_string)
     
-    # --- create fuzzy list for string matching
-    districts['fuzzy_str'] = districts['state_name'] + '_' + districts['district_name']
+    # --- create fuzzy list for string matching ---
+    agents['fuzzy_str'] = agents['state_name'] + '_' + agents['district_name']
+    # districts['fuzzy_str'] = districts['state_name'] + '_' + districts['district_name']
     
     # --- create clean list for string matchibng ---
-    agents['clean_str'] = agents['state_name'] + '_' + agents['district_name']
+    districts['clean_str'] = districts['state_name'] + '_' + districts['district_name']
+    districts = districts.drop_duplicates(subset=['clean_str'])
+    # agents['clean_str'] = agents['state_name'] + '_' + agents['district_name']
     
     from cfuzzyset import cFuzzySet as FuzzySet
     def fuzzy_address_matcher(fuzzy_list, clean_list, thresh=0.5):
@@ -304,15 +310,15 @@ def merge_district_geometry(agents):
         return out_list
     
     # --- fuzzy string matching ---
-    districts['clean_str'] = fuzzy_address_matcher(districts['fuzzy_str'], agents['clean_str'])
+    agents['clean_str'] = fuzzy_address_matcher(agents['fuzzy_str'], districts['clean_str'])
+
+    # --- find centroid for each district ---
+    districts['centroid'] = [i.centroid for i in districts['geometry']]
+    districts = districts.dropna(subset=['centroid'])
     
     # --- merge geometry onto agents ---
-    agents = agents.merge(districts[['clean_str','geometry']], on='clean_str')
-    agents.drop(['clean_str'], axis='columns')
-    
-    # --- find centroid for each agent ---
-    agents['centroid'] = [i.centroid for i in agents['geometry']]
-    agents.drop(['geometry'], axis='columns')
+    agents = agents.merge(districts[['clean_str','centroid']], on='clean_str', how='left')
+    agents.drop(['clean_str','fuzzy_str'], axis='columns')
     
     return agents
 

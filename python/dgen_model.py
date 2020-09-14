@@ -89,7 +89,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             if scenario_settings.generate_agents:
                 logger.info('\tCreating Agents')
                 solar_agents = Agents(agent_mutation.init_solar_agents(scenario_settings))
-                logger.info('   {} agents in input csv'.format(len(solar_agents)))
+                logger.info('....{} agents in input csv'.format(len(solar_agents)))
                 
                 # Write base agents to disk
                 solar_agents.df.to_pickle(scenario_settings.out_scen_path + '/agent_df_base.pkl')
@@ -114,7 +114,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     is_first_year =  year == model_settings.start_year
 
                     logger.info('\tWorking on %s' % year)
-                    logger.info(f"{len(solar_agents.df)} agents in solar_agents")
 
                     # determine any non-base columns and drop them
                     cols = list(solar_agents.df.columns.values)
@@ -140,11 +139,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     # Apply each agent's electricity price change and assumption about increases
                     solar_agents.on_frame(agent_mutation.elec.apply_elec_price_multiplier_and_escalator, [ year, scenario_settings.get_rate_escalations()])
                     
-                    solar_agents.df['cap_cost_multiplier']=1
-                    solar_agents.df['developable_buildings_pct']=1
-                    solar_agents.df['compensation_style']='Net Metering'
-                    solar_agents.df['owner_occupancy_status']=1
-                    solar_agents.df['tech']='solar'
                     # Apply PV Specs                    
                     solar_agents.on_frame(agent_mutation.elec.apply_pv_specs, scenario_settings.get_pv_specs())
                     solar_agents.on_frame(agent_mutation.elec.apply_storage_specs, [scenario_settings.get_batt_price_trajectories(), year, scenario_settings])
