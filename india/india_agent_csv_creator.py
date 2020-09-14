@@ -261,6 +261,14 @@ def rate_escalations(agent_df):
     rate_esc_df['escalation_factor'] = rate_esc_df.apply(escalation_factor_applier, axis = 1)
     rate_esc_df.to_csv(os.path.join('india_base','rate_escalations.csv'), index = False)
 
+def avoided_costs(agent_df):
+    avoided_df = pd.DataFrame().from_records(itertools.product(list(set(agent_df['state_id'])), range(2015,2051)))
+    avoided_df.columns = ['state_id','year']
+    avoided_df['value'] = 0.03
+    avoided_df = avoided_df.pivot(values='value', index='state_id', columns='year')
+    avoided_df.to_csv(os.path.join('india_base','avoided_cost_rates.csv'))
+
+
 def pv_state_starting_capacities():
     """
     Columns
@@ -585,6 +593,8 @@ print('........wholesale rates')
 wholesale_rates()
 print('........financing rates')
 financing_rates(agents)
+print('........avoided cost rates')
+avoided_costs(agents)
 print('........load growth')
 load_growth(agents)
 print('........nem settings')
