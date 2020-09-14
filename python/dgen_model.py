@@ -101,7 +101,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
             # Get set of columns that define agent's immutable attributes
             cols_base = list(solar_agents.df.columns.values)
 
-            
             #==============================================================================
             # TECHNOLOGY DEPLOYMENT
             #==============================================================================
@@ -115,6 +114,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     is_first_year =  year == model_settings.start_year
 
                     logger.info('\tWorking on %s' % year)
+                    logger.info(f"{len(solar_agents.df)} agents in solar_agents")
 
                     # determine any non-base columns and drop them
                     cols = list(solar_agents.df.columns.values)
@@ -195,9 +195,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                         interyear_results_aggregations = agent_mutation.elec.aggregate_outputs_solar(solar_agents.df, year, is_first_year, scenario_settings, interyear_results_aggregations)
 
                     # --- Check to ensure that agent_df isn't growing (i.e. merges are failing silently) --- 
-                    # print(('Length of agent_df', len(solar_agents.df)))
-                    # print(('Number of unique agents', len(set(solar_agents.df.index))))
-
                     df_print = solar_agents.df.copy()
                     df_print = df_print.loc[df_print['year']==year]
                     df_print = df_print.groupby(['sector_abbr'])['pv_kw_cum'].sum()

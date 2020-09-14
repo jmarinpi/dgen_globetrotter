@@ -116,7 +116,7 @@ class Agents(object):
 
     def on_row(self, func, cores=1, in_place=True, **kwargs):
         """Wrapper function around apply_chunk_on_row with runtime tests."""
-        
+
         results_df = self.run_with_runtime_tests(how_to_apply='on_row', func=func, cores=cores, **kwargs)
 
         if in_place:
@@ -280,6 +280,7 @@ class Agents(object):
         if cores == 1:
             apply_func = partial(func, **kwargs)
             results_df = self.df.apply(apply_func, axis=1)
+            breakpoint()
         else:
             if 'ix' not in os.name:
                 EXECUTOR = cf.ThreadPoolExecutor

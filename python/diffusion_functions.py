@@ -52,14 +52,15 @@ def calc_diffusion_solar(df, is_first_year, bass_params, override_p_value = None
             Dataframe contains `market_last_year` column to inform diffusion in next year.
 
     """
+
     df = df.reset_index()
 
     bass_params = bass_params[bass_params['tech']=='solar']    
     
     # set p/q/teq_yr1 params  
     bass_params = bass_params[[config.BA_COLUMN,'sector_abbr', 'p', 'q', 'teq_yr1']]  
+
     df = pd.merge(df, bass_params, how = 'left', on  = [config.BA_COLUMN,'sector_abbr','state_id'])
-    print(('diffusion_functions line 60', df.shape))
     
     # calc diffusion market share
     df = calc_diffusion_market_share(df, is_first_year)
