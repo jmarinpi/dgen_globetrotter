@@ -324,7 +324,7 @@ def pv_state_starting_capacities():
 
     # --- Calculate number of adopters from cumulative capacity ---
     system_size_dict = {'res':10, 'com':100, 'ind':200}
-    merged['pv_system_count'] = merged['pv_capacity_mw'] / merged['sector_abbr'].map(system_size_dict)
+    merged['pv_systems_count'] = merged['pv_capacity_mw'] / merged['sector_abbr'].map(system_size_dict)
 
     # --- Map on state_id ---
     merged['state_name'] = merged['state_name'].apply(helper.sanitize_string)
@@ -332,7 +332,7 @@ def pv_state_starting_capacities():
 
     # --- Clean up and output ---
     merged = merged.loc[merged['year'] == merged['year'].max()]
-    merged = merged[['state_id','sector_abbr','pv_capacity_mw','pv_system_count']]
+    merged = merged[['state_id','sector_abbr','pv_capacity_mw','pv_systems_count']]
     merged.to_csv(os.path.join('india_base','pv_state_starting_capacities.csv'), index=False)
 
 
@@ -424,38 +424,60 @@ def urdb_tariff(agents):
     
     # --- initialize tariff df ---
     urdb_df = pd.DataFrame()
-    
+
     # --- load sample tariff --- 
-    sample_tariff = pd.read_pickle(os.path.join('reference_data','sample_tariff_dict.pkl'))
-        
+    sample_tariff = pd.read_pickle(os.path.join('reference_data', 'sample_tariff_dict.pkl'))
+
+    # --- Load tariff .csv ---
+    tariffs = pd.read_csv(os.path.join('reference_data', 'clean_CSTEP_india_tariffs.csv'))
+    tariffs['per_unit'] = tariffs['per_unit'].fillna('kwh')
+    tariffs['rate_rs_per_kwh'] = tariffs['rate_rs_per_kwh'] / config.RUPPES_TO_USD
+
     for rate_id in agents['tariff_id'].unique():
-        
+
         sector, geo = rate_id.split('#')
-        
-        # --- differentiate tariff data --- #TODO: differentiate based on geography
-        if sector == 'res':
-            e_levels = [[100], [1e20]]
-            e_prices = [[0.04], [0.05]]
-        if sector == 'com':
-            e_levels = [[100], [1e20]]
-            e_prices = [[0.04], [0.05]]
-        if sector == 'ind':
-            e_levels = [[100], [1e20]]
-            e_prices = [[0.04], [0.05]]
-        if sector == 'agg':
-            e_levels = [[100], [1e20]]
-            e_prices = [[0.04], [0.05]]
+
+        # --- Lookup best tariff ---
+        sector_mask = (tariffs['sector_abbr'] == sector)
+        geo_mask = (tariffs['state'] == geo)
+        units_mask = (tariffs['per_unit'] == 'kwh') #ignore demand charge rates for now
+        t = tariffs[sector_mask & geo_mask & units_mask]
+        t.sort_values('min_kwh', ascending=True)
+
+        if sector in ['res', 'com']:
+            if 'LT' in t['tension'].tolist():
+                t = t.loc[t['tension'] == 'LT']
+            else:
+                t = t.loc[t['tension'] == 'HT']
+        elif sector in ['ind']:
+            if 'HT' in t['tension'].tolist():
+                t = t.loc[t['tension'] == 'HT']
+            else:
+                t = t.loc[t['tension'] == 'LT']
+        elif sector in ['agg']:
+            t = {'min_kwh':pd.Series([1e10]), 'rate_rs_per_kwh':pd.Series([0])} #free electricity for agg
+
+        assert len(t) > 0, f"No tariffs for {geo}, {sector}"
             
         tariff = sample_tariff.copy()
-        tariff['e_levels'] = e_levels
-        tariff['e_prices'] = e_prices
-        
-        # --- jsonify tariff and write to df ---
+        if len(t) > 1:
+            tariff['e_levels'] = t['min_kwh'].tolist()[1:]
+            tariff['e_levels'].append(1e10)
+        else:
+            tariff['e_levels'] = [1e10]
+
+        tariff['e_prices'] = t['rate_rs_per_kwh'].tolist()
+        assert len(tariff['e_prices']) == len(tariff['e_levels'])
+
+        tariff['e_levels'] = [[i] for i in tariff['e_levels']]
+        tariff['e_prices'] = [[i] for i in tariff['e_prices']]
+
+        # --- jsonify tariff and write to agents ---
         tariff = json.dumps(tariff)
         tariff_row = pd.DataFrame({'tariff_id':[rate_id], 'rate_json':[tariff]})
         urdb_df = urdb_df.append(tariff_row)
 
-    # --- Save the df to a json ---
+    # --- Save the agents to a json ---
     urdb_df.reset_index(inplace=True, drop=True)
     urdb_df.to_json(os.path.join('india_base','urdb3_rates.json'))
     

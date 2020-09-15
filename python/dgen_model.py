@@ -182,7 +182,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     solar_agents.on_frame(agent_mutation.elec.estimate_total_generation)
 
                     # Aggregate results
-                    scenario_settings.output_batt_dispatch_profiles = True
+                    scenario_settings.output_batt_dispatch_profiles = False
                     if is_first_year==True:
                         interyear_results_aggregations = agent_mutation.elec.aggregate_outputs_solar(solar_agents.df, year, is_first_year, scenario_settings) 
                     else:

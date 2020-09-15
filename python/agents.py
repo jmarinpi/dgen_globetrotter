@@ -235,6 +235,7 @@ class Agents(object):
         null_columns = results_df[new_columns].columns[results_df[new_columns].isna().any()].tolist()
         null_columns = [c for c in null_columns if c not in config.NULL_COLUMN_EXCEPTIONS]
         if len(null_columns) > 0:
+            breakpoint()
             raise ValueError("After applying a function, the following columns have NaN values: {}".format(null_columns))
 
         #check for consistant len(df)
@@ -280,7 +281,6 @@ class Agents(object):
         if cores == 1:
             apply_func = partial(func, **kwargs)
             results_df = self.df.apply(apply_func, axis=1)
-            breakpoint()
         else:
             if 'ix' not in os.name:
                 EXECUTOR = cf.ThreadPoolExecutor

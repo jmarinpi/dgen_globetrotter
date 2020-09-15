@@ -29,7 +29,7 @@ START_YEAR = 2016
 #   local cores
 #==============================================================================
 # LOCAL_CORES = int(multiprocessing.cpu_count() * 0.4)
-LOCAL_CORES = 2
+LOCAL_CORES = 1
 
 #==============================================================================
 #   silence some output

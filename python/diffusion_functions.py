@@ -144,9 +144,8 @@ def calc_diffusion_market_share(df, is_first_year):
     
     df = bass_diffusion(df); # calculate the new diffusion by stepping forward 2 years
 
-    df['bass_market_share'] = df.max_market_share * df.new_adopt_fraction # new market adoption    
+    df['bass_market_share'] = df['max_market_share'] * df['new_adopt_fraction'] # new market adoption    
     df['diffusion_market_share'] = np.where(df.market_share_last_year > df.bass_market_share, df.market_share_last_year, df.bass_market_share)
-    
     return df
 
 def set_bass_param(df, bass_params, override_p_value, override_q_value, override_teq_yr1_value):

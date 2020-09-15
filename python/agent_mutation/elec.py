@@ -593,13 +593,13 @@ def apply_market_last_year(dataframe, market_last_year_df):
 
 #%%
 @decorators.fn_timer(logger=logger, tab_level=2, prefix='')
-def estimate_total_generation(dataframe):
+def estimate_total_generation(df):
     """
     Estimates total energy generated from DPV in a year
 
     Parameters
     ----------
-    dataframe : pandas.DataFrame
+    df : pandas.DataFrame
         agent attributes for the given year
 
     Returns
@@ -607,5 +607,5 @@ def estimate_total_generation(dataframe):
     pandas.DataFrame
         agent attributes with new attributes
     """
-    dataframe['total_gen_twh'] = ((dataframe['number_of_adopters'] - dataframe['initial_number_of_adopters']) * dataframe['aep'] * 1e-9) + (0.23 * 8760 * dataframe['initial_pv_kw'] * 1e-6)
-    return dataframe
+    df['total_gen_twh'] = ((df['number_of_adopters'] - df['initial_number_of_adopters']) * df['aep'] * 1e-9) + (0.23 * 8760 * df['initial_pv_kw'] * 1e-6)
+    return df

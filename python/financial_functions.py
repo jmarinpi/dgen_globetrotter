@@ -55,7 +55,7 @@ def calc_system_size_and_financial_performance(agent):
         load_profile = np.array(agent['consumption_hourly'])    
         agent.loc['timesteps_per_year'] = 1
 
-        # Extract load profile TODO: See Paritosh's SS19 Implementation for better memory usage
+        # Extract load profile 
         pv_cf_profile = np.array(agent['solar_cf_profile']) / 1e3
         agent['naep'] = float(np.sum(pv_cf_profile))   
 
@@ -63,7 +63,7 @@ def calc_system_size_and_financial_performance(agent):
         batt = dFuncs.Battery()
         batt_ratio = 3.0 
         
-        tariff = tFuncs.Tariff(dict_obj=agent.loc['tariff_dict']) #TODO: map this from tariff_dict object for better memory usage
+        tariff = tFuncs.Tariff(dict_obj=agent.loc['tariff_dict'])
 
         # Create export tariff object
         if agent['nem_system_size_limit_kw'] != 0:

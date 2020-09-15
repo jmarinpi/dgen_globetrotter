@@ -20,10 +20,10 @@ import warnings
 path = os.path.dirname(os.path.abspath(__file__))
 par_path = os.path.dirname(path)
 sys.path.append(par_path)
-import utility_functions as utilfunc
 
 #==============================================================================
 # Load logger
+import utility_functions as utilfunc
 logger = utilfunc.get_logger()
 #==============================================================================
 

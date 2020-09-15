@@ -1,4 +1,4 @@
-state_id,sector_abbr,pv_capacity_mw,pv_system_count
+state_id,sector_abbr,pv_capacity_mw,pv_systems_count
 28.0,com,1109.6287684729064,11.096287684729063
 28.0,ind,1520.039408866995,7.600197044334975
 28.0,res,456.0118226600985,45.60118226600985
