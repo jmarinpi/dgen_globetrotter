@@ -153,13 +153,13 @@ def load_growth(agent_df):
     Currently assumes that all sectors have the same load growth. Could use 'CEA_historic_consumption_by_sector.csv' to normalize this by sector.
     """
 
-    reeds_load = pd.read_csv(os.path.join('reference_data','ReEDS_load.csv'), names=['state','hour','year','value'])
+    reeds_load = pd.read_csv(os.path.join('reference_data','ReEDS_load.csv'), names=['state_name','hour','year','value'])
 
     # --- Group by year ---
-    reeds_load = reeds_load.groupby(['state','year'], as_index=False)['value'].mean()
+    reeds_load = reeds_load.groupby(['state_name','year'], as_index=False)['value'].mean()
 
     # --- Pivot Wide ---
-    reeds_load = pd.pivot_table(reeds_load, index='state', columns='year', values='value')
+    reeds_load = pd.pivot_table(reeds_load, index='state_name', columns='year', values='value')
 
     # --- Convert to pct diff ---
     reeds_load = reeds_load.pct_change(axis=1)
@@ -175,34 +175,45 @@ def load_growth(agent_df):
 
     # --- Add Previous Years --
     reeds_load = reeds_load.fillna(method='bfill', axis=1).fillna(method='ffill', axis=1)
+    reeds_load += 1
 
     long_dfs = []
     # --- Calculate cumulative product ---
     for scenario, multiplier in zip(['Low','Planning','High'],[config.LOW_LOAD_GROWTH, config.PLANNING_LOAD_GROWTH, config.HIGH_LOAD_GROWTH]):
-        reeds_load += 1
-        reeds_load *= multiplier
-        reeds_load = reeds_load.cumprod(axis=1)
+        load_growth = reeds_load.copy()
+        load_growth *= multiplier
+        load_growth = reeds_load.cumprod(axis=1)
 
         # --- Convert back to long_df ---
-        load_growth = reeds_load.copy()
         load_growth.reset_index(inplace=True)
-        load_growth = load_growth.melt(id_vars=['state'], var_name=['year'], value_name='new_load_growth')
+        load_growth = load_growth.melt(id_vars=['state_name'], var_name=['year'], value_name='new_load_growth')
 
-        for c in ['residential', 'commercial', 'industrial', 'agriculture']:
+        for c in ['res', 'com', 'ind', 'agg']:
             load_growth[c] = load_growth['new_load_growth'] #TODO: implement sector specific load growth
         load_growth.drop('new_load_growth', axis='columns', inplace=True)
 
-        load_growth = load_growth.melt(id_vars=['state','year'], var_name='sector_abbr', value_name='load_multiplier')
+        load_growth = load_growth.melt(id_vars=['state_name','year'], var_name='sector_abbr', value_name='load_multiplier')
         load_growth['scenario'] = scenario
         long_dfs.append(load_growth)
 
     load_growth = pd.concat(long_dfs, axis='rows')
 
-    # --- map state_id ---
-    load_growth['state'] = load_growth['state'].apply(helper.sanitize_string)
-    load_growth['state_id'] = load_growth['state'].map(state_id_lookup)
-    load_growth.drop(['state'], axis='columns')
-    load_growth['sector_abbr'] = load_growth['sector_abbr'].map({'residential':'res','commercial':'com', 'industrial':'ind', 'agricutlure':'agg'})
+    # --- fuzzy string matching ---
+    clean_list = list(agent_df['state_name'].unique())
+    load_growth['state_name'] = load_growth['state_name'].apply(helper.sanitize_string)
+    load_growth['state_name'] = helper.fuzzy_address_matcher(load_growth['state_name'], clean_list)
+
+    # --- any missing states ---
+    avg_load_growth = load_growth.groupby(['state_name','year','sector_abbr','scenario'], as_index=False)['load_multiplier'].mean()
+    for state in clean_list:
+        if state not in set(load_growth['state_name']):
+            state_load_growth = avg_load_growth.copy()
+            state_load_growth['state_name'] = state
+            load_growth = load_growth.append(state_load_growth)
+
+    # --- map state id ---
+    load_growth['state_id'] = load_growth['state_name'].map(state_id_lookup)
+    load_growth.drop(['state_name'], axis='columns', inplace=True)
 
     load_growth.to_csv(os.path.join('india_base','load_growth_projections.csv'), index=False)
 
@@ -269,7 +280,7 @@ def avoided_costs(agent_df):
     avoided_df.to_csv(os.path.join('india_base','avoided_cost_rates.csv'))
 
 
-def pv_state_starting_capacities():
+def pv_state_starting_capacities(agent_df):
     """
     Columns
     -------
@@ -325,9 +336,11 @@ def pv_state_starting_capacities():
     # --- Calculate number of adopters from cumulative capacity ---
     system_size_dict = {'res':10, 'com':100, 'ind':200}
     merged['pv_systems_count'] = merged['pv_capacity_mw'] / merged['sector_abbr'].map(system_size_dict)
-
-    # --- Map on state_id ---
+    
+    # --- fuzzy string matching ---
+    clean_list = list(agent_df['state_name'].unique())
     merged['state_name'] = merged['state_name'].apply(helper.sanitize_string)
+    merged['state_name'] = helper.fuzzy_address_matcher(merged['state_name'], clean_list)
     merged['state_id'] = merged['state_name'].map(state_id_lookup)
 
     # --- Clean up and output ---
@@ -430,6 +443,7 @@ def urdb_tariff(agents):
 
     # --- Load tariff .csv ---
     tariffs = pd.read_csv(os.path.join('reference_data', 'clean_CSTEP_india_tariffs.csv'))
+    tariffs = tariffs.dropna(subset=['rate_rs_per_kwh'])
     tariffs['per_unit'] = tariffs['per_unit'].fillna('kwh')
     tariffs['rate_rs_per_kwh'] = tariffs['rate_rs_per_kwh'] / config.RUPPES_TO_USD
 
@@ -579,7 +593,7 @@ nem_settings(agents)
 print('........rate escalations')
 rate_escalations(agents)
 print('........pv starting capacities')
-pv_state_starting_capacities()
+pv_state_starting_capacities(agents)
 print('........solar resource profiles')
 solar_resource_profiles(agents)
 print('........urdb tariffs')

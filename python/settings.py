@@ -523,7 +523,7 @@ class ScenarioSettings:
           self.core_agent_attributes = df
 
      def load_starting_capacities(self):
-          df = pd.read_csv(os.path.join(self.input_csv_folder, 'pv_state_starting_capacities.csv'),index_col=None)
+          df = pd.read_csv(os.path.join(self.input_csv_folder, 'pv_state_starting_capacities.csv'), index_col=None)
           on = self._find_geography_column_to_merge_on(df)
           self.core_agent_attributes = self.core_agent_attributes.merge(df, on=on)
 
