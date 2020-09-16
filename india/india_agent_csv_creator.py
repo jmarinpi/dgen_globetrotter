@@ -42,7 +42,7 @@ pd.options.mode.chained_assignment = None
 state_id_lookup = pd.read_csv(os.path.join('reference_data', 'india_census','state_id_lookup.csv'))
 state_id_lookup = dict(zip(state_id_lookup['state_name'], state_id_lookup['state_id']))
 
-def wholesale_rates():
+def wholesale_rates(agent_df):
     """
     Net Billing avoided cost. Creates 'wholesale_elec_usd_per_kwh'. 
     Used if 'compensation_style' == 'Net Billing (Wholesale)'
@@ -60,30 +60,46 @@ def wholesale_rates():
     reeds = reeds.loc[reeds['variable'] == 'mc.total']
     
     # --- pivot to wide ---
-    pivoted = reeds.pivot_table(index=['state_name'], columns=['year'], values='cost')
-    pivoted = pivoted.reset_index(drop=False)
-    pivoted['state_name'] = pivoted['state_name'].apply(helper.sanitize_string)
-    pivoted['state_name'] = pivoted['state_name'].replace('delhi', 'nct_of_delhi')
-    pivoted.loc[pivoted['state_name'] != 'telangana']
+    wholesale_rates = reeds.pivot_table(index=['state_name'], columns=['year'], values='cost')
+    wholesale_rates = wholesale_rates.reset_index(drop=False)
+    wholesale_rates['state_name'] = wholesale_rates['state_name'].replace('delhi', 'nct_of_delhi')
+    wholesale_rates.loc[wholesale_rates['state_name'] != 'telangana']
     
     # --- add in earlier years ---
-    annual_diff = (pivoted[2018] - pivoted[2017]) / pivoted[2018]
+    annual_diff = (wholesale_rates[2018] - wholesale_rates[2017]) / wholesale_rates[2018]
     for y_index, y in enumerate([2014,2015,2016]):
-        pivoted[y] = pivoted[2017] * (1 - annual_diff)**(3-y_index)
+        wholesale_rates[y] = wholesale_rates[2017] * (1 - annual_diff)**(3-y_index)
         
     # --- add in later years ---
-    annual_diff = (pivoted[2047] - pivoted[2046]) / pivoted[2047]
+    annual_diff = (wholesale_rates[2047] - wholesale_rates[2046]) / wholesale_rates[2047]
     for y_index, y in enumerate([2048,2049,2050]):
-        pivoted[y] = pivoted[2047] * (1 + annual_diff)**(y_index + 1)
+        wholesale_rates[y] = wholesale_rates[2047] * (1 + annual_diff)**(y_index + 1)
+
+    # --- fuzzy string matching ---
+    clean_list = list(agent_df['state_name'].unique())
+    wholesale_rates['state_name'] = wholesale_rates['state_name'].apply(helper.sanitize_string)
+    wholesale_rates['state_name'] = helper.fuzzy_address_matcher(wholesale_rates['state_name'], clean_list)
     
-    # --- add state_id ---
-    pivoted['state_id'] = pivoted['state_name'].map(state_id_lookup)
+    # --- any missing states ---
+    avg_wholesale_rates = wholesale_rates[list(range(2014,2051))].mean()
+    for state in clean_list:
+        if state not in set(wholesale_rates['state_name']):
+            state_wholesale_rates = avg_wholesale_rates.copy()
+            state_wholesale_rates['state_name'] = state
+            wholesale_rates = wholesale_rates.append(state_wholesale_rates, ignore_index=True)
+
+    # --- drop any duplicates ---
+    wholesale_rates = wholesale_rates.drop_duplicates(subset=['state_name'])
+    
+    # --- map state id ---
+    wholesale_rates['state_id'] = wholesale_rates['state_name'].map(state_id_lookup)
+    wholesale_rates.drop(['state_name'], axis='columns', inplace=True)
     
     # --- currency conversion ---
-    pivoted[list(range(2014,2051))] = pivoted[list(range(2014,2051))] / config.RUPPES_TO_USD
+    wholesale_rates[list(range(2014,2051))] = wholesale_rates[list(range(2014,2051))] / config.RUPPES_TO_USD
     
     # --- reorder columns ---
-    wholesale_rates = pivoted[['state_id'] + list(range(2014,2051))]
+    wholesale_rates = wholesale_rates[['state_id'] + list(range(2014,2051))]
     wholesale_rates.to_csv(os.path.join('india_base','wholesale_rates.csv'), index=False)
 
 def financing_rates(agent_df):
@@ -204,16 +220,20 @@ def load_growth(agent_df):
     load_growth['state_name'] = helper.fuzzy_address_matcher(load_growth['state_name'], clean_list)
 
     # --- any missing states ---
-    avg_load_growth = load_growth.groupby(['state_name','year','sector_abbr','scenario'], as_index=False)['load_multiplier'].mean()
+    avg_load_growth = load_growth.groupby(['year','sector_abbr','scenario'], as_index=False)['load_multiplier'].mean()
     for state in clean_list:
         if state not in set(load_growth['state_name']):
             state_load_growth = avg_load_growth.copy()
             state_load_growth['state_name'] = state
             load_growth = load_growth.append(state_load_growth)
 
+    # --- drop any duplicates ---
+    load_growth = load_growth.drop_duplicates(subset=['state_name','year','sector_abbr','scenario'])
+
     # --- map state id ---
     load_growth['state_id'] = load_growth['state_name'].map(state_id_lookup)
     load_growth.drop(['state_name'], axis='columns', inplace=True)
+
 
     load_growth.to_csv(os.path.join('india_base','load_growth_projections.csv'), index=False)
 
@@ -344,6 +364,7 @@ def pv_state_starting_capacities(agent_df):
     merged['state_id'] = merged['state_name'].map(state_id_lookup)
 
     # --- Clean up and output ---
+    merged.to_csv(os.path.join('reference_data', 'clean_pv_installed_all_years.csv'), index=False)
     merged = merged.loc[merged['year'] == merged['year'].max()]
     merged = merged[['state_id','sector_abbr','pv_capacity_mw','pv_systems_count']]
     merged.to_csv(os.path.join('india_base','pv_state_starting_capacities.csv'), index=False)
@@ -581,7 +602,7 @@ agents.to_csv(os.path.join('india_base','agent_core_attributes.csv'), index=Fals
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 print('....creating scenario csvs')
 print('........wholesale rates')
-wholesale_rates()
+wholesale_rates(agents)
 print('........financing rates')
 financing_rates(agents)
 print('........avoided cost rates')

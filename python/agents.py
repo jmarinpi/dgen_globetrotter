@@ -239,7 +239,9 @@ class Agents(object):
             raise ValueError("After applying a function, the following columns have NaN values: {}".format(null_columns))
 
         #check for consistant len(df)
-        assert initial_len == post_len, "agent_df len changed by a function applied on_frame"
+        if initial_len != post_len:
+            breakpoint()
+            raise IndexError("agent_df len changed by a function applied on_frame")
 
         #check for consistant dtypes
         changed_dtypes = []
@@ -277,7 +279,7 @@ class Agents(object):
         results_df : 'pd.df'
             Dataframe of agents after application of func
         """
-
+        
         if cores == 1:
             apply_func = partial(func, **kwargs)
             results_df = self.df.apply(apply_func, axis=1)
