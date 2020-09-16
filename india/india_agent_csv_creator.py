@@ -311,18 +311,6 @@ def pv_state_starting_capacities(agent_df):
         pv_capacity_mw (int) : existing PV capacity in the state/tariff
         pv_systems_count (int) : existing number of PV systems
     """
-    # --- Load MNRE data with differentiation by state_name and make long ---
-    by_state = pd.read_csv(os.path.join('reference_data','Cumulative Installed Capacity by State.csv'))
-    by_state = by_state.melt(id_vars=['State'])
-    by_state.columns = ['state_name', 'year','mnre_mw']
-
-    # --- Calculate percent by state_name in MNRE by year---
-    g = by_state.groupby(['state_name','year'])['mnre_mw'].sum()
-    by_state_pct = g / g.groupby('year').transform('sum')
-    by_state_pct.name = 'pct_state'
-    by_state_pct = by_state_pct.reset_index()
-    by_state = by_state.merge(by_state_pct, on=['year','state_name'])
-
     # --- Read in 2019 adoption by sector and state, excluding some states ---
     res = pd.read_excel(os.path.join('reference_data','Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="Residential")
     com = pd.read_excel(os.path.join('reference_data','Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="Commercial")
@@ -330,44 +318,45 @@ def pv_state_starting_capacities(agent_df):
     res['sector_abbr'] = 'res'
     com['sector_abbr'] = 'com'
     ind['sector_abbr'] = 'ind'
-    by_sector = pd.concat([res, com, ind], axis='rows')
-    by_sector.rename({'Unnamed: 0':'state_name', 2019:'sector_mw'}, axis='columns', inplace=True)
-    by_sector = by_sector[['state_name', 'sector_mw', 'sector_abbr']]
+    by_sector = pd.concat([res, com, ind], axis='rows') 
+    by_sector[[2018, 2019]] = by_sector[[2017, 2018, 2019]].diff(axis=1)[[2018, 2019]] # convert to annual installations
+    by_sector = by_sector.fillna(0)
+    by_sector.columns = ['state_name', 2017, 2018, 2019, 'sector_abbr']
+    by_sector = by_sector.melt(id_vars=['state_name','sector_abbr'], var_name=['year'], value_name='annual_installed_mw')
 
-    # --- Calcualte percent by state_name and sector ---
-    g = by_sector.groupby(['state_name','sector_abbr'])['sector_mw'].sum()
-    by_sector_pct = g / g.groupby(['state_name']).transform('sum')
-    by_sector_pct.name = 'pct_sector'
-    by_sector_pct = by_sector_pct.reset_index()
+    replace_dict = {'Delhi':'nct_of_delhi', 'Telangana':'andhra_pradesh'}
+    by_sector['state_name'] = by_sector['state_name'].replace(replace_dict)
 
-    # --- Fill in nans with mean by sector ---
-    nan_mean_dict = {}
-    nan_mean_dict['res'] = by_sector_pct.loc[by_sector_pct['sector_abbr'] == 'res', 'pct_sector'].mean()
-    nan_mean_dict['com'] = by_sector_pct.loc[by_sector_pct['sector_abbr'] == 'com', 'pct_sector'].mean()
-    nan_mean_dict['ind'] = by_sector_pct.loc[by_sector_pct['sector_abbr'] == 'ind', 'pct_sector'].mean()
-    null_mask = (by_sector_pct['pct_sector'].isnull())
-    by_sector_pct.loc[null_mask, 'pct_sector'] = by_sector_pct.loc[null_mask, 'sector_abbr'].map(nan_mean_dict) 
-
-    # --- Merge state and sector tables together, and compute compound adoption ---
-    merged = pd.merge(by_state, by_sector_pct, on=['state_name'], how='outer')
-    merged.dropna(inplace=True)
-    merged['pv_capacity_mw'] = merged['pct_sector'] * merged['mnre_mw']
-
-    # --- Calculate number of adopters from cumulative capacity ---
-    system_size_dict = {'res':10, 'com':100, 'ind':200}
-    merged['pv_systems_count'] = merged['pv_capacity_mw'] / merged['sector_abbr'].map(system_size_dict)
-    
     # --- fuzzy string matching ---
     clean_list = list(agent_df['state_name'].unique())
-    merged['state_name'] = merged['state_name'].apply(helper.sanitize_string)
-    merged['state_name'] = helper.fuzzy_address_matcher(merged['state_name'], clean_list)
-    merged['state_id'] = merged['state_name'].map(state_id_lookup)
+    by_sector['state_name'] = by_sector['state_name'].apply(helper.sanitize_string)
+    by_sector['state_name'] = helper.fuzzy_address_matcher(by_sector['state_name'], clean_list)
+    by_sector['state_id'] = by_sector['state_name'].map(state_id_lookup)
+    by_sector['state_name'].unique()
 
-    # --- Clean up and output ---
-    merged.to_csv(os.path.join('reference_data', 'clean_pv_installed_all_years.csv'), index=False)
-    merged = merged.loc[merged['year'] == merged['year'].max()]
-    merged = merged[['state_id','sector_abbr','pv_capacity_mw','pv_systems_count']]
-    merged.to_csv(os.path.join('india_base','pv_state_starting_capacities.csv'), index=False)
+    # --- group by duplicates ---
+    by_sector = by_sector.groupby(['state_name', 'state_id', 'sector_abbr','year'], as_index=False)['annual_installed_mw'].sum()
+
+    # --- identify states with no capacity ---
+    for state in agent_df['state_name'].unique():
+        for sector in agent_df['sector_abbr'].unique():
+            if sector != 'agg':
+                state_mask = (by_sector['state_name'] == state)
+                sector_mask = (by_sector['sector_abbr'] == sector)
+                sub_df = by_sector.loc[state_mask & sector_mask]
+                assert len(sub_df) != 0
+
+    # --- Calculate number of adopters from cumulative capacity ---
+    system_size_dict = {'res':2, 'com':16, 'ind':200} #based on avg rootop size
+    by_sector['annual_installed_count'] = by_sector['annual_installed_mw'] / by_sector['sector_abbr'].map(system_size_dict) * 1000
+
+    # --- Output annual installations for bass fitting ---
+    by_sector.to_csv(os.path.join('reference_data', 'clean_pv_installed_all_years.csv'), index=False)
+
+    # --- Make cumulative for pv_state_starting_capacities ---
+    grouped = by_sector.groupby(['state_id','sector_abbr'], as_index=False)[['annual_installed_count','annual_installed_mw']].sum()
+    grouped.rename({'annual_installed_count':'pv_systems_count', 'annual_installed_mw':'pv_capacity_mw'}, axis='columns', inplace=True)
+    grouped.to_csv(os.path.join('india_base', 'pv_state_starting_capacities.csv'), index=False)
 
 
 def solar_resource_profiles(agents):

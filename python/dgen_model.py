@@ -172,7 +172,6 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     if is_first_year:
                         solar_agents.on_frame(agent_mutation.elec.estimate_initial_market_shares)
                         market_last_year_df = None
-                        solar_agents.df.to_csv('first_year_agents.csv', index=False)
                     else:
                         solar_agents.on_frame(agent_mutation.elec.apply_market_last_year, market_last_year_df)
 
