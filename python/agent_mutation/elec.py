@@ -493,6 +493,7 @@ def estimate_initial_market_shares(dataframe):
     dataframe : pandas.DataFrame
         agent attributes with new attributes
     """
+                
     #==========================================================================================================
     # record input columns
     #==========================================================================================================
@@ -517,7 +518,7 @@ def estimate_initial_market_shares(dataframe):
     # merge together
     #==========================================================================================================
     state_denominators = pd.merge(state_total_developable_customers, state_total_agents, how='left', on=[
-                                  config.BA_COLUMN, 'sector_abbr', 'tech'])
+                                config.BA_COLUMN, 'sector_abbr', 'tech'])
 
     # state_denominatorsconfig.BA_COLUMN = state_denominatorsconfig.BA_COLUMNastype(str)
     state_denominators[config.BA_COLUMN] = state_denominators[config.BA_COLUMN].astype('int')
@@ -531,9 +532,9 @@ def estimate_initial_market_shares(dataframe):
     # (when there are no developable agnets in the state, simply apportion evenly to all agents)
     #==========================================================================================================
     dataframe['portion_of_state'] = np.where(dataframe['developable_customers_in_state'] > 0,
-                                             dataframe[
-                                                 'developable_customers_in_bin'] / dataframe['developable_customers_in_state'],
-                                             1. / dataframe['agent_count'])
+                                            dataframe[
+                                                'developable_customers_in_bin'] / dataframe['developable_customers_in_state'],
+                                            1. / dataframe['agent_count'])
     #==========================================================================================================
     # apply the agent's portion to the total to calculate starting capacity and systems
     #==========================================================================================================
@@ -542,7 +543,7 @@ def estimate_initial_market_shares(dataframe):
     dataframe['batt_kw_cum_last_year'] = 0.0
     dataframe['batt_kwh_cum_last_year'] = 0.0
     dataframe['market_share_last_year'] = np.where(dataframe['developable_customers_in_bin'] == 0, 0,
-                                                   dataframe['number_of_adopters_last_year'] / dataframe['developable_customers_in_bin'])
+                                                dataframe['number_of_adopters_last_year'] / dataframe['developable_customers_in_bin'])
     dataframe['market_value_last_year'] = dataframe['pv_price_per_kw'] * dataframe['pv_kw_cum_last_year']
     #==========================================================================================================
     # reproduce these columns as "initial" columns too
@@ -555,7 +556,7 @@ def estimate_initial_market_shares(dataframe):
     # isolate the return columns
     #==========================================================================================================
     return_cols = ['initial_number_of_adopters', 'initial_pv_kw', 'initial_market_share', 'initial_market_value',
-                   'number_of_adopters_last_year', 'pv_kw_cum_last_year', 'batt_kw_cum_last_year', 'batt_kwh_cum_last_year', 'market_share_last_year', 'market_value_last_year']
+                'number_of_adopters_last_year', 'pv_kw_cum_last_year', 'batt_kw_cum_last_year', 'batt_kwh_cum_last_year', 'market_share_last_year', 'market_value_last_year']
     dataframe[return_cols] = dataframe[return_cols].fillna(0)
     out_cols = in_cols + return_cols
     return dataframe[out_cols]

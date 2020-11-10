@@ -179,9 +179,9 @@ class ModelSettings(object):
                except TypeError as e:
                     raise TypeError('Invalid %s: %s' % (property_name, e))
                # assert equals 2016
-               if self.start_year != 2016:
+               if self.start_year < 2016:
                     raise ValueError(
-                    'Invalid %s: must be set to 2016' % property_name)
+                    'Invalid %s: must be greater than 2015' % property_name)
 
           elif property_name == 'input_scenarios':
                # check type
@@ -356,8 +356,8 @@ class ScenarioSettings:
 
           # make sure starts at 2016
           self.model_years.sort()
-          if self.model_years[0] != 2016:
-               raise ValueError('Invalid %s: Must begin with 2016.' % 'model_years')
+          # if self.model_years[0] != 2016:
+          #      raise ValueError('Invalid %s: Must begin with 2016.' % 'model_years')
           # last year must be <= 2050
           if self.model_years[-1] > 2050:
                raise ValueError('Invalid %s: End year must be <= 2050.' % 'model_years')

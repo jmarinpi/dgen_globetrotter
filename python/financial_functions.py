@@ -9,6 +9,9 @@ import config
 # Import from support function repo
 import dispatch_functions as dFuncs
 import tariff_functions as tFuncs
+import decorators
+
+np.seterr(divide='ignore', invalid='ignore')
 
 #==============================================================================
 # Load logger
@@ -219,31 +222,28 @@ def calc_system_size_and_financial_performance(agent):
         # Determine financial performance of each system size
         #=========================================================================#  
 
-        cash_incentives = np.array([0]*system_df.shape[0])
-
-        if 'state_incentives' in agent.index:
-            investment_incentives = calculate_investment_based_incentives(system_df, agent)
-            capacity_based_incentives = calculate_capacity_based_incentives(system_df, agent)
-
-            default_expiration = datetime.date(agent.loc['year'] + agent.loc['economic_lifetime'],1,1)
-            pbi_by_timestep_functions = {
-                                        "default":
-                                                {   'function':eqn_flat_rate,
-                                                    'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'],
-                                                    'default_params':[0, agent.loc['economic_lifetime'], default_expiration],
-                                                    'additional_params':[agent.loc['year'], agent.loc['timesteps_per_year']]},
-                                        "SREC":
-                                                {   'function':eqn_linear_decay_to_zero,
-                                                    'row_params':['pbi_usd_p_kwh','incentive_duration_yrs','end_date'],
-                                                    'default_params':[0, 10, default_expiration],
-                                                    'additional_params':[agent.loc['year'], agent.loc['timesteps_per_year']]}
-                                        }
-            production_based_incentives =  calculate_production_based_incentives(system_df, agent, function_templates=pbi_by_timestep_functions)
-
+        if 'investment_incentive_pct' in agent.index:
+            if agent['investment_incentive_year_cutoff'] >= agent['year']:
+                investment_incentives = np.full(system_df.shape[0], agent['investment_incentive_pct'])
+            else:
+                investment_incentives = np.zeros(system_df.shape[0])
         else:
             investment_incentives = np.zeros(system_df.shape[0])
+        
+        if 'capacity_incentive' in agent.index:
+            raise NotImplementedError
+        else:
             capacity_based_incentives = np.zeros(system_df.shape[0])
+
+        if 'production_incentive' in agent.index:
+            raise NotImplementedError
+        else:
             production_based_incentives = np.tile(np.array([0]*agent.loc['economic_lifetime']), (system_df.shape[0],1))
+        
+        if 'cash_incentives' in agent.index:
+            raise NotImplementedError
+        else:
+            cash_incentives = np.array([0]*system_df.shape[0])
 
         cf_results_est = cashflow_constructor(bill_savings=est_bill_savings, 
                             pv_size=np.array(system_df['pv']), pv_price=agent.loc['pv_price_per_kw'], pv_om=agent.loc['pv_om_per_kw'],
@@ -255,7 +255,7 @@ def calc_system_size_and_financial_performance(agent):
                             fed_tax_rate=agent['tax_rate'], state_tax_rate=0, real_d=agent['discount_rate'],
                             analysis_years=agent.loc['economic_lifetime'], inflation=agent.loc['inflation'],
                             down_payment_fraction=agent.loc['down_payment'], loan_rate=agent.loc['loan_rate'], loan_term=agent.loc['loan_term'],
-                            cash_incentives=cash_incentives,ibi=investment_incentives, cbi=capacity_based_incentives, pbi=production_based_incentives)
+                            cash_incentives=cash_incentives, ibi=investment_incentives, cbi=capacity_based_incentives, pbi=production_based_incentives)
                         
         system_df['npv'] = cf_results_est['npv']
 
@@ -378,32 +378,6 @@ def calc_system_size_and_financial_performance(agent):
         agent.to_pickle('agent_that_failed.pkl')
 
     return agent
-
-#%%
-def check_incentive_constraints(incentive_data, temp, system_costs):
-    raise NotImplementedError("Not implemented yet, would require a dict on the agent called 'state_incentives', see SS19 branch.")
-
-# %%
-def calculate_investment_based_incentives(system_df, agent):
-    raise NotImplementedError("Not implemented yet, would require a dict on the agent called 'state_incentives', see SS19 branch.")
-#%%
-def calculate_capacity_based_incentives(system_df, agent):
-    raise NotImplementedError("Not implemented yet, would require a dict on the agent called 'state_incentives', see SS19 branch.")
-#%%
-def calculate_production_based_incentives(system_df, agent, function_templates={}):
-    raise NotImplementedError("Not implemented yet, would require a dict on the agent called 'state_incentives', see SS19 branch.")
-
-
-import numpy as np
-np.seterr(divide='ignore', invalid='ignore')
-import pandas as pd
-import utility_functions as utilfunc
-import decorators
-
-#==============================================================================
-# Load logger
-logger = utilfunc.get_logger()
-#==============================================================================
 
 #%%
 @decorators.fn_timer(logger = logger, tab_level = 2, prefix = '')
@@ -783,9 +757,9 @@ def cashflow_constructor(bill_savings,
         logger.info(pv_cost)
         logger.info(' ')
 
-    net_installed_cost = installed_cost - cash_incentives - ibi - cbi
+    net_installed_cost = installed_cost - (installed_cost * ibi) -cash_incentives - cbi
 
-    wacc = (((down_payment_fraction*net_installed_cost)/net_installed_cost) * real_d) + ((((1-down_payment_fraction)*net_installed_cost)/net_installed_cost) * loan_rate)
+    wacc = (((down_payment_fraction * net_installed_cost) / net_installed_cost) * real_d) + ((((1-down_payment_fraction) * net_installed_cost) / net_installed_cost) * loan_rate)
 
     up_front_cost = net_installed_cost * down_payment_fraction
     if print_statements:

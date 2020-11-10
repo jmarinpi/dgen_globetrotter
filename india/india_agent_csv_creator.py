@@ -311,31 +311,77 @@ def pv_state_starting_capacities(agent_df):
         pv_capacity_mw (int) : existing PV capacity in the state/tariff
         pv_systems_count (int) : existing number of PV systems
     """
+
+
     # --- Read in 2019 adoption by sector and state, excluding some states ---
-    res = pd.read_excel(os.path.join('reference_data','Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="Residential")
-    com = pd.read_excel(os.path.join('reference_data','Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="Commercial")
-    ind = pd.read_excel(os.path.join('reference_data','Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="Industrial")
+    res = pd.read_excel(os.path.join(
+        'reference_data', 'Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="Residential")
+    com = pd.read_excel(os.path.join(
+        'reference_data', 'Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="Commercial")
+    ind = pd.read_excel(os.path.join(
+        'reference_data', 'Residential and Commercial Installed Capacity by State.xlsx'), sheet_name="Industrial")
     res['sector_abbr'] = 'res'
     com['sector_abbr'] = 'com'
     ind['sector_abbr'] = 'ind'
-    by_sector = pd.concat([res, com, ind], axis='rows') 
-    by_sector[[2018, 2019]] = by_sector[[2017, 2018, 2019]].diff(axis=1)[[2018, 2019]] # convert to annual installations
+    by_sector = pd.concat([res, com, ind], axis='rows')
+    # by_sector[[2018, 2019]] = by_sector[[2017, 2018, 2019]].diff(axis=1)[[2018, 2019]] # convert to annual installations
     by_sector = by_sector.fillna(0)
     by_sector.columns = ['state_name', 2017, 2018, 2019, 'sector_abbr']
-    by_sector = by_sector.melt(id_vars=['state_name','sector_abbr'], var_name=['year'], value_name='annual_installed_mw')
+    by_sector = by_sector.melt(id_vars=['state_name', 'sector_abbr'], var_name=[
+                            'year'], value_name='cum_mw')
 
-    replace_dict = {'Delhi':'nct_of_delhi', 'Telangana':'andhra_pradesh'}
+    replace_dict = {'Delhi': 'nct_of_delhi', 'Telangana': 'andhra_pradesh'}
     by_sector['state_name'] = by_sector['state_name'].replace(replace_dict)
 
     # --- fuzzy string matching ---
     clean_list = list(agent_df['state_name'].unique())
     by_sector['state_name'] = by_sector['state_name'].apply(helper.sanitize_string)
-    by_sector['state_name'] = helper.fuzzy_address_matcher(by_sector['state_name'], clean_list)
+    by_sector['state_name'] = helper.fuzzy_address_matcher(
+        by_sector['state_name'], clean_list)
     by_sector['state_id'] = by_sector['state_name'].map(state_id_lookup)
     by_sector['state_name'].unique()
 
     # --- group by duplicates ---
-    by_sector = by_sector.groupby(['state_name', 'state_id', 'sector_abbr','year'], as_index=False)['annual_installed_mw'].sum()
+    by_sector = by_sector.groupby(
+        ['state_name', 'state_id', 'sector_abbr', 'year'], as_index=False)['cum_mw'].sum()
+
+    all_india = pd.read_csv(os.path.join(
+        'reference_data', 'ieefa_india_national_mw.csv'))
+
+
+    # --- Scale state/sector to meet annual estimates ---
+    g = by_sector.groupby(['year'])['cum_mw'].sum()
+    for y in set(by_sector['year']):
+        old_mw = g[y]
+        new_mw = all_india.loc[all_india['year'] == y, 'ieefa_total_mw'].values[0]
+        multiplier = 1 + ((new_mw - old_mw) / old_mw)
+        by_sector.loc[by_sector['year'] == y, 'cum_mw'] *= multiplier
+
+    # --- Extrapolate state level data to previous years with national sums ---
+    years = [i for i in set(all_india['year']) if i < by_sector['year'].min()]
+    years.sort()
+    years.reverse()
+    for y in years:
+        next_year = by_sector.loc[by_sector['year'] == y+1]
+        old_mw = next_year['cum_mw'].sum()
+        new_mw = all_india.loc[all_india['year'] == y, 'ieefa_total_mw'].values[0]
+        multiplier = 1 + ((new_mw - old_mw) / old_mw)
+        next_year['cum_mw'] *= multiplier
+        next_year['year'] = y
+        by_sector = pd.concat([by_sector, next_year], axis='rows')
+
+    # --- Extrapolate projected capacity growth forward ---
+    years = [i for i in set(all_india['year']) if i > by_sector['year'].max()]
+    years.sort()
+    for y in years:
+        last_year = by_sector.loc[by_sector['year'] == y-1]
+        old_mw = last_year['cum_mw'].sum()
+        new_mw = all_india.loc[all_india['year'] == y, 'ieefa_total_mw'].values[0]
+        multiplier = 1 + ((new_mw - old_mw) / old_mw)
+        last_year['cum_mw'] *= multiplier
+        last_year['year'] = y
+        by_sector = pd.concat([by_sector, last_year], axis='rows')
+
 
     # --- identify states with no capacity ---
     for state in agent_df['state_name'].unique():
@@ -347,16 +393,30 @@ def pv_state_starting_capacities(agent_df):
                 assert len(sub_df) != 0
 
     # --- Calculate number of adopters from cumulative capacity ---
-    system_size_dict = {'res':2, 'com':16, 'ind':200} #based on avg rootop size
-    by_sector['annual_installed_count'] = by_sector['annual_installed_mw'] / by_sector['sector_abbr'].map(system_size_dict) * 1000
+    system_size_dict = {'res': 4, 'com': 16,'ind': 100}  # based on avg rootop size
+    by_sector['cum_installed_count'] = by_sector['cum_mw'] / \
+        by_sector['sector_abbr'].map(system_size_dict) * 1000
+
+    # --- create annual installtions ---
+    by_sector.sort_values(['state_name', 'sector_abbr', 'year'], inplace=True)
+    by_sector['annual_installed_mw'] = by_sector.groupby(
+        ['state_name', 'state_id', 'sector_abbr'])['cum_mw'].transform(lambda x: x.diff(1))
+    by_sector['annual_installed_count'] = by_sector.groupby(['state_name', 'state_id', 'sector_abbr'])[
+        'cum_installed_count'].transform(lambda x: x.diff(1))
+    by_sector[['cum_mw', 'cum_mw', 'annual_installed_mw', 'annual_installed_count']] = by_sector[[
+        'cum_mw', 'cum_mw', 'annual_installed_mw', 'annual_installed_count']].fillna(0).clip(0)
 
     # --- Output annual installations for bass fitting ---
-    by_sector.to_csv(os.path.join('reference_data', 'clean_pv_installed_all_years.csv'), index=False)
+    by_sector.to_csv(os.path.join('reference_data',
+                                'clean_pv_installed_all_years.csv'), index=False)
 
     # --- Make cumulative for pv_state_starting_capacities ---
-    grouped = by_sector.groupby(['state_id','sector_abbr'], as_index=False)[['annual_installed_count','annual_installed_mw']].sum()
-    grouped.rename({'annual_installed_count':'pv_systems_count', 'annual_installed_mw':'pv_capacity_mw'}, axis='columns', inplace=True)
-    grouped.to_csv(os.path.join('india_base', 'pv_state_starting_capacities.csv'), index=False)
+    out = by_sector.loc[by_sector['year'] == config.START_YEAR]
+    out = out[['state_id', 'sector_abbr', 'cum_installed_count', 'cum_mw']]
+    out.rename({'cum_installed_count': 'pv_systems_count',
+                'cum_mw': 'pv_capacity_mw'}, axis='columns', inplace=True)
+    out.to_csv(os.path.join(
+        'india_base', 'pv_state_starting_capacities.csv'), index=False)
 
 
 def solar_resource_profiles(agents):
@@ -525,6 +585,26 @@ def normalized_load():
     sample_load.reset_index(inplace=True, drop=True)
     sample_load.to_json(os.path.join('india_base','normalized_load.json'))
 
+def apply_itc(agents):
+    special_states = [
+        'uttarakhand',
+        'sikkim',
+        'himachal_pradesh',
+        'jammu_kashmir',
+        'lakshadweep'
+    ]
+    
+    incentives = []
+    for index, row in agents.iterrows():
+        if row['state_name'] in special_states:
+            incentives.append(0.7)
+        else:
+            incentives.append(0.3)
+    agents['investment_incentive_pct'] = incentives
+        
+    agents['investment_incentive_year_cutoff'] = 2022
+    
+    return agents
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~ Create Agents ~~~~~~~~~~~~~~~~~~
@@ -568,7 +648,8 @@ print('........creating load distribution', 'agents shape:', agents.shape)
 agents = samp.assign_distribution(agents, load_per_customer_in_bin_dist, 'load_per_customer_in_bin_kwh')
 print('........creating customers distribution', 'agents shape:', agents.shape)
 agents = samp.assign_distribution(agents, customers_in_bin_dist, 'customers_in_bin')
-
+print('........applying available incentives', 'agents shape:', agents.shape)
+agents = apply_itc(agents)
 
 # --- Clean up ---
 print('........mapping distributions', 'agents shape:', agents.shape)
