@@ -549,7 +549,7 @@ class ScenarioSettings:
           elif os.path.exists(os.path.join(self.input_csv_folder,'solar_resource_hourly.csv')):
                df = pd.read_csv(os.path.join(self.input_csv_folder,'solar_resource_hourly.csv'))
                df['cf'] = df['cf'].apply(ast.literal_eval)
-
+     
           df = df.rename(columns={'cf':'solar_cf_profile'})
 
           on = self._find_geography_column_to_merge_on(df)

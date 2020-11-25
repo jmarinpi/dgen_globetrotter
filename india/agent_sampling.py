@@ -5,7 +5,6 @@ import helper
 import geopandas as gpd
 import agent_config as config
 
-
 pd.options.mode.chained_assignment = None
 
 

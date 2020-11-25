@@ -198,7 +198,7 @@ def main(mode = None, resume_year = None, endyear = None, ReEDS_inputs = None):
                     #==========================================================================================================
                     
                     # Write Outputs to the database
-                    drop_fields = ['consumption_hourly_initial','solar_cf_profile','bill_savings', 'consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile'] #dropping because are arrays or json
+                    drop_fields = ['consumption_hourly_initial','bill_savings', 'consumption_hourly', 'solar_cf_profile', 'tariff_dict', 'deprec_sch', 'batt_dispatch_profile'] #dropping because are arrays or json
                     df_write = solar_agents.df.drop(drop_fields, axis=1)
                     
                     write_annual = False
