@@ -169,50 +169,51 @@ def load_growth(agent_df):
     Currently assumes that all sectors have the same load growth. Could use 'CEA_historic_consumption_by_sector.csv' to normalize this by sector.
     """
 
-    reeds_load = pd.read_csv(os.path.join('reference_data','ReEDS_load.csv'), names=['state_name','hour','year','value'])
+    reeds = pd.read_excel(
+        os.path.join('reference_data','NREL_2020_load_forecast_2016-2037_KA.xlsx'),
+        sheet_name='Growth_NREL_Baseline')
 
-    # --- Group by year ---
-    reeds_load = reeds_load.groupby(['state_name','year'], as_index=False)['value'].mean()
+    reeds = reeds.loc[reeds['metric'] == 'Annual Energy']
+    reeds.drop('metric', inplace=True, axis='columns')
+    reeds.set_index('BA', inplace=True)
 
-    # --- Pivot Wide ---
-    reeds_load = pd.pivot_table(reeds_load, index='state_name', columns='year', values='value')
+    # --- scale back load before 2019 ---
+    reeds_before = reeds[[2017,2018]]
+    for y in [2014,2015,2016]: # add in previous years
+        reeds_before[y] = np.nan
 
-    # --- Convert to pct diff ---
-    reeds_load = reeds_load.pct_change(axis=1)
+    reeds_before = reeds_before[[2014,2015,2016,2017,2018]]
+    reeds_before = reeds_before.fillna(method='bfill', axis=1).fillna(method='ffill', axis=1)
+    reeds_before = 1 - reeds_before #load expressed as multiplier from next year
+    reeds_before = reeds_before[list(reeds_before.columns)[::-1]] #reverse list
+    reeds_before = reeds_before.cumprod(axis=1)
+    reeds_before = reeds_before[list(reeds_before.columns)[::-1]] #reverse back to chronological
+    reeds_before[2019] = 1 #2019 EPS is baseline year
 
-    # --- Add missing years ---
-    for y in range(2014,2018,1): # not in df
-        reeds_load[y] = np.nan
+    reeds_after = reeds[[2021,2022,2023,2024,2025,2026,2031,2036]]
+    missing_years = [2020]+list(range(2027,2031))+list(range(2032,2036))+list(range(2037,2051))
+    for y in missing_years:
+        reeds_after[y] = np.nan
+    reeds_after += 1 #express as percent increase from previous year
 
-    for y in range(2048,2051,1): # not in df
-        reeds_load[y] = np.nan
+    reverse_cagr = lambda x: (x)**(1/5) #convert 5 year compund growth rate to annual
+    reeds_after[2031] = reeds_after[2031].apply(reverse_cagr)
+    reeds_after[2036] = reeds_after[2036].apply(reverse_cagr)
         
-    reeds_load.sort_index(axis=1, inplace=True)
+    reeds_after = reeds_after[list(range(2020,2051))]
+    reeds_after = reeds_after.fillna(method='bfill', axis=1).fillna(method='ffill', axis=1)
+    reeds_after = reeds_after.cumprod(axis=1)
 
-    # --- Add Previous Years --
-    reeds_load = reeds_load.fillna(method='bfill', axis=1).fillna(method='ffill', axis=1)
-    reeds_load += 1
+    load_growth = pd.concat([reeds_before, reeds_after], axis='columns')
 
-    long_dfs = []
-    # --- Calculate cumulative product ---
-    for scenario, multiplier in zip(['Low','Planning','High'],[config.LOW_LOAD_GROWTH, config.PLANNING_LOAD_GROWTH, config.HIGH_LOAD_GROWTH]):
-        load_growth = reeds_load.copy()
-        load_growth *= multiplier
-        load_growth = reeds_load.cumprod(axis=1)
+    load_growth.index.name = 'state_name'
+    load_growth.reset_index(drop=False, inplace=True)
 
-        # --- Convert back to long_df ---
-        load_growth.reset_index(inplace=True)
-        load_growth = load_growth.melt(id_vars=['state_name'], var_name=['year'], value_name='new_load_growth')
-
-        for c in ['res', 'com', 'ind', 'agg']:
-            load_growth[c] = load_growth['new_load_growth'] #TODO: implement sector specific load growth
-        load_growth.drop('new_load_growth', axis='columns', inplace=True)
-
-        load_growth = load_growth.melt(id_vars=['state_name','year'], var_name='sector_abbr', value_name='load_multiplier')
-        load_growth['scenario'] = scenario
-        long_dfs.append(load_growth)
-
-    load_growth = pd.concat(long_dfs, axis='rows')
+    load_growth = load_growth.melt(
+        id_vars=['state_name'],
+        var_name='year',
+        value_name='load_multiplier'
+    )
 
     # --- fuzzy string matching ---
     clean_list = list(agent_df['state_name'].unique())
@@ -220,20 +221,26 @@ def load_growth(agent_df):
     load_growth['state_name'] = helper.fuzzy_address_matcher(load_growth['state_name'], clean_list)
 
     # --- any missing states ---
-    avg_load_growth = load_growth.groupby(['year','sector_abbr','scenario'], as_index=False)['load_multiplier'].mean()
+    avg_load_growth = load_growth.groupby(['year'], as_index=False)['load_multiplier'].mean()
     for state in clean_list:
         if state not in set(load_growth['state_name']):
             state_load_growth = avg_load_growth.copy()
             state_load_growth['state_name'] = state
             load_growth = load_growth.append(state_load_growth)
-
-    # --- drop any duplicates ---
-    load_growth = load_growth.drop_duplicates(subset=['state_name','year','sector_abbr','scenario'])
-
+            
     # --- map state id ---
     load_growth['state_id'] = load_growth['state_name'].map(state_id_lookup)
     load_growth.drop(['state_name'], axis='columns', inplace=True)
 
+    # --- duplicate for sectors ---
+    load_growths = []
+    for s in ['res','com','ind','agg']:
+        df = load_growth.copy()
+        df['sector_abbr'] = s
+        load_growths.append(df)
+    load_growth = pd.concat(load_growths, axis='rows')
+
+    load_growth['scenario'] = 'Planning'
 
     load_growth.to_csv(os.path.join('india_base','load_growth_projections.csv'), index=False)
 
@@ -696,6 +703,8 @@ normalized_load()
 print('....copying csvs to input_scenarios')
 copy_tree('india_base/', os.path.join(os.pardir, 'input_scenarios','india_base/'))
 
+#IMPORTANT NOTE! After running this script, run 'india_bass_estimation.ipynb' to recalibrate the bass diffusion model to the new agents
+# This is important when changing the number of agents per state represeted (i.e. because the historic adoption sampled will be allocated to different districts potenitally)
 #%%
 
 
