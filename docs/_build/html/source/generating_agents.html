@@ -170,7 +170,8 @@
 - rerun <cite>python india_agent_csv_creator.py</cite> to create new agents.
 - each function in <cite>india_agent_csv_creator.py</cite> controls the output of a <cite>.csv</cite> file with a single scope. For instance, <cite>rate_escalations()</cite> creates the <cite>india_base/rate_escalations.csv</cite> file that is read in by dGen.
 - if new data is available for sampling, <cite>.csv</cite> files can be edited directly (if this is easier), or the underlying functions in <cite>india_agent_csv_creator.py</cite> can be modified.
-- the new files are created within <cite>india/india_base/</cite> and this directory is also copied into <cite>input_scenarios/india_base/</cite></p>
+- the new files are created within <cite>india/india_base/</cite> and this directory is also copied into <cite>input_scenarios/india_base/</cite>
+- after the model has been run, net load analysis can be conducted in <cite>india/notebooks/india_plots.ipynb</cite>.</p>
 <p>If new historic adoption data is available, a seperate notebook <cite>india_bass_estimation.ipynb</cite> creates the <cite>pv_bass.csv</cite> file, after being manually tuned for parameter bounds.</p>
 <p>Agent sampling for India involves constructing normal distributions of observed feature attributes, and sampling from these for each agent. The number of agents sampled is the same per state, and defined by <cite>agent_config.py:AGENTS_PER_GEOGRAPHY</cite>.</p>
 </div>

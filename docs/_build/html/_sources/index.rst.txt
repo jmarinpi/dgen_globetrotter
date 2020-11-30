@@ -10,7 +10,7 @@ The Distributed Generation Market Demand (dGen) model simulates customer adoptio
 
 The dGen model can help develop DER deployment forecasts for a range of spatial and temporal scales. To learn more, see `model applications <https://www.nrel.gov/analysis/dgen/model-applications.html>`_.
 
-This version of the model is specifically set-up for the Mexican context. This includes the usage of Mexican states and control areas along with Mexican demographic and load data. 
+This version of the model is specifically set-up for the International contexts. This includes the usage of International states and control areas along with Mexican demographic and load data. 
 
 .. image:: source/doc_data/hero-hp-dgen.png
    :scale: 60 %

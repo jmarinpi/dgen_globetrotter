@@ -16,6 +16,7 @@ An example for generating agents for India is as follows:
 - each function in `india_agent_csv_creator.py` controls the output of a `.csv` file with a single scope. For instance, `rate_escalations()` creates the `india_base/rate_escalations.csv` file that is read in by dGen.
 - if new data is available for sampling, `.csv` files can be edited directly (if this is easier), or the underlying functions in `india_agent_csv_creator.py` can be modified. 
 - the new files are created within `india/india_base/` and this directory is also copied into `input_scenarios/india_base/`
+- after the model has been run, net load analysis can be conducted in `india/notebooks/india_plots.ipynb`.
 
 If new historic adoption data is available, a seperate notebook `india_bass_estimation.ipynb` creates the `pv_bass.csv` file, after being manually tuned for parameter bounds. 
 

@@ -1,38 +1,40 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>python.agent_mutation &mdash; dGen Mexico 0.1 documentation</title>
+  <title>python.agent_mutation &mdash; dGen Globetrotter 0.1 documentation</title>
   
-
-  
-  
-  
-  
-
-  
-  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../../_static/jquery.js"></script>
-        <script type="text/javascript" src="../../_static/underscore.js"></script>
-        <script type="text/javascript" src="../../_static/doctools.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
 
   
   <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
@@ -48,7 +50,7 @@
           
 
           
-            <a href="../../index.html" class="icon icon-home"> dGen Mexico
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> dGen Globetrotter
           
 
           
@@ -71,6 +73,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -81,6 +84,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../source/tutorial.html">Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/generating_agents.html">Generating Agents</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/api.html">dGen Code Base</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/input_data.html">Input Data</a></li>
@@ -89,6 +93,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -98,7 +103,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../../index.html">dGen Mexico</a>
+          <a href="../../index.html">dGen Globetrotter</a>
         
       </nav>
 
@@ -127,7 +132,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../../index.html">Docs</a> &raquo;</li>
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
         
           <li><a href="../index.html">Module code</a> &raquo;</li>
         
@@ -153,10 +158,13 @@
 <span class="sd">@author: tkwasnik</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span> <span class="nn">elec</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">elec</span>
+
+<span class="kn">import</span> <span class="nn">utility_functions</span> <span class="k">as</span> <span class="nn">utilfunc</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">utilfunc</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
 
 <div class="viewcode-block" id="init_solar_agents"><a class="viewcode-back" href="../../source/python.agent_mutation.html#python.agent_mutation.init_solar_agents">[docs]</a><span class="k">def</span> <span class="nf">init_solar_agents</span><span class="p">(</span><span class="n">scenario_settings</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;initiate solar agents</span>
+    <span class="sd">&quot;&quot;&quot;initiate solar agents</span>
 <span class="sd">        </span>
 <span class="sd">        Loads and merges state DPV capacity in 2015, load profiles, hourly solar resource, and electric rates with core agent attributes.</span>
 
@@ -167,28 +175,23 @@
 <span class="sd">        </span>
 <span class="sd">        Outputs:</span>
 <span class="sd">        -agents_df - pandas dataframe - core initial agent attributes</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="c1"># =========================================================================</span>
-    <span class="c1"># LOAD CORE AGENT ATTRIBUTES</span>
-    <span class="c1"># =========================================================================</span>
-    
     <span class="n">scenario_settings</span><span class="o">.</span><span class="n">load_core_agent_attributes</span><span class="p">()</span>
-    
-    <span class="c1"># =========================================================================</span>
-    <span class="c1"># GET NORMALIZED LOAD PROFILES</span>
-    <span class="c1"># =========================================================================</span>
-    
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;........loaded core agent attributes, agents shape: </span><span class="si">{</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">core_agent_attributes</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">scenario_settings</span><span class="o">.</span><span class="n">load_starting_capacities</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;........loaded starting capacities, agents shape: </span><span class="si">{</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">core_agent_attributes</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">scenario_settings</span><span class="o">.</span><span class="n">load_financing_rates</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;........loaded financing rates, agents shape: </span><span class="si">{</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">core_agent_attributes</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">scenario_settings</span><span class="o">.</span><span class="n">load_normalized_load_profiles</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;........loaded load profiles, agents shape: </span><span class="si">{</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">core_agent_attributes</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">scenario_settings</span><span class="o">.</span><span class="n">load_normalized_hourly_resource_solar</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;........loaded solar profiles, agents shape: </span><span class="si">{</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">core_agent_attributes</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">scenario_settings</span><span class="o">.</span><span class="n">load_electric_rates_json</span><span class="p">()</span>
-    
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;........loaded electric tariffs, agents shape: </span><span class="si">{</span><span class="n">scenario_settings</span><span class="o">.</span><span class="n">core_agent_attributes</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
     <span class="n">agents_df</span> <span class="o">=</span> <span class="n">scenario_settings</span><span class="o">.</span><span class="n">core_agent_attributes</span>
 
-    <span class="c1">#==============================================================================</span>
-    <span class="c1"># Set initial year columns. Initial columns do not change, whereas non-initial are adjusted each year</span>
-    <span class="c1"># note that some of the above operations rely on non-initial name, which should be cleaned up when agent initialization is rebuilt</span>
-    <span class="c1">#==============================================================================    </span>
     <span class="n">agents_df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;customers_in_bin&#39;</span><span class="p">:</span><span class="s1">&#39;customers_in_bin_initial&#39;</span><span class="p">,</span> 
                                <span class="s1">&#39;load_per_customer_in_bin_kwh&#39;</span><span class="p">:</span><span class="s1">&#39;load_per_customer_in_bin_kwh_initial&#39;</span><span class="p">,</span>
                                <span class="s1">&#39;load_in_bin_kwh&#39;</span><span class="p">:</span><span class="s1">&#39;load_in_bin_kwh_initial&#39;</span><span class="p">,</span>
@@ -210,11 +213,19 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, NREL
+        
+        &copy; Copyright 2020, NREL
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -225,7 +236,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

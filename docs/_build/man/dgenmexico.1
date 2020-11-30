@@ -1,0 +1,3921 @@
+.\" Man page generated from reStructuredText.
+.
+.TH "DGENMEXICO" "1" "Nov 30, 2020" "" "dGen Globetrotter"
+.SH NAME
+dgenmexico \- dGen Mexico Documentation
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.sp
+The Distributed Generation Market Demand (dGen) model simulates customer adoption of distributed energy resources (DERs) for residential, commercial, and industrial entities in the United States or other countries through 2050. dGen was written by the The National Renewable Energy Laboratory (NREL).
+.sp
+The dGen model can help develop DER deployment forecasts for a range of spatial and temporal scales. To learn more, see \fI\%model applications\fP\&.
+.sp
+This version of the model is specifically set\-up for the International contexts. This includes the usage of International states and control areas along with Mexican demographic and load data.
+[image]
+.SH USE CASES
+.INDENT 0.0
+.IP \(bu 2
+Identifying the sectors, locations, and customers for whom adopting DERs would have a high economic value
+.IP \(bu 2
+Generating forecasts as an input to estimate distribution hosting capacity analysis, integrated resource planning, and load forecasting
+.IP \(bu 2
+Understanding the economic or policy conditions in which DER adoption becomes viable
+.IP \(bu 2
+Illustrating sensitivity to market and policy changes such as retail electricity rate structures, net energy metering, and technology costs.
+.UNINDENT
+.SH MODELING PROCESS
+.sp
+Consumer demand is modeled through an agent\-based approach that includes five steps:
+.INDENT 0.0
+.IP 1. 3
+Generating agents (i.e., potential customers) and assigning them attributes based on a
+probabilistic representation of individual customer types.
+.IP 2. 3
+Applying technical and siting restrictions, such as resource quality, rooftop availability
+(solar), and quality for each agent.
+.IP 3. 3
+Performing economic calculations using cash flow analysis incorporating project costs,
+prevailing retail rates, incentives, and net metering considerations.
+.IP 4. 3
+Calculating market share of each technology by simulating technology adoption based on
+Bass\-style adoption and other considerations of consumer behavior.
+.IP 5. 3
+Determining the total installed capacity by agent and jurisdiction for each year.
+.UNINDENT
+.SH DOCUMENTATION TABLE OF CONTENTS
+.SS Tutorial
+.sp
+High\-level utilization of dGen can be done in four steps:
+.SS 1) Setting parameters in an \fB\&.xlsm\fP (Microsoft Excel) file.
+.sp
+A file with default values is provided by dGen, located at \fBreference_data/example_data/mex_high_costs.xlsm\fP\&. Opening this file in Excel reveals several sheets (tabs). The ‘Main’ tab is the most direct way to change high\-level parameters, Including the Analysis End Year, the Sectors (markets) to run analysis for, Load Growth projections, Rate Structure and Escalation, Market Adoption Curves, Carbon Pricing Schemes, and Net Metering Schemes. Advanced users running custom scenarios can also point dGen towards a custom Pre\-Generated Agents file in the \fBMain\fP tab.
+.sp
+Other tabs include Market Projections, which contains a table of macro\-economic projections including an Annual Inflation value, and yearly parameters for Carbon Price, (if a price is identified in ‘Main’), and Sectoral Rate Escalations (based on a 2015 base year).
+.sp
+The \fBFinancing\fP Tab includes financing assumptions for specific projects. These include Loan Tenor (length), Loan Rates, Down Payments, Discount Rates, and Tax Rates. An additional table in the ‘Financing’ tab includes Sectoral Depreciation schedules.
+.sp
+The \fBStorage\fP tab contains battery storage benchmark prices on a per kWh and per kW installed basis for each sector.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+dGen’s Storage Module (\fBpython.storage_functions()\fP) is currently disabled as it was not included in the scope of Globetrotter implementation.
+.UNINDENT
+.UNINDENT
+.sp
+The \fBSolar\fP tab contains PV system benchmark prices on a a per kW installed basis for each sector. Fixed and Variable Annual Operations and Maintenance (O&M), PV Degradation rates can also be set. Power Density assumes that technological advances will lead to increased cell efficiencies, this doesn’t directly affect system costs, but does allow agents with smaller roofs to adopt a higher capacity if economic.
+.sp
+Once modified with the user’s desired parameters, this file (or an alternative) should be copied into the \fBinput_data/\fP folder. When initializing dGen, each scenario file within \fBinput_data/\fP will be run, one after another.
+.SS 2) Placing or editing \fB\&.csv\fP data files
+.sp
+Along with the \fI\&.xlsm\fP file in \fBinput_data/\fP, dGen requires a folder containing a number of \fB\&.csv\fP files with specific data. Like \fBmex_high_costs.xlsm\fP, a default set of files is available in \fBreference_data/example_data/mex_high_costs\fP\&. More details on these files and their contents are available in the \fIScenario Data\fP section of this documentation. The \fBmex_high_costs/\fP folder, or an alternative, must be copied into \fBinput_data/\fP alongside \fBmex_high_costs.xlsm\fP\&.
+.SS 3) Running the model through a command line interface (CLI) or interactive development environment (e.g. a Jupyter Notebook)
+.sp
+Once the correct environment is installed and the correct scenario data has been placed within \fBinput_data/\fP, the model is ready to be initialized.
+.sp
+Running the model on the \fBcommand line\fP involves moving to the \fBpython/\fP directory within the dGen package. From inside the \fBpython/\fP folder, activate the virtualenv set\-up during installation. Finally, run the model as a python directive.:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+#enter python directory
+$ cd <your path here>/dgen_globetrotter/python
+
+#activate the installed environment
+$ source env/Scripts/activate  #or conda activate env
+
+#run the model
+(env)$ python dgen_model.py #run the model
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+As the model run is progressing, the status will be logged to the screen. This information allows the user to see which Scenario and Year are currently being run.
+.sp
+Some users might find it helpful to run dGen within an interactive development environment, such as a Jupyter Notebook. If you do not have Jupyter installed, follow the \fI\%Installing Jupiter using Anaconda and conda\fP instructions.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+You will likely not see anything printed to the screen while running dGen from within an IDE.
+.UNINDENT
+.UNINDENT
+.SS 4) Interpreting Results
+.sp
+After running the model, a \fBruns/\fP folder has been created within dGen, a results folder with a timestamp for the date and time that the model was initialized contains a folder for each scenario that was run. Opening the scenario folder contains the following files:
+.INDENT 0.0
+.IP \(bu 2
+\fBdpv_MW_by_ba_and_year.csv\fP contains the installed MW capacity of distributed photovoltaics by year for each control area.
+.IP \(bu 2
+\fBdpv_cf_by_ba.csv\fP contains an hourly profile (8760) for the last model year of the distributed photovoltaic capacity factor.
+.IP \(bu 2
+\fBagent_outputs.csv\fP contains the output agent dataframe, which allows users to view agnate\-by\-agent outcomes for dpv adoption. Multiple years of model runs have been appended on as additional rows.
+.IP \(bu 2
+\fBagent_df_base.pkl\fP is a python pickled file containing the input agent dataframe.
+.IP \(bu 2
+\fBCopies of the input files\fP including an \fB\&.xlsm\fP and an \fBinput_data/\fP folder containing \fB\&.csv\fP files, described in Input Data
+.UNINDENT
+.SS Example Use Cases
+.SS Basic Use Case
+.sp
+Basic usage of the dGen model can take place with minimum programming skills. Most input data can be modified within \fB\&.csv\fP files or \fB\&.xlsm\fP files through a program like Microsoft Excel.
+.sp
+For some applications of dGen with a limited number of agents, like dGen Mexico, it can be possible to run the model on a laptop or desktop computer. However running the model on a High Performance Computing system will likely decrease the model run time for all applications and in the case of model runs with a large number of agents, it can be necessary to avoid memory issues.
+.sp
+Let’s demonstrate usage of dGen by testing a simple hypothesis: If retail electricity rate escalations are high, we will see more commercial solar capacity than if rate escalations are low. In this hypothesis, we are testing if self\-generation will be more economic for customers than paying high retail rates, especially when programs like net metering are available to compensate excess generation sold back to the utility.
+.sp
+To test this hypothesis, we’ll conduct two model runs:
+.INDENT 0.0
+.IP 1. 3
+\fIOur test case:\fP with high rate escalation and net metering based on the avoided cost of generation.
+.IP 2. 3
+\fIOur control case:\fP with low rate escalation and net metering based on the avoided cost of generation.
+.UNINDENT
+.sp
+To set up a model run, we need to place a scenario \fB\&.xlsm\fP file and a folder of \fB\&.csv\fP files containing input data in the \fBinput_scenarios/\fP folder. An example of this is within the \fBreference_data/example_data/\fP folder, called \fBmex_high_costs.xlsm\fP, and \fBmex_high_costs/\fP\&. Copy these folders to \fBinput_scenarios/\fP and rename them \fBhigh_rate_escalation.xlsm\fP and \fBexample_input_csvs/\fP\&.
+.sp
+Next, the most impactful parameters should be changed within the \fBhigh_rate_escalation.xlsm\fP file. Open the file with Microsoft Excel, and select the \fIMain\fP tab.
+.sp
+Change the following options:
+.INDENT 0.0
+.IP \(bu 2
+Rename the \fBScenario Name\fP to be ‘high_rate_escalation’.
+.IP \(bu 2
+Rename the \fBScenario Folder\fP to be the sibling file of \fB\&.csv\fP files, in our case it should be ‘example_input_csvs’.
+.IP \(bu 2
+\fBAnalysis End Year\fP should be ‘2026’ (it can be up to 2050, but we’ll reduce it to decrease model run time for this example).
+.IP \(bu 2
+\fBMarkets\fP should be ‘Only Commercial’.
+.IP \(bu 2
+\fILoad Growth Scenario\fP should be ‘Planning’.
+.IP \(bu 2
+The \fBRes\fP, \fBCom\fP, and \fBInd Rate Structure\fP fields should all stay as ‘Flat (Annual Average)’.
+.IP \(bu 2
+\fBCom Rate Escalation\fP should be ‘High’, as that is the scenario we are testing, but \fBRes\fP and \fBInd\fP should stay as ‘Planning’.
+.IP \(bu 2
+Different data sources are available for \fBMax Market Curve\fP, we’ll use ‘Navigant’ for \fBCom\fP\&.
+.IP \(bu 2
+A Carbon Price is not part of our scenario, so we’ll set \fBCarbon Price\fP to ‘No Carbon Price’.
+.IP \(bu 2
+We’re testing a \fBNet Metering Scenario\fP based on the ‘Avoided Cost’.
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+The ‘Tariff Rate’ option for \fBNet Metering Scenario\fP is not currently working.
+.UNINDENT
+.UNINDENT
+.sp
+Once these parameters are input, save the file and exit Excel.
+.sp
+We now need to copy the \fBhigh_rate_escalation.xlsm\fP file and paste a second copy into \fBinput_scenarios/\fP\&. Let’s rename this copy to be \fBlow_rate_escalation.xlsm\fP\&. We don’t need to recopy the \fBexample_input_csvs/\fP folder.
+.sp
+Open \fBlow_rate_escalation.xlsm\fP with Microsoft Excel and select the \fIMain\fP tab:
+.INDENT 0.0
+.IP \(bu 2
+Change \fBScenario Name\fP to be ‘low_rate_escalation’
+.IP \(bu 2
+Change \fBRes Rate Escalation\fP to be ‘Low’.
+.UNINDENT
+.sp
+Save file and close it.
+.sp
+Now we’re ready to run the model. This involves opening your computer’s command line interface (CLI). On Macs this should be an application called Terminal, on Windows this should be called Command Prompt.
+.sp
+Running the model on the \fBcommand line\fP involves moving to the \fBpython/\fP directory within the dGen package. From inside the \fBpython/\fP folder, activate the virtualenv set\-up during installation. If an environment hasn’t been created yet, follow the Installation instructions. Finally, run the model as a python directive.:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+#enter python directory of dgen_globetrotter
+$ cd <your path here>/dgen_globetrotter/python
+
+#activate the installed environment
+$ source env/Scripts/activate  #or conda activate env
+
+#run the model
+(env)$ python dgen_model.py #run the model
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Model results are saved to the \fBruns/\fP folder, inside a folder with a time\-stamped name, will be a log and code profile, and a folder for each scenario. There should have a folder called \fBhigh_rate_escalation\fP and a file called \fBlow_rate_escalation\fP\&.
+.INDENT 0.0
+.IP \(bu 2
+Inside each of these folders will be a pickled Pandas DataFrame containing complete model information for each agent.
+.IP \(bu 2
+Additionally, \fBagent_outputs.csv\fP contains the agent_df for each year joined on to each other length wise.
+.IP \(bu 2
+\fBdpv_cf_by_ba.csv\fP contains an 8760 of solar capacity factors for each control region in a representative year of the model.
+.IP \(bu 2
+\fBdpv_MW_by_ba_and_year.csv\fP contains the cumulative installed solar capacity for each control region in each model year.
+.IP \(bu 2
+Finally, copies of the original \fBinput_data/\fP folder, and excel scenario file are included for reference.
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Reading pickled DataFrames is easy with:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+pandas.read_pickle(<path>)
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+Now that our model has run, let’s open \fBruns/<timestamp>/low_rate_escalation/dpv_MW_by_ba_and_year.csv\fP
+.SS Basic Use Case: Low Rate Escalation
+.TS
+center;
+|l|l|l|l|l|l|l|l|.
+_
+T{
+control_reg_id
+T}	T{
+2016
+T}	T{
+2018
+T}	T{
+2020
+T}	T{
+2022
+T}	T{
+2024
+T}	T{
+2026
+T}	T{
+Total
+T}
+_
+T{
+1
+T}	T{
+5.1
+T}	T{
+24.6
+T}	T{
+95.0
+T}	T{
+260.4
+T}	T{
+448.2
+T}	T{
+623.4
+T}	T{
+1456.7
+T}
+_
+T{
+2
+T}	T{
+3.4
+T}	T{
+14.4
+T}	T{
+49.8
+T}	T{
+142.4
+T}	T{
+306.9
+T}	T{
+525.5
+T}	T{
+1042.3
+T}
+_
+T{
+3
+T}	T{
+15.3
+T}	T{
+60.5
+T}	T{
+187.0
+T}	T{
+445.9
+T}	T{
+760.0
+T}	T{
+1009.1
+T}	T{
+2477.9
+T}
+_
+T{
+4
+T}	T{
+2.4
+T}	T{
+12.1
+T}	T{
+45.5
+T}	T{
+114.6
+T}	T{
+187.4
+T}	T{
+237.1
+T}	T{
+599.0
+T}
+_
+T{
+5
+T}	T{
+1.1
+T}	T{
+5.0
+T}	T{
+16.5
+T}	T{
+34.8
+T}	T{
+50.1
+T}	T{
+65.9
+T}	T{
+173.4
+T}
+_
+T{
+6
+T}	T{
+4.4
+T}	T{
+16.7
+T}	T{
+48.3
+T}	T{
+114.6
+T}	T{
+211.5
+T}	T{
+308.2
+T}	T{
+703.8
+T}
+_
+T{
+7
+T}	T{
+3.7
+T}	T{
+18.6
+T}	T{
+67.0
+T}	T{
+150.1
+T}	T{
+212.4
+T}	T{
+244.2
+T}	T{
+696.0
+T}
+_
+T{
+8
+T}	T{
+2.7
+T}	T{
+13.5
+T}	T{
+47.4
+T}	T{
+97.9
+T}	T{
+122.9
+T}	T{
+131.5
+T}	T{
+416.0
+T}
+_
+T{
+9
+T}	T{
+1.3
+T}	T{
+6.4
+T}	T{
+22.6
+T}	T{
+44.4
+T}	T{
+54.0
+T}	T{
+57.1
+T}	T{
+185.8
+T}
+_
+T{
+Total
+T}	T{
+39.4
+T}	T{
+171.7
+T}	T{
+579.2
+T}	T{
+1405.0
+T}	T{
+2353.4
+T}	T{
+3202.0
+T}	T{
+7750.8
+T}
+_
+.TE
+.sp
+For the sake of this example, an additional ’Total’ column and row were added so we can see that \fB7750.8 MW\fP of commercial solar PV was installed during the ‘low_rate_escalation’ run. Let’s now compare that with \fBruns/<timestamp>/high_rate_escalation/dpv_MW_by_ba_and_year.csv\fP\&.
+.SS Basic Use Case: High Rate Escalation
+.TS
+center;
+|l|l|l|l|l|l|l|l|.
+_
+T{
+control_reg_id
+T}	T{
+2016
+T}	T{
+2018
+T}	T{
+2020
+T}	T{
+2022
+T}	T{
+2024
+T}	T{
+2026
+T}	T{
+Total
+T}
+_
+T{
+1
+T}	T{
+5.1
+T}	T{
+24.7
+T}	T{
+95.9
+T}	T{
+266.3
+T}	T{
+482.8
+T}	T{
+688.3
+T}	T{
+1563.1
+T}
+_
+T{
+2
+T}	T{
+3.4
+T}	T{
+14.4
+T}	T{
+49.9
+T}	T{
+143.8
+T}	T{
+318.3
+T}	T{
+554.0
+T}	T{
+1083.7
+T}
+_
+T{
+3
+T}	T{
+15.3
+T}	T{
+60.5
+T}	T{
+187.4
+T}	T{
+450.7
+T}	T{
+783.8
+T}	T{
+1058.1
+T}	T{
+2555.8
+T}
+_
+T{
+4
+T}	T{
+2.4
+T}	T{
+12.1
+T}	T{
+45.7
+T}	T{
+116.2
+T}	T{
+194.4
+T}	T{
+250.1
+T}	T{
+620.9
+T}
+_
+T{
+5
+T}	T{
+1.1
+T}	T{
+5.0
+T}	T{
+16.6
+T}	T{
+35.6
+T}	T{
+52.1
+T}	T{
+69.9
+T}	T{
+180.2
+T}
+_
+T{
+6
+T}	T{
+4.4
+T}	T{
+16.7
+T}	T{
+48.4
+T}	T{
+115.7
+T}	T{
+216.8
+T}	T{
+324.0
+T}	T{
+726.1
+T}
+_
+T{
+7
+T}	T{
+3.7
+T}	T{
+18.6
+T}	T{
+67.4
+T}	T{
+153.3
+T}	T{
+226.2
+T}	T{
+266.5
+T}	T{
+735.8
+T}
+_
+T{
+8
+T}	T{
+2.7
+T}	T{
+13.5
+T}	T{
+47.5
+T}	T{
+99.8
+T}	T{
+129.6
+T}	T{
+140.6
+T}	T{
+433.8
+T}
+_
+T{
+9
+T}	T{
+1.3
+T}	T{
+6.4
+T}	T{
+22.6
+T}	T{
+45.2
+T}	T{
+56.8
+T}	T{
+61.2
+T}	T{
+193.6
+T}
+_
+T{
+Total
+T}	T{
+39.4
+T}	T{
+171.8
+T}	T{
+581.4
+T}	T{
+1426.6
+T}	T{
+2461.0
+T}	T{
+3412.6
+T}	T{
+8092.9
+T}
+_
+.TE
+.sp
+In the high_rate_escalation scenario \fB8092.9 MW\fP of commercial solar PV were adopted, an increase of \fB342.1 MW\fP!
+.SS Intermediate Use Case
+.sp
+Keeping the \fBlow_rate_escalation.xlsm\fP and \fBhigh_rate_escalation.xlsm\fP files, let’s change some more advanced parameters. We’ll keep the low rate escalation scenario as our control, but we’ll see what happens to installed commercial solar PV capacity when we increase the Investment Tax Credit (ITC), which is a subsidy that is paid on the installed cost of the system.
+.sp
+Apart from the \fIMain\fP tab where we modified scenario settings previously, tabs exist for \fIMarket Projections\fP, \fIFinancing\fP, \fIStorage (Note: Storage is not functional in dGen Mexico)\fP, and \fISolar\fP within the \fBhigh_rate_escalaiton.xlsm\fP file. To change the ITC, let’s switch to the \fIFinancing\fP tab. Under the \fICommercial\fP section of the \fIFinancing\fP table, we can examine the ‘Solar ITC %’ column to see that the default Commercial ITC is 30% in 2014, and begins phasing down in 2020 until it reaches 10% in 2024. Let’s test a scenario where new legislation was passed to expand the ITC to 35% between 2020 and 2026. To do this, change the respective values to ‘0.35’. Let’s save this as a new file, \fBhigh_rate_escalation_ITC.xlsm\fP\&. We’ll keep all our changes in the \fIMain\fP tab, and leave \fB/low_rate_escalation\fP file untouched so it can act as our control.
+.sp
+We run the model the same way as in our previous example, although you might want to move the \fIlow_rate_escalation.xlsm\fP and \fBhigh_rate_escalation.xlsm\fP files out of the \fBinput_scenarios/\fP folder, so that they are excluded from this run. Once the model run is complete, we can open \fBruns/<timestamp>/hih_rate_escalation_ITC/dpv_MW_by_ba_and_year.csv\fP to see the new installed solar PV commercial capacity.
+.SS Intermediate Use Case: High Rate Escalation with 35% ITC in 2020
+.TS
+center;
+|l|l|l|l|l|l|l|l|.
+_
+T{
+control_reg_id
+T}	T{
+2016
+T}	T{
+2018
+T}	T{
+2020
+T}	T{
+2022
+T}	T{
+2024
+T}	T{
+2026
+T}	T{
+Total
+T}
+_
+T{
+1
+T}	T{
+5.1
+T}	T{
+24.7
+T}	T{
+95.9
+T}	T{
+286.5
+T}	T{
+587.7
+T}	T{
+878.6
+T}	T{
+1878.5
+T}
+_
+T{
+2
+T}	T{
+3.4
+T}	T{
+14.4
+T}	T{
+49.9
+T}	T{
+148.6
+T}	T{
+350.9
+T}	T{
+640.6
+T}	T{
+1207.7
+T}
+_
+T{
+3
+T}	T{
+15.3
+T}	T{
+60.5
+T}	T{
+187.4
+T}	T{
+471.1
+T}	T{
+886.1
+T}	T{
+1258.1
+T}	T{
+2878.5
+T}
+_
+T{
+4
+T}	T{
+2.4
+T}	T{
+12.1
+T}	T{
+45.7
+T}	T{
+123.5
+T}	T{
+226.5
+T}	T{
+307.5
+T}	T{
+717.7
+T}
+_
+T{
+5
+T}	T{
+1.1
+T}	T{
+5.0
+T}	T{
+16.6
+T}	T{
+38.0
+T}	T{
+60.5
+T}	T{
+81.9
+T}	T{
+203.1
+T}
+_
+T{
+6
+T}	T{
+4.4
+T}	T{
+16.7
+T}	T{
+48.4
+T}	T{
+119.3
+T}	T{
+238.2
+T}	T{
+374.3
+T}	T{
+801.3
+T}
+_
+T{
+7
+T}	T{
+3.7
+T}	T{
+18.6
+T}	T{
+67.4
+T}	T{
+167.4
+T}	T{
+277.2
+T}	T{
+343.9
+T}	T{
+878.2
+T}
+_
+T{
+8
+T}	T{
+2.7
+T}	T{
+13.5
+T}	T{
+47.5
+T}	T{
+108.7
+T}	T{
+156.5
+T}	T{
+176.0
+T}	T{
+504.9
+T}
+_
+T{
+9
+T}	T{
+1.3
+T}	T{
+6.4
+T}	T{
+22.6
+T}	T{
+49.8
+T}	T{
+69.5
+T}	T{
+77.2
+T}	T{
+226.8
+T}
+_
+T{
+Total
+T}	T{
+39.4
+T}	T{
+171.8
+T}	T{
+581.4
+T}	T{
+1512.8
+T}	T{
+2853.0
+T}	T{
+4138.2
+T}	T{
+9296.7
+T}
+_
+.TE
+.sp
+Wow! We see \fB9296.7 MW\fP of adoption when the ITC is expanded, clearly that is an impactful policy. Try playing around with changing other values in the tabs in \fBhigh_rate_escalation_ITC.xlsm\fP\&.
+.SS Advanced Use Case
+.sp
+At a more advanced level, individual \fB\&.csv\fP files within the \fBinput_scearios/example_input_csvs/\fP folder can be changed. Input Data covers what each of these file is. Let’s try changing some of these values now, starting with \fBexample_input_csvs/pv_bass.csv\fP\&.
+.sp
+At the core of the dGen model is a bass diffusion model. The bass diffusion curve is an economic principle that identifies an S\-curve of adoption for new technologies. Even if it is incredibly economic for a commercial entity to adopt solar, market research indicates that many will still not adopt because of unawareness, fear of change, or other barriers to entry. The S\-curve of the Bass Diffusion model anticipates that a small number of initial adopters will inspire a larger number of followers. This is true for many things within our economy. For instance, if a new independent\-film comes out that is very good, a small number of initial moviegoers might see it because they are un\-afraid to try new things, or some members might stumble into the movie on a whim but end up enjoying the film. As these initial viewers talk to their friends and family and tell them about the great film they recently saw, others will be inspired to go see the movie. This trend has been observed with technology adoption too, including the adoption rate for the automobile, smartphones, and now roof\-top solar PV.
+.sp
+The curve is defined by two parameters, \fIp\fP and \fIq\fP\&.
+.INDENT 0.0
+.IP \(bu 2
+\fIp\fP is the coefficient of innovation, it identifies the proportion of the population that will spontaneously install solar PV in each time increment.
+.IP \(bu 2
+\fIq\fP is the coefficient of imitation, it identifies the proportion of the population that will adopt based on current levels of adoption.
+.UNINDENT
+.sp
+Mathematically, the model is expressed as:
+.sp
+.ce
+\efrac{f(t)}{1 \- F(t)} = p + qF(t)
+
+
+.ce 0
+.sp
+Put simply:[1]
+.sp
+.ce
+\escriptsize
+\etext{customers who will purchase at time }t = (p * \etext{ remaining potential}) + (q * \etext{ number of adopters} * \etext{remaining potential})
+
+
+.ce 0
+[image]
+.sp
+Applying this to the dGen model, if we open \fBinput_scenarios/example_input_csvs/pv_bass.csv\fP we’ll find a file containing \fIp\fP and \fIq\fP parameters for every state, control region, and sector combination. These have been prepopulated based on our careful analysis of measured historic data. For the sake of this example, let’s input some crude values in order to test a scenario where more commercial agents will spontaneously adopt solar, perhaps this could be the result of a massive advertisement campaign. To do this, we want to raise the \fIp\fP values for the commercial sector. Let’s change all of these values to ‘0.0075’ which is around 3.5 times higher than the current average p value.
+.sp
+After saving the file and running the model again (just for the ‘high_rate_escalation_ITC’ scenario), we get the following results for installed commercial solar PV capacity:
+.SS Advanced Use Case: High Rate Escalation with 35% ITC in 2020 and p values of ‘0.0075’
+.TS
+center;
+|l|l|l|l|l|l|l|l|.
+_
+T{
+control_reg_id
+T}	T{
+2016
+T}	T{
+2018
+T}	T{
+2020
+T}	T{
+2022
+T}	T{
+2024
+T}	T{
+2026
+T}	T{
+Total
+T}
+_
+T{
+1
+T}	T{
+30.2
+T}	T{
+129.6
+T}	T{
+384.1
+T}	T{
+753.7
+T}	T{
+1040.6
+T}	T{
+1187
+T}	T{
+3525.2
+T}
+_
+T{
+2
+T}	T{
+28.6
+T}	T{
+110.4
+T}	T{
+308.7
+T}	T{
+633.2
+T}	T{
+954.8
+T}	T{
+1171.7
+T}	T{
+3207.4
+T}
+_
+T{
+3
+T}	T{
+33.9
+T}	T{
+136.5
+T}	T{
+389.7
+T}	T{
+783.9
+T}	T{
+1144.4
+T}	T{
+1377
+T}	T{
+3865.4
+T}
+_
+T{
+4
+T}	T{
+8.1
+T}	T{
+37.4
+T}	T{
+114.8
+T}	T{
+223.6
+T}	T{
+295.7
+T}	T{
+324.7
+T}	T{
+1004.3
+T}
+_
+T{
+5
+T}	T{
+2.9
+T}	T{
+11.5
+T}	T{
+32.5
+T}	T{
+63.2
+T}	T{
+91
+T}	T{
+110.8
+T}	T{
+311.9
+T}
+_
+T{
+6
+T}	T{
+10.4
+T}	T{
+39.2
+T}	T{
+108.3
+T}	T{
+228.8
+T}	T{
+360.5
+T}	T{
+453.8
+T}	T{
+1201
+T}
+_
+T{
+7
+T}	T{
+8.9
+T}	T{
+41.6
+T}	T{
+128.1
+T}	T{
+246.3
+T}	T{
+319.8
+T}	T{
+346.9
+T}	T{
+1091.6
+T}
+_
+T{
+8
+T}	T{
+4.7
+T}	T{
+22.3
+T}	T{
+68.5
+T}	T{
+128.3
+T}	T{
+162.3
+T}	T{
+174.2
+T}	T{
+560.3
+T}
+_
+T{
+9
+T}	T{
+1.9
+T}	T{
+9.1
+T}	T{
+28.9
+T}	T{
+55.2
+T}	T{
+70.7
+T}	T{
+76
+T}	T{
+241.8
+T}
+_
+T{
+Total
+T}	T{
+129.6
+T}	T{
+537.6
+T}	T{
+1563.6
+T}	T{
+3116.2
+T}	T{
+4439.8
+T}	T{
+5222.1
+T}	T{
+15008.9
+T}
+_
+.TE
+.sp
+Increasing the \fIp\fP value has lead to \fB15,008.9 MW\fP of commercial solar capacity. Obviously the \fIp\fP parameters is an extremely significant input. This example use case is purposefully extreme: it is testing a scenario with constant high retail rate escalations, a major legislative push for a 35% ITC, and a significantly higher willingness of commercial customers to adopt solar. While more realistic scenarios would not involve changing these values this drastically, hopefully this example demonstrated the types of levers that are available within the dGen model and how to access them.
+.sp
+Try playing with other values both in the excel file, and folder of \fB\&.csv\fP files to test other scenarios. If you have any questions about using the dGen model, please contact \fI\%Ben.Sigrin@NREL.gov\fP\&.
+.SH FOOTNOTES
+.IP [1] 5
+Bar Ilan University. “Forecasting the Sales of New Products and the Bass Model.” \fI\%https://faculty.biu.ac.il/~fruchtg/829/lec/6.pdf\fP
+.SS Generating Agents
+.SS India Example
+.sp
+The India and Colombian versions of dGen Globetrotter involve creating agents as flat\-files (\fI\&.csv\fP) that are then processed by a modified version of the dGen codebase.
+.sp
+Generating agents is an integral part of the modeling process and involves using known data and our assumptions to statistically sample representative agents that can be simulated.
+.sp
+For dGen India, \fIindia/india_agent_csv_creator.py\fP controls this process.
+.sp
+An example for generating agents for India is as follows:
+\- adjust any agent configuration settings in \fIindia/agent_config.py\fP such as electricity cost increases.
+\- rerun \fIpython india_agent_csv_creator.py\fP to create new agents.
+\- each function in \fIindia_agent_csv_creator.py\fP controls the output of a \fI\&.csv\fP file with a single scope. For instance, \fIrate_escalations()\fP creates the \fIindia_base/rate_escalations.csv\fP file that is read in by dGen.
+\- if new data is available for sampling, \fI\&.csv\fP files can be edited directly (if this is easier), or the underlying functions in \fIindia_agent_csv_creator.py\fP can be modified.
+\- the new files are created within \fIindia/india_base/\fP and this directory is also copied into \fIinput_scenarios/india_base/\fP
+\- after the model has been run, net load analysis can be conducted in \fIindia/notebooks/india_plots.ipynb\fP\&.
+.sp
+If new historic adoption data is available, a seperate notebook \fIindia_bass_estimation.ipynb\fP creates the \fIpv_bass.csv\fP file, after being manually tuned for parameter bounds.
+.sp
+Agent sampling for India involves constructing normal distributions of observed feature attributes, and sampling from these for each agent. The number of agents sampled is the same per state, and defined by \fIagent_config.py:AGENTS_PER_GEOGRAPHY\fP\&.
+.SS Installation
+.sp
+dGen requires a Python 3 installation (>=3.6). Some computers (Macs and Linux) might already have this installed.
+.sp
+To ensure that the correct version of python is installed before proceeding run the following through a command line interface:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ python \-\-version
+Python 3.6.1
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+If python is not installed, or an incorrect version is installed, it is recommended to install python using \fI\%Anaconda\fP\&.
+.SS Downloading dGen
+.sp
+You should already have a GitHub account and should have access to the \fI\%GitHub Repo\fP\&.
+.sp
+To download dGen, open your command line interface and run the following command.:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Replace <USERNAME> with your GitHub username
+$ git clone https://<USERNAME>@github.com/NREL/dgen_globetrotter.git
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+You will be asked for your GitHub password unless you have an ssh\-key set\-up. After entering your password, the dGen model will be downloaded into a new \fBdgen_globetrotter/\fP folder.
+.SS Set\-up a Virtual Environment
+.sp
+Once it is confirmed that Python 2.7 is installed and dGen is downloaded, specific package versions must be installed based on the \fBpython/requirements.txt\fP\&. The easiest way to ensure that the correct package versions are installed is by setting up a new environment.
+.sp
+\fBVirtualenv\fP
+.sp
+Virtualenv is a package to create isolated Python environments. This is likely the easiest way to setup dGen.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ pip install virtualenv
+
+#create a new environment
+$ virtualenv env #a different name can be substituted for env
+
+#activate the environment
+$ source env/Scripts/activate
+
+#move to the ‘python’ folder within ‘dgen_globetrotter/‘
+$ cd python
+
+#load the required Python packages from a file
+(env)$ pip install \-r requirements.txt
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+\fBAnaconda\fP
+.sp
+If you have familiarity using Anaconda, it is also possible to setup a new Python 2.7 environment through conda.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+#create a new environment
+$ conda create —name py2 python=2.7
+
+#activate the environment
+$ condo activate py2
+
+#move to the ‘python’ folder within ‘dgen_globetrotter/‘
+$ cd python
+
+#load the required Python packages from a file
+(py2)$ conda install —file requirements.txt
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS dGen Code Base
+.sp
+The dGen source code is located within the \fBpython/\fP directory. This page contains information on the classes, functions, attributes, and methods used by dGen. This page is useful for debugging errors, or examining how different elements interact incase a special run is desired.
+.SS Subpackages
+.SS python.agent_mutation package
+.SS Submodules
+.SS python.agent_mutation.elec module
+.sp
+Edited Monday Nov 5, 218
+@author: tkwasnik
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.aggregate_outputs_solar(agent_df, year, is_first_year, scenario_settings, interyear_results_aggregations=None)
+Aggregate agent\-level results into ba\-level results for the given year.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBagent_df\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.IP \(bu 2
+\fByear\fP (\fIint\fP) \-\- modelled year
+.IP \(bu 2
+\fBis_first_year\fP (\fIbool\fP) \-\- is first year indicator
+.IP \(bu 2
+\fBscenario_settings\fP (\fBpython.settings.ScenarioSettings\fP) \-\- scenario settings loaded from input sheet and csv\(aqs
+.IP \(bu 2
+\fBinteryear_results_aggregations\fP (\fIpandas.DataFrame\fP) \-\- aggregated pandas dataframe from previous year
+.UNINDENT
+.TP
+.B Returns
+\fBinteryear_results_aggregations\fP \-\- aggregated agent attributes
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.apply_elec_price_multiplier_and_escalator(dataframe, year, elec_price_change_traj)
+Obtain a single scalar multiplier for each agent, that is the cost of
+electricity relative to 2016 (when the tariffs were curated).
+Also calculate the average increase in the price of electricity over the
+past ten years, which will be the escalator that they use to project
+electricity changes in their bill calculations.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBdataframe\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.IP \(bu 2
+\fByear\fP (\fIint\fP) \-\- modelled year
+.IP \(bu 2
+\fBelec_price_change_traj\fP (\fIpandas.DataFrame\fP) \-\- contains elec_price_multiplier field by country, control region, and sector
+.UNINDENT
+.TP
+.B Returns
+agent attributes with new attributes
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 7.0
+.INDENT 3.5
+That many customers will not differentiate between real and nomianl,
+and therefore many would overestimate the real escalation of electriicty
+prices.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.apply_export_tariff_params(dataframe, net_metering_df)
+Add net metering system size limitation to each agent
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBdataframe\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.IP \(bu 2
+\fByear\fP (\fIint\fP) \-\- modelled year
+.IP \(bu 2
+\fBnet_metering_df\fP (\fIpandas.DataFrame\fP) \-\- .INDENT 2.0
+.TP
+.B net_metering_df.nem_system_size_limit_kw
+.UNINDENT
+.INDENT 2.0
+.TP
+.B net_metering_df.year_end_excess_sell_rate_usd_per_kwh
+.UNINDENT
+.INDENT 2.0
+.TP
+.B net_metering_df.hourly_excess_sell_rate_usd_per_kwh
+.UNINDENT
+
+.UNINDENT
+.TP
+.B Returns
+agent attributes with new attributes
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.apply_financial_params(dataframe, financing_terms, inflation_rate)
+Add the year\(aqs financial parameters including
+depreciation schedule (array  for years 0,1,2,3,4,5), Solar ITC fraction, Solar ITC min size kw, Solar ITC max size kw,
+years of loan term, loan rate, down payment percent, real discount percent, tax rate and economic lifetime
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBdataframe\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.IP \(bu 2
+\fBinflation_rate\fP (\fIfloat\fP) \-\- inflation rate percent
+.IP \(bu 2
+\fBfinancing_terms\fP (\fIpandas.DataFrame\fP) \-\- .INDENT 2.0
+.TP
+.B financing_terms.deprec_sch
+.UNINDENT
+.INDENT 2.0
+.TP
+.B financing_terms.itc_fraction
+.UNINDENT
+.INDENT 2.0
+.TP
+.B financing_terms.min_size_kw
+.UNINDENT
+.INDENT 2.0
+.TP
+.B financing_terms.max_size_kw
+.UNINDENT
+.INDENT 2.0
+.TP
+.B financing_terms.loan_term
+.UNINDENT
+.INDENT 2.0
+.TP
+.B financing_terms.loan_rate
+.UNINDENT
+.INDENT 2.0
+.TP
+.B financing_terms.down_payment
+.UNINDENT
+.INDENT 2.0
+.TP
+.B financing_terms.real_discount
+.UNINDENT
+.INDENT 2.0
+.TP
+.B financing_terms.tax_rate
+.UNINDENT
+.INDENT 2.0
+.TP
+.B financing_terms.economic_lifetime
+.UNINDENT
+
+.UNINDENT
+.TP
+.B Returns
+agent attributes with new attributes joined on
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.apply_load_growth(dataframe, load_growth_df)
+Apply load growth trajactories by country, control region and year
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBdataframe\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.IP \(bu 2
+\fBload_growth_df\fP (\fIpandas.DataFrame\fP) \-\- .INDENT 2.0
+.TP
+.B load_growth_df.load_multiplier
+.UNINDENT
+
+.UNINDENT
+.TP
+.B Returns
+agent attributes with new attributes
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.apply_market_last_year(dataframe, market_last_year_df)
+Estimates initial market penetration of DPV and number of adopters at the state level
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBdataframe\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.IP \(bu 2
+\fBmarket_last_year_df\fP (\fIpandas.DataFrame\fP) \-\- last year\(aqs number of adopters and percent adoption at the state level
+.UNINDENT
+.TP
+.B Returns
+\fBdataframe\fP \-\- agent attributes with new attributes
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.apply_pv_specs(dataframe, pv_specs)
+Add the year\(aqs PV specifications, including pv capitial and OM costs, degredation, and power density by year and sector
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBdataframe\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.IP \(bu 2
+\fBpv_specs\fP (\fIpandas.DataFrame\fP) \-\- .INDENT 2.0
+.TP
+.B pv_specs.pv_power_density_w_per_sqft
+.UNINDENT
+.INDENT 2.0
+.TP
+.B pv_specs.pv_deg
+.UNINDENT
+.INDENT 2.0
+.TP
+.B pv_specs.pv_price_per_kw
+.UNINDENT
+.INDENT 2.0
+.TP
+.B pv_specs.pv_om_per_kw
+.UNINDENT
+.INDENT 2.0
+.TP
+.B pv_specs.pv_variable_om_per_kw
+.UNINDENT
+
+.UNINDENT
+.TP
+.B Returns
+agent attributes with new attributes
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.apply_scale_normalized_load_profiles(dataframe)
+Scale the normalized load based on agent\(aqs per captia cumulative energy consumption
+.INDENT 7.0
+.TP
+.B Parameters
+\fBdataframe\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.TP
+.B Returns
+agent attributes with new attributes
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.apply_storage_specs(dataframe, batt_price_traj, year, scenario_settings)
+Add the year\(aqs Battery specifications
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBdataframe\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.IP \(bu 2
+\fByear\fP (\fIint\fP) \-\- modelled year
+.IP \(bu 2
+\fBscenario_settings\fP (\fBpython.settings.ScenarioSettings\fP) \-\- scenario settings loaded from input sheet and csv\(aqs
+.IP \(bu 2
+\fBbatt_price_traj\fP (\fIpandas.DataFrame\fP) \-\- .INDENT 2.0
+.TP
+.B batt_price_traj.batt_price_per_kwh
+.UNINDENT
+.INDENT 2.0
+.TP
+.B batt_price_traj.batt_price_per_kw
+.UNINDENT
+.INDENT 2.0
+.TP
+.B batt_price_traj.batt_om_per_kw
+.UNINDENT
+.INDENT 2.0
+.TP
+.B batt_price_traj.batt_om_per_kwh
+.UNINDENT
+
+.UNINDENT
+.TP
+.B Returns
+agent attributes with new attributes
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.apply_wholesale_elec_prices(dataframe, df)
+Add control region and sector specific wholesale electricity prices to each agent
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBdataframe\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.IP \(bu 2
+\fBdf\fP (\fIpandas.DataFrame\fP) \-\- includes joinable wholesale_elec_usd_per_kwh field
+.UNINDENT
+.TP
+.B Returns
+agent attributes with new attributes
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.calculate_developable_customers_and_load(dataframe)
+Calculate cumulative developebale customers and load
+.INDENT 7.0
+.TP
+.B Parameters
+\fBdataframe\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.TP
+.B Returns
+agent attributes with new attributes
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.estimate_initial_market_shares(dataframe)
+Estimates initial market penetration of DPV and number of adopters at the state level
+.INDENT 7.0
+.TP
+.B Parameters
+\fBdataframe\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.TP
+.B Returns
+\fBdataframe\fP \-\- agent attributes with new attributes
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.agent_mutation.elec.estimate_total_generation(df)
+Estimates total energy generated from DPV in a year
+.INDENT 7.0
+.TP
+.B Parameters
+\fBdf\fP (\fIpandas.DataFrame\fP) \-\- agent attributes for the given year
+.TP
+.B Returns
+agent attributes with new attributes
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.SS Module contents
+.sp
+Edited Monday Nov 5, 218
+@author: tkwasnik
+.INDENT 0.0
+.TP
+.B python.agent_mutation.init_solar_agents(scenario_settings)
+initiate solar agents
+.sp
+Loads and merges state DPV capacity in 2015, load profiles, hourly solar resource, and electric rates with core agent attributes.
+.sp
+Author: Ted Kwasnik
+.sp
+Inputs:
+\-scenario_settings \- object \-
+.sp
+Outputs:
+\-agents_df \- pandas dataframe \- core initial agent attributes
+.UNINDENT
+.SS python.excel package
+.SS Submodules
+.SS python.excel.excel_objects module
+.INDENT 0.0
+.TP
+.B exception python.excel.excel_objects.ExcelError
+Bases: \fBException\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B class python.excel.excel_objects.FancyNamedRange(workbook, range_name)
+Bases: \fBobject\fP
+.INDENT 7.0
+.TP
+.B contents_to_array()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B first_value()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B to_df(transpose=False, columns=None)
+.UNINDENT
+.INDENT 7.0
+.TP
+.B to_stringIO(transpose=False, columns=None, index=False, header=False)
+.UNINDENT
+.UNINDENT
+.SS Module contents
+.sp
+Edited Monday Nov 5, 218
+@author: tkwasnik
+.SS Submodules
+.SS python.agents module
+.INDENT 0.0
+.TP
+.B class python.agents.Agents(agents_df)
+Bases: \fBobject\fP
+.sp
+Agents class instance
+.INDENT 7.0
+.TP
+.B __init__(agents_df)
+Initialize Agents Class
+:param agents_df: Pandas Dataframe containing agents and their attributes.
+.INDENT 7.0
+.INDENT 3.5
+Index = agent ids, columns = agent attributes
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Returns
+.INDENT 7.0
+.IP \(bu 2
+\fBagent_df\fP (\fI\(aqpd.df\(aq\fP) \-\- Agents DataFrame
+.IP \(bu 2
+\fBagent_ids\fP (\fI\(aqndarray\(aq\fP) \-\- Array of agent ids
+.IP \(bu 2
+\fBagent_attrs\fP (\fI\(aqndarray\(aq\fP) \-\- Array of agent attributes
+.IP \(bu 2
+\fBattrs_types\fP (\fI\(aqpd.Series\(aq\fP) \-\- Array of dtypes for each attribute
+.UNINDENT
+
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B add_attrs(attr_df, on=None)
+Add attributes to agents
+:param df: Pandas Dataframe containing new attributes for agents
+:type df: \(aqpd.df\(aq
+:param on: Pandas on kwarg, if None join on index
+:type on: \(aqobject\(aq
+.INDENT 7.0
+.TP
+.B Returns
+.INDENT 7.0
+.IP \(bu 2
+\fBagent_df\fP (\fI\(aqpd.df\(aq\fP) \-\- Updated Agents DataFrame
+.IP \(bu 2
+\fBattrs_types\fP (\fI\(aqpd.Series\(aq\fP) \-\- Updated attribute types
+.UNINDENT
+
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B apply_chunk_on_row(func, cores=1, **kwargs)
+Divide the dataframe into chunks according to the number of processors and
+then apply function to agents on an agent by agent basis within that
+dataframe chunk. Function should return a df to be merged onto the original df.
+:param func: Function to be applied to each agent
+.INDENT 7.0
+.INDENT 3.5
+Must take a pd.Series as the argument
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBcores\fP (\fI\(aqint\(aq\fP) \-\- Number of cores to use for computation
+.IP \(bu 2
+\fBin_place\fP (\fI\(aqbool\(aq\fP) \-\- If true, set self.df = results of compute
+else return results of compute
+.IP \(bu 2
+\fB**kwargs\fP \-\- Any kwargs for func
+.UNINDENT
+.TP
+.B Returns
+\fBresults_df\fP \-\- Dataframe of agents after application of func
+.TP
+.B Return type
+\(aqpd.df\(aq
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B apply_on_frame(func, func_args, **kwargs)
+Apply function to agents using agent.df
+:param func: Function to be applied to agent.df
+.INDENT 7.0
+.INDENT 3.5
+Must take a pd.df as the arguement
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBfunc_args\fP (\fI\(aqobject\(aq\fP) \-\- args for func
+.IP \(bu 2
+\fBin_place\fP (\fI\(aqbool\(aq\fP) \-\- If true, set self.df = results of compute
+else return results of compute
+.IP \(bu 2
+\fB**kwargs\fP \-\- Any kwargs for func
+.UNINDENT
+.TP
+.B Returns
+\fBresults_df\fP \-\- Dataframe of agents after application of func
+.TP
+.B Return type
+\(aqpd.df\(aq
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B apply_on_row(func, cores=1, **kwargs)
+Apply function to agents on an agent by agent basis. Function should
+return a df to be merged onto the original df.
+:param func: Function to be applied to each agent
+.INDENT 7.0
+.INDENT 3.5
+Must take a pd.Series as the argument
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBcores\fP (\fI\(aqint\(aq\fP) \-\- Number of cores to use for computation
+.IP \(bu 2
+\fBin_place\fP (\fI\(aqbool\(aq\fP) \-\- If true, set self.df = results of compute
+else return results of compute
+.IP \(bu 2
+\fB**kwargs\fP \-\- Any kwargs for func
+.UNINDENT
+.TP
+.B Returns
+\fBresults_df\fP \-\- Dataframe of agents after application of func
+.TP
+.B Return type
+\(aqpd.df\(aq
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B property check_types
+Check to see if attribute types have changed
+.UNINDENT
+.INDENT 7.0
+.TP
+.B chunk_on_row(func, cores=1, in_place=True, **kwargs)
+Wrapper function around apply_on_row with runtime tests.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B on_frame(func, func_args=None, in_place=True, **kwargs)
+Wrapper function around apply_on_frame with runtime tests.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B on_row(func, cores=1, in_place=True, **kwargs)
+Wrapper function around apply_chunk_on_row with runtime tests.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B run_with_runtime_tests(how_to_apply, func, func_args=None, cores=2, **kwargs)
+.INDENT 7.0
+.TP
+.B Apply a function to a dataframe with:
+\-on_frame
+\-on_row
+\-chunk_on_row
+.UNINDENT
+.sp
+While conducting run time tests.
+Tests
+\-\-\-\-\-
+\- Dropped Columns: Columns were in df_in, but not in df_out
+\- Duplicated Columns: New columns appear with a \(aq_x\(aq appended, indicating a pandas merge error
+\- Null Values in New Columns: Can be overridden with config variable.
+\- dType Change in Old Columns: Can be overridden with config variable.
+\- Consistant Length: Number of rows (agents) hasn\(aqt changed.
+\- Consistant agent_ids: agent_ids in df_in match those in df_out
+\&.. rubric:: Notes
+.INDENT 7.0
+.IP \(bu 2
+.INDENT 2.0
+.TP
+.B Returns a df with agent_id as a \fIcolumn\fP, not as the index.
+\-THIS ALLOWS US TO GET RID OF MOST df.set_index(\(aqagent_id\(aq) AND df.reset_index(drop=False) THROUGHOUT THE CODEBASE.
+.UNINDENT
+.IP \(bu 2
+Drops \(aqbad columns\(aq that are created by merge errors or index resets [\(aqlevel_0\(aq,\(aqindex\(aq]
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B to_pickle(file_name)
+Save agents to pickle file
+:param file_name: File name for agents pickle file
+:type file_name: \(aqsting\(aq
+.UNINDENT
+.INDENT 7.0
+.TP
+.B property update_attrs
+Update agent class attributes
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B class python.agents.Solar_Agents(agents_df, scenario_df)
+Bases: \fI\%python.agents.Agents\fP
+.sp
+Solar Agents class instance
+.INDENT 7.0
+.TP
+.B __init__(agents_df, scenario_df)
+Initialize Solar Agents Class
+:param agents_df: Pandas Dataframe containing agents and their attributes.
+.INDENT 7.0
+.INDENT 3.5
+Index = agent ids, columns = agent attributes
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+\fBscenario_df\fP (\fI\(aqpd.df\(aq\fP) \-\- Pandas Dataframe containing scenario/solar specific attributes
+.TP
+.B Returns
+.INDENT 7.0
+.IP \(bu 2
+\fBagent_df\fP (\fI\(aqpd.df\(aq\fP) \-\- Agents DataFrame
+.IP \(bu 2
+\fBagent_ids\fP (\fI\(aqndarray\(aq\fP) \-\- Array of agent ids
+.IP \(bu 2
+\fBagent_attrs\fP (\fI\(aqndarray\(aq\fP) \-\- Array of agent attributes
+.IP \(bu 2
+\fBattrs_types\fP (\fI\(aqpd.Series\(aq\fP) \-\- Array of dtypes for each attribute
+.UNINDENT
+
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS python.config module
+.sp
+This module contains variables that can be changed, but are not exposed to non\-expert users.
+.SS python.decorators module
+.sp
+Module of accessory decorators, mainly for logging purposes.
+.INDENT 0.0
+.TP
+.B class python.decorators.fn_timer(logger=None, verbose=True, tab_level=0, prefix=\(aq\(aq)
+Bases: \fBobject\fP
+.sp
+Decorater class for profiling the run\-time of functions.
+.UNINDENT
+.SS python.dgen_model module
+.sp
+This is the main module of the Distributed Generation Market Demand Model
+created by the National Renewable Energy Lab (NREL).
+.sp
+Running this module requires a properly installed environment with applicable scenario files.
+Sample scenario files can be found in \fIreference_data/example_data\fP and include an .xlsm file as well
+as a folder of .csv files.
+.INDENT 0.0
+.TP
+.B python.dgen_model.main(mode=None, resume_year=None, endyear=None, ReEDS_inputs=None)
+Compute the economic adoption of distributed generation resources on an agent\-level basis.
+.sp
+Model output is saved to a \fI/runs\fP file within the dGen directory.
+.UNINDENT
+.SS python.diffusion_functions module
+.sp
+Module contains functions to calculate the bass diffusion of distributed generation adoption.
+.INDENT 0.0
+.TP
+.B On an agent\-level basis \fBdiffusion_functions\fP:
+.INDENT 7.0
+.IP 1. 3
+Determines maximum market size as a function of payback time
+.IP 2. 3
+Parameterizes the Bass diffusion curve with diffusion rates (p, q) set by payback time
+.IP 3. 3
+Determines the current stage (equivaluent time) of diffusion based on existing market and current economics
+.IP 4. 3
+Calculates the new market share by stepping forward on diffusion curve.
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.diffusion_functions.bass_diffusion(df)
+Calculate the fraction of population that diffuse into the max_market_share.
+.INDENT 7.0
+.TP
+.B Parameters
+\fBdf\fP (\fIpandas.DataFrame\fP) \-\- .INDENT 7.0
+.TP
+.B df.p
+Bass diffusion parameter defining the coeffieicent of innovation.
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B df.q
+Bass diffusion parameter definint the coefficient of imitation.
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B df.t
+Number of years since the diffusion model began.
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+
+.TP
+.B Returns
+Input dataframe with \fInew_adopt_fraction\fP column added. \fInew_adopt_fraction\fP represents the proportion of the overall population that will adopt the technology.
+.TP
+.B Return type
+DataFrame
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 7.0
+.INDENT 3.5
+This is different than the fraction of population that will adopt, which is the max market share.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.diffusion_functions.calc_diffusion_market_share(df, is_first_year)
+Calculate the fraction of overall population that have adopted the technology in the current period.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBdf\fP (\fIpandas.DataFrame\fP) \-\- .INDENT 2.0
+.TP
+.B df.payback_period
+Payback period in years.
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+.INDENT 2.0
+.TP
+.B df.max_market_share
+Maximum market share as decimal percentage.
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+.INDENT 2.0
+.TP
+.B df.current_market_share
+Current market share as decimal percentage.
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+
+.IP \(bu 2
+\fBis_first_year\fP (\fIbool\fP) \-\- If \fITrue\fP, the new equivalent time (\fIteq2\fP) is equal to the original \fIteq_yr1\fP plus the increment defined in \fIteq\fP\&.
+Otherwise, \fIteq2\fP is equal to \fIteq\fP plus 2 years.
+.UNINDENT
+.TP
+.B Returns
+The fraction of overall population that have adopted the technology
+.TP
+.B Return type
+numpy.ndarray
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 7.0
+.INDENT 3.5
+.INDENT 0.0
+.IP 1. 3
+This does not specify the actual new adoption fraction without knowing adoption in the previous period.
+.IP 2. 3
+The relative economic attractiveness controls the p, q value in the Bass diffusion model.
+.IP 3. 3
+The current assumption is that only payback and MBS are being used, that pp is bounded [0\-30] and MBS is bounded [0\-120].
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.diffusion_functions.calc_diffusion_solar(df, is_first_year, bass_params, override_p_value=None, override_q_value=None, override_teq_yr1_value=None)
+Calculates the market share (ms) added in the solve year.
+.sp
+Market share must be less than max market share (mms) except  when initial ms is greater than the calculated mms.
+For this circumstance, no diffusion allowed until mms > ms. Also, do not allow ms to decrease if economics deterioriate.
+Using the calculated market share, relevant quantities are updated.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBdf\fP (\fIpandas.DataFrame\fP) \-\- Input dataframe.
+.IP \(bu 2
+\fBis_first_year\fP (\fIbool\fP) \-\- Passed to \fBdiffusion_functions.calc_diffusion_market_share()\fP to determine the increment of \fIteq\fP
+.IP \(bu 2
+\fBbass_params\fP (\fIpandas.DataFrame\fP) \-\- DataFrame generally derived from \fBsettings.get_bass_params()\fP, includes the following attributes: config.BA_COLUMN, \fIsector_abbr\fP, \fIstate_id\fP, \fIp\fP, \fIq\fP, \fIteq_yr1\fP, \fItech\fP\&.
+.IP \(bu 2
+\fBoverride_p_values\fP (\fIfloat\fP\fI , \fP\fIoptional\fP) \-\- Value to override bass diffusion \fIp\fP coefficient of innovation with.
+.IP \(bu 2
+\fBoveride_q_values\fP (\fIfloat\fP\fI, \fP\fIoptional\fP) \-\- Value to override bass diffusion \fIq\fP coefficient of immitation with.
+.IP \(bu 2
+\fBoverride_teq_yr1_value\fP (\fIfloat\fP\fI, \fP\fIoptional\fP) \-\- Value to override bass diffusion \fIteq_yr1\fP value representing the number of years since diffusion began for the first year of observation.
+.UNINDENT
+.TP
+.B Returns
+Dataframe contains \fImarket_last_year\fP column to inform diffusion in next year.
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.diffusion_functions.calc_equiv_time(df)
+Calculate the "equivalent time" on the diffusion curve. This defines the gradient of adoption.
+.INDENT 7.0
+.TP
+.B Parameters
+\fBdf\fP (\fIpandas.DataFrame\fP) \-\- .INDENT 7.0
+.TP
+.B df.msly
+Market share last year [at end of the previous solve] as decimal
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B df.mms
+Maximum market share as a decimal percentage.
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B df.p
+Bass diffusion parameter defining the coefficient of innovation.
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B df.q
+Bass diffusion paramter defining the coefficient of imitation.
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+
+.TP
+.B Returns
+Input dataframe with \fIteq\fP column added. \fIteq\fP is the equivalent number of years after diffusion started on the diffusion curve.
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.diffusion_functions.set_bass_param(df, bass_params, override_p_value, override_q_value, override_teq_yr1_value)
+Set the \fIp\fP & \fIq\fP parameters which define the Bass diffusion curve.
+.sp
+\fIp\fP is the coefficient of innovation, external influence or advertising effect.
+\fIq\fP is the coefficient of imitation, internal influence or word\-of\-mouth effect.
+.sp
+\fIp\fP & \fIq\fP values defined by \fBdiffusion_functions.bass_diffusion()\fP can be overrode.
+.INDENT 7.0
+.TP
+.B Parameters
+\fBdf\fP (\fIpandas.DataFrame\fP) \-\- .INDENT 7.0
+.TP
+.B df.scaled_metric_value
+Scaled value of economic attractiveness (range of 0 \- 1)
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+
+.TP
+.B Returns
+Input dataframe with \fIp\fP and \fIq\fP columns addded.
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.SS python.dispatch_functions module
+.sp
+Currently battery storage functions are not utilizied.
+.INDENT 0.0
+.TP
+.B class python.dispatch_functions.Battery(nameplate_cap=0.0, nameplate_power=0.0, SOC_min=0.2, eta_charge=0.91, eta_discharge=0.91, cycles=0)
+Bases: \fBobject\fP
+.INDENT 7.0
+.INDENT 3.5
+.SS Todo
+.sp
+Degradation functions were just rough estimations from a slide deck, and currently have a disjoint at transition.
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B set_cap_and_power(nameplate_cap, nameplate_power)
+.UNINDENT
+.INDENT 7.0
+.TP
+.B set_cycle_deg(cycles)
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.dispatch_functions.calc_estimator_params(load_and_pv_profile, tariff, export_tariff, eta_charge, eta_discharge)
+Create four 12\-length vectors, weekend/weekday and
+cost/revenue. They are a summation of each day\(aqs 12 hours of lowest/highest
+cost electricity.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBload_and_pv_profile\fP (\fInumpy.ndarray\fP) \-\- 8760 array of the agent\(aqs load_profile \- pv_profile
+.IP \(bu 2
+\fBt\fP (\fI\%python.tariff_functions.Tariff\fP) \-\- Tariff class object
+.IP \(bu 2
+\fBexport_tariff\fP (\fI\%python.tariff_functions.Export_Tariff\fP) \-\- Export tariff class object
+.UNINDENT
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 7.0
+.INDENT 3.5
+.INDENT 0.0
+.IP 1. 3
+TOU windows are aligned with when the battery would be dispatching for demand peak shaving.
+.IP 2. 3
+The battery will be able to dispatch fully and recharge fully every 24 hour cycle.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.INDENT 3.5
+.SS Todo
+.INDENT 0.0
+.IP 1. 3
+Bring back consideration of tiers.
+.IP 2. 3
+Consider coming up with a better method that captures exportation, CPP, etc
+Maybe? Or just confirm a simple estimation works with our dGen set,
+and use the accurate dispatch for any other analysis.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.dispatch_functions.calc_min_possible_demands_vector(res, load_and_pv_profile, pv_profile, d_periods_month, batt, t, month, restrict_charge_to_pv_gen, batt_start_level, estimate_demand_levels)
+Currently battery storage functions are not utilizied.
+.sp
+Function that determines the minimum possible demands that this battery can achieve for a particular month.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBt\fP (\fI\%python.tariff_functions.Tariff\fP) \-\- Tariff class object
+.IP \(bu 2
+\fBbatt\fP (\fI\%python.dispatch_functions.Battery\fP) \-\- Battery class object
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.INDENT 3.5
+.SS Todo
+.sp
+Add a vector of forced discharges, for demand response representation
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.dispatch_functions.cartesian(arrays, out=None)
+Generate a cartesian product of input arrays.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBarrays\fP (\fIlist of numpy.ndarray\fP) \-\- 1\-D arrays to form the cartesian product of.
+.IP \(bu 2
+\fBout\fP (\fInumpy.ndarray\fP) \-\- Array to place the cartesian product in.
+.UNINDENT
+.TP
+.B Returns
+\fBout\fP \-\- 2\-D array of shape (M, len(arrays)) containing cartesian products
+formed of input arrays.
+.TP
+.B Return type
+numpy.ndarray
+.UNINDENT
+.sp
+Examples
+.sp
+.nf
+.ft C
+>>> cartesian(([1, 2, 3], [4, 5], [6, 7]))
+array([[1, 4, 6],
+       [1, 4, 7],
+       [1, 5, 6],
+       [1, 5, 7],
+       [2, 4, 6],
+       [2, 4, 7],
+       [2, 5, 6],
+       [2, 5, 7],
+       [3, 4, 6],
+       [3, 4, 7],
+       [3, 5, 6],
+       [3, 5, 7]])
+.ft P
+.fi
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.dispatch_functions.determine_cheapest_possible_of_given_demand_levels(load_and_pv_profile, pv_profile, unique_periods, d_combinations, d_combo_n, Dn_month, d_periods_index, batt, restrict_charge_to_pv_gen, batt_start_level, tariff)
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.dispatch_functions.determine_optimal_dispatch(load_profile, pv_profile, batt, t, export_tariff, d_inc_n=50, DP_inc=50, estimator_params=None, estimated=False, restrict_charge_to_pv_gen=False, estimate_demand_levels=False)
+Function that determines the optimal dispatch for a battery, and determines the resulting first year bill with the system.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBload_profile\fP (\fInumpy.ndarray\fP) \-\- Original load profile prior to modification by PV or storage
+.IP \(bu 2
+\fBpv_profile\fP (\fInumpy.ndarray\fP) \-\- PV profile of equal length to the \fIload_profile\fP
+.IP \(bu 2
+\fBt\fP (\fI\%python.tariff_functions.Tariff\fP) \-\- Tariff class object
+.IP \(bu 2
+\fBbatt\fP (\fI\%python.dispatch_functions.Battery\fP) \-\- Battery class object
+.IP \(bu 2
+\fBexport_tariff\fP (\fI\%python.tariff_functions.Export_Tariff\fP) \-\- Export tariff class object
+.UNINDENT
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 7.0
+.INDENT 3.5
+In the battery level matrices, 0 index corresponds to an empty battery, and
+the highest index corresponds to a full battery
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.INDENT 3.5
+.SS Todo
+.INDENT 0.0
+.IP 1. 3
+Having cost\-to\-go equal cost of filling the battery at the end may not be
+working.
+.IP 2. 3
+Have warnings for classes of errors. Same for bill calculator, such as when
+net load in a given period is negative either have warnings, or outright nans, when an illegal move is chosen
+.IP 3. 3
+If there are no demand charges, don\(aqt calc & don\(aqt have a limit on
+demand_max_profile for the following dispatch.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.dispatch_functions.estimate_annual_arbitrage_profit(power, capacity, eta_charge, eta_discharge, cost_sum, revenue_sum)
+This function uses the 12x24 marginal energy costs from calc_estimator_params to estimate the potential arbitrage value of a battery.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBpower\fP (\fIfloat\fP) \-\- Inherited from \fI\%python.dispatch_functions.Battery\fP
+.IP \(bu 2
+\fBcapacity\fP (\fIfloat\fP) \-\- Inherited from \fI\%python.dispatch_functions.Battery\fP
+.IP \(bu 2
+\fBeta_charge\fP (\fIfloat\fP) \-\- Inherited from \fI\%python.dispatch_functions.Battery\fP
+.IP \(bu 2
+\fBeta_discharge\fP (\fIfloat\fP) \-\- Inherited from \fI\%python.dispatch_functions.Battery\fP
+.IP \(bu 2
+\fBcost_sum\fP (\fInumpy.ndarray\fP) \-\- 12\-length sorted vector of summed energy costs for charging in the cheapest 12 hours of each day
+.IP \(bu 2
+\fBrevenue_sum\fP (\fInumpy.ndarray\fP) \-\- 12\-length sorted vector of summed energy revenue for discharging in the most expensive 12 hours of each day
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.INDENT 3.5
+.SS Todo
+.sp
+Restrict action if cap > (12 * power)
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS python.financial_functions module
+.INDENT 0.0
+.TP
+.B python.financial_functions.calc_financial_performance(dataframe)
+Function to calculate the payback period and join it on the agent dataframe.
+.INDENT 7.0
+.TP
+.B Parameters
+\fBdataframe\fP (\fIpandas.DataFrame\fP) \-\- Agent dataframe
+.TP
+.B Returns
+Agent dataframe with \fIpayback_period\fP joined on dataframe
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.financial_functions.calc_max_market_share(dataframe, max_market_share_df)
+Calculates the maximum marketshare available for each agent.
+:param dataframe:
+.INDENT 7.0
+.INDENT 3.5
+.INDENT 0.0
+.TP
+.B python.financial_functions.metric_value
+.INDENT 7.0
+.TP
+.B Type
+float
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+\fBmax_market_share_df\fP (\fIpandas.DataFrame\fP) \-\- Set by \fBsettings.ScenarioSettings.get_max_marketshare()\fP\&.
+.TP
+.B Returns
+Input DataFrame with \fImax_market_share\fP and \fImetric\fP columns joined on.
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.financial_functions.calc_payback_vectorized(cfs, tech_lifetime)
+Payback calculator.
+Can be either simple payback or discounted payback, depending on whether
+the input cash flow is discounted.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBcfs\fP (\fInumpy.ndarray\fP) \-\- Project cash flows ($/yr).
+.IP \(bu 2
+\fBtech_lifetime\fP (\fIint\fP) \-\- Lifetime of technology used for project.
+.UNINDENT
+.TP
+.B Returns
+\fBpp\fP \-\- Interpolated payback period (years)
+.TP
+.B Return type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.financial_functions.calc_system_size_and_financial_performance(agent)
+This function accepts the characteristics of a single agent and
+evaluates the financial performance of a set of solar+storage
+system sizes. The system size with the highest NPV is selected.
+.INDENT 7.0
+.TP
+.B Parameters
+\fBagent\fP (\fIpandas.Series\fP) \-\- Single agent (row) from an agent dataframe.
+.TP
+.B Returns
+Agent with system size, business model and corresponding financial performance.
+.TP
+.B Return type
+pandas.Series
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.financial_functions.calc_ttd(cfs)
+Calculate time to double investment based on the MIRR.
+.sp
+This is used for the commercial and industrial sectors.
+.INDENT 7.0
+.TP
+.B Parameters
+\fBcfs\fP (\fInumpy.ndarray\fP) \-\- Project cash flows ($/yr).
+.TP
+.B Returns
+\fBttd\fP \-\- Time to double investment (years).
+.TP
+.B Return type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.financial_functions.cashflow_constructor(bill_savings, pv_size, pv_price, pv_om, batt_cap, batt_power, batt_cost_per_kw, batt_cost_per_kwh, batt_om_per_kw, batt_om_per_kwh, batt_chg_frac, sector, itc, deprec_sched, fed_tax_rate, state_tax_rate, real_d, analysis_years, inflation, down_payment_fraction, loan_rate, loan_term, cash_incentives=array([0]), ibi=array([0]), cbi=array([0]), pbi=array([[0]]), print_statements=False)
+Calculate the system cash flows based on the capex, opex, bill savings, incentives, tax implications, and other factors
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBbill_savings\fP (\fI"numpy.ndarray"\fP) \-\- Annual bill savings ($/yr) from system adoption from 1st year through system lifetime
+.IP \(bu 2
+\fBpv_size\fP (\fI"numpy.float64"\fP) \-\- system capacity selected by agent (kW)
+.IP \(bu 2
+\fBpv_price\fP (\fI"float"\fP) \-\- system capex ($/kW)
+.IP \(bu 2
+\fBpv_om\fP (\fI"float"\fP) \-\- system operation and maintanence cost ($/kW)
+.IP \(bu 2
+\fBbatt_cap\fP (\fI"numpy.float64"\fP) \-\- energy capacity of battery selected (kWh)
+.IP \(bu 2
+\fBbatt_power\fP (\fI"numpy.float64"\fP) \-\- demand capacity of battery selected (kW)
+.IP \(bu 2
+\fBbatt_cost_per_kw\fP (\fI"float"\fP) \-\- capex of battery per kW installed ($/kW)
+.IP \(bu 2
+\fBbatt_cost_per_kwh\fP (\fI"float"\fP) \-\- capex of battery per kWh installed ($/kWh)
+.IP \(bu 2
+\fBbatt_om_per_kw\fP (\fI"float"\fP) \-\- opex of battery per kW installed ($/kW\-yr)
+.IP \(bu 2
+\fBbatt_om_per_kwh\fP (\fI"float"\fP) \-\- opex of battery per kW installed ($/kWh\-yr)
+.IP \(bu 2
+\fBbatt_chg_frac\fP (\fI"int"\fP) \-\- fraction of the battery\(aqs energy that it gets from a co\-hosted PV system. Used for ITC calculation.
+.IP \(bu 2
+\fBsector\fP (\fI"str"\fP) \-\- agent sector
+.IP \(bu 2
+\fBitc\fP (\fI"float"\fP) \-\- fraction of capex offset by federal investment tax credit
+.IP \(bu 2
+\fBdeprec_sched\fP (\fI"list"\fP) \-\- fraction of capex eligible for tax\-based depreciation
+.IP \(bu 2
+\fBfed_tax_rate\fP (\fI"float"\fP) \-\- average tax rate as fraction from federal taxes
+.IP \(bu 2
+\fBstate_tax_rate\fP (\fI"int"\fP) \-\- average tax rate as fraction from state taxes
+.IP \(bu 2
+\fBreal_d\fP (\fI"float"\fP) \-\- annua discount rate in real terms
+.IP \(bu 2
+\fBanalysis_years\fP (\fI"int"\fP) \-\- number of years to use in economic analysis
+.IP \(bu 2
+\fBinflation\fP (\fI"float"\fP) \-\- annual average inflation rate as fraction e.g. 0.025
+.IP \(bu 2
+\fBdown_payment_fraction\fP (\fI"int"\fP) \-\- fraction of capex used as system down payment
+.IP \(bu 2
+\fBloan_rate_real\fP (\fI"float"\fP) \-\- real interest rate for debt payments
+.IP \(bu 2
+\fBloan_term\fP (\fI"int"\fP) \-\- number of years for loan term
+.IP \(bu 2
+\fBcash_incentives\fP (\fI"numpy.ndarray"\fP) \-\- array describing eligible cash\-based incentives e.g. $
+.IP \(bu 2
+\fBibi\fP (\fI"numpy.ndarray"\fP) \-\- array describing eligible investment\-based incentives e.g. 0.2
+.IP \(bu 2
+\fBcbi\fP (\fI"numpy.ndarray"\fP) \-\- array describing eligible one\-time capacity\-based incentives e.g. $/kW
+.IP \(bu 2
+\fBpbi\fP (\fI"numpy.ndarray"\fP) \-\- array describing eligible ongoing performance\-based incentives e.g $/kWh\-yr
+.UNINDENT
+.TP
+.B Returns
+.INDENT 7.0
+.IP \(bu 2
+\fBcf\fP (\fI\(aqdtype\fP) \-\- Annual cash flows of project investment ($/yr)
+.IP \(bu 2
+\fBcf_discounted\fP (\fI\(aqdtype\(aq\fP) \-\- Annual discounted cash flows of project investment ($/yr)
+.IP \(bu 2
+\fBnpv\fP (\fI\(aqdtype\(aq\fP) \-\- Net present value ($) of project investment using WACC
+.IP \(bu 2
+\fBbill_savings\fP (\fI\(aqdtype\(aq\fP) \-\- Nominal cash flow of the annual bill savings over the lifetime of the system
+.IP \(bu 2
+\fBafter_tax_bill_savings\fP (\fI\(aqdtype\(aq\fP) \-\- Effective after\-tax bill savings (electricity costs are tax\-deductible for commercial entities)
+.IP \(bu 2
+\fBpv_cost\fP (\fI\(aqdtype\(aq\fP) \-\- Capex of system in ($)
+.IP \(bu 2
+\fBbatt_cost\fP (\fI\(aqdtype\(aq\fP) \-\- Capex of battery in ($)
+.IP \(bu 2
+\fBinstalled_cost\fP (\fI\(aqdtype\(aq\fP) \-\- Combined capex of system + battery
+.IP \(bu 2
+\fBup_front_cost\fP (\fI\(aqdtype\fP) \-\- Capex in 0th year as down payment
+.IP \(bu 2
+\fBbatt_om_cf\fP (\fI\(aqdtype\(aq\fP) \-\- Annual cashflows of battery opex
+.IP \(bu 2
+\fBoperating_expenses\fP (\fI\(aqdtype\(aq\fP) \-\- Combined annual opex of system + battery ($/yr)
+.IP \(bu 2
+\fBpv_itc_value\fP (\fI\(aqdtype\(aq\fP) \-\- Absolute value of investment tax credit for system ($)
+.IP \(bu 2
+\fBbatt_itc_value\fP (\fI\(aqdtype\(aq\fP) \-\- Absolute value of investment tax credit for battery ($)
+.IP \(bu 2
+\fBitc_value\fP (\fI\(aqdtype\(aq\fP) \-\- Absolute value of investment tax credit for combined system + battery ($)
+.IP \(bu 2
+\fBdeprec_basis\fP (\fI\(aqdtype\(aq\fP) \-\- Absolute value of depreciable basis of system ($)
+.IP \(bu 2
+\fBdeprec_deductions\fP (\fI\(aqdtype\(aq\fP) \-\- Annual amount of depreciable capital in given year ($)
+.IP \(bu 2
+\fBinitial_debt\fP (\fI\(aqdtype\(aq\fP) \-\- Amount of debt for loan ($)
+.IP \(bu 2
+\fBannual_principal_and_interest_payment\fP (\fI\(aqdtype\(aq\fP) \-\- Annual amount of debt service payment, principal + interest ($)
+.IP \(bu 2
+\fBdebt_balance\fP (\fI\(aqdtype\(aq\fP) \-\- Annual amount of debt remaining in given year ($)
+.IP \(bu 2
+\fBinterest_payments\fP (\fI\(aqdtype\(aq\fP) \-\- Annual amount of interest payment in given year ($)
+.IP \(bu 2
+\fBprincipal_and_interest_payments\fP (\fI\(aqdtype\(aq\fP) \-\- Array of annual principal and interest payments ($)
+.IP \(bu 2
+\fBtotal_taxable_income\fP (\fI\(aqdtype\(aq\fP) \-\- Amount of stateincome from incentives eligible for taxes
+.IP \(bu 2
+\fBstate_deductions\fP (\fI\(aqdtype\(aq\fP) \-\- Reduction to state taxable income from interest, operating expenses, or bill savings depending on sector
+.IP \(bu 2
+\fBtotal_taxable_state_income_less_deductions\fP (\fI\(aqdtype\(aq\fP) \-\- Total taxable state income less any applicable deductions
+.IP \(bu 2
+\fBstate_income_taxes\fP (\fI\(aqdtype\(aq\fP) \-\- Amount of state income tax i.e. net taxable income by tax rate
+.IP \(bu 2
+\fBfed_deductions\fP (\fI\(aqdtype\(aq\fP) \-\- Reduction to federal taxable income from interest, operating expenses, or bill savings depending on sector
+.IP \(bu 2
+\fBtotal_taxable_fed_income_less_deductions\fP (\fI\(aqdtype\(aq\fP) \-\- Total taxable federal income less any applicable deductions
+.IP \(bu 2
+\fBfed_income_taxes\fP (\fI\(aqdtype\(aq\fP) \-\- Amount of federal income tax i.e. net taxable income by tax rate
+.IP \(bu 2
+\fBinterest_payments_tax_savings\fP (\fI\(aqdtype\(aq\fP) \-\- Amount of tax savings from deductions of interest payments
+.IP \(bu 2
+\fBoperating_expenses_tax_savings\fP (\fI\(aqdtype\(aq\fP) \-\- Amount of tax savings from deductions of operating expenses
+.IP \(bu 2
+\fBdeprec_deductions_tax_savings\fP (\fI\(aqdtype\(aq\fP) \-\- Amount of tax savings from deductions of capital depreciation
+.IP \(bu 2
+\fBelec_OM_deduction_decrease_tax_liability\fP (\fI\(aqdtype\(aq\fP) \-\- Amount of tax savings from deductions of electricity costs as deductible business expense
+.UNINDENT
+
+.UNINDENT
+.INDENT 7.0
+.INDENT 3.5
+.SS Todo
+.INDENT 0.0
+.IP 1. 4
+Sales tax basis and rate
+.IP 2. 4
+note that sales tax goes into depreciable basis
+.IP 3. 4
+Propery taxes (res can deduct from income taxes, I think)
+.IP 4. 4
+insurance
+.IP 5. 4
+add pre\-tax cash flow
+.IP 6. 4
+add residential mortgage option
+.IP 7. 4
+add carbon tax revenue
+.IP 8. 4
+More exhaustive checking. I have confirmed basic formulations against SAM, but there are many permutations that haven\(aqt been checked.
+.IP 9. 4
+make incentives reduce depreciable basis
+.IP 10. 4
+add a flag for high incentive levels
+.IP 11. 4
+battery price schedule, for replacements
+.IP 12. 4
+improve inverter replacement
+.IP 13. 4
+improve battery replacement
+.IP 14. 4
+add inflation adjustment for replacement prices
+.IP 15. 4
+improve deprec schedule handling
+.IP 16. 4
+Make financing unique to each agent
+.IP 17. 4
+Make battery replacements depreciation an input, with default of 7 year MACRS
+.IP 18. 4
+Have a better way to deal with capacity vs effective capacity and battery costs
+.IP 19. 4
+Make it so it can accept different loan terms
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.financial_functions.virr(cfs, precision=0.005, rmin=0, rmax1=0.3, rmax2=0.5)
+Vectorized IRR calculator.
+.sp
+First calculate a 3D array of the discounted cash flows along cash flow series, time period, and discount rate. Sum over time to
+collapse to a 2D array which gives the NPV along a range of discount rates
+for each cash flow series. Next, find crossover where NPV is zero\-\-corresponds
+to the lowest real IRR value.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBcfs\fP (\fInumpy.ndarray\fP) \-\- Rows are cash flow series, cols are time periods
+.IP \(bu 2
+\fBprecision\fP (\fIfloat\fP) \-\- Level of accuracy for the inner IRR band, default value 0.005%
+.IP \(bu 2
+\fBrmin\fP (\fIfloat\fP) \-\- Lower bound of the inner IRR band default value 0%
+.IP \(bu 2
+\fBrmax1\fP (\fIfloat\fP) \-\- Upper bound of the inner IRR band default value 30%
+.IP \(bu 2
+\fBrmax2\fP (\fIfloat\fP) \-\- upper bound of the outer IRR band. e.g. 50% Values in the outer
+band are calculated to 1% precision, IRRs outside the upper band
+return the rmax2 value.
+.UNINDENT
+.TP
+.B Returns
+IRRs for cash flow series
+.TP
+.B Return type
+numpy.ndarray
+.UNINDENT
+.sp
+Notes
+.sp
+For performance, negative IRRs are not calculated, returns "\-1" and values are only calculated to an acceptable precision.
+.UNINDENT
+.SS python.settings module
+.sp
+Settings class objects.
+.INDENT 0.0
+.TP
+.B class python.settings.ModelSettings
+Bases: \fBobject\fP
+.sp
+Class containing the model settings parameters
+.INDENT 7.0
+.TP
+.B model_init
+.INDENT 7.0
+.TP
+.B Type
+float
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B cdata
+.INDENT 7.0
+.TP
+.B Type
+str
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B out_dir
+.INDENT 7.0
+.TP
+.B Type
+str
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B start_year
+.INDENT 7.0
+.TP
+.B Type
+int
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B input_scenarios
+.INDENT 7.0
+.TP
+.B Type
+list
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B git_hash
+.INDENT 7.0
+.TP
+.B Type
+str
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B model_path
+.INDENT 7.0
+.TP
+.B Type
+bool
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B local_cores
+.INDENT 7.0
+.TP
+.B Type
+int
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B used_scenario_names
+.INDENT 7.0
+.TP
+.B Type
+list
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B check_scenario_name(scenario_settings)
+Check if \fIModelSettings.scenario_name\fP is in \fIModelSettings.used_scenario_names\fP
+.UNINDENT
+.INDENT 7.0
+.TP
+.B get(attr)
+.UNINDENT
+.INDENT 7.0
+.TP
+.B set(attr, value)
+.UNINDENT
+.INDENT 7.0
+.TP
+.B validate()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B validate_property(property_name)
+Check if property is not null
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B class python.settings.ScenarioSettings(input_scenario, model_settings, time_step_increment=2)
+Bases: \fBobject\fP
+.sp
+Storage of all scenario specific inputs
+.INDENT 7.0
+.TP
+.B collapse_sectors(df, columns, adders=[])
+Split each row into groups by sector, then stack the groups
+.UNINDENT
+.INDENT 7.0
+.TP
+.B get_bass_params()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B get_batt_price_trajectories()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B get_financing_terms()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B get_load_growth(year)
+.UNINDENT
+.INDENT 7.0
+.TP
+.B get_max_market_share()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B get_nem_settings(year)
+.UNINDENT
+.INDENT 7.0
+.TP
+.B get_pv_specs()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B get_rate_escalations()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B get_wholesale_elec_prices()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B property input_csv_folder
+Location of input csv files
+.UNINDENT
+.INDENT 7.0
+.TP
+.B loadFromDataFrame(table_name, df)
+Accept a dataframe from the input spreadsheet and load it into the scenario settings
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_avoided_costs()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_bass_params()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_core_agent_attributes()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_electric_rates_json()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_financing_rates()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_interconnection_settings()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_load_growth()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_max_market_share()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_nem_settings()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_normalized_hourly_resource_solar()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_normalized_load_profiles()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_rate_escalations()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_starting_capacities()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B load_wholesale_electricity()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B property model_years
+Range of years to model
+.UNINDENT
+.INDENT 7.0
+.TP
+.B validate()
+.UNINDENT
+.INDENT 7.0
+.TP
+.B write_folders(model_settings)
+Make output folders for the run
+.UNINDENT
+.INDENT 7.0
+.TP
+.B write_inputs()
+Export key attributes to output folder
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B class python.settings.SectorInputs(name)
+Bases: \fBobject\fP
+.sp
+Storage of sector\-specific scenario inputs
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.settings.check_type(obj, expected_type)
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.settings.init_model_settings()
+initialize Model Settings object (this controls settings that apply to all scenarios to be executed)
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.settings.init_scenario_settings(scenario_file, model_settings)
+load scenario specific data and configure output settings
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.settings.load_scenario_to_inputSheet(xls_file, model_settings)
+Aggregate agent\-level results into ba\-level results for the given year.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBxls_file\fP (\fIstr\fP) \-\- Filepath in the input_scenarios folder.
+.IP \(bu 2
+\fBmodel_settings\fP (\fBsettings.ModelSettings\fP) \-\- Global model settings tariff object.
+.UNINDENT
+.TP
+.B Returns
+Scenario specific settings and model data loaded from the excel spreadsheet and the associated input csv data folder.
+.TP
+.B Return type
+settings.ScenarioSettings
+.UNINDENT
+.UNINDENT
+.SS python.storage_functions module
+.SS python.tariff_functions module
+.sp
+Functions for determining the tariff
+.INDENT 0.0
+.TP
+.B class python.tariff_functions.Export_Tariff(full_retail_nem=True, prices=array([[0.0]]), levels=array([[0.0]]), periods_8760=array([0, 0, 0, ..., 0, 0, 0]), period_tou_n=1)
+Bases: \fBobject\fP
+.sp
+Structure of compensation for exported generation.
+.sp
+Currently only two styles: full\-retail NEM, and instantanous TOU energy value.
+.INDENT 7.0
+.TP
+.B set_constant_sell_price(price)
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B class python.tariff_functions.Tariff(start_day=6, urdb_id=None, json_file_name=None, dict_obj=None, api_key=None)
+Bases: \fBobject\fP
+.INDENT 7.0
+.TP
+.B urdb_id
+id for utility rate database. US, not international.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B eia_id
+The EIA assigned ID number for the utility associated with this tariff
+.UNINDENT
+.INDENT 7.0
+.TP
+.B name
+tariff name
+.UNINDENT
+.INDENT 7.0
+.TP
+.B utility
+Name of utility this tariff is associated with
+.UNINDENT
+.INDENT 7.0
+.TP
+.B fixed_charge
+Fixed monthly charge in $/mo.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B peak_kW_capacity_max
+The annual maximum kW of demand that a customer can have and still be on this tariff
+.UNINDENT
+.INDENT 7.0
+.TP
+.B peak_kW_capacity_min
+The annula minimum kW of demand that a customer can have and still be on this tariff
+.UNINDENT
+.INDENT 7.0
+.TP
+.B kWh_useage_max
+The maximum kWh of average monthly consumption that a customer can have and still be on this tariff
+.UNINDENT
+.INDENT 7.0
+.TP
+.B kWh_useage_min
+The minimum kWh of average monthly consumption that a customer can have and still be on this tariff
+.UNINDENT
+.INDENT 7.0
+.TP
+.B sector
+residential, commercial, or industrial
+.UNINDENT
+.INDENT 7.0
+.TP
+.B comments
+comments from the urdb
+.UNINDENT
+.INDENT 7.0
+.TP
+.B description
+tariff description from urdb
+.UNINDENT
+.INDENT 7.0
+.TP
+.B source
+uri for the source of the tariff
+.UNINDENT
+.INDENT 7.0
+.TP
+.B uri
+link the the urdb page
+.UNINDENT
+.INDENT 7.0
+.TP
+.B voltage_category
+secondary, primary, transmission
+.UNINDENT
+.INDENT 7.0
+.TP
+.B d_flat_exists
+Boolean of whether there is a flat (not tou) demand charge component. Flat demand is also called monthly or seasonal demand.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B d_flat_n
+Number of unique flat demand period constructions. Does NOT correspond to width of d_flat_x constructs.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B d_flat_prices
+The prices of each tier/period combination for flat demand. Rows are tiers, columns are months. Differs from TOU, where columns are periods.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B d_flat_levels
+The limit (total kW) of each of each tier/period combination for flat demand. Rows are tiers, columns are months. Differs from TOU, where columns are periods.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B d_tou_exists
+Boolean of whether there is a tou (not flat) demand charge component
+.UNINDENT
+.INDENT 7.0
+.TP
+.B d_tou_n
+Number of unique tou demand periods. Minimum of 1, since I\(aqm counting nocharge periods still as a period.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B d_tou_prices
+The prices of each tier/period combination for tou demand. Rows are tiers, columns are periods.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B d_tou_levels
+The limit (total kW) of each of each tier/period combination for tou demand. Rows are tiers, columns are periods.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B e_exists
+Boolean of whether there is a flat (not tou) demand charge component
+.UNINDENT
+.INDENT 7.0
+.TP
+.B e_tou_exists
+Boolean of whether there is a flat (not tou) demand charge component
+.UNINDENT
+.INDENT 7.0
+.TP
+.B e_n
+Number of unique energy periods. Minimum of 1, since I\(aqm counting nocharge periods still as a period.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B e_prices
+The prices of each tier/period combination for flat demand. Rows are tiers, columns are periods.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B e_levels
+The limit (total kWh) of each of each tier/period combination for energy. Rows are tiers, columns are periods.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B e_wkday_12by24
+12 by 24 period definition for weekday energy. Rows are months, columns are hours.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B e_wkend_12by24
+12 by 24 period definition for weekend energy. Rows are months, columns are hours.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B d_wkday_12by24
+12 by 24 period definition for weekday energy. Rows are months, columns are hours.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B d_wkend_12by24
+12 by 24 period definition for weekend energy. Rows are months, columns are hours.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B d_tou_8760
+8760 of tou demand prices.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B e_tou_8760
+8760 of tou energy prices.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B e_prices_no_tier
+.UNINDENT
+.INDENT 7.0
+.TP
+.B e_max_difference
+The maximum energy price differential within any single day
+.UNINDENT
+.INDENT 7.0
+.TP
+.B energy_rate_unit
+kWh or kWh/day, for guiding the bill calculations later
+.UNINDENT
+.INDENT 7.0
+.TP
+.B demand_rate_unit
+kW or kW/day, for guiding the bill calculations later
+.UNINDENT
+.INDENT 7.0
+.INDENT 3.5
+.SS Todo
+.sp
+Peak_kW_capacity and other scalar variables may be being imported as tuples.
+this may have been solved now, but general unit check would be good.
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B __init__(start_day=6, urdb_id=None, json_file_name=None, dict_obj=None, api_key=None)
+Create a Tariff Function object based on a urdb id, a .csv file, or a blank tariff is created.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B define_d_flat(d_flat_levels, d_flat_prices)
+Define flat demand charge periods, levels, and prices.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B define_d_tou(d_wkday_12by24, d_wkend_12by24, d_tou_levels, d_tou_prices)
+Define TOU demand charge periods, levels, and prices
+.UNINDENT
+.INDENT 7.0
+.TP
+.B define_e(e_wkday_12by24, e_wkend_12by24, e_levels, e_prices)
+Define energy periods, levels, and prices
+.UNINDENT
+.INDENT 7.0
+.TP
+.B write_json(json_file_name)
+Write the current class object to a json file
+.INDENT 7.0
+.TP
+.B Parameters
+\fBjson_file_name\fP (\fIstr\fP) \-\- Path to output file.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.tariff_functions.bill_calculator(load_profile, tariff, export_tariff)
+Not vectorized for now. Next step will be pass in multiple profiles for the same tariff
+2 styles of NEM: Full retail and fixed schedule value.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBload_profile\fP (\fI8760 profile of agent\fP) \-\- 
+.IP \(bu 2
+\fBtariff\fP (\fI\%python.tariff_functions.Tariff\fP) \-\- Tariff class object
+.IP \(bu 2
+\fBexport_tariff\fP (\fI\%python.tariff_functions.Export_Tariff\fP) \-\- Export tariff class object
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.INDENT 3.5
+.SS Todo
+.INDENT 0.0
+.IP 1. 3
+Both energy and demand calcs (anything that uses piecewise calculator) doesn\(aqt go below zero, because piecewise isn\(aqt built to.
+Therefore, credit can\(aqt be earned in one period and applied to another.
+.IP 2. 3
+My current approach sums for all periods, not just those in a month. Potentially inefficient, if it was dynamic it would be cheaper, but less clear.
+.IP 3. 3
+Make this flexible for different hours increments (which will require more robust approach for power vs energy units)
+.IP 4. 3
+Not sure what happens if there is no energy component in the tariff, at the moment
+.IP 5. 3
+I haven\(aqt checked the TOU export credit option yet.
+.IP 6. 3
+I don\(aqt make any type of check about what day of the week this calculator assumes your load profile is starting on \fIe_period_charges\fP wasn\(aqt being built for non\-NEM
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.tariff_functions.build_8760_from_12by24s(wkday_12by24, wkend_12by24, start_day=6)
+Construct long\-df (8760) from a weekday and weekend 12by24
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBwkday_12by24\fP (\fInumpy.ndarray\fP) \-\- 
+.IP \(bu 2
+\fBwkend_12by24\fP (\fInumpy.ndarray\fP) \-\- 
+.IP \(bu 2
+\fBstart_day\fP (\fIint\fP) \-\- Start day of 6 (default) equates to a Sunday.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.tariff_functions.design_tariff_for_portfolio(agent_df, avg_rev, peak_hour_indicies, summer_month_indicies, rev_f_d, rev_f_e, rev_f_fixed)
+Builds a tariff that would extract a given $/kWh from a portfolio of customers.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBagent_df\fP (\fIpandas.DataFrame\fP) \-\- 
+.sp
+Dataframe of agents
+.INDENT 2.0
+.TP
+.B agent_df.load_profile
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+.INDENT 2.0
+.TP
+.B agent_df.weight
+.INDENT 7.0
+.TP
+.B Type
+numpy.ndarray
+.UNINDENT
+.UNINDENT
+
+.IP \(bu 2
+\fBavg_rev\fP (\fIfloat\fP) \-\- $/kWh that the tariff would extract from the given portfolio of customers.
+.IP \(bu 2
+\fBrev_f_d\fP (\fIarray\-like\fP) \-\- Revenue strucutre for demand charges.
+Format is [fraction of total revenue, fraction that comes from tou charges, fraction that comes from flat charges]
+ex: [0.4875, 0.5, 0.5]
+.IP \(bu 2
+\fBrev_f_d\fP \-\- Revenue strucutre for energy charges.
+Format is [fraction of total revenue, fraction that comes from off\-peak hours, fraction that comes from on\-peak hours]
+ex: [0.4875, 0.20, 0.8]
+.IP \(bu 2
+\fBrev_f_fixed\fP (\fIarray\-like\fP) \-\- [fraction of revenue from fixed monthly charges].
+ex: [0.025]
+.UNINDENT
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 7.0
+.INDENT 3.5
+.INDENT 0.0
+.IP 1. 3
+Peak hours are the same between demand and energy.
+.IP 2. 3
+Peak hours only occur during the summer.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.tariff_functions.download_tariffs_from_urdb(api_key, sector=None, utility=None, print_progress=False)
+API request for URDB rates.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBapi_key\fP (\fIstr\fP) \-\- Each user should get their own URDB API key: \fI\%http://en.openei.org/services/api/signup/\fP
+.IP \(bu 2
+\fBsector\fP (\fIstr\fP) \-\- One of Residential, Commercial, Industrial, Lighting
+.IP \(bu 2
+\fButility\fP (\fIstr\fP\fI, \fP\fIoptional\fP) \-\- 
+.UNINDENT
+.TP
+.B Returns
+Dataframe of URDB rates.
+.TP
+.B Return type
+pandas.DataFrame
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.tariff_functions.filter_tariff_df(tariff_df, keyword_list=None, keyword_list_file=None, demand_units_to_exclude=[\(aqhp\(aq, \(aqkVA\(aq, \(aqkW daily\(aq, \(aqhp daily\(aq, \(aqkVA daily\(aq], remove_expired=True)
+Filter tariffs based on inclusion (e.g. keywords), or exclusion (e.g. demand units)
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBtariff_df\fP (\fIpandas.DataFrame\fP) \-\- dataframe of URDB tariffs created by \fI\%download_tariffs_from_urdb()\fP\&.
+.IP \(bu 2
+\fBkeyword_list\fP (\fIlist of str\fP\fI, \fP\fIoptional\fP) \-\- list of keywords to search for in rate structure.
+.IP \(bu 2
+\fBkeyword_list_file\fP (\fIstr\fP) \-\- filepath to .txt file containing keywords to search for.
+.IP \(bu 2
+\fBdemand_units_to_exclude\fP (\fIlist of str\fP) \-\- exclude rates from URDB database if the units are contained in this list. Default values are \fIhp\fP,\(gakVA\(ga,\(gakW daily\(ga,\(gahp daily\(ga,\(gakVA daily\(ga
+.IP \(bu 2
+\fBremove_expired\fP (\fIbool\fP) \-\- exclude expired rates. Default is \fITrue\fP\&.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.tariff_functions.load_config_params(config_file_name)
+Each user should fill in a config_template.json file.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.tariff_functions.tiered_calc_vec(values, levels, prices)
+.UNINDENT
+.SS python.utility_functions module
+.sp
+Assorted accessory functions.
+.INDENT 0.0
+.TP
+.B class python.utility_functions.Timer
+Bases: \fBobject\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.utility_functions.code_profiler(out_dir)
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.utility_functions.current_datetime(format=\(aq%Y_%m_%d_%Hh%Mm%Ss\(aq)
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.utility_functions.get_epoch_time()
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.utility_functions.get_formatted_time()
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.utility_functions.get_git_hash()
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.utility_functions.get_logger(log_file_path=None)
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.utility_functions.parse_command_args(argv)
+Function to parse the command line arguments
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBh\fP (\fIstr\fP) \-\- help \(aqdg_model.py \-i <Initiate Model?> \-y <year>\(aq
+.IP \(bu 2
+\fBi\fP (\fIstr\fP) \-\- Initiate model for 2010 and quit
+.IP \(bu 2
+\fBy\fP (\fIint\fP) \-\- Resume model solve in passed year
+.UNINDENT
+.TP
+.B Returns
+.INDENT 7.0
+.IP \(bu 2
+\fBinit_model\fP (\fIbool\fP) \-\- Should model initiate?
+.IP \(bu 2
+\fBresume_year\fP (\fIfloat\fP) \-\- Year model should resume
+.UNINDENT
+
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B python.utility_functions.shutdown_log(logger)
+.UNINDENT
+.SS Module contents
+.SS Input Data
+.sp
+A folder of \fB\&.csv\fP files should be copied into \fBinput_scenarios/\fP, the name of the folder should match the name of the scenario run. An example input scenario folder is within \fBreference_data/example_data/mex_high_costs/\fP\&. The folder contains the following files:
+.SS \fBagent_core_attributes_all.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Core set of attributes to instantiate agents.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B agent_id
+unique agent identifier \fI(float)\fP
+.TP
+.B control_reg
+unique common control region name \fI(string)\fP
+.TP
+.B control_reg_id
+unique common identifier linked to one control region name \fI(float)\fP
+.TP
+.B state
+unique common state name \fI(string)\fP\&. Note each control region may have one or more associated states, but each state can only belong to one control region
+.TP
+.B state_id
+unique common identifier linked to one state name \fI(float)\fP
+.TP
+.B sector_abbr
+sector abbreviation \fI(str)\fP\&. Must be one of [‘res’,’com’,’ind’]
+.TP
+.B tariff_class
+unique common identifier for the agent’s electric tariff type \fI(str)\fP
+.TP
+.B country_abbr
+common country abbreviation \fI(str)\fP
+.TP
+.B customers_in_bin
+count of number of DPV customers that the agent represents \fI(float)\fP
+.TP
+.B load_in_bin_kwh
+total annual energy that the agent represents in kWh \fI(float)\fP
+.TP
+.B load_per_customer_in_bin_kwh
+per capita annual energy consumption in kWh \fI(float)\fP
+.TP
+.B max_demand_kw
+peak agent demand in kW  \fI(float)\fP
+.TP
+.B avg_monthly_kwh
+average agent monthly energy use in kWh \fI(float)\fP
+.TP
+.B owner_occupancy_status
+code lookup for owner status where 1 = owner\-occupied and 2 = leased \fI(int)\fP
+.TP
+.B cap_cost_multiplier
+agent capital cost multiplier
+.TP
+.B developable_buildings_pct
+percent of agent’s buildings that are suitable for DPV development  \fI(float)\fP
+.TP
+.B bldg_size_class
+size of agent’s building \fI(str)\fP\&. Must be one of [‘small’,’med’,’large’]
+.TP
+.B rate_id_alias
+common electric rate identifier \fI(int)\fP\&. Must match similar field in urdb3_rates.csv
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBavoided_cost_rates.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Prices used is assessing value when net metering is activated and the input sheet Net Metering Scenario is specified as ‘Avoided Cost’.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B country_abbr
+common country abbreviation \fI(str)\fP
+.TP
+.B control_reg_id
+unique common control region identifier \fI(int)\fP
+.TP
+.B 2014 \-> 2050
+Avoided cost in US Dollars / kWh \fI(float)\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBcarbon_intensities_grid.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Carbon intensities used when input sheet specifies Carbon Price as ‘Price Based On State Carbon Intensity’.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B country_abbr
+common country abbreviation \fI(str)\fP
+.TP
+.B control_reg_id
+unique common control region identifier \fI(int)\fP
+.TP
+.B 2014 \-> 2050
+Tons of CO2 per kWh of electricity \fI(float)\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBcarbon_intensities_ng.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Carbon intensities used when input sheet specifies Carbon Price as ‘Price Based On NG Offset’. Values are in US Dollars.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B country_abbr
+common country abbreviation \fI(str)\fP
+.TP
+.B control_reg_id
+unique common control region identifier \fI(int)\fP
+.TP
+.B 2014 \-> 2050
+Tons of CO2 per kWh of electricity \fI(float)\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBload_growth_projections.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Yearly multipliers to use in assessing load growth relative to starting conditions in agent_core_attributes.csv sorted by country and control region.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B scenario
+scenario description that matches input spreadsheet main tab dropdown \fI(str)\fP
+.TP
+.B year
+scenario year \fI(int)\fP
+.TP
+.B sector_abbr
+sector abbreviation \fI(str)\fP\&. Must be one of [‘res’,’com’,’ind’]
+.TP
+.B country_abbr
+common country abbreviation \fI(str)\fP
+.TP
+.B control_reg_id
+unique common control region identifier \fI(int)\fP
+.TP
+.B load_multiplier
+load multiplier percent \fI(float)\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBmax_market_share_settings.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Market curves to use in analysis while will be filtered by the source specified in input sheet sector\-specific Market Curve settings.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B metric
+data source name \fI(str)\fP\&. Must be one of [‘percent_monthly_bill_savings’,’payback_period’,’rate_of_return’,’net_present_value’]
+.TP
+.B metric_value
+value of metric \fI(float)\fP
+.TP
+.B max_market_share
+max DPV share \fI(float)\fP
+.TP
+.B source
+data source name \fI(str)\fP\&. Must be one of [‘RWBeck’,’NEMS’,’NREL’,’Navigant’]
+.TP
+.B business_model
+business model name \fI(str)\fP\&. Must be one of [‘tpo’,’host_owned’]
+.TP
+.B sector_abbr
+sector abbreviation \fI(str)\fP\&. Must be one of [‘res’,’com’,’ind’]
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBnem_settings.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Net metering projections by year, country and control region.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B sector_abbr
+sector abbreviation \fI(str)\fP\&. Must be one of [‘res’,’com’,’ind’]
+.TP
+.B country_abbr
+common country abbreviation \fI(str)\fP
+.TP
+.B control_reg_id
+unique common control region identifier \fI(int)\fP
+.TP
+.B nem_system_size_limit_kw
+net metering system size limit kW \fI(float)\fP
+.TP
+.B year_end_excess_sell_rate_usd_per_kwh
+excess sell rate for net metering in US Dollars \fI(float)\fP
+.TP
+.B year
+scenario year \fI(int)\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBnormalized_load.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Normalized load profile by country and control region. Will be scaled by the load specified in agent_core_attributes_all.csv.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B country_abbr
+common country abbreviation \fI(str)\fP
+.TP
+.B control_reg_id
+unique common control region identifier \fI(int)\fP
+.TP
+.B kwh
+Array of length 8760 for the fraction of yearly energy consumption in each hour multiplied by a offset factor of 1e9 \fI(int)\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBpv_bass.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Bass Parameter settings by sector, country and control region.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B sector_abbr
+sector abbreviation \fI(str)\fP\&. Must be one of [‘res’,’com’,’ind’]
+.TP
+.B country_abbr
+common country abbreviation \fI(str)\fP
+.TP
+.B control_reg_id
+unique common control region identifier \fI(int)\fP
+.TP
+.B state_id
+unique common state identifier \fI(int)\fP
+.TP
+.B p
+bass diffusion parameter defining the coefficient of innovation.
+.TP
+.B q
+bass diffusion parameter defining the coefficient of imitation.
+.TP
+.B teq_yr1
+number of years since the diffusion model began.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBpv_state_starting_capacities.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Cumulative DPV penetration by state in 2015.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B sector_abbr
+sector abbreviation \fI(str)\fP\&. Must be one of [‘res’,’com’,’ind’]
+.TP
+.B country_abbr
+common country abbreviation \fI(str)\fP
+.TP
+.B control_reg_id
+unique common control region identifier \fI(int)\fP
+.TP
+.B state_id
+unique common state identifier \fI(int)\fP
+.TP
+.B tariff_class
+unique common identifier electric tariff type \fI(str)\fP
+.TP
+.B pv_capacity_mw
+cumulative DPV capacity in the state in 2015, mW
+.TP
+.B pv_systems_count
+cumulative number of DPV systems in the state in 2015
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBrate_escalations.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Yearly multipliers to use in assessing electricity rate growth relative to starting conditions sorted by country and control region.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B source
+data source name \fI(str)\fP\&. Must be one of [‘Planning’,’High’,’Low’]
+.TP
+.B year
+scenario year \fI(int)\fP
+.TP
+.B sector_abbr
+sector abbreviation \fI(str)\fP\&. Must be one of [‘res’,’com’,’ind’]
+.TP
+.B country_abbr
+common country abbreviation \fI(str)\fP
+.TP
+.B control_reg_id
+unique common control region identifier \fI(int)\fP
+.TP
+.B escalation_factor
+rate escalation percent \fI(float)\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBsolar_resource_hourly.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Hourly solar resource profiles by country and control region.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B country_abbr
+common country abbreviation \fI(str)\fP
+.TP
+.B control_reg_id
+unique common control region identifier \fI(int)\fP
+.TP
+.B state_id
+unique common state identifier \fI(int)\fP
+.TP
+.B cf
+Array of length 8760 for the hourly solar insolation \fI(int)\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBurdb3_rates.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+\fI\%Complete urdb rate information\fP for agent rates specificed in core_agent_attributes_all.csv.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B rate_id_alias
+rate id matching that of agent_core_attributes_all.csv \fI(int)\fP
+.TP
+.B rate_json
+complete urdb rate \fI(json)\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS \fBwholesale_rates.csv\fP
+.INDENT 0.0
+.INDENT 3.5
+Yearly wholesale electricity rates by country and control region. Used in analysis and when input sheet net metering scenario is set to ‘State Wholesale’.
+.INDENT 0.0
+.TP
+.B Fields:
+.INDENT 7.0
+.TP
+.B country_abbr
+common country abbreviation \fI(str)\fP
+.TP
+.B control_reg_id
+unique common control region identifier \fI(int)\fP
+.TP
+.B 2014 \-> 2050
+Average wholesale electricity price in US Dollars/kWh \fI(float)\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SH AUTHOR
+NREL
+.SH COPYRIGHT
+2020, NREL
+.\" Generated by docutils manpage writer.
+.

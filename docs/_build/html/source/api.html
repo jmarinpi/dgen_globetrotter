@@ -98,7 +98,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#module-python.agents">python.agents module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-python.config">python.config module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-python.decorators">python.decorators module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#python-dgen-model-module">python.dgen_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-python.dgen_model">python.dgen_model module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-python.diffusion_functions">python.diffusion_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-python.dispatch_functions">python.dispatch_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-python.financial_functions">python.financial_functions module</a></li>
@@ -184,8 +184,8 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="python.agent_mutation.html">python.agent_mutation package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="python.agent_mutation.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.agent_mutation.html#python-agent-mutation-elec-module">python.agent_mutation.elec module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.agent_mutation.html#module-contents">Module contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python.agent_mutation.html#module-python.agent_mutation.elec">python.agent_mutation.elec module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python.agent_mutation.html#module-python.agent_mutation">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="python.excel.html">python.excel package</a><ul>
@@ -444,8 +444,20 @@ Tests
 </dd></dl>
 
 </div>
-<div class="section" id="python-dgen-model-module">
-<h2>python.dgen_model module<a class="headerlink" href="#python-dgen-model-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-python.dgen_model">
+<span id="python-dgen-model-module"></span><h2>python.dgen_model module<a class="headerlink" href="#module-python.dgen_model" title="Permalink to this headline">¶</a></h2>
+<p>This is the main module of the Distributed Generation Market Demand Model
+created by the National Renewable Energy Lab (NREL).</p>
+<p>Running this module requires a properly installed environment with applicable scenario files.
+Sample scenario files can be found in <cite>reference_data/example_data</cite> and include an .xlsm file as well
+as a folder of .csv files.</p>
+<dl class="py function">
+<dt id="python.dgen_model.main">
+<code class="sig-prename descclassname">python.dgen_model.</code><code class="sig-name descname">main</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">mode</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">resume_year</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">endyear</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ReEDS_inputs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/dgen_model.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.dgen_model.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the economic adoption of distributed generation resources on an agent-level basis.</p>
+<p>Model output is saved to a <cite>/runs</cite> file within the dGen directory.</p>
+</dd></dl>
+
 </div>
 <div class="section" id="module-python.diffusion_functions">
 <span id="python-diffusion-functions-module"></span><h2>python.diffusion_functions module<a class="headerlink" href="#module-python.diffusion_functions" title="Permalink to this headline">¶</a></h2>

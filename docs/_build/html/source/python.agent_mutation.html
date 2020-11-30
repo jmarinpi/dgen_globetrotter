@@ -92,8 +92,8 @@
 <li class="toctree-l2 current"><a class="reference internal" href="api.html#subpackages">Subpackages</a><ul class="current">
 <li class="toctree-l3 current"><a class="current reference internal" href="#">python.agent_mutation package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#python-agent-mutation-elec-module">python.agent_mutation.elec module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-contents">Module contents</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-python.agent_mutation.elec">python.agent_mutation.elec module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-python.agent_mutation">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="python.excel.html">python.excel package</a></li>
@@ -103,7 +103,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.agents">python.agents module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.config">python.config module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.decorators">python.decorators module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#python-dgen-model-module">python.dgen_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-python.dgen_model">python.dgen_model module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.diffusion_functions">python.diffusion_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.dispatch_functions">python.dispatch_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.financial_functions">python.financial_functions module</a></li>
@@ -187,11 +187,410 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="python-agent-mutation-elec-module">
-<h2>python.agent_mutation.elec module<a class="headerlink" href="#python-agent-mutation-elec-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-python.agent_mutation.elec">
+<span id="python-agent-mutation-elec-module"></span><h2>python.agent_mutation.elec module<a class="headerlink" href="#module-python.agent_mutation.elec" title="Permalink to this headline">¶</a></h2>
+<p>Edited Monday Nov 5, 218
+&#64;author: tkwasnik</p>
+<dl class="py function">
+<dt id="python.agent_mutation.elec.aggregate_outputs_solar">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">aggregate_outputs_solar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">agent_df</span></em>, <em class="sig-param"><span class="n">year</span></em>, <em class="sig-param"><span class="n">is_first_year</span></em>, <em class="sig-param"><span class="n">scenario_settings</span></em>, <em class="sig-param"><span class="n">interyear_results_aggregations</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#aggregate_outputs_solar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.aggregate_outputs_solar" title="Permalink to this definition">¶</a></dt>
+<dd><p>Aggregate agent-level results into ba-level results for the given year.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>agent_df</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p></li>
+<li><p><strong>year</strong> (<em>int</em>) – modelled year</p></li>
+<li><p><strong>is_first_year</strong> (<em>bool</em>) – is first year indicator</p></li>
+<li><p><strong>scenario_settings</strong> (<a class="reference internal" href="api.html#python.settings.ScenarioSettings" title="python.settings.ScenarioSettings"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.settings.ScenarioSettings</span></code></a>) – scenario settings loaded from input sheet and csv’s</p></li>
+<li><p><strong>interyear_results_aggregations</strong> (<em>pandas.DataFrame</em>) – aggregated pandas dataframe from previous year</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>interyear_results_aggregations</strong> – aggregated agent attributes</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="python.agent_mutation.elec.apply_elec_price_multiplier_and_escalator">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">apply_elec_price_multiplier_and_escalator</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataframe</span></em>, <em class="sig-param"><span class="n">year</span></em>, <em class="sig-param"><span class="n">elec_price_change_traj</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#apply_elec_price_multiplier_and_escalator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.apply_elec_price_multiplier_and_escalator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain a single scalar multiplier for each agent, that is the cost of
+electricity relative to 2016 (when the tariffs were curated).
+Also calculate the average increase in the price of electricity over the
+past ten years, which will be the escalator that they use to project
+electricity changes in their bill calculations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p></li>
+<li><p><strong>year</strong> (<em>int</em>) – modelled year</p></li>
+<li><p><strong>elec_price_change_traj</strong> (<em>pandas.DataFrame</em>) – contains elec_price_multiplier field by country, control region, and sector</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>agent attributes with new attributes</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>That many customers will not differentiate between real and nomianl,
+and therefore many would overestimate the real escalation of electriicty
+prices.</p>
 </div>
-<div class="section" id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
+</dd></dl>
+
+<dl class="py function">
+<dt id="python.agent_mutation.elec.apply_export_tariff_params">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">apply_export_tariff_params</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataframe</span></em>, <em class="sig-param"><span class="n">net_metering_df</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#apply_export_tariff_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.apply_export_tariff_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add net metering system size limitation to each agent</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p></li>
+<li><p><strong>year</strong> (<em>int</em>) – modelled year</p></li>
+<li><p><strong>net_metering_df</strong> (<em>pandas.DataFrame</em>) – <dl class="py attribute">
+<dt id="python.agent_mutation.elec.net_metering_df.nem_system_size_limit_kw">
+<code class="sig-prename descclassname">net_metering_df.</code><code class="sig-name descname">nem_system_size_limit_kw</code><a class="headerlink" href="#python.agent_mutation.elec.net_metering_df.nem_system_size_limit_kw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.net_metering_df.year_end_excess_sell_rate_usd_per_kwh">
+<code class="sig-prename descclassname">net_metering_df.</code><code class="sig-name descname">year_end_excess_sell_rate_usd_per_kwh</code><a class="headerlink" href="#python.agent_mutation.elec.net_metering_df.year_end_excess_sell_rate_usd_per_kwh" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.net_metering_df.hourly_excess_sell_rate_usd_per_kwh">
+<code class="sig-prename descclassname">net_metering_df.</code><code class="sig-name descname">hourly_excess_sell_rate_usd_per_kwh</code><a class="headerlink" href="#python.agent_mutation.elec.net_metering_df.hourly_excess_sell_rate_usd_per_kwh" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>agent attributes with new attributes</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="python.agent_mutation.elec.apply_financial_params">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">apply_financial_params</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataframe</span></em>, <em class="sig-param"><span class="n">financing_terms</span></em>, <em class="sig-param"><span class="n">inflation_rate</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#apply_financial_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.apply_financial_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add the year’s financial parameters including
+depreciation schedule (array  for years 0,1,2,3,4,5), Solar ITC fraction, Solar ITC min size kw, Solar ITC max size kw,
+years of loan term, loan rate, down payment percent, real discount percent, tax rate and economic lifetime</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p></li>
+<li><p><strong>inflation_rate</strong> (<em>float</em>) – inflation rate percent</p></li>
+<li><p><strong>financing_terms</strong> (<em>pandas.DataFrame</em>) – <dl class="py attribute">
+<dt id="python.agent_mutation.elec.financing_terms.deprec_sch">
+<code class="sig-prename descclassname">financing_terms.</code><code class="sig-name descname">deprec_sch</code><a class="headerlink" href="#python.agent_mutation.elec.financing_terms.deprec_sch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.financing_terms.itc_fraction">
+<code class="sig-prename descclassname">financing_terms.</code><code class="sig-name descname">itc_fraction</code><a class="headerlink" href="#python.agent_mutation.elec.financing_terms.itc_fraction" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.financing_terms.min_size_kw">
+<code class="sig-prename descclassname">financing_terms.</code><code class="sig-name descname">min_size_kw</code><a class="headerlink" href="#python.agent_mutation.elec.financing_terms.min_size_kw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.financing_terms.max_size_kw">
+<code class="sig-prename descclassname">financing_terms.</code><code class="sig-name descname">max_size_kw</code><a class="headerlink" href="#python.agent_mutation.elec.financing_terms.max_size_kw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.financing_terms.loan_term">
+<code class="sig-prename descclassname">financing_terms.</code><code class="sig-name descname">loan_term</code><a class="headerlink" href="#python.agent_mutation.elec.financing_terms.loan_term" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.financing_terms.loan_rate">
+<code class="sig-prename descclassname">financing_terms.</code><code class="sig-name descname">loan_rate</code><a class="headerlink" href="#python.agent_mutation.elec.financing_terms.loan_rate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.financing_terms.down_payment">
+<code class="sig-prename descclassname">financing_terms.</code><code class="sig-name descname">down_payment</code><a class="headerlink" href="#python.agent_mutation.elec.financing_terms.down_payment" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.financing_terms.real_discount">
+<code class="sig-prename descclassname">financing_terms.</code><code class="sig-name descname">real_discount</code><a class="headerlink" href="#python.agent_mutation.elec.financing_terms.real_discount" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.financing_terms.tax_rate">
+<code class="sig-prename descclassname">financing_terms.</code><code class="sig-name descname">tax_rate</code><a class="headerlink" href="#python.agent_mutation.elec.financing_terms.tax_rate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.financing_terms.economic_lifetime">
+<code class="sig-prename descclassname">financing_terms.</code><code class="sig-name descname">economic_lifetime</code><a class="headerlink" href="#python.agent_mutation.elec.financing_terms.economic_lifetime" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>agent attributes with new attributes joined on</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="python.agent_mutation.elec.apply_load_growth">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">apply_load_growth</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataframe</span></em>, <em class="sig-param"><span class="n">load_growth_df</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#apply_load_growth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.apply_load_growth" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply load growth trajactories by country, control region and year</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p></li>
+<li><p><strong>load_growth_df</strong> (<em>pandas.DataFrame</em>) – <dl class="py attribute">
+<dt id="python.agent_mutation.elec.load_growth_df.load_multiplier">
+<code class="sig-prename descclassname">load_growth_df.</code><code class="sig-name descname">load_multiplier</code><a class="headerlink" href="#python.agent_mutation.elec.load_growth_df.load_multiplier" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>agent attributes with new attributes</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="python.agent_mutation.elec.apply_market_last_year">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">apply_market_last_year</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataframe</span></em>, <em class="sig-param"><span class="n">market_last_year_df</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#apply_market_last_year"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.apply_market_last_year" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates initial market penetration of DPV and number of adopters at the state level</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p></li>
+<li><p><strong>market_last_year_df</strong> (<em>pandas.DataFrame</em>) – last year’s number of adopters and percent adoption at the state level</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>dataframe</strong> – agent attributes with new attributes</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="python.agent_mutation.elec.apply_pv_specs">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">apply_pv_specs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataframe</span></em>, <em class="sig-param"><span class="n">pv_specs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#apply_pv_specs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.apply_pv_specs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add the year’s PV specifications, including pv capitial and OM costs, degredation, and power density by year and sector</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p></li>
+<li><p><strong>pv_specs</strong> (<em>pandas.DataFrame</em>) – <dl class="py attribute">
+<dt id="python.agent_mutation.elec.pv_specs.pv_power_density_w_per_sqft">
+<code class="sig-prename descclassname">pv_specs.</code><code class="sig-name descname">pv_power_density_w_per_sqft</code><a class="headerlink" href="#python.agent_mutation.elec.pv_specs.pv_power_density_w_per_sqft" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.pv_specs.pv_deg">
+<code class="sig-prename descclassname">pv_specs.</code><code class="sig-name descname">pv_deg</code><a class="headerlink" href="#python.agent_mutation.elec.pv_specs.pv_deg" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.pv_specs.pv_price_per_kw">
+<code class="sig-prename descclassname">pv_specs.</code><code class="sig-name descname">pv_price_per_kw</code><a class="headerlink" href="#python.agent_mutation.elec.pv_specs.pv_price_per_kw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.pv_specs.pv_om_per_kw">
+<code class="sig-prename descclassname">pv_specs.</code><code class="sig-name descname">pv_om_per_kw</code><a class="headerlink" href="#python.agent_mutation.elec.pv_specs.pv_om_per_kw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.pv_specs.pv_variable_om_per_kw">
+<code class="sig-prename descclassname">pv_specs.</code><code class="sig-name descname">pv_variable_om_per_kw</code><a class="headerlink" href="#python.agent_mutation.elec.pv_specs.pv_variable_om_per_kw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>agent attributes with new attributes</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="python.agent_mutation.elec.apply_scale_normalized_load_profiles">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">apply_scale_normalized_load_profiles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataframe</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#apply_scale_normalized_load_profiles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.apply_scale_normalized_load_profiles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scale the normalized load based on agent’s per captia cumulative energy consumption</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>agent attributes with new attributes</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="python.agent_mutation.elec.apply_storage_specs">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">apply_storage_specs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataframe</span></em>, <em class="sig-param"><span class="n">batt_price_traj</span></em>, <em class="sig-param"><span class="n">year</span></em>, <em class="sig-param"><span class="n">scenario_settings</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#apply_storage_specs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.apply_storage_specs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add the year’s Battery specifications</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p></li>
+<li><p><strong>year</strong> (<em>int</em>) – modelled year</p></li>
+<li><p><strong>scenario_settings</strong> (<a class="reference internal" href="api.html#python.settings.ScenarioSettings" title="python.settings.ScenarioSettings"><code class="xref py py-class docutils literal notranslate"><span class="pre">python.settings.ScenarioSettings</span></code></a>) – scenario settings loaded from input sheet and csv’s</p></li>
+<li><p><strong>batt_price_traj</strong> (<em>pandas.DataFrame</em>) – <dl class="py attribute">
+<dt id="python.agent_mutation.elec.batt_price_traj.batt_price_per_kwh">
+<code class="sig-prename descclassname">batt_price_traj.</code><code class="sig-name descname">batt_price_per_kwh</code><a class="headerlink" href="#python.agent_mutation.elec.batt_price_traj.batt_price_per_kwh" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.batt_price_traj.batt_price_per_kw">
+<code class="sig-prename descclassname">batt_price_traj.</code><code class="sig-name descname">batt_price_per_kw</code><a class="headerlink" href="#python.agent_mutation.elec.batt_price_traj.batt_price_per_kw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.batt_price_traj.batt_om_per_kw">
+<code class="sig-prename descclassname">batt_price_traj.</code><code class="sig-name descname">batt_om_per_kw</code><a class="headerlink" href="#python.agent_mutation.elec.batt_price_traj.batt_om_per_kw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="python.agent_mutation.elec.batt_price_traj.batt_om_per_kwh">
+<code class="sig-prename descclassname">batt_price_traj.</code><code class="sig-name descname">batt_om_per_kwh</code><a class="headerlink" href="#python.agent_mutation.elec.batt_price_traj.batt_om_per_kwh" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>agent attributes with new attributes</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="python.agent_mutation.elec.apply_wholesale_elec_prices">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">apply_wholesale_elec_prices</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataframe</span></em>, <em class="sig-param"><span class="n">df</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#apply_wholesale_elec_prices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.apply_wholesale_elec_prices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add control region and sector specific wholesale electricity prices to each agent</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p></li>
+<li><p><strong>df</strong> (<em>pandas.DataFrame</em>) – includes joinable wholesale_elec_usd_per_kwh field</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>agent attributes with new attributes</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="python.agent_mutation.elec.calculate_developable_customers_and_load">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">calculate_developable_customers_and_load</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataframe</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#calculate_developable_customers_and_load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.calculate_developable_customers_and_load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate cumulative developebale customers and load</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>agent attributes with new attributes</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="python.agent_mutation.elec.estimate_initial_market_shares">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">estimate_initial_market_shares</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataframe</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#estimate_initial_market_shares"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.estimate_initial_market_shares" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates initial market penetration of DPV and number of adopters at the state level</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dataframe</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>dataframe</strong> – agent attributes with new attributes</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="python.agent_mutation.elec.estimate_total_generation">
+<code class="sig-prename descclassname">python.agent_mutation.elec.</code><code class="sig-name descname">estimate_total_generation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation/elec.html#estimate_total_generation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.elec.estimate_total_generation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates total energy generated from DPV in a year</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>df</strong> (<em>pandas.DataFrame</em>) – agent attributes for the given year</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>agent attributes with new attributes</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-python.agent_mutation">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-python.agent_mutation" title="Permalink to this headline">¶</a></h2>
+<p>Edited Monday Nov 5, 218
+&#64;author: tkwasnik</p>
+<dl class="py function">
+<dt id="python.agent_mutation.init_solar_agents">
+<code class="sig-prename descclassname">python.agent_mutation.</code><code class="sig-name descname">init_solar_agents</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">scenario_settings</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/agent_mutation.html#init_solar_agents"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.agent_mutation.init_solar_agents" title="Permalink to this definition">¶</a></dt>
+<dd><p>initiate solar agents</p>
+<p>Loads and merges state DPV capacity in 2015, load profiles, hourly solar resource, and electric rates with core agent attributes.</p>
+<p>Author: Ted Kwasnik</p>
+<p>Inputs:
+-scenario_settings - object -</p>
+<p>Outputs:
+-agents_df - pandas dataframe - core initial agent attributes</p>
+</dd></dl>
+
 </div>
 </div>
 
