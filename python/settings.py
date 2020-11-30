@@ -615,7 +615,7 @@ class ScenarioSettings:
      def load_wholesale_electricity(self):
           df = pd.read_csv(os.path.join(self.input_csv_folder,'wholesale_rates.csv'),index_col=None)
           on = self._find_geography_column_to_merge_on(df)
-          df = df.melt(on[0],var_name='year', value_name='wholesale_elec_usd_per_kwh')
+          df = df.melt(on[0], var_name='year', value_name='wholesale_elec_usd_per_kwh')
           on.append('year')
           df['year'] = df['year'].astype(int)
 
@@ -628,7 +628,7 @@ class ScenarioSettings:
           df = pd.read_csv(os.path.join(self.input_csv_folder,'rate_escalations.csv'),index_col=None)
           df.rename(columns={'escalation_factor':'elec_price_multiplier'}, inplace=True)
           re_filter = []
-          for sector,settings  in list(self.sector_data.items()):
+          for sector,settings in list(self.sector_data.items()):
                re_filter.append( list((df['sector_abbr'] == settings.sector_abbr.lower()) & ( df['source'] == settings.rate_escalation_name ) ))
           df = df[np.any(re_filter,axis=0)]
 

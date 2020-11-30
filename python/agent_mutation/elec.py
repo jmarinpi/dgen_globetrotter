@@ -9,6 +9,7 @@ import numpy as np
 import decorators
 import utility_functions as utilfunc
 import config
+import os
 
 
 # GLOBAL SETTINGS
@@ -74,7 +75,7 @@ def aggregate_outputs_solar(agent_df, year, is_first_year,
     ba_cum_pv_kw_year = agent_cum_capacities.groupby(by=config.BA_COLUMN).sum()
     ba_cum_pv_kw_year[config.BA_COLUMN] = ba_cum_pv_kw_year.index
     ba_cum_pv_mw[year] = ba_cum_pv_kw_year['pv_kw_cum'] / 1000.0
-    ba_cum_pv_mw.round(3).to_csv(os.path.join(scenario_settings.out_scen_path, '/dpv_MW_by_ba_and_year.csv' index_label=config.BA_COLUMN)
+    ba_cum_pv_mw.round(3).to_csv(os.path.join(scenario_settings.out_scen_path, 'dpv_MW_by_ba_and_year.csv'), index_label=config.BA_COLUMN)
     #==========================================================================================================
     # Aggregate PV generation profiles and calculate capacity factor profiles
     #==========================================================================================================

@@ -241,7 +241,7 @@ def load_growth(agent_df):
     load_growth = pd.concat(load_growths, axis='rows')
 
     load_growth['scenario'] = 'Planning'
-
+    load_growth = load_growth.drop_duplicates(subset=['state_id','sector_abbr','year'])
     load_growth.to_csv(os.path.join('india_base','load_growth_projections.csv'), index=False)
 
 
@@ -422,8 +422,7 @@ def pv_state_starting_capacities(agent_df):
     out = out[['state_id', 'sector_abbr', 'cum_installed_count', 'cum_mw']]
     out.rename({'cum_installed_count': 'pv_systems_count',
                 'cum_mw': 'pv_capacity_mw'}, axis='columns', inplace=True)
-    out.to_csv(os.path.join(
-        'india_base', 'pv_state_starting_capacities.csv'), index=False)
+    out.to_csv(os.path.join('india_base', 'pv_state_starting_capacities.csv'), index=False)
 
 
 def solar_resource_profiles(agents):
