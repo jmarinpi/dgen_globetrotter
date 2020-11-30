@@ -3,22 +3,6 @@ dGen - International (Globetrotter)
 =========
 Master repository for international serverless versions of dGen. Ideally, this should act as a development branch for all international versions, with agnositic implementation and localization present in input sheets, and config flags if necessary. For U.S. applications of dGen, please see the current [Open Sourced version of dGen](https://github.com/NREL/dgen).
 
-
-To Run the Model on Mac or Linux
-================================
-
-From a command line window, navigate to the diffusion/python folder, then:
-
-	1. Install virtualenv:
-		$ pip install virtualenv
-	2. Set up a new environment
-		$ virtualenv env
-	3. Activate the environment
-		$ source env/Scripts/activate
-	3. Load the required Python packages:
-		$ pip install -r requirements.txt
-
-
 To Setup the Model (Mexican Example)
 ====================================
 
