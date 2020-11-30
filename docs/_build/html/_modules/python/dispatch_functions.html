@@ -1,38 +1,40 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>python.dispatch_functions &mdash; dGen Mexico 0.1 documentation</title>
+  <title>python.dispatch_functions &mdash; dGen Globetrotter 0.1 documentation</title>
   
-
-  
-  
-  
-  
-
-  
-  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../../_static/jquery.js"></script>
-        <script type="text/javascript" src="../../_static/underscore.js"></script>
-        <script type="text/javascript" src="../../_static/doctools.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
 
   
   <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
@@ -48,7 +50,7 @@
           
 
           
-            <a href="../../index.html" class="icon icon-home"> dGen Mexico
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> dGen Globetrotter
           
 
           
@@ -71,6 +73,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -81,6 +84,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../source/tutorial.html">Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/generating_agents.html">Generating Agents</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/api.html">dGen Code Base</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/input_data.html">Input Data</a></li>
@@ -89,6 +93,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -98,7 +103,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../../index.html">dGen Mexico</a>
+          <a href="../../index.html">dGen Globetrotter</a>
         
       </nav>
 
@@ -127,7 +132,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../../index.html">Docs</a> &raquo;</li>
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
         
           <li><a href="../index.html">Module code</a> &raquo;</li>
         
@@ -200,10 +205,10 @@
 
     <span class="n">m</span> <span class="o">=</span> <span class="n">n</span> <span class="o">/</span> <span class="n">arrays</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
     <span class="n">out</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">arrays</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">m</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">arrays</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
-        <span class="n">cartesian</span><span class="p">(</span><span class="n">arrays</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">out</span><span class="o">=</span><span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">m</span><span class="p">,</span><span class="mi">1</span><span class="p">:])</span>
-        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">xrange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">arrays</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
-            <span class="n">out</span><span class="p">[</span><span class="n">j</span><span class="o">*</span><span class="n">m</span><span class="p">:(</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">m</span><span class="p">,</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">m</span><span class="p">,</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="c1"># if arrays[1:]:</span>
+    <span class="c1">#     cartesian(arrays[1:], out=out[0:m,1:])</span>
+        <span class="c1"># for j in range(1, arrays[0].size):</span>
+        <span class="c1">#     out[j*m:(j+1)*m,1:] = out[0:m,1:]</span>
     <span class="k">return</span> <span class="n">out</span>    </div>
 
 <div class="viewcode-block" id="Battery"><a class="viewcode-back" href="../../source/api.html#python.dispatch_functions.Battery">[docs]</a><span class="k">class</span> <span class="nc">Battery</span><span class="p">:</span>
@@ -214,7 +219,7 @@
 <span class="sd">     </span>
 <span class="sd">    &quot;&quot;&quot;</span>
     
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nameplate_cap</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">nameplate_power</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">SOC_min</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">eta_charge</span><span class="o">=</span><span class="mf">0.91</span><span class="p">,</span> <span class="n">eta_discharge</span><span class="o">=</span><span class="mf">0.91</span><span class="p">,</span> <span class="n">cycles</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nameplate_cap</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">nameplate_power</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">SOC_min</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">eta_charge</span><span class="o">=</span><span class="mf">0.91</span><span class="p">,</span> <span class="n">eta_discharge</span><span class="o">=</span><span class="mf">0.91</span><span class="p">,</span> <span class="n">cycles</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">SOC_min</span> <span class="o">=</span> <span class="n">SOC_min</span> 
         <span class="bp">self</span><span class="o">.</span><span class="n">eta_charge</span> <span class="o">=</span> <span class="n">eta_charge</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">eta_discharge</span> <span class="o">=</span> <span class="n">eta_charge</span>
@@ -358,8 +363,8 @@
             <span class="c1"># to charge slowly, all else being equal</span>
             <span class="n">adjuster</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">batt_charge_limits_len</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
             <span class="n">base_adjustment</span> <span class="o">=</span> <span class="mf">0.0000001</span>            
-            <span class="n">adjuster</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">batt_discharge_limit</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="n">base_adjustment</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">batt_discharge_limit</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">batt_discharge_limit</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">batt_discharge_limit</span><span class="o">*</span><span class="n">batt_discharge_limit</span><span class="p">)</span>
-            <span class="n">adjuster</span><span class="p">[</span><span class="n">batt_discharge_limit</span><span class="p">:]</span> <span class="o">=</span> <span class="n">base_adjustment</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">batt_charge_limit</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">batt_charge_limit</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">batt_charge_limit</span><span class="o">*</span><span class="n">batt_charge_limit</span><span class="p">)</span>
+            <span class="n">adjuster</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">batt_discharge_limit</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="n">base_adjustment</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">batt_discharge_limit</span><span class="o">+</span><span class="mi">1</span><span class="p">)))</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">batt_discharge_limit</span><span class="o">+</span><span class="mi">1</span><span class="p">)))</span> <span class="o">/</span> <span class="p">(</span><span class="n">batt_discharge_limit</span><span class="o">*</span><span class="n">batt_discharge_limit</span><span class="p">)</span>
+            <span class="n">adjuster</span><span class="p">[</span><span class="n">batt_discharge_limit</span><span class="p">:]</span> <span class="o">=</span> <span class="n">base_adjustment</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">batt_charge_limit</span><span class="o">+</span><span class="mi">1</span><span class="p">)))</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">batt_charge_limit</span><span class="o">+</span><span class="mi">1</span><span class="p">)))</span> <span class="o">/</span> <span class="p">(</span><span class="n">batt_charge_limit</span><span class="o">*</span><span class="n">batt_charge_limit</span><span class="p">)</span>
 
             
             <span class="c1"># Initialize some objects for later use in the DP</span>
@@ -384,7 +389,7 @@
             <span class="c1"># can reach.</span>
             <span class="c1"># Each row is the set of options for a single battery state</span>
             <span class="n">option_indicies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">DP_inc</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">batt_charge_limits_len</span><span class="p">),</span> <span class="nb">int</span><span class="p">)</span>
-            <span class="n">option_indicies</span><span class="p">[:,:]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">batt_charge_limits_len</span><span class="p">)</span>
+            <span class="n">option_indicies</span><span class="p">[:,:]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">batt_charge_limits_len</span><span class="p">))</span>
             <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">DP_inc</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
                 <span class="n">option_indicies</span><span class="p">[</span><span class="n">n</span><span class="p">,:]</span> <span class="o">+=</span> <span class="n">n</span> <span class="o">-</span> <span class="n">batt_discharge_limit</span>
             <span class="n">option_indicies</span><span class="p">[</span><span class="n">option_indicies</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1"># Cannot discharge below &quot;empty&quot;</span>
@@ -395,7 +400,7 @@
             
             <span class="k">for</span> <span class="n">hour</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">load_and_pv_profile</span><span class="p">)</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
                 <span class="k">if</span> <span class="n">hour</span> <span class="o">==</span> <span class="mi">4873</span><span class="p">:</span>
-                    <span class="nb">print</span> <span class="s2">&quot;full stop&quot;</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;full stop&quot;</span><span class="p">)</span>
                 <span class="c1"># Rows correspond to each possible battery state</span>
                 <span class="c1"># Columns are options for where this particular battery state could go to</span>
                 <span class="c1"># Index is hour+1 because the DP decisions are on a given hour, looking ahead to the next hour. </span>
@@ -443,7 +448,7 @@
                 <span class="c1">#The indicies of the results correspond to the battery&#39;s movement. So the (approximate) middle option is the do-nothing option   </span>
                 <span class="c1">#Subtract the negative half of the charge vector, to get the movement relative to the row under consideration        </span>
                 <span class="n">DP_choices</span><span class="p">[:,</span><span class="n">hour</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">total_option_costs</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">batt_discharge_limit</span> <span class="c1"># adjust by discharge?</span>
-                <span class="n">selected_net_loads</span><span class="p">[:,</span><span class="n">hour</span><span class="p">]</span> <span class="o">=</span> <span class="n">net_loads</span><span class="p">[</span><span class="nb">range</span><span class="p">(</span><span class="n">DP_inc</span><span class="o">+</span><span class="mi">1</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">total_option_costs</span><span class="p">,</span><span class="mi">1</span><span class="p">)]</span>
+                <span class="n">selected_net_loads</span><span class="p">[:,</span><span class="n">hour</span><span class="p">]</span> <span class="o">=</span> <span class="n">net_loads</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">DP_inc</span><span class="o">+</span><span class="mi">1</span><span class="p">)),</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">total_option_costs</span><span class="p">,</span><span class="mi">1</span><span class="p">)]</span>
                 
                 
             <span class="c1">#=================================================================#</span>
@@ -536,15 +541,17 @@
 <span class="sd">        Maybe? Or just confirm a simple estimation works with our dGen set, </span>
 <span class="sd">        and use the accurate dispatch for any other analysis.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    
+
     <span class="c1"># Calculate baseline energy costs with the given load+pv profile</span>
     <span class="n">_</span><span class="p">,</span> <span class="n">tariff_results</span> <span class="o">=</span> <span class="n">tFuncs</span><span class="o">.</span><span class="n">bill_calculator</span><span class="p">(</span><span class="n">load_and_pv_profile</span><span class="p">,</span> <span class="n">tariff</span><span class="p">,</span> <span class="n">export_tariff</span><span class="p">)</span>
+
     <span class="n">e_chrgs_with_PV</span> <span class="o">=</span> <span class="n">tariff_results</span><span class="p">[</span><span class="s1">&#39;e_charges&#39;</span><span class="p">]</span>
     
     <span class="c1"># Estimate the marginal retail energy costs of each hour</span>
     <span class="n">e_value_8760</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_prices</span><span class="p">,</span> <span class="mi">0</span><span class="p">)[</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span><span class="p">]</span>
+
     <span class="n">e_value_8760</span><span class="p">[</span><span class="n">load_and_pv_profile</span><span class="o">&lt;=</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">export_tariff</span><span class="o">.</span><span class="n">prices</span><span class="p">[</span><span class="n">export_tariff</span><span class="o">.</span><span class="n">periods_8760</span><span class="p">][</span><span class="n">load_and_pv_profile</span><span class="o">&lt;=</span><span class="mi">0</span><span class="p">]</span>
-    
+
     <span class="c1"># Reshape into 365 24-hour day vectors and then sort by increasing cost</span>
     <span class="n">e_value_365_24</span> <span class="o">=</span> <span class="n">e_value_8760</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">365</span><span class="p">,</span><span class="mi">24</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;C&#39;</span><span class="p">)</span>
     <span class="n">e_value_365_24_sorted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">e_value_365_24</span><span class="p">)</span>
@@ -569,7 +576,7 @@
     <span class="n">results</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;e_chrgs_with_PV&#39;</span><span class="p">:</span><span class="n">e_chrgs_with_PV</span><span class="p">,</span>
                 <span class="s1">&#39;cost_sum&#39;</span><span class="p">:</span><span class="n">cost_sum</span><span class="p">,</span>
                 <span class="s1">&#39;revenue_sum&#39;</span><span class="p">:</span><span class="n">revenue_sum</span><span class="p">}</span>
-    
+
     <span class="k">return</span> <span class="n">results</span></div>
     
 <span class="c1">#%%</span>
@@ -705,8 +712,8 @@
         <span class="k">return</span> <span class="n">cheapest_d_states</span><span class="p">,</span>  <span class="n">d_max_vector</span><span class="p">,</span> <span class="n">batt_level_profile</span>
 
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="nb">print</span> <span class="n">e</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error on line </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tb_lineno</span><span class="p">),</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">e</span><span class="p">)</span></div>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">((</span><span class="s1">&#39;Error on line </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tb_lineno</span><span class="p">),</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">e</span><span class="p">))</span></div>
     
 <span class="c1">#%%</span>
 <div class="viewcode-block" id="determine_cheapest_possible_of_given_demand_levels"><a class="viewcode-back" href="../../source/api.html#python.dispatch_functions.determine_cheapest_possible_of_given_demand_levels">[docs]</a><span class="k">def</span> <span class="nf">determine_cheapest_possible_of_given_demand_levels</span><span class="p">(</span><span class="n">load_and_pv_profile</span><span class="p">,</span> <span class="n">pv_profile</span><span class="p">,</span> <span class="n">unique_periods</span><span class="p">,</span> <span class="n">d_combinations</span><span class="p">,</span> <span class="n">d_combo_n</span><span class="p">,</span> <span class="n">Dn_month</span><span class="p">,</span> <span class="n">d_periods_index</span><span class="p">,</span>  <span class="n">batt</span><span class="p">,</span> <span class="n">restrict_charge_to_pv_gen</span><span class="p">,</span> <span class="n">batt_start_level</span><span class="p">,</span> <span class="n">tariff</span><span class="p">):</span>
@@ -753,11 +760,19 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, NREL
+        
+        &copy; Copyright 2020, NREL
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -768,7 +783,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

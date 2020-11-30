@@ -61,8 +61,8 @@ Now we’re ready to run the model. This involves opening your computer’s comm
 
 Running the model on the **command line** involves moving to the :file:`python/` directory within the dGen package. From inside the :file:`python/` folder, activate the virtualenv set-up during installation. If an environment hasn’t been created yet, follow the :ref:`Installation` instructions. Finally, run the model as a python directive.::
 
-	#enter python directory of dgen_mexico
-	$ cd <your path here>/dgen_mexico/python
+	#enter python directory of dgen_globetrotter
+	$ cd <your path here>/dgen_globetrotter/python
 
 	#activate the installed environment
 	$ source env/Scripts/activate  #or conda activate env

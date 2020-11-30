@@ -17,7 +17,7 @@ The **Storage** tab contains battery storage benchmark prices on a per kWh and p
 
 .. note::
 
-    dGen’s Storage Module (:func:`python.storage_functions`) is currently disabled as it was not included in the scope of Mexico implementation.
+    dGen’s Storage Module (:func:`python.storage_functions`) is currently disabled as it was not included in the scope of Globetrotter implementation.
 
 The **Solar** tab contains PV system benchmark prices on a a per kW installed basis for each sector. Fixed and Variable Annual Operations and Maintenance (O&M), PV Degradation rates can also be set. Power Density assumes that technological advances will lead to increased cell efficiencies, this doesn’t directly affect system costs, but does allow agents with smaller roofs to adopt a higher capacity if economic.
 
@@ -36,7 +36,7 @@ Once the correct environment is installed and the correct scenario data has been
 Running the model on the **command line** involves moving to the :file:`python/` directory within the dGen package. From inside the :file:`python/` folder, activate the virtualenv set-up during installation. Finally, run the model as a python directive.::
 
 	#enter python directory
-	$ cd <your path here>/dgen_mexico/python
+	$ cd <your path here>/dgen_globetrotter/python
 
 	#activate the installed environment
 	$ source env/Scripts/activate  #or conda activate env

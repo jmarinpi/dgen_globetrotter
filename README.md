@@ -1,13 +1,14 @@
 
 dGen - International (Globetrotter)
 =========
-Master repository for international serverless versions of dGen. Ideally, this should act as a development branch for all international versions, with agnositic implementation and localization present in input sheets, and config flags if necessary. 
+Master repository for international serverless versions of dGen. Ideally, this should act as a development branch for all international versions, with agnositic implementation and localization present in input sheets, and config flags if necessary. For U.S. applications of dGen, please see the current [Open Sourced version of dGen](https://github.com/NREL/dgen).
 
 
 To Run the Model on Mac or Linux
-=========
+================================
 
 From a command line window, navigate to the diffusion/python folder, then:
+
 	1. Install virtualenv:
 		$ pip install virtualenv
 	2. Set up a new environment
@@ -18,8 +19,8 @@ From a command line window, navigate to the diffusion/python folder, then:
 		$ pip install -r requirements.txt
 
 
-To Run the Model
-=========
+To Setup the Model (Mexican Example)
+====================================
 
 	1. Copy reference_data/example_data/mex_high_costs.xlsm to input_scenarios and rename to a unique scenario name.
 
@@ -35,14 +36,3 @@ To Run the Model
 		Note you may need to run pip install -r requirements.txt first to ensure all required Python packages are installed. 
 
 	6. As the model runs the name of the output folder (based on the current time) will be printed on the screen. Find these results in the runs folder. 
-
-To Run From a Pregenerated Agent File:
-=========
-
-	At the end of each new run the results fodler will contain a file named agents_df_base.pkl. This folder contains agent core paramters, linked with state PV starting capacities, hourly solar resource, normalized loads, and tariff rates. To use these agents again in alternative scenarios:
-
-	1. Copy agents_df_base.pkl to the agent_inputs folder. Rename if necessary.
-
-	2. Apply the name of the agent pickle in agent_inputs to the Pre-Generated Agents parameter in the input spreadsheet. 
-
-	3. Follow steps 3 - 6 from above to run the model as normal. 

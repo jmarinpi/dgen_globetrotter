@@ -1,38 +1,40 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Input Data &mdash; dGen Mexico 0.1 documentation</title>
+  <title>Input Data &mdash; dGen Globetrotter 0.1 documentation</title>
   
-
-  
-  
-  
-  
-
-  
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    
-    <script type="text/javascript" src="../_static/js/theme.js"></script>
-
-    
 
   
   <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="prev" title="python.excel package" href="python.excel.html" /> 
@@ -49,7 +51,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> dGen Mexico
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> dGen Globetrotter
           
 
           
@@ -72,6 +74,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -82,6 +85,7 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generating_agents.html">Generating Agents</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">dGen Code Base</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Input Data</a><ul>
@@ -106,6 +110,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -115,7 +120,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">dGen Mexico</a>
+          <a href="../index.html">dGen Globetrotter</a>
         
       </nav>
 
@@ -144,7 +149,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Input Data</li>
     
@@ -172,58 +177,63 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">agent_core_attributes_all.csv</span></code><a class="headerlink" href="#agent-core-attributes-all-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Core set of attributes to instantiate agents.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">agent_id:</th><td class="field-body">unique agent identifier <em>(float)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">control_reg:</th><td class="field-body">unique common control region name <em>(string)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">control_reg_id:</th><td class="field-body">unique common identifier linked to one control region name <em>(float)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">state:</th><td class="field-body">unique common state name <em>(string)</em>. Note each control region may have one or more associated states, but each state can only belong to one control region</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">state_id:</th><td class="field-body">unique common identifier linked to one state name <em>(float)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">sector_abbr:</th><td class="field-body">sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">tariff_class:</th><td class="field-body">unique common identifier for the agent’s electric tariff type <em>(str)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">country_abbr:</th><td class="field-body">common country abbreviation <em>(str)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">customers_in_bin:</th></tr>
-<tr class="field-odd field"><td>&#160;</td><td class="field-body">count of number of DPV customers that the agent represents <em>(float)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">load_in_bin_kwh:</th></tr>
-<tr class="field-even field"><td>&#160;</td><td class="field-body">total annual energy that the agent represents in kWh <em>(float)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">load_per_customer_in_bin_kwh:</th></tr>
-<tr class="field-odd field"><td>&#160;</td><td class="field-body">per capita annual energy consumption in kWh <em>(float)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">max_demand_kw:</th><td class="field-body">peak agent demand in kW  <em>(float)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">avg_monthly_kwh:</th></tr>
-<tr class="field-odd field"><td>&#160;</td><td class="field-body">average agent monthly energy use in kWh <em>(float)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">owner_occupancy_status:</th></tr>
-<tr class="field-even field"><td>&#160;</td><td class="field-body">code lookup for owner status where 1 = owner-occupied and 2 = leased <em>(int)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">cap_cost_multiplier:</th></tr>
-<tr class="field-odd field"><td>&#160;</td><td class="field-body">agent capital cost multiplier</td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">developable_buildings_pct:</th></tr>
-<tr class="field-even field"><td>&#160;</td><td class="field-body">percent of agent’s buildings that are suitable for DPV development  <em>(float)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">bldg_size_class:</th></tr>
-<tr class="field-odd field"><td>&#160;</td><td class="field-body">size of agent’s building <em>(str)</em>. Must be one of [‘small’,’med’,’large’]</td>
-</tr>
-<tr class="field-even field"><th class="field-name">rate_id_alias:</th><td class="field-body">common electric rate identifier <em>(int)</em>. Must match similar field in urdb3_rates.csv</td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">agent_id</dt>
+<dd class="field-odd"><p>unique agent identifier <em>(float)</em></p>
+</dd>
+<dt class="field-even">control_reg</dt>
+<dd class="field-even"><p>unique common control region name <em>(string)</em></p>
+</dd>
+<dt class="field-odd">control_reg_id</dt>
+<dd class="field-odd"><p>unique common identifier linked to one control region name <em>(float)</em></p>
+</dd>
+<dt class="field-even">state</dt>
+<dd class="field-even"><p>unique common state name <em>(string)</em>. Note each control region may have one or more associated states, but each state can only belong to one control region</p>
+</dd>
+<dt class="field-odd">state_id</dt>
+<dd class="field-odd"><p>unique common identifier linked to one state name <em>(float)</em></p>
+</dd>
+<dt class="field-even">sector_abbr</dt>
+<dd class="field-even"><p>sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</p>
+</dd>
+<dt class="field-odd">tariff_class</dt>
+<dd class="field-odd"><p>unique common identifier for the agent’s electric tariff type <em>(str)</em></p>
+</dd>
+<dt class="field-even">country_abbr</dt>
+<dd class="field-even"><p>common country abbreviation <em>(str)</em></p>
+</dd>
+<dt class="field-odd">customers_in_bin</dt>
+<dd class="field-odd"><p>count of number of DPV customers that the agent represents <em>(float)</em></p>
+</dd>
+<dt class="field-even">load_in_bin_kwh</dt>
+<dd class="field-even"><p>total annual energy that the agent represents in kWh <em>(float)</em></p>
+</dd>
+<dt class="field-odd">load_per_customer_in_bin_kwh</dt>
+<dd class="field-odd"><p>per capita annual energy consumption in kWh <em>(float)</em></p>
+</dd>
+<dt class="field-even">max_demand_kw</dt>
+<dd class="field-even"><p>peak agent demand in kW  <em>(float)</em></p>
+</dd>
+<dt class="field-odd">avg_monthly_kwh</dt>
+<dd class="field-odd"><p>average agent monthly energy use in kWh <em>(float)</em></p>
+</dd>
+<dt class="field-even">owner_occupancy_status</dt>
+<dd class="field-even"><p>code lookup for owner status where 1 = owner-occupied and 2 = leased <em>(int)</em></p>
+</dd>
+<dt class="field-odd">cap_cost_multiplier</dt>
+<dd class="field-odd"><p>agent capital cost multiplier</p>
+</dd>
+<dt class="field-even">developable_buildings_pct</dt>
+<dd class="field-even"><p>percent of agent’s buildings that are suitable for DPV development  <em>(float)</em></p>
+</dd>
+<dt class="field-odd">bldg_size_class</dt>
+<dd class="field-odd"><p>size of agent’s building <em>(str)</em>. Must be one of [‘small’,’med’,’large’]</p>
+</dd>
+<dt class="field-even">rate_id_alias</dt>
+<dd class="field-even"><p>common electric rate identifier <em>(int)</em>. Must match similar field in urdb3_rates.csv</p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -232,20 +242,18 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">avoided_cost_rates.csv</span></code><a class="headerlink" href="#avoided-cost-rates-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Prices used is assessing value when net metering is activated and the input sheet Net Metering Scenario is specified as ‘Avoided Cost’.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">country_abbr:</th><td class="field-body">common country abbreviation <em>(str)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">control_reg_id:</th><td class="field-body">unique common control region identifier <em>(int)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">2014 -&gt; 2050:</th><td class="field-body">Avoided cost in US Dollars / kWh <em>(float)</em></td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">country_abbr</dt>
+<dd class="field-odd"><p>common country abbreviation <em>(str)</em></p>
+</dd>
+<dt class="field-even">control_reg_id</dt>
+<dd class="field-even"><p>unique common control region identifier <em>(int)</em></p>
+</dd>
+<dt class="field-odd">2014 -&gt; 2050</dt>
+<dd class="field-odd"><p>Avoided cost in US Dollars / kWh <em>(float)</em></p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -254,20 +262,18 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">carbon_intensities_grid.csv</span></code><a class="headerlink" href="#carbon-intensities-grid-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Carbon intensities used when input sheet specifies Carbon Price as ‘Price Based On State Carbon Intensity’.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">country_abbr:</th><td class="field-body">common country abbreviation <em>(str)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">control_reg_id:</th><td class="field-body">unique common control region identifier <em>(int)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">2014 -&gt; 2050:</th><td class="field-body">Tons of CO2 per kWh of electricity <em>(float)</em></td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">country_abbr</dt>
+<dd class="field-odd"><p>common country abbreviation <em>(str)</em></p>
+</dd>
+<dt class="field-even">control_reg_id</dt>
+<dd class="field-even"><p>unique common control region identifier <em>(int)</em></p>
+</dd>
+<dt class="field-odd">2014 -&gt; 2050</dt>
+<dd class="field-odd"><p>Tons of CO2 per kWh of electricity <em>(float)</em></p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -276,20 +282,18 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">carbon_intensities_ng.csv</span></code><a class="headerlink" href="#carbon-intensities-ng-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Carbon intensities used when input sheet specifies Carbon Price as ‘Price Based On NG Offset’. Values are in US Dollars.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">country_abbr:</th><td class="field-body">common country abbreviation <em>(str)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">control_reg_id:</th><td class="field-body">unique common control region identifier <em>(int)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">2014 -&gt; 2050:</th><td class="field-body">Tons of CO2 per kWh of electricity <em>(float)</em></td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">country_abbr</dt>
+<dd class="field-odd"><p>common country abbreviation <em>(str)</em></p>
+</dd>
+<dt class="field-even">control_reg_id</dt>
+<dd class="field-even"><p>unique common control region identifier <em>(int)</em></p>
+</dd>
+<dt class="field-odd">2014 -&gt; 2050</dt>
+<dd class="field-odd"><p>Tons of CO2 per kWh of electricity <em>(float)</em></p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -298,27 +302,27 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">load_growth_projections.csv</span></code><a class="headerlink" href="#load-growth-projections-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Yearly multipliers to use in assessing load growth relative to starting conditions in agent_core_attributes.csv sorted by country and control region.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">scenario:</th><td class="field-body">scenario description that matches input spreadsheet main tab dropdown <em>(str)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">year:</th><td class="field-body">scenario year <em>(int)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">sector_abbr:</th><td class="field-body">sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</td>
-</tr>
-<tr class="field-even field"><th class="field-name">country_abbr:</th><td class="field-body">common country abbreviation <em>(str)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">control_reg_id:</th><td class="field-body">unique common control region identifier <em>(int)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">load_multiplier:</th></tr>
-<tr class="field-even field"><td>&#160;</td><td class="field-body">load multiplier percent <em>(float)</em></td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">scenario</dt>
+<dd class="field-odd"><p>scenario description that matches input spreadsheet main tab dropdown <em>(str)</em></p>
+</dd>
+<dt class="field-even">year</dt>
+<dd class="field-even"><p>scenario year <em>(int)</em></p>
+</dd>
+<dt class="field-odd">sector_abbr</dt>
+<dd class="field-odd"><p>sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</p>
+</dd>
+<dt class="field-even">country_abbr</dt>
+<dd class="field-even"><p>common country abbreviation <em>(str)</em></p>
+</dd>
+<dt class="field-odd">control_reg_id</dt>
+<dd class="field-odd"><p>unique common control region identifier <em>(int)</em></p>
+</dd>
+<dt class="field-even">load_multiplier</dt>
+<dd class="field-even"><p>load multiplier percent <em>(float)</em></p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -327,27 +331,27 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">max_market_share_settings.csv</span></code><a class="headerlink" href="#max-market-share-settings-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Market curves to use in analysis while will be filtered by the source specified in input sheet sector-specific Market Curve settings.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">metric:</th><td class="field-body">data source name <em>(str)</em>. Must be one of [‘percent_monthly_bill_savings’,’payback_period’,’rate_of_return’,’net_present_value’]</td>
-</tr>
-<tr class="field-even field"><th class="field-name">metric_value:</th><td class="field-body">value of metric <em>(float)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">max_market_share:</th></tr>
-<tr class="field-odd field"><td>&#160;</td><td class="field-body">max DPV share <em>(float)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">source:</th><td class="field-body">data source name <em>(str)</em>. Must be one of [‘RWBeck’,’NEMS’,’NREL’,’Navigant’]</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">business_model:</th><td class="field-body">business model name <em>(str)</em>. Must be one of [‘tpo’,’host_owned’]</td>
-</tr>
-<tr class="field-even field"><th class="field-name">sector_abbr:</th><td class="field-body">sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">metric</dt>
+<dd class="field-odd"><p>data source name <em>(str)</em>. Must be one of [‘percent_monthly_bill_savings’,’payback_period’,’rate_of_return’,’net_present_value’]</p>
+</dd>
+<dt class="field-even">metric_value</dt>
+<dd class="field-even"><p>value of metric <em>(float)</em></p>
+</dd>
+<dt class="field-odd">max_market_share</dt>
+<dd class="field-odd"><p>max DPV share <em>(float)</em></p>
+</dd>
+<dt class="field-even">source</dt>
+<dd class="field-even"><p>data source name <em>(str)</em>. Must be one of [‘RWBeck’,’NEMS’,’NREL’,’Navigant’]</p>
+</dd>
+<dt class="field-odd">business_model</dt>
+<dd class="field-odd"><p>business model name <em>(str)</em>. Must be one of [‘tpo’,’host_owned’]</p>
+</dd>
+<dt class="field-even">sector_abbr</dt>
+<dd class="field-even"><p>sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -356,28 +360,27 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">nem_settings.csv</span></code><a class="headerlink" href="#nem-settings-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Net metering projections by year, country and control region.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">sector_abbr:</th><td class="field-body">sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</td>
-</tr>
-<tr class="field-even field"><th class="field-name">country_abbr:</th><td class="field-body">common country abbreviation <em>(str)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">control_reg_id:</th><td class="field-body">unique common control region identifier <em>(int)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">nem_system_size_limit_kw:</th></tr>
-<tr class="field-even field"><td>&#160;</td><td class="field-body">net metering system size limit kW <em>(float)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">year_end_excess_sell_rate_usd_per_kwh:</th></tr>
-<tr class="field-odd field"><td>&#160;</td><td class="field-body">excess sell rate for net metering in US Dollars <em>(float)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">year:</th><td class="field-body">scenario year <em>(int)</em></td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">sector_abbr</dt>
+<dd class="field-odd"><p>sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</p>
+</dd>
+<dt class="field-even">country_abbr</dt>
+<dd class="field-even"><p>common country abbreviation <em>(str)</em></p>
+</dd>
+<dt class="field-odd">control_reg_id</dt>
+<dd class="field-odd"><p>unique common control region identifier <em>(int)</em></p>
+</dd>
+<dt class="field-even">nem_system_size_limit_kw</dt>
+<dd class="field-even"><p>net metering system size limit kW <em>(float)</em></p>
+</dd>
+<dt class="field-odd">year_end_excess_sell_rate_usd_per_kwh</dt>
+<dd class="field-odd"><p>excess sell rate for net metering in US Dollars <em>(float)</em></p>
+</dd>
+<dt class="field-even">year</dt>
+<dd class="field-even"><p>scenario year <em>(int)</em></p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -386,20 +389,18 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">normalized_load.csv</span></code><a class="headerlink" href="#normalized-load-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Normalized load profile by country and control region. Will be scaled by the load specified in agent_core_attributes_all.csv.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">country_abbr:</th><td class="field-body">common country abbreviation <em>(str)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">control_reg_id:</th><td class="field-body">unique common control region identifier <em>(int)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">kwh:</th><td class="field-body">Array of length 8760 for the fraction of yearly energy consumption in each hour multiplied by a offset factor of 1e9 <em>(int)</em></td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">country_abbr</dt>
+<dd class="field-odd"><p>common country abbreviation <em>(str)</em></p>
+</dd>
+<dt class="field-even">control_reg_id</dt>
+<dd class="field-even"><p>unique common control region identifier <em>(int)</em></p>
+</dd>
+<dt class="field-odd">kwh</dt>
+<dd class="field-odd"><p>Array of length 8760 for the fraction of yearly energy consumption in each hour multiplied by a offset factor of 1e9 <em>(int)</em></p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -408,28 +409,30 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">pv_bass.csv</span></code><a class="headerlink" href="#pv-bass-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Bass Parameter settings by sector, country and control region.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">sector_abbr:</th><td class="field-body">sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</td>
-</tr>
-<tr class="field-even field"><th class="field-name">country_abbr:</th><td class="field-body">common country abbreviation <em>(str)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">control_reg_id:</th><td class="field-body">unique common control region identifier <em>(int)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">state_id:</th><td class="field-body">unique common state identifier <em>(int)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">p:</th><td class="field-body">bass diffusion parameter defining the coefficient of innovation.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">q:</th><td class="field-body">bass diffusion parameter defining the coefficient of imitation.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">teq_yr1:</th><td class="field-body">number of years since the diffusion model began.</td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">sector_abbr</dt>
+<dd class="field-odd"><p>sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</p>
+</dd>
+<dt class="field-even">country_abbr</dt>
+<dd class="field-even"><p>common country abbreviation <em>(str)</em></p>
+</dd>
+<dt class="field-odd">control_reg_id</dt>
+<dd class="field-odd"><p>unique common control region identifier <em>(int)</em></p>
+</dd>
+<dt class="field-even">state_id</dt>
+<dd class="field-even"><p>unique common state identifier <em>(int)</em></p>
+</dd>
+<dt class="field-odd">p</dt>
+<dd class="field-odd"><p>bass diffusion parameter defining the coefficient of innovation.</p>
+</dd>
+<dt class="field-even">q</dt>
+<dd class="field-even"><p>bass diffusion parameter defining the coefficient of imitation.</p>
+</dd>
+<dt class="field-odd">teq_yr1</dt>
+<dd class="field-odd"><p>number of years since the diffusion model began.</p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -438,29 +441,30 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">pv_state_starting_capacities.csv</span></code><a class="headerlink" href="#pv-state-starting-capacities-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Cumulative DPV penetration by state in 2015.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">sector_abbr:</th><td class="field-body">sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</td>
-</tr>
-<tr class="field-even field"><th class="field-name">country_abbr:</th><td class="field-body">common country abbreviation <em>(str)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">control_reg_id:</th><td class="field-body">unique common control region identifier <em>(int)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">state_id:</th><td class="field-body">unique common state identifier <em>(int)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">tariff_class:</th><td class="field-body">unique common identifier electric tariff type <em>(str)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">pv_capacity_mw:</th><td class="field-body">cumulative DPV capacity in the state in 2015, mW</td>
-</tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">pv_systems_count:</th></tr>
-<tr class="field-odd field"><td>&#160;</td><td class="field-body">cumulative number of DPV systems in the state in 2015</td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">sector_abbr</dt>
+<dd class="field-odd"><p>sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</p>
+</dd>
+<dt class="field-even">country_abbr</dt>
+<dd class="field-even"><p>common country abbreviation <em>(str)</em></p>
+</dd>
+<dt class="field-odd">control_reg_id</dt>
+<dd class="field-odd"><p>unique common control region identifier <em>(int)</em></p>
+</dd>
+<dt class="field-even">state_id</dt>
+<dd class="field-even"><p>unique common state identifier <em>(int)</em></p>
+</dd>
+<dt class="field-odd">tariff_class</dt>
+<dd class="field-odd"><p>unique common identifier electric tariff type <em>(str)</em></p>
+</dd>
+<dt class="field-even">pv_capacity_mw</dt>
+<dd class="field-even"><p>cumulative DPV capacity in the state in 2015, mW</p>
+</dd>
+<dt class="field-odd">pv_systems_count</dt>
+<dd class="field-odd"><p>cumulative number of DPV systems in the state in 2015</p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -469,27 +473,27 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">rate_escalations.csv</span></code><a class="headerlink" href="#rate-escalations-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Yearly multipliers to use in assessing electricity rate growth relative to starting conditions sorted by country and control region.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">source:</th><td class="field-body">data source name <em>(str)</em>. Must be one of [‘Planning’,’High’,’Low’]</td>
-</tr>
-<tr class="field-even field"><th class="field-name">year:</th><td class="field-body">scenario year <em>(int)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">sector_abbr:</th><td class="field-body">sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</td>
-</tr>
-<tr class="field-even field"><th class="field-name">country_abbr:</th><td class="field-body">common country abbreviation <em>(str)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">control_reg_id:</th><td class="field-body">unique common control region identifier <em>(int)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">escalation_factor:</th></tr>
-<tr class="field-even field"><td>&#160;</td><td class="field-body">rate escalation percent <em>(float)</em></td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">source</dt>
+<dd class="field-odd"><p>data source name <em>(str)</em>. Must be one of [‘Planning’,’High’,’Low’]</p>
+</dd>
+<dt class="field-even">year</dt>
+<dd class="field-even"><p>scenario year <em>(int)</em></p>
+</dd>
+<dt class="field-odd">sector_abbr</dt>
+<dd class="field-odd"><p>sector abbreviation <em>(str)</em>. Must be one of [‘res’,’com’,’ind’]</p>
+</dd>
+<dt class="field-even">country_abbr</dt>
+<dd class="field-even"><p>common country abbreviation <em>(str)</em></p>
+</dd>
+<dt class="field-odd">control_reg_id</dt>
+<dd class="field-odd"><p>unique common control region identifier <em>(int)</em></p>
+</dd>
+<dt class="field-even">escalation_factor</dt>
+<dd class="field-even"><p>rate escalation percent <em>(float)</em></p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -498,22 +502,21 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">solar_resource_hourly.csv</span></code><a class="headerlink" href="#solar-resource-hourly-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Hourly solar resource profiles by country and control region.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">country_abbr:</th><td class="field-body">common country abbreviation <em>(str)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">control_reg_id:</th><td class="field-body">unique common control region identifier <em>(int)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">state_id:</th><td class="field-body">unique common state identifier <em>(int)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">cf:</th><td class="field-body">Array of length 8760 for the hourly solar insolation <em>(int)</em></td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">country_abbr</dt>
+<dd class="field-odd"><p>common country abbreviation <em>(str)</em></p>
+</dd>
+<dt class="field-even">control_reg_id</dt>
+<dd class="field-even"><p>unique common control region identifier <em>(int)</em></p>
+</dd>
+<dt class="field-odd">state_id</dt>
+<dd class="field-odd"><p>unique common state identifier <em>(int)</em></p>
+</dd>
+<dt class="field-even">cf</dt>
+<dd class="field-even"><p>Array of length 8760 for the hourly solar insolation <em>(int)</em></p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -522,18 +525,15 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">urdb3_rates.csv</span></code><a class="headerlink" href="#urdb3-rates-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p><a class="reference external" href="https://openei.org/wiki/Utility_Rate_Database">Complete urdb rate information</a> for agent rates specificed in core_agent_attributes_all.csv.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">rate_id_alias:</th><td class="field-body">rate id matching that of agent_core_attributes_all.csv <em>(int)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">rate_json:</th><td class="field-body">complete urdb rate <em>(json)</em></td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">rate_id_alias</dt>
+<dd class="field-odd"><p>rate id matching that of agent_core_attributes_all.csv <em>(int)</em></p>
+</dd>
+<dt class="field-even">rate_json</dt>
+<dd class="field-even"><p>complete urdb rate <em>(json)</em></p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -542,20 +542,18 @@
 <h2><code class="file docutils literal notranslate"><span class="pre">wholesale_rates.csv</span></code><a class="headerlink" href="#wholesale-rates-csv" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><p>Yearly wholesale electricity rates by country and control region. Used in analysis and when input sheet net metering scenario is set to ‘State Wholesale’.</p>
-<dl class="docutils">
-<dt>Fields:</dt>
-<dd><table class="first last docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">country_abbr:</th><td class="field-body">common country abbreviation <em>(str)</em></td>
-</tr>
-<tr class="field-even field"><th class="field-name">control_reg_id:</th><td class="field-body">unique common control region identifier <em>(int)</em></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">2014 -&gt; 2050:</th><td class="field-body">Average wholesale electricity price in US Dollars/kWh <em>(float)</em></td>
-</tr>
-</tbody>
-</table>
+<dl class="simple">
+<dt>Fields:</dt><dd><dl class="field-list simple">
+<dt class="field-odd">country_abbr</dt>
+<dd class="field-odd"><p>common country abbreviation <em>(str)</em></p>
+</dd>
+<dt class="field-even">control_reg_id</dt>
+<dd class="field-even"><p>unique common control region identifier <em>(int)</em></p>
+</dd>
+<dt class="field-odd">2014 -&gt; 2050</dt>
+<dd class="field-odd"><p>Average wholesale electricity price in US Dollars/kWh <em>(float)</em></p>
+</dd>
+</dl>
 </dd>
 </dl>
 </div></blockquote>
@@ -580,11 +578,19 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, NREL
+        
+        &copy; Copyright 2020, NREL
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -595,7 +601,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

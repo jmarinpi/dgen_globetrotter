@@ -1,38 +1,40 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>python.excel package &mdash; dGen Mexico 0.1 documentation</title>
+  <title>python.excel package &mdash; dGen Globetrotter 0.1 documentation</title>
   
-
-  
-  
-  
-  
-
-  
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    
-    <script type="text/javascript" src="../_static/js/theme.js"></script>
-
-    
 
   
   <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Input Data" href="input_data.html" />
@@ -50,7 +52,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> dGen Mexico
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> dGen Globetrotter
           
 
           
@@ -73,6 +75,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -83,6 +86,7 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generating_agents.html">Generating Agents</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="api.html">dGen Code Base</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="api.html#subpackages">Subpackages</a><ul class="current">
@@ -99,12 +103,12 @@
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.agents">python.agents module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.config">python.config module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.decorators">python.decorators module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#module-python.dgen_model">python.dgen_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#python-dgen-model-module">python.dgen_model module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.diffusion_functions">python.diffusion_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.dispatch_functions">python.dispatch_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.financial_functions">python.financial_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.settings">python.settings module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#module-python.storage_functions">python.storage_functions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#python-storage-functions-module">python.storage_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.tariff_functions">python.tariff_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python.utility_functions">python.utility_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-python">Module contents</a></li>
@@ -116,6 +120,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -125,7 +130,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">dGen Mexico</a>
+          <a href="../index.html">dGen Globetrotter</a>
         
       </nav>
 
@@ -154,7 +159,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
           <li><a href="api.html">dGen Code Base</a> &raquo;</li>
         
@@ -184,29 +189,34 @@
 </div>
 <div class="section" id="module-python.excel.excel_objects">
 <span id="python-excel-excel-objects-module"></span><h2>python.excel.excel_objects module<a class="headerlink" href="#module-python.excel.excel_objects" title="Permalink to this headline">¶</a></h2>
-<dl class="exception">
+<dl class="py exception">
 <dt id="python.excel.excel_objects.ExcelError">
-<em class="property">exception </em><code class="descclassname">python.excel.excel_objects.</code><code class="descname">ExcelError</code><a class="reference internal" href="../_modules/python/excel/excel_objects.html#ExcelError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.excel.excel_objects.ExcelError" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">exceptions.Exception</span></code></p>
+<em class="property">exception </em><code class="sig-prename descclassname">python.excel.excel_objects.</code><code class="sig-name descname">ExcelError</code><a class="reference internal" href="../_modules/python/excel/excel_objects.html#ExcelError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.excel.excel_objects.ExcelError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="python.excel.excel_objects.FancyNamedRange">
-<em class="property">class </em><code class="descclassname">python.excel.excel_objects.</code><code class="descname">FancyNamedRange</code><span class="sig-paren">(</span><em>workbook</em>, <em>range_name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/excel/excel_objects.html#FancyNamedRange"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.excel.excel_objects.FancyNamedRange" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">python.excel.excel_objects.</code><code class="sig-name descname">FancyNamedRange</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">workbook</span></em>, <em class="sig-param"><span class="n">range_name</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/excel/excel_objects.html#FancyNamedRange"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.excel.excel_objects.FancyNamedRange" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<dl class="method">
+<dl class="py method">
 <dt id="python.excel.excel_objects.FancyNamedRange.contents_to_array">
-<code class="descname">contents_to_array</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/excel/excel_objects.html#FancyNamedRange.contents_to_array"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.excel.excel_objects.FancyNamedRange.contents_to_array" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">contents_to_array</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/excel/excel_objects.html#FancyNamedRange.contents_to_array"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.excel.excel_objects.FancyNamedRange.contents_to_array" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="python.excel.excel_objects.FancyNamedRange.first_value">
-<code class="descname">first_value</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/excel/excel_objects.html#FancyNamedRange.first_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.excel.excel_objects.FancyNamedRange.first_value" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">first_value</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/excel/excel_objects.html#FancyNamedRange.first_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.excel.excel_objects.FancyNamedRange.first_value" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="python.excel.excel_objects.FancyNamedRange.to_df">
-<code class="descname">to_df</code><span class="sig-paren">(</span><em>transpose=False</em>, <em>columns=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/excel/excel_objects.html#FancyNamedRange.to_df"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.excel.excel_objects.FancyNamedRange.to_df" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">to_df</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">transpose</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">columns</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/excel/excel_objects.html#FancyNamedRange.to_df"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.excel.excel_objects.FancyNamedRange.to_df" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="python.excel.excel_objects.FancyNamedRange.to_stringIO">
+<code class="sig-name descname">to_stringIO</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">transpose</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">columns</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">index</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">header</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/python/excel/excel_objects.html#FancyNamedRange.to_stringIO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#python.excel.excel_objects.FancyNamedRange.to_stringIO" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -239,11 +249,19 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, NREL
+        
+        &copy; Copyright 2020, NREL
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -254,7 +272,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

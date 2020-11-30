@@ -1,38 +1,40 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>python.tariff_functions &mdash; dGen Mexico 0.1 documentation</title>
+  <title>python.tariff_functions &mdash; dGen Globetrotter 0.1 documentation</title>
   
-
-  
-  
-  
-  
-
-  
-  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../../_static/jquery.js"></script>
-        <script type="text/javascript" src="../../_static/underscore.js"></script>
-        <script type="text/javascript" src="../../_static/doctools.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
 
   
   <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
@@ -48,7 +50,7 @@
           
 
           
-            <a href="../../index.html" class="icon icon-home"> dGen Mexico
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> dGen Globetrotter
           
 
           
@@ -71,6 +73,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -81,6 +84,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../source/tutorial.html">Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/generating_agents.html">Generating Agents</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/api.html">dGen Code Base</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/input_data.html">Input Data</a></li>
@@ -89,6 +93,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -98,7 +103,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../../index.html">dGen Mexico</a>
+          <a href="../../index.html">dGen Globetrotter</a>
         
       </nav>
 
@@ -127,7 +132,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../../index.html">Docs</a> &raquo;</li>
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
         
           <li><a href="../index.html">Module code</a> &raquo;</li>
         
@@ -165,9 +170,9 @@
 <span class="c1">#%%</span>
 <span class="c1"># Load configuration file, if one exists.</span>
 <div class="viewcode-block" id="load_config_params"><a class="viewcode-back" href="../../source/api.html#python.tariff_functions.load_config_params">[docs]</a><span class="k">def</span> <span class="nf">load_config_params</span><span class="p">(</span><span class="n">config_file_name</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;</span>
+    <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Each user should fill in a config_template.json file.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     
     <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">(</span><span class="s1">&#39;config.json&#39;</span><span class="p">,</span><span class="s1">&#39;r&#39;</span><span class="p">))</span>
     
@@ -261,7 +266,7 @@
 <span class="sd">    this may have been solved now, but general unit check would be good.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
         
-<div class="viewcode-block" id="Tariff.__init__"><a class="viewcode-back" href="../../source/api.html#python.tariff_functions.Tariff.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_day</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">urdb_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">json_file_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dict_obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="Tariff.__init__"><a class="viewcode-back" href="../../source/api.html#python.tariff_functions.Tariff.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_day</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">urdb_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">json_file_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dict_obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="s2">&quot;Create a Tariff Function object based on a urdb id, a .csv file, or a blank tariff is created.&quot;</span>            
         <span class="n">dict_obj</span><span class="p">[</span><span class="s1">&#39;eia_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>           
         <span class="k">if</span> <span class="n">urdb_id</span><span class="o">==</span><span class="kc">None</span> <span class="ow">and</span> <span class="n">json_file_name</span><span class="o">==</span><span class="kc">None</span> <span class="ow">and</span> <span class="n">dict_obj</span><span class="o">==</span><span class="kc">None</span><span class="p">:</span>
@@ -336,7 +341,7 @@
         <span class="k">elif</span> <span class="n">urdb_id</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
 
             <span class="k">if</span> <span class="n">api_key</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span> 
-                <span class="nb">print</span> <span class="s2">&quot;No URDB API key defined.&quot;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No URDB API key defined.&quot;</span><span class="p">)</span>
             
             <span class="n">input_params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;version&#39;</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span>
                         <span class="s1">&#39;format&#39;</span><span class="p">:</span><span class="s1">&#39;json&#39;</span><span class="p">,</span>
@@ -549,7 +554,7 @@
         <span class="k">elif</span> <span class="n">json_file_name</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">obj_text</span> <span class="o">=</span> <span class="n">codecs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">json_file_name</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
             <span class="n">d</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">obj_text</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">fieldname</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">fieldname</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">fieldname</span><span class="p">],</span> <span class="nb">list</span><span class="p">):</span>
                     <span class="n">d</span><span class="p">[</span><span class="n">fieldname</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">fieldname</span><span class="p">])</span>
                 
@@ -648,7 +653,6 @@
             <span class="k">if</span> <span class="s1">&#39;demand_rate_unit&#39;</span> <span class="ow">in</span> <span class="n">dict_obj</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">demand_rate_unit</span> <span class="o">=</span> <span class="n">dict_obj</span><span class="p">[</span><span class="s1">&#39;demand_rate_unit&#39;</span><span class="p">]</span>
             <span class="k">if</span> <span class="s1">&#39;energy_rate_unit&#39;</span> <span class="ow">in</span> <span class="n">dict_obj</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_rate_unit</span> <span class="o">=</span> <span class="n">dict_obj</span><span class="p">[</span><span class="s1">&#39;energy_rate_unit&#39;</span><span class="p">]</span>
             
-            
             <span class="c1">###################### Flat Demand Structure ########################</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">d_flat_exists</span> <span class="o">=</span> <span class="n">dict_obj</span><span class="p">[</span><span class="s1">&#39;d_flat_exists&#39;</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">d_flat_prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dict_obj</span><span class="p">[</span><span class="s1">&#39;d_flat_prices&#39;</span><span class="p">])</span>
@@ -679,21 +683,22 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">e_prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dict_obj</span><span class="p">[</span><span class="s1">&#39;e_prices&#39;</span><span class="p">])</span>   
             <span class="bp">self</span><span class="o">.</span><span class="n">e_levels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dict_obj</span><span class="p">[</span><span class="s1">&#39;e_levels&#39;</span><span class="p">])</span>
             
-                
             <span class="c1">######################## Schedules ###########################</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">e_wkday_12by24</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dict_obj</span><span class="p">[</span><span class="s1">&#39;e_wkday_12by24&#39;</span><span class="p">])</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">e_wkend_12by24</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dict_obj</span><span class="p">[</span><span class="s1">&#39;e_wkend_12by24&#39;</span><span class="p">])</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">d_wkday_12by24</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dict_obj</span><span class="p">[</span><span class="s1">&#39;d_wkday_12by24&#39;</span><span class="p">])</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">d_wkend_12by24</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dict_obj</span><span class="p">[</span><span class="s1">&#39;d_wkend_12by24&#39;</span><span class="p">])</span>
-            
+
             <span class="c1"># If the 12by24 has a period that isn&#39;t defined in the tiers,</span>
             <span class="c1"># set that period to the 0th tier.</span>
             <span class="n">max_e_period_in_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">e_wkday_12by24</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_wkend_12by24</span><span class="p">])</span>
+
             <span class="n">max_e_period_in_prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">e_prices</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
             <span class="k">for</span> <span class="n">period</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">max_e_period_in_prices</span><span class="p">,</span> <span class="n">max_e_period_in_matrix</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">e_wkday_12by24</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">e_wkday_12by24</span><span class="o">==</span><span class="n">period</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">e_wkend_12by24</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">e_wkend_12by24</span><span class="o">==</span><span class="n">period</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-                
+
             <span class="c1"># If the 12by24 has a period that isn&#39;t defined in the tiers,</span>
             <span class="c1"># set that period to the 0th tier.</span>
             <span class="n">max_d_period_in_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">d_wkday_12by24</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">d_wkend_12by24</span><span class="p">])</span>
@@ -702,7 +707,6 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">d_wkday_12by24</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">d_wkday_12by24</span><span class="o">==</span><span class="n">period</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">d_wkend_12by24</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">d_wkend_12by24</span><span class="o">==</span><span class="n">period</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
                    
-            
             <span class="c1">################### 12x24s as 8760s Schedule ########################</span>
             <span class="c1"># Build 8760&#39;s. Note that any ingested 8760&#39;s will be ignored                              </span>
             <span class="bp">self</span><span class="o">.</span><span class="n">d_tou_8760</span> <span class="o">=</span> <span class="n">build_8760_from_12by24s</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d_wkday_12by24</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">d_wkend_12by24</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_day</span><span class="p">)</span>
@@ -726,7 +730,7 @@
         <span class="n">d_prep_for_json</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         
         <span class="c1"># change ndarray dtypes to lists, since json doesn&#39;t know ndarrays</span>
-        <span class="k">for</span> <span class="n">fieldname</span> <span class="ow">in</span> <span class="n">d_prep_for_json</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">fieldname</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">d_prep_for_json</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">d_prep_for_json</span><span class="p">[</span><span class="n">fieldname</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
                 <span class="n">d_prep_for_json</span><span class="p">[</span><span class="n">fieldname</span><span class="p">]</span> <span class="o">=</span> <span class="n">d_prep_for_json</span><span class="p">[</span><span class="n">fieldname</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
         
@@ -811,7 +815,7 @@
 <span class="sd">    </span>
 <span class="sd">    Currently only two styles: full-retail NEM, and instantanous TOU energy value. </span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_retail_nem</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_retail_nem</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
                  <span class="n">prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="nb">float</span><span class="p">),</span>
                  <span class="n">levels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="nb">float</span><span class="p">),</span>
                  <span class="n">periods_8760</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">8760</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span>
@@ -835,19 +839,22 @@
     <span class="c1"># Vectorized piecewise function calculator</span>
     <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
     <span class="n">levels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">levels</span><span class="p">)</span>
-    <span class="n">prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
+    <span class="n">prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">prices</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-    
+
     <span class="c1"># Tier 1</span>
 <span class="c1"># commenting the line below to account for the exported generation (-ve values) also receiving NEM incentives</span>
 <span class="c1">#    y += ((values &gt;= 0) &amp; (values &lt; levels[:][:][0])) * (values*prices[:][:][0])</span>
-    <span class="n">y</span> <span class="o">+=</span> <span class="p">((</span><span class="n">values</span> <span class="o">&lt;</span> <span class="n">levels</span><span class="p">[:][:][</span><span class="mi">0</span><span class="p">]))</span> <span class="o">*</span> <span class="p">(</span><span class="n">values</span><span class="o">*</span><span class="n">prices</span><span class="p">[:][:][</span><span class="mi">0</span><span class="p">])</span>
+
+
+    <span class="n">addition</span> <span class="o">=</span> <span class="p">((</span><span class="n">values</span> <span class="o">&lt;</span> <span class="n">levels</span><span class="p">[:][:][</span><span class="mi">0</span><span class="p">]))</span> <span class="o">*</span> <span class="p">(</span><span class="n">values</span><span class="o">*</span><span class="n">prices</span><span class="p">[:][:][</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span> <span class="o">+</span> <span class="p">((</span><span class="n">values</span> <span class="o">&lt;</span> <span class="n">levels</span><span class="p">[:][:][</span><span class="mi">0</span><span class="p">]))</span> <span class="o">*</span> <span class="p">(</span><span class="n">values</span><span class="o">*</span><span class="n">prices</span><span class="p">[:][:][</span><span class="mi">0</span><span class="p">])</span>
 
     <span class="c1"># Tiers 2 and beyond    </span>
     <span class="k">for</span> <span class="n">tier</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span><span class="mi">0</span><span class="p">)):</span>
-        <span class="n">y</span> <span class="o">+=</span> <span class="p">((</span><span class="n">values</span> <span class="o">&gt;=</span> <span class="n">levels</span><span class="p">[:][:][</span><span class="n">tier</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">values</span> <span class="o">&lt;</span> <span class="n">levels</span><span class="p">[:][:][</span><span class="n">tier</span><span class="p">]))</span> <span class="o">*</span> <span class="p">(</span>
+
+        <span class="n">y</span> <span class="o">=</span> <span class="n">y</span> <span class="o">+</span> <span class="p">((</span><span class="n">values</span> <span class="o">&gt;=</span> <span class="n">levels</span><span class="p">[:][:][</span><span class="n">tier</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">values</span> <span class="o">&lt;</span> <span class="n">levels</span><span class="p">[:][:][</span><span class="n">tier</span><span class="p">]))</span> <span class="o">*</span> <span class="p">(</span>
             <span class="p">((</span><span class="n">values</span><span class="o">-</span><span class="n">levels</span><span class="p">[:][:][</span><span class="n">tier</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="n">prices</span><span class="p">[:][:][</span><span class="n">tier</span><span class="p">])</span> <span class="o">+</span> <span class="n">levels</span><span class="p">[:][:][</span><span class="n">tier</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">prices</span><span class="p">[:][:][</span><span class="n">tier</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>  
-    
     <span class="k">return</span> <span class="n">y</span></div>
 
 <span class="c1">#%%</span>
@@ -881,7 +888,7 @@
     <span class="n">n_timesteps</span> <span class="o">=</span> <span class="mi">8760</span>
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tariff</span><span class="o">.</span><span class="n">d_tou_8760</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">8760</span><span class="p">:</span> 
-        <span class="nb">print</span> <span class="s1">&#39;Warning: Non-8760 profiles are not yet supported by the bill calculator&#39;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning: Non-8760 profiles are not yet supported by the bill calculator&#39;</span><span class="p">)</span>
     
     <span class="c1"># 8760 vector of month numbers</span>
     <span class="n">month_hours</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">744</span><span class="p">,</span> <span class="mi">1416</span><span class="p">,</span> <span class="mi">2160</span><span class="p">,</span> <span class="mi">2880</span><span class="p">,</span> <span class="mi">3624</span><span class="p">,</span> <span class="mi">4344</span><span class="p">,</span> <span class="mi">5088</span><span class="p">,</span> <span class="mi">5832</span><span class="p">,</span> <span class="mi">6552</span><span class="p">,</span> <span class="mi">7296</span><span class="p">,</span> <span class="mi">8016</span><span class="p">,</span> <span class="mi">8760</span><span class="p">],</span> <span class="nb">int</span><span class="p">)</span>
@@ -895,7 +902,7 @@
     <span class="k">if</span> <span class="n">tariff</span><span class="o">.</span><span class="n">d_tou_exists</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
         <span class="c1"># Cast the TOU periods into a boolean matrix</span>
         <span class="n">period_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_timesteps</span><span class="p">,</span> <span class="n">tariff</span><span class="o">.</span><span class="n">d_tou_n</span><span class="o">*</span><span class="n">n_months</span><span class="p">],</span> <span class="nb">bool</span><span class="p">)</span>
-        <span class="n">period_matrix</span><span class="p">[</span><span class="nb">range</span><span class="p">(</span><span class="n">n_timesteps</span><span class="p">),</span><span class="n">tariff</span><span class="o">.</span><span class="n">d_tou_8760</span><span class="o">+</span><span class="n">month_index</span><span class="o">*</span><span class="n">tariff</span><span class="o">.</span><span class="n">d_tou_n</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">period_matrix</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_timesteps</span><span class="p">)),</span><span class="n">tariff</span><span class="o">.</span><span class="n">d_tou_8760</span><span class="o">+</span><span class="n">month_index</span><span class="o">*</span><span class="n">tariff</span><span class="o">.</span><span class="n">d_tou_n</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
         
         <span class="c1"># Determine the max demand in each period of each month of each year</span>
         <span class="n">load_distributed</span> <span class="o">=</span> <span class="n">load_profile</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span><span class="o">*</span><span class="n">period_matrix</span>
@@ -917,13 +924,14 @@
     <span class="k">if</span> <span class="n">tariff</span><span class="o">.</span><span class="n">d_flat_exists</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
         <span class="c1"># Cast the seasons into a boolean matrix</span>
         <span class="n">flat_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_timesteps</span><span class="p">,</span> <span class="n">n_months</span><span class="p">],</span> <span class="nb">bool</span><span class="p">)</span>
-        <span class="n">flat_matrix</span><span class="p">[</span><span class="nb">range</span><span class="p">(</span><span class="n">n_timesteps</span><span class="p">),</span><span class="n">month_index</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">flat_matrix</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_timesteps</span><span class="p">)),</span><span class="n">month_index</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
         
         <span class="c1"># Determine the max demand in each month of each year</span>
         <span class="n">load_distributed</span> <span class="o">=</span> <span class="n">load_profile</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span><span class="o">*</span><span class="n">flat_matrix</span>
         <span class="n">flat_maxs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">load_distributed</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         
         <span class="n">flat_charges</span> <span class="o">=</span> <span class="n">tiered_calc_vec</span><span class="p">(</span><span class="n">flat_maxs</span><span class="p">,</span> <span class="n">tariff</span><span class="o">.</span><span class="n">d_flat_levels</span><span class="p">,</span> <span class="n">tariff</span><span class="o">.</span><span class="n">d_flat_prices</span><span class="p">)</span>  
+
     <span class="k">else</span><span class="p">:</span>
         <span class="n">flat_charges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_months</span><span class="p">])</span>
         <span class="n">flat_maxs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
@@ -946,20 +954,21 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">coincident_monthly_charges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
         <span class="n">coincident_demand_levels</span> <span class="o">=</span> <span class="kc">None</span>
-    
+
     <span class="c1">#=========================================================================#</span>
     <span class="c1">#################### Calculate Energy Charges #############################</span>
     <span class="c1">#=========================================================================#</span>
     <span class="c1"># Calculate energy charges without full retail NEM</span>
     <span class="k">if</span> <span class="n">tariff</span><span class="o">.</span><span class="n">e_exists</span> <span class="ow">and</span> <span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span><span class="o">!=</span><span class="mi">0</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">export_tariff</span><span class="o">.</span><span class="n">full_retail_nem</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+
             <span class="n">imported_profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">load_profile</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">1e99</span><span class="p">)</span>
             <span class="n">exported_profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">load_profile</span><span class="p">,</span> <span class="o">-</span><span class="mf">1e99</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
     
             <span class="c1"># Calculate fixed schedule export_tariff </span>
             <span class="c1"># Cast the TOU periods into a boolean matrix</span>
             <span class="n">e_period_export_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">export_tariff</span><span class="o">.</span><span class="n">periods_8760</span><span class="p">),</span> <span class="n">export_tariff</span><span class="o">.</span><span class="n">period_tou_n</span><span class="o">*</span><span class="n">n_months</span><span class="p">],</span> <span class="nb">bool</span><span class="p">)</span>
-            <span class="n">e_period_export_matrix</span><span class="p">[</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">export_tariff</span><span class="o">.</span><span class="n">periods_8760</span><span class="p">)),</span><span class="n">export_tariff</span><span class="o">.</span><span class="n">periods_8760</span><span class="o">+</span><span class="n">month_index</span><span class="o">*</span><span class="n">export_tariff</span><span class="o">.</span><span class="n">period_tou_n</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">e_period_export_matrix</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">export_tariff</span><span class="o">.</span><span class="n">periods_8760</span><span class="p">))),</span><span class="n">export_tariff</span><span class="o">.</span><span class="n">periods_8760</span><span class="o">+</span><span class="n">month_index</span><span class="o">*</span><span class="n">export_tariff</span><span class="o">.</span><span class="n">period_tou_n</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
             
             <span class="c1"># Determine the energy consumed in each period of each month of each year</span>
             <span class="n">load_distributed</span> <span class="o">=</span> <span class="n">exported_profile</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span><span class="o">*</span><span class="n">e_period_export_matrix</span>
@@ -975,7 +984,7 @@
             <span class="c1"># Calculate imported energy charges. </span>
             <span class="c1"># Cast the TOU periods into a boolean matrix</span>
             <span class="n">e_period_import_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span><span class="p">),</span> <span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span><span class="o">*</span><span class="n">n_months</span><span class="p">],</span> <span class="nb">bool</span><span class="p">)</span>
-            <span class="n">e_period_import_matrix</span><span class="p">[</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span><span class="p">)),</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span><span class="o">+</span><span class="n">month_index</span><span class="o">*</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">e_period_import_matrix</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span><span class="p">))),</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span><span class="o">+</span><span class="n">month_index</span><span class="o">*</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
             
             <span class="c1"># Determine the max demand in each period of each month of each year</span>
             <span class="n">load_distributed</span> <span class="o">=</span> <span class="n">imported_profile</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span><span class="o">*</span><span class="n">e_period_import_matrix</span>
@@ -993,21 +1002,23 @@
             <span class="c1"># placeholder        </span>
             <span class="n">e_period_charges</span> <span class="o">=</span> <span class="s2">&quot;placeholder&quot;</span>
             <span class="n">e_period_sums</span> <span class="o">=</span> <span class="s2">&quot;placeholder&quot;</span>
-         
+
         <span class="c1"># Calculate energy charges with full retail NEM </span>
         <span class="k">else</span><span class="p">:</span>
+
             <span class="c1"># Calculate imported energy charges with full retail NEM</span>
             <span class="c1"># Cast the TOU periods into a boolean matrix</span>
             <span class="n">e_period_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span><span class="p">),</span> <span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span><span class="o">*</span><span class="n">n_months</span><span class="p">],</span> <span class="nb">bool</span><span class="p">)</span>
-            <span class="n">e_period_matrix</span><span class="p">[</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span><span class="p">)),</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span><span class="o">+</span><span class="n">month_index</span><span class="o">*</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
-            
+            <span class="n">e_period_matrix</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span><span class="p">))),</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_tou_8760</span><span class="o">+</span><span class="n">month_index</span><span class="o">*</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
             <span class="c1"># Determine the energy consumed in each period of each month of each year netting exported electricity</span>
             <span class="n">load_distributed</span> <span class="o">=</span> <span class="n">load_profile</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span><span class="o">*</span><span class="n">e_period_matrix</span>
             <span class="n">e_period_sums</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">load_distributed</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
             
             <span class="c1"># Calculate the cost of TOU energy charges netting exported electricity</span>
             <span class="n">e_period_charges</span> <span class="o">=</span> <span class="n">tiered_calc_vec</span><span class="p">(</span><span class="n">e_period_sums</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_levels</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_prices</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
-            
+
             <span class="n">e_month_total_net_charges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_months</span><span class="p">])</span>
             <span class="k">for</span> <span class="n">month</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_months</span><span class="p">):</span>
                 <span class="n">e_month_total_net_charges</span><span class="p">[</span><span class="n">month</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">e_period_charges</span><span class="p">[(</span><span class="n">month</span><span class="o">*</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span><span class="p">):(</span><span class="n">month</span><span class="o">*</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span> <span class="o">+</span> <span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span><span class="p">)])</span>
@@ -1015,14 +1026,13 @@
             <span class="c1"># Determine the value of NEM</span>
             <span class="c1"># Calculate imported energy charges with zero exported electricity</span>
             <span class="n">imported_profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">load_profile</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">1e99</span><span class="p">)</span>
-    
+
             <span class="c1"># Determine the energy consumed in each period of each month of each year - without exported electricity</span>
             <span class="n">imported_load_distributed</span> <span class="o">=</span> <span class="n">imported_profile</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span><span class="o">*</span><span class="n">e_period_matrix</span>
             <span class="n">e_period_sums_imported</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">imported_load_distributed</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
             
             <span class="c1"># Calculate the cost of TOU energy charges without exported electricity</span>
             <span class="n">e_period_imported_charges</span> <span class="o">=</span> <span class="n">tiered_calc_vec</span><span class="p">(</span><span class="n">e_period_sums_imported</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_levels</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_prices</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
-            
             <span class="n">e_month_total_import_charges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_months</span><span class="p">])</span>
             <span class="k">for</span> <span class="n">month</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_months</span><span class="p">):</span>
                 <span class="n">e_month_total_import_charges</span><span class="p">[</span><span class="n">month</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">e_period_imported_charges</span><span class="p">[(</span><span class="n">month</span><span class="o">*</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span><span class="p">):(</span><span class="n">month</span><span class="o">*</span><span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span> <span class="o">+</span> <span class="n">tariff</span><span class="o">.</span><span class="n">e_n</span><span class="p">)])</span>
@@ -1128,7 +1138,7 @@
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tariff_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">flag</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">tariff_chunk</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">500</span><span class="p">),</span> <span class="n">columns</span><span class="o">=</span><span class="n">fields</span><span class="p">)</span>
+            <span class="n">tariff_chunk</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">500</span><span class="p">)),</span> <span class="n">columns</span><span class="o">=</span><span class="n">fields</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">count</span><span class="p">,</span> <span class="n">tariff</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tariff_list</span><span class="p">):</span>
                 <span class="k">if</span> <span class="s1">&#39;utility&#39;</span> <span class="ow">in</span> <span class="n">tariff</span><span class="p">:</span> <span class="n">tariff_chunk</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">count</span><span class="p">,</span> <span class="s1">&#39;utility&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tariff</span><span class="p">[</span><span class="s1">&#39;utility&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
                 <span class="k">if</span> <span class="s1">&#39;eiaid&#39;</span> <span class="ow">in</span> <span class="n">tariff</span><span class="p">:</span> <span class="n">tariff_chunk</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">count</span><span class="p">,</span> <span class="s1">&#39;eiaid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tariff</span><span class="p">[</span><span class="s1">&#39;eiaid&#39;</span><span class="p">]</span>
@@ -1152,7 +1162,7 @@
             <span class="n">offset</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tariff_list</span><span class="p">)</span>
             
             <span class="n">chunk_count</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tariff_list</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">print_progress</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span> <span class="nb">print</span> <span class="n">chunk_count</span>
+            <span class="k">if</span> <span class="n">print_progress</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">chunk_count</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">tariffs</span></div>
     
@@ -1190,7 +1200,7 @@
     <span class="k">elif</span> <span class="n">keyword_list</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">keyword_list</span> <span class="o">=</span> <span class="n">keyword_list</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span> <span class="s1">&#39;enter a keyword_list or keyword_list_file&#39;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;enter a keyword_list or keyword_list_file&#39;</span><span class="p">)</span>
     
     <span class="n">tariffs_to_exclude</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tariff_df</span><span class="p">),</span> <span class="nb">bool</span><span class="p">)</span>
     <span class="n">keyword_count_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">keyword_list</span><span class="p">)</span>
@@ -1304,7 +1314,7 @@
         <span class="n">month_index</span><span class="p">[</span><span class="n">month_hours</span><span class="p">[</span><span class="n">month</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span><span class="n">hours</span><span class="p">]</span> <span class="o">=</span> <span class="n">month</span><span class="o">-</span><span class="mi">1</span>
     
     <span class="n">period_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">8760</span><span class="p">,</span> <span class="n">d_tou_n</span><span class="o">*</span><span class="mi">12</span><span class="p">],</span> <span class="nb">bool</span><span class="p">)</span>
-    <span class="n">period_matrix</span><span class="p">[</span><span class="nb">range</span><span class="p">(</span><span class="mi">8760</span><span class="p">),</span><span class="n">d_tou_8760</span><span class="o">+</span><span class="n">month_index</span><span class="o">*</span><span class="n">d_tou_n</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">period_matrix</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">8760</span><span class="p">)),</span><span class="n">d_tou_8760</span><span class="o">+</span><span class="n">month_index</span><span class="o">*</span><span class="n">d_tou_n</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
     
     <span class="c1"># Define the dataframes that energy and demand values will be recorded in</span>
     <span class="n">bld_peak_demands</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
@@ -1378,11 +1388,19 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, NREL
+        
+        &copy; Copyright 2020, NREL
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -1393,7 +1411,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

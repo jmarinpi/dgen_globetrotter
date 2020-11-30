@@ -1,41 +1,43 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Example Use Cases &mdash; dGen Mexico 0.1 documentation</title>
+  <title>Example Use Cases &mdash; dGen Globetrotter 0.1 documentation</title>
   
-
-  
-  
-  
-  
-
-  
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    
-    <script type="text/javascript" src="../_static/js/theme.js"></script>
-
-    
 
   
   <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Installation" href="installation.html" />
+    <link rel="next" title="Generating Agents" href="generating_agents.html" />
     <link rel="prev" title="Tutorial" href="tutorial.html" /> 
 </head>
 
@@ -50,7 +52,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> dGen Mexico
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> dGen Globetrotter
           
 
           
@@ -73,6 +75,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -88,6 +91,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#advanced-use-case">Advanced Use Case</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="generating_agents.html">Generating Agents</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">dGen Code Base</a></li>
 <li class="toctree-l1"><a class="reference internal" href="input_data.html">Input Data</a></li>
@@ -96,6 +100,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -105,7 +110,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">dGen Mexico</a>
+          <a href="../index.html">dGen Globetrotter</a>
         
       </nav>
 
@@ -134,7 +139,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Example Use Cases</li>
     
@@ -164,40 +169,40 @@
 <p>Let’s demonstrate usage of dGen by testing a simple hypothesis: If retail electricity rate escalations are high, we will see more commercial solar capacity than if rate escalations are low. In this hypothesis, we are testing if self-generation will be more economic for customers than paying high retail rates, especially when programs like net metering are available to compensate excess generation sold back to the utility.</p>
 <p>To test this hypothesis, we’ll conduct two model runs:</p>
 <ol class="arabic simple">
-<li><em>Our test case:</em> with high rate escalation and net metering based on the avoided cost of generation.</li>
-<li><em>Our control case:</em> with low rate escalation and net metering based on the avoided cost of generation.</li>
+<li><p><em>Our test case:</em> with high rate escalation and net metering based on the avoided cost of generation.</p></li>
+<li><p><em>Our control case:</em> with low rate escalation and net metering based on the avoided cost of generation.</p></li>
 </ol>
 <p>To set up a model run, we need to place a scenario <code class="file docutils literal notranslate"><span class="pre">.xlsm</span></code> file and a folder of <code class="file docutils literal notranslate"><span class="pre">.csv</span></code> files containing input data in the <code class="file docutils literal notranslate"><span class="pre">input_scenarios/</span></code> folder. An example of this is within the <code class="file docutils literal notranslate"><span class="pre">reference_data/example_data/</span></code> folder, called <code class="file docutils literal notranslate"><span class="pre">mex_high_costs.xlsm</span></code>, and <code class="file docutils literal notranslate"><span class="pre">mex_high_costs/</span></code>. Copy these folders to <code class="file docutils literal notranslate"><span class="pre">input_scenarios/</span></code> and rename them <code class="file docutils literal notranslate"><span class="pre">high_rate_escalation.xlsm</span></code> and <code class="file docutils literal notranslate"><span class="pre">example_input_csvs/</span></code>.</p>
 <p>Next, the most impactful parameters should be changed within the <code class="file docutils literal notranslate"><span class="pre">high_rate_escalation.xlsm</span></code> file. Open the file with Microsoft Excel, and select the <cite>Main</cite> tab.</p>
 <p>Change the following options:</p>
 <ul class="simple">
-<li>Rename the <code class="xref py py-const docutils literal notranslate"><span class="pre">Scenario</span> <span class="pre">Name</span></code> to be ‘high_rate_escalation’.</li>
-<li>Rename the <code class="xref py py-const docutils literal notranslate"><span class="pre">Scenario</span> <span class="pre">Folder</span></code> to be the sibling file of <code class="file docutils literal notranslate"><span class="pre">.csv</span></code> files, in our case it should be ‘example_input_csvs’.</li>
-<li><code class="xref py py-const docutils literal notranslate"><span class="pre">Analysis</span> <span class="pre">End</span> <span class="pre">Year</span></code> should be ‘2026’ (it can be up to 2050, but we’ll reduce it to decrease model run time for this example).</li>
-<li><code class="xref py py-const docutils literal notranslate"><span class="pre">Markets</span></code> should be ‘Only Commercial’.</li>
-<li><cite>Load Growth Scenario</cite> should be ‘Planning’.</li>
-<li>The <code class="xref py py-const docutils literal notranslate"><span class="pre">Res</span></code>, <code class="xref py py-const docutils literal notranslate"><span class="pre">Com</span></code>, and <code class="xref py py-const docutils literal notranslate"><span class="pre">Ind</span> <span class="pre">Rate</span> <span class="pre">Structure</span></code> fields should all stay as ‘Flat (Annual Average)’.</li>
-<li><code class="xref py py-const docutils literal notranslate"><span class="pre">Com</span> <span class="pre">Rate</span> <span class="pre">Escalation</span></code> should be ‘High’, as that is the scenario we are testing, but <code class="xref py py-const docutils literal notranslate"><span class="pre">Res</span></code> and <code class="xref py py-const docutils literal notranslate"><span class="pre">Ind</span></code> should stay as ‘Planning’.</li>
-<li>Different data sources are available for <code class="xref py py-const docutils literal notranslate"><span class="pre">Max</span> <span class="pre">Market</span> <span class="pre">Curve</span></code>, we’ll use ‘Navigant’ for <code class="xref py py-const docutils literal notranslate"><span class="pre">Com</span></code>.</li>
-<li>A Carbon Price is not part of our scenario, so we’ll set <code class="xref py py-const docutils literal notranslate"><span class="pre">Carbon</span> <span class="pre">Price</span></code> to ‘No Carbon Price’.</li>
-<li>We’re testing a <code class="xref py py-const docutils literal notranslate"><span class="pre">Net</span> <span class="pre">Metering</span> <span class="pre">Scenario</span></code> based on the ‘Avoided Cost’.</li>
+<li><p>Rename the <code class="xref py py-const docutils literal notranslate"><span class="pre">Scenario</span> <span class="pre">Name</span></code> to be ‘high_rate_escalation’.</p></li>
+<li><p>Rename the <code class="xref py py-const docutils literal notranslate"><span class="pre">Scenario</span> <span class="pre">Folder</span></code> to be the sibling file of <code class="file docutils literal notranslate"><span class="pre">.csv</span></code> files, in our case it should be ‘example_input_csvs’.</p></li>
+<li><p><code class="xref py py-const docutils literal notranslate"><span class="pre">Analysis</span> <span class="pre">End</span> <span class="pre">Year</span></code> should be ‘2026’ (it can be up to 2050, but we’ll reduce it to decrease model run time for this example).</p></li>
+<li><p><code class="xref py py-const docutils literal notranslate"><span class="pre">Markets</span></code> should be ‘Only Commercial’.</p></li>
+<li><p><cite>Load Growth Scenario</cite> should be ‘Planning’.</p></li>
+<li><p>The <code class="xref py py-const docutils literal notranslate"><span class="pre">Res</span></code>, <code class="xref py py-const docutils literal notranslate"><span class="pre">Com</span></code>, and <code class="xref py py-const docutils literal notranslate"><span class="pre">Ind</span> <span class="pre">Rate</span> <span class="pre">Structure</span></code> fields should all stay as ‘Flat (Annual Average)’.</p></li>
+<li><p><code class="xref py py-const docutils literal notranslate"><span class="pre">Com</span> <span class="pre">Rate</span> <span class="pre">Escalation</span></code> should be ‘High’, as that is the scenario we are testing, but <code class="xref py py-const docutils literal notranslate"><span class="pre">Res</span></code> and <code class="xref py py-const docutils literal notranslate"><span class="pre">Ind</span></code> should stay as ‘Planning’.</p></li>
+<li><p>Different data sources are available for <code class="xref py py-const docutils literal notranslate"><span class="pre">Max</span> <span class="pre">Market</span> <span class="pre">Curve</span></code>, we’ll use ‘Navigant’ for <code class="xref py py-const docutils literal notranslate"><span class="pre">Com</span></code>.</p></li>
+<li><p>A Carbon Price is not part of our scenario, so we’ll set <code class="xref py py-const docutils literal notranslate"><span class="pre">Carbon</span> <span class="pre">Price</span></code> to ‘No Carbon Price’.</p></li>
+<li><p>We’re testing a <code class="xref py py-const docutils literal notranslate"><span class="pre">Net</span> <span class="pre">Metering</span> <span class="pre">Scenario</span></code> based on the ‘Avoided Cost’.</p></li>
 </ul>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The ‘Tariff Rate’ option for <code class="xref py py-const docutils literal notranslate"><span class="pre">Net</span> <span class="pre">Metering</span> <span class="pre">Scenario</span></code> is not currently working.</p>
+<p class="admonition-title">Note</p>
+<p>The ‘Tariff Rate’ option for <code class="xref py py-const docutils literal notranslate"><span class="pre">Net</span> <span class="pre">Metering</span> <span class="pre">Scenario</span></code> is not currently working.</p>
 </div>
 <p>Once these parameters are input, save the file and exit Excel.</p>
 <p>We now need to copy the <code class="file docutils literal notranslate"><span class="pre">high_rate_escalation.xlsm</span></code> file and paste a second copy into <code class="file docutils literal notranslate"><span class="pre">input_scenarios/</span></code>. Let’s rename this copy to be <code class="file docutils literal notranslate"><span class="pre">low_rate_escalation.xlsm</span></code>. We don’t need to recopy the <code class="file docutils literal notranslate"><span class="pre">example_input_csvs/</span></code> folder.</p>
 <p>Open <code class="file docutils literal notranslate"><span class="pre">low_rate_escalation.xlsm</span></code> with Microsoft Excel and select the <cite>Main</cite> tab:</p>
 <ul class="simple">
-<li>Change <code class="xref py py-const docutils literal notranslate"><span class="pre">Scenario</span> <span class="pre">Name</span></code> to be ‘low_rate_escalation’</li>
-<li>Change <code class="xref py py-const docutils literal notranslate"><span class="pre">Res</span> <span class="pre">Rate</span> <span class="pre">Escalation</span></code> to be ‘Low’.</li>
+<li><p>Change <code class="xref py py-const docutils literal notranslate"><span class="pre">Scenario</span> <span class="pre">Name</span></code> to be ‘low_rate_escalation’</p></li>
+<li><p>Change <code class="xref py py-const docutils literal notranslate"><span class="pre">Res</span> <span class="pre">Rate</span> <span class="pre">Escalation</span></code> to be ‘Low’.</p></li>
 </ul>
 <p>Save file and close it.</p>
 <p>Now we’re ready to run the model. This involves opening your computer’s command line interface (CLI). On Macs this should be an application called Terminal, on Windows this should be called Command Prompt.</p>
 <p>Running the model on the <strong>command line</strong> involves moving to the <code class="file docutils literal notranslate"><span class="pre">python/</span></code> directory within the dGen package. From inside the <code class="file docutils literal notranslate"><span class="pre">python/</span></code> folder, activate the virtualenv set-up during installation. If an environment hasn’t been created yet, follow the <a class="reference internal" href="installation.html#installation"><span class="std std-ref">Installation</span></a> instructions. Finally, run the model as a python directive.:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>#enter python directory of dgen_mexico
-$ cd &lt;your path here&gt;/dgen_mexico/python
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>#enter python directory of dgen_globetrotter
+$ cd &lt;your path here&gt;/dgen_globetrotter/python
 
 #activate the installed environment
 $ source env/Scripts/activate  #or conda activate env
@@ -208,250 +213,250 @@ $ source env/Scripts/activate  #or conda activate env
 </div>
 <p>Model results are saved to the <code class="file docutils literal notranslate"><span class="pre">runs/</span></code> folder, inside a folder with a time-stamped name, will be a log and code profile, and a folder for each scenario. There should have a folder called <code class="file docutils literal notranslate"><span class="pre">high_rate_escalation</span></code> and a file called <code class="file docutils literal notranslate"><span class="pre">low_rate_escalation</span></code>.</p>
 <ul class="simple">
-<li>Inside each of these folders will be a pickled Pandas DataFrame containing complete model information for each agent.</li>
-<li>Additionally, <code class="file docutils literal notranslate"><span class="pre">agent_outputs.csv</span></code> contains the agent_df for each year joined on to each other length wise.</li>
-<li><code class="file docutils literal notranslate"><span class="pre">dpv_cf_by_ba.csv</span></code> contains an 8760 of solar capacity factors for each control region in a representative year of the model.</li>
-<li><code class="file docutils literal notranslate"><span class="pre">dpv_MW_by_ba_and_year.csv</span></code> contains the cumulative installed solar capacity for each control region in each model year.</li>
-<li>Finally, copies of the original <code class="file docutils literal notranslate"><span class="pre">input_data/</span></code> folder, and excel scenario file are included for reference.</li>
+<li><p>Inside each of these folders will be a pickled Pandas DataFrame containing complete model information for each agent.</p></li>
+<li><p>Additionally, <code class="file docutils literal notranslate"><span class="pre">agent_outputs.csv</span></code> contains the agent_df for each year joined on to each other length wise.</p></li>
+<li><p><code class="file docutils literal notranslate"><span class="pre">dpv_cf_by_ba.csv</span></code> contains an 8760 of solar capacity factors for each control region in a representative year of the model.</p></li>
+<li><p><code class="file docutils literal notranslate"><span class="pre">dpv_MW_by_ba_and_year.csv</span></code> contains the cumulative installed solar capacity for each control region in each model year.</p></li>
+<li><p>Finally, copies of the original <code class="file docutils literal notranslate"><span class="pre">input_data/</span></code> folder, and excel scenario file are included for reference.</p></li>
 </ul>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
+<p class="admonition-title">Note</p>
 <p>Reading pickled DataFrames is easy with:</p>
-<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pandas</span><span class="o">.</span><span class="n">read_pickle</span><span class="p">(</span><span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pandas</span><span class="o">.</span><span class="n">read_pickle</span><span class="p">(</span><span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <p>Now that our model has run, let’s open <code class="file docutils literal notranslate"><span class="pre">runs/&lt;timestamp&gt;/low_rate_escalation/dpv_MW_by_ba_and_year.csv</span></code></p>
-<table border="1" class="docutils" id="id2">
+<table class="docutils align-default" id="id2">
 <caption><span class="caption-text">Basic Use Case: Low Rate Escalation</span><a class="headerlink" href="#id2" title="Permalink to this table">¶</a></caption>
 <colgroup>
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head stub">control_reg_id</th>
-<th class="head">2016</th>
-<th class="head">2018</th>
-<th class="head">2020</th>
-<th class="head">2022</th>
-<th class="head">2024</th>
-<th class="head">2026</th>
-<th class="head">Total</th>
+<thead>
+<tr class="row-odd"><th class="head stub"><p>control_reg_id</p></th>
+<th class="head"><p>2016</p></th>
+<th class="head"><p>2018</p></th>
+<th class="head"><p>2020</p></th>
+<th class="head"><p>2022</p></th>
+<th class="head"><p>2024</p></th>
+<th class="head"><p>2026</p></th>
+<th class="head"><p>Total</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><th class="stub">1</th>
-<td>5.1</td>
-<td>24.6</td>
-<td>95.0</td>
-<td>260.4</td>
-<td>448.2</td>
-<td>623.4</td>
-<td>1456.7</td>
+<tbody>
+<tr class="row-even"><th class="stub"><p>1</p></th>
+<td><p>5.1</p></td>
+<td><p>24.6</p></td>
+<td><p>95.0</p></td>
+<td><p>260.4</p></td>
+<td><p>448.2</p></td>
+<td><p>623.4</p></td>
+<td><p>1456.7</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">2</th>
-<td>3.4</td>
-<td>14.4</td>
-<td>49.8</td>
-<td>142.4</td>
-<td>306.9</td>
-<td>525.5</td>
-<td>1042.3</td>
+<tr class="row-odd"><th class="stub"><p>2</p></th>
+<td><p>3.4</p></td>
+<td><p>14.4</p></td>
+<td><p>49.8</p></td>
+<td><p>142.4</p></td>
+<td><p>306.9</p></td>
+<td><p>525.5</p></td>
+<td><p>1042.3</p></td>
 </tr>
-<tr class="row-even"><th class="stub">3</th>
-<td>15.3</td>
-<td>60.5</td>
-<td>187.0</td>
-<td>445.9</td>
-<td>760.0</td>
-<td>1009.1</td>
-<td>2477.9</td>
+<tr class="row-even"><th class="stub"><p>3</p></th>
+<td><p>15.3</p></td>
+<td><p>60.5</p></td>
+<td><p>187.0</p></td>
+<td><p>445.9</p></td>
+<td><p>760.0</p></td>
+<td><p>1009.1</p></td>
+<td><p>2477.9</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">4</th>
-<td>2.4</td>
-<td>12.1</td>
-<td>45.5</td>
-<td>114.6</td>
-<td>187.4</td>
-<td>237.1</td>
-<td>599.0</td>
+<tr class="row-odd"><th class="stub"><p>4</p></th>
+<td><p>2.4</p></td>
+<td><p>12.1</p></td>
+<td><p>45.5</p></td>
+<td><p>114.6</p></td>
+<td><p>187.4</p></td>
+<td><p>237.1</p></td>
+<td><p>599.0</p></td>
 </tr>
-<tr class="row-even"><th class="stub">5</th>
-<td>1.1</td>
-<td>5.0</td>
-<td>16.5</td>
-<td>34.8</td>
-<td>50.1</td>
-<td>65.9</td>
-<td>173.4</td>
+<tr class="row-even"><th class="stub"><p>5</p></th>
+<td><p>1.1</p></td>
+<td><p>5.0</p></td>
+<td><p>16.5</p></td>
+<td><p>34.8</p></td>
+<td><p>50.1</p></td>
+<td><p>65.9</p></td>
+<td><p>173.4</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">6</th>
-<td>4.4</td>
-<td>16.7</td>
-<td>48.3</td>
-<td>114.6</td>
-<td>211.5</td>
-<td>308.2</td>
-<td>703.8</td>
+<tr class="row-odd"><th class="stub"><p>6</p></th>
+<td><p>4.4</p></td>
+<td><p>16.7</p></td>
+<td><p>48.3</p></td>
+<td><p>114.6</p></td>
+<td><p>211.5</p></td>
+<td><p>308.2</p></td>
+<td><p>703.8</p></td>
 </tr>
-<tr class="row-even"><th class="stub">7</th>
-<td>3.7</td>
-<td>18.6</td>
-<td>67.0</td>
-<td>150.1</td>
-<td>212.4</td>
-<td>244.2</td>
-<td>696.0</td>
+<tr class="row-even"><th class="stub"><p>7</p></th>
+<td><p>3.7</p></td>
+<td><p>18.6</p></td>
+<td><p>67.0</p></td>
+<td><p>150.1</p></td>
+<td><p>212.4</p></td>
+<td><p>244.2</p></td>
+<td><p>696.0</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">8</th>
-<td>2.7</td>
-<td>13.5</td>
-<td>47.4</td>
-<td>97.9</td>
-<td>122.9</td>
-<td>131.5</td>
-<td>416.0</td>
+<tr class="row-odd"><th class="stub"><p>8</p></th>
+<td><p>2.7</p></td>
+<td><p>13.5</p></td>
+<td><p>47.4</p></td>
+<td><p>97.9</p></td>
+<td><p>122.9</p></td>
+<td><p>131.5</p></td>
+<td><p>416.0</p></td>
 </tr>
-<tr class="row-even"><th class="stub">9</th>
-<td>1.3</td>
-<td>6.4</td>
-<td>22.6</td>
-<td>44.4</td>
-<td>54.0</td>
-<td>57.1</td>
-<td>185.8</td>
+<tr class="row-even"><th class="stub"><p>9</p></th>
+<td><p>1.3</p></td>
+<td><p>6.4</p></td>
+<td><p>22.6</p></td>
+<td><p>44.4</p></td>
+<td><p>54.0</p></td>
+<td><p>57.1</p></td>
+<td><p>185.8</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">Total</th>
-<td>39.4</td>
-<td>171.7</td>
-<td>579.2</td>
-<td>1405.0</td>
-<td>2353.4</td>
-<td>3202.0</td>
-<td>7750.8</td>
+<tr class="row-odd"><th class="stub"><p>Total</p></th>
+<td><p>39.4</p></td>
+<td><p>171.7</p></td>
+<td><p>579.2</p></td>
+<td><p>1405.0</p></td>
+<td><p>2353.4</p></td>
+<td><p>3202.0</p></td>
+<td><p>7750.8</p></td>
 </tr>
 </tbody>
 </table>
 <p>For the sake of this example, an additional ’Total’ column and row were added so we can see that <strong>7750.8 MW</strong> of commercial solar PV was installed during the ‘low_rate_escalation’ run. Let’s now compare that with <code class="file docutils literal notranslate"><span class="pre">runs/&lt;timestamp&gt;/high_rate_escalation/dpv_MW_by_ba_and_year.csv</span></code>.</p>
-<table border="1" class="docutils" id="id3">
+<table class="docutils align-default" id="id3">
 <caption><span class="caption-text">Basic Use Case: High Rate Escalation</span><a class="headerlink" href="#id3" title="Permalink to this table">¶</a></caption>
 <colgroup>
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head stub">control_reg_id</th>
-<th class="head">2016</th>
-<th class="head">2018</th>
-<th class="head">2020</th>
-<th class="head">2022</th>
-<th class="head">2024</th>
-<th class="head">2026</th>
-<th class="head">Total</th>
+<thead>
+<tr class="row-odd"><th class="head stub"><p>control_reg_id</p></th>
+<th class="head"><p>2016</p></th>
+<th class="head"><p>2018</p></th>
+<th class="head"><p>2020</p></th>
+<th class="head"><p>2022</p></th>
+<th class="head"><p>2024</p></th>
+<th class="head"><p>2026</p></th>
+<th class="head"><p>Total</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><th class="stub">1</th>
-<td>5.1</td>
-<td>24.7</td>
-<td>95.9</td>
-<td>266.3</td>
-<td>482.8</td>
-<td>688.3</td>
-<td>1563.1</td>
+<tbody>
+<tr class="row-even"><th class="stub"><p>1</p></th>
+<td><p>5.1</p></td>
+<td><p>24.7</p></td>
+<td><p>95.9</p></td>
+<td><p>266.3</p></td>
+<td><p>482.8</p></td>
+<td><p>688.3</p></td>
+<td><p>1563.1</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">2</th>
-<td>3.4</td>
-<td>14.4</td>
-<td>49.9</td>
-<td>143.8</td>
-<td>318.3</td>
-<td>554.0</td>
-<td>1083.7</td>
+<tr class="row-odd"><th class="stub"><p>2</p></th>
+<td><p>3.4</p></td>
+<td><p>14.4</p></td>
+<td><p>49.9</p></td>
+<td><p>143.8</p></td>
+<td><p>318.3</p></td>
+<td><p>554.0</p></td>
+<td><p>1083.7</p></td>
 </tr>
-<tr class="row-even"><th class="stub">3</th>
-<td>15.3</td>
-<td>60.5</td>
-<td>187.4</td>
-<td>450.7</td>
-<td>783.8</td>
-<td>1058.1</td>
-<td>2555.8</td>
+<tr class="row-even"><th class="stub"><p>3</p></th>
+<td><p>15.3</p></td>
+<td><p>60.5</p></td>
+<td><p>187.4</p></td>
+<td><p>450.7</p></td>
+<td><p>783.8</p></td>
+<td><p>1058.1</p></td>
+<td><p>2555.8</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">4</th>
-<td>2.4</td>
-<td>12.1</td>
-<td>45.7</td>
-<td>116.2</td>
-<td>194.4</td>
-<td>250.1</td>
-<td>620.9</td>
+<tr class="row-odd"><th class="stub"><p>4</p></th>
+<td><p>2.4</p></td>
+<td><p>12.1</p></td>
+<td><p>45.7</p></td>
+<td><p>116.2</p></td>
+<td><p>194.4</p></td>
+<td><p>250.1</p></td>
+<td><p>620.9</p></td>
 </tr>
-<tr class="row-even"><th class="stub">5</th>
-<td>1.1</td>
-<td>5.0</td>
-<td>16.6</td>
-<td>35.6</td>
-<td>52.1</td>
-<td>69.9</td>
-<td>180.2</td>
+<tr class="row-even"><th class="stub"><p>5</p></th>
+<td><p>1.1</p></td>
+<td><p>5.0</p></td>
+<td><p>16.6</p></td>
+<td><p>35.6</p></td>
+<td><p>52.1</p></td>
+<td><p>69.9</p></td>
+<td><p>180.2</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">6</th>
-<td>4.4</td>
-<td>16.7</td>
-<td>48.4</td>
-<td>115.7</td>
-<td>216.8</td>
-<td>324.0</td>
-<td>726.1</td>
+<tr class="row-odd"><th class="stub"><p>6</p></th>
+<td><p>4.4</p></td>
+<td><p>16.7</p></td>
+<td><p>48.4</p></td>
+<td><p>115.7</p></td>
+<td><p>216.8</p></td>
+<td><p>324.0</p></td>
+<td><p>726.1</p></td>
 </tr>
-<tr class="row-even"><th class="stub">7</th>
-<td>3.7</td>
-<td>18.6</td>
-<td>67.4</td>
-<td>153.3</td>
-<td>226.2</td>
-<td>266.5</td>
-<td>735.8</td>
+<tr class="row-even"><th class="stub"><p>7</p></th>
+<td><p>3.7</p></td>
+<td><p>18.6</p></td>
+<td><p>67.4</p></td>
+<td><p>153.3</p></td>
+<td><p>226.2</p></td>
+<td><p>266.5</p></td>
+<td><p>735.8</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">8</th>
-<td>2.7</td>
-<td>13.5</td>
-<td>47.5</td>
-<td>99.8</td>
-<td>129.6</td>
-<td>140.6</td>
-<td>433.8</td>
+<tr class="row-odd"><th class="stub"><p>8</p></th>
+<td><p>2.7</p></td>
+<td><p>13.5</p></td>
+<td><p>47.5</p></td>
+<td><p>99.8</p></td>
+<td><p>129.6</p></td>
+<td><p>140.6</p></td>
+<td><p>433.8</p></td>
 </tr>
-<tr class="row-even"><th class="stub">9</th>
-<td>1.3</td>
-<td>6.4</td>
-<td>22.6</td>
-<td>45.2</td>
-<td>56.8</td>
-<td>61.2</td>
-<td>193.6</td>
+<tr class="row-even"><th class="stub"><p>9</p></th>
+<td><p>1.3</p></td>
+<td><p>6.4</p></td>
+<td><p>22.6</p></td>
+<td><p>45.2</p></td>
+<td><p>56.8</p></td>
+<td><p>61.2</p></td>
+<td><p>193.6</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">Total</th>
-<td>39.4</td>
-<td>171.8</td>
-<td>581.4</td>
-<td>1426.6</td>
-<td>2461.0</td>
-<td>3412.6</td>
-<td>8092.9</td>
+<tr class="row-odd"><th class="stub"><p>Total</p></th>
+<td><p>39.4</p></td>
+<td><p>171.8</p></td>
+<td><p>581.4</p></td>
+<td><p>1426.6</p></td>
+<td><p>2461.0</p></td>
+<td><p>3412.6</p></td>
+<td><p>8092.9</p></td>
 </tr>
 </tbody>
 </table>
@@ -462,119 +467,119 @@ $ source env/Scripts/activate  #or conda activate env
 <p>Keeping the <code class="file docutils literal notranslate"><span class="pre">low_rate_escalation.xlsm</span></code> and <code class="file docutils literal notranslate"><span class="pre">high_rate_escalation.xlsm</span></code> files, let’s change some more advanced parameters. We’ll keep the low rate escalation scenario as our control, but we’ll see what happens to installed commercial solar PV capacity when we increase the Investment Tax Credit (ITC), which is a subsidy that is paid on the installed cost of the system.</p>
 <p>Apart from the <em>Main</em> tab where we modified scenario settings previously, tabs exist for <em>Market Projections</em>, <em>Financing</em>, <em>Storage (Note: Storage is not functional in dGen Mexico)</em>, and <em>Solar</em> within the <code class="file docutils literal notranslate"><span class="pre">high_rate_escalaiton.xlsm</span></code> file. To change the ITC, let’s switch to the <em>Financing</em> tab. Under the <em>Commercial</em> section of the <em>Financing</em> table, we can examine the ‘Solar ITC %’ column to see that the default Commercial ITC is 30% in 2014, and begins phasing down in 2020 until it reaches 10% in 2024. Let’s test a scenario where new legislation was passed to expand the ITC to 35% between 2020 and 2026. To do this, change the respective values to ‘0.35’. Let’s save this as a new file, <code class="file docutils literal notranslate"><span class="pre">high_rate_escalation_ITC.xlsm</span></code>. We’ll keep all our changes in the <em>Main</em> tab, and leave <code class="file docutils literal notranslate"><span class="pre">/low_rate_escalation</span></code> file untouched so it can act as our control.</p>
 <p>We run the model the same way as in our previous example, although you might want to move the <cite>low_rate_escalation.xlsm</cite> and <code class="file docutils literal notranslate"><span class="pre">high_rate_escalation.xlsm</span></code> files out of the <code class="file docutils literal notranslate"><span class="pre">input_scenarios/</span></code> folder, so that they are excluded from this run. Once the model run is complete, we can open <code class="file docutils literal notranslate"><span class="pre">runs/&lt;timestamp&gt;/hih_rate_escalation_ITC/dpv_MW_by_ba_and_year.csv</span></code> to see the new installed solar PV commercial capacity.</p>
-<table border="1" class="docutils" id="id4">
+<table class="docutils align-default" id="id4">
 <caption><span class="caption-text">Intermediate Use Case: High Rate Escalation with 35% ITC in 2020</span><a class="headerlink" href="#id4" title="Permalink to this table">¶</a></caption>
 <colgroup>
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head stub">control_reg_id</th>
-<th class="head">2016</th>
-<th class="head">2018</th>
-<th class="head">2020</th>
-<th class="head">2022</th>
-<th class="head">2024</th>
-<th class="head">2026</th>
-<th class="head">Total</th>
+<thead>
+<tr class="row-odd"><th class="head stub"><p>control_reg_id</p></th>
+<th class="head"><p>2016</p></th>
+<th class="head"><p>2018</p></th>
+<th class="head"><p>2020</p></th>
+<th class="head"><p>2022</p></th>
+<th class="head"><p>2024</p></th>
+<th class="head"><p>2026</p></th>
+<th class="head"><p>Total</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><th class="stub">1</th>
-<td>5.1</td>
-<td>24.7</td>
-<td>95.9</td>
-<td>286.5</td>
-<td>587.7</td>
-<td>878.6</td>
-<td>1878.5</td>
+<tbody>
+<tr class="row-even"><th class="stub"><p>1</p></th>
+<td><p>5.1</p></td>
+<td><p>24.7</p></td>
+<td><p>95.9</p></td>
+<td><p>286.5</p></td>
+<td><p>587.7</p></td>
+<td><p>878.6</p></td>
+<td><p>1878.5</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">2</th>
-<td>3.4</td>
-<td>14.4</td>
-<td>49.9</td>
-<td>148.6</td>
-<td>350.9</td>
-<td>640.6</td>
-<td>1207.7</td>
+<tr class="row-odd"><th class="stub"><p>2</p></th>
+<td><p>3.4</p></td>
+<td><p>14.4</p></td>
+<td><p>49.9</p></td>
+<td><p>148.6</p></td>
+<td><p>350.9</p></td>
+<td><p>640.6</p></td>
+<td><p>1207.7</p></td>
 </tr>
-<tr class="row-even"><th class="stub">3</th>
-<td>15.3</td>
-<td>60.5</td>
-<td>187.4</td>
-<td>471.1</td>
-<td>886.1</td>
-<td>1258.1</td>
-<td>2878.5</td>
+<tr class="row-even"><th class="stub"><p>3</p></th>
+<td><p>15.3</p></td>
+<td><p>60.5</p></td>
+<td><p>187.4</p></td>
+<td><p>471.1</p></td>
+<td><p>886.1</p></td>
+<td><p>1258.1</p></td>
+<td><p>2878.5</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">4</th>
-<td>2.4</td>
-<td>12.1</td>
-<td>45.7</td>
-<td>123.5</td>
-<td>226.5</td>
-<td>307.5</td>
-<td>717.7</td>
+<tr class="row-odd"><th class="stub"><p>4</p></th>
+<td><p>2.4</p></td>
+<td><p>12.1</p></td>
+<td><p>45.7</p></td>
+<td><p>123.5</p></td>
+<td><p>226.5</p></td>
+<td><p>307.5</p></td>
+<td><p>717.7</p></td>
 </tr>
-<tr class="row-even"><th class="stub">5</th>
-<td>1.1</td>
-<td>5.0</td>
-<td>16.6</td>
-<td>38.0</td>
-<td>60.5</td>
-<td>81.9</td>
-<td>203.1</td>
+<tr class="row-even"><th class="stub"><p>5</p></th>
+<td><p>1.1</p></td>
+<td><p>5.0</p></td>
+<td><p>16.6</p></td>
+<td><p>38.0</p></td>
+<td><p>60.5</p></td>
+<td><p>81.9</p></td>
+<td><p>203.1</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">6</th>
-<td>4.4</td>
-<td>16.7</td>
-<td>48.4</td>
-<td>119.3</td>
-<td>238.2</td>
-<td>374.3</td>
-<td>801.3</td>
+<tr class="row-odd"><th class="stub"><p>6</p></th>
+<td><p>4.4</p></td>
+<td><p>16.7</p></td>
+<td><p>48.4</p></td>
+<td><p>119.3</p></td>
+<td><p>238.2</p></td>
+<td><p>374.3</p></td>
+<td><p>801.3</p></td>
 </tr>
-<tr class="row-even"><th class="stub">7</th>
-<td>3.7</td>
-<td>18.6</td>
-<td>67.4</td>
-<td>167.4</td>
-<td>277.2</td>
-<td>343.9</td>
-<td>878.2</td>
+<tr class="row-even"><th class="stub"><p>7</p></th>
+<td><p>3.7</p></td>
+<td><p>18.6</p></td>
+<td><p>67.4</p></td>
+<td><p>167.4</p></td>
+<td><p>277.2</p></td>
+<td><p>343.9</p></td>
+<td><p>878.2</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">8</th>
-<td>2.7</td>
-<td>13.5</td>
-<td>47.5</td>
-<td>108.7</td>
-<td>156.5</td>
-<td>176.0</td>
-<td>504.9</td>
+<tr class="row-odd"><th class="stub"><p>8</p></th>
+<td><p>2.7</p></td>
+<td><p>13.5</p></td>
+<td><p>47.5</p></td>
+<td><p>108.7</p></td>
+<td><p>156.5</p></td>
+<td><p>176.0</p></td>
+<td><p>504.9</p></td>
 </tr>
-<tr class="row-even"><th class="stub">9</th>
-<td>1.3</td>
-<td>6.4</td>
-<td>22.6</td>
-<td>49.8</td>
-<td>69.5</td>
-<td>77.2</td>
-<td>226.8</td>
+<tr class="row-even"><th class="stub"><p>9</p></th>
+<td><p>1.3</p></td>
+<td><p>6.4</p></td>
+<td><p>22.6</p></td>
+<td><p>49.8</p></td>
+<td><p>69.5</p></td>
+<td><p>77.2</p></td>
+<td><p>226.8</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">Total</th>
-<td>39.4</td>
-<td>171.8</td>
-<td>581.4</td>
-<td>1512.8</td>
-<td>2853.0</td>
-<td>4138.2</td>
-<td>9296.7</td>
+<tr class="row-odd"><th class="stub"><p>Total</p></th>
+<td><p>39.4</p></td>
+<td><p>171.8</p></td>
+<td><p>581.4</p></td>
+<td><p>1512.8</p></td>
+<td><p>2853.0</p></td>
+<td><p>4138.2</p></td>
+<td><p>9296.7</p></td>
 </tr>
 </tbody>
 </table>
@@ -586,144 +591,143 @@ $ source env/Scripts/activate  #or conda activate env
 <p>At the core of the dGen model is a bass diffusion model. The bass diffusion curve is an economic principle that identifies an S-curve of adoption for new technologies. Even if it is incredibly economic for a commercial entity to adopt solar, market research indicates that many will still not adopt because of unawareness, fear of change, or other barriers to entry. The S-curve of the Bass Diffusion model anticipates that a small number of initial adopters will inspire a larger number of followers. This is true for many things within our economy. For instance, if a new independent-film comes out that is very good, a small number of initial moviegoers might see it because they are un-afraid to try new things, or some members might stumble into the movie on a whim but end up enjoying the film. As these initial viewers talk to their friends and family and tell them about the great film they recently saw, others will be inspired to go see the movie. This trend has been observed with technology adoption too, including the adoption rate for the automobile, smartphones, and now roof-top solar PV.</p>
 <p>The curve is defined by two parameters, <em>p</em> and <em>q</em>.</p>
 <ul class="simple">
-<li><em>p</em> is the coefficient of innovation, it identifies the proportion of the population that will spontaneously install solar PV in each time increment.</li>
-<li><em>q</em> is the coefficient of imitation, it identifies the proportion of the population that will adopt based on current levels of adoption.</li>
+<li><p><em>p</em> is the coefficient of innovation, it identifies the proportion of the population that will spontaneously install solar PV in each time increment.</p></li>
+<li><p><em>q</em> is the coefficient of imitation, it identifies the proportion of the population that will adopt based on current levels of adoption.</p></li>
 </ul>
 <p>Mathematically, the model is expressed as:</p>
 <div class="math notranslate nohighlight">
 \[\frac{f(t)}{1 - F(t)} = p + qF(t)\]</div>
-<p>Put simply:<a class="footnote-reference" href="#f1" id="id1">[1]</a></p>
+<p>Put simply:<a class="footnote-reference brackets" href="#f1" id="id1">1</a></p>
 <div class="math notranslate nohighlight">
 \[\scriptsize
 \text{customers who will purchase at time }t = (p * \text{ remaining potential}) + (q * \text{ number of adopters} * \text{remaining potential})\]</div>
 <a class="reference internal image-reference" href="../_images/example_bass.png"><img alt="../_images/example_bass.png" class="align-center" src="../_images/example_bass.png" style="width: 480.0px; height: 360.0px;" /></a>
 <p>Applying this to the dGen model, if we open <code class="file docutils literal notranslate"><span class="pre">input_scenarios/example_input_csvs/pv_bass.csv</span></code> we’ll find a file containing <em>p</em> and <em>q</em> parameters for every state, control region, and sector combination. These have been prepopulated based on our careful analysis of measured historic data. For the sake of this example, let’s input some crude values in order to test a scenario where more commercial agents will spontaneously adopt solar, perhaps this could be the result of a massive advertisement campaign. To do this, we want to raise the <em>p</em> values for the commercial sector. Let’s change all of these values to ‘0.0075’ which is around 3.5 times higher than the current average p value.</p>
 <p>After saving the file and running the model again (just for the ‘high_rate_escalation_ITC’ scenario), we get the following results for installed commercial solar PV capacity:</p>
-<table border="1" class="docutils" id="id5">
+<table class="docutils align-default" id="id5">
 <caption><span class="caption-text">Advanced Use Case: High Rate Escalation with 35% ITC in 2020 and p values of ‘0.0075’</span><a class="headerlink" href="#id5" title="Permalink to this table">¶</a></caption>
 <colgroup>
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
-<col width="13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head stub">control_reg_id</th>
-<th class="head">2016</th>
-<th class="head">2018</th>
-<th class="head">2020</th>
-<th class="head">2022</th>
-<th class="head">2024</th>
-<th class="head">2026</th>
-<th class="head">Total</th>
+<thead>
+<tr class="row-odd"><th class="head stub"><p>control_reg_id</p></th>
+<th class="head"><p>2016</p></th>
+<th class="head"><p>2018</p></th>
+<th class="head"><p>2020</p></th>
+<th class="head"><p>2022</p></th>
+<th class="head"><p>2024</p></th>
+<th class="head"><p>2026</p></th>
+<th class="head"><p>Total</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><th class="stub">1</th>
-<td>30.2</td>
-<td>129.6</td>
-<td>384.1</td>
-<td>753.7</td>
-<td>1040.6</td>
-<td>1187</td>
-<td>3525.2</td>
+<tbody>
+<tr class="row-even"><th class="stub"><p>1</p></th>
+<td><p>30.2</p></td>
+<td><p>129.6</p></td>
+<td><p>384.1</p></td>
+<td><p>753.7</p></td>
+<td><p>1040.6</p></td>
+<td><p>1187</p></td>
+<td><p>3525.2</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">2</th>
-<td>28.6</td>
-<td>110.4</td>
-<td>308.7</td>
-<td>633.2</td>
-<td>954.8</td>
-<td>1171.7</td>
-<td>3207.4</td>
+<tr class="row-odd"><th class="stub"><p>2</p></th>
+<td><p>28.6</p></td>
+<td><p>110.4</p></td>
+<td><p>308.7</p></td>
+<td><p>633.2</p></td>
+<td><p>954.8</p></td>
+<td><p>1171.7</p></td>
+<td><p>3207.4</p></td>
 </tr>
-<tr class="row-even"><th class="stub">3</th>
-<td>33.9</td>
-<td>136.5</td>
-<td>389.7</td>
-<td>783.9</td>
-<td>1144.4</td>
-<td>1377</td>
-<td>3865.4</td>
+<tr class="row-even"><th class="stub"><p>3</p></th>
+<td><p>33.9</p></td>
+<td><p>136.5</p></td>
+<td><p>389.7</p></td>
+<td><p>783.9</p></td>
+<td><p>1144.4</p></td>
+<td><p>1377</p></td>
+<td><p>3865.4</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">4</th>
-<td>8.1</td>
-<td>37.4</td>
-<td>114.8</td>
-<td>223.6</td>
-<td>295.7</td>
-<td>324.7</td>
-<td>1004.3</td>
+<tr class="row-odd"><th class="stub"><p>4</p></th>
+<td><p>8.1</p></td>
+<td><p>37.4</p></td>
+<td><p>114.8</p></td>
+<td><p>223.6</p></td>
+<td><p>295.7</p></td>
+<td><p>324.7</p></td>
+<td><p>1004.3</p></td>
 </tr>
-<tr class="row-even"><th class="stub">5</th>
-<td>2.9</td>
-<td>11.5</td>
-<td>32.5</td>
-<td>63.2</td>
-<td>91</td>
-<td>110.8</td>
-<td>311.9</td>
+<tr class="row-even"><th class="stub"><p>5</p></th>
+<td><p>2.9</p></td>
+<td><p>11.5</p></td>
+<td><p>32.5</p></td>
+<td><p>63.2</p></td>
+<td><p>91</p></td>
+<td><p>110.8</p></td>
+<td><p>311.9</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">6</th>
-<td>10.4</td>
-<td>39.2</td>
-<td>108.3</td>
-<td>228.8</td>
-<td>360.5</td>
-<td>453.8</td>
-<td>1201</td>
+<tr class="row-odd"><th class="stub"><p>6</p></th>
+<td><p>10.4</p></td>
+<td><p>39.2</p></td>
+<td><p>108.3</p></td>
+<td><p>228.8</p></td>
+<td><p>360.5</p></td>
+<td><p>453.8</p></td>
+<td><p>1201</p></td>
 </tr>
-<tr class="row-even"><th class="stub">7</th>
-<td>8.9</td>
-<td>41.6</td>
-<td>128.1</td>
-<td>246.3</td>
-<td>319.8</td>
-<td>346.9</td>
-<td>1091.6</td>
+<tr class="row-even"><th class="stub"><p>7</p></th>
+<td><p>8.9</p></td>
+<td><p>41.6</p></td>
+<td><p>128.1</p></td>
+<td><p>246.3</p></td>
+<td><p>319.8</p></td>
+<td><p>346.9</p></td>
+<td><p>1091.6</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">8</th>
-<td>4.7</td>
-<td>22.3</td>
-<td>68.5</td>
-<td>128.3</td>
-<td>162.3</td>
-<td>174.2</td>
-<td>560.3</td>
+<tr class="row-odd"><th class="stub"><p>8</p></th>
+<td><p>4.7</p></td>
+<td><p>22.3</p></td>
+<td><p>68.5</p></td>
+<td><p>128.3</p></td>
+<td><p>162.3</p></td>
+<td><p>174.2</p></td>
+<td><p>560.3</p></td>
 </tr>
-<tr class="row-even"><th class="stub">9</th>
-<td>1.9</td>
-<td>9.1</td>
-<td>28.9</td>
-<td>55.2</td>
-<td>70.7</td>
-<td>76</td>
-<td>241.8</td>
+<tr class="row-even"><th class="stub"><p>9</p></th>
+<td><p>1.9</p></td>
+<td><p>9.1</p></td>
+<td><p>28.9</p></td>
+<td><p>55.2</p></td>
+<td><p>70.7</p></td>
+<td><p>76</p></td>
+<td><p>241.8</p></td>
 </tr>
-<tr class="row-odd"><th class="stub">Total</th>
-<td>129.6</td>
-<td>537.6</td>
-<td>1563.6</td>
-<td>3116.2</td>
-<td>4439.8</td>
-<td>5222.1</td>
-<td>15008.9</td>
+<tr class="row-odd"><th class="stub"><p>Total</p></th>
+<td><p>129.6</p></td>
+<td><p>537.6</p></td>
+<td><p>1563.6</p></td>
+<td><p>3116.2</p></td>
+<td><p>4439.8</p></td>
+<td><p>5222.1</p></td>
+<td><p>15008.9</p></td>
 </tr>
 </tbody>
 </table>
 <p>Increasing the <em>p</em> value has lead to <strong>15,008.9 MW</strong> of commercial solar capacity. Obviously the <em>p</em> parameters is an extremely significant input. This example use case is purposefully extreme: it is testing a scenario with constant high retail rate escalations, a major legislative push for a 35% ITC, and a significantly higher willingness of commercial customers to adopt solar. While more realistic scenarios would not involve changing these values this drastically, hopefully this example demonstrated the types of levers that are available within the dGen model and how to access them.</p>
 <p>Try playing with other values both in the excel file, and folder of <code class="file docutils literal notranslate"><span class="pre">.csv</span></code> files to test other scenarios. If you have any questions about using the dGen model, please contact <a class="reference external" href="mailto:Ben&#46;Sigrin&#37;&#52;&#48;NREL&#46;gov">Ben<span>&#46;</span>Sigrin<span>&#64;</span>NREL<span>&#46;</span>gov</a>.</p>
 <p class="rubric">Footnotes</p>
-<table class="docutils footnote" frame="void" id="f1" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Bar Ilan University. “Forecasting the Sales of New Products and the Bass Model.” <a class="reference external" href="https://faculty.biu.ac.il/~fruchtg/829/lec/6.pdf">https://faculty.biu.ac.il/~fruchtg/829/lec/6.pdf</a></td></tr>
-</tbody>
-</table>
+<dl class="footnote brackets">
+<dt class="label" id="f1"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p>Bar Ilan University. “Forecasting the Sales of New Products and the Bass Model.” <a class="reference external" href="https://faculty.biu.ac.il/~fruchtg/829/lec/6.pdf">https://faculty.biu.ac.il/~fruchtg/829/lec/6.pdf</a></p>
+</dd>
+</dl>
 </div>
 </div>
 
@@ -735,7 +739,7 @@ $ source env/Scripts/activate  #or conda activate env
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="generating_agents.html" class="btn btn-neutral float-right" title="Generating Agents" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="tutorial.html" class="btn btn-neutral float-left" title="Tutorial" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -747,11 +751,19 @@ $ source env/Scripts/activate  #or conda activate env
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, NREL
+        
+        &copy; Copyright 2020, NREL
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -762,7 +774,6 @@ $ source env/Scripts/activate  #or conda activate env
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

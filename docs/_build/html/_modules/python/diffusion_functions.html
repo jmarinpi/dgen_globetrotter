@@ -1,38 +1,40 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>python.diffusion_functions &mdash; dGen Mexico 0.1 documentation</title>
+  <title>python.diffusion_functions &mdash; dGen Globetrotter 0.1 documentation</title>
   
-
-  
-  
-  
-  
-
-  
-  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../../_static/jquery.js"></script>
-        <script type="text/javascript" src="../../_static/underscore.js"></script>
-        <script type="text/javascript" src="../../_static/doctools.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
 
   
   <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
@@ -48,7 +50,7 @@
           
 
           
-            <a href="../../index.html" class="icon icon-home"> dGen Mexico
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> dGen Globetrotter
           
 
           
@@ -71,6 +73,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -81,6 +84,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../source/tutorial.html">Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/generating_agents.html">Generating Agents</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/api.html">dGen Code Base</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../source/input_data.html">Input Data</a></li>
@@ -89,6 +93,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -98,7 +103,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../../index.html">dGen Mexico</a>
+          <a href="../../index.html">dGen Globetrotter</a>
         
       </nav>
 
@@ -127,7 +132,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../../index.html">Docs</a> &raquo;</li>
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
         
           <li><a href="../index.html">Module code</a> &raquo;</li>
         
@@ -162,6 +167,7 @@
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">import</span> <span class="nn">utility_functions</span> <span class="k">as</span> <span class="nn">utilfunc</span>
 <span class="kn">import</span> <span class="nn">decorators</span>
+<span class="kn">import</span> <span class="nn">config</span>
 
 <span class="c1">#==============================================================================</span>
 <span class="c1"># Load logger</span>
@@ -186,7 +192,7 @@
 <span class="sd">    is_first_year : bool</span>
 <span class="sd">        Passed to :func:`diffusion_functions.calc_diffusion_market_share` to determine the increment of `teq`</span>
 <span class="sd">    bass_params : pandas.DataFrame</span>
-<span class="sd">        DataFrame generally derived from :func:`settings.get_bass_params`, includes the following attributes: `control_reg_id`, `country_abbr`, `sector_abbr`, `state_id`, `p`, `q`, `teq_yr1`, `tech`.</span>
+<span class="sd">        DataFrame generally derived from :func:`settings.get_bass_params`, includes the following attributes: config.BA_COLUMN, `sector_abbr`, `state_id`, `p`, `q`, `teq_yr1`, `tech`.</span>
 <span class="sd">    override_p_values : float , optional</span>
 <span class="sd">        Value to override bass diffusion `p` coefficient of innovation with.</span>
 <span class="sd">    overide_q_values : float, optional</span>
@@ -200,12 +206,15 @@
 <span class="sd">            Dataframe contains `market_last_year` column to inform diffusion in next year.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
     <span class="n">bass_params</span> <span class="o">=</span> <span class="n">bass_params</span><span class="p">[</span><span class="n">bass_params</span><span class="p">[</span><span class="s1">&#39;tech&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;solar&#39;</span><span class="p">]</span>    
     
     <span class="c1"># set p/q/teq_yr1 params  </span>
-    <span class="n">bass_params</span> <span class="o">=</span> <span class="n">bass_params</span><span class="p">[[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span><span class="s1">&#39;state_id&#39;</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">,</span> <span class="s1">&#39;q&#39;</span><span class="p">,</span> <span class="s1">&#39;teq_yr1&#39;</span><span class="p">]]</span>  
-    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">bass_params</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span>  <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span><span class="s1">&#39;state_id&#39;</span><span class="p">])</span>
+    <span class="n">bass_params</span> <span class="o">=</span> <span class="n">bass_params</span><span class="p">[[</span><span class="n">config</span><span class="o">.</span><span class="n">BA_COLUMN</span><span class="p">,</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">,</span> <span class="s1">&#39;q&#39;</span><span class="p">,</span> <span class="s1">&#39;teq_yr1&#39;</span><span class="p">]]</span>  
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">bass_params</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span>  <span class="o">=</span> <span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">BA_COLUMN</span><span class="p">,</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span><span class="s1">&#39;state_id&#39;</span><span class="p">])</span>
     
     <span class="c1"># calc diffusion market share</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">calc_diffusion_market_share</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">is_first_year</span><span class="p">)</span>
@@ -235,8 +244,7 @@
     <span class="n">df</span><span class="p">[</span><span class="s1">&#39;batt_kw_cum&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;batt_kw_cum_last_year&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;new_batt_kw&#39;</span><span class="p">]</span>
     <span class="n">df</span><span class="p">[</span><span class="s1">&#39;batt_kwh_cum&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;batt_kwh_cum_last_year&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;new_batt_kwh&#39;</span><span class="p">]</span>
 
-    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
-    <span class="n">market_last_year</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s1">&#39;control_reg_id&#39;</span><span class="p">,</span> <span class="s1">&#39;state_id&#39;</span><span class="p">,</span> <span class="s1">&#39;tariff_class&#39;</span><span class="p">,</span> <span class="s1">&#39;country_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;tech&#39;</span><span class="p">,</span>
+    <span class="n">market_last_year</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s1">&#39;agent_id&#39;</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">BA_COLUMN</span><span class="p">,</span> <span class="s1">&#39;tariff_id&#39;</span><span class="p">,</span> <span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;tech&#39;</span><span class="p">,</span>
                             <span class="s1">&#39;market_share&#39;</span><span class="p">,</span> <span class="s1">&#39;max_market_share&#39;</span><span class="p">,</span> <span class="s1">&#39;number_of_adopters&#39;</span><span class="p">,</span>
                             <span class="s1">&#39;market_value&#39;</span><span class="p">,</span> <span class="s1">&#39;initial_number_of_adopters&#39;</span><span class="p">,</span> <span class="s1">&#39;initial_pv_kw&#39;</span><span class="p">,</span> <span class="s1">&#39;initial_market_share&#39;</span><span class="p">,</span> <span class="s1">&#39;initial_market_value&#39;</span><span class="p">,</span>
                             <span class="s1">&#39;pv_kw_cum&#39;</span><span class="p">,</span> <span class="s1">&#39;new_pv_kw&#39;</span><span class="p">,</span> <span class="s1">&#39;batt_kw_cum&#39;</span><span class="p">,</span> <span class="s1">&#39;batt_kwh_cum&#39;</span><span class="p">]]</span>
@@ -290,9 +298,8 @@
     
     <span class="n">df</span> <span class="o">=</span> <span class="n">bass_diffusion</span><span class="p">(</span><span class="n">df</span><span class="p">);</span> <span class="c1"># calculate the new diffusion by stepping forward 2 years</span>
 
-    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;bass_market_share&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">max_market_share</span> <span class="o">*</span> <span class="n">df</span><span class="o">.</span><span class="n">new_adopt_fraction</span> <span class="c1"># new market adoption    </span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;bass_market_share&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;max_market_share&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;new_adopt_fraction&#39;</span><span class="p">]</span> <span class="c1"># new market adoption    </span>
     <span class="n">df</span><span class="p">[</span><span class="s1">&#39;diffusion_market_share&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">market_share_last_year</span> <span class="o">&gt;</span> <span class="n">df</span><span class="o">.</span><span class="n">bass_market_share</span><span class="p">,</span> <span class="n">df</span><span class="o">.</span><span class="n">market_share_last_year</span><span class="p">,</span> <span class="n">df</span><span class="o">.</span><span class="n">bass_market_share</span><span class="p">)</span>
-    
     <span class="k">return</span> <span class="n">df</span></div>
 
 <div class="viewcode-block" id="set_bass_param"><a class="viewcode-back" href="../../source/api.html#python.diffusion_functions.set_bass_param">[docs]</a><span class="k">def</span> <span class="nf">set_bass_param</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">bass_params</span><span class="p">,</span> <span class="n">override_p_value</span><span class="p">,</span> <span class="n">override_q_value</span><span class="p">,</span> <span class="n">override_teq_yr1_value</span><span class="p">):</span>
@@ -319,7 +326,7 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># set p and q values</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">bass_params</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span>  <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;state_id&#39;</span><span class="p">,</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;tech&#39;</span><span class="p">])</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">bass_params</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">on</span>  <span class="o">=</span> <span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">BA_COLUMN</span><span class="p">,</span><span class="s1">&#39;sector_abbr&#39;</span><span class="p">,</span> <span class="s1">&#39;tech&#39;</span><span class="p">])</span>
     
     <span class="c1"># if override values were provided for p, q, or teq_yr1, apply them to all agents</span>
     <span class="k">if</span> <span class="n">override_p_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -403,11 +410,19 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, NREL
+        
+        &copy; Copyright 2020, NREL
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -418,7 +433,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

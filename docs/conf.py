@@ -19,8 +19,8 @@ sys.path.insert(0, os.path.abspath('../python')) #so that modules can import oth
 
 # -- Project information -----------------------------------------------------
 
-project = u'dGen Mexico'
-copyright = u'2019, NREL'
+project = u'dGen Globetrotter'
+copyright = u'2020, NREL'
 author = u'NREL'
 
 # The short X.Y version

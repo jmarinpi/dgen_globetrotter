@@ -1,16 +1,16 @@
-.. dGen Mexico documentation master file, created by
+.. dGen Globetrotter documentation master file, created by
    sphinx-quickstart on Mon Feb 25 14:35:41 2019.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to dGen Mexico's documentation!
+Welcome to dGen Globetrotter's documentation!
 =======================================
 
 The Distributed Generation Market Demand (dGen) model simulates customer adoption of distributed energy resources (DERs) for residential, commercial, and industrial entities in the United States or other countries through 2050. dGen was written by the The National Renewable Energy Laboratory (NREL). 
 
 The dGen model can help develop DER deployment forecasts for a range of spatial and temporal scales. To learn more, see `model applications <https://www.nrel.gov/analysis/dgen/model-applications.html>`_.
 
-This version of the model is specifically set-up for the Mexican context. This includes the usage of Mexican states and control areas along with Mexican demographic and load data. 
+This version of the model is specifically set-up for the International contexts. This includes the usage of International states and control areas along with Mexican demographic and load data. 
 
 .. image:: source/doc_data/hero-hp-dgen.png
    :scale: 60 %
@@ -27,7 +27,6 @@ Use Cases
 - Understanding the economic or policy conditions in which DER adoption becomes viable
 - Illustrating sensitivity to market and policy changes such as retail electricity rate structures, net energy metering, and technology costs.
 
-An open-source version of the dGen model is currently being developed as part of the Resilient Planning for Distributed Energy Resources project. Learn about the `open-source version's development <https://www.nrel.gov/analysis/dgen/open-source-development.html>`_.
 
 Modeling Process
 -----------------
@@ -51,6 +50,7 @@ Documentation Table of Contents
 
    source/tutorial
    source/examples
+   source/generating_agents
    source/installation
    source/api
    source/input_data

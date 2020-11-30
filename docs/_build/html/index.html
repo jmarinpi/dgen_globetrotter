@@ -1,38 +1,40 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Welcome to dGen Mexico’s documentation! &mdash; dGen Mexico 0.1 documentation</title>
+  <title>Welcome to dGen Globetrotter’s documentation! &mdash; dGen Globetrotter 0.1 documentation</title>
   
-
-  
-  
-  
-  
-
-  
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-
-    
 
   
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Tutorial" href="source/tutorial.html" /> 
@@ -49,7 +51,7 @@
           
 
           
-            <a href="#" class="icon icon-home"> dGen Mexico
+            <a href="#" class="icon icon-home" alt="Documentation Home"> dGen Globetrotter
           
 
           
@@ -72,6 +74,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -82,6 +85,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="source/tutorial.html">Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="source/examples.html">Example Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="source/generating_agents.html">Generating Agents</a></li>
 <li class="toctree-l1"><a class="reference internal" href="source/installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="source/api.html">dGen Code Base</a></li>
 <li class="toctree-l1"><a class="reference internal" href="source/input_data.html">Input Data</a></li>
@@ -90,6 +94,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -99,7 +104,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="#">dGen Mexico</a>
+          <a href="#">dGen Globetrotter</a>
         
       </nav>
 
@@ -128,9 +133,9 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="#">Docs</a> &raquo;</li>
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Welcome to dGen Mexico’s documentation!</li>
+      <li>Welcome to dGen Globetrotter’s documentation!</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -149,8 +154,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="welcome-to-dgen-mexico-s-documentation">
-<h1>Welcome to dGen Mexico’s documentation!<a class="headerlink" href="#welcome-to-dgen-mexico-s-documentation" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="welcome-to-dgen-globetrotter-s-documentation">
+<h1>Welcome to dGen Globetrotter’s documentation!<a class="headerlink" href="#welcome-to-dgen-globetrotter-s-documentation" title="Permalink to this headline">¶</a></h1>
 <p>The Distributed Generation Market Demand (dGen) model simulates customer adoption of distributed energy resources (DERs) for residential, commercial, and industrial entities in the United States or other countries through 2050. dGen was written by the The National Renewable Energy Laboratory (NREL).</p>
 <p>The dGen model can help develop DER deployment forecasts for a range of spatial and temporal scales. To learn more, see <a class="reference external" href="https://www.nrel.gov/analysis/dgen/model-applications.html">model applications</a>.</p>
 <p>This version of the model is specifically set-up for the Mexican context. This includes the usage of Mexican states and control areas along with Mexican demographic and load data.</p>
@@ -158,26 +163,25 @@
 <div class="section" id="use-cases">
 <h2>Use Cases<a class="headerlink" href="#use-cases" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Identifying the sectors, locations, and customers for whom adopting DERs would have a high economic value</li>
-<li>Generating forecasts as an input to estimate distribution hosting capacity analysis, integrated resource planning, and load forecasting</li>
-<li>Understanding the economic or policy conditions in which DER adoption becomes viable</li>
-<li>Illustrating sensitivity to market and policy changes such as retail electricity rate structures, net energy metering, and technology costs.</li>
+<li><p>Identifying the sectors, locations, and customers for whom adopting DERs would have a high economic value</p></li>
+<li><p>Generating forecasts as an input to estimate distribution hosting capacity analysis, integrated resource planning, and load forecasting</p></li>
+<li><p>Understanding the economic or policy conditions in which DER adoption becomes viable</p></li>
+<li><p>Illustrating sensitivity to market and policy changes such as retail electricity rate structures, net energy metering, and technology costs.</p></li>
 </ul>
-<p>An open-source version of the dGen model is currently being developed as part of the Resilient Planning for Distributed Energy Resources project. Learn about the <a class="reference external" href="https://www.nrel.gov/analysis/dgen/open-source-development.html">open-source version’s development</a>.</p>
 </div>
 <div class="section" id="modeling-process">
 <h2>Modeling Process<a class="headerlink" href="#modeling-process" title="Permalink to this headline">¶</a></h2>
 <p>Consumer demand is modeled through an agent-based approach that includes five steps:</p>
 <ol class="arabic simple">
-<li>Generating agents (i.e., potential customers) and assigning them attributes based on a
-probabilistic representation of individual customer types.</li>
-<li>Applying technical and siting restrictions, such as resource quality, rooftop availability
-(solar), and quality for each agent.</li>
-<li>Performing economic calculations using cash flow analysis incorporating project costs,
-prevailing retail rates, incentives, and net metering considerations.</li>
-<li>Calculating market share of each technology by simulating technology adoption based on
-Bass-style adoption and other considerations of consumer behavior.</li>
-<li>Determining the total installed capacity by agent and jurisdiction for each year.</li>
+<li><p>Generating agents (i.e., potential customers) and assigning them attributes based on a
+probabilistic representation of individual customer types.</p></li>
+<li><p>Applying technical and siting restrictions, such as resource quality, rooftop availability
+(solar), and quality for each agent.</p></li>
+<li><p>Performing economic calculations using cash flow analysis incorporating project costs,
+prevailing retail rates, incentives, and net metering considerations.</p></li>
+<li><p>Calculating market share of each technology by simulating technology adoption based on
+Bass-style adoption and other considerations of consumer behavior.</p></li>
+<li><p>Determining the total installed capacity by agent and jurisdiction for each year.</p></li>
 </ol>
 </div>
 <div class="section" id="documentation-table-of-contents">
@@ -197,6 +201,10 @@ Bass-style adoption and other considerations of consumer behavior.</li>
 <li class="toctree-l2"><a class="reference internal" href="source/examples.html#advanced-use-case">Advanced Use Case</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="source/generating_agents.html">Generating Agents</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="source/generating_agents.html#india-example">India Example</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="source/installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="source/installation.html#downloading-dgen">Downloading dGen</a></li>
 <li class="toctree-l2"><a class="reference internal" href="source/installation.html#set-up-a-virtual-environment">Set-up a Virtual Environment</a></li>
@@ -208,12 +216,12 @@ Bass-style adoption and other considerations of consumer behavior.</li>
 <li class="toctree-l2"><a class="reference internal" href="source/api.html#module-python.agents">python.agents module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="source/api.html#module-python.config">python.config module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="source/api.html#module-python.decorators">python.decorators module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="source/api.html#module-python.dgen_model">python.dgen_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source/api.html#python-dgen-model-module">python.dgen_model module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="source/api.html#module-python.diffusion_functions">python.diffusion_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="source/api.html#module-python.dispatch_functions">python.dispatch_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="source/api.html#module-python.financial_functions">python.financial_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="source/api.html#module-python.settings">python.settings module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="source/api.html#module-python.storage_functions">python.storage_functions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source/api.html#python-storage-functions-module">python.storage_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="source/api.html#module-python.tariff_functions">python.tariff_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="source/api.html#module-python.utility_functions">python.utility_functions module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="source/api.html#module-python">Module contents</a></li>
@@ -259,11 +267,19 @@ Bass-style adoption and other considerations of consumer behavior.</li>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, NREL
+        
+        &copy; Copyright 2020, NREL
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -274,7 +290,6 @@ Bass-style adoption and other considerations of consumer behavior.</li>
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {
