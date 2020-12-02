@@ -287,29 +287,8 @@ def merge_district_geometry(agents):
     districts = districts.drop_duplicates(subset=['clean_str'])
     # agents['clean_str'] = agents['state_name'] + '_' + agents['district_name']
     
-    from cfuzzyset import cFuzzySet as FuzzySet
-    def fuzzy_address_matcher(fuzzy_list, clean_list, thresh=0.5):
-    
-        if isinstance(fuzzy_list, pd.Series):
-            fuzzy_list = fuzzy_list.tolist()
-        
-        if isinstance(clean_list, pd.Series):
-            clean_list = clean_list.unique().tolist()
-    
-        index = FuzzySet()
-        
-        for c in clean_list:
-            index.add(c)
-        
-        out_list = []
-        for f in fuzzy_list:
-            result = index.get(f)
-            out_list.append(result[0][1])
-        
-        return out_list
-    
     # --- fuzzy string matching ---
-    agents['clean_str'] = fuzzy_address_matcher(agents['fuzzy_str'], districts['clean_str'])
+    agents['clean_str'] = helper.fuzzy_address_matcher(agents['fuzzy_str'], districts['clean_str'])
 
     # --- find centroid for each district ---
     districts['centroid'] = [i.centroid for i in districts['geometry']]
