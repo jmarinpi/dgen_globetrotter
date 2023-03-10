@@ -706,7 +706,7 @@ def init_model_settings():
     model_settings.set('git_hash', utilfunc.get_git_hash())
     
     # --- check for scenarios listed in config ---
-    input_scenarios = [s for s in glob.glob(os.path.join(os.pardir,'input_scenarios','*.xls*')) if not '~$' in s]
+    input_scenarios = [s for s in glob.glob(os.path.join(os.pardir,'input_scenarios','*.xlsm*')) if not '~$' in s]
     if SCENARIOS == None:
         pass
     else:
